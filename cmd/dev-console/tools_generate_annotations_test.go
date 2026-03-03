@@ -1,4 +1,4 @@
-// Purpose: Validate tools_generate_annotations_test.go behavior and guard against regressions.
+// Purpose: Tests for generate annotation report output.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 

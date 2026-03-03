@@ -7,6 +7,7 @@
 // Includes frame routing helpers used by dom and a11y.
 import { isAiWebPilotEnabled } from '../state.js';
 import { registerCommand } from './registry.js';
+import { isContentScriptUnreachableError } from './helpers.js';
 // =============================================================================
 // FRAME ROUTING HELPERS
 // =============================================================================
@@ -221,10 +222,6 @@ function aggregateA11yFrameResults(results) {
         ...(errors.length > 0 ? { error: errors.join('; ') } : {})
     };
 }
-function isContentScriptUnreachableError(err) {
-    const message = err?.message || '';
-    return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
-}
 /**
  * Fallback DOM query implementation executed via chrome.scripting in ISOLATED world.
  * This keeps analyze(dom) working when content-script messaging is temporarily unavailable.
@@ -355,12 +352,7 @@ registerCommand('dom', async (ctx) => {
                     throw err;
                 }
             }
-            if (ctx.query.correlation_id) {
-                ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result);
-            }
-            else {
-                ctx.sendResult(result);
-            }
+            ctx.sendResult(result);
             return;
         }
         const frameParams = stripFrameParam(ctx.params);
@@ -384,27 +376,17 @@ registerCommand('dom', async (ctx) => {
         else {
             result = aggregateDOMFrameResults(perFrame);
         }
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result);
-        }
-        else {
-            ctx.sendResult(result);
-        }
+        ctx.sendResult(result);
     }
     catch (err) {
         const message = err.message || 'Failed to execute DOM query';
         console.error('[Gasoline][DOM] Command failed:', message, err.stack || err);
-        const isFrameNotFound = message === 'frame_not_found';
-        const isInvalidFrame = message === 'invalid_frame';
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`);
-        }
-        else {
-            ctx.sendResult({
-                error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
-                message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
-            });
-        }
+        const isFrameNotFound = message.startsWith('frame_not_found');
+        const isInvalidFrame = message.startsWith('invalid_frame');
+        ctx.sendResult({
+            error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
+            message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
+        });
     }
 });
 // =============================================================================
@@ -419,12 +401,7 @@ registerCommand('a11y', async (ctx) => {
                 type: 'A11Y_QUERY',
                 params: ctx.query.params
             });
-            if (ctx.query.correlation_id) {
-                ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result);
-            }
-            else {
-                ctx.sendResult(result);
-            }
+            ctx.sendResult(result);
             return;
         }
         const frameParams = stripFrameParam(ctx.params);
@@ -448,27 +425,17 @@ registerCommand('a11y', async (ctx) => {
         else {
             result = aggregateA11yFrameResults(perFrame);
         }
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result);
-        }
-        else {
-            ctx.sendResult(result);
-        }
+        ctx.sendResult(result);
     }
     catch (err) {
         const message = err.message || 'Failed to execute accessibility audit';
         console.error('[Gasoline][A11Y] Command failed:', message, err.stack || err);
-        const isFrameNotFound = message === 'frame_not_found';
-        const isInvalidFrame = message === 'invalid_frame';
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`);
-        }
-        else {
-            ctx.sendResult({
-                error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
-                message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
-            });
-        }
+        const isFrameNotFound = message.startsWith('frame_not_found');
+        const isInvalidFrame = message.startsWith('invalid_frame');
+        ctx.sendResult({
+            error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
+            message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
+        });
     }
 });
 // =============================================================================

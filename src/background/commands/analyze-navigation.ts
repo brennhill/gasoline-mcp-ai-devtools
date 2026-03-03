@@ -27,20 +27,12 @@ registerCommand('navigation', async (ctx) => {
       ...navData
     }
 
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload)
-    } else {
-      ctx.sendResult(payload)
-    }
+    ctx.sendResult(payload)
   } catch (err) {
     const message = (err as Error).message || 'Navigation discovery failed'
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message)
-    } else {
-      ctx.sendResult({
-        error: 'navigation_discovery_failed',
-        message
-      })
-    }
+    ctx.sendResult({
+      error: 'navigation_discovery_failed',
+      message
+    })
   }
 })

@@ -1,4 +1,4 @@
-// Purpose: Validate tools_analyze_annotations_draw_test.go behavior and guard against regressions.
+// Purpose: Tests for analyze draw-mode annotation retrieval.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 

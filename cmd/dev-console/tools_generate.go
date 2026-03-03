@@ -5,9 +5,8 @@ package main
 
 import (
 	"encoding/json"
+
 	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
-	"sort"
-	"strings"
 )
 
 // GenerateHandler is the function signature for generate format handlers.
@@ -56,52 +55,32 @@ var generateHandlers = map[string]GenerateHandler{
 	},
 }
 
-// getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.
-func getValidGenerateFormats() string {
-	formats := make([]string, 0, len(generateHandlers))
-	for f := range generateHandlers {
-		formats = append(formats, f)
-	}
-	sort.Strings(formats)
-	return strings.Join(formats, ", ")
+// isGenerateMode returns true when the value is a known top-level generate mode.
+func isGenerateMode(v string) bool {
+	_, ok := generateHandlers[v]
+	return ok
 }
+
+// generateAliasParams defines the deprecated alias parameters for the generate tool.
+// "action" is only treated as a mode alias when its value matches a known generate mode,
+// since "action" can also be a sub-action parameter (e.g. test_heal action=analyze).
+// Both ConflictFn and FallbackFn are gated to handler membership.
+var generateAliasParams = []modeAlias{
+	{JSONField: "format"},
+	{JSONField: "action", ConflictFn: isGenerateMode, FallbackFn: isGenerateMode},
+}
+
+// getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.
+func getValidGenerateFormats() string { return sortedMapKeys(generateHandlers) }
 
 // toolGenerate dispatches generate requests based on the 'what' parameter.
 func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		What   string `json:"what"`
-		Format string `json:"format"`
-		Action string `json:"action"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	what := params.What
-	usedAliasParam := ""
-	if what != "" && params.Format != "" && params.Format != what {
-		return whatAliasConflictResponse(req, "format", what, params.Format, getValidGenerateFormats())
-	}
-	if what != "" && params.Action != "" && params.Action != what {
-		if _, isTopLevelGenerateMode := generateHandlers[params.Action]; isTopLevelGenerateMode {
-			return whatAliasConflictResponse(req, "action", what, params.Action, getValidGenerateFormats())
-		}
-	}
-	if what == "" {
-		if params.Format != "" {
-			what = params.Format
-			usedAliasParam = "format"
-		} else if _, isTopLevelGenerateMode := generateHandlers[params.Action]; isTopLevelGenerateMode {
-			what = params.Action
-			usedAliasParam = "action"
-		}
-	}
-
-	if what == "" {
-		validFormats := getValidGenerateFormats()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validFormats))}
+	what, usedAliasParam, errResp := resolveToolMode(req, args, generateAliasParams, modeResolution{
+		ToolName:   "generate",
+		ValidModes: getValidGenerateFormats(),
+	})
+	if errResp != nil {
+		return *errResp
 	}
 
 	handler, ok := generateHandlers[what]

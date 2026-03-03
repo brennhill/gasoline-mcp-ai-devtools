@@ -1,3 +1,5 @@
+// Purpose: Fingerprints log messages by normalizing UUIDs, timestamps, and large numbers for stable comparison.
+// Why: Provides shared normalization utilities used by both console and network checkpoint helpers.
 package checkpoint
 
 import (

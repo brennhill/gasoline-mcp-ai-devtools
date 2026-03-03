@@ -1,6 +1,6 @@
-// Purpose: Validate tools_draw_mode_http_test.go behavior and guard against regressions.
+// Purpose: Tests for draw-mode HTTP endpoint handling.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_draw_mode_http_test.go — HTTP endpoint tests for draw mode completion.
 // Tests the POST /draw-mode/complete handler end-to-end: JSON parsing,

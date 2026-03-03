@@ -1,6 +1,6 @@
 // Purpose: Smoke tests for data_age_ms metadata across observe modes (Stream 6, PR #329).
 // Why: Validates that data_age_ms is present, numeric, and correct in handler-level responses.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_data_age_smoke_test.go — Smoke tests for observe data_age_ms metadata.
 package main

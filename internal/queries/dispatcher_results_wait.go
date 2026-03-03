@@ -1,3 +1,5 @@
+// Purpose: Blocks until a query result arrives or timeout expires, with client-isolated views.
+// Why: Separates synchronous wait logic from result storage and cleanup.
 package queries
 
 import (

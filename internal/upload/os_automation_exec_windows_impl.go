@@ -1,3 +1,5 @@
+// Purpose: Injects file paths into Windows native file dialogs via PowerShell SendKeys automation.
+// Why: Provides the Windows-specific implementation of OS-level upload automation.
 package upload
 
 import (

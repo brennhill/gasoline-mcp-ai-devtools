@@ -2,9 +2,21 @@
 // Provides canonical main content detection used by readable, markdown, and page-summary.
 /** Ordered by specificity — semantic elements first, then common class/ID patterns. */
 const MAIN_CONTENT_SELECTORS = [
-    'main', 'article', '[role="main"]', '#main', '.main',
-    '.post-content', '.entry-content', '.article-body', '.article-content',
-    '.story-body', '.article', '.post', '#content', '.content', '.results'
+    'main',
+    'article',
+    '[role="main"]',
+    '#main',
+    '.main',
+    '.post-content',
+    '.entry-content',
+    '.article-body',
+    '.article-content',
+    '.story-body',
+    '.article',
+    '.post',
+    '#content',
+    '.content',
+    '.results'
 ];
 /**
  * Find the main content element by probing semantic and common selectors.

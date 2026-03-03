@@ -1,3 +1,5 @@
+// Purpose: Generates Playwright test scripts from captured browser actions.
+// Why: Separates Playwright-specific code generation from the Gasoline-native step format.
 package reproduction
 
 import (

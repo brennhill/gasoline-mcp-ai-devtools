@@ -1,6 +1,6 @@
-// Purpose: Validate ssrf_bypass_test.go behavior and guard against regressions.
+// Purpose: Tests for SSRF bypass prevention in upload URL validation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/file-upload/index.md
 
 // ssrf_bypass_test.go — Tests for SSRF bypass resistance.
 package upload
@@ -67,9 +67,9 @@ func TestSSRFBypassIPv6MappedIPv4(t *testing.T) {
 }
 
 func TestSSRFBypassCredentialsInURL(t *testing.T) {
-	originalSkip := SkipSSRFCheck
-	SkipSSRFCheck = false
-	defer func() { SkipSSRFCheck = originalSkip }()
+	originalSkip := SkipSSRFCheckEnabled()
+	SetSkipSSRFCheck(false)
+	defer func() { SetSkipSSRFCheck(originalSkip) }()
 
 	tests := []struct {
 		name string

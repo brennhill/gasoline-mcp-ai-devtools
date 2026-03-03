@@ -1,6 +1,6 @@
-// Purpose: Validate bridge_context_contract_test.go behavior and guard against regressions.
+// Purpose: Tests for bridge context cancellation contract compliance.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

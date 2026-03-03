@@ -1,3 +1,5 @@
+// Purpose: Applies WebSocket lifecycle events (open, close, error, message) to per-connection state.
+// Why: Separates event-driven state transitions from connection storage and query logic.
 package capture
 
 // trackEvent applies one event to per-connection lifecycle state.

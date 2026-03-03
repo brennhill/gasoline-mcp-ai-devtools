@@ -1,6 +1,6 @@
-// Purpose: Validate pure_functions_test.go behavior and guard against regressions.
+// Purpose: Tests for pure utility functions.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // pure_functions_test.go — Unit tests for pure functions with 0% coverage.
 package main

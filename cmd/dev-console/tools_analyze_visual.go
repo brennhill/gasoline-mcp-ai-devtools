@@ -118,11 +118,11 @@ func (h *ToolHandler) toolVisualDiff(req JSONRPCRequest, args json.RawMessage) J
 		screenshotsDir, err := state.ScreenshotsDir()
 		if err == nil {
 			diffPath = filepath.Join(screenshotsDir, fmt.Sprintf("diff-%s-%d.png", parsed.Baseline, time.Now().UnixMilli()))
-			baselineImg, err1 := az.LoadImagePublic(baseline.Path)
-			currentImg, err2 := az.LoadImagePublic(currentPath)
+			baselineImg, err1 := az.LoadImage(baseline.Path)
+			currentImg, err2 := az.LoadImage(currentPath)
 			if err1 == nil && err2 == nil {
 				changedGrid := az.RebuildChangedGrid(baselineImg, currentImg, parsed.Threshold)
-				az.WriteDiffImagePublic(baselineImg, currentImg, changedGrid, diffPath)
+				az.WriteDiffImage(baselineImg, currentImg, changedGrid, diffPath)
 			}
 		}
 	}

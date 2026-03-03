@@ -1,6 +1,5 @@
-// Purpose: Validate ai_checkpoint_alerts_test.go behavior and guard against regressions.
+// Purpose: Tests for checkpoint alert triggering and notification thresholds.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
 
 // ai_checkpoint_alerts_test.go — Tests for push regression alert detection and delivery.
 package checkpoint

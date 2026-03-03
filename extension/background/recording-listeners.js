@@ -33,9 +33,7 @@ export function installRecordingListeners(deps) {
         deps.setInactive();
         const tabId = deps.getTabId();
         if (tabId) {
-            chrome.tabs
-                .sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false })
-                .catch(() => { });
+            chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => { });
         }
         deps.clearRecordingState().catch(() => { });
     });
@@ -165,7 +163,11 @@ export function installRecordingListeners(deps) {
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
             body: JSON.stringify({ path: message.path })
         })
-            .then((r) => r.json())
+            .then((r) => {
+            if (!r.ok)
+                throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
             .then((result) => sendResponse(result))
             .catch((err) => sendResponse({ error: err.message }));
         return true; // async response

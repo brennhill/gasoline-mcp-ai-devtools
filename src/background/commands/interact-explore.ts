@@ -249,20 +249,12 @@ registerCommand('explore_page', async (ctx) => {
       payload._errors = errors
     }
 
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload)
-    } else {
-      ctx.sendResult(payload)
-    }
+    ctx.sendResult(payload)
   } catch (err) {
     const message = (err as Error).message || 'Explore page failed'
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message)
-    } else {
-      ctx.sendResult({
-        error: 'explore_page_failed',
-        message
-      })
-    }
+    ctx.sendResult({
+      error: 'explore_page_failed',
+      message
+    })
   }
 })

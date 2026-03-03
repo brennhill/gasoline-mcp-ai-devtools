@@ -1,3 +1,5 @@
+// Purpose: Defines core action properties for the interact tool (highlight, state, script, storage).
+// Why: Separates action-specific properties from targeting, form, and output properties.
 package schema
 
 func interactCoreActionProperties() map[string]any {

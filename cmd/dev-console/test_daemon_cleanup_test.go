@@ -1,6 +1,6 @@
-// Purpose: Validate test_daemon_cleanup_test.go behavior and guard against regressions.
+// Purpose: Tests for test daemon cleanup and resource release.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

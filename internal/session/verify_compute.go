@@ -1,5 +1,5 @@
 // Purpose: Computes verification diffs (console/network/perf), determines verdict, and dispatches verify_fix MCP actions.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // verify_compute.go — Verification computation and MCP tool dispatch.
 // Contains: computeVerification, determineVerdict, HandleTool.

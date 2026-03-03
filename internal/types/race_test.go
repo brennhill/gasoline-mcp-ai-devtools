@@ -1,6 +1,6 @@
-// Purpose: Validate race_test.go behavior and guard against regressions.
+// Purpose: Tests for shared types correctness.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/normalized-event-schema/index.md
 
 //go:build race
 

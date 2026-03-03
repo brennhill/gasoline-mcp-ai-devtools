@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_analysis_test.go behavior and guard against regressions.
+// Purpose: Tests for observe analysis sub-handler dispatch.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_analysis_test.go — Tests for ensureA11ySummary function.
 // Note: executeA11yQuery is tested indirectly (requires live capture + extension).

@@ -1,3 +1,5 @@
+// Purpose: Detects fragile selectors by analyzing failure rates across multiple playback sessions.
+// Why: Isolates selector reliability analysis from action execution and session management.
 package recording
 
 import "fmt"

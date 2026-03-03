@@ -1,6 +1,6 @@
-// Purpose: Validate upload_integration_test.go behavior and guard against regressions.
+// Purpose: Integration tests for dev-console end-to-end flows.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_integration_test.go — Integration and edge case tests for upload feature.
 // Covers: concurrency, middleware integration, pending query payload, Content-Disposition
@@ -29,8 +29,8 @@ import (
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).
 func allowTestSSRF(t *testing.T) {
 	t.Helper()
-	upload.SkipSSRFCheck = true
-	t.Cleanup(func() { upload.SkipSSRFCheck = false })
+	upload.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
 }
 
 // testUploadSecurity returns a permissive UploadSecurity config for tests.

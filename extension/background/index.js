@@ -206,7 +206,9 @@ async function maybeAutoScreenshot(errorEntry, sender) {
 }
 export async function handleClearLogs() {
     try {
-        await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
+        const response = await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
+        if (!response.ok)
+            return { success: false, error: `HTTP ${response.status}` };
         setConnectionStatus({ entries: 0, errorCount: 0 });
         updateBadge(getConnectionStatus());
         return { success: true };

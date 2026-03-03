@@ -1,3 +1,5 @@
+// Purpose: Merges all interact property groups into the complete interact tool property set.
+// Why: Provides the top-level assembly point for interact schema properties.
 package schema
 
 func interactToolProperties() map[string]any {

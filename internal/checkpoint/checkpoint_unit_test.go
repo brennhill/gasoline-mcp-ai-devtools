@@ -1,6 +1,5 @@
-// Purpose: Validate ai_checkpoint_unit_test.go behavior and guard against regressions.
+// Purpose: Unit tests for checkpoint logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
 
 package checkpoint
 

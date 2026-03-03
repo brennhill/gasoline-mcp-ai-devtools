@@ -9,18 +9,48 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 const SSRFLookupTimeout = 5 * time.Second
 
-// SSRFAllowedHostsList holds host or host:port values that bypass SSRF checks.
-// Set via --ssrf-allow-host flag (repeatable). Intended for test use only.
-var SSRFAllowedHostsList []string
+// ssrfMu protects ssrfAllowedHosts and ssrfSkipCheck from concurrent access.
+var (
+	ssrfMu           sync.RWMutex
+	ssrfAllowedHosts []string
+	ssrfSkipCheck    bool
+)
 
-// SkipSSRFCheck disables private IP blocking in tests where httptest.NewServer
-// uses 127.0.0.1. Must only be set from test code.
-var SkipSSRFCheck bool
+// SetSSRFAllowedHosts replaces the allowed-hosts list (set via --ssrf-allow-host flag).
+func SetSSRFAllowedHosts(hosts []string) {
+	ssrfMu.Lock()
+	defer ssrfMu.Unlock()
+	ssrfAllowedHosts = hosts
+}
+
+// SSRFAllowedHosts returns a defensive copy of the current allowed-hosts list.
+func SSRFAllowedHosts() []string {
+	ssrfMu.RLock()
+	defer ssrfMu.RUnlock()
+	cp := make([]string, len(ssrfAllowedHosts))
+	copy(cp, ssrfAllowedHosts)
+	return cp
+}
+
+// SetSkipSSRFCheck toggles private-IP bypass (test use only).
+func SetSkipSSRFCheck(skip bool) {
+	ssrfMu.Lock()
+	defer ssrfMu.Unlock()
+	ssrfSkipCheck = skip
+}
+
+// SkipSSRFCheckEnabled returns true when private-IP blocking is bypassed.
+func SkipSSRFCheckEnabled() bool {
+	ssrfMu.RLock()
+	defer ssrfMu.RUnlock()
+	return ssrfSkipCheck
+}
 
 // privateRanges is parsed once at init for efficient SSRF checks.
 var privateRanges []*net.IPNet
@@ -61,7 +91,7 @@ func IsPrivateIP(ip net.IP) bool {
 
 // IsSSRFAllowedHost returns true if hostOrAddr matches an --ssrf-allow-host entry.
 func IsSSRFAllowedHost(hostOrAddr string) bool {
-	for _, allowed := range SSRFAllowedHostsList {
+	for _, allowed := range SSRFAllowedHosts() {
 		if allowed == hostOrAddr {
 			return true
 		}

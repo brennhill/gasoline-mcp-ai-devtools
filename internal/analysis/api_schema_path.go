@@ -1,3 +1,5 @@
+// Purpose: Parameterizes dynamic URL path segments (UUIDs, numeric IDs, hashes) into schema placeholders.
+// Why: Separates URL normalization from the main schema store to keep path canonicalization testable.
 package analysis
 
 import (

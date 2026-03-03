@@ -27,17 +27,14 @@ export function domPrimitive(
   action: string,
   selector: string,
   options: DOMPrimitiveOptions
-):
-  | DOMResult
-  | Promise<DOMResult>
-  | {
-      success: boolean
-      elements: unknown[]
-      candidate_count?: number
-      scope_rect_used?: { x: number; y: number; width: number; height: number }
-      error?: string
-      message?: string
-    } {
+): DOMResult | Promise<DOMResult> | {
+  success: boolean
+  elements: unknown[]
+  candidate_count?: number
+  scope_rect_used?: { x: number; y: number; width: number; height: number }
+  error?: string
+  message?: string
+} {
   // --- PARTIAL: DOM Selector Resolution ---
   // — Shadow DOM: deep traversal utilities —
 
@@ -55,10 +52,9 @@ export function domPrimitive(
   function querySelectorDeepWalk(selector: string, root: ParentNode, depth: number = 0): Element | null {
     if (depth > 10) return null
     // Navigate to children: handle Document (has body/documentElement) and Element/ShadowRoot (has children)
-    const children =
-      'children' in root
-        ? (root as Element).children
-        : (root as Document).body?.children || (root as Document).documentElement?.children
+    const children = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
     if (!children) return null
     for (let i = 0; i < children.length; i++) {
       const child = children[i]!
@@ -90,10 +86,9 @@ export function domPrimitive(
         results.push(match)
       }
     }
-    const children =
-      'children' in root
-        ? (root as Element).children
-        : (root as Document).body?.children || (root as Document).documentElement?.children
+    const children = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
     if (!children) return results
     for (let i = 0; i < children.length; i++) {
       const child = children[i]!
@@ -207,8 +202,8 @@ export function domPrimitive(
     const htmlEl = el as HTMLElement
     if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return false
     const rect = htmlEl.getBoundingClientRect()
-    const left = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0
-    const top = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0
+    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
     const right = typeof rect.right === 'number' ? rect.right : left + rect.width
     const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
     const scopeRight = scopeRect.x + scopeRect.width
@@ -308,10 +303,9 @@ export function domPrimitive(
           }
         }
       }
-      const children =
-        'children' in root
-          ? (root as Element).children
-          : (root as Document).body?.children || (root as Document).documentElement?.children
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
       if (children) {
         for (let i = 0; i < children.length; i++) {
           const child = children[i]!
@@ -329,27 +323,19 @@ export function domPrimitive(
     const labels = querySelectorAllDeep('label', scope)
     const results: Element[] = []
     const seen = new Set<Element>()
-    const allowGlobalIdLookup = scope === document || scope === document.body || scope === document.documentElement
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
     for (const label of labels) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
         if (forAttr) {
           const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0]
           const target = local || (allowGlobalIdLookup ? document.getElementById(forAttr) : null)
-          if (target && !seen.has(target)) {
-            seen.add(target)
-            results.push(target)
-          }
+          if (target && !seen.has(target)) { seen.add(target); results.push(target) }
         }
         const nested = label.querySelector('input, select, textarea')
-        if (nested && !seen.has(nested)) {
-          seen.add(nested)
-          results.push(nested)
-        }
-        if (!seen.has(label)) {
-          seen.add(label)
-          results.push(label)
-        }
+        if (nested && !seen.has(nested)) { seen.add(nested); results.push(nested) }
+        if (!seen.has(label)) { seen.add(label); results.push(label) }
       }
     }
     return results
@@ -360,18 +346,12 @@ export function domPrimitive(
     const seen = new Set<Element>()
     const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope)
     for (const el of exact) {
-      if (!seen.has(el)) {
-        seen.add(el)
-        results.push(el)
-      }
+      if (!seen.has(el)) { seen.add(el); results.push(el) }
     }
     const all = querySelectorAllDeep('[aria-label]', scope)
     for (const el of all) {
       const label = el.getAttribute('aria-label') || ''
-      if (label.startsWith(al) && !seen.has(el)) {
-        seen.add(el)
-        results.push(el)
-      }
+      if (label.startsWith(al) && !seen.has(el)) { seen.add(el); results.push(el) }
     }
     return results
   }
@@ -393,10 +373,9 @@ export function domPrimitive(
           if (isVisible(target)) return target
         }
       }
-      const children =
-        'children' in root
-          ? (root as Element).children
-          : (root as Document).body?.children || (root as Document).documentElement?.children
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
       if (children) {
         for (let i = 0; i < children.length; i++) {
           const child = children[i]!
@@ -415,7 +394,8 @@ export function domPrimitive(
 
   function resolveByLabel(labelText: string, scope: ParentNode = document): Element | null {
     const labels = querySelectorAllDeep('label', scope)
-    const allowGlobalIdLookup = scope === document || scope === document.body || scope === document.documentElement
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
     for (const label of labels) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
@@ -471,8 +451,7 @@ export function domPrimitive(
     }
     if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
     if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
-    if (sel.startsWith('placeholder='))
-      return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
+    if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
     if (sel.startsWith('label=')) return resolveByLabelAll(sel.slice('label='.length), scope)
     if (sel.startsWith('aria-label=')) return resolveByAriaLabelAll(sel.slice('aria-label='.length), scope)
     try {
@@ -493,12 +472,8 @@ export function domPrimitive(
     }
 
     if (sel.startsWith('text=')) return resolveByText(sel.slice('text='.length), scope)
-    if (sel.startsWith('role='))
-      return firstVisible(querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope))
-    if (sel.startsWith('placeholder='))
-      return firstVisible(
-        querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
-      )
+    if (sel.startsWith('role=')) return firstVisible(querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope))
+    if (sel.startsWith('placeholder=')) return firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope))
     if (sel.startsWith('label=')) return resolveByLabel(sel.slice('label='.length), scope)
     if (sel.startsWith('aria-label=')) return resolveByAriaLabel(sel.slice('aria-label='.length), scope)
 
@@ -606,13 +581,14 @@ export function domPrimitive(
       const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive)
 
       const rect = (candidate as HTMLElement).getBoundingClientRect?.()
-      const areaScore =
-        rect && rect.width > 0 && rect.height > 0 ? Math.min(20, Math.round((rect.width * rect.height) / 50000)) : 0
+      const areaScore = rect && rect.width > 0 && rect.height > 0
+        ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
+        : 0
 
       const score =
-        visibleTextboxes * 1000 +
-        submitLikeButtons * 250 +
-        visibleButtons * 10 +
+        visibleTextboxes*1000 +
+        submitLikeButtons*250 +
+        visibleButtons*10 +
         visibleInteractive -
         hiddenInteractive +
         areaScore
@@ -690,10 +666,9 @@ export function domPrimitive(
         seen.add(el)
 
         const htmlEl = el as HTMLElement
-        const rect =
-          typeof htmlEl.getBoundingClientRect === 'function'
-            ? htmlEl.getBoundingClientRect()
-            : ({ width: 0, height: 0 } as DOMRect)
+        const rect = typeof htmlEl.getBoundingClientRect === 'function'
+          ? htmlEl.getBoundingClientRect()
+          : ({ width: 0, height: 0 } as DOMRect)
         if (!intersectsScopeRect(el)) continue
         const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
         const shadowSelector = buildShadowSelector(el)
@@ -772,10 +747,9 @@ export function domPrimitive(
     const htmlEl = node as HTMLElement
     const textPreview = (htmlEl.textContent || '').trim().slice(0, 80)
     // #388: Include class list for selector diagnostics
-    const classList =
-      typeof htmlEl.className === 'string' && htmlEl.className
-        ? htmlEl.className.split(/\s+/).filter(Boolean).slice(0, 5)
-        : undefined
+    const classList = typeof htmlEl.className === 'string' && htmlEl.className
+      ? htmlEl.className.split(/\s+/).filter(Boolean).slice(0, 5)
+      : undefined
     return {
       tag: node.tagName.toLowerCase(),
       role: node.getAttribute('role') || undefined,
@@ -792,8 +766,9 @@ export function domPrimitive(
 
   function isActionableVisible(el: Element): boolean {
     if (!(el instanceof HTMLElement)) return true
-    const rect =
-      typeof el.getBoundingClientRect === 'function' ? el.getBoundingClientRect() : ({ width: 0, height: 0 } as DOMRect)
+    const rect = typeof el.getBoundingClientRect === 'function'
+      ? el.getBoundingClientRect()
+      : ({ width: 0, height: 0 } as DOMRect)
     if (!(rect.width > 0 && rect.height > 0)) return false
     if (el.offsetParent === null) {
       const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null
@@ -802,20 +777,14 @@ export function domPrimitive(
     }
 
     // #384: Prefer in-viewport actionable targets for disambiguation.
-    const viewHeight =
-      typeof window !== 'undefined' && typeof window.innerHeight === 'number'
-        ? window.innerHeight
-        : typeof document !== 'undefined' && document.documentElement
-          ? Number(document.documentElement.clientHeight || 0)
-          : 0
-    const viewWidth =
-      typeof window !== 'undefined' && typeof window.innerWidth === 'number'
-        ? window.innerWidth
-        : typeof document !== 'undefined' && document.documentElement
-          ? Number(document.documentElement.clientWidth || 0)
-          : 0
-    const left = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0
-    const top = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0
+    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0)
+    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+      ? window.innerWidth
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0)
+    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
     const right = typeof rect.right === 'number' ? rect.right : left + rect.width
     const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
     const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth)
@@ -828,8 +797,8 @@ export function domPrimitive(
       return { x: 0, y: 0, width: 0, height: 0 }
     }
     const rect = el.getBoundingClientRect()
-    const x = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0
-    const y = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0
+    const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
     const width = Number.isFinite(rect.width) ? rect.width : 0
     const height = Number.isFinite(rect.height) ? rect.height : 0
     return { x, y, width, height }
@@ -955,17 +924,10 @@ export function domPrimitive(
   function resolveIntentTarget(
     requestedScope: string,
     activeScope: ParentNode
-  ): {
-    element?: Element
-    error?: DOMResult
-    match_count?: number
-    match_strategy?: string
-    scope_selector_used?: string
-  } {
+  ): { element?: Element; error?: DOMResult; match_count?: number; match_strategy?: string; scope_selector_used?: string } {
     const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply|confirm|yes|allow|accept)/i
     const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i
-    const composerVerb =
-      /(start( a)? post|create post|write (a )?post|what'?s on your mind|share( an)? update|compose|new post)/i
+    const composerVerb = /(start( a)? post|create post|write (a )?post|what'?s on your mind|share( an)? update|compose|new post)/i
 
     if (action === 'open_composer') {
       const selectors = [
@@ -1015,14 +977,9 @@ export function domPrimitive(
         const dialogs = collectDialogs()
         const rankedDialogs = dialogs
           .map((dialog) => {
-            const textboxes = querySelectorAllDeep(
-              '[role="textbox"], textarea, [contenteditable="true"]',
-              dialog
-            ).filter(isActionableVisible).length
+            const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', dialog).filter(isActionableVisible).length
             const buttons = querySelectorAllDeep('button, [role="button"], input[type="submit"]', dialog)
-            const submitLikeButtons = buttons.filter(
-              (button) => isActionableVisible(button) && submitVerb.test(extractElementLabel(button))
-            ).length
+            const submitLikeButtons = buttons.filter((button) => isActionableVisible(button) && submitVerb.test(extractElementLabel(button))).length
             return {
               element: dialog,
               score: textboxes * 1200 + submitLikeButtons * 300 + elementZIndexScore(dialog) * 2 + areaScore(dialog, 80)
@@ -1087,7 +1044,7 @@ export function domPrimitive(
     if (action === 'dismiss_top_overlay') {
       // Enhanced dismiss: find overlay using z-index analysis + role detection,
       // then try multiple dismissal strategies in sequence (#334)
-      const overlayElement = requestedScope ? (activeScope as Element) : findTopmostOverlay()
+      const overlayElement = requestedScope ? activeScope as Element : findTopmostOverlay()
       if (!overlayElement) {
         return {
           error: domError('overlay_not_found', 'No visible dialog/overlay/modal found to dismiss.')
@@ -1096,21 +1053,11 @@ export function domPrimitive(
 
       // Strategy A: Try expanded close button selectors within the overlay
       const closeButtonSelectors = [
-        'button.close',
-        '.btn-close',
-        '[aria-label="Close"]',
-        '[aria-label="close"]',
-        '[aria-label="Dismiss"]',
-        '[aria-label="dismiss"]',
-        '[data-dismiss="modal"]',
-        '[data-bs-dismiss="modal"]',
-        '[data-dismiss="dialog"]',
-        '[data-dismiss="alert"]',
-        '[data-bs-dismiss="alert"]',
-        'button.modal-close',
-        '.dialog-close',
-        '.overlay-close',
-        '.popup-close'
+        'button.close', '.btn-close',
+        '[aria-label="Close"]', '[aria-label="close"]', '[aria-label="Dismiss"]', '[aria-label="dismiss"]',
+        '[data-dismiss="modal"]', '[data-bs-dismiss="modal"]', '[data-dismiss="dialog"]',
+        '[data-dismiss="alert"]', '[data-bs-dismiss="alert"]',
+        'button.modal-close', '.dialog-close', '.overlay-close', '.popup-close',
       ]
       for (const closeSelector of closeButtonSelectors) {
         const matches = querySelectorAllDeep(closeSelector, overlayElement as ParentNode)
@@ -1126,12 +1073,8 @@ export function domPrimitive(
       }
 
       // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
-      const dismissTextPatterns =
-        /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
-      const allButtons = querySelectorAllDeep(
-        'button, [role="button"], [aria-label], [data-testid], [title]',
-        overlayElement as ParentNode
-      )
+      const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
+      const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement as ParentNode)
       const dismissButtons: RankedIntentCandidate[] = []
       for (const btn of uniqueElements(allButtons)) {
         if (!isActionableVisible(btn)) continue
@@ -1220,7 +1163,7 @@ export function domPrimitive(
         '.cc-dismiss',
         // Generic patterns
         'button[id*="cookie" i][id*="accept" i]',
-        'button[id*="consent" i][id*="accept" i]'
+        'button[id*="consent" i][id*="accept" i]',
       ]
       for (const consentSelector of consentSelectors) {
         try {
@@ -1245,14 +1188,9 @@ export function domPrimitive(
       if (overlayElement) {
         // Reuse the dismiss_top_overlay strategy chain
         const closeButtonSelectors = [
-          'button.close',
-          '.btn-close',
-          '[aria-label="Close"]',
-          '[aria-label="close"]',
-          '[aria-label="Dismiss"]',
-          '[aria-label="dismiss"]',
-          '[data-dismiss="modal"]',
-          '[data-bs-dismiss="modal"]'
+          'button.close', '.btn-close',
+          '[aria-label="Close"]', '[aria-label="close"]', '[aria-label="Dismiss"]', '[aria-label="dismiss"]',
+          '[data-dismiss="modal"]', '[data-bs-dismiss="modal"]',
         ]
         for (const closeSelector of closeButtonSelectors) {
           const matches = querySelectorAllDeep(closeSelector, overlayElement as ParentNode)
@@ -1268,8 +1206,7 @@ export function domPrimitive(
         }
 
         // Try dismiss-like text buttons
-        const dismissTextPatterns =
-          /^(close|dismiss|cancel|not now|no thanks|skip|hide|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573|accept|allow|agree|ok|okay)$/i
+        const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573|accept|allow|agree|ok|okay)$/i
         const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
         const dismissCandidates: RankedIntentCandidate[] = []
         for (const btn of uniqueElements(allButtons)) {
@@ -1316,20 +1253,10 @@ export function domPrimitive(
   function findTopmostOverlay(): Element | null {
     // Collect all dialog/modal candidates
     const dialogSelectors = [
-      '[role="dialog"]',
-      '[role="alertdialog"]',
-      '[aria-modal="true"]',
-      'dialog[open]',
-      '.modal.show',
-      '.modal.in',
-      '.modal.is-active',
-      '.modal[style*="display: block"]',
-      '.overlay',
-      '.popup',
-      '.lightbox',
-      '[data-modal]',
-      '[data-overlay]',
-      '[data-dialog]'
+      '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]', 'dialog[open]',
+      '.modal.show', '.modal.in', '.modal.is-active', '.modal[style*="display: block"]',
+      '.overlay', '.popup', '.lightbox',
+      '[data-modal]', '[data-overlay]', '[data-dialog]',
     ]
     const candidates: Element[] = []
     for (const dialogSelector of dialogSelectors) {
@@ -1366,11 +1293,7 @@ export function domPrimitive(
     return ranked[0]?.element || null
   }
 
-  function describeOverlay(el: Element): {
-    overlay_type: string
-    overlay_selector: string
-    overlay_text_preview: string
-  } {
+  function describeOverlay(el: Element): { overlay_type: string; overlay_selector: string; overlay_text_preview: string } {
     const tag = el.tagName.toLowerCase()
     const role = el.getAttribute('role') || ''
     const ariaModal = el.getAttribute('aria-modal') || ''
@@ -1424,24 +1347,13 @@ export function domPrimitive(
 
       // Element type match
       if (clickLikeActions.has(action)) {
-        if (
-          tag === 'button' ||
-          role === 'button' ||
-          (tag === 'input' &&
-            ((el as HTMLInputElement).type === 'submit' || (el as HTMLInputElement).type === 'button'))
-        ) {
+        if (tag === 'button' || role === 'button' || tag === 'input' && ((el as HTMLInputElement).type === 'submit' || (el as HTMLInputElement).type === 'button')) {
           score += 100
         } else if (tag === 'a' || role === 'link') {
           score += 40
         }
       } else if (typeLikeActions.has(action)) {
-        if (
-          tag === 'input' ||
-          tag === 'textarea' ||
-          tag === 'select' ||
-          el.getAttribute('contenteditable') === 'true' ||
-          role === 'textbox'
-        ) {
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || el.getAttribute('contenteditable') === 'true' || role === 'textbox') {
           score += 100
         } else if (tag === 'button' || role === 'button') {
           score += 10
@@ -1471,12 +1383,7 @@ export function domPrimitive(
           if (style) {
             const bg = style.backgroundColor || ''
             // Colored background (not transparent, not white, not gray-ish)
-            if (
-              bg &&
-              !/transparent|rgba\(0,\s*0,\s*0,\s*0\)|rgb\(255,\s*255,\s*255\)|rgb\(2[45]\d,\s*2[45]\d,\s*2[45]\d\)/.test(
-                bg
-              )
-            ) {
+            if (bg && !/transparent|rgba\(0,\s*0,\s*0,\s*0\)|rgb\(255,\s*255,\s*255\)|rgb\(2[45]\d,\s*2[45]\d,\s*2[45]\d\)/.test(bg)) {
               score += 30
             }
           }
@@ -1509,11 +1416,7 @@ export function domPrimitive(
     match_strategy?: string
     scope_selector_used?: string
     ranked_candidates?: { element_id: string; tag: string; text_preview?: string; score: number }[]
-    ambiguous_matches?: {
-      total_count: number
-      warning: string
-      candidates: { tag: string; element_id: string; text_preview?: string }[]
-    }
+    ambiguous_matches?: { total_count: number; warning: string; candidates: { tag: string; element_id: string; text_preview?: string }[] }
   } {
     const requestedScope = (options.scope_selector || '').trim()
     if (requestedScope && !scopeRoot) {
@@ -1612,16 +1515,8 @@ export function domPrimitive(
     }
 
     const ambiguitySensitiveActions = new Set([
-      'click',
-      'type',
-      'select',
-      'check',
-      'set_attribute',
-      'paste',
-      'key_press',
-      'focus',
-      'scroll_to',
-      'hover'
+      'click', 'type', 'select', 'check', 'set_attribute',
+      'paste', 'key_press', 'focus', 'scroll_to', 'hover'
     ])
 
     if (!ambiguitySensitiveActions.has(action)) {
@@ -1649,11 +1544,7 @@ export function domPrimitive(
           match_count: 1,
           match_strategy: selector.includes(':nth-match(')
             ? 'nth_match_selector'
-            : scopeRect
-              ? 'rect_selector'
-              : requestedScope
-                ? 'scoped_selector'
-                : 'selector',
+            : (scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector')),
           scope_selector_used: scopeSelectorUsed,
           ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
         }
@@ -1668,7 +1559,7 @@ export function domPrimitive(
       return {
         element: found,
         match_count: 1,
-        match_strategy: scopeRect ? 'rect_selector' : requestedScope ? 'scoped_selector' : 'selector',
+        match_strategy: scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector'),
         scope_selector_used: scopeSelectorUsed,
         ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
       }
@@ -1753,22 +1644,19 @@ export function domPrimitive(
   const resolvedAmbiguousMatches = resolved.ambiguous_matches
 
   /** Capture current viewport/scroll position for action responses. */
-  function captureViewport(): {
-    scroll_x: number
-    scroll_y: number
-    viewport_width: number
-    viewport_height: number
-    page_height: number
-  } {
+  function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
     const w = typeof window !== 'undefined' ? window : null
     const docEl = document?.documentElement
     const body = document?.body
     return {
-      scroll_x: Math.round(w?.scrollX ?? w?.pageXOffset ?? 0),
-      scroll_y: Math.round(w?.scrollY ?? w?.pageYOffset ?? 0),
+      scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+      scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
       viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
       viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
-      page_height: Math.max(body?.scrollHeight || 0, docEl?.scrollHeight || 0)
+      page_height: Math.max(
+        body?.scrollHeight || 0,
+        docEl?.scrollHeight || 0
+      )
     }
   }
 
@@ -1867,38 +1755,19 @@ export function domPrimitive(
                 const n = m.addedNodes[i] as Node | undefined
                 if (n && n.nodeType === 1) {
                   const el = n as Element
-                  entries.push({
-                    type: 'added',
-                    tag: el.tagName?.toLowerCase(),
-                    id: el.id || undefined,
-                    class: el.className?.toString()?.slice(0, 80) || undefined,
-                    text_preview: el.textContent?.slice(0, 100) || undefined
-                  })
+                  entries.push({ type: 'added', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
                 }
               }
               for (let i = 0; i < m.removedNodes.length && entries.length < maxEntries; i++) {
                 const n = m.removedNodes[i] as Node | undefined
                 if (n && n.nodeType === 1) {
                   const el = n as Element
-                  entries.push({
-                    type: 'removed',
-                    tag: el.tagName?.toLowerCase(),
-                    id: el.id || undefined,
-                    class: el.className?.toString()?.slice(0, 80) || undefined,
-                    text_preview: el.textContent?.slice(0, 100) || undefined
-                  })
+                  entries.push({ type: 'removed', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
                 }
               }
             } else if (m.type === 'attributes' && m.target.nodeType === 1) {
               const el = m.target as Element
-              entries.push({
-                type: 'attribute',
-                tag: el.tagName?.toLowerCase(),
-                id: el.id || undefined,
-                attribute: m.attributeName || undefined,
-                old_value: m.oldValue?.slice(0, 100) || undefined,
-                new_value: el.getAttribute(m.attributeName || '')?.slice(0, 100) || undefined
-              })
+              entries.push({ type: 'attribute', tag: el.tagName?.toLowerCase(), id: el.id || undefined, attribute: m.attributeName || undefined, old_value: m.oldValue?.slice(0, 100) || undefined, new_value: el.getAttribute(m.attributeName || '')?.slice(0, 100) || undefined })
             }
           }
           enriched.dom_mutations = entries
@@ -1920,7 +1789,7 @@ export function domPrimitive(
 
   // — Rich editor detection: walk up from target to find known editor containers —
   function detectRichEditor(node: Node): { type: string; target: HTMLElement } | null {
-    const el = node instanceof HTMLElement ? node : node.parentElement || null
+    const el = node instanceof HTMLElement ? node : (node.parentElement || null)
     if (!el) return null
     const checks: Array<{ selector: string; type: string }> = [
       { selector: '.ql-editor', type: 'quill' },
@@ -1929,7 +1798,7 @@ export function domPrimitive(
       { selector: '[data-editor]', type: 'draftjs' },
       { selector: '.mce-content-body', type: 'tinymce' },
       { selector: '#tinymce', type: 'tinymce' },
-      { selector: '.ck-editor__editable', type: 'ckeditor' }
+      { selector: '.ck-editor__editable', type: 'ckeditor' },
     ]
     for (const check of checks) {
       if (typeof el.matches === 'function' && el.matches(check.selector)) {
@@ -2001,31 +1870,18 @@ export function domPrimitive(
 
   function dispatchKeySequence(target: EventTarget, char: string, isContentEditable: boolean): void {
     const { key, code, keyCode } = keyCodeForChar(char)
-    const shiftKey =
-      char !== char.toLowerCase() && char === char.toUpperCase() && char.toLowerCase() !== char.toUpperCase()
+    const shiftKey = char !== char.toLowerCase() && char === char.toUpperCase() && char.toLowerCase() !== char.toUpperCase()
 
-    const kbOpts: KeyboardEventInit & { keyCode?: number } = {
-      key,
-      code,
-      keyCode,
-      bubbles: true,
-      cancelable: true,
-      shiftKey
-    }
+    const kbOpts: KeyboardEventInit & { keyCode?: number } = { key, code, keyCode, bubbles: true, cancelable: true, shiftKey }
 
     target.dispatchEvent(new KeyboardEvent('keydown', kbOpts))
     target.dispatchEvent(new KeyboardEvent('keypress', kbOpts))
 
     if (isContentEditable) {
       // Browsers fire beforeinput/input as InputEvents on contenteditable
-      target.dispatchEvent(
-        new InputEvent('beforeinput', {
-          bubbles: true,
-          cancelable: true,
-          inputType: 'insertText',
-          data: char
-        })
-      )
+      target.dispatchEvent(new InputEvent('beforeinput', {
+        bubbles: true, cancelable: true, inputType: 'insertText', data: char,
+      }))
       // Insert text at selection (replaces execCommand)
       const sel = document.getSelection()
       if (sel && sel.rangeCount > 0) {
@@ -2040,13 +1896,9 @@ export function domPrimitive(
         sel.removeAllRanges()
         sel.addRange(range)
       }
-      target.dispatchEvent(
-        new InputEvent('input', {
-          bubbles: true,
-          inputType: 'insertText',
-          data: char
-        })
-      )
+      target.dispatchEvent(new InputEvent('input', {
+        bubbles: true, inputType: 'insertText', data: char,
+      }))
     }
 
     target.dispatchEvent(new KeyboardEvent('keyup', kbOpts))
@@ -2064,18 +1916,12 @@ export function domPrimitive(
   function isElementOutsideViewport(el: Element): boolean {
     if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function') return false
     const rect = el.getBoundingClientRect()
-    const viewHeight =
-      typeof window !== 'undefined' && typeof window.innerHeight === 'number'
-        ? window.innerHeight
-        : typeof document !== 'undefined' && document.documentElement
-          ? document.documentElement.clientHeight
-          : 0
-    const viewWidth =
-      typeof window !== 'undefined' && typeof window.innerWidth === 'number'
-        ? window.innerWidth
-        : typeof document !== 'undefined' && document.documentElement
-          ? document.documentElement.clientWidth
-          : 0
+    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientHeight : 0)
+    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+      ? window.innerWidth
+      : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientWidth : 0)
     if (viewHeight === 0 && viewWidth === 0) return false
     return rect.bottom < 0 || rect.top > viewHeight || rect.right < 0 || rect.left > viewWidth
   }
@@ -2097,9 +1943,7 @@ export function domPrimitive(
     // Already interactive — no need to bubble up
     if (interactiveTags.has(tag) || interactiveRoles.has(role)) return null
     if (typeof el.closest === 'function') {
-      const ancestor = el.closest(
-        'a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], input, select, textarea'
-      )
+      const ancestor = el.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], input, select, textarea')
       if (ancestor && ancestor !== el) return ancestor
     }
     return null
@@ -2143,8 +1987,7 @@ export function domPrimitive(
     return {
       click: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
 
           // #332: Bubble up to nearest interactive ancestor if the matched element is a wrapper
           const interactiveAncestor = findInteractiveAncestor(node)
@@ -2163,7 +2006,9 @@ export function domPrimitive(
               return null
             })()
 
-            const href = linkNode ? linkNode.getAttribute('href') || (linkNode as HTMLAnchorElement).href || '' : ''
+            const href = linkNode
+              ? (linkNode.getAttribute('href') || (linkNode as HTMLAnchorElement).href || '')
+              : ''
             if (!href) {
               return domError('new_tab_requires_link', 'new_tab=true requires a link target with href')
             }
@@ -2191,6 +2036,7 @@ export function domPrimitive(
 
             return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' })
           }
+
 
           // #336: Auto-scroll off-screen elements into view before clicking
           const didScroll = autoScrollIfNeeded(clickTarget)
@@ -2263,8 +2109,7 @@ export function domPrimitive(
           const overlayErr = blockedByOverlayError(node)
           if (overlayErr) return overlayErr
 
-          if (!(node instanceof HTMLSelectElement))
-            return domError('not_select', `Element is not a <select>: ${node.tagName}`) // nosemgrep: html-in-template-string
+          if (!(node instanceof HTMLSelectElement)) return domError('not_select', `Element is not a <select>: ${node.tagName}`) // nosemgrep: html-in-template-string
           const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
           if (nativeSelectSetter) {
             nativeSelectSetter.call(node, options.value || '')
@@ -2281,10 +2126,7 @@ export function domPrimitive(
           if (overlayErr) return overlayErr
 
           if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
-            return domError(
-              'not_checkable',
-              `Element is not a checkbox or radio: ${node.tagName} type=${(node as HTMLInputElement).type || 'N/A'}`
-            )
+            return domError('not_checkable', `Element is not a checkbox or radio: ${node.tagName} type=${(node as HTMLInputElement).type || 'N/A'}`)
           }
           const desired = options.checked !== undefined ? options.checked : true
           if (node.checked !== desired) {
@@ -2296,16 +2138,14 @@ export function domPrimitive(
       get_text: () => {
         if (options.structured && node instanceof HTMLElement) {
           // Structured extraction: preserve hierarchy for accordions, lists, etc.
-          const sections: Array<{ header?: string; content: string; expanded?: boolean; tag: string }> = []
+          const sections: Array<{header?: string; content: string; expanded?: boolean; tag: string}> = []
           const children = node.children
           for (let i = 0; i < children.length && sections.length < 50; i++) {
             const child = children[i] as HTMLElement
             if (!child.tagName) continue
             const tag = child.tagName.toLowerCase()
             // Detect accordion/collapsible patterns
-            const heading = child.querySelector(
-              'h1, h2, h3, h4, h5, h6, [role="heading"], summary, button[aria-expanded]'
-            )
+            const heading = child.querySelector('h1, h2, h3, h4, h5, h6, [role="heading"], summary, button[aria-expanded]')
             if (heading) {
               const headerText = (heading as HTMLElement).innerText?.trim() || ''
               const ariaExpanded = heading.getAttribute('aria-expanded')
@@ -2321,9 +2161,9 @@ export function domPrimitive(
               })
               sections.push({
                 header: headerText,
-                content: contentParts.join('\n') || child.innerText?.replace(headerText, '').trim() || '',
+                content: contentParts.join('\n') || (child.innerText?.replace(headerText, '').trim() || ''),
                 expanded,
-                tag
+                tag,
               })
             } else {
               // Non-accordion child: just capture its text
@@ -2391,8 +2231,7 @@ export function domPrimitive(
         const overlayErr = blockedByOverlayError(node)
         if (overlayErr) return overlayErr
 
-        if (!(node instanceof HTMLElement))
-          return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`)
+        if (!(node instanceof HTMLElement)) return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`)
         node.focus()
         return mutatingSuccess(node)
       },
@@ -2430,10 +2269,9 @@ export function domPrimitive(
             container.scrollBy({ top: deltaY, behavior: 'smooth' })
             return
           }
-          const currentTop =
-            typeof (container as { scrollTop?: unknown }).scrollTop === 'number'
-              ? Number((container as { scrollTop?: unknown }).scrollTop)
-              : 0
+          const currentTop = typeof (container as { scrollTop?: unknown }).scrollTop === 'number'
+            ? Number((container as { scrollTop?: unknown }).scrollTop)
+            : 0
           ;(container as { scrollTop?: number }).scrollTop = currentTop + deltaY
         }
 
@@ -2442,10 +2280,8 @@ export function domPrimitive(
         const tag = node.tagName.toLowerCase()
 
         // Check if the target itself is a scrollable container
-        const isContainer =
-          node instanceof HTMLElement &&
-          node.scrollHeight > node.clientHeight + 10 &&
-          (() => {
+        const isContainer = node instanceof HTMLElement &&
+          node.scrollHeight > node.clientHeight + 10 && (() => {
             const s = typeof getComputedStyle === 'function' ? getComputedStyle(node) : null
             if (!s) return false
             const ov = s.overflow || ''
@@ -2508,13 +2344,7 @@ export function domPrimitive(
       wait_for_text: () => {
         const searchText = options.text || ''
         if (!searchText) {
-          return {
-            success: false,
-            action,
-            selector: '',
-            error: 'empty_text',
-            message: 'text parameter is required for wait_for_text'
-          } as DOMResult
+          return { success: false, action, selector: '', error: 'empty_text', message: 'text parameter is required for wait_for_text' } as DOMResult
         }
         const bodyText = document.body?.innerText ?? ''
         if (bodyText.includes(searchText)) {
@@ -2525,13 +2355,7 @@ export function domPrimitive(
 
       wait_for_absent: () => {
         if (!selector) {
-          return {
-            success: false,
-            action,
-            selector: '',
-            error: 'missing_selector',
-            message: 'selector is required for wait_for_absent'
-          } as DOMResult
+          return { success: false, action, selector: '', error: 'missing_selector', message: 'selector is required for wait_for_absent' } as DOMResult
         }
         const el = resolveElement(selector)
         if (!el) {
@@ -2545,8 +2369,7 @@ export function domPrimitive(
           const overlayErr = blockedByOverlayError(node)
           if (overlayErr) return overlayErr
 
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.focus()
           if (options.clear) {
             const selection = document.getSelection()
@@ -2581,8 +2404,7 @@ export function domPrimitive(
           const overlayErr = blockedByOverlayError(node)
           if (overlayErr) return overlayErr
 
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           const key = options.text || options.key || 'Enter'
 
           // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
@@ -2615,12 +2437,7 @@ export function domPrimitive(
             new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true })
           )
           node.dispatchEvent(
-            new KeyboardEvent('keypress', {
-              key: mapped.key,
-              code: mapped.code,
-              keyCode: mapped.keyCode,
-              bubbles: true
-            })
+            new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true })
           )
           node.dispatchEvent(
             new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true })
@@ -2630,11 +2447,13 @@ export function domPrimitive(
 
       open_composer: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           const tag = node.tagName.toLowerCase()
           const isInputLike =
-            node.isContentEditable || node.getAttribute('role') === 'textbox' || tag === 'textarea' || tag === 'input'
+            node.isContentEditable ||
+            node.getAttribute('role') === 'textbox' ||
+            tag === 'textarea' ||
+            tag === 'input'
           if (isInputLike) {
             node.focus()
             return mutatingSuccess(node, { reason: 'composer_ready' })
@@ -2645,24 +2464,21 @@ export function domPrimitive(
 
       submit_active_composer: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.click()
           return mutatingSuccess(node)
         }),
 
       confirm_top_dialog: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.click()
           return mutatingSuccess(node)
         }),
 
       hover: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           const rect = node.getBoundingClientRect()
           const centerX = rect.left + rect.width / 2
           const centerY = rect.top + rect.height / 2
@@ -2675,8 +2491,7 @@ export function domPrimitive(
 
       dismiss_top_overlay: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
 
           // Resolve overlay info for response enrichment
           const overlayEl = (() => {
@@ -2691,11 +2506,8 @@ export function domPrimitive(
           // Strategy: escape_fallback — dispatch Escape key instead of clicking
           if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
             const escKb: KeyboardEventInit & { keyCode?: number } = {
-              key: 'Escape',
-              code: 'Escape',
-              keyCode: 27,
-              bubbles: true,
-              cancelable: true
+              key: 'Escape', code: 'Escape', keyCode: 27,
+              bubbles: true, cancelable: true
             }
             dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
@@ -2729,8 +2541,7 @@ export function domPrimitive(
 
       auto_dismiss_overlays: () =>
         withMutationTracking(() => {
-          if (!(node instanceof HTMLElement))
-            return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
 
           // Resolve overlay info for response enrichment
           const overlayEl = (() => {
@@ -2744,11 +2555,8 @@ export function domPrimitive(
           // Strategy: escape_fallback — dispatch Escape key instead of clicking
           if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
             const escKb: KeyboardEventInit & { keyCode?: number } = {
-              key: 'Escape',
-              code: 'Escape',
-              keyCode: 27,
-              bubbles: true,
-              cancelable: true
+              key: 'Escape', code: 'Escape', keyCode: 27,
+              bubbles: true, cancelable: true
             }
             dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
@@ -2780,9 +2588,10 @@ export function domPrimitive(
 
       wait_for_stable: (): Promise<DOMResult> => {
         // Smart DOM stability wait (#344)
-        const stabilityMs =
-          typeof options.stability_ms === 'number' && options.stability_ms > 0 ? options.stability_ms : 500
-        const maxTimeout = typeof options.timeout_ms === 'number' && options.timeout_ms > 0 ? options.timeout_ms : 5000
+        const stabilityMs = typeof options.stability_ms === 'number' && options.stability_ms > 0
+          ? options.stability_ms : 500
+        const maxTimeout = typeof options.timeout_ms === 'number' && options.timeout_ms > 0
+          ? options.timeout_ms : 5000
 
         return new Promise<DOMResult>((resolve) => {
           let mutationCount = 0
@@ -2848,7 +2657,8 @@ export function domPrimitive(
       action_diff: (): Promise<DOMResult> => {
         // #343: Structured mutation summary — instruments a MutationObserver,
         // waits for DOM to settle, then classifies mutations into categories.
-        const timeoutMs = typeof options.timeout_ms === 'number' && options.timeout_ms > 0 ? options.timeout_ms : 3000
+        const timeoutMs = typeof options.timeout_ms === 'number' && options.timeout_ms > 0
+          ? options.timeout_ms : 3000
         const settleMs = 500 // wait for DOM to stop mutating
 
         return new Promise<DOMResult>((resolve) => {
@@ -2866,21 +2676,14 @@ export function domPrimitive(
                 const el = matches[i]!
                 textSnapshots.set(el, (el.textContent || '').trim().slice(0, 200))
               }
-            } catch {
-              /* ignore invalid selectors */
-            }
+            } catch { /* ignore invalid selectors */ }
           }
 
           // Track overlays that exist before the action
           const beforeOverlays = new Set<Element>()
           const overlaySelectors = [
-            '[role="dialog"]',
-            '[role="alertdialog"]',
-            '[aria-modal="true"]',
-            'dialog[open]',
-            '.modal.show',
-            '.modal.in',
-            '.modal.is-active'
+            '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]', 'dialog[open]',
+            '.modal.show', '.modal.in', '.modal.is-active'
           ]
           for (const oSel of overlaySelectors) {
             try {
@@ -2888,9 +2691,7 @@ export function domPrimitive(
               for (let i = 0; i < matches.length; i++) {
                 beforeOverlays.add(matches[i]!)
               }
-            } catch {
-              /* ignore */
-            }
+            } catch { /* ignore */ }
           }
 
           let elementsAdded = 0
@@ -2909,9 +2710,7 @@ export function domPrimitive(
                 networkRequests += list.getEntries().length
               })
               perfObserver.observe({ entryTypes: ['resource'] })
-            } catch {
-              /* PerformanceObserver not available */
-            }
+            } catch { /* PerformanceObserver not available */ }
           }
 
           const observer = new MutationObserver((records) => {
@@ -2946,11 +2745,7 @@ export function domPrimitive(
             observer.disconnect()
             // Disconnect PerformanceObserver
             if (perfObserver) {
-              try {
-                perfObserver.disconnect()
-              } catch {
-                /* ignore */
-              }
+              try { perfObserver.disconnect() } catch { /* ignore */ }
             }
 
             // Classify mutations
@@ -2958,10 +2753,7 @@ export function domPrimitive(
             const titleChanged = document.title !== beforeTitle
 
             // Detect overlays opened/closed
-            interface OverlayEntry {
-              selector: string
-              text: string
-            }
+            interface OverlayEntry { selector: string; text: string }
             const overlaysOpened: OverlayEntry[] = []
             const overlaysClosed: OverlayEntry[] = []
 
@@ -2972,9 +2764,7 @@ export function domPrimitive(
                 for (let i = 0; i < matches.length; i++) {
                   afterOverlays.add(matches[i]!)
                 }
-              } catch {
-                /* ignore */
-              }
+              } catch { /* ignore */ }
             }
             // Also check added nodes for overlay-like elements
             for (const added of addedNodes) {
@@ -2987,9 +2777,7 @@ export function domPrimitive(
                     afterOverlays.add(children[i]!)
                   }
                 }
-              } catch {
-                /* ignore */
-              }
+              } catch { /* ignore */ }
             }
 
             for (const el of afterOverlays) {
@@ -3010,23 +2798,12 @@ export function domPrimitive(
             }
 
             // Detect toasts / notifications
-            interface ToastEntry {
-              text: string
-              type: string
-            }
+            interface ToastEntry { text: string; type: string }
             const toasts: ToastEntry[] = []
             const toastSelectors = [
-              '[role="alert"]',
-              '[role="status"]',
-              '[aria-live="polite"]',
-              '[aria-live="assertive"]',
-              '.toast',
-              '.snackbar',
-              '.notification',
-              '.alert',
-              '[class*="toast"]',
-              '[class*="snackbar"]',
-              '[class*="notification"]'
+              '[role="alert"]', '[role="status"]', '[aria-live="polite"]', '[aria-live="assertive"]',
+              '.toast', '.snackbar', '.notification', '.alert',
+              '[class*="toast"]', '[class*="snackbar"]', '[class*="notification"]'
             ]
             for (const added of addedNodes) {
               if (matchesAnySelectorSafe(added, toastSelectors)) {
@@ -3047,22 +2824,14 @@ export function domPrimitive(
                     }
                   }
                 }
-              } catch {
-                /* ignore */
-              }
+              } catch { /* ignore */ }
             }
 
             // Detect form errors
             const formErrors: string[] = []
             const errorSelectors = [
-              '.error',
-              '.invalid',
-              '.field-error',
-              '.form-error',
-              '.validation-error',
-              '[aria-invalid="true"]',
-              '.has-error',
-              '.is-invalid'
+              '.error', '.invalid', '.field-error', '.form-error', '.validation-error',
+              '[aria-invalid="true"]', '.has-error', '.is-invalid'
             ]
             for (const added of addedNodes) {
               if (matchesAnySelectorSafe(added, errorSelectors)) {
@@ -3077,21 +2846,14 @@ export function domPrimitive(
                     if (text && !formErrors.includes(text)) formErrors.push(text)
                   }
                 }
-              } catch {
-                /* ignore */
-              }
+              } catch { /* ignore */ }
             }
 
             // Detect loading indicators
             const loadingIndicators: string[] = []
             const loadingSelectors = [
-              '.spinner',
-              '.loading',
-              '.skeleton',
-              '[aria-busy="true"]',
-              '[class*="spinner"]',
-              '[class*="loading"]',
-              '[class*="skeleton"]'
+              '.spinner', '.loading', '.skeleton', '[aria-busy="true"]',
+              '[class*="spinner"]', '[class*="loading"]', '[class*="skeleton"]'
             ]
             for (const added of addedNodes) {
               if (matchesAnySelectorSafe(added, loadingSelectors)) {
@@ -3100,11 +2862,7 @@ export function domPrimitive(
             }
 
             // Detect text changes
-            interface TextChangeEntry {
-              selector: string
-              from: string
-              to: string
-            }
+            interface TextChangeEntry { selector: string; from: string; to: string }
             const textChanges: TextChangeEntry[] = []
             for (const [el, oldText] of textSnapshots) {
               if (!document.contains(el)) continue
@@ -3160,9 +2918,7 @@ export function domPrimitive(
           // Helper: check if element matches any selector from a list
           function matchesAnySelectorSafe(el: Element, sels: string[]): boolean {
             for (const sel of sels) {
-              try {
-                if (typeof el.matches === 'function' && el.matches(sel)) return true
-              } catch {}
+              try { if (typeof el.matches === 'function' && el.matches(sel)) return true } catch {}
             }
             return false
           }
@@ -3179,6 +2935,7 @@ export function domPrimitive(
             if (role === 'status') return 'status'
             return 'info'
           }
+
 
           // Helper: generate a compact selector description for an element
           function describeSelector(el: Element): string {

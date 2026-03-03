@@ -1,3 +1,5 @@
+// Purpose: Implements Save, Load, Delete, and List operations for the session persistence store.
+// Why: Separates CRUD logic from store initialization, validation, and maintenance.
 package persistence
 
 import (

@@ -1,6 +1,6 @@
-// Purpose: Validate refactoring_verification_test.go behavior and guard against regressions.
+// Purpose: Verification tests ensuring ring buffer refactoring preserves behavior.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/ring-buffer/index.md
 
 // refactoring_verification_test.go — Post-refactoring verification tests for buffer types.
 //

@@ -1,3 +1,5 @@
+// Purpose: Counts files and bytes per namespace for persistence store statistics.
+// Why: Isolates storage accounting from CRUD operations and maintenance.
 package persistence
 
 import (

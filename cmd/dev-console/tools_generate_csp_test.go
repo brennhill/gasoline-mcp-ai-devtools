@@ -1,4 +1,4 @@
-// Purpose: Validate tools_generate_csp_test.go behavior and guard against regressions.
+// Purpose: Tests for generate CSP policy output.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 

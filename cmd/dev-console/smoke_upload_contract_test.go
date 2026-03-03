@@ -1,6 +1,6 @@
-// Purpose: Validate smoke_upload_contract_test.go behavior and guard against regressions.
+// Purpose: Contract tests for upload endpoint behavior.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

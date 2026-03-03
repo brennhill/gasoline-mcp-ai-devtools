@@ -98,7 +98,7 @@ func parseAndValidateFlags() *serverConfig {
 	f := registerFlags()
 
 	osUploadAutomationFlag = *f.enableOsUploadAutomation
-	upload.SSRFAllowedHostsList = f.ssrfAllowedHosts
+	upload.SetSSRFAllowedHosts(f.ssrfAllowedHosts)
 	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)

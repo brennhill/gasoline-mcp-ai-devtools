@@ -1,3 +1,5 @@
+// Purpose: Calculates project storage size and enforces size-based eviction of oldest namespaces.
+// Why: Separates storage maintenance and eviction from CRUD and initialization.
 package persistence
 
 import (

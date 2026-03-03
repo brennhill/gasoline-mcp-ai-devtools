@@ -1,3 +1,5 @@
+// Purpose: Maps event categories to alert types and checks if alerts pass configured filters.
+// Why: Separates filter matching from dedup, emission, and rate limiting.
 package streaming
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"

@@ -1,3 +1,5 @@
+// Purpose: Runs periodic TTL-based cleanup of expired query results and pending queries.
+// Why: Separates background cleanup lifecycle from result storage and wait logic.
 package queries
 
 import (

@@ -1,6 +1,6 @@
-// Purpose: Validate handler_unit_test.go behavior and guard against regressions.
+// Purpose: Unit tests for dev-console handler logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // handler_unit_test.go — Core MCP handler unit tests: request routing, resource methods,
 // tool dispatch, warnings, rate limiting, and shared test helpers.

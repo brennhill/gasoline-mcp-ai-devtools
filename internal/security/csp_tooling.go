@@ -1,3 +1,5 @@
+// Purpose: Applies session-scoped whitelist overrides and integrates CSP generation with MCP tools.
+// Why: Separates tool integration and override application from core CSP generation.
 package security
 
 import (
@@ -56,7 +58,7 @@ func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides 
 // RecordOriginFromBody extracts origin and resource type from a NetworkBody
 // and records it in the origin accumulator. Called from the network ingestion path.
 func (g *CSPGenerator) RecordOriginFromBody(body capture.NetworkBody, pageURL string) {
-	origin := extractOriginFromURL(body.URL)
+	origin := extractOrigin(body.URL)
 	if origin == "" {
 		return
 	}

@@ -215,7 +215,10 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
         headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
         body: JSON.stringify({ path: message.path })
       })
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
         .then((result) => sendResponse(result))
         .catch((err) => sendResponse({ error: (err as Error).message }))
 

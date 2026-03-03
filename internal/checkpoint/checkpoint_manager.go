@@ -1,3 +1,5 @@
+// Purpose: Creates and manages named and auto checkpoints for before/after state comparison.
+// Why: Centralizes checkpoint lifecycle so diff, resolution, and summary logic can be split into focused files.
 package checkpoint
 
 import (

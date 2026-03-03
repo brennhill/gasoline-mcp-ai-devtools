@@ -1,3 +1,5 @@
+// Purpose: Defines the CSP audit structure for tracking session overrides and persistent whitelists.
+// Why: Isolates CSP audit types from the main security configuration.
 package security
 
 type CSPAudit struct {

@@ -1,6 +1,6 @@
-// Purpose: Validate main_handlers_edge_test.go behavior and guard against regressions.
+// Purpose: Edge-case tests for HTTP server handlers boundary conditions.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
 package server
 

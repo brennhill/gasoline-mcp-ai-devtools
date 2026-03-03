@@ -1,3 +1,5 @@
+// Purpose: Recursively walks and redacts sensitive values in map structures for MCP responses.
+// Why: Separates deep-map redaction from flat-string redaction and key-name matching.
 package redaction
 
 // RedactMapValues walks a map recursively and redacts sensitive data.

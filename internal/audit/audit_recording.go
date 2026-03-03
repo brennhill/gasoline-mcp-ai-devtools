@@ -1,3 +1,5 @@
+// Purpose: Creates and configures the AuditTrail with defaults and records tool invocation entries.
+// Why: Separates construction and entry recording from query and redaction concerns.
 package audit
 
 import "time"

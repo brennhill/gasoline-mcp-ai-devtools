@@ -1,6 +1,6 @@
-// Purpose: Validate cli_commands_test.go behavior and guard against regressions.
+// Purpose: Tests for CLI command parsing and dispatch.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // cli_commands_test.go — Tests for uncovered CLI argument parser branches.
 // Core tests are in cli_test.go; this file covers remaining edge cases.

@@ -1,3 +1,5 @@
+// Purpose: Queries audit trail entries with filtering by time, tool, client, and session.
+// Why: Separates read-path query logic from write-path recording to keep the audit trail module focused.
 package audit
 
 import "encoding/json"

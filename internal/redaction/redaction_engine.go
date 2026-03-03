@@ -1,3 +1,5 @@
+// Purpose: Creates and runs the redaction engine, compiling built-in and custom regex patterns.
+// Why: Separates engine construction and string redaction from pattern definitions and key matching.
 package redaction
 
 import (

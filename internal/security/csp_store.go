@@ -1,3 +1,5 @@
+// Purpose: Creates the CSP generator and records origin observations with bounded storage.
+// Why: Separates origin accumulation from policy generation and tooling integration.
 package security
 
 import "time"

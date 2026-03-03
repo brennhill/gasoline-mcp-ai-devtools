@@ -1,4 +1,4 @@
-// Purpose: Validate redaction_property_test.go behavior and guard against regressions.
+// Purpose: Property-based tests for redaction invariants.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/redaction-patterns/index.md
 

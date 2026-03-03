@@ -1,6 +1,6 @@
-// Purpose: Validate handler_unit_telemetry_test.go behavior and guard against regressions.
+// Purpose: Unit tests for dev-console handler telemetry logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // handler_unit_telemetry_test.go — MCP handler tests for passive telemetry, HTTP transport,
 // protocol negotiation, notification detection, and content-type validation.

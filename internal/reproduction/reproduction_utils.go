@@ -1,3 +1,5 @@
+// Purpose: Provides JavaScript string escaping and URL rewriting utilities for reproduction scripts.
+// Why: Centralizes shared utilities used by both Gasoline and Playwright reproduction generators.
 package reproduction
 
 import (

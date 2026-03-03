@@ -1,6 +1,6 @@
 // Purpose: Normalizes accessibility summary counts across extension and server naming styles.
 // Why: Keeps a11y summary payloads semantically consistent while preserving backward compatibility.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/enhanced-wcag-audit/index.md
 
 package a11ysummary
 

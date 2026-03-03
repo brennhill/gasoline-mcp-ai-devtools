@@ -8,8 +8,6 @@
 // Handles: subtitle, highlight, browser_action, dom_action, upload,
 //          execute, record_start, record_stop, state_*.
 
-import type { PendingQuery } from '../../types/index.js'
-import type { SyncClient } from '../sync-client.js'
 import { isAiWebPilotEnabled } from '../state.js'
 import { executeDOMAction } from '../dom-dispatch.js'
 import { executeCDPAction } from '../cdp-dispatch.js'
@@ -19,23 +17,14 @@ import { executeWithWorldRouting } from '../query-execution.js'
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js'
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js'
 import { registerCommand } from './registry.js'
-import { sendResult, sendAsyncResult } from './helpers.js'
-
-function statusFromError(error?: string): 'complete' | 'error' {
-  return error ? 'error' : 'complete'
-}
+import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js'
 
 // =============================================================================
 // SUBTITLE
 // =============================================================================
 
 registerCommand('subtitle', async (ctx) => {
-  let params: { text?: string }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    params = {}
-  }
+  const params = ctx.params as { text?: string }
   chrome.tabs
     .sendMessage(ctx.tabId, {
       type: 'GASOLINE_SUBTITLE',
@@ -50,24 +39,9 @@ registerCommand('subtitle', async (ctx) => {
 // =============================================================================
 
 registerCommand('highlight', async (ctx) => {
-  let params: unknown
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      error: 'invalid_params',
-      message: 'Failed to parse highlight params as JSON'
-    })
-    return
-  }
+  const params = ctx.params
   const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params, ctx.tabId)
-  if (ctx.query.correlation_id) {
-    const err =
-      result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err)
-  } else {
-    ctx.sendResult(result)
-  }
+  ctx.sendResult(result)
 })
 
 // =============================================================================
@@ -75,7 +49,7 @@ registerCommand('highlight', async (ctx) => {
 // =============================================================================
 
 registerCommand('browser_action', async (ctx) => {
-  let params: {
+  const params = ctx.params as {
     action?: string
     what?: string
     url?: string
@@ -83,16 +57,6 @@ registerCommand('browser_action', async (ctx) => {
     tab_id?: number
     tab_index?: number
     new_tab?: boolean
-  }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      success: false,
-      error: 'invalid_params',
-      message: 'Failed to parse browser_action params as JSON'
-    })
-    return
   }
   if (ctx.query.correlation_id) {
     await handleAsyncBrowserAction(ctx.query, ctx.tabId, params, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
@@ -107,19 +71,7 @@ registerCommand('browser_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('dom_action', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id)
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        null,
-        'ai_web_pilot_disabled'
-      )
-    else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
@@ -128,19 +80,7 @@ registerCommand('dom_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('cdp_action', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id)
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        null,
-        'ai_web_pilot_disabled'
-      )
-    else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
@@ -149,19 +89,7 @@ registerCommand('cdp_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('upload', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id)
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        null,
-        'ai_web_pilot_disabled'
-      )
-    else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
@@ -170,25 +98,8 @@ registerCommand('upload', async (ctx) => {
 // =============================================================================
 
 registerCommand('record_start', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id)
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        undefined,
-        'ai_web_pilot_disabled'
-      )
-    else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
-  let params: { name?: string; fps?: number; audio?: string }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    params = {}
-  }
+  if (!requireAiWebPilot(ctx)) return
+  const params = ctx.params as { name?: string; fps?: number; audio?: string }
   const result = await startRecording(
     params.name ?? 'recording',
     params.fps ?? 15,
@@ -197,10 +108,7 @@ registerCommand('record_start', async (ctx) => {
     false,
     ctx.tabId
   )
-  const error = result.error || undefined
-  if (ctx.query.correlation_id)
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
-  else ctx.sendResult(error ? { error } : result)
+  ctx.sendResult(result)
 })
 
 // =============================================================================
@@ -208,24 +116,9 @@ registerCommand('record_start', async (ctx) => {
 // =============================================================================
 
 registerCommand('record_stop', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id)
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        undefined,
-        'ai_web_pilot_disabled'
-      )
-    else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   const result = await stopRecording()
-  const error = result.error || undefined
-  if (ctx.query.correlation_id)
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
-  else ctx.sendResult(error ? { error } : result)
+  ctx.sendResult(result)
 })
 
 // =============================================================================
@@ -233,21 +126,9 @@ registerCommand('record_stop', async (ctx) => {
 // =============================================================================
 
 registerCommand('state_*', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
 
-  let params: Record<string, unknown>
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      error: 'invalid_params',
-      message: 'Failed to parse state query params as JSON'
-    })
-    return
-  }
+  const params = ctx.params as Record<string, unknown>
   const action = params.action as string
 
   // Use the tracked tab from the command context instead of querying for active tab.
@@ -352,33 +233,9 @@ registerCommand('state_*', async (ctx) => {
 // =============================================================================
 
 registerCommand('execute', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(
-        ctx.syncClient,
-        ctx.query.id,
-        ctx.query.correlation_id,
-        'error',
-        null,
-        'ai_web_pilot_disabled'
-      )
-    } else {
-      ctx.sendResult({
-        success: false,
-        error: 'ai_web_pilot_disabled',
-        message: 'AI Web Pilot is not enabled in the extension popup'
-      })
-    }
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
 
-  // Parse world param for routing
-  let execParams: { script?: string; timeout_ms?: number; world?: string }
-  try {
-    execParams = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    execParams = {}
-  }
+  const execParams = ctx.params as { script?: string; timeout_ms?: number; world?: string }
   const world = execParams.world || 'auto'
 
   if (ctx.query.correlation_id) {
@@ -400,11 +257,6 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 // PILOT COMMAND (exported for use by index.ts re-export chain)
 // =============================================================================
-
-function isContentScriptUnreachableError(err: unknown): boolean {
-  const message = (err as Error)?.message || ''
-  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
-}
 
 function buildFallbackStatusMessage(status: 'SUCCESS' | 'ERROR'): string {
   return `Error: MAIN world execution FAILED. Fallback in ISOLATED is ${status}.`

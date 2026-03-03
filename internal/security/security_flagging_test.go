@@ -1,6 +1,6 @@
-// Purpose: Validate security_flagging_test.go behavior and guard against regressions.
+// Purpose: Tests for security issue flagging and severity classification.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/security-hardening/index.md
 
 //go:build integration
 // +build integration
@@ -12,6 +12,8 @@ package security
 import (
 	"testing"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -125,7 +127,7 @@ func TestCheckNonStandardPort_AllowsDevPorts(t *testing.T) {
 
 func TestCheckMixedContent_FlagsHTTPOnHTTPS(t *testing.T) {
 	t.Parallel()
-	entry := NetworkWaterfallEntry{
+	entry := capture.NetworkWaterfallEntry{
 		URL:           "http://cdn.example.com/script.js",
 		InitiatorType: "script",
 	}
@@ -148,7 +150,7 @@ func TestCheckMixedContent_FlagsHTTPOnHTTPS(t *testing.T) {
 
 func TestCheckMixedContent_AllowsHTTPSOnHTTPS(t *testing.T) {
 	t.Parallel()
-	entry := NetworkWaterfallEntry{
+	entry := capture.NetworkWaterfallEntry{
 		URL:           "https://cdn.example.com/script.js",
 		InitiatorType: "script",
 	}
@@ -163,7 +165,7 @@ func TestCheckMixedContent_AllowsHTTPSOnHTTPS(t *testing.T) {
 
 func TestCheckMixedContent_AllowsHTTPOnHTTP(t *testing.T) {
 	t.Parallel()
-	entry := NetworkWaterfallEntry{
+	entry := capture.NetworkWaterfallEntry{
 		URL:           "http://cdn.example.com/script.js",
 		InitiatorType: "script",
 	}
@@ -269,7 +271,7 @@ func TestCheckTyposquatting_AllowsLegitDomains(t *testing.T) {
 
 func TestAnalyzeNetworkSecurity_RunsAllChecks(t *testing.T) {
 	t.Parallel()
-	entry := NetworkWaterfallEntry{
+	entry := capture.NetworkWaterfallEntry{
 		URL:           "http://cdn-malicious.xyz:8443/script.js",
 		InitiatorType: "script",
 		Timestamp:     time.Now(),
@@ -300,7 +302,7 @@ func TestAnalyzeNetworkSecurity_RunsAllChecks(t *testing.T) {
 
 func TestAnalyzeNetworkSecurity_ReturnsEmptyForSafeOrigins(t *testing.T) {
 	t.Parallel()
-	entry := NetworkWaterfallEntry{
+	entry := capture.NetworkWaterfallEntry{
 		URL:           "https://cdn.example.com/library.js",
 		InitiatorType: "script",
 		Timestamp:     time.Now(),

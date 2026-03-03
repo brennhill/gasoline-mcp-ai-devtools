@@ -1,3 +1,5 @@
+// Purpose: Defines dispatch properties for the interact tool (what, action, telemetry_mode, sync).
+// Why: Separates dispatch/routing properties from action-specific and targeting properties.
 package schema
 
 func interactDispatchProperties() map[string]any {

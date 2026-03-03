@@ -1,3 +1,5 @@
+// Purpose: Applies regex-based redaction patterns to audit entry parameters before storage.
+// Why: Isolates sensitive-data scrubbing from audit recording so redaction rules can evolve independently.
 package audit
 
 import "regexp"

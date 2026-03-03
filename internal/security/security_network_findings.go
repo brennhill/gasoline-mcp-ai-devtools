@@ -1,3 +1,5 @@
+// Purpose: Analyzes network waterfall entries for security issues (mixed content, insecure transport).
+// Why: Separates network-level security analysis from credential scanning and header checks.
 package security
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"

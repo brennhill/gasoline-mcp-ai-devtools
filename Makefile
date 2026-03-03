@@ -15,7 +15,7 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-cover-integration test-cover-all test-bench test-fuzz \
+.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-integration test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
 	lint lint-go lint-js format format-fix typecheck check check-wire-drift ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
@@ -109,15 +109,19 @@ test-cover:
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
 		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
+test-integration:
+	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -tags=integration -count=1 -timeout=300s ./internal/... ./cmd/...
+
 test-cover-integration:
 	@mkdir -p coverage/integration
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	GOCOVERDIR=coverage/integration go test -tags=integration -cover -timeout 120s $(CMD_PKG)/ -count=1
 	@go tool covdata percent -i=coverage/integration
 
 test-cover-all:
 	@mkdir -p coverage/unit coverage/integration coverage/merged
 	GOCOVERDIR=coverage/unit go test -cover ./internal/...
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	GOCOVERDIR=coverage/integration go test -tags=integration -cover -timeout 120s $(CMD_PKG)/ -count=1
 	go tool covdata merge -i=coverage/unit,coverage/integration -o=coverage/merged
 	go tool covdata textfmt -i=coverage/merged -o=coverage/coverage.txt
 	@go tool cover -func=coverage/coverage.txt | grep total

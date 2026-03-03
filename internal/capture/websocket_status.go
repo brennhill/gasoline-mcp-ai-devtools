@@ -1,7 +1,8 @@
+// Purpose: Updates per-direction WebSocket connection statistics and recency windows.
+// Why: Isolates WebSocket status mutation helpers from connection tracking and event handlers.
 package capture
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
@@ -59,28 +60,9 @@ func calcRate(times []time.Time) float64 {
 	return float64(count) / rateWindow.Seconds()
 }
 
-// formatDuration formats a duration as human-readable (e.g., "5s", "2m30s", "1h15m")
+// formatDuration delegates to util.FormatDuration for human-readable duration formatting.
 func formatDuration(d time.Duration) string {
-	if d < time.Second {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	if d < time.Minute {
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	}
-	if d < time.Hour {
-		mins := int(d.Minutes())
-		secs := int(d.Seconds()) % 60
-		if secs == 0 {
-			return fmt.Sprintf("%dm", mins)
-		}
-		return fmt.Sprintf("%dm%02ds", mins, secs)
-	}
-	hours := int(d.Hours())
-	mins := int(d.Minutes()) % 60
-	if mins == 0 {
-		return fmt.Sprintf("%dh", hours)
-	}
-	return fmt.Sprintf("%dh%02dm", hours, mins)
+	return util.FormatDuration(d)
 }
 
 // formatAge formats the age of a timestamp relative to now (e.g., "0.2s", "3s", "2m30s")

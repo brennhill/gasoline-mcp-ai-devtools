@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_coverage_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for dev-console edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 

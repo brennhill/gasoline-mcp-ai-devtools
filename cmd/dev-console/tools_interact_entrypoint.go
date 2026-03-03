@@ -85,6 +85,9 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		hasComposableSideEffects = true
 	}
 
+	// Composable side effects (auto_dismiss, wait_for_stable, action_diff) are fire-and-forget
+	// queries that the extension processes asynchronously. When a screenshot is also requested,
+	// we need a brief delay to let the extension finish processing before capture.
 	if hasComposableSideEffects && composableParams.IncludeScreenshot {
 		time.Sleep(300 * time.Millisecond)
 	}

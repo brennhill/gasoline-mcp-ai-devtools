@@ -1,3 +1,5 @@
+// Purpose: Provides diff verdict classification and pixel-level math utilities for image comparison.
+// Why: Separates numerical operations from grid construction, region detection, and rendering.
 package analyze
 
 func DiffVerdict(pct float64) string {
@@ -20,16 +22,3 @@ func absDiff16(a, b uint32) uint32 {
 	return b - a
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

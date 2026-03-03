@@ -1,3 +1,5 @@
+// Purpose: Validates test file and directory paths against project boundaries.
+// Why: Isolates path security validation from selector healing logic.
 package testgen
 
 import (

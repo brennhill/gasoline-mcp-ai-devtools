@@ -1,6 +1,6 @@
-// Purpose: Validate playback_unit_test.go behavior and guard against regressions.
+// Purpose: Unit tests for recording and playback playback logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/playback-engine/index.md
 
 // playback_unit_test.go — Unit tests for playback engine internals.
 package recording

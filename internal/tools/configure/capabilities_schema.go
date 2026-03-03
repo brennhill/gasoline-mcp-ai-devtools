@@ -1,3 +1,5 @@
+// Purpose: Infers the canonical dispatch parameter from tool input schemas.
+// Why: Separates schema analysis from mode mapping and parameter detail extraction.
 package configure
 
 // inferDispatchParam selects the canonical mode/action parameter for a tool.

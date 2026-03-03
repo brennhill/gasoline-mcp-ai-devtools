@@ -1,3 +1,5 @@
+// Purpose: Provides URL query parsing, header formatting, and file-save helpers for HAR export.
+// Why: Separates utility functions from HAR conversion and filter logic.
 package export
 
 import (

@@ -365,8 +365,7 @@ export function wrapXHRWithBodies() {
     XMLHttpRequest.prototype.open = function (method, url, ...rest) {
         ;
         this.__gasolineMethod = method;
-        this.__gasolineUrl =
-            typeof url === 'string' ? url : url.toString();
+        this.__gasolineUrl = typeof url === 'string' ? url : url.toString();
         return originalXHROpen.apply(this, [method, url, ...rest]);
     };
     XMLHttpRequest.prototype.send = function (body) {

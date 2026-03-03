@@ -1,6 +1,6 @@
 // Purpose: Handles observe(what="page_inventory") — returns combined page info and interactive elements in a single extension query.
 // Why: Reduces two separate observe calls (page + list_interactive) into one for faster page discovery.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

@@ -3,6 +3,9 @@
  * Why: Routes MCP interact actions to DOM primitives, browser actions, and CDP operations.
  * Docs: docs/features/feature/interact-explore/index.md
  */
+// interact.ts — Command handlers for the interact MCP tool.
+// Handles: subtitle, highlight, browser_action, dom_action, upload,
+//          execute, record_start, record_stop, state_*.
 import { isAiWebPilotEnabled } from '../state.js';
 import { executeDOMAction } from '../dom-dispatch.js';
 import { executeCDPAction } from '../cdp-dispatch.js';
@@ -12,20 +15,12 @@ import { executeWithWorldRouting } from '../query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
-function statusFromError(error) {
-    return error ? 'error' : 'complete';
-}
+import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js';
 // =============================================================================
 // SUBTITLE
 // =============================================================================
 registerCommand('subtitle', async (ctx) => {
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        params = {};
-    }
+    const params = ctx.params;
     chrome.tabs
         .sendMessage(ctx.tabId, {
         type: 'GASOLINE_SUBTITLE',
@@ -38,42 +33,15 @@ registerCommand('subtitle', async (ctx) => {
 // HIGHLIGHT
 // =============================================================================
 registerCommand('highlight', async (ctx) => {
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        ctx.sendResult({
-            error: 'invalid_params',
-            message: 'Failed to parse highlight params as JSON'
-        });
-        return;
-    }
+    const params = ctx.params;
     const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params, ctx.tabId);
-    if (ctx.query.correlation_id) {
-        const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined;
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err);
-    }
-    else {
-        ctx.sendResult(result);
-    }
+    ctx.sendResult(result);
 });
 // =============================================================================
 // BROWSER ACTION
 // =============================================================================
 registerCommand('browser_action', async (ctx) => {
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        ctx.sendResult({
-            success: false,
-            error: 'invalid_params',
-            message: 'Failed to parse browser_action params as JSON'
-        });
-        return;
-    }
+    const params = ctx.params;
     if (ctx.query.correlation_id) {
         await handleAsyncBrowserAction(ctx.query, ctx.tabId, params, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
     }
@@ -86,103 +54,52 @@ registerCommand('browser_action', async (ctx) => {
 // DOM ACTION
 // =============================================================================
 registerCommand('dom_action', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id)
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
-        else
-            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
     await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
 // CDP ACTION
 // =============================================================================
 registerCommand('cdp_action', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id)
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
-        else
-            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
     await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
 // UPLOAD
 // =============================================================================
 registerCommand('upload', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id)
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
-        else
-            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
     await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
 // RECORD START
 // =============================================================================
 registerCommand('record_start', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id)
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
-        else
-            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        params = {};
-    }
+    const params = ctx.params;
     const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, ctx.query.id, params.audio ?? '', false, ctx.tabId);
-    const error = result.error || undefined;
-    if (ctx.query.correlation_id)
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
-    else
-        ctx.sendResult(error ? { error } : result);
+    ctx.sendResult(result);
 });
 // =============================================================================
 // RECORD STOP
 // =============================================================================
 registerCommand('record_stop', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id)
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
-        else
-            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
     const result = await stopRecording();
-    const error = result.error || undefined;
-    if (ctx.query.correlation_id)
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
-    else
-        ctx.sendResult(error ? { error } : result);
+    ctx.sendResult(result);
 });
 // =============================================================================
 // STATE QUERIES (state_capture, state_save, state_load, state_list, state_delete)
 // =============================================================================
 registerCommand('state_*', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        ctx.sendResult({
-            error: 'invalid_params',
-            message: 'Failed to parse state query params as JSON'
-        });
-        return;
-    }
+    const params = ctx.params;
     const action = params.action;
     // Use the tracked tab from the command context instead of querying for active tab.
     // chrome.tabs.query({ active: true, currentWindow: true }) is unreliable from a service worker.
@@ -271,27 +188,9 @@ registerCommand('state_*', async (ctx) => {
 // EXECUTE
 // =============================================================================
 registerCommand('execute', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
-        }
-        else {
-            ctx.sendResult({
-                success: false,
-                error: 'ai_web_pilot_disabled',
-                message: 'AI Web Pilot is not enabled in the extension popup'
-            });
-        }
+    if (!requireAiWebPilot(ctx))
         return;
-    }
-    // Parse world param for routing
-    let execParams;
-    try {
-        execParams = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        execParams = {};
-    }
+    const execParams = ctx.params;
     const world = execParams.world || 'auto';
     if (ctx.query.correlation_id) {
         await handleAsyncExecuteCommand(ctx.query, ctx.tabId, world, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -313,10 +212,6 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 // PILOT COMMAND (exported for use by index.ts re-export chain)
 // =============================================================================
-function isContentScriptUnreachableError(err) {
-    const message = err?.message || '';
-    return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
-}
 function buildFallbackStatusMessage(status) {
     return `Error: MAIN world execution FAILED. Fallback in ISOLATED is ${status}.`;
 }

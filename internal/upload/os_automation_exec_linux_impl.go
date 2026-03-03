@@ -1,3 +1,5 @@
+// Purpose: Injects file paths into Linux native file dialogs via xdotool automation.
+// Why: Provides the Linux-specific implementation of OS-level upload automation.
 package upload
 
 import (

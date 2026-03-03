@@ -1,6 +1,6 @@
-// Purpose: Validate tools_schema_parity_test.go behavior and guard against regressions.
+// Purpose: Tests for tool schema parity between bridge and daemon.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_schema_parity_test.go — Enforces parity between tool schema enums and runtime dispatch handlers.
 package main

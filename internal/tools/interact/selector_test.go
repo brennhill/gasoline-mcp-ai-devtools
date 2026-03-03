@@ -1,6 +1,6 @@
-// Purpose: Validate selector_test.go behavior and guard against regressions.
+// Purpose: Tests for CSS and semantic selector resolution.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/interact-explore/index.md
 
 // selector_test.go — Tests for selector parsing and DOM action utilities.
 package interact

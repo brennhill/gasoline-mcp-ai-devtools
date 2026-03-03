@@ -1,6 +1,6 @@
-// Purpose: Validate ai_noise_test.go behavior and guard against regressions.
+// Purpose: Tests for noise rule matching and log suppression.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/noise-filtering/index.md
 
 package noise
 

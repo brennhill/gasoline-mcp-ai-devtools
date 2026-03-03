@@ -1,6 +1,6 @@
-// Purpose: Validate ai_noise_edge_test.go behavior and guard against regressions.
+// Purpose: Edge-case tests for noise filtering boundary conditions.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/noise-filtering/index.md
 
 // ai_noise_edge_test.go — Edge case and gap-coverage tests for noise filtering.
 package noise

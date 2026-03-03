@@ -62,7 +62,7 @@ func ValidateFormActionURL(rawURL string) error {
 	}
 
 	// In test mode, allow private IPs (httptest.NewServer uses 127.0.0.1)
-	if SkipSSRFCheck {
+	if SkipSSRFCheckEnabled() {
 		return nil
 	}
 

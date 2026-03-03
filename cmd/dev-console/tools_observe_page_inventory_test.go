@@ -1,6 +1,6 @@
 // Purpose: Validate observe(what="page_inventory") composite command.
 // Why: Prevents regressions in the single-call page inventory that combines page info + interactive elements.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_page_inventory_test.go — Tests for observe(what="page_inventory") mode.
 package main

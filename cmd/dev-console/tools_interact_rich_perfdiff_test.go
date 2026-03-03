@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_rich_perfdiff_test.go behavior and guard against regressions.
+// Purpose: Tests for interact rich performance-diff formatting.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 

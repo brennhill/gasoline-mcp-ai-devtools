@@ -1,3 +1,5 @@
+// Purpose: Dismisses native file dialogs on macOS, Linux, and Windows via OS-level automation.
+// Why: Separates dialog dismissal from file-path injection and platform-specific execution.
 package upload
 
 import (

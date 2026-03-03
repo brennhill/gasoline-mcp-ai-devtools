@@ -1,6 +1,6 @@
-// Purpose: Validate api_contract_test.go behavior and guard against regressions.
+// Purpose: Tests for API contract validation and drift detection.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/api-schema/index.md
 
 // api_contract_test.go — Tests for API contract validation.
 // Tests schema learning, shape comparison, violation detection, and the MCP tool interface.

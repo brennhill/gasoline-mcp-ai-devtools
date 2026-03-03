@@ -1,6 +1,6 @@
-// Purpose: Validate paths_more_test.go behavior and guard against regressions.
+// Purpose: Additional tests for state save/load path coverage.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/state-time-travel/index.md
 
 package state
 

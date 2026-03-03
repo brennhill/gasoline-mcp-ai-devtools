@@ -1,3 +1,5 @@
+// Purpose: Builds scan summaries and filters findings by severity and minimum threshold.
+// Why: Separates summary construction and severity filtering from scan orchestration.
 package security
 
 import (

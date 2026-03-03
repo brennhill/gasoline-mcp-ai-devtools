@@ -1,3 +1,5 @@
+// Purpose: Defines element targeting properties for the interact tool (selector, scope, index, nth).
+// Why: Separates targeting properties from action-specific and output properties.
 package schema
 
 func interactTargetingProperties() map[string]any {

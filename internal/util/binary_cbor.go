@@ -1,3 +1,5 @@
+// Purpose: Detects CBOR binary format by matching simple value markers and major type headers.
+// Why: Separates CBOR detection heuristics from other binary format detectors.
 package util
 
 var cborSimpleMarkers = map[byte]binaryMarker{

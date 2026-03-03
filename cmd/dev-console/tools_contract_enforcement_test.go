@@ -1,6 +1,6 @@
-// Purpose: Validate tools_contract_enforcement_test.go behavior and guard against regressions.
+// Purpose: Tests for tool contract enforcement and validation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_contract_enforcement_test.go — Contract enforcement tests, async bridge round-trip,
 // pilot-disabled bad paths, and shared observe helpers.

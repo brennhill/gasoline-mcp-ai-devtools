@@ -1,4 +1,4 @@
-// Purpose: Validate export_sarif_test.go behavior and guard against regressions.
+// Purpose: Tests for SARIF accessibility report export.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 
@@ -593,112 +593,6 @@ func TestExportSARIF_PathTraversal(t *testing.T) {
 }
 
 // ============================================
-// MCP Integration Test
-// ============================================
-
-func TestExportSARIFTool(t *testing.T) {
-	t.Parallel()
-	capture := setupTestCapture(t)
-
-	// Pre-populate the a11y cache with a result
-	cacheKey := capture.a11yCacheKey("", nil)
-	a11yResult := json.RawMessage(`{
-		"violations": [{
-			"id": "link-name",
-			"impact": "serious",
-			"description": "Links must have discernible text",
-			"help": "Links must have discernible text",
-			"helpUrl": "https://dequeuniversity.com/rules/axe/4.10/link-name",
-			"tags": ["wcag2a", "wcag412"],
-			"nodes": [{
-				"html": "<a href=\"/page\"></a>",
-				"target": ["a.nav-link"],
-				"impact": "serious"
-			}]
-		}],
-		"passes": [],
-		"incomplete": [],
-		"inapplicable": []
-	}`)
-	capture.setA11yCacheEntry(cacheKey, a11yResult)
-
-	server, _ := NewServer(filepath.Join(t.TempDir(), "test.jsonl"), 100)
-	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server),
-		capture:    capture,
-	}
-
-	// Call the export_sarif tool
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{}`)
-
-	resp := handler.toolExportSARIF(req, args)
-	if resp.Error != nil {
-		t.Fatalf("Tool returned error: %s", resp.Error.Message)
-	}
-
-	// Parse the MCP response to get the SARIF content
-	var toolResult MCPToolResult
-	if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
-		t.Fatalf("Failed to parse tool result: %v", err)
-	}
-
-	if toolResult.IsError {
-		t.Fatalf("Tool result is an error: %s", toolResult.Content[0].Text)
-	}
-
-	if len(toolResult.Content) == 0 {
-		t.Fatal("Expected content in tool result")
-	}
-
-	// Parse the SARIF JSON from the response
-	var sarifLog SARIFLog
-	if err := json.Unmarshal([]byte(toolResult.Content[0].Text), &sarifLog); err != nil {
-		t.Fatalf("Tool response is not valid SARIF JSON: %v", err)
-	}
-
-	if sarifLog.Version != "2.1.0" {
-		t.Errorf("Expected SARIF version '2.1.0', got %q", sarifLog.Version)
-	}
-	if len(sarifLog.Runs[0].Results) != 1 {
-		t.Errorf("Expected 1 result, got %d", len(sarifLog.Runs[0].Results))
-	}
-}
-
-func TestExportSARIFTool_NoCachedResult(t *testing.T) {
-	t.Parallel()
-	capture := setupTestCapture(t)
-
-	server, _ := NewServer(filepath.Join(t.TempDir(), "test.jsonl"), 100)
-	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server),
-		capture:    capture,
-	}
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{}`)
-
-	resp := handler.toolExportSARIF(req, args)
-	if resp.Error != nil {
-		t.Fatalf("Tool returned JSON-RPC error: %s", resp.Error.Message)
-	}
-
-	// Should be an MCP error response (isError: true)
-	var toolResult MCPToolResult
-	if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
-		t.Fatalf("Failed to parse tool result: %v", err)
-	}
-
-	if !toolResult.IsError {
-		t.Error("Expected isError=true when no cached result available")
-	}
-
-	if !strings.Contains(toolResult.Content[0].Text, "No accessibility audit results available") {
-		t.Errorf("Expected error message about no results, got %q", toolResult.Content[0].Text)
-	}
-}
-
-// ============================================
 // Coverage Gap Tests
 // ============================================
 
@@ -827,22 +721,6 @@ func TestEnsureRule_DedupPath(t *testing.T) {
 		if r.RuleIndex != 0 {
 			t.Errorf("Result[%d] ruleIndex expected 0, got %d", i, r.RuleIndex)
 		}
-	}
-}
-
-// ============================================
-// Coverage: ExportSARIF with invalid JSON (unmarshal error, line 142)
-// ============================================
-
-func TestExportSARIF_InvalidJSON(t *testing.T) {
-	t.Parallel()
-	invalidJSON := json.RawMessage(`not valid json at all`)
-	_, err := ExportSARIF(invalidJSON, SARIFExportOptions{})
-	if err == nil {
-		t.Error("Expected error for invalid JSON input")
-	}
-	if !strings.Contains(err.Error(), "failed to parse") {
-		t.Errorf("Expected 'failed to parse' error, got: %v", err)
 	}
 }
 

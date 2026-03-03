@@ -1,4 +1,4 @@
-// Purpose: Validate reproduction_test.go behavior and guard against regressions.
+// Purpose: Tests for reproduction script generation from captured actions.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/reproduction-scripts/index.md
 

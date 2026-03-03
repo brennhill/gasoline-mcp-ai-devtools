@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_unit_test.go behavior and guard against regressions.
+// Purpose: Unit tests for dev-console tools observe logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_unit_test.go — Unit tests for observe tool helpers.
 package main
@@ -17,7 +17,7 @@ func TestAppendAlertsToResponse(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	server, err := NewServer("/tmp/test-observe-alerts.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-observe-alerts.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}

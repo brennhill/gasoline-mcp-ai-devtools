@@ -1,6 +1,6 @@
-// Purpose: Validate version_check_test.go behavior and guard against regressions.
+// Purpose: Tests for version check against registry.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // version_check_test.go — Unit tests for version check helpers.
 package main

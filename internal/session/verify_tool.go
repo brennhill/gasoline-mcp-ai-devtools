@@ -1,3 +1,5 @@
+// Purpose: Defines MCP tool input types and validation for session verification actions.
+// Why: Separates tool parameter handling from verification computation and snapshot logic.
 package session
 
 import (

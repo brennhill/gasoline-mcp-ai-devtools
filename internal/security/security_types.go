@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 type SecurityFinding struct {
@@ -21,7 +22,7 @@ type SecurityFinding struct {
 	Remediation string `json:"remediation"`
 }
 
-type LogEntry map[string]any
+type LogEntry = types.LogEntry
 
 type SecurityScanInput struct {
 	NetworkBodies    []capture.NetworkBody

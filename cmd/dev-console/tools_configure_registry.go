@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
 )
 
 // ConfigureHandler is the function signature for configure action handlers.
@@ -107,11 +105,4 @@ var configureHandlers = map[string]ConfigureHandler{
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.
-func getValidConfigureActions() string {
-	actions := make([]string, 0, len(configureHandlers))
-	for action := range configureHandlers {
-		actions = append(actions, action)
-	}
-	sort.Strings(actions)
-	return strings.Join(actions, ", ")
-}
+func getValidConfigureActions() string { return sortedMapKeys(configureHandlers) }

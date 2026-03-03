@@ -1,6 +1,6 @@
-// Purpose: Validate ring_buffer_bench_test.go behavior and guard against regressions.
+// Purpose: Benchmark ring buffer throughput and latency.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/ring-buffer/index.md
 
 package buffers
 

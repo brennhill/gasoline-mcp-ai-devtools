@@ -1,3 +1,5 @@
+// Purpose: Converts network body and waterfall entries into HAR 1.2 entry structures.
+// Why: Separates entry-level conversion from HAR document assembly and file I/O.
 package export
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"

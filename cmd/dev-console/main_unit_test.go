@@ -1,6 +1,6 @@
-// Purpose: Validate main_unit_test.go behavior and guard against regressions.
+// Purpose: Unit tests for dev-console main logic.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // main_unit_test.go — Unit tests for pure functions in main.go.
 package main

@@ -1,4 +1,4 @@
-// Purpose: Validate pagination_test.go behavior and guard against regressions.
+// Purpose: Tests for pagination slicing, limits, and offset correctness.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 

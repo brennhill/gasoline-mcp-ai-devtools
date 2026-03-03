@@ -1,3 +1,5 @@
+// Purpose: Maintains an in-memory audit log of security mode changes and blocked mutation attempts.
+// Why: Separates security event auditing from mode management and policy configuration.
 package security
 
 import (

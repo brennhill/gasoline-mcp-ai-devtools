@@ -1,4 +1,4 @@
-// Purpose: Validate performance_diff_test.go behavior and guard against regressions.
+// Purpose: Tests for session performance diff computation.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 

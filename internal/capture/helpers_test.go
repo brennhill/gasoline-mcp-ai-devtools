@@ -1,4 +1,4 @@
-// Purpose: Validate helpers_test.go behavior and guard against regressions.
+// Purpose: Tests for capture helper functions.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

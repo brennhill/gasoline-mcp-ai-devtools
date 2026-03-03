@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_audit_test.go behavior and guard against regressions.
+// Purpose: Tests for observe audit trail integration.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_audit_test.go — Behavioral tests for observe tool
 //
@@ -44,7 +44,7 @@ type observeTestEnv struct {
 
 func newObserveTestEnv(t *testing.T) *observeTestEnv {
 	t.Helper()
-	server, err := NewServer("/tmp/test-observe-audit.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-observe-audit.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

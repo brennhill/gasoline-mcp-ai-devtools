@@ -21,6 +21,7 @@ interface TargetResolutionError {
     payload: Record<string, unknown>;
     message: string;
 }
+export declare function debugLog(category: string, message: string, data?: unknown): void;
 /** Send a query result back through /sync */
 export declare function sendResult(syncClient: SyncClient, queryId: string, result: unknown): void;
 /** Send an async command result back through /sync */
@@ -41,5 +42,20 @@ export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryPa
  * Covers internal browser pages and known CSP-restricted origins.
  */
 export declare function isRestrictedUrl(url: string | undefined): boolean;
+/** Check if an error indicates the content script is not loaded on the target page. */
+export declare function isContentScriptUnreachableError(err: unknown): boolean;
+/**
+ * Minimal context shape needed by requireAiWebPilot.
+ * Avoids circular import with registry.ts (which defines CommandContext).
+ */
+interface AiWebPilotGuardContext {
+    sendResult: (result: unknown) => void;
+}
+/**
+ * Guard that checks AI Web Pilot is enabled.
+ * Returns true if enabled and the caller should proceed.
+ * Returns false if disabled — the error response has already been sent.
+ */
+export declare function requireAiWebPilot(ctx: AiWebPilotGuardContext): boolean;
 export {};
 //# sourceMappingURL=helpers.d.ts.map

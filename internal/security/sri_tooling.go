@@ -1,3 +1,5 @@
+// Purpose: Parses MCP tool parameters and dispatches SRI generation with formatted output.
+// Why: Separates MCP tool integration from SRI hash computation and generation logic.
 package security
 
 import (

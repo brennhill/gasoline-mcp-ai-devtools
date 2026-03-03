@@ -1,4 +1,4 @@
-// Purpose: Validate export_coverage_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for HAR/SARIF export edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 

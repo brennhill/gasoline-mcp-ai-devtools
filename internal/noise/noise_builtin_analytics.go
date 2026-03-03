@@ -1,3 +1,5 @@
+// Purpose: Defines built-in noise rules for analytics and tracking network requests.
+// Why: Separates analytics-specific rules from browser, framework, and devtooling categories.
 package noise
 
 func builtinAnalyticsRuleSpecs() []builtinRuleSpec {

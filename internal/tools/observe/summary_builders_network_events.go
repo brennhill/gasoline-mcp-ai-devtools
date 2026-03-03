@@ -1,3 +1,5 @@
+// Purpose: Builds compact summary objects for network bodies, waterfall, and WebSocket data.
+// Why: Separates network/event summary construction from error, log, and bundle summaries.
 package observe
 
 import (

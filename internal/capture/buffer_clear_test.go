@@ -1,4 +1,4 @@
-// Purpose: Validate buffer_clear_test.go behavior and guard against regressions.
+// Purpose: Tests for capture buffer clearing and reset behavior.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

@@ -1,3 +1,5 @@
+// Purpose: Provides thread-safe accessors for monotonic network, WebSocket, and action counters.
+// Why: Separates health/count accessors from event and performance accessors to limit file scope.
 package capture
 
 import "time"

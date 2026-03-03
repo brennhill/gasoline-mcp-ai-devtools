@@ -1,6 +1,6 @@
-// Purpose: Validate tools_configure_wave_abc_tdd_test.go behavior and guard against regressions.
+// Purpose: TDD wave tests for configure tool features.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

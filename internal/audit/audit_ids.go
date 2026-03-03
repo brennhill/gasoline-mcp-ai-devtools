@@ -1,3 +1,5 @@
+// Purpose: Generates cryptographically random audit entry and session IDs.
+// Why: Centralizes ID generation so audit trail and session creation share a single scheme.
 package audit
 
 import (

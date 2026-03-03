@@ -11,11 +11,11 @@ import (
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
-// LogEntry is a type alias for server.LogEntry.
-type LogEntry = server.LogEntry
+// LogEntry is a type alias for the canonical definition in internal/types.
+type LogEntry = types.LogEntry
 
 // Compatibility aliases for telemetry payloads used by filtering and tests.
 type NetworkBody = capture.NetworkBody

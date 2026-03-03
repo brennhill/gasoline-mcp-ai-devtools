@@ -1,3 +1,5 @@
+// Purpose: Classifies network bodies into checkpoint diffs by detecting new failures and status regressions.
+// Why: Separates network diff classification from console and WebSocket helpers.
 package checkpoint
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"

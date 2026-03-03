@@ -1,3 +1,5 @@
+// Purpose: Formats human-readable summaries of test healing results for MCP responses.
+// Why: Separates presentation formatting from healing computation and selector analysis.
 package testgen
 
 import "fmt"

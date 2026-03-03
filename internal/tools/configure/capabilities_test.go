@@ -1,6 +1,6 @@
-// Purpose: Validate capabilities_test.go behavior and guard against regressions.
+// Purpose: Tests for describe_capabilities schema generation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // capabilities_test.go — Tests for capability map building.
 package configure

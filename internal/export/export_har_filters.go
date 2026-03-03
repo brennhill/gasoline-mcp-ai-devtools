@@ -1,3 +1,5 @@
+// Purpose: Filters network waterfall and body entries by URL, method, and status before HAR export.
+// Why: Isolates filter matching from conversion and file writing to keep each concern testable.
 package export
 
 import (

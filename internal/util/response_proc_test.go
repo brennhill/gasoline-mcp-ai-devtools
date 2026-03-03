@@ -1,6 +1,5 @@
-// Purpose: Validate response_proc_test.go behavior and guard against regressions.
+// Purpose: Tests for HTTP response processing utilities.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
 
 //go:build !windows
 

@@ -3,6 +3,8 @@
 
 package mcp
 
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+
 // MCPContentBlock represents a single content block in an MCP tool result.
 // Supports both text (type="text") and image (type="image") content types.
 // For text: Type + Text are used. For image: Type + Data + MimeType are used.
@@ -81,6 +83,5 @@ type MCPResourceTemplatesListResult struct {
 	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
 }
 
-// LogEntry represents a single log entry from the browser console.
-// Keys typically include: ts, level, message, source, url, stack_trace.
-type LogEntry = map[string]any
+// LogEntry is a type alias for the canonical definition in internal/types.
+type LogEntry = types.LogEntry

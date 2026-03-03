@@ -1,3 +1,5 @@
+// Purpose: Streams multipart form data including file content to the upload endpoint.
+// Why: Separates multipart streaming from validation and error handling.
 package upload
 
 import (

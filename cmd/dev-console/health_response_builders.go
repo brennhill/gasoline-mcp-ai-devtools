@@ -1,6 +1,6 @@
 // Purpose: Assembles get_health payloads from runtime state, capture snapshots, and process metadata.
 // Why: Keeps response composition logic cohesive and independent from mutation/handler paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

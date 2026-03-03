@@ -1,3 +1,5 @@
+// Purpose: Validates form submission fields, file paths, and security constraints before upload.
+// Why: Separates pre-submission validation from streaming and error handling.
 package upload
 
 import (

@@ -1,6 +1,6 @@
-// Purpose: Validate race_enabled_test.go behavior and guard against regressions.
+// Purpose: Race-detector-enabled concurrency tests for ring buffer.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/ring-buffer/index.md
 
 //go:build race
 

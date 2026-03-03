@@ -1,3 +1,5 @@
+// Purpose: Merges core and runtime properties into the complete configure tool property set.
+// Why: Provides the top-level assembly point for configure schema properties.
 package schema
 
 func configureToolProperties() map[string]any {

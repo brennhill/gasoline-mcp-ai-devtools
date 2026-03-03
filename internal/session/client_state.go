@@ -1,6 +1,6 @@
 // Purpose: Defines per-client cursor/state model and client-ID derivation utilities.
 // Why: Keeps per-client mutable state behavior separate from registry orchestration.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 package session
 

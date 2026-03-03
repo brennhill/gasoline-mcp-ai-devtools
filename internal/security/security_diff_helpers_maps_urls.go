@@ -1,3 +1,5 @@
+// Purpose: Normalizes transport maps and compares URL security between diff snapshots.
+// Why: Separates URL and transport diff logic from header, cookie, and summary helpers.
 package security
 
 import (

@@ -1,3 +1,5 @@
+// Purpose: Formats log diff results into a human-readable regression report string.
+// Why: Separates report rendering from diff computation and helper utilities.
 package recording
 
 import "fmt"

@@ -1,3 +1,5 @@
+// Purpose: Defines built-in noise rules for HMR, source maps, and dev server traffic.
+// Why: Separates development-tooling rules from analytics, browser, and framework categories.
 package noise
 
 func builtinDevToolingRuleSpecs() []builtinRuleSpec {

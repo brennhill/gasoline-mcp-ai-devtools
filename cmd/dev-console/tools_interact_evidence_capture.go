@@ -1,3 +1,6 @@
+// Purpose: Captures mutation and screenshot evidence during interact commands for debugging.
+// Why: Provides post-action proof artifacts (DOM diffs, screenshots) without requiring manual reproduction.
+
 package main
 
 import (

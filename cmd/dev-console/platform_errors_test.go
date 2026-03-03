@@ -1,6 +1,6 @@
-// Purpose: Validate platform_errors_test.go behavior and guard against regressions.
+// Purpose: Tests for platform-specific error message formatting.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

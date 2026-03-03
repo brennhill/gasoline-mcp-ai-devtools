@@ -17,7 +17,14 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js'
  * Load saved options
  */
 export function loadOptions() {
-    chrome.storage.local.get([StorageKey.SERVER_URL, StorageKey.SCREENSHOT_ON_ERROR, StorageKey.SOURCE_MAP_ENABLED, StorageKey.DEFERRAL_ENABLED, StorageKey.DEBUG_MODE, StorageKey.THEME], (result) => {
+    chrome.storage.local.get([
+        StorageKey.SERVER_URL,
+        StorageKey.SCREENSHOT_ON_ERROR,
+        StorageKey.SOURCE_MAP_ENABLED,
+        StorageKey.DEFERRAL_ENABLED,
+        StorageKey.DEBUG_MODE,
+        StorageKey.THEME
+    ], (result) => {
         // Set server URL
         const serverUrlInput = document.getElementById('server-url-input');
         if (serverUrlInput) {

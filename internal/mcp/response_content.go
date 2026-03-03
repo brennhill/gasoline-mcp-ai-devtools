@@ -1,3 +1,5 @@
+// Purpose: Builds and manipulates MCP image and text content blocks within tool responses.
+// Why: Separates content-block construction from JSON marshaling and size clamping.
 package mcp
 
 import (

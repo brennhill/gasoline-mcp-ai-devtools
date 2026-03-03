@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_contract_test.go behavior and guard against regressions.
+// Purpose: Tests for observe tool response contract compliance.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_contract_test.go — Response shape contracts for observe tool.
 // Each test verifies that an observe mode returns the correct JSON fields with

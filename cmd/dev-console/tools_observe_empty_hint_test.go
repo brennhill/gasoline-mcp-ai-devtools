@@ -1,6 +1,6 @@
 // Purpose: Verify diagnostic hints when network_bodies, websocket_events, and websocket_status return empty.
 // Why: Fixes #278 (network_bodies empty despite waterfall data) and #287 (websocket_events empty).
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_empty_hint_test.go — Tests for empty-result diagnostic hints.
 // When an observe mode returns 0 entries, the response MUST include a "hint" field

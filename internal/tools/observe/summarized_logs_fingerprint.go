@@ -1,3 +1,5 @@
+// Purpose: Normalizes log messages into stable fingerprints for grouping and deduplication.
+// Why: Separates fingerprinting heuristics from group assembly and type definitions.
 package observe
 
 import (

@@ -1,3 +1,5 @@
+// Purpose: Provides defensive JSON marshal/unmarshal helpers with fallback values for MCP responses.
+// Why: Isolates JSON safety wrappers from content building and markdown formatting.
 package mcp
 
 import (

@@ -1,6 +1,6 @@
-// Purpose: Validate tools_configure_sequence_test.go behavior and guard against regressions.
+// Purpose: Tests for configure macro sequence save/replay.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_sequence_test.go — Tests for macro sequence CRUD and replay.
 package main

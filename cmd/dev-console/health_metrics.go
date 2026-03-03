@@ -1,6 +1,6 @@
 // Purpose: Tracks per-tool request/error counters and uptime snapshots for health reporting.
 // Why: Isolates mutable health state and synchronization from response assembly logic.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

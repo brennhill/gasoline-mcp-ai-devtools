@@ -1,3 +1,5 @@
+// Purpose: Provides thread-safe accessors for network, WebSocket, action, and log timestamps.
+// Why: Separates timestamp-based event accessors from count and performance accessors.
 package capture
 
 import "time"

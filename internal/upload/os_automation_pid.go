@@ -1,3 +1,5 @@
+// Purpose: Detects browser process IDs on macOS for upload automation targeting.
+// Why: Isolates process detection from dialog injection and platform-specific execution.
 package upload
 
 import (

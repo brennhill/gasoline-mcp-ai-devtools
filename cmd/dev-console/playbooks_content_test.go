@@ -1,6 +1,6 @@
-// Purpose: Validate playbooks_content_test.go behavior and guard against regressions.
+// Purpose: Tests for playbook content serving and validation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

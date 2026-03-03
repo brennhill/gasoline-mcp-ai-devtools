@@ -1,3 +1,5 @@
+// Purpose: Defines form-filling and wait-condition properties for the interact tool.
+// Why: Separates form and wait properties from targeting, output, and core action properties.
 package schema
 
 func interactFormAndWaitProperties() map[string]any {

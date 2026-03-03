@@ -1,6 +1,6 @@
-// Purpose: Validate branch_coverage_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for error clustering and API schema analysis edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/api-schema/index.md
 
 // branch_coverage_test.go — Branch coverage tests for partially-covered functions.
 package analysis

@@ -1,3 +1,5 @@
+// Purpose: Builds compact summary objects for error and log entries in summary-mode responses.
+// Why: Separates error/log summary construction from bundle and network summary builders.
 package observe
 
 import "sort"

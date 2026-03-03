@@ -1,3 +1,5 @@
+// Purpose: Detects suspicious TLDs, typosquatting, and anomalous network patterns.
+// Why: Separates detection heuristics from static data and distance calculations.
 package security
 
 import (

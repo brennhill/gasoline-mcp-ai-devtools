@@ -1,4 +1,4 @@
-// Purpose: Validate export_har_test.go behavior and guard against regressions.
+// Purpose: Tests for HAR export formatting and spec compliance.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 

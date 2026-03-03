@@ -1,3 +1,5 @@
+// Purpose: Classifies WebSocket events into checkpoint diffs for connections, disconnections, and errors.
+// Why: Separates WebSocket diff classification from console and network helpers.
 package checkpoint
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"

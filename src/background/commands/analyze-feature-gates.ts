@@ -24,20 +24,12 @@ registerCommand('feature_gates', async (ctx) => {
       return
     }
 
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
-    } else {
-      ctx.sendResult(result)
-    }
+    ctx.sendResult(result)
   } catch (err) {
     const message = (err as Error).message || 'Feature gates scan failed'
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message)
-    } else {
-      ctx.sendResult({
-        error: 'feature_gates_failed',
-        message
-      })
-    }
+    ctx.sendResult({
+      error: 'feature_gates_failed',
+      message
+    })
   }
 })

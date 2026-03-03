@@ -1,3 +1,5 @@
+// Purpose: Tracks AI Web Pilot enablement state with startup uncertainty handling.
+// Why: Isolates pilot feature-gate logic from other extension state accessors.
 package capture
 
 import "time"

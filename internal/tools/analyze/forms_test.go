@@ -1,6 +1,6 @@
-// Purpose: Validate forms_test.go behavior and guard against regressions.
+// Purpose: Tests for form validation analysis.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/analyze-tool/index.md
 
 // forms_test.go — Tests for form discovery handler argument parsing.
 package analyze

@@ -1,3 +1,5 @@
+// Purpose: Defines SARIF 2.1.0 specification types and constants for accessibility report output.
+// Why: Centralizes SARIF type definitions so conversion and file modules share a single schema.
 package export
 
 // version is set at build time via -ldflags "-X ...internal/export.version=..."

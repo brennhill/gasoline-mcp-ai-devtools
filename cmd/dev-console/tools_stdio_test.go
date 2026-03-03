@@ -1,6 +1,6 @@
-// Purpose: Validate tools_stdio_test.go behavior and guard against regressions.
+// Purpose: Tests for stdio transport tool call handling.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_stdio_test.go — Unit tests verifying tool handlers produce no stdio pollution
 //
@@ -78,7 +78,7 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 	t.Helper()
 
 	// Create server with temp log file
-	server, err := NewServer("/tmp/test-gasoline-stdio.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-gasoline-stdio.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

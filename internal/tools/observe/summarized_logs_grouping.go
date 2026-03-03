@@ -1,3 +1,5 @@
+// Purpose: Groups log entries by fingerprint into recurring groups and anomalies.
+// Why: Separates grouping logic from fingerprinting and type definitions.
 package observe
 
 import (

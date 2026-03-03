@@ -1,3 +1,5 @@
+// Purpose: Manages tracked tab state including tab ID, URL, title, and navigation history.
+// Why: Isolates tab-tracking mutations from other extension state accessors.
 package capture
 
 import "time"

@@ -1,3 +1,5 @@
+// Purpose: Scans network bodies and console logs for exposed credentials using pattern matching.
+// Why: Separates credential scanning logic from pattern definitions and helper utilities.
 package security
 
 import (

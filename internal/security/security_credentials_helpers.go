@@ -1,3 +1,5 @@
+// Purpose: Provides secret redaction and helper functions for credential scanning output.
+// Why: Isolates presentation helpers from credential pattern matching and scanning logic.
 package security
 
 import "strings"

@@ -1,13 +1,11 @@
 // Purpose: Central registry for observe mode handlers and mode metadata.
 // Why: Keeps mode definitions discoverable in one place and decouples registry updates from dispatch logic.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
@@ -138,11 +136,4 @@ var serverSideObserveModes = map[string]bool{
 }
 
 // getValidObserveModes returns a sorted, comma-separated list of valid observe modes.
-func getValidObserveModes() string {
-	modes := make([]string, 0, len(observeHandlers))
-	for mode := range observeHandlers {
-		modes = append(modes, mode)
-	}
-	sort.Strings(modes)
-	return strings.Join(modes, ", ")
-}
+func getValidObserveModes() string { return sortedMapKeys(observeHandlers) }

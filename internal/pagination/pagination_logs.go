@@ -4,11 +4,14 @@
 
 package pagination
 
-import "fmt"
+import (
+	"fmt"
 
-// LogEntry is a map-based log entry from the capture package.
-// any: JSON log entries have dynamic fields; map allows flexible access without schema.
-type LogEntry = map[string]any
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+)
+
+// LogEntry is a type alias for the canonical definition in internal/types.
+type LogEntry = types.LogEntry
 
 // entryStr extracts a string field from a LogEntry map.
 // Returns empty string if field doesn't exist or isn't a string.

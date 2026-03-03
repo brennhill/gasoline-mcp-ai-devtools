@@ -1,6 +1,6 @@
-// Purpose: Validate main_helpers_more_test.go behavior and guard against regressions.
+// Purpose: Additional tests for main helper functions.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

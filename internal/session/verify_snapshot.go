@@ -1,6 +1,6 @@
 // Purpose: Captures verification snapshots and normalizes console/network data for comparison.
 // Why: Isolates snapshot transformation logic from session action orchestration.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 package session
 

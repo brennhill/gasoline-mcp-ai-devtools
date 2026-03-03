@@ -1,5 +1,5 @@
 // Purpose: Returns the MCP tool definition (name, description, input schema) for the observe tool.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/api-schema/index.md
 
 package schema
 

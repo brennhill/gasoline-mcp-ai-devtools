@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
@@ -42,7 +40,7 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 		return observe.AnalyzeHistory(h, req, args)
 	},
 	"security_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleAnalyzeSecurityAudit(req, args)
+		return h.toolAnalyzeSecurityAudit(req, args)
 	},
 	"third_party_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAuditThirdParties(req, args)
@@ -121,54 +119,24 @@ var analyzeAliases = map[string]string{
 	"a11y": "accessibility",
 }
 
-// getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
-func getValidAnalyzeModes() string {
-	modes := make([]string, 0, len(analyzeHandlers))
-	for mode := range analyzeHandlers {
-		modes = append(modes, mode)
-	}
-	sort.Strings(modes)
-	return strings.Join(modes, ", ")
+// analyzeAliasParams defines the deprecated alias parameters for the analyze tool.
+var analyzeAliasParams = []modeAlias{
+	{JSONField: "mode"},
+	{JSONField: "action"},
 }
+
+// getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
+func getValidAnalyzeModes() string { return sortedMapKeys(analyzeHandlers) }
 
 // toolAnalyze dispatches analyze requests based on the 'what' parameter.
 func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		What   string `json:"what"`
-		Mode   string `json:"mode"`
-		Action string `json:"action"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	what := params.What
-	usedAliasParam := ""
-	if what != "" && params.Mode != "" && params.Mode != what {
-		return whatAliasConflictResponse(req, "mode", what, params.Mode, getValidAnalyzeModes())
-	}
-	if what != "" && params.Action != "" && params.Action != what {
-		return whatAliasConflictResponse(req, "action", what, params.Action, getValidAnalyzeModes())
-	}
-	if what == "" {
-		if params.Mode != "" {
-			what = params.Mode
-			usedAliasParam = "mode"
-		} else if params.Action != "" {
-			what = params.Action
-			usedAliasParam = "action"
-		}
-	}
-
-	if what == "" {
-		validModes := getValidAnalyzeModes()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
-	}
-
-	if alias, ok := analyzeAliases[what]; ok {
-		what = alias
+	what, usedAliasParam, errResp := resolveToolMode(req, args, analyzeAliasParams, modeResolution{
+		ToolName:   "analyze",
+		ValidModes: getValidAnalyzeModes(),
+		Aliases:    analyzeAliases,
+	})
+	if errResp != nil {
+		return *errResp
 	}
 
 	handler, ok := analyzeHandlers[what]

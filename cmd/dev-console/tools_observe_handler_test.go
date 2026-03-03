@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_handler_test.go behavior and guard against regressions.
+// Purpose: Tests for observe tool handler dispatch.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // TODO: Split into tools_observe_page_test.go for page-specific tests when this file approaches 1000 LOC.
 

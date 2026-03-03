@@ -1,3 +1,5 @@
+// Purpose: Defines regex patterns and types for log fingerprinting and summarization.
+// Why: Centralizes shared constants and types for fingerprint, grouping, and summary modules.
 package observe
 
 import "regexp"

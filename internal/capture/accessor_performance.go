@@ -1,3 +1,5 @@
+// Purpose: Provides thread-safe accessors for storing and retrieving performance snapshots.
+// Why: Isolates performance snapshot access from other capture store accessors.
 package capture
 
 // AddPerformanceSnapshots stores performance snapshots from the extension.
