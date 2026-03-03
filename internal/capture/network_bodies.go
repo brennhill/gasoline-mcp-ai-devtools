@@ -46,30 +46,13 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buffers.repairNetworkParallelArrays()
-	c.buffers.networkTotalAdded += int64(len(bodies))
-	for i := range bodies {
-		if bodies[i].Status >= 400 {
-			c.buffers.networkErrorTotalAdded++
-		}
-	}
 	now := time.Now()
-
 	activeTestIDs := make([]string, 0)
 	for testID := range c.extensionState.activeTestIDs {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
-	for i := range bodies {
-		bodies[i].TestIDs = activeTestIDs
-		detectAndSetBinaryFormat(&bodies[i])
-		c.buffers.networkBodies = append(c.buffers.networkBodies, bodies[i])
-		c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, now)
-		c.buffers.networkBodyMemoryTotal += nbEntryMemory(&bodies[i])
-	}
-
-	c.buffers.evictNetworkByCount()
-	c.buffers.evictNetworkForMemory()
+	c.buffers.appendNetworkBodies(bodies, activeTestIDs, now)
 }
 
 // GetNetworkBodyCount returns the current number of network bodies in the buffer.
