@@ -1101,6 +1101,12 @@
   function handleFormDiscoveryQuery(params, sendResponse) {
     return forwardInjectQuery("GASOLINE_FORM_DISCOVERY_QUERY", "GASOLINE_FORM_DISCOVERY_RESPONSE", "Form discovery", params, sendResponse);
   }
+  function handleFormStateQuery(params, sendResponse) {
+    return forwardInjectQuery("GASOLINE_FORM_STATE_QUERY", "GASOLINE_FORM_STATE_RESPONSE", "Form state", params, sendResponse);
+  }
+  function handleDataTableQuery(params, sendResponse) {
+    return forwardInjectQuery("GASOLINE_DATA_TABLE_QUERY", "GASOLINE_DATA_TABLE_RESPONSE", "Data table extraction", params, sendResponse);
+  }
   function handleLinkHealthQuery(params, sendResponse) {
     return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
   }
@@ -2312,6 +2318,8 @@
       LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
       COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
       FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
+      DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
       GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
       GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
       GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)

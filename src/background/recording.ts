@@ -157,7 +157,10 @@ export async function startRecording(
 
     // Auto-enable tab tracking if not already tracked
     const storage = await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)
-    console.log(LOG, 'Tracked tab:', { trackedTabId: storage[StorageKey.TRACKED_TAB_ID], willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID] })
+    console.log(LOG, 'Tracked tab:', {
+      trackedTabId: storage[StorageKey.TRACKED_TAB_ID],
+      willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID]
+    })
     if (!storage[StorageKey.TRACKED_TAB_ID]) {
       await chrome.storage.local.set({
         [StorageKey.TRACKED_TAB_ID]: tab.id,

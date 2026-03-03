@@ -148,7 +148,9 @@ export function showSubtitle(text) {
     bar.style.opacity = '1';
     // Auto-clear after 60s to prevent stale overlays from persisting indefinitely
     clearAutoTimer();
-    subtitleAutoTimer = setTimeout(() => { clearSubtitle(); }, SUBTITLE_AUTO_TIMEOUT_MS);
+    subtitleAutoTimer = setTimeout(() => {
+        clearSubtitle();
+    }, SUBTITLE_AUTO_TIMEOUT_MS);
 }
 /**
  * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.

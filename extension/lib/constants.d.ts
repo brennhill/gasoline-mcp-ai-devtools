@@ -71,7 +71,7 @@ export declare const SettingName: {
     readonly SUBTITLES: "setSubtitlesEnabled";
     readonly SERVER_URL: "setServerUrl";
 };
-export type SettingNameValue = typeof SettingName[keyof typeof SettingName];
+export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
 /** All valid setting names as a Set (for runtime validation) */
 export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
 /**

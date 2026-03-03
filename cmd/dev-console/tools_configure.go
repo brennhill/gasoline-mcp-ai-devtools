@@ -69,10 +69,6 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 }
 
-func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureStoreImpl(req, args)
-}
-
 func isStoreAction(action string) bool {
 	switch action {
 	case "save", "load", "list", "delete", "stats":
@@ -95,10 +91,6 @@ func (h *ToolHandler) toolConfigureSecurityMode(req JSONRPCRequest, args json.Ra
 // This covers the case where the daemon is responsive but needs a clean restart.
 func (h *ToolHandler) toolConfigureRestart(req JSONRPCRequest) JSONRPCResponse {
 	return h.configureRestartImpl(req)
-}
-
-func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureLoadSessionContextImpl(req, args)
 }
 
 // toolConfigureClear handles buffer-specific clearing with optional buffer parameter.

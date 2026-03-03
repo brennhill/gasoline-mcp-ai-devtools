@@ -196,7 +196,13 @@ async function checkLink(url, timeout_ms) {
     }
 }
 /** Sentinel response for failed fetch attempts. */
-const FAILED_RESPONSE = { status: 0, ok: false, redirected: false, url: '', headers: new Headers() };
+const FAILED_RESPONSE = {
+    status: 0,
+    ok: false,
+    redirected: false,
+    url: '',
+    headers: new Headers()
+};
 /**
  * Attempt a fetch and return a normalized result.
  * Re-throws AbortError (timeout) so the caller can handle it.

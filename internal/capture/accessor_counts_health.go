@@ -6,28 +6,28 @@ import "time"
 func (c *Capture) GetNetworkTotalAdded() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.networkTotalAdded
+	return c.buffers.networkTotal()
 }
 
 // GetNetworkErrorTotalAdded returns the monotonic total of error network bodies ever added.
 func (c *Capture) GetNetworkErrorTotalAdded() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.networkErrorTotalAdded
+	return c.buffers.networkErrorTotal()
 }
 
 // GetWebSocketTotalAdded returns the monotonic total of WebSocket events ever added
 func (c *Capture) GetWebSocketTotalAdded() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.wsTotalAdded
+	return c.buffers.webSocketTotal()
 }
 
 // GetActionTotalAdded returns the monotonic total of actions ever added
 func (c *Capture) GetActionTotalAdded() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.actionTotalAdded
+	return c.buffers.actionTotal()
 }
 
 // CaptureSnapshot is an immutable point-in-time view of core ring-buffer counters.
@@ -52,12 +52,12 @@ func (c *Capture) GetSnapshot() CaptureSnapshot {
 	defer c.mu.RUnlock()
 
 	return CaptureSnapshot{
-		NetworkTotalAdded:   c.networkTotalAdded,
-		WebSocketTotalAdded: c.wsTotalAdded,
-		ActionTotalAdded:    c.actionTotalAdded,
-		NetworkCount:        len(c.networkBodies),
-		WebSocketCount:      len(c.wsEvents),
-		ActionCount:         len(c.enhancedActions),
+		NetworkTotalAdded:   c.buffers.networkTotal(),
+		WebSocketTotalAdded: c.buffers.webSocketTotal(),
+		ActionTotalAdded:    c.buffers.actionTotal(),
+		NetworkCount:        c.buffers.networkCount(),
+		WebSocketCount:      c.buffers.webSocketCount(),
+		ActionCount:         c.buffers.actionCount(),
 	}
 }
 
@@ -104,10 +104,10 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 	defer c.mu.RUnlock()
 
 	return HealthSnapshot{
-		WebSocketCount:        len(c.wsEvents),
-		NetworkBodyCount:      len(c.networkBodies),
-		ActionCount:           len(c.enhancedActions),
-		ConnectionCount:       len(c.wsConnections.connections),
+		WebSocketCount:        c.buffers.webSocketCount(),
+		NetworkBodyCount:      c.buffers.networkCount(),
+		ActionCount:           c.buffers.actionCount(),
+		ConnectionCount:       c.wsConnections.connectionCount(),
 		LastPollTime:          c.extensionState.lastPollAt,
 		ExtSessionID:          c.extensionState.extSessionID,
 		ExtSessionChangedTime: c.extensionState.extSessionChangedAt,

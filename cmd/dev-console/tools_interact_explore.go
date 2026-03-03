@@ -16,14 +16,14 @@ import (
 // interactive elements, readable text, and navigation links in one response.
 // If url is provided, the extension navigates first before collecting data.
 // Screenshot is appended server-side after the extension returns.
-func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.requirePilot(req); blocked {
+func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -58,11 +58,11 @@ func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("explore_page", params.URL, nil)
+	h.parent.recordAIAction("explore_page", params.URL, nil)
 
-	resp := h.MaybeWaitForCommand(req, correlationID, args, "Explore page queued")
+	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "Explore page queued")
 
 	// Append inline screenshot only if the command completed (not queued or error)
 	if !isErrorResponse(resp) && !isResponseQueued(resp) {

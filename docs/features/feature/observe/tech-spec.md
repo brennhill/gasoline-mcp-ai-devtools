@@ -3,7 +3,7 @@ doc_type: tech-spec
 feature_id: feature-observe
 status: shipped
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -33,6 +33,16 @@ links:
 ## Pagination and Filtering
 - Cursor pagination implemented for logs via `internal/pagination`.
 - Filter keys (`url`, `method`, `status_min`, `status_max`, `level`, `min_level`, etc.) are mode-specific.
+
+## Response Metadata Contract
+- Buffer-backed observe modes include `metadata` with:
+  - `retrieved_at`, `is_stale`, `data_age`, `data_age_ms`
+- `data_age_ms` is a machine-readable freshness field:
+  - non-negative when data exists
+  - `-1` sentinel when no data exists
+- `observe({what:"page"})` includes readiness fields:
+  - `tab_status` (tab lifecycle status from extension sync)
+  - `page_ready_for_commands` (ready gate used by interact/automation flows)
 
 ## Error and Resilience Behavior
 - Missing/unknown `what` yields structured errors.

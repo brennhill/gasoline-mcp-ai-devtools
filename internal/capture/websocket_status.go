@@ -2,79 +2,10 @@ package capture
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
-
-// trackConnection applies one event to per-connection lifecycle state.
-//
-// Failure semantics:
-// - Events for unknown IDs are tolerated and ignored where state cannot be reconciled.
-func (c *Capture) trackConnection(event WebSocketEvent) {
-	switch event.Event {
-	case "open":
-		c.trackConnOpen(event)
-	case "close":
-		c.trackConnClose(event)
-	case "error":
-		if conn := c.wsConnections.connections[event.ID]; conn != nil {
-			conn.state = "error"
-		}
-	case "message":
-		c.trackConnMessage(event)
-	}
-}
-
-// trackConnOpen registers/refreshes active connection metadata.
-//
-// Invariants:
-// - Active connection map is bounded by maxActiveConns using oldest-id eviction.
-func (c *Capture) trackConnOpen(event WebSocketEvent) {
-	if len(c.wsConnections.connections) >= maxActiveConns && len(c.wsConnections.connOrder) > 0 {
-		oldestID := c.wsConnections.connOrder[0]
-		delete(c.wsConnections.connections, oldestID)
-		newOrder := make([]string, len(c.wsConnections.connOrder)-1)
-		copy(newOrder, c.wsConnections.connOrder[1:])
-		c.wsConnections.connOrder = newOrder
-	}
-	c.wsConnections.connections[event.ID] = &connectionState{
-		id: event.ID, url: event.URL, state: "open", openedAt: event.Timestamp,
-	}
-	c.wsConnections.connOrder = append(c.wsConnections.connOrder, event.ID)
-}
-
-// trackConnClose finalizes a connection and moves summary into closed history.
-//
-// Invariants:
-// - Closed connection history is bounded by maxClosedConns.
-//
-// Failure semantics:
-// - Unknown close events are ignored; no synthetic connection is created.
-func (c *Capture) trackConnClose(event WebSocketEvent) {
-	conn := c.wsConnections.connections[event.ID]
-	if conn == nil {
-		return
-	}
-	closed := WebSocketClosedConnection{
-		ID: event.ID, URL: conn.url, State: "closed",
-		OpenedAt: conn.openedAt, ClosedAt: event.Timestamp,
-		CloseCode: event.CloseCode, CloseReason: event.CloseReason,
-	}
-	closed.TotalMessages.Incoming = conn.incoming.total
-	closed.TotalMessages.Outgoing = conn.outgoing.total
-
-	c.wsConnections.closedConns = append(c.wsConnections.closedConns, closed)
-	if len(c.wsConnections.closedConns) > maxClosedConns {
-		keep := len(c.wsConnections.closedConns) - maxClosedConns
-		surviving := make([]WebSocketClosedConnection, maxClosedConns)
-		copy(surviving, c.wsConnections.closedConns[keep:])
-		c.wsConnections.closedConns = surviving
-	}
-	delete(c.wsConnections.connections, event.ID)
-	c.wsConnections.connOrder = removeFromSlice(c.wsConnections.connOrder, event.ID)
-}
 
 // updateDirectionStats mutates per-direction counters and recency windows.
 //
@@ -86,28 +17,6 @@ func updateDirectionStats(stats *directionStats, event WebSocketEvent, msgTime t
 	stats.lastAt = event.Timestamp
 	stats.lastData = event.Data
 	stats.recentTimes = appendAndPrune(stats.recentTimes, msgTime)
-}
-
-// trackConnMessage updates rate/counter state for an active connection.
-//
-// Failure semantics:
-// - Messages on unknown connections are ignored instead of creating implicit connection records.
-func (c *Capture) trackConnMessage(event WebSocketEvent) {
-	conn := c.wsConnections.connections[event.ID]
-	if conn == nil {
-		return
-	}
-	msgTime := parseTimestamp(event.Timestamp)
-	switch event.Direction {
-	case "incoming":
-		updateDirectionStats(&conn.incoming, event, msgTime)
-	case "outgoing":
-		updateDirectionStats(&conn.outgoing, event, msgTime)
-	}
-	if event.Sampled != nil {
-		conn.sampling = true
-		conn.lastSample = event.Sampled
-	}
 }
 
 // parseTimestamp delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
@@ -228,31 +137,5 @@ func buildWSConnection(conn *connectionState) WebSocketConnection {
 func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	resp := WebSocketStatusResponse{
-		Connections: make([]WebSocketConnection, 0),
-		Closed:      make([]WebSocketClosedConnection, 0),
-	}
-
-	for _, conn := range c.wsConnections.connections {
-		if filter.URLFilter != "" && !strings.Contains(conn.url, filter.URLFilter) {
-			continue
-		}
-		if filter.ConnectionID != "" && conn.id != filter.ConnectionID {
-			continue
-		}
-		resp.Connections = append(resp.Connections, buildWSConnection(conn))
-	}
-
-	for _, closed := range c.wsConnections.closedConns {
-		if filter.URLFilter != "" && !strings.Contains(closed.URL, filter.URLFilter) {
-			continue
-		}
-		if filter.ConnectionID != "" && closed.ID != filter.ConnectionID {
-			continue
-		}
-		resp.Closed = append(resp.Closed, closed)
-	}
-
-	return resp
+	return c.wsConnections.status(filter)
 }

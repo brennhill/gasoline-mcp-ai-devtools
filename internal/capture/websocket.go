@@ -5,8 +5,6 @@
 package capture
 
 import (
-	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -16,29 +14,6 @@ import (
 // ============================================
 // WebSocket Events
 // ============================================
-
-// repairWSParallelArrays repairs wsEvents/wsAddedAt index alignment.
-//
-// Invariants:
-// - wsEvents and wsAddedAt lengths must match.
-// - wsMemoryTotal must equal sum of surviving entries.
-//
-// Failure semantics:
-// - Corruption is healed by truncating to common prefix and recomputing memory total.
-func (c *Capture) repairWSParallelArrays() {
-	if len(c.wsEvents) == len(c.wsAddedAt) {
-		return
-	}
-	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
-		len(c.wsEvents), len(c.wsAddedAt))
-	minLen := min(len(c.wsEvents), len(c.wsAddedAt))
-	c.wsMemoryTotal = 0
-	for i := 0; i < minLen; i++ {
-		c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
-	}
-	c.wsEvents = c.wsEvents[:minLen]
-	c.wsAddedAt = c.wsAddedAt[:minLen]
-}
 
 // detectWSBinaryFormat best-effort classifies message payload format.
 //
@@ -52,26 +27,6 @@ func detectWSBinaryFormat(event *WebSocketEvent) {
 		event.BinaryFormat = format.Name
 		event.FormatConfidence = format.Confidence
 	}
-}
-
-// evictWSByCount enforces count cap while preserving newest events.
-//
-// Invariants:
-// - wsMemoryTotal is decremented for each dropped entry before slice replacement.
-func (c *Capture) evictWSByCount() {
-	if len(c.wsEvents) <= MaxWSEvents {
-		return
-	}
-	drop := len(c.wsEvents) - MaxWSEvents
-	for j := 0; j < drop; j++ {
-		c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
-	}
-	newEvents := make([]WebSocketEvent, MaxWSEvents)
-	copy(newEvents, c.wsEvents[drop:])
-	c.wsEvents = newEvents
-	newAddedAt := make([]time.Time, MaxWSEvents)
-	copy(newAddedAt, c.wsAddedAt[drop:])
-	c.wsAddedAt = newAddedAt
 }
 
 // AddWebSocketEvents ingests websocket telemetry and updates connection model.
@@ -88,8 +43,6 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.repairWSParallelArrays()
-	c.wsTotalAdded += int64(len(events))
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)
@@ -97,54 +50,14 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
-	for i := range events {
-		events[i].TestIDs = activeTestIDs
-		detectWSBinaryFormat(&events[i])
-		c.trackConnection(events[i])
-		c.wsEvents = append(c.wsEvents, events[i])
-		c.wsAddedAt = append(c.wsAddedAt, now)
-		c.wsMemoryTotal += wsEventMemory(&events[i])
-	}
-
-	c.evictWSByCount()
-	c.evictWSForMemory()
-}
-
-// evictWSForMemory enforces websocket memory budget with oldest-first trimming.
-//
-// Invariants:
-// - Parallel arrays remain aligned after eviction.
-//
-// Failure semantics:
-// - Can drop multiple oldest events in one pass; newer events are preserved.
-func (c *Capture) evictWSForMemory() {
-	c.repairWSParallelArrays()
-	excess := c.wsMemoryTotal - wsBufferMemoryLimit
-	if excess <= 0 {
-		return
-	}
-	drop := 0
-	for drop < len(c.wsEvents) && excess > 0 {
-		entryMem := wsEventMemory(&c.wsEvents[drop])
-		excess -= entryMem
-		c.wsMemoryTotal -= entryMem
-		drop++
-	}
-	surviving := make([]WebSocketEvent, len(c.wsEvents)-drop)
-	copy(surviving, c.wsEvents[drop:])
-	c.wsEvents = surviving
-	if len(c.wsAddedAt) >= drop {
-		survivingAt := make([]time.Time, len(c.wsAddedAt)-drop)
-		copy(survivingAt, c.wsAddedAt[drop:])
-		c.wsAddedAt = survivingAt
-	}
+	c.buffers.appendWebSocketEvents(events, activeTestIDs, now, c.wsConnections.trackEvent)
 }
 
 // GetWebSocketEventCount returns the current number of buffered events
 func (c *Capture) GetWebSocketEventCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.wsEvents)
+	return c.buffers.webSocketCount()
 }
 
 // matchesWSEventFilter returns true if the event passes the filter criteria.
@@ -186,14 +99,14 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 	}
 
 	filtered := make([]WebSocketEvent, 0, limit)
-	for i := len(c.wsEvents) - 1; i >= 0; i-- {
-		if c.TTL > 0 && i < len(c.wsAddedAt) && isExpiredByTTL(c.wsAddedAt[i], c.TTL) {
+	for i := len(c.buffers.wsEvents) - 1; i >= 0; i-- {
+		if c.TTL > 0 && i < len(c.buffers.wsAddedAt) && isExpiredByTTL(c.buffers.wsAddedAt[i], c.TTL) {
 			break
 		}
-		if !matchesWSEventFilter(&c.wsEvents[i], filter) {
+		if !matchesWSEventFilter(&c.buffers.wsEvents[i], filter) {
 			continue
 		}
-		filtered = append(filtered, c.wsEvents[i])
+		filtered = append(filtered, c.buffers.wsEvents[i])
 		if len(filtered) >= limit {
 			break
 		}

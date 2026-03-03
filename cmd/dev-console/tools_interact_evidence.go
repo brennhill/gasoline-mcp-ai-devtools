@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args json.RawMessage, clientID string) {
+func (h *interactActionHandler) armEvidenceForCommand(correlationID, action string, args json.RawMessage, clientID string) {
 	if h == nil || correlationID == "" {
 		return
 	}
@@ -60,7 +60,7 @@ func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args j
 	h.storeEvidenceState(correlationID, state)
 }
 
-func (h *ToolHandler) attachEvidencePayload(correlationID string, responseData map[string]any) {
+func (h *interactActionHandler) attachEvidencePayload(correlationID string, responseData map[string]any) {
 	if h == nil || correlationID == "" || responseData == nil {
 		return
 	}

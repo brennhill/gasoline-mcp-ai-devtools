@@ -48,7 +48,15 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
         actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success');
-        return enrichWithCSP(tabId, { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' });
+        return enrichWithCSP(tabId, {
+            success: true,
+            action: 'navigate',
+            url,
+            final_url: tab.url,
+            title: tab.title,
+            content_script_status: 'loaded',
+            message: 'Content script ready'
+        });
     }
     if (tab.url?.startsWith('file://')) {
         return {
@@ -129,7 +137,12 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
                 const refreshedTab = await chrome.tabs.get(tabId);
-                return enrichWithCSP(tabId, { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title });
+                return enrichWithCSP(tabId, {
+                    success: true,
+                    action: 'refresh',
+                    url: refreshedTab.url,
+                    title: refreshedTab.title
+                });
             }
             case 'navigate':
                 if (!url)

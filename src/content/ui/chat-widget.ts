@@ -248,9 +248,7 @@ function showChatWidget(): void {
     if (idx < 0) return
 
     e.preventDefault()
-    const next = e.shiftKey
-      ? (idx - 1 + focusable.length) % focusable.length
-      : (idx + 1) % focusable.length
+    const next = e.shiftKey ? (idx - 1 + focusable.length) % focusable.length : (idx + 1) % focusable.length
     const el = focusable[next]
     if (el) el.focus()
   })

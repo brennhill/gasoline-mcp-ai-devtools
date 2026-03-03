@@ -17,6 +17,7 @@ import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '..
 import { checkLinkHealth } from '../lib/link-health.js'
 import { queryComputedStyles } from './computed-styles.js'
 import { discoverForms } from './form-discovery.js'
+import { extractDataTables } from './data-table.js'
 import { getNetworkWaterfall } from '../lib/network.js'
 
 import { executeJavaScript } from './execute-js.js'
@@ -121,6 +122,24 @@ interface FormDiscoveryQueryRequestMessageData {
 }
 
 /**
+ * Form state query request message from content script
+ */
+interface FormStateQueryRequestMessageData {
+  type: 'GASOLINE_FORM_STATE_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
+ * Data table query request message from content script
+ */
+interface DataTableQueryRequestMessageData {
+  type: 'GASOLINE_DATA_TABLE_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
  * Bridge readiness ping from content script to inject context
  */
 interface BridgePingMessageData {
@@ -142,6 +161,8 @@ type PageMessageData =
   | LinkHealthQueryRequestMessageData
   | ComputedStylesQueryRequestMessageData
   | FormDiscoveryQueryRequestMessageData
+  | FormStateQueryRequestMessageData
+  | DataTableQueryRequestMessageData
   | BridgePingMessageData
 
 /**
@@ -195,8 +216,11 @@ export function installMessageListener(
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),
     GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
     GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
-    GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
+    GASOLINE_COMPUTED_STYLES_QUERY: (data) =>
+      handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
     GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData),
+    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data as FormStateQueryRequestMessageData),
+    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data as DataTableQueryRequestMessageData),
     GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data as BridgePingMessageData)
   }
 
@@ -257,6 +281,49 @@ function handleFormDiscoveryMessage(data: FormDiscoveryQueryRequestMessageData):
       type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
       requestId: data.requestId,
       result: { error: 'form_discovery_error', message: (err as Error).message || 'Failed to discover forms' }
+    })
+  }
+}
+
+function handleFormStateMessage(data: FormStateQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string }
+    const forms = discoverForms({
+      selector: params.selector,
+      mode: 'discover'
+    })
+    postResponse({
+      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      requestId: data.requestId,
+      result: { forms, count: forms.length }
+    })
+  } catch (err) {
+    postResponse({
+      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      requestId: data.requestId,
+      result: { error: 'form_state_error', message: (err as Error).message || 'Failed to extract form state' }
+    })
+  }
+}
+
+function handleDataTableMessage(data: DataTableQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string; max_rows?: number; max_cols?: number }
+    const result = extractDataTables({
+      selector: params.selector,
+      max_rows: params.max_rows,
+      max_cols: params.max_cols
+    })
+    postResponse({
+      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      requestId: data.requestId,
+      result
+    })
+  } catch (err) {
+    postResponse({
+      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      requestId: data.requestId,
+      result: { error: 'data_table_error', message: (err as Error).message || 'Failed to extract table data' }
     })
   }
 }

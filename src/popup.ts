@@ -204,7 +204,6 @@ export async function initPopup(): Promise<void> {
   })
 }
 
-
 // Initialize when DOM is ready
 if (typeof document !== 'undefined' && typeof (globalThis as Record<string, unknown>).process === 'undefined') {
   if (document.readyState === 'loading') {

@@ -1,5 +1,5 @@
-// Purpose: Implements analyze modes for computed_styles, forms, and form_validation.
-// Why: Groups form and style inspection logic independently from visual diff and navigation analysis.
+// Purpose: Implements analyze modes for computed_styles, forms, form_state, form_validation, and data_table.
+// Why: Groups structured page inspection logic independently from visual diff and navigation analysis.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package main
@@ -15,7 +15,7 @@ import (
 // Computed Styles (#79)
 // ============================================
 
-func (h *ToolHandler) toolComputedStyles(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func toolComputedStyles(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseComputedStylesArgs(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, err.Error(), "Add the 'selector' parameter with a CSS selector", withParam("selector"))}
@@ -37,7 +37,7 @@ func (h *ToolHandler) toolComputedStyles(req JSONRPCRequest, args json.RawMessag
 // Form Discovery (#81)
 // ============================================
 
-func (h *ToolHandler) toolFormDiscovery(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func toolFormDiscovery(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseFormsArgs(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -55,7 +55,43 @@ func (h *ToolHandler) toolFormDiscovery(req JSONRPCRequest, args json.RawMessage
 	return h.MaybeWaitForCommand(req, correlationID, args, "Form discovery queued")
 }
 
-func (h *ToolHandler) toolFormValidation(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func toolFormState(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	parsed, err := az.ParseFormsArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	correlationID := newCorrelationID("form_state")
+	query := queries.PendingQuery{
+		Type:          "form_state",
+		Params:        args,
+		TabID:         parsed.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Form state extraction queued")
+}
+
+func toolDataTable(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	parsed, err := az.ParseDataTableArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	correlationID := newCorrelationID("data_table")
+	query := queries.PendingQuery{
+		Type:          "data_table",
+		Params:        args,
+		TabID:         parsed.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Data table extraction queued")
+}
+
+func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseFormValidationArgs(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}

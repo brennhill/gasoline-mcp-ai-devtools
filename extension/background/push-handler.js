@@ -77,7 +77,9 @@ export function installPushCommandListener(logFn) {
             catch {
                 // Tab unreachable for toast
             }
-            const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId ?? chrome.windows.WINDOW_ID_CURRENT, { format: 'png' });
+            const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId ?? chrome.windows.WINDOW_ID_CURRENT, {
+                format: 'png'
+            });
             const result = await pushScreenshot(dataUrl, '', tab.url ?? '', tab.id);
             try {
                 if (result) {

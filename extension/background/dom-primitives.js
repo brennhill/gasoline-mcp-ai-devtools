@@ -431,6 +431,10 @@ export function domPrimitive(action, selector, options) {
     function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
+        if (sel.includes(' >>> ')) {
+            const deep = resolveDeepCombinator(sel, scope);
+            return deep ? [deep] : [];
+        }
         const parsedNth = parseNthMatchSelector(sel);
         if (parsedNth) {
             const matches = resolveElements(parsedNth.base, scope);
@@ -1859,6 +1863,23 @@ export function domPrimitive(action, selector, options) {
         // Element is outside the top dialog — it's blocked by the overlay
         return topDialog;
     }
+    function describeBlockingOverlay(overlay) {
+        const overlayTag = overlay.tagName.toLowerCase();
+        const overlayRole = overlay.getAttribute('role') || '';
+        const overlayLabel = overlay.getAttribute('aria-label') || '';
+        if (overlayLabel)
+            return `${overlayTag}[aria-label="${overlayLabel}"]`;
+        if (overlayRole)
+            return `${overlayTag}[role="${overlayRole}"]`;
+        return overlayTag;
+    }
+    function blockedByOverlayError(target) {
+        const blockingOverlay = detectBlockingOverlay(target);
+        if (!blockingOverlay)
+            return null;
+        const overlayDesc = describeBlockingOverlay(blockingOverlay);
+        return domError('blocked_by_overlay', `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`);
+    }
     function buildActionHandlers(node) {
         return {
             click: () => withMutationTracking(() => {
@@ -1868,14 +1889,9 @@ export function domPrimitive(action, selector, options) {
                 const interactiveAncestor = findInteractiveAncestor(node);
                 const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node);
                 // Check if element is behind a modal overlay before clicking
-                const blockingOverlay = detectBlockingOverlay(node);
-                if (blockingOverlay) {
-                    const overlayTag = blockingOverlay.tagName.toLowerCase();
-                    const overlayRole = blockingOverlay.getAttribute('role') || '';
-                    const overlayLabel = blockingOverlay.getAttribute('aria-label') || '';
-                    const overlayDesc = overlayLabel ? `${overlayTag}[aria-label="${overlayLabel}"]` : overlayRole ? `${overlayTag}[role="${overlayRole}"]` : overlayTag;
-                    return domError('blocked_by_overlay', `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`);
-                }
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (options.new_tab) {
                     const linkNode = (() => {
                         const tag = clickTarget.tagName.toLowerCase();
@@ -1921,6 +1937,9 @@ export function domPrimitive(action, selector, options) {
                 return mutatingSuccess(clickTarget, didScroll ? { auto_scrolled: true } : undefined);
             }),
             type: () => withMutationTracking(() => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 // Normalize literal \n sequences to actual newlines (MCP parameter encoding)
                 const text = (options.text || '').replace(/\\n/g, '\n');
                 // Contenteditable elements (Gmail compose body, rich text editors)
@@ -1971,6 +1990,9 @@ export function domPrimitive(action, selector, options) {
                 return mutatingSuccess(node, { value: node.value, insertion_strategy: 'native_setter' });
             }),
             select: () => withMutationTracking(() => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (!(node instanceof HTMLSelectElement))
                     return domError('not_select', `Element is not a <select>: ${node.tagName}`); // nosemgrep: html-in-template-string
                 const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
@@ -1984,6 +2006,9 @@ export function domPrimitive(action, selector, options) {
                 return mutatingSuccess(node, { value: node.value });
             }),
             check: () => withMutationTracking(() => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
                     return domError('not_checkable', `Element is not a checkbox or radio: ${node.tagName} type=${node.type || 'N/A'}`);
                 }
@@ -2085,6 +2110,9 @@ export function domPrimitive(action, selector, options) {
                 return mutatingSuccess(node, { value: node.getAttribute(options.name || '') });
             }),
             focus: () => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (!(node instanceof HTMLElement))
                     return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
@@ -2211,6 +2239,9 @@ export function domPrimitive(action, selector, options) {
                 return { success: false, action, selector, error: 'element_still_present' };
             },
             paste: () => withMutationTracking(() => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
@@ -2241,6 +2272,9 @@ export function domPrimitive(action, selector, options) {
                 return mutatingSuccess(node, { value: node.innerText, insertion_strategy: strategy });
             }),
             key_press: () => withMutationTracking(() => {
+                const overlayErr = blockedByOverlayError(node);
+                if (overlayErr)
+                    return overlayErr;
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 const key = options.text || options.key || 'Enter';
@@ -2802,6 +2836,67 @@ export function domPrimitive(action, selector, options) {
         return { ...rawResult, ambiguous_matches: resolvedAmbiguousMatches };
     }
     return rawResult;
+}
+/**
+ * Backward-compatible wait helper used by unit tests and legacy call sites.
+ * Polls wait_for and listens for DOM mutations for fast resolution.
+ */
+export function domWaitFor(selector, timeoutMs = 5000) {
+    const timeout = Math.max(1, timeoutMs);
+    const startedAt = Date.now();
+    const pollIntervalMs = 50;
+    return new Promise((resolve) => {
+        let settled = false;
+        let timer = null;
+        let observer = null;
+        const done = (result) => {
+            if (settled)
+                return;
+            settled = true;
+            if (timer)
+                clearTimeout(timer);
+            if (observer)
+                observer.disconnect();
+            resolve(result);
+        };
+        const check = () => {
+            const result = domPrimitive('wait_for', selector, { timeout_ms: timeout });
+            if (result?.success) {
+                done(result);
+                return;
+            }
+            if (Date.now() - startedAt >= timeout) {
+                done({
+                    success: false,
+                    action: 'wait_for',
+                    selector,
+                    error: 'timeout',
+                    message: `Element not found within ${timeout}ms: ${selector}`
+                });
+                return;
+            }
+            timer = setTimeout(check, pollIntervalMs);
+        };
+        try {
+            observer = new MutationObserver(() => {
+                if (settled)
+                    return;
+                const immediate = domPrimitive('wait_for', selector, { timeout_ms: timeout });
+                if (immediate?.success)
+                    done(immediate);
+            });
+            observer.observe(document.body || document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+        }
+        catch {
+            // Best-effort optimization only; polling remains authoritative.
+        }
+        check();
+    });
 }
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts
 //# sourceMappingURL=dom-primitives.js.map

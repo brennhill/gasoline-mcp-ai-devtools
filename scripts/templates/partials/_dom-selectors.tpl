@@ -402,6 +402,10 @@
 
   function resolveElements(sel: string, scope: ParentNode = document): Element[] {
     if (!sel) return []
+    if (sel.includes(' >>> ')) {
+      const deep = resolveDeepCombinator(sel, scope)
+      return deep ? [deep] : []
+    }
     const parsedNth = parseNthMatchSelector(sel)
     if (parsedNth) {
       const matches = resolveElements(parsedNth.base, scope)

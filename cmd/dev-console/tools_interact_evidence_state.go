@@ -1,25 +1,25 @@
 package main
 
-func (h *ToolHandler) clearEvidenceState(correlationID string) {
-	h.evidenceMu.Lock()
-	defer h.evidenceMu.Unlock()
-	delete(h.evidenceByCommand, correlationID)
+func (h *interactActionHandler) clearEvidenceState(correlationID string) {
+	h.parent.evidenceMu.Lock()
+	defer h.parent.evidenceMu.Unlock()
+	delete(h.parent.evidenceByCommand, correlationID)
 }
 
-func (h *ToolHandler) storeEvidenceState(correlationID string, state *commandEvidenceState) {
-	h.evidenceMu.Lock()
-	defer h.evidenceMu.Unlock()
-	if h.evidenceByCommand == nil {
-		h.evidenceByCommand = make(map[string]*commandEvidenceState)
+func (h *interactActionHandler) storeEvidenceState(correlationID string, state *commandEvidenceState) {
+	h.parent.evidenceMu.Lock()
+	defer h.parent.evidenceMu.Unlock()
+	if h.parent.evidenceByCommand == nil {
+		h.parent.evidenceByCommand = make(map[string]*commandEvidenceState)
 	}
-	h.evidenceByCommand[correlationID] = state
+	h.parent.evidenceByCommand[correlationID] = state
 }
 
-func (h *ToolHandler) loadEvidenceAttachContext(correlationID string) (cached map[string]any, needsAfter bool, clientID string, done bool) {
-	h.evidenceMu.Lock()
-	defer h.evidenceMu.Unlock()
+func (h *interactActionHandler) loadEvidenceAttachContext(correlationID string) (cached map[string]any, needsAfter bool, clientID string, done bool) {
+	h.parent.evidenceMu.Lock()
+	defer h.parent.evidenceMu.Unlock()
 
-	state, ok := h.evidenceByCommand[correlationID]
+	state, ok := h.parent.evidenceByCommand[correlationID]
 	if !ok {
 		return nil, false, "", true
 	}
@@ -30,11 +30,11 @@ func (h *ToolHandler) loadEvidenceAttachContext(correlationID string) (cached ma
 	return nil, state.shouldCapture && state.maxCaptures > 1, state.clientID, false
 }
 
-func (h *ToolHandler) finalizeEvidencePayload(correlationID string, needsAfter bool, after evidenceShot) (map[string]any, bool) {
-	h.evidenceMu.Lock()
-	defer h.evidenceMu.Unlock()
+func (h *interactActionHandler) finalizeEvidencePayload(correlationID string, needsAfter bool, after evidenceShot) (map[string]any, bool) {
+	h.parent.evidenceMu.Lock()
+	defer h.parent.evidenceMu.Unlock()
 
-	state, ok := h.evidenceByCommand[correlationID]
+	state, ok := h.parent.evidenceByCommand[correlationID]
 	if !ok {
 		return nil, false
 	}

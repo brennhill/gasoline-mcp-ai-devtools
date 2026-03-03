@@ -26,7 +26,6 @@ func newCoverageCapture(t *testing.T) *Capture {
 	return c
 }
 
-
 func TestCoverageBoost_SetupHelpers(t *testing.T) {
 	c := setupTestCapture(t)
 	if c == nil {
@@ -114,8 +113,8 @@ func TestCoverageBoost_EnhancedActionsBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
 	c.mu.Lock()
-	c.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
-	c.actionAddedAt = []time.Time{time.Now()}
+	c.buffers.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
+	c.buffers.actionAddedAt = []time.Time{time.Now()}
 	c.extensionState.activeTestIDs["test-1"] = true
 	c.mu.Unlock()
 
@@ -147,11 +146,11 @@ func TestCoverageBoost_NetworkBodiesBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
 	c.mu.Lock()
-	c.networkBodies = []NetworkBody{
+	c.buffers.networkBodies = []NetworkBody{
 		{Method: "GET", URL: "https://a.example", RequestBody: "a", ResponseBody: "a"},
 		{Method: "GET", URL: "https://b.example", RequestBody: "b", ResponseBody: "b"},
 	}
-	c.networkAddedAt = []time.Time{time.Now()}
+	c.buffers.networkAddedAt = []time.Time{time.Now()}
 	c.extensionState.activeTestIDs["tid"] = true
 	c.mu.Unlock()
 

@@ -43,9 +43,9 @@ func isResponseQueued(resp JSONRPCResponse) bool {
 }
 
 // appendScreenshotToResponse captures a screenshot and appends it as an inline image block.
-func (h *ToolHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
+func (h *interactActionHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
 	screenshotReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID}
-	screenshotResp := observe.GetScreenshot(h, screenshotReq, nil)
+	screenshotResp := observe.GetScreenshot(h.parent, screenshotReq, nil)
 
 	var screenshotResult MCPToolResult
 	if err := json.Unmarshal(screenshotResp.Result, &screenshotResult); err != nil {
@@ -73,7 +73,7 @@ func (h *ToolHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONR
 }
 
 // appendInteractiveToResponse appends list_interactive text to the response.
-func (h *ToolHandler) appendInteractiveToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
+func (h *interactActionHandler) appendInteractiveToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
 	listReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID, ClientID: req.ClientID}
 	listArgs, _ := json.Marshal(map[string]any{"what": "list_interactive", "visible_only": true})
 	listResp := h.handleListInteractive(listReq, listArgs)

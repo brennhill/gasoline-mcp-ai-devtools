@@ -26,6 +26,8 @@ import {
   handleLinkHealthQuery,
   handleComputedStylesQuery,
   handleFormDiscoveryQuery,
+  handleFormStateQuery,
+  handleDataTableQuery,
   handleGetReadable,
   handleGetMarkdown,
   handlePageSummary
@@ -105,7 +107,11 @@ export function initRuntimeMessageListener(): void {
       const m = msg as { started_by?: string; annot_session_name?: string; correlation_id?: string }
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || 'user', m.annot_session_name || '', m.correlation_id || '')
+          const result = mod.activateDrawMode(
+            m.started_by || 'user',
+            m.annot_session_name || '',
+            m.correlation_id || ''
+          )
           sr(result)
         })
         .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
@@ -149,6 +155,8 @@ export function initRuntimeMessageListener(): void {
     LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
     GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
     GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)

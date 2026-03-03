@@ -35,8 +35,12 @@ export async function probeCSPStatus(tabId: number): Promise<CSPProbeResult> {
       target: { tabId },
       world: 'MAIN',
       func: () => {
-        try { new Function('return 1')(); return 'ok' }
-        catch { return 'csp_blocked' }
+        try {
+          new Function('return 1')()
+          return 'ok'
+        } catch {
+          return 'csp_blocked'
+        }
       }
     })
     const val = results?.[0]?.result

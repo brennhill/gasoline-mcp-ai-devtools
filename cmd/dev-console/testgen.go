@@ -17,10 +17,10 @@ import (
 // ============================================
 
 // testGenContextDispatch maps context values to their generator functions.
-var testGenContextDispatch = map[string]func(h *ToolHandler, params TestFromContextRequest) (*GeneratedTest, error){
-	"error":       (*ToolHandler).generateTestFromError,
-	"interaction": (*ToolHandler).generateTestFromInteraction,
-	"regression":  (*ToolHandler).generateTestFromRegression,
+var testGenContextDispatch = map[string]func(h *testGenHandler, params TestFromContextRequest) (*GeneratedTest, error){
+	"error":       (*testGenHandler).generateTestFromError,
+	"interaction": (*testGenHandler).generateTestFromInteraction,
+	"regression":  (*testGenHandler).generateTestFromRegression,
 }
 
 // testGenErrorMapping type for MCP error responses.
@@ -41,7 +41,7 @@ func init() {
 	}
 }
 
-func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestFromContextRequest
 
 	warnings, err := unmarshalWithWarnings(args, &params)

@@ -17,12 +17,12 @@ func resolveStateSnapshotName(snapshotName, legacyName string) string {
 	return legacyName
 }
 
-func (h *ToolHandler) handleStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if h.sessionStoreImpl == nil {
+func (h *stateInteractHandler) handleStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.parent.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	keys, err := h.sessionStoreImpl.List(act.StateNamespace)
+	keys, err := h.parent.sessionStoreImpl.List(act.StateNamespace)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")}
 	}
@@ -39,9 +39,9 @@ func (h *ToolHandler) handleStateList(req JSONRPCRequest, args json.RawMessage) 
 }
 
 // buildStateEntry loads metadata for a single saved state key and returns an entry map.
-func (h *ToolHandler) buildStateEntry(key string) map[string]any {
+func (h *stateInteractHandler) buildStateEntry(key string) map[string]any {
 	entry := map[string]any{"name": key}
-	data, err := h.sessionStoreImpl.Load(act.StateNamespace, key)
+	data, err := h.parent.sessionStoreImpl.Load(act.StateNamespace, key)
 	if err != nil {
 		return entry
 	}
@@ -57,7 +57,7 @@ func (h *ToolHandler) buildStateEntry(key string) map[string]any {
 	return entry
 }
 
-func (h *ToolHandler) handleStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *stateInteractHandler) handleStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -71,15 +71,15 @@ func (h *ToolHandler) handleStateDelete(req JSONRPCRequest, args json.RawMessage
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
-	if h.sessionStoreImpl == nil {
+	if h.parent.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Delete(act.StateNamespace, snapshotName); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
+	if err := h.parent.sessionStoreImpl.Delete(act.StateNamespace, snapshotName); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.parent.diagnosticHint())}
 	}
 
-	h.recordAIAction("delete_state", "", map[string]any{"snapshot_name": snapshotName})
+	h.parent.recordAIAction("delete_state", "", map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State deleted", map[string]any{
 		"status":        "deleted",

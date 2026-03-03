@@ -5,8 +5,6 @@
 package capture
 
 import (
-	"time"
-
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
@@ -23,19 +21,15 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		NetworkWaterfall: len(c.networkWaterfall.entries),
-		NetworkBodies:    len(c.networkBodies),
+		NetworkWaterfall: c.networkWaterfall.count(),
+		NetworkBodies:    len(c.buffers.networkBodies),
 	}
 
-	// Clear network waterfall buffer
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
+	// Clear network waterfall buffer.
+	c.networkWaterfall.clear()
 
 	// Clear network bodies buffer and reset memory tracking
-	c.networkBodies = make([]NetworkBody, 0)
-	c.networkAddedAt = make([]time.Time, 0)
-	c.networkTotalAdded = 0
-	c.networkErrorTotalAdded = 0
-	c.networkBodyMemoryTotal = 0
+	c.buffers.clearNetworkBuffers()
 
 	return counts
 }
@@ -49,19 +43,15 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		WebSocketEvents: len(c.wsEvents),
-		WebSocketStatus: len(c.wsConnections.connections),
+		WebSocketEvents: len(c.buffers.wsEvents),
+		WebSocketStatus: c.wsConnections.connectionCount(),
 	}
 
 	// Clear WebSocket events buffer
-	c.wsEvents = make([]WebSocketEvent, 0)
-	c.wsAddedAt = make([]time.Time, 0)
-	c.wsTotalAdded = 0
-	c.wsMemoryTotal = 0
+	c.buffers.clearWebSocketBuffers()
 
-	// Clear WebSocket connections map
-	c.wsConnections.connections = make(map[string]*connectionState)
-	c.wsConnections.connOrder = make([]string, 0)
+	// Clear WebSocket connection tracker.
+	c.wsConnections.clear()
 
 	return counts
 }
@@ -72,13 +62,11 @@ func (c *Capture) ClearActionBuffer() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		Actions: len(c.enhancedActions),
+		Actions: len(c.buffers.enhancedActions),
 	}
 
 	// Clear actions buffer
-	c.enhancedActions = make([]EnhancedAction, 0)
-	c.actionAddedAt = make([]time.Time, 0)
-	c.actionTotalAdded = 0
+	c.buffers.clearActionBuffers()
 
 	return counts
 }
@@ -92,10 +80,7 @@ func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	count := len(c.extensionLogs.logs)
-	c.extensionLogs.logs = make([]ExtensionLog, 0)
-
-	return count
+	return c.extensionLogs.clear()
 }
 
 // ClearAll resets all capture-owned in-memory telemetry state.
@@ -106,24 +91,11 @@ func (c *Capture) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.wsEvents = make([]WebSocketEvent, 0)
-	c.wsAddedAt = make([]time.Time, 0)
-	c.wsMemoryTotal = 0
-	c.networkBodies = make([]NetworkBody, 0)
-	c.networkAddedAt = make([]time.Time, 0)
-	c.networkBodyMemoryTotal = 0
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
-	c.enhancedActions = make([]EnhancedAction, 0)
-	c.actionAddedAt = make([]time.Time, 0)
-	c.wsConnections.connections = make(map[string]*connectionState)
-	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
-	c.wsConnections.connOrder = make([]string, 0)
+	c.buffers.clearAllEventBuffers()
+	c.networkWaterfall.clear()
+	c.wsConnections.clear()
 	c.extensionState.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
-	c.perf.snapshots = make(map[string]PerformanceSnapshot)
-	c.perf.snapshotOrder = make([]string, 0)
-	c.perf.baselines = make(map[string]PerformanceBaseline)
-	c.perf.baselineOrder = make([]string, 0)
-	c.perf.beforeSnapshots = make(map[string]PerformanceSnapshot)
+	c.perf.clear()
 }

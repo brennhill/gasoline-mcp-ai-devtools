@@ -23,11 +23,7 @@ import {
   AI_CONTEXT_PIPELINE_TIMEOUT_MS
 } from './constants.js'
 
-import {
-  parseStackFrames,
-  extractSourceSnippets,
-  getSourceMapCache
-} from './ai-context-parsing.js'
+import { parseStackFrames, extractSourceSnippets, getSourceMapCache } from './ai-context-parsing.js'
 
 // =============================================================================
 // TYPE DEFINITIONS

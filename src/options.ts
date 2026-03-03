@@ -41,7 +41,14 @@ interface ClearLogResponse {
  */
 export function loadOptions(): void {
   chrome.storage.local.get(
-    [StorageKey.SERVER_URL, StorageKey.SCREENSHOT_ON_ERROR, StorageKey.SOURCE_MAP_ENABLED, StorageKey.DEFERRAL_ENABLED, StorageKey.DEBUG_MODE, StorageKey.THEME],
+    [
+      StorageKey.SERVER_URL,
+      StorageKey.SCREENSHOT_ON_ERROR,
+      StorageKey.SOURCE_MAP_ENABLED,
+      StorageKey.DEFERRAL_ENABLED,
+      StorageKey.DEBUG_MODE,
+      StorageKey.THEME
+    ],
     (result: StorageResult) => {
       // Set server URL
       const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null

@@ -139,6 +139,8 @@ const TARGETED_QUERY_TYPES = new Set([
     'cdp_action',
     'computed_styles',
     'form_discovery',
+    'form_state',
+    'data_table',
     'state_capture',
     'state_save',
     'state_load',
@@ -156,11 +158,7 @@ export function requiresTargetTab(queryType) {
 export function isBrowserEscapeAction(queryType, paramsObj) {
     if (queryType !== 'browser_action')
         return false;
-    const action = typeof paramsObj.action === 'string'
-        ? paramsObj.action
-        : typeof paramsObj.what === 'string'
-            ? paramsObj.what
-            : '';
+    const action = typeof paramsObj.action === 'string' ? paramsObj.action : typeof paramsObj.what === 'string' ? paramsObj.what : '';
     return (action === 'navigate' ||
         action === 'refresh' ||
         action === 'back' ||

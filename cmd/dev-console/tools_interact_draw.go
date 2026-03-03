@@ -10,7 +10,7 @@ import (
 )
 
 // handleDrawModeStart queues a draw_mode query for the extension to activate draw mode.
-func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID        int    `json:"tab_id,omitempty"`
 		AnnotSession string `json:"annot_session,omitempty"`
@@ -19,13 +19,13 @@ func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessa
 		lenientUnmarshal(args, &params)
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -44,14 +44,14 @@ func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessa
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
 	// Mark draw started AFTER the query is queued, so WaitForSession's timestamp
 	// baseline is never set before the command that triggers the session exists.
-	h.annotationStore.MarkDrawStarted()
+	h.parent.annotationStore.MarkDrawStarted()
 
 	// Record AI action
-	h.recordAIAction("draw_mode_start", "", nil)
+	h.parent.recordAIAction("draw_mode_start", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw mode activated", map[string]any{
 		"status":         "queued",

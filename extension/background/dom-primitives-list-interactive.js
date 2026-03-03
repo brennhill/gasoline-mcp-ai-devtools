@@ -70,19 +70,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         return results;
     }
     // — Selector and classification helpers —
+    function cssEscape(raw) {
+        const maybeCSS = globalThis.CSS;
+        if (maybeCSS && typeof maybeCSS.escape === 'function') {
+            return maybeCSS.escape(raw);
+        }
+        // Minimal fallback for test/non-browser environments where CSS.escape is unavailable.
+        return raw.replace(/["\\]/g, '\\$&');
+    }
     function buildUniqueSelector(el, htmlEl, fallbackSelector) {
         if (el.id)
-            return `#${CSS.escape(el.id)}`;
+            return `#${cssEscape(el.id)}`;
         if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${CSS.escape(el.name)}"]`;
+            return `input[name="${cssEscape(el.name)}"]`;
         const ariaLabel = el.getAttribute('aria-label');
         // Use CSS attribute selectors — these resolve via querySelectorAll directly,
         // avoiding semantic resolver ordering mismatches (#360).
         if (ariaLabel)
-            return `[aria-label="${CSS.escape(ariaLabel)}"]`;
+            return `[aria-label="${cssEscape(ariaLabel)}"]`;
         const placeholder = el.getAttribute('placeholder');
         if (placeholder)
-            return `[placeholder="${CSS.escape(placeholder)}"]`;
+            return `[placeholder="${cssEscape(placeholder)}"]`;
         const text = (htmlEl.textContent || '').trim().slice(0, 40);
         if (text)
             return `text=${text}`;
@@ -147,6 +155,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         let node = el;
         while (node && node !== document.documentElement) {
             if (node instanceof HTMLElement) {
+                if (typeof getComputedStyle !== 'function')
+                    return false;
                 const style = getComputedStyle(node);
                 const position = style.position || '';
                 if (position === 'fixed' || position === 'sticky') {
@@ -183,8 +193,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
         const rect = htmlEl.getBoundingClientRect();
-        const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
-        const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const x = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0;
+        const y = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0;
         const width = Number.isFinite(rect.width) ? rect.width : 0;
         const height = Number.isFinite(rect.height) ? rect.height : 0;
         return { x, y, width, height };
@@ -232,8 +242,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function')
             return false;
         const rect = htmlEl.getBoundingClientRect();
-        const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
-        const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const left = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0;
+        const top = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0;
         const right = typeof rect.right === 'number' ? rect.right : left + rect.width;
         const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height;
         const scopeRight = scopeRect.x + scopeRect.width;
@@ -266,9 +276,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length;
             const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive);
             const rect = candidate.getBoundingClientRect?.();
-            const areaScore = rect && rect.width > 0 && rect.height > 0
-                ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
-                : 0;
+            const areaScore = rect && rect.width > 0 && rect.height > 0 ? Math.min(20, Math.round((rect.width * rect.height) / 50000)) : 0;
             // Heuristic weighting:
             // - Visible textbox strongly indicates active editor/dialog.
             // - Submit-like visible controls indicate actionable composer.
@@ -403,7 +411,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
     // element exist (e.g., mobile + desktop nav links), keep only the visible one.
     // Key includes tag, elementType, label, AND href (for links) to avoid collapsing distinct elements.
     const dedupKey = (e) => {
-        const href = e.tag === 'a' ? (e.el.getAttribute('href') || '') : '';
+        const href = e.tag === 'a' ? e.el.getAttribute('href') || '' : '';
         return `${e.tag}|${e.elementType}|${e.label}|${href}`;
     };
     const dedupGroups = new Map();

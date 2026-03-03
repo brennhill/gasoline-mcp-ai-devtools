@@ -13,15 +13,43 @@ function isContentScriptUnreachableError(err) {
  */
 function readableFallbackScript() {
     const MAIN_SELECTORS = [
-        'main', 'article', '[role="main"]', '#main', '.main',
-        '.post-content', '.entry-content', '.article-body', '.article-content',
-        '.story-body', '.article', '.post', '#content', '.content', '.results'
+        'main',
+        'article',
+        '[role="main"]',
+        '#main',
+        '.main',
+        '.post-content',
+        '.entry-content',
+        '.article-body',
+        '.article-content',
+        '.story-body',
+        '.article',
+        '.post',
+        '#content',
+        '.content',
+        '.results'
     ];
     const REMOVE_SELECTORS = [
-        'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-        '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]',
-        '.ad', '.ads', '.advertisement', '.social-share', '.comments', '.sidebar',
-        '.related-posts', '.newsletter'
+        'nav',
+        'header',
+        'footer',
+        'aside',
+        'script',
+        'style',
+        'noscript',
+        'svg',
+        '[role="navigation"]',
+        '[role="banner"]',
+        '[role="contentinfo"]',
+        '[aria-hidden="true"]',
+        '.ad',
+        '.ads',
+        '.advertisement',
+        '.social-share',
+        '.comments',
+        '.sidebar',
+        '.related-posts',
+        '.newsletter'
     ];
     let mainEl = document.body || document.documentElement;
     for (const sel of MAIN_SELECTORS) {
@@ -69,12 +97,29 @@ function readableFallbackScript() {
 function markdownFallbackScript() {
     const MAX_OUTPUT = 200000;
     const MAIN_SELECTORS = [
-        'main', 'article', '[role="main"]', '#main', '.main',
-        '.post-content', '.entry-content', '.article-body', '.article-content'
+        'main',
+        'article',
+        '[role="main"]',
+        '#main',
+        '.main',
+        '.post-content',
+        '.entry-content',
+        '.article-body',
+        '.article-content'
     ];
     const REMOVE_SELECTORS = [
-        'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-        '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]'
+        'nav',
+        'header',
+        'footer',
+        'aside',
+        'script',
+        'style',
+        'noscript',
+        'svg',
+        '[role="navigation"]',
+        '[role="banner"]',
+        '[role="contentinfo"]',
+        '[aria-hidden="true"]'
     ];
     let mainEl = document.body || document.documentElement;
     for (const sel of MAIN_SELECTORS) {
@@ -115,7 +160,10 @@ function pageSummaryFallbackScript() {
     for (const heading of Array.from(document.querySelectorAll('h1, h2, h3'))) {
         if (headings.length >= 30)
             break;
-        const text = (heading.innerText || heading.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+        const text = (heading.innerText || heading.textContent || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 200);
         if (text)
             headings.push(heading.tagName.toLowerCase() + ': ' + text);
     }
@@ -126,12 +174,17 @@ function pageSummaryFallbackScript() {
     for (const link of Array.from(navCandidates)) {
         if (navLinks.length >= 25)
             break;
-        const linkText = (link.innerText || link.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+        const linkText = (link.innerText || link.textContent || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 80);
         let href = link.getAttribute('href') || '';
         try {
             href = new URL(href, window.location.href).href;
         }
-        catch { /* keep as-is */ }
+        catch {
+            /* keep as-is */
+        }
         if (!href)
             continue;
         const key = linkText + '|' + href;
@@ -150,7 +203,11 @@ function pageSummaryFallbackScript() {
         for (const field of Array.from(form.querySelectorAll('input, select, textarea'))) {
             if (fields.length >= 25)
                 break;
-            const name = field.getAttribute('name') || field.getAttribute('id') || field.getAttribute('aria-label') || field.getAttribute('type') || field.tagName.toLowerCase();
+            const name = field.getAttribute('name') ||
+                field.getAttribute('id') ||
+                field.getAttribute('aria-label') ||
+                field.getAttribute('type') ||
+                field.tagName.toLowerCase();
             const cleaned = (name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
             if (!cleaned || seenFields[cleaned])
                 continue;
@@ -161,7 +218,9 @@ function pageSummaryFallbackScript() {
         try {
             action = new URL(action, window.location.href).href;
         }
-        catch { /* keep as-is */ }
+        catch {
+            /* keep as-is */
+        }
         forms.push({ action, method: (form.getAttribute('method') || 'GET').toUpperCase(), fields });
     }
     // Main content preview
@@ -177,7 +236,10 @@ function pageSummaryFallbackScript() {
             break;
         }
     }
-    const mainText = (mainEl.innerText || mainEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 20000);
+    const mainText = (mainEl.innerText || mainEl.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 20000);
     const preview = mainText.slice(0, 500);
     const wordCount = mainText ? mainText.split(/\s+/).filter(Boolean).length : 0;
     // Interactive count (simplified — skip visibility check for fallback perf)

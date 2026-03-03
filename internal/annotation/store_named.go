@@ -81,7 +81,7 @@ func (s *Store) AppendToNamedSession(name string, session *Session) {
 	// Complete async waiters outside the lock.
 	if plan.completeFn != nil {
 		for _, w := range plan.toComplete {
-			result := BuildNamedSessionResult(&plan.nsCopy)
+			result := BuildNamedSessionResult(&plan.nsCopy, w.URLFilter)
 			plan.completeFn(w.CorrelationID, result)
 		}
 	}

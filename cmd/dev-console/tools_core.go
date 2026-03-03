@@ -83,9 +83,8 @@ type ToolHandler struct {
 	// Default: 5s. Set to 0 in tests to restore instant-fail behavior.
 	coldStartTimeout time.Duration
 
-	// Cached interact dispatch map (initialized once via sync.Once)
-	interactOnce     sync.Once
-	interactHandlers map[string]interactHandler
+	// Dedicated interact action routing/jitter sub-handler.
+	interactActionHandler *interactActionHandler
 
 	// Scoped element index registry used by list_interactive/index follow-up actions.
 	elementIndexRegistry *elementIndexRegistry
@@ -100,8 +99,13 @@ type ToolHandler struct {
 	playbackSessions map[string]*capture.PlaybackSession
 
 	// Interact recording state gate (record_start/record_stop sequencing).
-	recordInteractMu sync.Mutex
-	recordInteract   interactRecordingState
+	recordInteractMu         sync.Mutex
+	recordInteract           interactRecordingState
+	recordingInteractHandler *recordingInteractHandler
+	uploadInteractHandler    *uploadInteractHandler
+	testGenHandler           *testGenHandler
+	stateInteractHandler     *stateInteractHandler
+	configureSessionHandler  *configureSessionHandler
 
 	// Optional evidence capture state keyed by correlation_id.
 	// Tracks before/after screenshots for interact actions when evidence mode is enabled.

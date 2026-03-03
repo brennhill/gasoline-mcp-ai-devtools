@@ -44,12 +44,12 @@ func TestClipboard_Write_InvalidJSON(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	// The interact dispatcher parses the top-level "what" first, then delegates
-	// to handleClipboardWrite which re-parses args. We need to pass valid
+	// to interactAction().handleClipboardWrite which re-parses args. We need to pass valid
 	// top-level JSON so the dispatcher can route, but the clipboard handler
 	// receives the full args. Since the dispatcher needs "what", we call
 	// handleClipboardWrite directly with broken JSON for the inner parse.
 	args := json.RawMessage(`{bad json`)
-	resp := h.handleClipboardWrite(req, args)
+	resp := h.interactAction().handleClipboardWrite(req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {

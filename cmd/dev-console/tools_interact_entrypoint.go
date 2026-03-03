@@ -24,7 +24,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	what := params.What
 	usedAliasParam := ""
 	if what != "" && params.Action != "" && params.Action != what {
-		return whatAliasConflictResponse(req, "action", what, params.Action, h.getValidInteractActions())
+		return whatAliasConflictResponse(req, "action", what, params.Action, h.interactAction().getValidInteractActions())
 	}
 	if what == "" {
 		what = params.Action
@@ -34,7 +34,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if what == "" {
-		validActions := h.getValidInteractActions()
+		validActions := h.interactAction().getValidInteractActions()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrMissingParam,
 			"Required dispatch parameter is missing: provide 'what' (or deprecated alias 'action')",
@@ -65,23 +65,23 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	lenientUnmarshal(args, &composableParams)
 
-	resp := h.dispatchInteractAction(req, args, what)
+	resp := h.interactAction().dispatchInteractAction(req, args, what)
 
 	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
-		h.queueComposableSubtitle(req, *composableParams.Subtitle)
+		h.interactAction().queueComposableSubtitle(req, *composableParams.Subtitle)
 	}
 
 	hasComposableSideEffects := false
 	if composableParams.AutoDismiss && what == "navigate" && !isErrorResponse(resp) {
-		h.queueComposableAutoDismiss(req)
+		h.interactAction().queueComposableAutoDismiss(req)
 		hasComposableSideEffects = true
 	}
 	if composableParams.WaitForStable && (what == "navigate" || what == "click") && !isErrorResponse(resp) {
-		h.queueComposableWaitForStable(req, composableParams.StabilityMs)
+		h.interactAction().queueComposableWaitForStable(req, composableParams.StabilityMs)
 		hasComposableSideEffects = true
 	}
 	if composableParams.ActionDiff && !isErrorResponse(resp) {
-		h.queueComposableActionDiff(req)
+		h.interactAction().queueComposableActionDiff(req)
 		hasComposableSideEffects = true
 	}
 
@@ -89,10 +89,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		time.Sleep(300 * time.Millisecond)
 	}
 	if composableParams.IncludeScreenshot && !isErrorResponse(resp) {
-		resp = h.appendScreenshotToResponse(resp, req)
+		resp = h.interactAction().appendScreenshotToResponse(resp, req)
 	}
 	if composableParams.IncludeInteractive && !isErrorResponse(resp) {
-		resp = h.appendInteractiveToResponse(resp, req)
+		resp = h.interactAction().appendInteractiveToResponse(resp, req)
 	}
 
 	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)

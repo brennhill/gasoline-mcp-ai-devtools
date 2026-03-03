@@ -111,7 +111,7 @@ export const SettingName = {
     NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
     ACTION_TOASTS: 'setActionToastsEnabled',
     SUBTITLES: 'setSubtitlesEnabled',
-    SERVER_URL: 'setServerUrl',
+    SERVER_URL: 'setServerUrl'
 };
 /** All valid setting names as a Set (for runtime validation) */
 export const VALID_SETTING_NAMES = new Set(Object.values(SettingName));
@@ -130,7 +130,7 @@ export const INJECT_FORWARDED_SETTINGS = new Set([
     SettingName.PERFORMANCE_SNAPSHOT,
     SettingName.DEFERRAL,
     SettingName.NETWORK_BODY_CAPTURE,
-    SettingName.SERVER_URL,
+    SettingName.SERVER_URL
 ]);
 // =============================================================================
 // STORAGE KEYS — Single source of truth for chrome.storage key strings.
@@ -163,6 +163,6 @@ export const StorageKey = {
     PENDING_RECORDING: 'gasoline_pending_recording',
     PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
     MIC_GRANTED: 'gasoline_mic_granted',
-    RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+    RECORD_AUDIO_PREF: 'gasoline_record_audio_pref'
 };
 //# sourceMappingURL=constants.js.map

@@ -385,6 +385,22 @@ export interface FormDiscoveryQueryMessage {
 }
 
 /**
+ * Form state query message
+ */
+export interface FormStateQueryMessage {
+  readonly type: 'FORM_STATE_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
+ * Data table query message
+ */
+export interface DataTableQueryMessage {
+  readonly type: 'DATA_TABLE_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
  * Draw mode control messages (background to content)
  */
 export interface DrawModeStartMessage {
@@ -466,6 +482,8 @@ export type ContentMessage =
   | LinkHealthMessage
   | ComputedStylesQueryMessage
   | FormDiscoveryQueryMessage
+  | FormStateQueryMessage
+  | DataTableQueryMessage
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
@@ -500,6 +518,8 @@ export type PageMessageType =
   | 'GASOLINE_STATE_RESPONSE'
   | 'GASOLINE_WATERFALL_RESPONSE'
   | 'GASOLINE_LINK_HEALTH_RESPONSE'
+  | 'GASOLINE_FORM_STATE_RESPONSE'
+  | 'GASOLINE_DATA_TABLE_RESPONSE'
 
 /**
  * Content to page messages (postMessage types)
@@ -514,6 +534,8 @@ export type ContentToPageMessageType =
   | 'GASOLINE_STATE_COMMAND'
   | 'GASOLINE_GET_WATERFALL'
   | 'GASOLINE_LINK_HEALTH_QUERY'
+  | 'GASOLINE_FORM_STATE_QUERY'
+  | 'GASOLINE_DATA_TABLE_QUERY'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)

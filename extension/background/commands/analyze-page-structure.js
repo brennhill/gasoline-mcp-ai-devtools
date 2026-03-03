@@ -34,7 +34,8 @@ function pageStructureScript(useGlobals) {
             frameworks.push({ name: 'Nuxt', version: '', evidence: win.__NUXT__ ? 'window.__NUXT__' : 'window.$nuxt' });
         }
         // Angular
-        if (typeof win.ng === 'object' || typeof win.getAllAngularRootElements === 'function') {
+        if (typeof win.ng === 'object' ||
+            typeof win.getAllAngularRootElements === 'function') {
             frameworks.push({ name: 'Angular', version: '', evidence: win.ng ? 'window.ng' : 'getAllAngularRootElements' });
         }
         // Svelte (DOM hint — Svelte adds class="svelte-XXXXX" hashes)
@@ -50,7 +51,9 @@ function pageStructureScript(useGlobals) {
         if (document.querySelector('[class^="svelte-"], [class*=" svelte-"]')) {
             frameworks.push({ name: 'Svelte', version: '', evidence: 'class^="svelte-"' });
         }
-        if (document.querySelector('[ng-version]') || document.querySelector('[_nghost]') || document.querySelector('app-root')) {
+        if (document.querySelector('[ng-version]') ||
+            document.querySelector('[_nghost]') ||
+            document.querySelector('app-root')) {
             const ver = document.querySelector('[ng-version]')?.getAttribute('ng-version') || '';
             frameworks.push({ name: 'Angular', version: ver, evidence: 'ng-version' });
         }
@@ -62,8 +65,7 @@ function pageStructureScript(useGlobals) {
         }
         // Vue: data-v-XXXXX scoped attributes (CSS can't match attribute name prefix, need JS check)
         const hasVueScopedAttr = document.querySelector('[data-vue-meta]') ||
-            Array.from(document.querySelector('#app')?.attributes || document.documentElement.attributes)
-                .some(a => a.name.startsWith('data-v-'));
+            Array.from(document.querySelector('#app')?.attributes || document.documentElement.attributes).some((a) => a.name.startsWith('data-v-'));
         if (hasVueScopedAttr) {
             frameworks.push({ name: 'Vue', version: '', evidence: 'data-v-*' });
         }
@@ -105,8 +107,10 @@ function pageStructureScript(useGlobals) {
         const htmlEl = el;
         if (htmlEl.scrollHeight > htmlEl.clientHeight + 50 && htmlEl.clientHeight > 0) {
             const style = getComputedStyle(htmlEl);
-            if (style.overflow === 'auto' || style.overflow === 'scroll' ||
-                style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            if (style.overflow === 'auto' ||
+                style.overflow === 'scroll' ||
+                style.overflowY === 'auto' ||
+                style.overflowY === 'scroll') {
                 const tag = htmlEl.tagName.toLowerCase();
                 const id = htmlEl.id ? `#${htmlEl.id}` : '';
                 const cls = htmlEl.className && typeof htmlEl.className === 'string'
@@ -166,7 +170,8 @@ function pageStructureScript(useGlobals) {
     const meta = {
         viewport: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || '',
         charset: document.querySelector('meta[charset]')?.getAttribute('charset') ||
-            document.querySelector('meta[http-equiv="Content-Type"]')?.getAttribute('content') || '',
+            document.querySelector('meta[http-equiv="Content-Type"]')?.getAttribute('content') ||
+            '',
         og_title: document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '',
         description: document.querySelector('meta[name="description"]')?.getAttribute('content') || ''
     };

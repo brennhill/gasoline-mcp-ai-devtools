@@ -37,31 +37,10 @@ type Capture struct {
 	TTL time.Duration
 
 	// ============================================
-	// WebSocket Event Buffer (Ring Buffer)
+	// Unified Event Buffer Store (ring buffers)
 	// ============================================
 
-	wsEvents      []WebSocketEvent // Ring buffer of WS events (cap: MaxWSEvents). Kept in sync with wsAddedAt.
-	wsAddedAt     []time.Time      // Parallel slice: insertion time for each wsEvents[i]. Used for TTL filtering and eviction order (oldest first).
-	wsTotalAdded  int64            // Monotonic counter: total events ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
-	wsMemoryTotal int64            // Approximate memory: sum of wsEventMemory(&wsEvents[i]). Estimate: len(Data)+200 bytes per event. Updated incrementally; recalc on critical eviction.
-
-	// ============================================
-	// Network Body Buffer (Ring Buffer)
-	// ============================================
-
-	networkBodies          []NetworkBody // Ring buffer of HTTP request/response bodies (cap: MaxNetworkBodies=100). Parallel with networkAddedAt.
-	networkAddedAt         []time.Time   // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
-	networkTotalAdded      int64         // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
-	networkErrorTotalAdded int64         // Monotonic counter: total HTTP error responses (status>=400) ever added. Survives eviction.
-	networkBodyMemoryTotal int64         // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
-
-	// ============================================
-	// Enhanced Actions Buffer (Ring Buffer)
-	// ============================================
-
-	enhancedActions  []EnhancedAction // Ring buffer of browser actions. Parallel with actionAddedAt.
-	actionAddedAt    []time.Time      // Parallel slice: insertion time for each enhancedActions[i].
-	actionTotalAdded int64            // Monotonic counter: total actions ever added (never reset/decremented). Survives eviction.
+	buffers BufferStore // ws/network/action buffers + counters + memory totals (protected by Capture.mu).
 
 	// ============================================
 	// Timings and Performance Data
@@ -141,9 +120,7 @@ type Capture struct {
 // - extensionState.activeTestIDs and extensionState.missingInProgressByCorr start as initialized maps.
 func NewCapture() *Capture {
 	c := &Capture{
-		wsEvents:        make([]WebSocketEvent, 0, MaxWSEvents),
-		networkBodies:   make([]NetworkBody, 0, MaxNetworkBodies),
-		enhancedActions: make([]EnhancedAction, 0, MaxEnhancedActions),
+		buffers: newBufferStore(),
 		networkWaterfall: NetworkWaterfallBuffer{
 			entries:  make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
 			capacity: DefaultNetworkWaterfallCapacity,

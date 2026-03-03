@@ -4,8 +4,9 @@ feature_id: feature-state-time-travel
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-03
 code_paths:
+  - cmd/dev-console/tools_interact_state_handler.go
   - cmd/dev-console/tools_interact_state_capture.go
   - cmd/dev-console/tools_interact_state_save_load.go
   - cmd/dev-console/tools_interact_state_list_delete.go
@@ -37,6 +38,8 @@ test_paths:
 
 ## Code and Tests
 
+- State sub-handler wiring:
+  - `cmd/dev-console/tools_interact_state_handler.go`
 - State capture and restore queueing:
   - `cmd/dev-console/tools_interact_state_capture.go`
 - Save/load handlers:

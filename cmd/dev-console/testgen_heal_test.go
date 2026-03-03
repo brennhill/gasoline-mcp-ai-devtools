@@ -102,7 +102,7 @@ func TestHandleHealRepair_NoBrokenSelectors(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "repair", BrokenSelectors: nil}
 
-	_, resp, isErr := h.handleHealRepair(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealRepair(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("handleHealRepair should return error when broken_selectors is empty")
 	}
@@ -117,7 +117,7 @@ func TestHandleHealRepair_EmptyBrokenSelectors(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "repair", BrokenSelectors: []string{}}
 
-	_, resp, isErr := h.handleHealRepair(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealRepair(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("handleHealRepair should return error when broken_selectors is empty")
 	}
@@ -134,7 +134,7 @@ func TestHandleHealRepair_ValidSelectors(t *testing.T) {
 		BrokenSelectors: []string{"#login", ".button"},
 	}
 
-	result, _, isErr := h.handleHealRepair(req, params, t.TempDir())
+	result, _, isErr := h.testGen().handleHealRepair(req, params, t.TempDir())
 	if isErr {
 		t.Fatal("handleHealRepair should succeed with valid selectors")
 	}
@@ -162,7 +162,7 @@ func TestHandleHealRepair_MixedSelectors(t *testing.T) {
 		AutoApply:       true,
 	}
 
-	result, _, isErr := h.handleHealRepair(req, params, t.TempDir())
+	result, _, isErr := h.testGen().handleHealRepair(req, params, t.TempDir())
 	if isErr {
 		t.Fatal("handleHealRepair should succeed even with some invalid selectors")
 	}
@@ -186,7 +186,7 @@ func TestHandleHealRepair_PreservesRequestID(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: "heal-req-42"}
 	params := TestHealRequest{Action: "repair", BrokenSelectors: nil}
 
-	_, resp, isErr := h.handleHealRepair(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealRepair(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("expected error for nil selectors")
 	}
@@ -206,7 +206,7 @@ func TestHandleHealBatch_NoTestDir(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "batch", TestDir: ""}
 
-	_, resp, isErr := h.handleHealBatch(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealBatch(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("handleHealBatch should return error when test_dir is empty")
 	}
@@ -232,7 +232,7 @@ func TestHandleHealBatch_ValidDir(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "batch", TestDir: testDir}
 
-	result, _, isErr := h.handleHealBatch(req, params, projectDir)
+	result, _, isErr := h.testGen().handleHealBatch(req, params, projectDir)
 	if isErr {
 		t.Fatal("handleHealBatch should succeed with valid directory")
 	}
@@ -257,7 +257,7 @@ func TestHandleHealBatch_NonexistentDir(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "batch", TestDir: missingDir}
 
-	_, resp, isErr := h.handleHealBatch(req, params, projectDir)
+	_, resp, isErr := h.testGen().handleHealBatch(req, params, projectDir)
 	if !isErr {
 		t.Fatal("handleHealBatch should fail for nonexistent directory")
 	}
@@ -271,7 +271,7 @@ func TestHandleHealBatch_PathTraversal(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "batch", TestDir: "../../../etc"}
 
-	_, resp, isErr := h.handleHealBatch(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealBatch(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("handleHealBatch should fail for path traversal")
 	}
@@ -285,7 +285,7 @@ func TestHandleHealBatch_PreservesRequestID(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: "batch-99"}
 	params := TestHealRequest{Action: "batch", TestDir: ""}
 
-	_, resp, isErr := h.handleHealBatch(req, params, t.TempDir())
+	_, resp, isErr := h.testGen().handleHealBatch(req, params, t.TempDir())
 	if !isErr {
 		t.Fatal("expected error for empty test_dir")
 	}
@@ -306,7 +306,7 @@ func TestHandleHealBatch_EmptyDir(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	params := TestHealRequest{Action: "batch", TestDir: testDir}
 
-	result, _, isErr := h.handleHealBatch(req, params, projectDir)
+	result, _, isErr := h.testGen().handleHealBatch(req, params, projectDir)
 	if isErr {
 		t.Fatal("handleHealBatch should succeed on empty directory (zero files)")
 	}

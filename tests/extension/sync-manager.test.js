@@ -39,14 +39,38 @@ mock.module('../../extension/background/debug.js', {
 })
 
 mock.module('../../extension/background/communication.js', {
-  namedExports: { updateBadge: mock.fn() }
+  namedExports: {
+    updateBadge: mock.fn(),
+    createCircuitBreaker: mock.fn(() => ({ call: mock.fn(async (fn) => fn()) })),
+    RATE_LIMIT_CONFIG: { screenshotPerMinute: 60 },
+    shouldCaptureLog: mock.fn(() => true),
+    formatLogEntry: mock.fn((entry) => entry),
+    captureScreenshot: mock.fn(async () => null),
+    checkServerHealth: mock.fn(async () => ({ ok: true })),
+    sendStatusPing: mock.fn(async () => ({ ok: true })),
+    createBatcherWithCircuitBreaker: mock.fn(() => ({ push: mock.fn(), flush: mock.fn() })),
+    sendLogsToServer: mock.fn(async () => ({ ok: true })),
+    sendWSEventsToServer: mock.fn(async () => ({ ok: true })),
+    sendEnhancedActionsToServer: mock.fn(async () => ({ ok: true })),
+    sendNetworkBodiesToServer: mock.fn(async () => ({ ok: true })),
+    sendPerformanceSnapshotsToServer: mock.fn(async () => ({ ok: true }))
+  }
 })
 
 mock.module('../../extension/background/state-manager.js', {
   namedExports: {
+    addDebugLogEntry: mock.fn(),
+    getDebugLog: mock.fn(() => []),
+    clearDebugLog: mock.fn(),
+    isSourceMapEnabled: mock.fn(() => false),
+    resolveStackTrace: mock.fn(() => null),
+    processErrorGroup: mock.fn(() => null),
+    canTakeScreenshot: mock.fn(() => ({ allowed: true })),
+    recordScreenshot: mock.fn(),
     isQueryProcessing: mock.fn(() => false),
     addProcessingQuery: mock.fn(),
-    removeProcessingQuery: mock.fn()
+    removeProcessingQuery: mock.fn(),
+    checkContextAnnotations: mock.fn(() => null)
   }
 })
 
@@ -54,12 +78,18 @@ mock.module('../../extension/background/event-listeners.js', {
   namedExports: {
     getTrackedTabInfo: mock.fn(() => Promise.resolve({
       trackedTabId: 0, trackedTabUrl: '', trackedTabTitle: ''
-    }))
+    })),
+    clearTrackedTab: mock.fn(() => Promise.resolve()),
+    waitForTabLoad: mock.fn(() => Promise.resolve()),
+    pingContentScript: mock.fn(() => Promise.resolve({ ok: true }))
   }
 })
 
 mock.module('../../extension/background/pending-queries.js', {
-  namedExports: { handlePendingQuery: mock.fn(() => Promise.resolve()) }
+  namedExports: {
+    handlePendingQuery: mock.fn(() => Promise.resolve()),
+    handlePilotCommand: mock.fn(() => Promise.resolve())
+  }
 })
 
 // ---------------------------------------------------------------------------

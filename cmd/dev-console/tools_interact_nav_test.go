@@ -160,7 +160,7 @@ func TestHandleBrowserActionNewTab_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleBrowserActionNewTab(req, args)
+	resp := env.handler.interactAction().handleBrowserActionNewTabImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -313,7 +313,7 @@ func TestSwitchTab_UpdatesTrackedTabOnSuccess(t *testing.T) {
 
 	// Call switch_tab synchronously (sync=true is the default).
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":200}`))
+	resp := env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, json.RawMessage(`{"tab_id":200}`))
 
 	// Verify the command completed (not an error).
 	var result MCPToolResult
@@ -358,7 +358,7 @@ func TestSwitchTab_SetTrackedFalse_NoUpdate(t *testing.T) {
 	}`), "")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":300,"set_tracked":false}`))
+	_ = env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, json.RawMessage(`{"tab_id":300,"set_tracked":false}`))
 
 	// Tracked tab should remain 100 because set_tracked=false.
 	_, tabID, tabURL := env.capture.GetTrackingStatus()
@@ -386,7 +386,7 @@ func TestSwitchTab_FailedCommand_NoUpdate(t *testing.T) {
 	}`), "tab_not_found")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":999}`))
+	_ = env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, json.RawMessage(`{"tab_id":999}`))
 
 	// Tracked tab should remain 100 because the command failed.
 	_, tabID, tabURL := env.capture.GetTrackingStatus()
@@ -417,7 +417,7 @@ func TestSwitchTab_TabIDZero_NoUpdate(t *testing.T) {
 	}`), "")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":42}`))
+	_ = env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, json.RawMessage(`{"tab_id":42}`))
 
 	// Tracked tab should remain 100 because tab_id=0 is invalid.
 	_, tabID, tabURL := env.capture.GetTrackingStatus()
@@ -446,7 +446,7 @@ func TestSwitchTab_TabIDMissing_NoUpdate(t *testing.T) {
 	}`), "")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":42}`))
+	_ = env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, json.RawMessage(`{"tab_id":42}`))
 
 	// Tracked tab should remain 100 because tab_id is absent (defaults to 0).
 	_, tabID, tabURL := env.capture.GetTrackingStatus()
@@ -471,7 +471,7 @@ func TestSwitchTab_AsyncMode_NoImmediateTrackingUpdate(t *testing.T) {
 	// Call switch_tab with background=true (async mode).
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	args := json.RawMessage(`{"tab_id":200,"background":true}`)
-	resp := env.handler.handleBrowserActionSwitchTab(req, args)
+	resp := env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, args)
 
 	// Should return immediately with a queued response (not an error).
 	var result MCPToolResult

@@ -219,7 +219,10 @@ async function executeWaitFor(target, params) {
         : domAction === 'wait_for_absent'
             ? `Element still present within ${timeoutMs}ms: ${selector}`
             : undefined;
-    return lastResult ?? {
+    if (lastResult?.error === 'timeout') {
+        return lastResult;
+    }
+    return {
         success: false,
         action: 'wait_for',
         selector,
@@ -365,7 +368,12 @@ async function enrichWithEffectiveContext(tabId, result) {
     try {
         const tab = await chrome.tabs.get(tabId);
         if (result && typeof result === 'object' && !Array.isArray(result)) {
-            return { ...result, effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title };
+            return {
+                ...result,
+                effective_tab_id: tabId,
+                effective_url: tab.url,
+                effective_title: tab.title
+            };
         }
         return result;
     }
@@ -389,7 +397,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const hasSelector = !!(selector || params.element_id);
         const hasText = !!params.text;
         const hasURL = !!params.url_contains;
-        const condCount = ((hasSelector || params.absent) ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0);
+        const condCount = (hasSelector || params.absent ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0);
         if (condCount === 0) {
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for requires selector, text, or url_contains');
             return;
@@ -493,9 +501,9 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
             let resultPayload;
             if (picked) {
                 const base = { ...firstResult, frame_id: picked.frameId };
-                const matched = base["matched"];
+                const matched = base['matched'];
                 if (matched && typeof matched === 'object' && !Array.isArray(matched)) {
-                    base["matched"] = { ...matched, frame_id: picked.frameId };
+                    base['matched'] = { ...matched, frame_id: picked.frameId };
                 }
                 resultPayload = base;
             }

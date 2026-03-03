@@ -28,12 +28,7 @@ import {
 } from './websocket-tracking.js'
 
 // Re-export everything from tracking so existing import paths work unchanged
-export {
-  getSize,
-  formatPayload,
-  truncateWsMessage,
-  createConnectionTracker
-} from './websocket-tracking.js'
+export { getSize, formatPayload, truncateWsMessage, createConnectionTracker } from './websocket-tracking.js'
 export type { ConnectionTracker } from './websocket-tracking.js'
 
 // =============================================================================

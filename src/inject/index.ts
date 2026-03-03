@@ -108,7 +108,13 @@ export {
   uninstallWebSocketCapture,
   resetForTesting
 } from '../lib/websocket.js'
-export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries.js'
+export {
+  executeDOMQuery,
+  getPageInfo,
+  runAxeAudit,
+  runAxeAuditWithTimeout,
+  formatAxeResults
+} from '../lib/dom-queries.js'
 export {
   mapInitiatorType,
   aggregateResourceTiming,

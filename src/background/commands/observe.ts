@@ -31,9 +31,14 @@ function screenshotExpandContainers(): { expanded: number } {
     const style = getComputedStyle(el)
     const oy = style.overflowY || ''
     if ((oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 1) {
-      el.setAttribute('data-gasoline-fpx', JSON.stringify({
-        o: el.style.overflow, h: el.style.height, m: el.style.maxHeight
-      }))
+      el.setAttribute(
+        'data-gasoline-fpx',
+        JSON.stringify({
+          o: el.style.overflow,
+          h: el.style.height,
+          m: el.style.maxHeight
+        })
+      )
       el.style.overflow = 'visible'
       el.style.height = 'auto'
       el.style.maxHeight = 'none'
@@ -59,7 +64,9 @@ function screenshotRestoreContainers(): void {
       el.style.overflow = s.o || ''
       el.style.height = s.h || ''
       el.style.maxHeight = s.m || ''
-    } catch { /* ignore parse errors */ }
+    } catch {
+      /* ignore parse errors */
+    }
     el.removeAttribute('data-gasoline-fpx')
   }
   tryRestore(document.documentElement)
@@ -70,9 +77,7 @@ function screenshotRestoreContainers(): void {
 }
 
 /** Post screenshot data to server for saving and query resolution. */
-async function postScreenshot(
-  dataUrl: string, pageUrl: string | undefined, queryId: string
-): Promise<boolean> {
+async function postScreenshot(dataUrl: string, pageUrl: string | undefined, queryId: string): Promise<boolean> {
   try {
     const response = await fetch(`${getServerUrl()}/screenshots`, {
       method: 'POST',
@@ -139,9 +144,7 @@ async function captureFullPage(
 
     try {
       // Step 3: Get full content dimensions
-      const metrics = await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Page.getLayoutMetrics', {}
-      ) as {
+      const metrics = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.getLayoutMetrics', {})) as {
         cssContentSize?: { width: number; height: number }
         contentSize?: { width: number; height: number }
       }
@@ -151,27 +154,25 @@ async function captureFullPage(
       const captureHeight = Math.min(Math.ceil(contentSize.height), MAX_CAPTURE_HEIGHT)
 
       // Step 4: Override viewport to full content size
-      await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride',
-        { width: captureWidth, height: captureHeight, deviceScaleFactor: 1, mobile: false }
-      )
+      await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', {
+        width: captureWidth,
+        height: captureHeight,
+        deviceScaleFactor: 1,
+        mobile: false
+      })
 
       // Brief pause for layout reflow after viewport resize
       await new Promise((r) => setTimeout(r, 150))
 
       // Step 5: Capture full-page screenshot via CDP
-      const screenshotResult = await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Page.captureScreenshot', {
-          format,
-          quality: format === 'jpeg' ? quality : undefined,
-          clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
-        }
-      ) as { data: string }
+      const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
+        format,
+        quality: format === 'jpeg' ? quality : undefined,
+        clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
+      })) as { data: string }
 
       // Step 6: Clear device metrics override
-      await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {}
-      )
+      await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {})
 
       // Step 7: Build data URL and post to server
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
@@ -183,7 +184,11 @@ async function captureFullPage(
         ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' })
       }
     } finally {
-      try { await chrome.debugger.detach({ tabId: ctx.tabId }) } catch { /* already detached */ }
+      try {
+        await chrome.debugger.detach({ tabId: ctx.tabId })
+      } catch {
+        /* already detached */
+      }
     }
   } catch (err) {
     // CDP unavailable — fall back to regular captureVisibleTab with warning
@@ -201,11 +206,15 @@ async function captureFullPage(
     }
   } finally {
     // Step 8: Always restore containers
-    await chrome.scripting.executeScript({
-      target: { tabId: ctx.tabId },
-      world: 'MAIN',
-      func: screenshotRestoreContainers
-    }).catch(() => { /* best effort */ })
+    await chrome.scripting
+      .executeScript({
+        target: { tabId: ctx.tabId },
+        world: 'MAIN',
+        func: screenshotRestoreContainers
+      })
+      .catch(() => {
+        /* best effort */
+      })
   }
 }
 
@@ -341,9 +350,8 @@ registerCommand('page_inventory', async (ctx) => {
     }
 
     // Apply limit if specified
-    const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
-      ? ctx.params.limit
-      : filteredElements.length
+    const limit =
+      typeof ctx.params.limit === 'number' && ctx.params.limit > 0 ? ctx.params.limit : filteredElements.length
     const finalElements = filteredElements.slice(0, limit)
 
     const payload: Record<string, unknown> = {

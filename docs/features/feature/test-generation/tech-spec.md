@@ -134,48 +134,38 @@ Concurrency is enforced via semaphores in the Go server. Excess requests are que
 
 ### Go Server Components (M1-1 Resolution)
 
-**Decision:** Single `testgen.go` file with internal organization by mode.
+**Decision:** Keep test-generation logic split by concern and route `generate` test modes through a dedicated `testGenHandler` sub-handler.
 
-**Rationale:** Follows existing pattern where `pilot.go` handles all pilot modes, `codegen.go` handles all code generation. Splitting into multiple files would deviate from established patterns.
+**Rationale:** This reduces `ToolHandler` coupling and keeps parsing/dispatch concerns separate from testgen domain logic. The split is now established and preferred.
 
 ```
 cmd/dev-console/
-├── testgen.go           # New: ALL test generation logic (from_context, heal, classify)
-├── testgen_test.go      # New: Unit tests
-├── codegen.go           # Existing: Playwright script generation (reuse)
-└── tools_core.go             # Extend: Add new generate modes
+├── tools_generate.go                    # generate mode router (calls h.testGen())
+├── tools_generate_testgen_handler.go    # testGenHandler wiring/accessor
+├── testgen.go                           # test_from_context
+├── testgen_heal.go                      # test_heal
+├── testgen_classify.go                  # test_classify
+├── testgen_provider_adapter.go          # capture/log adapter to internal/testgen
+└── tools_core.go                        # ToolHandler composition
 ```
 
-#### Internal organization of testgen.go:
+#### Current handler boundaries:
 ```go
-// testgen.go
+// tools_generate.go
+func (h *ToolHandler) toolGenerate(...)
+// Routes "test_from_context", "test_heal", "test_classify" to h.testGen()
 
-// === Section 1: Types & Constants ===
-type TestFromContextRequest struct { ... }
-type TestHealRequest struct { ... }
-type TestClassifyRequest struct { ... }
+// tools_generate_testgen_handler.go
+type testGenHandler struct { parent *ToolHandler }
 
-// === Section 2: Entry Points ===
-func (h *ToolHandler) handleGenerateTestFromContext(req TestFromContextRequest) (*mcpResponse, error)
-func (h *ToolHandler) handleGenerateTestHeal(req TestHealRequest) (*mcpResponse, error)
-func (h *ToolHandler) handleGenerateTestClassify(req TestClassifyRequest) (*mcpResponse, error)
+// testgen.go / testgen_heal.go / testgen_classify.go
+func (h *testGenHandler) handleGenerateTestFromContext(...)
+func (h *testGenHandler) handleGenerateTestHeal(...)
+func (h *testGenHandler) handleGenerateTestClassify(...)
 
-// === Section 3: test_from_context Implementation ===
-func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error)
-func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*GeneratedTest, error)
-
-// === Section 4: test_heal Implementation ===
-func (h *ToolHandler) healSelector(old string, dom DOMSnapshot) (*HealedSelector, error)
-func (h *ToolHandler) analyzeTestFile(path string) ([]string, error)
-func validateSelector(selector string) error
-func validateTestFilePath(path string) error
-
-// === Section 5: test_classify Implementation ===
-func (h *ToolHandler) classifyFailure(failure TestFailure) (*FailureClassification, error)
-func matchClassificationPattern(error string) (string, float64)
+// testgen_provider_adapter.go
+// Adapts capture/log state for internal/testgen package APIs.
 ```
-
-**If file exceeds 800 lines:** Split into testgen_heal.go and testgen_classify.go, keeping testgen.go as the entry point with types.
 
 ### Extension Components (Minimal)
 
