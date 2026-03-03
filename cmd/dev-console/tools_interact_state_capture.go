@@ -17,11 +17,11 @@ type stateCaptureResult = act.StateCaptureResult
 
 // captureState attempts to capture form values, scroll position, and web storage from the browser.
 // Always returns a stateCaptureResult with an explicit Status the caller can surface to the LLM.
-func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
-	if !h.capture.IsPilotActionAllowed() {
+func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResult {
+	if !h.parent.capture.IsPilotActionAllowed() {
 		return stateCaptureResult{Status: act.StateCaptureStatusPilotDisabled}
 	}
-	if !h.capture.IsExtensionConnected() {
+	if !h.parent.capture.IsExtensionConnected() {
 		return stateCaptureResult{Status: act.StateCaptureStatusExtensionDisconnected}
 	}
 
@@ -38,9 +38,9 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	cmd, found := h.capture.WaitForCommand(correlationID, 5*time.Second)
+	cmd, found := h.parent.capture.WaitForCommand(correlationID, 5*time.Second)
 	if !found || cmd.Status == "pending" {
 		return stateCaptureResult{Status: act.StateCaptureStatusTimeout}
 	}
@@ -61,7 +61,7 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 
 // queueStateRestore queues a JS execute command to restore form values, scroll position,
 // localStorage, sessionStorage, and cookies. This is fire-and-forget.
-func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
+func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
 	correlationID := newCorrelationID("state_restore")
 
 	script := act.BuildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
@@ -76,16 +76,16 @@ func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPo
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
 	return correlationID
 }
 
 // queueStateNavigation queues a navigation to the saved URL if pilot is enabled
 // and the state contains a non-empty URL. Mutates stateData to add tracking fields.
-func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
+func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
 	savedURL, ok := stateData["url"].(string)
-	if !ok || savedURL == "" || !h.capture.IsPilotActionAllowed() || !h.capture.IsExtensionConnected() {
+	if !ok || savedURL == "" || !h.parent.capture.IsPilotActionAllowed() || !h.parent.capture.IsExtensionConnected() {
 		return
 	}
 	correlationID := newCorrelationID("nav")
@@ -96,7 +96,7 @@ func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[str
 		Params:        navArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 	stateData["navigation_queued"] = true
 	stateData["correlation_id"] = correlationID
 }

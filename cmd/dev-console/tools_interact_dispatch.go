@@ -29,14 +29,14 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 	h.interactOnce.Do(func() {
 		h.interactHandlers = map[string]interactHandler{
 			"highlight":                 h.handleHighlight,
-			"save_state":                h.handleStateSave,
-			"state_save":                h.handleStateSave, // backward-compatible alias
-			"load_state":                h.handleStateLoad,
-			"state_load":                h.handleStateLoad, // backward-compatible alias
-			"list_states":               h.handleStateList,
-			"state_list":                h.handleStateList, // backward-compatible alias
-			"delete_state":              h.handleStateDelete,
-			"state_delete":              h.handleStateDelete, // backward-compatible alias
+			"save_state":                h.stateInteract().handleStateSave,
+			"state_save":                h.stateInteract().handleStateSave, // backward-compatible alias
+			"load_state":                h.stateInteract().handleStateLoad,
+			"state_load":                h.stateInteract().handleStateLoad, // backward-compatible alias
+			"list_states":               h.stateInteract().handleStateList,
+			"state_list":                h.stateInteract().handleStateList, // backward-compatible alias
+			"delete_state":              h.stateInteract().handleStateDelete,
+			"state_delete":              h.stateInteract().handleStateDelete, // backward-compatible alias
 			"set_storage":               h.handleSetStorage,
 			"delete_storage":            h.handleDeleteStorage,
 			"clear_storage":             h.handleClearStorage,
