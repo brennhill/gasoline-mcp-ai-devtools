@@ -12,7 +12,8 @@ owners:
 
 Refactor `internal/capture` to group websocket/network/action ring-buffer state into
 `BufferStore`, and extension-log append/eviction/copy/clear behavior into
-`ExtensionLogBuffer` helpers, reducing `Capture` field sprawl without changing behavior.
+`ExtensionLogBuffer` helpers, plus network-waterfall append/eviction/copy/clear behavior into
+`NetworkWaterfallBuffer` store methods, reducing `Capture` field sprawl without changing behavior.
 
 ## Entrypoints
 
@@ -32,6 +33,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 6. Clear/reset APIs zero `c.buffers.*` slices and counters.
 7. Extension log ingestion paths (`AddExtensionLogs`, sync ingest) call `ExtensionLogBuffer.append`.
 8. Extension log reads/clears use `ExtensionLogBuffer.snapshot` and `ExtensionLogBuffer.clear`.
+9. Network waterfall ingest/read/clear delegates to `NetworkWaterfallBuffer.appendEntries`, `snapshot`, and `clear`.
 
 ## Error and Recovery Paths
 
@@ -50,6 +52,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 
 - `internal/capture/buffer_store.go`
 - `internal/capture/extension_log_store.go`
+- `internal/capture/network_waterfall_store.go`
 - `internal/capture/capture-struct.go`
 - `internal/capture/network_bodies.go`
 - `internal/capture/websocket.go`
@@ -57,6 +60,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/enhanced_actions.go`
 - `internal/capture/buffer_clear.go`
 - `internal/capture/extension_logs.go`
+- `internal/capture/network_waterfall.go`
 - `internal/capture/sync_processing.go`
 - `internal/capture/accessor_*.go`
 - `internal/capture/memory.go`
@@ -68,6 +72,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/websocket_test.go`
 - `internal/capture/enhanced_actions_test.go`
 - `internal/capture/extension_log_store_test.go`
+- `internal/capture/network_waterfall_store_test.go`
 - `internal/capture/coverage_boost_unit_test.go`
 - `internal/capture/test_helpers.go`
 

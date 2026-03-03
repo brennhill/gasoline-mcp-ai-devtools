@@ -21,12 +21,12 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		NetworkWaterfall: len(c.networkWaterfall.entries),
+		NetworkWaterfall: c.networkWaterfall.count(),
 		NetworkBodies:    len(c.buffers.networkBodies),
 	}
 
-	// Clear network waterfall buffer
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
+	// Clear network waterfall buffer.
+	c.networkWaterfall.clear()
 
 	// Clear network bodies buffer and reset memory tracking
 	c.buffers.clearNetworkBuffers()
@@ -93,7 +93,7 @@ func (c *Capture) ClearAll() {
 	defer c.mu.Unlock()
 
 	c.buffers.clearAllEventBuffers()
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
+	c.networkWaterfall.clear()
 	c.wsConnections.connections = make(map[string]*connectionState)
 	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
 	c.wsConnections.connOrder = make([]string, 0)
