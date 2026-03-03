@@ -15,7 +15,7 @@ var interactActions = []string{
 	"wait_for_stable",
 	"list_interactive",
 	"get_readable", "get_markdown",
-	"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
+	"navigate_and_wait_for", "navigate_and_document", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
 	"record_start", "record_stop",
 	"upload", "draw_mode_start",
 	"hardware_click", "activate_tab",

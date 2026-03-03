@@ -62,6 +62,7 @@ func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
 			"get_readable":              h.handleGetReadable,
 			"get_markdown":              h.handleGetMarkdown,
 			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
+			"navigate_and_document":     h.handleNavigateAndDocument,
 			"fill_form_and_submit":      h.handleFillFormAndSubmit,
 			"fill_form":                 h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,

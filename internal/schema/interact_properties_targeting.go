@@ -10,6 +10,16 @@ func interactTargetingProperties() map[string]any {
 			"type":        "string",
 			"description": "Optional container selector to constrain DOM actions to a specific region",
 		},
+		"scope_rect": map[string]any{
+			"type":        "object",
+			"description": "Optional viewport rectangle to constrain DOM actions by geometry (x/y/width/height)",
+			"properties": map[string]any{
+				"x":      map[string]any{"type": "number"},
+				"y":      map[string]any{"type": "number"},
+				"width":  map[string]any{"type": "number"},
+				"height": map[string]any{"type": "number"},
+			},
+		},
 		"element_id": map[string]any{
 			"type":        "string",
 			"description": "Stable element handle from list_interactive (preferred for deterministic follow-up actions)",
