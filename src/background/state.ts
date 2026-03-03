@@ -91,12 +91,12 @@ export let debugMode = state.debugMode
 export let connectionStatus: MutableConnectionStatus = state.connectionStatus
 export let currentLogLevel = state.currentLogLevel
 export let screenshotOnError = state.screenshotOnError
-export let _captureOverrides: Record<string, string> = state.captureOverrides
+let _captureOverrides: Record<string, string> = state.captureOverrides
 export let aiControlled = state.aiControlled
-export let _connectionCheckRunning = state.connectionCheckRunning
-export let __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache
-export let __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized
-export let __pilotInitCallback: (() => void) | null = state.pilotInitCallback
+let _connectionCheckRunning = state.connectionCheckRunning
+let __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache
+let __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized
+let __pilotInitCallback: (() => void) | null = state.pilotInitCallback
 export const extensionLogQueue = state.extensionLogQueue
 
 function syncLegacyExports(): void {
@@ -278,7 +278,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
 /**
  * Reset pilot cache for testing
  */
-export function _resetPilotCacheForTesting(value?: boolean): void {
+function _resetPilotCacheForTesting(value?: boolean): void {
   state.aiWebPilotEnabledCache = value !== undefined ? value : false
   syncLegacyExports()
 }
@@ -290,7 +290,7 @@ export function isAiWebPilotEnabled(): boolean {
   return state.aiWebPilotEnabledCache === true
 }
 
-export function resetStateForTesting(): void {
+function resetStateForTesting(): void {
   state.serverUrl = DEFAULT_SERVER_URL
   state.debugMode = false
   state.connectionStatus = { ...defaultConnectionStatus }

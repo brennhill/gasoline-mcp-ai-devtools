@@ -9,7 +9,3 @@ type (
 	NetworkDiff   = SessionNetworkDiff
 	NetworkChange = SessionNetworkChange
 )
-
-func NewManager(maxSnapshots int, reader CaptureStateReader) *Manager {
-	return NewSessionManager(maxSnapshots, reader)
-}

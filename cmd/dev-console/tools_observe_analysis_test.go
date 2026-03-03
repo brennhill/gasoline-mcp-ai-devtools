@@ -1,16 +1,18 @@
 // Purpose: Tests for observe analysis sub-handler dispatch.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
-// tools_observe_analysis_test.go — Tests for ensureA11ySummary function.
+// tools_observe_analysis_test.go — Tests for a11ysummary.EnsureAuditSummary function.
 // Note: executeA11yQuery is tested indirectly (requires live capture + extension).
 package main
 
 import (
 	"testing"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/a11ysummary"
 )
 
 // ============================================
-// ensureA11ySummary
+// a11ysummary.EnsureAuditSummary
 // ============================================
 
 func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
@@ -25,7 +27,7 @@ func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
 		},
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -60,7 +62,7 @@ func TestEnsureA11ySummary_PreservesExistingSummary(t *testing.T) {
 		"summary": existingSummary,
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -88,7 +90,7 @@ func TestEnsureA11ySummary_NoViolationsNoPassses(t *testing.T) {
 	t.Parallel()
 	auditResult := map[string]any{}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -115,7 +117,7 @@ func TestEnsureA11ySummary_ViolationsNotArray(t *testing.T) {
 		"passes":     42,
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -140,7 +142,7 @@ func TestEnsureA11ySummary_OnlyViolations(t *testing.T) {
 		},
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -163,7 +165,7 @@ func TestEnsureA11ySummary_OnlyPasses(t *testing.T) {
 		},
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -184,7 +186,7 @@ func TestEnsureA11ySummary_EmptyArrays(t *testing.T) {
 		"passes":     []any{},
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -205,7 +207,7 @@ func TestEnsureA11ySummary_NilViolationsKey(t *testing.T) {
 		"passes":     nil,
 	}
 
-	ensureA11ySummary(auditResult)
+	a11ysummary.EnsureAuditSummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {

@@ -17,7 +17,7 @@ PLATFORMS := \
 
 .PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-integration test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
-	lint lint-go lint-js format format-fix typecheck check check-wire-drift ci \
+	lint lint-go lint-js lint-dead lint-dead-go lint-dead-ts format format-fix typecheck check check-wire-drift ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
@@ -228,6 +228,17 @@ lint-go:
 	go vet $(CMD_PKG)/
 	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run $(CMD_PKG)/... ./internal/... || echo "golangci-lint not installed (optional)"
 
+lint-dead-go:
+	@echo "=== Checking for dead Go code ==="
+	@command -v deadcode >/dev/null 2>&1 || { echo "Install: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; }
+	@deadcode $(CMD_PKG)/... ./internal/... 2>&1 | grep -v _test.go || echo "No dead code found"
+
+lint-dead-ts:
+	@echo "=== Checking for dead TypeScript exports ==="
+	@npx knip --no-exit-code
+
+lint-dead: lint-dead-go lint-dead-ts
+
 lint-hardening:
 	@./scripts/lint-hardening.sh
 
@@ -360,13 +371,14 @@ verify-llm:
 	@echo "verify-llm passed"
 
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint lint-hardening typecheck security-check test test-js validate-deps-versions
+quality-gate: check-file-length lint lint-hardening lint-dead typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
 	@echo "═══════════════════════════════════════════"
 	@echo "  ✓ File length limits enforced"
 	@echo "  ✓ Linting passed (ESLint + go vet)"
+	@echo "  ✓ Dead code checked (deadcode + knip)"
 	@echo "  ✓ Type safety verified (TypeScript)"
 	@echo "  ✓ Security checks passed"
 	@echo "  ✓ All Go tests passed"

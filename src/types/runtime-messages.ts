@@ -146,11 +146,11 @@ export interface GetAiWebPilotEnabledResponse {
 /**
  * Get tracking state message (for favicon replacer)
  */
-export interface GetTrackingStateMessage {
+interface GetTrackingStateMessage {
   readonly type: 'getTrackingState'
 }
 
-export interface GetTrackingStateResponse {
+interface GetTrackingStateResponse {
   readonly state: {
     isTracked: boolean
     aiPilotEnabled: boolean
@@ -233,7 +233,7 @@ export type BackgroundMessage =
 /**
  * Draw mode: content script requests screenshot capture
  */
-export interface DrawModeCaptureScreenshotMessage {
+interface DrawModeCaptureScreenshotMessage {
   readonly type: 'GASOLINE_CAPTURE_SCREENSHOT'
 }
 
@@ -254,7 +254,7 @@ export interface DrawModeCompletedMessage {
 /**
  * Push chat: content script sends a chat message to push to AI.
  */
-export interface PushChatMessage {
+interface PushChatMessage {
   readonly type: 'GASOLINE_PUSH_CHAT'
   readonly message: string
   readonly page_url: string
@@ -263,7 +263,7 @@ export interface PushChatMessage {
 /**
  * Toggle chat widget message (background to content).
  */
-export interface ToggleChatMessage {
+interface ToggleChatMessage {
   readonly type: 'GASOLINE_TOGGLE_CHAT'
   readonly client_name?: string
 }
@@ -364,7 +364,7 @@ export interface GetNetworkWaterfallMessage {
 /**
  * Link health check message
  */
-export interface LinkHealthMessage {
+interface LinkHealthMessage {
   readonly type: 'LINK_HEALTH_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -372,7 +372,7 @@ export interface LinkHealthMessage {
 /**
  * Computed styles query message
  */
-export interface ComputedStylesQueryMessage {
+interface ComputedStylesQueryMessage {
   readonly type: 'COMPUTED_STYLES_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -380,7 +380,7 @@ export interface ComputedStylesQueryMessage {
 /**
  * Form discovery query message
  */
-export interface FormDiscoveryQueryMessage {
+interface FormDiscoveryQueryMessage {
   readonly type: 'FORM_DISCOVERY_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -388,7 +388,7 @@ export interface FormDiscoveryQueryMessage {
 /**
  * Form state query message
  */
-export interface FormStateQueryMessage {
+interface FormStateQueryMessage {
   readonly type: 'FORM_STATE_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -396,7 +396,7 @@ export interface FormStateQueryMessage {
 /**
  * Data table query message
  */
-export interface DataTableQueryMessage {
+interface DataTableQueryMessage {
   readonly type: 'DATA_TABLE_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -404,18 +404,18 @@ export interface DataTableQueryMessage {
 /**
  * Draw mode control messages (background to content)
  */
-export interface DrawModeStartMessage {
+interface DrawModeStartMessage {
   readonly type: 'GASOLINE_DRAW_MODE_START'
   readonly started_by?: string
   readonly annot_session_name?: string
   readonly correlation_id?: string
 }
 
-export interface DrawModeStopMessage {
+interface DrawModeStopMessage {
   readonly type: 'GASOLINE_DRAW_MODE_STOP'
 }
 
-export interface GetAnnotationsMessage {
+interface GetAnnotationsMessage {
   readonly type: 'GASOLINE_GET_ANNOTATIONS'
 }
 
@@ -445,7 +445,7 @@ export interface ManageStateMessage {
  * Action toast message — visual indicator for AI actions.
  * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
-export interface ActionToastMessage {
+interface ActionToastMessage {
   readonly type: 'GASOLINE_ACTION_TOAST'
   readonly text: string
   readonly detail?: string
@@ -456,7 +456,7 @@ export interface ActionToastMessage {
 /**
  * Subtitle overlay message (persistent narration text)
  */
-export interface SubtitleMessage {
+interface SubtitleMessage {
   readonly type: 'GASOLINE_SUBTITLE'
   readonly text: string
 }
@@ -464,7 +464,7 @@ export interface SubtitleMessage {
 /**
  * Recording watermark overlay message
  */
-export interface RecordingWatermarkMessage {
+interface RecordingWatermarkMessage {
   readonly type: 'GASOLINE_RECORDING_WATERMARK'
   readonly visible: boolean
 }

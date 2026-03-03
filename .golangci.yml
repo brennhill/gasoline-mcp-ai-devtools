@@ -13,6 +13,9 @@ linters:
     - errcheck       # Unchecked error returns (json.Encode, io.Close, etc.)
     - govet          # Go vet with shadow detection
     - copyloopvar    # Loop variable capture bugs (Go 1.22+)
+    - dupl           # Copy-paste detection (catches duplicated function blocks)
+    - unconvert      # Unnecessary type conversions
+    - misspell       # Typos in comments and strings
 
   settings:
     errcheck:
@@ -22,6 +25,9 @@ linters:
         - fmt.Fprintln
         - (net/http.ResponseWriter).Write
       # But DO check json.NewEncoder().Encode() and similar
+
+    dupl:
+      threshold: 100  # Flag blocks of 100+ duplicated tokens
 
     staticcheck:
       checks:

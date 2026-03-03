@@ -226,36 +226,6 @@ func TestNetworkWaterfall_FeedsCSPGenerator(t *testing.T) {
 }
 
 // ============================================
-// URL Extraction Tests (Skipped)
-// ============================================
-// NOTE: extractOrigin function is not implemented in the capture package.
-
-func TestExtractOrigin_StandardHTTPS(t *testing.T) {
-	t.Parallel()
-	t.Skip("extractOrigin not implemented")
-}
-
-func TestExtractOrigin_WithPort(t *testing.T) {
-	t.Parallel()
-	t.Skip("extractOrigin not implemented")
-}
-
-func TestExtractOrigin_DataURL(t *testing.T) {
-	t.Parallel()
-	t.Skip("extractOrigin not implemented")
-}
-
-func TestExtractOrigin_BlobURL(t *testing.T) {
-	t.Parallel()
-	t.Skip("extractOrigin not implemented")
-}
-
-func TestExtractOrigin_MalformedURL(t *testing.T) {
-	t.Parallel()
-	t.Skip("extractOrigin not implemented")
-}
-
-// ============================================
 // Capacity Configuration Tests
 // ============================================
 
