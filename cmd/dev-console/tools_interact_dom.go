@@ -51,7 +51,7 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 
 	// If x/y coordinates provided on a click action, escalate to CDP for hardware-level click
 	if action == "click" && params.X != nil && params.Y != nil {
-		return h.parent.handleCDPClick(req, args, action, *params.X, *params.Y, params.TabID)
+		return h.handleCDPClick(req, args, action, *params.X, *params.Y, params.TabID)
 	}
 
 	var failed bool

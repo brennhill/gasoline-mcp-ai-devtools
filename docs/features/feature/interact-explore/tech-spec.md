@@ -34,6 +34,7 @@ links:
 - composed workflow handlers (`navigate_and_wait_for`, `fill_form`, `fill_form_and_submit`, `run_a11y_and_export_sarif`) plus field-step internals
 - content extraction handlers (`get_readable`, `get_markdown`, `page_summary` delegation), `explore_page`, `batch`, `clipboard_read/write`, and composable standalone handlers (`wait_for_stable`, `auto_dismiss_overlays`)
 - retry/evidence policy state machine (`retry_context`, terminal guidance, evidence before/after capture + attach) now owned by `interactActionHandler`
+- draw mode start, CDP/hardware click path, and post-switch tracked-tab sync update are now owned by `interactActionHandler`
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`

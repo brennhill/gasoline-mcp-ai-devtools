@@ -133,7 +133,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	// Server-side update only occurs in sync mode because MaybeWaitForCommand
 	// returns immediately when sync=false, so GetCommandResult has no result yet.
 	if setTracked {
-		h.parent.applySwitchTabTracking(correlationID)
+		h.applySwitchTabTracking(correlationID)
 	}
 
 	return resp
