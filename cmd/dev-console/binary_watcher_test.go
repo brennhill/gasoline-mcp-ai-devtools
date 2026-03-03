@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const testVersionCheckTimeout = 5 * time.Second
+const testVersionCheckTimeout = 15 * time.Second
 
 func TestBinaryWatcherState_UpgradeInfo_Default(t *testing.T) {
 	t.Parallel()
@@ -255,6 +255,10 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 	upgradeGracePeriod = 50 * time.Millisecond
 	defer func() { upgradeGracePeriod = origGrace }()
 
+	origVerifyTimeout := versionVerifyTimeout
+	versionVerifyTimeout = testVersionCheckTimeout
+	defer func() { versionVerifyTimeout = origVerifyTimeout }()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -278,23 +282,49 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 		t.Fatal("startBinaryWatcher returned nil")
 	}
 
-	// Wait for initial check to complete
-	time.Sleep(30 * time.Millisecond)
-
-	// Now replace binary with newer version
-	time.Sleep(10 * time.Millisecond)
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.8.0'\n"), 0o755); err != nil {
-		t.Fatal(err)
+	// Wait until watcher caches baseline file state to avoid a race where the
+	// first watcher read observes the upgraded file as its initial snapshot.
+	cacheDeadline := time.Now().Add(2 * time.Second)
+	cached := false
+	for time.Now().Before(cacheDeadline) {
+		s.mu.Lock()
+		cached = !s.lastModTime.IsZero()
+		s.mu.Unlock()
+		if cached {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !cached {
+		t.Fatal("watcher did not cache baseline binary state before upgrade write")
 	}
 
-	// Wait for detection + version verification + grace period.
-	// Shell script execution can take ~1s on macOS due to process spawn overhead.
-	time.Sleep(3 * time.Second)
+	// Now replace binary with newer version
+	updatedScript := []byte("#!/bin/sh\n# upgraded build marker\necho 'gasoline v0.8.0'\n")
+	if err := os.WriteFile(tmp, updatedScript, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Ensure mtime changes even on coarse-grained filesystems.
+	bumped := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(tmp, bumped, bumped); err != nil {
+		t.Fatalf("failed to bump binary mtime: %v", err)
+	}
 
-	upgradeMu.Lock()
-	gotVer := upgradeVersion
-	gotShutdown := shutdownCalled
-	upgradeMu.Unlock()
+	// Wait for detection + version verification + grace period with polling
+	// instead of fixed sleeps to reduce flake under variable CI load.
+	deadline := time.Now().Add(12 * time.Second)
+	var gotVer string
+	var gotShutdown bool
+	for time.Now().Before(deadline) {
+		upgradeMu.Lock()
+		gotVer = upgradeVersion
+		gotShutdown = shutdownCalled
+		upgradeMu.Unlock()
+		if gotVer == "0.8.0" && gotShutdown {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 
 	if gotVer != "0.8.0" {
 		t.Fatalf("expected upgrade to 0.8.0, got %q", gotVer)
