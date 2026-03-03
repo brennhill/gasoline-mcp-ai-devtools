@@ -13,6 +13,9 @@ import (
 // handleNavigateAndDocument performs click-based navigation, waits for URL/stability,
 // then enriches the response with compact page context (url/title/tab_id).
 func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	workflowStart := time.Now()
+	trace := make([]WorkflowStep, 0, 4)
+
 	var params struct {
 		TimeoutMs        int   `json:"timeout_ms,omitempty"`
 		StabilityMs      int   `json:"stability_ms,omitempty"`
@@ -37,32 +40,58 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		waitForStable = *params.WaitForStable
 	}
 
+	validateStart := time.Now()
 	if resp, blocked := h.validateNavigateAndDocumentTab(req, params.TabID); blocked {
-		return resp
+		trace = append(trace, WorkflowStep{
+			Action:   "validate_tab",
+			Status:   "error",
+			TimingMs: time.Since(validateStart).Milliseconds(),
+			Detail:   "tab_id mismatch with tracked tab",
+		})
+		return h.appendWorkflowTraceToResponse(resp, "navigate_and_document", trace, workflowStart, "failed")
 	}
+	trace = append(trace, WorkflowStep{
+		Action:   "validate_tab",
+		Status:   "success",
+		TimingMs: time.Since(validateStart).Milliseconds(),
+	})
 
-	workflowStart := time.Now()
 	beforeURL := h.currentTrackedURL(req)
 
 	clickArgs := filterNavigateAndDocumentClickArgs(args)
+	clickStart := time.Now()
 	clickResp := h.handleDOMPrimitive(req, clickArgs, "click")
+	trace = append(trace, WorkflowStep{
+		Action:   "click",
+		Status:   responseStatus(clickResp),
+		TimingMs: time.Since(clickStart).Milliseconds(),
+	})
 	if isErrorResponse(clickResp) {
-		return clickResp
+		return h.appendWorkflowTraceToResponse(clickResp, "navigate_and_document", trace, workflowStart, "failed")
 	}
 
 	if waitForURLChange && beforeURL != "" {
+		waitURLStart := time.Now()
 		timeoutMs := params.TimeoutMs
 		if params.TimeoutMs > 0 {
 			var ok bool
 			timeoutMs, ok = remainingNavigateAndDocumentTimeoutMs(workflowStart, params.TimeoutMs)
 			if !ok {
-				return navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_url_change")
+				timeoutResp := navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_url_change")
+				trace = append(trace, WorkflowStep{
+					Action:   "wait_for_url_change",
+					Status:   "error",
+					TimingMs: time.Since(waitURLStart).Milliseconds(),
+					Detail:   "timeout budget exhausted before URL wait stage",
+				})
+				return h.appendWorkflowTraceToResponse(timeoutResp, "navigate_and_document", trace, workflowStart, "failed")
 			}
 		} else if timeoutMs <= 0 {
 			timeoutMs = 5000
 		}
-		if _, changed := h.waitForTrackedURLChange(req, beforeURL, timeoutMs); !changed {
-			return JSONRPCResponse{
+		lastURL, changed := h.waitForTrackedURLChange(req, beforeURL, timeoutMs)
+		if !changed {
+			failResp := JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      req.ID,
 				Result: mcpStructuredError(
@@ -72,10 +101,30 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 					withParam("wait_for_url_change"),
 				),
 			}
+			trace = append(trace, WorkflowStep{
+				Action:   "wait_for_url_change",
+				Status:   "error",
+				TimingMs: time.Since(waitURLStart).Milliseconds(),
+				Detail:   "tracked URL did not change from baseline",
+			})
+			return h.appendWorkflowTraceToResponse(failResp, "navigate_and_document", trace, workflowStart, "failed")
 		}
+		trace = append(trace, WorkflowStep{
+			Action:   "wait_for_url_change",
+			Status:   "success",
+			TimingMs: time.Since(waitURLStart).Milliseconds(),
+			Detail:   lastURL,
+		})
+	} else if waitForURLChange {
+		trace = append(trace, WorkflowStep{
+			Action: "wait_for_url_change",
+			Status: "skipped",
+			Detail: "no pre-click tracked URL available",
+		})
 	}
 
 	if waitForStable {
+		waitStableStart := time.Now()
 		waitArgsMap := map[string]any{
 			"action": "wait_for_stable",
 		}
@@ -85,18 +134,37 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		if params.TimeoutMs > 0 {
 			timeoutMs, ok := remainingNavigateAndDocumentTimeoutMs(workflowStart, params.TimeoutMs)
 			if !ok {
-				return navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_stable")
+				timeoutResp := navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_stable")
+				trace = append(trace, WorkflowStep{
+					Action:   "wait_for_stable",
+					Status:   "error",
+					TimingMs: time.Since(waitStableStart).Milliseconds(),
+					Detail:   "timeout budget exhausted before stability stage",
+				})
+				return h.appendWorkflowTraceToResponse(timeoutResp, "navigate_and_document", trace, workflowStart, "failed")
 			}
 			waitArgsMap["timeout_ms"] = timeoutMs
 		}
 		waitArgs, _ := json.Marshal(waitArgsMap)
 		waitResp := h.handleWaitForStable(req, waitArgs)
+		trace = append(trace, WorkflowStep{
+			Action:   "wait_for_stable",
+			Status:   responseStatus(waitResp),
+			TimingMs: time.Since(waitStableStart).Milliseconds(),
+		})
 		if isErrorResponse(waitResp) {
-			return waitResp
+			return h.appendWorkflowTraceToResponse(waitResp, "navigate_and_document", trace, workflowStart, "failed")
 		}
+	} else {
+		trace = append(trace, WorkflowStep{
+			Action: "wait_for_stable",
+			Status: "skipped",
+			Detail: "wait_for_stable disabled",
+		})
 	}
 
-	return h.appendPageContextToResponse(clickResp, req)
+	resp := h.appendPageContextToResponse(clickResp, req)
+	return h.appendWorkflowTraceToResponse(resp, "navigate_and_document", trace, workflowStart, "success")
 }
 
 // filterNavigateAndDocumentClickArgs keeps only click-relevant fields.

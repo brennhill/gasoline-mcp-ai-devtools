@@ -563,7 +563,11 @@ h6 {
   text-align: center;
   border: 1px solid var(--g-border-strong);
   border-radius: var(--g-radius-lg);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--g-surface) 84%, var(--g-bg-soft)), color-mix(in srgb, var(--g-surface) 94%, transparent));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--g-surface) 84%, var(--g-bg-soft)),
+    color-mix(in srgb, var(--g-surface) 94%, transparent)
+  );
   padding: clamp(1.4rem, 4vw, 2.6rem);
 }
 

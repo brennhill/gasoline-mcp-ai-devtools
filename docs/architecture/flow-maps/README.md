@@ -56,5 +56,6 @@ Each flow map should include:
 - [Cookwithgasoline Content Publishing and Agent Markdown](./cookwithgasoline-content-publishing-and-agent-markdown.md)
 - [Interact Navigate and Document](./interact-navigate-and-document.md)
 - [Interact Action Toast Label Normalization](./interact-action-toast-label-normalization.md)
+- [Interact Action Surface Registry](./interact-action-surface-registry.md)
 - [Interact Batch Sequences](./interact-batch-sequences.md)
 - [Framework Selector Resilience Smoke Flow](./framework-selector-resilience-smoke.md)
