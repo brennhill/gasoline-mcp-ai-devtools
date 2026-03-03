@@ -119,18 +119,16 @@ async function main() {
     const schemaSource = await readFile(spec.schemaPath)
     const docSource = await readFile(spec.docPath)
 
-    let expectedModes = []
-    if (spec.enumType === 'what') {
-      expectedModes = extractWhatEnum(schemaSource)
-    } else if (spec.enumType === 'interactSpecs') {
-      expectedModes = extractInteractSpecs(schemaSource, spec.specsVar)
-    } else {
-      expectedModes = extractArrayVar(schemaSource, spec.arrayVar)
-    }
+    const extractedModes =
+      spec.enumType === 'what'
+        ? extractWhatEnum(schemaSource)
+        : spec.enumType === 'interactSpecs'
+          ? extractInteractSpecs(schemaSource, spec.specsVar)
+          : extractArrayVar(schemaSource, spec.arrayVar)
 
-    if (spec.ignore) {
-      expectedModes = expectedModes.filter((mode) => !spec.ignore.has(mode))
-    }
+    const expectedModes = spec.ignore
+      ? extractedModes.filter((mode) => !spec.ignore.has(mode))
+      : extractedModes
 
     const headings = extractHeadingLines(docSource)
     const documented = findDocumentedModes(headings, expectedModes)
