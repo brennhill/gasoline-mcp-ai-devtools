@@ -14,19 +14,28 @@ export function domPrimitiveNavDiscovery(): Record<string, unknown> {
   const MAX_REGIONS = 20
 
   function cleanText(value: string, maxLen: number): string {
-    const text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim()
+    const text = (value || '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
     if (maxLen > 0 && text.length > maxLen) return text.slice(0, maxLen)
     return text
   }
 
   function absoluteHref(value: string): string {
-    try { return new URL(value || '', window.location.href).href }
-    catch { return value || '' }
+    try {
+      return new URL(value || '', window.location.href).href
+    } catch {
+      return value || ''
+    }
   }
 
   function isSameOrigin(href: string): boolean {
-    try { return new URL(href).origin === window.location.origin }
-    catch { return false }
+    try {
+      return new URL(href).origin === window.location.origin
+    } catch {
+      return false
+    }
   }
 
   function getRegionLabel(el: Element): string {
@@ -58,12 +67,28 @@ export function domPrimitiveNavDiscovery(): Record<string, unknown> {
     return 'main'
   }
 
-  interface NavLink { text: string; href: string; is_internal: boolean }
-  interface NavRegion { tag: string; role: string; label: string; position: string; links: NavLink[] }
+  interface NavLink {
+    text: string
+    href: string
+    is_internal: boolean
+  }
+  interface NavRegion {
+    tag: string
+    role: string
+    label: string
+    position: string
+    links: NavLink[]
+  }
 
   const regionSelectors = [
-    'nav', '[role="navigation"]', 'header', 'footer', 'aside',
-    '[role="banner"]', '[role="contentinfo"]', '[role="complementary"]'
+    'nav',
+    '[role="navigation"]',
+    'header',
+    'footer',
+    'aside',
+    '[role="banner"]',
+    '[role="contentinfo"]',
+    '[role="complementary"]'
   ]
 
   const seenRegions = new Set<Element>()
@@ -116,12 +141,18 @@ export function domPrimitiveNavDiscovery(): Record<string, unknown> {
   }
 
   const totalLinks = regions.reduce((sum, r) => sum + r.links.length, 0) + unregionedLinks.length
-  const internalLinks = regions.reduce((sum, r) => sum + r.links.filter((l) => l.is_internal).length, 0) +
+  const internalLinks =
+    regions.reduce((sum, r) => sum + r.links.filter((l) => l.is_internal).length, 0) +
     unregionedLinks.filter((l) => l.is_internal).length
 
   return {
     regions,
     unregioned_links: unregionedLinks,
-    summary: { total_regions: regions.length, total_links: totalLinks, internal_links: internalLinks, external_links: totalLinks - internalLinks }
+    summary: {
+      total_regions: regions.length,
+      total_links: totalLinks,
+      internal_links: internalLinks,
+      external_links: totalLinks - internalLinks
+    }
   }
 }

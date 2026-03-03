@@ -14,8 +14,8 @@ import "encoding/json"
 // (background=true), server-side tracking is NOT immediately updated.
 // The extension-side persistTrackedTab handles async retarget via the
 // next /sync heartbeat. See issue #271.
-func (h *ToolHandler) applySwitchTabTracking(correlationID string) {
-	cmd, found := h.capture.GetCommandResult(correlationID)
+func (h *interactActionHandler) applySwitchTabTracking(correlationID string) {
+	cmd, found := h.parent.capture.GetCommandResult(correlationID)
 	if !found || cmd == nil || cmd.Status != "complete" {
 		return
 	}
@@ -38,5 +38,5 @@ func (h *ToolHandler) applySwitchTabTracking(correlationID string) {
 
 	tabURL, _ := result["url"].(string)
 	tabTitle, _ := result["title"].(string)
-	h.capture.UpdateTrackedTab(tabID, tabURL, tabTitle)
+	h.parent.capture.UpdateTrackedTab(tabID, tabURL, tabTitle)
 }

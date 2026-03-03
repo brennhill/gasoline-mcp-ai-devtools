@@ -13,7 +13,7 @@ import (
 
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields         []FormField `json:"fields"`
 		SubmitSelector string      `json:"submit_selector"`
@@ -67,7 +67,7 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 
 // handleFillForm fills multiple form fields without submitting.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields    []FormField `json:"fields"`
 		TabID     int         `json:"tab_id,omitempty"`
@@ -99,7 +99,7 @@ func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) J
 }
 
 // fillWorkflowFields executes all field entry steps for fill_form* workflows.
-func (h *ToolHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *JSONRPCResponse) {
+func (h *interactActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *JSONRPCResponse) {
 	for i, field := range fields {
 		if field.Selector == "" && field.Index == nil {
 			trace = append(trace, WorkflowStep{
@@ -133,7 +133,7 @@ func (h *ToolHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string
 }
 
 // executeFillFieldStep sends a type action and falls back to select for non-typeable elements.
-func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, tabID int) (string, JSONRPCResponse) {
+func (h *interactActionHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, tabID int) (string, JSONRPCResponse) {
 	typeArgs := map[string]any{
 		"action": "type",
 		"text":   field.Value,

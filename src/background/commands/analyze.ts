@@ -99,7 +99,9 @@ function analyzeFrameProbe(frameTarget: AnalyzeFrameTarget): { matches: boolean 
 async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Promise<AnalyzeFrameSelection> {
   const normalized = normalizeAnalyzeFrameTarget(frame)
   if (normalized === null) {
-    throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value')
+    throw new Error(
+      'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value'
+    )
   }
 
   // No frame targeting requested — skip the probe entirely and target the main frame.
@@ -125,7 +127,9 @@ async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Prom
   )
 
   if (frameIds.length === 0) {
-    throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page')
+    throw new Error(
+      'frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page'
+    )
   }
 
   if (normalized === 'all') {
@@ -604,6 +608,36 @@ registerCommand('form_discovery', async (ctx) => {
     ctx.sendResult({
       error: 'form_discovery_failed',
       message: (err as Error).message || 'Form discovery failed'
+    })
+  }
+})
+
+registerCommand('form_state', async (ctx) => {
+  try {
+    const result = await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'FORM_STATE_QUERY',
+      params: ctx.query.params
+    })
+    ctx.sendResult(result)
+  } catch (err) {
+    ctx.sendResult({
+      error: 'form_state_failed',
+      message: (err as Error).message || 'Form state extraction failed'
+    })
+  }
+})
+
+registerCommand('data_table', async (ctx) => {
+  try {
+    const result = await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'DATA_TABLE_QUERY',
+      params: ctx.query.params
+    })
+    ctx.sendResult(result)
+  } catch (err) {
+    ctx.sendResult({
+      error: 'data_table_failed',
+      message: (err as Error).message || 'Data table extraction failed'
     })
   }
 })

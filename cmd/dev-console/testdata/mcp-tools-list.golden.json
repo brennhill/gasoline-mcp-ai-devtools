@@ -342,6 +342,14 @@
           "description": "Include static-only origins (third_party_audit)",
           "type": "boolean"
         },
+        "max_cols": {
+          "description": "Max columns to return per table (data_table)",
+          "type": "number"
+        },
+        "max_rows": {
+          "description": "Max rows to return per table (data_table)",
+          "type": "number"
+        },
         "max_workers": {
           "description": "Max concurrent workers (link_health)",
           "type": "number"
@@ -365,7 +373,7 @@
           "type": "string"
         },
         "selector": {
-          "description": "CSS selector (dom, accessibility, computed_styles, forms)",
+          "description": "CSS selector (dom, accessibility, computed_styles, forms, form_state, data_table)",
           "type": "string"
         },
         "severity_min": {
@@ -415,6 +423,14 @@
           "description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 15000 (15s), max 600000 (10 min).",
           "type": "number"
         },
+        "url": {
+          "description": "Annotation URL scope filter (annotations). Supports exact URL, project base URL, or wildcard patterns such as http://localhost:3000/*.",
+          "type": "string"
+        },
+        "url_pattern": {
+          "description": "Alias for annotation URL scope filter (annotations). Use either url or url_pattern.",
+          "type": "string"
+        },
         "urls": {
           "description": "URLs to validate (link_validation)",
           "items": {
@@ -445,7 +461,9 @@
             "draw_session",
             "computed_styles",
             "forms",
+            "form_state",
             "form_validation",
+            "data_table",
             "visual_baseline",
             "visual_diff",
             "visual_baselines",
@@ -1139,7 +1157,7 @@
   },
   {
     "name": "interact",
-    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector to constrain to a page region.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nForms: fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
+    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector/scope_rect to constrain to a page region.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nWorkflows: navigate_and_wait_for, navigate_and_document, fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
     "inputSchema": {
       "properties": {
         "absent": {
@@ -1198,6 +1216,7 @@
             "get_readable",
             "get_markdown",
             "navigate_and_wait_for",
+            "navigate_and_document",
             "fill_form_and_submit",
             "fill_form",
             "run_a11y_and_export_sarif",
@@ -1420,6 +1439,24 @@
           "description": "File path to save output (run_a11y_and_export_sarif)",
           "type": "string"
         },
+        "scope_rect": {
+          "description": "Optional viewport rectangle to constrain DOM actions by geometry (x/y/width/height)",
+          "properties": {
+            "height": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
         "scope_selector": {
           "description": "Optional container selector to constrain DOM actions to a specific region",
           "type": "string"
@@ -1548,6 +1585,10 @@
           "description": "Wait for DOM stability (no mutations) before returning. Composable with navigate and click.",
           "type": "boolean"
         },
+        "wait_for_url_change": {
+          "description": "For navigate_and_document: wait until tracked URL differs from the pre-click URL before returning.",
+          "type": "boolean"
+        },
         "what": {
           "enum": [
             "highlight",
@@ -1599,6 +1640,7 @@
             "get_readable",
             "get_markdown",
             "navigate_and_wait_for",
+            "navigate_and_document",
             "fill_form_and_submit",
             "fill_form",
             "run_a11y_and_export_sarif",

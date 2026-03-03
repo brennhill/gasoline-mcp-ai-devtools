@@ -96,6 +96,7 @@ type namedSessionEntry struct {
 type waiter struct {
 	CorrelationID    string // command tracker correlation_id
 	AnnotSessionName string // "" for anonymous, non-empty for named session
+	URLFilter        string // optional URL scope filter applied at completion time
 }
 
 // Store manages annotation sessions and details in memory.
@@ -152,11 +153,13 @@ func (s *Store) SetCommandCompleter(fn func(correlationID string, result json.Ra
 
 // RegisterWaiter registers a correlation_id to be completed when annotations arrive.
 // sessionName is "" for anonymous sessions, or a name for named sessions.
-func (s *Store) RegisterWaiter(correlationID string, sessionName string) {
+// urlFilter is optional and scopes async completion payloads to a specific project/page URL.
+func (s *Store) RegisterWaiter(correlationID string, sessionName string, urlFilter string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.waiters = append(s.waiters, waiter{
 		CorrelationID:    correlationID,
 		AnnotSessionName: sessionName,
+		URLFilter:        urlFilter,
 	})
 }

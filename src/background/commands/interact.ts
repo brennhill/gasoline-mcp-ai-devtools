@@ -108,7 +108,15 @@ registerCommand('browser_action', async (ctx) => {
 
 registerCommand('dom_action', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
+    if (ctx.query.correlation_id)
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        'ai_web_pilot_disabled'
+      )
     else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
     return
   }
@@ -121,7 +129,15 @@ registerCommand('dom_action', async (ctx) => {
 
 registerCommand('cdp_action', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
+    if (ctx.query.correlation_id)
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        'ai_web_pilot_disabled'
+      )
     else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
     return
   }
@@ -134,7 +150,15 @@ registerCommand('cdp_action', async (ctx) => {
 
 registerCommand('upload', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
+    if (ctx.query.correlation_id)
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        'ai_web_pilot_disabled'
+      )
     else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
     return
   }
@@ -147,7 +171,15 @@ registerCommand('upload', async (ctx) => {
 
 registerCommand('record_start', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled')
+    if (ctx.query.correlation_id)
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        undefined,
+        'ai_web_pilot_disabled'
+      )
     else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
     return
   }
@@ -166,7 +198,8 @@ registerCommand('record_start', async (ctx) => {
     ctx.tabId
   )
   const error = result.error || undefined
-  if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
+  if (ctx.query.correlation_id)
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
   else ctx.sendResult(error ? { error } : result)
 })
 
@@ -176,13 +209,22 @@ registerCommand('record_start', async (ctx) => {
 
 registerCommand('record_stop', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled')
+    if (ctx.query.correlation_id)
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        undefined,
+        'ai_web_pilot_disabled'
+      )
     else ctx.sendResult({ error: 'ai_web_pilot_disabled' })
     return
   }
   const result = await stopRecording()
   const error = result.error || undefined
-  if (ctx.query.correlation_id) ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
+  if (ctx.query.correlation_id)
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error)
   else ctx.sendResult(error ? { error } : result)
 })
 
@@ -312,7 +354,14 @@ registerCommand('state_*', async (ctx) => {
 registerCommand('execute', async (ctx) => {
   if (!isAiWebPilotEnabled()) {
     if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        'ai_web_pilot_disabled'
+      )
     } else {
       ctx.sendResult({
         success: false,
@@ -436,7 +485,11 @@ function runHighlightFallback(params: { selector?: unknown; duration_ms?: unknow
   }
 }
 
-async function executeHighlightFallback(tabId: number, params: unknown, mainWorldError: string): Promise<Record<string, unknown>> {
+async function executeHighlightFallback(
+  tabId: number,
+  params: unknown,
+  mainWorldError: string
+): Promise<Record<string, unknown>> {
   try {
     const execution = await chrome.scripting.executeScript({
       target: { tabId },

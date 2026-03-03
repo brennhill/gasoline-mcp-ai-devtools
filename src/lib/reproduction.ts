@@ -401,8 +401,7 @@ const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
   select: (action, locator) =>
     locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
   scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`,
-  transient: (action) =>
-    `  // [${action.classification || 'transient'}] "${(action.value || '').slice(0, 80)}"`
+  transient: (action) => `  // [${action.classification || 'transient'}] "${(action.value || '').slice(0, 80)}"`
 }
 
 // #lizard forgives

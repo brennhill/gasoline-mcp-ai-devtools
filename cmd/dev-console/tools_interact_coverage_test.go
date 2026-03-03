@@ -84,7 +84,7 @@ func TestHandleSubtitle_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{invalid}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleSubtitle(req, args)
+	resp := env.handler.interactAction().handleSubtitleImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -181,7 +181,7 @@ func TestHandleListInteractive_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleListInteractive(req, args)
+	resp := env.handler.interactAction().handleListInteractive(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -281,7 +281,7 @@ func TestHandlePilotHighlight_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleHighlight(req, args)
+	resp := env.handler.interactAction().handleHighlightImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

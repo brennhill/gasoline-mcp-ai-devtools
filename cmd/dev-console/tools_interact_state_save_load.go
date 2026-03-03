@@ -11,7 +11,7 @@ import (
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
-func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -25,12 +25,12 @@ func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
-	if h.sessionStoreImpl == nil {
+	if h.parent.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	_, tabID, tabURL := h.capture.GetTrackingStatus()
-	tabTitle := h.capture.GetTrackedTabTitle()
+	_, tabID, tabURL := h.parent.capture.GetTrackingStatus()
+	tabTitle := h.parent.capture.GetTrackedTabTitle()
 
 	stateData := map[string]any{
 		"url":      tabURL,
@@ -50,7 +50,7 @@ func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) 
 	}
 
 	// Server-side redaction: scrub sensitive values before persisting to disk (#132)
-	if re := h.GetRedactionEngine(); re != nil {
+	if re := h.parent.GetRedactionEngine(); re != nil {
 		stateData = re.RedactMapValues(stateData)
 	}
 
@@ -59,11 +59,11 @@ func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
+	if err := h.parent.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")}
 	}
 
-	h.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
+	h.parent.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State saved", map[string]any{
 		"status":        "saved",
@@ -76,7 +76,7 @@ func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) 
 	})}
 }
 
-func (h *ToolHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -91,13 +91,13 @@ func (h *ToolHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
-	if h.sessionStoreImpl == nil {
+	if h.parent.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	data, err := h.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
+	data, err := h.parent.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.parent.diagnosticHint())}
 	}
 
 	var stateData map[string]any
@@ -125,9 +125,9 @@ func (h *ToolHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) 
 
 	if !hasData {
 		responseData["state_restore"] = act.StateRestoreStatusNoData
-	} else if !h.capture.IsPilotActionAllowed() {
+	} else if !h.parent.capture.IsPilotActionAllowed() {
 		responseData["state_restore"] = act.StateRestoreStatusPilotDisabled
-	} else if !h.capture.IsExtensionConnected() {
+	} else if !h.parent.capture.IsExtensionConnected() {
 		responseData["state_restore"] = act.StateRestoreStatusExtensionDown
 	} else {
 		restoreCorrelationID := h.queueStateRestore(req, formValues, scrollPos, localStorage, sessionStorage, cookies)
@@ -135,7 +135,7 @@ func (h *ToolHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) 
 		responseData["restore_correlation_id"] = restoreCorrelationID
 	}
 
-	h.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
+	h.parent.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State loaded", responseData)}
 }

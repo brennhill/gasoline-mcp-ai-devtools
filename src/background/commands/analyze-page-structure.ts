@@ -86,7 +86,10 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
     }
 
     // Angular
-    if (typeof win.ng === 'object' || typeof (win as Record<string, unknown>).getAllAngularRootElements === 'function') {
+    if (
+      typeof win.ng === 'object' ||
+      typeof (win as Record<string, unknown>).getAllAngularRootElements === 'function'
+    ) {
       frameworks.push({ name: 'Angular', version: '', evidence: win.ng ? 'window.ng' : 'getAllAngularRootElements' })
     }
 
@@ -102,7 +105,11 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
     if (document.querySelector('[class^="svelte-"], [class*=" svelte-"]')) {
       frameworks.push({ name: 'Svelte', version: '', evidence: 'class^="svelte-"' })
     }
-    if (document.querySelector('[ng-version]') || document.querySelector('[_nghost]') || document.querySelector('app-root')) {
+    if (
+      document.querySelector('[ng-version]') ||
+      document.querySelector('[_nghost]') ||
+      document.querySelector('app-root')
+    ) {
       const ver = document.querySelector('[ng-version]')?.getAttribute('ng-version') || ''
       frameworks.push({ name: 'Angular', version: ver, evidence: 'ng-version' })
     }
@@ -113,9 +120,11 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
       frameworks.push({ name: 'Nuxt', version: '', evidence: '#__nuxt' })
     }
     // Vue: data-v-XXXXX scoped attributes (CSS can't match attribute name prefix, need JS check)
-    const hasVueScopedAttr = document.querySelector('[data-vue-meta]') ||
-      Array.from(document.querySelector('#app')?.attributes || document.documentElement.attributes)
-        .some(a => a.name.startsWith('data-v-'))
+    const hasVueScopedAttr =
+      document.querySelector('[data-vue-meta]') ||
+      Array.from(document.querySelector('#app')?.attributes || document.documentElement.attributes).some((a) =>
+        a.name.startsWith('data-v-')
+      )
     if (hasVueScopedAttr) {
       frameworks.push({ name: 'Vue', version: '', evidence: 'data-v-*' })
     }
@@ -153,13 +162,18 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
     const htmlEl = el as HTMLElement
     if (htmlEl.scrollHeight > htmlEl.clientHeight + 50 && htmlEl.clientHeight > 0) {
       const style = getComputedStyle(htmlEl)
-      if (style.overflow === 'auto' || style.overflow === 'scroll' ||
-          style.overflowY === 'auto' || style.overflowY === 'scroll') {
+      if (
+        style.overflow === 'auto' ||
+        style.overflow === 'scroll' ||
+        style.overflowY === 'auto' ||
+        style.overflowY === 'scroll'
+      ) {
         const tag = htmlEl.tagName.toLowerCase()
         const id = htmlEl.id ? `#${htmlEl.id}` : ''
-        const cls = htmlEl.className && typeof htmlEl.className === 'string'
-          ? '.' + htmlEl.className.trim().split(/\s+/).slice(0, 2).join('.')
-          : ''
+        const cls =
+          htmlEl.className && typeof htmlEl.className === 'string'
+            ? '.' + htmlEl.className.trim().split(/\s+/).slice(0, 2).join('.')
+            : ''
         scrollContainers.push({
           selector: tag + id + cls,
           scroll_height: htmlEl.scrollHeight,
@@ -172,7 +186,9 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
 
   // --- Modal/dialog detection ---
   const modals: ModalInfo[] = []
-  const dialogEls = document.querySelectorAll('dialog, [role="dialog"], [role="alertdialog"], .modal, [aria-modal="true"]')
+  const dialogEls = document.querySelectorAll(
+    'dialog, [role="dialog"], [role="alertdialog"], .modal, [aria-modal="true"]'
+  )
   let modalCount = 0
   for (const el of Array.from(dialogEls)) {
     if (modalCount >= MAX_MODALS) break
@@ -212,8 +228,10 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
   // --- Meta tags ---
   const meta: MetaInfo = {
     viewport: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || '',
-    charset: document.querySelector('meta[charset]')?.getAttribute('charset') ||
-             document.querySelector('meta[http-equiv="Content-Type"]')?.getAttribute('content') || '',
+    charset:
+      document.querySelector('meta[charset]')?.getAttribute('charset') ||
+      document.querySelector('meta[http-equiv="Content-Type"]')?.getAttribute('content') ||
+      '',
     og_title: document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '',
     description: document.querySelector('meta[name="description"]')?.getAttribute('content') || ''
   }

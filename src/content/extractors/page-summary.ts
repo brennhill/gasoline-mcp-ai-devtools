@@ -20,7 +20,10 @@ export interface PageSummaryResult {
 }
 
 function cleanText(value: string, maxLen: number): string {
-  let text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim()
+  let text = (value || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (maxLen > 0 && text.length > maxLen) {
     text = text.slice(0, maxLen)
   }
@@ -143,10 +146,7 @@ export function extractPageSummary(): PageSummaryResult {
 
   // Main content preview
   const mainNode = findMainNode()
-  const mainText = cleanText(
-    mainNode ? (mainNode as HTMLElement).innerText || mainNode.textContent || '' : '',
-    20000
-  )
+  const mainText = cleanText(mainNode ? (mainNode as HTMLElement).innerText || mainNode.textContent || '' : '', 20000)
   const preview = mainText.slice(0, 500)
   const wordCount = mainText ? mainText.split(/\s+/).filter(Boolean).length : 0
 

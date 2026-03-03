@@ -21,7 +21,7 @@ func TestFindTargetError_EmptyEntries(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 
-	entry, id, ts := h.findTargetError("")
+	entry, id, ts := h.testGen().findTargetError("")
 	if entry != nil {
 		t.Fatalf("expected nil entry, got %v", entry)
 	}
@@ -44,7 +44,7 @@ func TestFindTargetError_NoErrorLevel(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	entry, id, ts := h.findTargetError("")
+	entry, id, ts := h.testGen().findTargetError("")
 	if entry != nil {
 		t.Fatalf("expected nil entry for no-error entries, got %v", entry)
 	}
@@ -65,7 +65,7 @@ func TestFindTargetError_ReturnsLastError(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	entry, id, _ := h.findTargetError("")
+	entry, id, _ := h.testGen().findTargetError("")
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
@@ -90,7 +90,7 @@ func TestFindTargetError_SpecificErrorID(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	entry, id, _ := h.findTargetError("e1")
+	entry, id, _ := h.testGen().findTargetError("e1")
 	if entry == nil {
 		t.Fatal("expected non-nil entry for specific errorID")
 	}
@@ -113,7 +113,7 @@ func TestFindTargetError_SpecificErrorIDNotFound(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	entry, id, ts := h.findTargetError("nonexistent")
+	entry, id, ts := h.testGen().findTargetError("nonexistent")
 	if entry != nil {
 		t.Fatalf("expected nil for nonexistent errorID, got %v", entry)
 	}
@@ -132,7 +132,7 @@ func TestFindTargetError_OneError(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	entry, id, ts := h.findTargetError("")
+	entry, id, ts := h.testGen().findTargetError("")
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
@@ -152,7 +152,7 @@ func TestGenerateTestFromError_NoErrors(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 
-	_, err := h.generateTestFromError(TestFromContextRequest{Framework: "playwright"})
+	_, err := h.testGen().generateTestFromError(TestFromContextRequest{Framework: "playwright"})
 	if err == nil {
 		t.Fatal("expected error for no error context")
 	}
@@ -171,7 +171,7 @@ func TestGenerateTestFromError_ErrorButNoActions(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	_, err := h.generateTestFromError(TestFromContextRequest{Framework: "playwright"})
+	_, err := h.testGen().generateTestFromError(TestFromContextRequest{Framework: "playwright"})
 	if err == nil {
 		t.Fatal("expected error when no actions captured")
 	}
@@ -208,7 +208,7 @@ func TestGenerateTestFromError_Success(t *testing.T) {
 		},
 	})
 
-	result, err := h.generateTestFromError(TestFromContextRequest{
+	result, err := h.testGen().generateTestFromError(TestFromContextRequest{
 		Framework: "playwright",
 		BaseURL:   "https://app.example.com",
 	})

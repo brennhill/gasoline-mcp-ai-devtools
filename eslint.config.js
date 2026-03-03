@@ -18,6 +18,9 @@ export default [
       '.venv-build/',
       '.gasoline/',
       '.worktrees/',
+      '.claude/',
+      '.codex/',
+      'cookwithgasoline.com/dist/',
       'pypi/**/build/',
       'pypi/**/dist/',
       'pypi/**/*.egg-info/',
@@ -195,6 +198,30 @@ export default [
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
+  },
+
+  // Website demo/public snippets (run in browser)
+  {
+    files: ['cookwithgasoline.com/public/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser
+      }
+    }
+  },
+
+  // Website utility scripts (run in Node.js)
+  {
+    files: ['cookwithgasoline.com/scripts/**/*.js', 'cookwithgasoline.com/scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node
+      }
     }
   },
 

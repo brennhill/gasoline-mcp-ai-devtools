@@ -78,6 +78,7 @@ describe('observe screenshot command', () => {
     await handler({
       tabId: 123,
       query: { id: 'q-1' },
+      params: {},
       sendResult
     })
 

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (h *ToolHandler) armRetryContract(correlationID, action string, args json.RawMessage) {
+func (h *interactActionHandler) armRetryContract(correlationID, action string, args json.RawMessage) {
 	if h == nil || correlationID == "" {
 		return
 	}
@@ -54,38 +54,38 @@ func (h *ToolHandler) armRetryContract(correlationID, action string, args json.R
 	h.storeRetryState(correlationID, state)
 }
 
-func (h *ToolHandler) getRetryState(correlationID string) (*commandRetryState, bool) {
-	h.retryContractMu.Lock()
-	defer h.retryContractMu.Unlock()
-	state, ok := h.retryByCommand[correlationID]
+func (h *interactActionHandler) getRetryState(correlationID string) (*commandRetryState, bool) {
+	h.parent.retryContractMu.Lock()
+	defer h.parent.retryContractMu.Unlock()
+	state, ok := h.parent.retryByCommand[correlationID]
 	return state, ok
 }
 
-func (h *ToolHandler) storeRetryState(correlationID string, state *commandRetryState) {
-	h.retryContractMu.Lock()
-	defer h.retryContractMu.Unlock()
+func (h *interactActionHandler) storeRetryState(correlationID string, state *commandRetryState) {
+	h.parent.retryContractMu.Lock()
+	defer h.parent.retryContractMu.Unlock()
 
-	if h.retryByCommand == nil {
-		h.retryByCommand = make(map[string]*commandRetryState)
+	if h.parent.retryByCommand == nil {
+		h.parent.retryByCommand = make(map[string]*commandRetryState)
 	}
-	h.retryByCommand[correlationID] = state
+	h.parent.retryByCommand[correlationID] = state
 	h.pruneRetryStatesLocked(2048)
 }
 
-func (h *ToolHandler) pruneRetryStatesLocked(maxEntries int) {
-	if len(h.retryByCommand) <= maxEntries {
+func (h *interactActionHandler) pruneRetryStatesLocked(maxEntries int) {
+	if len(h.parent.retryByCommand) <= maxEntries {
 		return
 	}
 
 	var oldestKey string
 	var oldestTime time.Time
-	for key, st := range h.retryByCommand {
+	for key, st := range h.parent.retryByCommand {
 		if oldestKey == "" || st.CreatedAt.Before(oldestTime) {
 			oldestKey = key
 			oldestTime = st.CreatedAt
 		}
 	}
 	if oldestKey != "" {
-		delete(h.retryByCommand, oldestKey)
+		delete(h.parent.retryByCommand, oldestKey)
 	}
 }

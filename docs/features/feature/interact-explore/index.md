@@ -4,10 +4,11 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 code_paths:
+  - cmd/dev-console/tools_interact_action_handler.go
+  - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
-  - cmd/dev-console/tools_interact_browser.go
   - cmd/dev-console/tools_interact_browser_navigation_impl.go
   - cmd/dev-console/tools_interact_browser_script_impl.go
   - cmd/dev-console/tools_interact_browser_tabs.go
@@ -23,23 +24,32 @@ code_paths:
   - cmd/dev-console/tools_interact_retry_contract_state.go
   - cmd/dev-console/tools_interact_retry_contract_response.go
   - cmd/dev-console/tools_interact_workflow_navigate.go
+  - cmd/dev-console/tools_interact_workflow_navigate_document.go
   - cmd/dev-console/tools_interact_workflow_forms.go
   - cmd/dev-console/tools_interact_workflow_a11y_sarif.go
   - cmd/dev-console/tools_interact_workflow_types.go
+  - internal/schema/interact_actions.go
+  - internal/schema/interact_properties_targeting.go
+  - internal/schema/interact_properties_output_batch.go
+  - internal/tools/configure/mode_specs_interact.go
   - src/background/pending-queries.ts
   - src/background/query-execution.ts
   - src/background/dom-dispatch.ts
   - src/background/dom-types.ts
   - src/background/dom-primitives.ts
+  - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
 test_paths:
+  - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_interact_rich_test.go
   - cmd/dev-console/tools_interact_upload_test.go
+  - cmd/dev-console/tools_interact_navigate_document_test.go
   - cmd/dev-console/tools_interact_retry_contract_test.go
   - cmd/dev-console/tools_interact_evidence_test.go
   - cmd/dev-console/tools_interact_state_test.go
   - extension/background/__tests__/dom-dispatch-structured.test.js
   - extension/background/dom-primitives.test.js
+  - tests/extension/execute-js.test.js
 ---
 
 # Interact Tool
@@ -60,3 +70,7 @@ test_paths:
 This feature documents the shipped `interact` action surface (not a batched `interact.explore` action).
 
 `get_text` supports `structured:true` for hierarchical extraction (for example accordion/list sections), and this option must be forwarded through DOM dispatch into extension primitives.
+
+`execute_js` host-object serialization must preserve prototype-backed values (for example `DOMRect`) so return payloads remain structured and parse-safe.
+
+`navigate_and_document` combines click-driven navigation, optional URL-change/stability waits, and page-context enrichment (`url`, `title`, `tab_id`) in a single interact workflow.

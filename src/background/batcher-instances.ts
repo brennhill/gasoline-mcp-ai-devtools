@@ -102,10 +102,7 @@ export interface BatcherInstances {
  * Create all batcher instances wired to the shared circuit breaker.
  * Called once from index.ts during module initialization.
  */
-export function createBatcherInstances(
-  deps: BatcherDeps,
-  sharedCircuitBreaker: CircuitBreaker
-): BatcherInstances {
+export function createBatcherInstances(deps: BatcherDeps, sharedCircuitBreaker: CircuitBreaker): BatcherInstances {
   const logBatcherWithCB = createBatcherWithCircuitBreaker<LogEntry>(
     withConnectionStatus(
       deps,
@@ -126,23 +123,17 @@ export function createBatcherInstances(
   )
 
   const wsBatcherWithCB = createBatcherWithCircuitBreaker<WebSocketEvent>(
-    withConnectionStatus(deps, (events) =>
-      sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)
-    ),
+    withConnectionStatus(deps, (events) => sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)),
     { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker }
   )
 
   const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker<EnhancedAction>(
-    withConnectionStatus(deps, (actions) =>
-      sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)
-    ),
+    withConnectionStatus(deps, (actions) => sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)),
     { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker }
   )
 
   const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker<NetworkBodyPayload>(
-    withConnectionStatus(deps, (bodies) =>
-      sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)
-    ),
+    withConnectionStatus(deps, (bodies) => sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)),
     { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker }
   )
 

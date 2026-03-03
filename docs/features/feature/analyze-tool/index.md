@@ -4,25 +4,34 @@ feature_id: feature-analyze-tool
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 code_paths:
   - cmd/dev-console/tools_analyze_dispatch.go
   - cmd/dev-console/tools_analyze_annotations_handlers.go
   - cmd/dev-console/tools_analyze_api_validation.go
+  - cmd/dev-console/tools_analyze_inspect_forms.go
   - cmd/dev-console/tools_async_observe_commands.go
   - cmd/dev-console/tools_async_formatting.go
   - cmd/dev-console/tools_security_audit.go
   - internal/annotation/store.go
   - internal/annotation/store_results.go
   - internal/annotation/store_wait.go
+  - internal/tools/analyze/forms.go
   - internal/schema/analyze.go
-  - src/background/pending-queries.ts
+  - src/background/commands/analyze.ts
+  - src/background/commands/helpers.ts
   - src/content/message-handlers.ts
+  - src/content/runtime-message-listener.ts
+  - src/inject/data-table.ts
   - src/inject/message-handlers.ts
+  - src/types/runtime-messages.ts
 test_paths:
   - cmd/dev-console/tools_analyze_annotations_test.go
+  - cmd/dev-console/tools_analyze_structured_extraction_test.go
   - cmd/dev-console/tools_analyze_handler_test.go
   - internal/annotation/store_test.go
+  - internal/tools/analyze/forms_test.go
+  - tests/extension/data-table.test.js
 ---
 
 # Analyze Tool
@@ -41,3 +50,7 @@ test_paths:
 
 ## Canonical Note
 `analyze` is the active analysis surface. `analyze({what:"dom"})` is the canonical DOM query API.
+
+Structured extraction modes:
+- `analyze({what:"form_state"})` returns current form values and field metadata.
+- `analyze({what:"data_table"})` returns parsed table headers/rows without `execute_js` string parsing.

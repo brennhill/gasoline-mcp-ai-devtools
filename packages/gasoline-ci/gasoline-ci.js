@@ -162,10 +162,8 @@
       var keys = Object.keys(value).slice(0, 50)
       for (var i = 0; i < keys.length; i++) {
         try {
-           
           result[keys[i]] = safeSerialize(value[keys[i]], depth + 1, seen)
         } catch (_e) {
-           
           result[keys[i]] = '[unserializable]'
         }
       }
@@ -180,13 +178,12 @@
     var originals = {}
 
     for (var level of levels) {
-       
       originals[level] = console[level]
-       
+
       console[level] = (function (capturedLevel) {
         return function () {
           var args = Array.prototype.slice.call(arguments)
-           
+
           originals[capturedLevel].apply(console, args)
 
           emit('GASOLINE_LOG', {
@@ -427,15 +424,12 @@
       return {}
     }
     for (var i = 0; i < entries.length; i++) {
-       
       var key = entries[i][0]
-       
+
       var value = entries[i][1]
       if (SENSITIVE_HEADERS.indexOf(key.toLowerCase()) !== -1) {
-         
         filtered[key] = '[REDACTED]'
       } else {
-         
         filtered[key] = value
       }
     }

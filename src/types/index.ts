@@ -144,19 +144,11 @@ export type {
 } from './messages.js'
 
 // Re-export wire types (canonical HTTP payload shapes)
-export type {
-  WireEnhancedAction
-} from './wire-enhanced-action.js'
+export type { WireEnhancedAction } from './wire-enhanced-action.js'
 
-export type {
-  WireNetworkBody,
-  WireNetworkWaterfallEntry,
-  WireNetworkWaterfallPayload
-} from './wire-network.js'
+export type { WireNetworkBody, WireNetworkWaterfallEntry, WireNetworkWaterfallPayload } from './wire-network.js'
 
-export type {
-  WireWebSocketEvent
-} from './wire-websocket-event.js'
+export type { WireWebSocketEvent } from './wire-websocket-event.js'
 
 export type {
   WirePerformanceTiming,

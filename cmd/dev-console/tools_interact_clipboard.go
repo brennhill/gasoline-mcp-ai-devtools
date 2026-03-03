@@ -11,14 +11,14 @@ import (
 )
 
 // handleClipboardRead reads text from the clipboard via navigator.clipboard.readText().
-func (h *ToolHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.requirePilot(req); blocked {
+func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -42,15 +42,15 @@ func (h *ToolHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessa
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("clipboard_read", "", nil)
+	h.parent.recordAIAction("clipboard_read", "", nil)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Clipboard read queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Clipboard read queued")
 }
 
 // handleClipboardWrite writes text to the clipboard via navigator.clipboard.writeText().
-func (h *ToolHandler) handleClipboardWrite(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Text string `json:"text"`
 	}
@@ -70,13 +70,13 @@ func (h *ToolHandler) handleClipboardWrite(req JSONRPCRequest, args json.RawMess
 		)}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -103,9 +103,9 @@ func (h *ToolHandler) handleClipboardWrite(req JSONRPCRequest, args json.RawMess
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
+	h.parent.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Clipboard write queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Clipboard write queued")
 }

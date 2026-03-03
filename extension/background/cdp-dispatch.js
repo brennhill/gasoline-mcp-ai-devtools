@@ -488,6 +488,11 @@ async function cdpDispatchSingleKey(tabId, key) {
 export async function tryCDPEscalation(tabId, action, params) {
     if (!CDP_ESCALATABLE.has(action))
         return null;
+    // If CDP is unavailable in this runtime (tests, constrained extension contexts),
+    // skip escalation before any DOM probing so normal DOM primitives remain deterministic.
+    if (!chrome?.debugger?.attach || !chrome?.debugger?.sendCommand || !chrome?.debugger?.detach) {
+        return null;
+    }
     const selector = params.selector || '';
     const startTime = Date.now();
     try {

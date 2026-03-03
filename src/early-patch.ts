@@ -174,11 +174,7 @@
     window.__GASOLINE_ORIGINAL_XHR_OPEN__ = OriginalOpen
     window.__GASOLINE_ORIGINAL_XHR_SEND__ = OriginalSend
 
-    XMLHttpRequest.prototype.open = function (
-      method: string,
-      url: string | URL,
-      ...rest: unknown[]
-    ) {
+    XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
       ;(this as XMLHttpRequest & { __gasolineEarlyMethod: string }).__gasolineEarlyMethod = method
       ;(this as XMLHttpRequest & { __gasolineEarlyUrl: string }).__gasolineEarlyUrl =
         typeof url === 'string' ? url : url.toString()
@@ -186,8 +182,7 @@
     }
 
     XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-      const xhrUrl: string =
-        (this as XMLHttpRequest & { __gasolineEarlyUrl?: string }).__gasolineEarlyUrl || ''
+      const xhrUrl: string = (this as XMLHttpRequest & { __gasolineEarlyUrl?: string }).__gasolineEarlyUrl || ''
       const xhrMethod: string =
         (this as XMLHttpRequest & { __gasolineEarlyMethod?: string }).__gasolineEarlyMethod || 'GET'
 
@@ -209,8 +204,7 @@
           }
           if (responseBody === null) return
 
-          const truncated =
-            responseBody.length > BODY_SIZE_CAP ? responseBody.slice(0, BODY_SIZE_CAP) : responseBody
+          const truncated = responseBody.length > BODY_SIZE_CAP ? responseBody.slice(0, BODY_SIZE_CAP) : responseBody
 
           pushBody({
             url: xhrUrl,

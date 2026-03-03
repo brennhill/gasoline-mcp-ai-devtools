@@ -2,7 +2,6 @@ package capture
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
@@ -138,31 +137,5 @@ func buildWSConnection(conn *connectionState) WebSocketConnection {
 func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	resp := WebSocketStatusResponse{
-		Connections: make([]WebSocketConnection, 0),
-		Closed:      make([]WebSocketClosedConnection, 0),
-	}
-
-	for _, conn := range c.wsConnections.connections {
-		if filter.URLFilter != "" && !strings.Contains(conn.url, filter.URLFilter) {
-			continue
-		}
-		if filter.ConnectionID != "" && conn.id != filter.ConnectionID {
-			continue
-		}
-		resp.Connections = append(resp.Connections, buildWSConnection(conn))
-	}
-
-	for _, closed := range c.wsConnections.closedConns {
-		if filter.URLFilter != "" && !strings.Contains(closed.URL, filter.URLFilter) {
-			continue
-		}
-		if filter.ConnectionID != "" && closed.ID != filter.ConnectionID {
-			continue
-		}
-		resp.Closed = append(resp.Closed, closed)
-	}
-
-	return resp
+	return c.wsConnections.status(filter)
 }

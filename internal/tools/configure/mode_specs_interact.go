@@ -71,6 +71,10 @@ var interactModeSpecs = map[string]modeParamSpec{
 		Hint:     "Navigate to a URL and wait for a selector to appear",
 		Optional: []string{"url", "wait_for", "include_content"},
 	},
+	"navigate_and_document": {
+		Hint:     "Click to navigate, optionally wait for URL change/stability, then return page context",
+		Optional: []string{"selector", "element_id", "index", "index_generation", "nth", "scope_selector", "scope_rect", "frame", "tab_id", "reason", "timeout_ms", "wait_for_url_change", "wait_for_stable", "stability_ms", "include_screenshot", "include_interactive"},
+	},
 	"refresh": {
 		Hint:     "Reload the current page",
 		Optional: []string{"analyze"},

@@ -212,9 +212,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
       resolve(ok)
     }
 
-    const onMessage = (
-      event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>
-    ) => {
+    const onMessage = (event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>) => {
       if (event.source !== window || event.origin !== window.location.origin) return
       if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG') return
       if (event.data?.requestId !== requestId) return

@@ -88,6 +88,8 @@ export declare function handleGetNetworkWaterfall(sendResponse: (result: {
 }) => void): boolean;
 export declare function handleComputedStylesQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleFormDiscoveryQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
+export declare function handleFormStateQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
+export declare function handleDataTableQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleLinkHealthQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 /**
  * Handle GET_READABLE message — extract readable content directly in ISOLATED world.

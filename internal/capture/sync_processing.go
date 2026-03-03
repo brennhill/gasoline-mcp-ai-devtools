@@ -57,14 +57,7 @@ func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bo
 			log.Timestamp = now
 		}
 		log = c.redactExtensionLog(log)
-		c.extensionLogs.logs = append(c.extensionLogs.logs, log)
-
-		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
-		if len(c.extensionLogs.logs) > evictionThreshold {
-			kept := make([]ExtensionLog, MaxExtensionLogs)
-			copy(kept, c.extensionLogs.logs[len(c.extensionLogs.logs)-MaxExtensionLogs:])
-			c.extensionLogs.logs = kept
-		}
+		c.extensionLogs.append(log)
 	}
 
 	if req.ExtensionVersion != "" {

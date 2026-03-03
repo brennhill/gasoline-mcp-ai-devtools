@@ -46,7 +46,11 @@ let nextRequestId = 1
 /** Parse query params from string (JSON) or object form into a plain object */
 function parseQueryParams(params: string | Record<string, unknown>): Record<string, unknown> {
   if (typeof params === 'string') {
-    try { return JSON.parse(params) } catch { return {} }
+    try {
+      return JSON.parse(params)
+    } catch {
+      return {}
+    }
   }
   return typeof params === 'object' ? params : {}
 }
@@ -333,7 +337,9 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
   const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>()
 
   // Set up a one-time listener for the response — match requestId to prevent cross-wiring
-  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; entries?: WaterfallEntry[]; _nonce?: string }>) => {
+  const responseHandler = (
+    event: MessageEvent<{ type?: string; requestId?: number; entries?: WaterfallEntry[]; _nonce?: string }>
+  ) => {
     if (event.source !== window) return
     // Validate nonce on response messages (spoofing prevention).
     // Accept responses with no nonce for backwards compat during migration.
@@ -383,7 +389,9 @@ function forwardInjectQuery(
   const requestId = nextRequestId++
   const deferred = createDeferredPromise<unknown>()
 
-  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; result?: unknown; _nonce?: string }>) => {
+  const responseHandler = (
+    event: MessageEvent<{ type?: string; requestId?: number; result?: unknown; _nonce?: string }>
+  ) => {
     if (event.source !== window) return
     // Validate nonce on response messages (spoofing prevention).
     // Accept responses with no nonce for backwards compat during migration.
@@ -412,21 +420,65 @@ export function handleComputedStylesQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery('GASOLINE_COMPUTED_STYLES_QUERY', 'GASOLINE_COMPUTED_STYLES_RESPONSE', 'Computed styles query', params, sendResponse)
+  return forwardInjectQuery(
+    'GASOLINE_COMPUTED_STYLES_QUERY',
+    'GASOLINE_COMPUTED_STYLES_RESPONSE',
+    'Computed styles query',
+    params,
+    sendResponse
+  )
 }
 
 export function handleFormDiscoveryQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse)
+  return forwardInjectQuery(
+    'GASOLINE_FORM_DISCOVERY_QUERY',
+    'GASOLINE_FORM_DISCOVERY_RESPONSE',
+    'Form discovery',
+    params,
+    sendResponse
+  )
+}
+
+export function handleFormStateQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  return forwardInjectQuery(
+    'GASOLINE_FORM_STATE_QUERY',
+    'GASOLINE_FORM_STATE_RESPONSE',
+    'Form state',
+    params,
+    sendResponse
+  )
+}
+
+export function handleDataTableQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  return forwardInjectQuery(
+    'GASOLINE_DATA_TABLE_QUERY',
+    'GASOLINE_DATA_TABLE_RESPONSE',
+    'Data table extraction',
+    params,
+    sendResponse
+  )
 }
 
 export function handleLinkHealthQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse)
+  return forwardInjectQuery(
+    'GASOLINE_LINK_HEALTH_QUERY',
+    'GASOLINE_LINK_HEALTH_RESPONSE',
+    'Link health check',
+    params,
+    sendResponse
+  )
 }
 
 // ============================================
@@ -437,9 +489,7 @@ export function handleLinkHealthQuery(
 /**
  * Handle GET_READABLE message — extract readable content directly in ISOLATED world.
  */
-export function handleGetReadable(
-  sendResponse: (result: unknown) => void
-): boolean {
+export function handleGetReadable(sendResponse: (result: unknown) => void): boolean {
   try {
     sendResponse(extractReadableContent())
   } catch (err) {
@@ -452,9 +502,7 @@ export function handleGetReadable(
 /**
  * Handle GET_MARKDOWN message — extract markdown content directly in ISOLATED world.
  */
-export function handleGetMarkdown(
-  sendResponse: (result: unknown) => void
-): boolean {
+export function handleGetMarkdown(sendResponse: (result: unknown) => void): boolean {
   try {
     sendResponse(extractMarkdownContent())
   } catch (err) {
@@ -467,9 +515,7 @@ export function handleGetMarkdown(
 /**
  * Handle PAGE_SUMMARY message — extract page summary directly in ISOLATED world.
  */
-export function handlePageSummary(
-  sendResponse: (result: unknown) => void
-): boolean {
+export function handlePageSummary(sendResponse: (result: unknown) => void): boolean {
   try {
     sendResponse(extractPageSummaryContent())
   } catch (err) {

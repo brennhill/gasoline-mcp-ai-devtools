@@ -10,7 +10,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
-func (h *ToolHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		URL            string `json:"url"`
 		TabID          int    `json:"tab_id,omitempty"`
@@ -23,7 +23,7 @@ func (h *ToolHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args j
 	if params.URL == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))}
 	}
-	resolvedURL, err := h.resolveNavigateURL(params.URL)
+	resolvedURL, err := h.resolveNavigateURLImpl(params.URL)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrInvalidParam,
@@ -33,17 +33,17 @@ func (h *ToolHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args j
 		)}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
 
 	correlationID := newCorrelationID("nav")
 	h.armEvidenceForCommand(correlationID, "navigate", args, req.ClientID)
 
-	h.stashPerfSnapshot(correlationID)
+	h.stashPerfSnapshotImpl(correlationID)
 
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)
@@ -58,28 +58,28 @@ func (h *ToolHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args j
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("navigate", resolvedURL, map[string]any{
+	h.parent.recordAIAction("navigate", resolvedURL, map[string]any{
 		"target_url":    resolvedURL,
 		"requested_url": params.URL,
 	})
 
-	resp := h.MaybeWaitForCommand(req, correlationID, args, "Navigate queued")
+	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "Navigate queued")
 
 	// If include_content is requested and navigate succeeded, enrich with page content.
 	if params.IncludeContent {
-		resp = h.enrichNavigateResponse(resp, req, params.TabID)
+		resp = h.parent.enrichNavigateResponse(resp, req, params.TabID)
 	}
 
 	// Include blocked_actions/blocked_reason when CSP restricts — omit entirely
 	// when CSP is clear to avoid wasting tokens on normal pages. (#262)
-	resp = h.injectCSPBlockedActions(resp)
+	resp = h.parent.injectCSPBlockedActions(resp)
 
 	return resp
 }
 
-func (h *ToolHandler) handleBrowserActionRefreshImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
@@ -87,20 +87,20 @@ func (h *ToolHandler) handleBrowserActionRefreshImpl(req JSONRPCRequest, args js
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
 	correlationID := newCorrelationID("refresh")
 	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
 
-	h.stashPerfSnapshot(correlationID)
+	h.stashPerfSnapshotImpl(correlationID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -108,21 +108,21 @@ func (h *ToolHandler) handleBrowserActionRefreshImpl(req JSONRPCRequest, args js
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("refresh", "", nil)
+	h.parent.recordAIAction("refresh", "", nil)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Refresh queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Refresh queued")
 }
 
-func (h *ToolHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.requirePilot(req); blocked {
+func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -134,21 +134,21 @@ func (h *ToolHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.
 		Params:        json.RawMessage(`{"action":"back"}`),
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("back", "", nil)
+	h.parent.recordAIAction("back", "", nil)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Back queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Back queued")
 }
 
-func (h *ToolHandler) handleBrowserActionForwardImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.requirePilot(req); blocked {
+func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -160,9 +160,9 @@ func (h *ToolHandler) handleBrowserActionForwardImpl(req JSONRPCRequest, args js
 		Params:        json.RawMessage(`{"action":"forward"}`),
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("forward", "", nil)
+	h.parent.recordAIAction("forward", "", nil)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Forward queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Forward queued")
 }

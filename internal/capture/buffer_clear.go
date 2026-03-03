@@ -21,12 +21,12 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		NetworkWaterfall: len(c.networkWaterfall.entries),
+		NetworkWaterfall: c.networkWaterfall.count(),
 		NetworkBodies:    len(c.buffers.networkBodies),
 	}
 
-	// Clear network waterfall buffer
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
+	// Clear network waterfall buffer.
+	c.networkWaterfall.clear()
 
 	// Clear network bodies buffer and reset memory tracking
 	c.buffers.clearNetworkBuffers()
@@ -44,15 +44,14 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 
 	counts := BufferClearCounts{
 		WebSocketEvents: len(c.buffers.wsEvents),
-		WebSocketStatus: len(c.wsConnections.connections),
+		WebSocketStatus: c.wsConnections.connectionCount(),
 	}
 
 	// Clear WebSocket events buffer
 	c.buffers.clearWebSocketBuffers()
 
-	// Clear WebSocket connections map
-	c.wsConnections.connections = make(map[string]*connectionState)
-	c.wsConnections.connOrder = make([]string, 0)
+	// Clear WebSocket connection tracker.
+	c.wsConnections.clear()
 
 	return counts
 }
@@ -81,10 +80,7 @@ func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	count := len(c.extensionLogs.logs)
-	c.extensionLogs.logs = make([]ExtensionLog, 0)
-
-	return count
+	return c.extensionLogs.clear()
 }
 
 // ClearAll resets all capture-owned in-memory telemetry state.
@@ -96,16 +92,10 @@ func (c *Capture) ClearAll() {
 	defer c.mu.Unlock()
 
 	c.buffers.clearAllEventBuffers()
-	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
-	c.wsConnections.connections = make(map[string]*connectionState)
-	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
-	c.wsConnections.connOrder = make([]string, 0)
+	c.networkWaterfall.clear()
+	c.wsConnections.clear()
 	c.extensionState.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
-	c.perf.snapshots = make(map[string]PerformanceSnapshot)
-	c.perf.snapshotOrder = make([]string, 0)
-	c.perf.baselines = make(map[string]PerformanceBaseline)
-	c.perf.baselineOrder = make([]string, 0)
-	c.perf.beforeSnapshots = make(map[string]PerformanceSnapshot)
+	c.perf.clear()
 }

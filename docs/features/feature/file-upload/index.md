@@ -1,24 +1,35 @@
+---
+doc_type: feature_index
+feature_id: feature-file-upload
+status: shipped
+feature_type: feature
+owners: []
+last_reviewed: 2026-03-03
+code_paths:
+  - cmd/dev-console/tools_interact_upload_handler.go
+  - cmd/dev-console/tools_interact_upload.go
+  - cmd/dev-console/upload_handlers.go
+  - internal/upload/handlers.go
+  - internal/upload/security.go
+  - internal/upload/os_automation.go
+test_paths:
+  - cmd/dev-console/tools_interact_upload_test.go
+  - cmd/dev-console/upload_handlers_test.go
+  - internal/upload/security_test.go
+  - internal/upload/os_automation_test.go
+---
+
 # File Upload
 
-Automates file upload interactions in the browser via the `interact` tool's `upload` action.
+## TL;DR
+- Status: shipped
+- Tool: `interact`
+- Action: `upload`
 
-## Overview
+## Specs
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
 
-Provides secure, cross-platform file upload automation using OS-level dialog handling. Supports uploading files to standard `<input type="file">` elements and custom dropzones, with optional form submission after upload.
-
-## Key Capabilities
-
-- Upload files by absolute path to file input elements
-- OS-level dialog automation for native file pickers
-- Security validation of file paths (no traversal, size limits)
-- Optional form submission after upload
-- Cross-platform support (macOS, Linux, Windows)
-
-## Code References
-
-- `internal/upload/` — Core upload handlers, security validation, OS automation
-- `src/` — Extension-side upload coordination
-
-## Status
-
-**Shipped** — Active in production with code references in `internal/upload/`.
+## Canonical Note
+Upload is security-first: path validation and policy checks must pass before any OS-level dialog automation runs.
