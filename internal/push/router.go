@@ -64,7 +64,33 @@ func (r *Router) DeliverPush(ev PushEvent) (DeliveryResult, error) {
 		// Fall through to notification
 	}
 
-	// Try notification (lightweight signal)
+	return r.notifyAndQueue(ev), nil
+}
+
+// DeliverPushWithRequest routes a pre-built sampling request, falling back to notification/inbox.
+// Use this when you need to track the request ID for response correlation.
+// Returns the actual delivery method used so the caller can detect sampling failures.
+func (r *Router) DeliverPushWithRequest(ev PushEvent, req SamplingRequest) (DeliveryResult, error) {
+	r.mu.RLock()
+	caps := r.caps
+	r.mu.RUnlock()
+
+	// Try sampling first with the pre-built request
+	if caps.SupportsSampling && r.sender != nil {
+		if err := r.sender.SendSampling(req); err == nil {
+			return DeliveryResult{Method: DeliveredViaSampling}, nil
+		}
+	}
+
+	return r.notifyAndQueue(ev), nil
+}
+
+// notifyAndQueue sends a notification (if available) and queues in inbox.
+func (r *Router) notifyAndQueue(ev PushEvent) DeliveryResult {
+	r.mu.RLock()
+	caps := r.caps
+	r.mu.RUnlock()
+
 	notified := false
 	if caps.SupportsNotifications && r.notifier != nil {
 		r.notifier.SendNotification("notifications/message", map[string]any{
@@ -77,15 +103,13 @@ func (r *Router) DeliverPush(ev PushEvent) (DeliveryResult, error) {
 			},
 		})
 		notified = true
-		// Still queue in inbox for full content retrieval
 	}
 
-	// Always queue in inbox as fallback
 	r.inbox.Enqueue(ev)
 	if notified {
-		return DeliveryResult{Method: DeliveredViaNotification}, nil
+		return DeliveryResult{Method: DeliveredViaNotification}
 	}
-	return DeliveryResult{Method: DeliveredViaInbox}, nil
+	return DeliveryResult{Method: DeliveredViaInbox}
 }
 
 // UpdateCapabilities updates the client's delivery capabilities.

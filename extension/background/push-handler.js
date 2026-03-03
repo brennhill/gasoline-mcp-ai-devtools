@@ -132,7 +132,8 @@ export function installChatCommandListener(logFn) {
                 return;
             await chrome.tabs.sendMessage(tab.id, {
                 type: 'GASOLINE_TOGGLE_CHAT',
-                client_name: caps.client_name || 'AI'
+                client_name: caps.client_name || 'AI',
+                server_url: getServerUrl()
             });
         }
         catch (err) {
@@ -170,19 +171,24 @@ export async function pushScreenshot(screenshotDataUrl, note, pageUrl, tabId) {
 }
 /**
  * Push a chat message to the daemon's push pipeline.
+ * If conversationId is provided, the daemon tracks the message for SSE response delivery.
  */
-export async function pushChatMessage(message, pageUrl, tabId) {
+export async function pushChatMessage(message, pageUrl, tabId, conversationId) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), PUSH_FETCH_TIMEOUT_MS);
+        const body = {
+            message,
+            page_url: pageUrl,
+            tab_id: tabId
+        };
+        if (conversationId) {
+            body.conversation_id = conversationId;
+        }
         const response = await fetch(`${getServerUrl()}/push/message`, {
             method: 'POST',
             headers: getRequestHeaders(),
-            body: JSON.stringify({
-                message,
-                page_url: pageUrl,
-                tab_id: tabId
-            }),
+            body: JSON.stringify(body),
             signal: controller.signal
         });
         clearTimeout(timeoutId);

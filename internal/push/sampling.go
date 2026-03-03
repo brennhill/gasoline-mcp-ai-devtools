@@ -9,6 +9,7 @@ import (
 )
 
 // BuildSamplingRequest converts a PushEvent into an MCP sampling/createMessage request.
+// Returns the request and its ID for response correlation.
 func BuildSamplingRequest(ev PushEvent) SamplingRequest {
 	var messages []SamplingMessage
 

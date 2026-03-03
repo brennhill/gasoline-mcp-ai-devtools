@@ -33,6 +33,7 @@ import {
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
+import { toggleChatPanel } from './ui/chat-panel.js'
 
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true
@@ -70,7 +71,12 @@ export function initRuntimeMessageListener(): void {
       return false
     },
     GASOLINE_TOGGLE_CHAT: (msg) => {
-      toggleChatWidget((msg as { client_name?: string }).client_name)
+      const m = msg as { client_name?: string; server_url?: string }
+      if (m.server_url) {
+        toggleChatPanel(m.server_url)
+      } else {
+        toggleChatWidget(m.client_name)
+      }
       return false
     },
     GASOLINE_RECORDING_WATERMARK: (msg) => {

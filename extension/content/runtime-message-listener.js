@@ -4,6 +4,7 @@ import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighli
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 import { toggleChatWidget } from './ui/chat-widget.js';
+import { toggleChatPanel } from './ui/chat-panel.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;
@@ -32,7 +33,13 @@ export function initRuntimeMessageListener() {
             return false;
         },
         GASOLINE_TOGGLE_CHAT: (msg) => {
-            toggleChatWidget(msg.client_name);
+            const m = msg;
+            if (m.server_url) {
+                toggleChatPanel(m.server_url);
+            }
+            else {
+                toggleChatWidget(m.client_name);
+            }
             return false;
         },
         GASOLINE_RECORDING_WATERMARK: (msg) => {

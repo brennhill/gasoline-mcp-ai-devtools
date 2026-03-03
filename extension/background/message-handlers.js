@@ -381,13 +381,14 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
     }
 }
 /**
- * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
+ * Handle GASOLINE_PUSH_CHAT from content script (chat widget or chat panel).
  * Pushes a text message to the daemon's push pipeline.
+ * If conversation_id is present, the daemon tracks the message for SSE response delivery.
  */
 async function handlePushChatAsync(message, sender, sendResponse) {
     try {
         const tabId = sender.tab?.id ?? 0;
-        const result = await pushChatMessage(message.message, message.page_url, tabId);
+        const result = await pushChatMessage(message.message, message.page_url, tabId, message.conversation_id);
         if (result) {
             sendResponse({ success: true, status: result.status, event_id: result.event_id });
         }

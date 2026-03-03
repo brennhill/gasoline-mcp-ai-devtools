@@ -89,6 +89,8 @@ func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePushMessage receives a chat message from the extension and routes it.
+// If conversation_id is present, the message is also added to the active ChatSession
+// and the sampling request ID is tracked for response correlation.
 func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "push_message: method not allowed. Use POST method."})
@@ -103,9 +105,10 @@ func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		Message string `json:"message"`
-		PageURL string `json:"page_url"`
-		TabID   int    `json:"tab_id"`
+		Message        string `json:"message"`
+		PageURL        string `json:"page_url"`
+		TabID          int    `json:"tab_id"`
+		ConversationID string `json:"conversation_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "push_message: invalid JSON body. Send a valid JSON object with a 'message' field."})
@@ -126,27 +129,62 @@ func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 		Message:   body.Message,
 	}
 
+	// If conversation_id is present, manage the chat session
+	convID := body.ConversationID
+	if convID != "" {
+		session := s.getOrCreateChatSession(convID)
+		session.AddMessage(push.ChatMessage{
+			Role: push.ChatRoleUser,
+			Text: body.Message,
+		})
+	}
+
 	status := "queued"
 	deliveryMethod := string(push.DeliveredViaInbox)
 	if s.pushRouter != nil {
-		result, err := s.pushRouter.DeliverPush(ev)
-		if err != nil {
-			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_message: delivery failed. " + err.Error()})
-			return
-		}
-		deliveryMethod = string(result.Method)
-		if result.Method == push.DeliveredViaSampling {
-			status = "delivered"
+		if convID != "" {
+			// Conversation mode: build request manually so we can track the ID
+			req := push.BuildSamplingRequest(ev)
+			result, err := s.pushRouter.DeliverPushWithRequest(ev, req)
+			if err != nil {
+				jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_message: delivery failed. " + err.Error()})
+				return
+			}
+			deliveryMethod = string(result.Method)
+			if result.Method == push.DeliveredViaSampling {
+				status = "delivered"
+				// Track request ID for response correlation with TTL cleanup
+				s.samplingRequests.Store(req.ID, convID)
+				time.AfterFunc(5*time.Minute, func() {
+					s.samplingRequests.Delete(req.ID)
+				})
+			}
+			// If sampling failed, don't track — the response will never come
+		} else {
+			// Normal mode: use standard delivery with fallback chain
+			result, err := s.pushRouter.DeliverPush(ev)
+			if err != nil {
+				jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_message: delivery failed. " + err.Error()})
+				return
+			}
+			deliveryMethod = string(result.Method)
+			if result.Method == push.DeliveredViaSampling {
+				status = "delivered"
+			}
 		}
 	} else if s.pushInbox != nil {
 		s.pushInbox.Enqueue(ev)
 	}
 
-	jsonResponse(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":          status,
 		"event_id":        ev.ID,
 		"delivery_method": deliveryMethod,
-	})
+	}
+	if convID != "" {
+		resp["conversation_id"] = convID
+	}
+	jsonResponse(w, http.StatusOK, resp)
 }
 
 // handlePushCapabilities returns per-session push capability flags for the extension.
@@ -172,6 +210,7 @@ func (s *Server) handlePushCapabilities(w http.ResponseWriter, r *http.Request) 
 }
 
 // pushDrawModeCompletion builds an annotation PushEvent and routes it.
+// If a chat session is active, also injects annotation data as a chat message.
 func (s *Server) pushDrawModeCompletion(body *drawModeRequest, screenshotPath string, annotations []Annotation) {
 	if s.pushRouter == nil {
 		return
@@ -192,5 +231,34 @@ func (s *Server) pushDrawModeCompletion(body *drawModeRequest, screenshotPath st
 		AnnotSession: body.AnnotSessionName,
 	}
 
+	// If chat session is active, inject annotations into the conversation
+	s.chatSessionMu.Lock()
+	session := s.chatSession
+	s.chatSessionMu.Unlock()
+	if session != nil {
+		session.AddMessage(push.ChatMessage{
+			Role:        push.ChatRoleAnnotation,
+			Text:        fmt.Sprintf("%d annotations from draw mode", len(annotations)),
+			Annotations: annotJSON,
+		})
+	}
+
 	_, _ = s.pushRouter.DeliverPush(ev)
+}
+
+// getOrCreateChatSession returns the active chat session, creating one if needed.
+func (s *Server) getOrCreateChatSession(conversationID string) *push.ChatSession {
+	s.chatSessionMu.Lock()
+	defer s.chatSessionMu.Unlock()
+
+	if s.chatSession != nil && s.chatSession.ConversationID() == conversationID {
+		return s.chatSession
+	}
+
+	// Close previous session if different conversation
+	if s.chatSession != nil {
+		s.chatSession.Close()
+	}
+	s.chatSession = push.NewChatSession(conversationID)
+	return s.chatSession
 }

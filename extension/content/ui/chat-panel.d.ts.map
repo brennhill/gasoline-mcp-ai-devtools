@@ -1,0 +1,1 @@
+{"version":3,"file":"chat-panel.d.ts","sourceRoot":"","sources":["../../../src/content/ui/chat-panel.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AA8BH;;;GAGG;AACH,wBAAgB,eAAe,CAAC,SAAS,EAAE,MAAM,GAAG,IAAI,CAOvD;AAwbD;;;GAGG;AACH,wBAAgB,uBAAuB,CAAC,IAAI,EAAE;IAAE,gBAAgB,EAAE,MAAM,CAAC;IAAC,OAAO,CAAC,EAAE,MAAM,CAAA;CAAE,GAAG,IAAI,CAQlG;AAED,iDAAiD;AACjD,wBAAgB,eAAe,IAAI,OAAO,CAEzC"}

@@ -39,9 +39,11 @@ export declare function pushScreenshot(screenshotDataUrl: string, note: string, 
 } | null>;
 /**
  * Push a chat message to the daemon's push pipeline.
+ * If conversationId is provided, the daemon tracks the message for SSE response delivery.
  */
-export declare function pushChatMessage(message: string, pageUrl: string, tabId: number): Promise<{
+export declare function pushChatMessage(message: string, pageUrl: string, tabId: number, conversationId?: string): Promise<{
     status: string;
     event_id?: string;
+    conversation_id?: string;
 } | null>;
 //# sourceMappingURL=push-handler.d.ts.map

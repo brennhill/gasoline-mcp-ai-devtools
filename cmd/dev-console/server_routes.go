@@ -179,6 +179,15 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 		server.handlePushCapabilities(w, r)
 	})))
 
+	// NOT MCP — Chat panel SSE stream (browser → daemon → browser real-time messages)
+	mux.HandleFunc("/chat/stream", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handleChatStream(w, r)
+	})))
+	// NOT MCP — Chat response from bridge (bridge forwards AI sampling responses here)
+	mux.HandleFunc("/chat/response", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleChatResponse(w, r)
+	}))
+
 	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDashboard(w, r)

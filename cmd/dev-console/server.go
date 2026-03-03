@@ -52,6 +52,11 @@ type Server struct {
 	// Push delivery pipeline
 	pushInbox  *push.PushInbox
 	pushRouter *push.Router
+
+	// Chat session for in-page conversational panel
+	chatSession      *push.ChatSession
+	chatSessionMu    sync.Mutex
+	samplingRequests sync.Map // requestID (int64) → conversationID (string)
 }
 
 // NewServer creates a new server instance.

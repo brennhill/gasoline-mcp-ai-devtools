@@ -140,6 +140,16 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		debugf("request method=%s id=%v", req.Method, req.ID)
 		stats.lastMethod = req.Method
 
+		// SAMPLING RESPONSE: Detect JSON-RPC responses (Method empty + ID present)
+		// Forward asynchronously — must not block the stdin read loop.
+		if isSamplingResponse(req) {
+			lineCopy := append([]byte(nil), line...)
+			util.SafeGo(func() {
+				forwardSamplingResponse(client, endpoint, lineCopy)
+			})
+			continue
+		}
+
 		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
 		if handleFastPath(req, toolsList, framing) {
 			stats.fastPath++

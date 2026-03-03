@@ -11,10 +11,76 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
+
+// isSamplingResponse detects JSON-RPC responses to outgoing sampling requests.
+// Responses have an ID but no Method.
+func isSamplingResponse(req JSONRPCRequest) bool {
+	return req.Method == "" && req.HasID()
+}
+
+// forwardSamplingResponse extracts text from a sampling response and POSTs it to /chat/response.
+func forwardSamplingResponse(client *http.Client, endpoint string, rawJSON []byte) {
+	var resp struct {
+		ID     json.Number `json:"id"`
+		Result struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(rawJSON, &resp); err != nil {
+		debugf("sampling response parse error: %v", err)
+		return
+	}
+
+	requestID, err := resp.ID.Int64()
+	if err != nil {
+		debugf("sampling response ID not int64: %v", err)
+		return
+	}
+
+	// Concatenate all text content blocks
+	var sb strings.Builder
+	for _, c := range resp.Result.Content {
+		if c.Type == "text" {
+			sb.WriteString(c.Text)
+		}
+	}
+	if sb.Len() == 0 {
+		return
+	}
+
+	reqBody := map[string]any{
+		"request_id": requestID,
+		"text":       sb.String(),
+	}
+	payload, err := json.Marshal(reqBody)
+	if err != nil {
+		return
+	}
+
+	chatURL := endpoint + "/chat/response"
+	// Best-effort POST with 5s timeout — don't block indefinitely
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", chatURL, bytes.NewReader(payload))
+	if err != nil {
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	postResp, err := client.Do(httpReq)
+	if err != nil {
+		debugf("chat response forward failed: %v", err)
+		return
+	}
+	_ = postResp.Body.Close()
+}
 
 // bridgeDoHTTP delegates to internal/bridge for HTTP forwarding.
 func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, line []byte) (*http.Response, error) {

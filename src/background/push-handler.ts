@@ -151,7 +151,8 @@ export function installChatCommandListener(logFn?: (message: string) => void): v
 
       await chrome.tabs.sendMessage(tab.id, {
         type: 'GASOLINE_TOGGLE_CHAT',
-        client_name: caps.client_name || 'AI'
+        client_name: caps.client_name || 'AI',
+        server_url: getServerUrl()
       })
     } catch (err) {
       if (logFn) logFn(`Chat toggle error: ${(err as Error).message}`)
@@ -192,28 +193,34 @@ export async function pushScreenshot(
 
 /**
  * Push a chat message to the daemon's push pipeline.
+ * If conversationId is provided, the daemon tracks the message for SSE response delivery.
  */
 export async function pushChatMessage(
   message: string,
   pageUrl: string,
-  tabId: number
-): Promise<{ status: string; event_id?: string } | null> {
+  tabId: number,
+  conversationId?: string
+): Promise<{ status: string; event_id?: string; conversation_id?: string } | null> {
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), PUSH_FETCH_TIMEOUT_MS)
+    const body: Record<string, unknown> = {
+      message,
+      page_url: pageUrl,
+      tab_id: tabId
+    }
+    if (conversationId) {
+      body.conversation_id = conversationId
+    }
     const response = await fetch(`${getServerUrl()}/push/message`, {
       method: 'POST',
       headers: getRequestHeaders(),
-      body: JSON.stringify({
-        message,
-        page_url: pageUrl,
-        tab_id: tabId
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal
     })
     clearTimeout(timeoutId)
     if (!response.ok) return null
-    return (await response.json()) as { status: string; event_id?: string }
+    return (await response.json()) as { status: string; event_id?: string; conversation_id?: string }
   } catch {
     return null
   }

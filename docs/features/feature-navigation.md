@@ -42,6 +42,7 @@ Features with active code implementations referencing their feature docs.
 | binary-format-detection | `feature/binary-format-detection/` | product-spec.md, qa-plan.md, tech-spec.md | Detect and handle binary response bodies |
 | bridge-restart | `feature/bridge-restart/` | product-spec.md, tech-spec.md, test-plan.md | Force-restart daemon when unresponsive via `configure(action="restart")` |
 | browser-extension-enhancement | `feature/browser-extension-enhancement/` | product-spec.md, qa-plan.md, tech-spec.md | MV3 extension enhancements and lifecycle management |
+| chat-panel | `feature/chat-panel/` | index.md, flow-map.md | In-page conversational side panel with SSE streaming |
 | ci-infrastructure | `feature/ci-infrastructure/` | product-spec.md, qa-plan.md, tech-spec.md, business-pitch.md | CI/CD pipeline infrastructure and automation |
 | code-navigation-modification | `feature/code-navigation-modification/` | product-spec.md, qa-plan.md, tech-spec.md | Code navigation and modification helpers |
 | cold-start-queuing | `feature/cold-start-queuing/` | index.md | Queue MCP requests during daemon cold start |
@@ -156,9 +157,9 @@ Features that are documented but not yet implemented in code.
 
 | Status | Count |
 |--------|-------|
-| Shipped | 50 |
+| Shipped | 51 |
 | Proposed | 60 |
-| **Total** | **110** |
+| **Total** | **111** |
 
 ---
 
