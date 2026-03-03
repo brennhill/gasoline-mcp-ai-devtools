@@ -91,6 +91,42 @@ func TestInteractToolSchema_StabilityMsParam(t *testing.T) {
 	}
 }
 
+func TestInteractActionSpecs_EnumParity(t *testing.T) {
+	t.Parallel()
+
+	specs := InteractActionSpecs()
+	if len(specs) == 0 {
+		t.Fatal("InteractActionSpecs should be non-empty")
+	}
+	if len(interactActions) != len(specs) {
+		t.Fatalf("interactActions/spec count mismatch: actions=%d specs=%d", len(interactActions), len(specs))
+	}
+
+	for i, spec := range specs {
+		if interactActions[i] != spec.Name {
+			t.Fatalf("interact action order mismatch at %d: enum=%q spec=%q", i, interactActions[i], spec.Name)
+		}
+	}
+}
+
+func TestInteractActionSpecs_NoDuplicateNamesOrEmptyHints(t *testing.T) {
+	t.Parallel()
+
+	seen := make(map[string]bool, len(interactActionSpecs))
+	for i, spec := range interactActionSpecs {
+		if spec.Name == "" {
+			t.Fatalf("interactActionSpecs[%d] has empty Name", i)
+		}
+		if seen[spec.Name] {
+			t.Fatalf("duplicate interact action name: %q", spec.Name)
+		}
+		seen[spec.Name] = true
+		if spec.Hint == "" {
+			t.Fatalf("interact action %q missing capability hint", spec.Name)
+		}
+	}
+}
+
 func toSchemaStringSlice(t *testing.T, raw any) []string {
 	t.Helper()
 	switch v := raw.(type) {
