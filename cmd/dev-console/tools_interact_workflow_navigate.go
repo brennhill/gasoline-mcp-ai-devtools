@@ -67,7 +67,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 		"tab_id":     params.TabID,
 	})
 	stepStart = time.Now()
-	waitResp := h.handleDOMPrimitive(req, waitArgs, "wait_for")
+	waitResp := h.interactAction().handleDOMPrimitive(req, waitArgs, "wait_for")
 	trace = append(trace, WorkflowStep{
 		Action:   "wait_for",
 		Status:   responseStatus(waitResp),

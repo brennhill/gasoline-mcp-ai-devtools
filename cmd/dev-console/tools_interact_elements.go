@@ -12,7 +12,7 @@ import (
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
-func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID       int  `json:"tab_id,omitempty"`
 		VisibleOnly bool `json:"visible_only,omitempty"`
@@ -22,20 +22,20 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
 	args = normalizeDOMActionArgs(args, "list_interactive")
 
 	correlationID := newCorrelationID("dom_list")
-	h.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
+	h.parent.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -43,11 +43,11 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("dom_list_interactive", "", nil)
+	h.parent.recordAIAction("dom_list_interactive", "", nil)
 
-	resp := h.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
+	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 
 	// Post-process: extract elements from result and build index→selector store.
 	// IMPORTANT: index store is built from ALL elements before truncation.
@@ -64,7 +64,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 }
 
 // buildElementIndexFromResponse parses list_interactive results and stores scoped index selectors.
-func (h *ToolHandler) buildElementIndexFromResponse(clientID string, tabID int, generation string, resp JSONRPCResponse) string {
+func (h *interactActionHandler) buildElementIndexFromResponse(clientID string, tabID int, generation string, resp JSONRPCResponse) string {
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
 		return ""
@@ -99,10 +99,10 @@ func (h *ToolHandler) buildElementIndexFromResponse(clientID string, tabID int, 
 				indexMap[int(indexVal)] = selector
 			}
 		}
-		if h.elementIndexRegistry == nil {
-			h.elementIndexRegistry = newElementIndexRegistry()
+		if h.parent.elementIndexRegistry == nil {
+			h.parent.elementIndexRegistry = newElementIndexRegistry()
 		}
-		return h.elementIndexRegistry.store(clientID, tabID, generation, indexMap)
+		return h.parent.elementIndexRegistry.store(clientID, tabID, generation, indexMap)
 	}
 	return ""
 }
@@ -208,11 +208,11 @@ func setNestedElements(data map[string]any, elements []any) {
 var extractElementList = act.ExtractElementList
 
 // resolveIndexToSelector looks up a selector from the scoped element index store.
-func (h *ToolHandler) resolveIndexToSelector(clientID string, tabID int, index int, generation string) (string, bool, bool, string) {
-	if h.elementIndexRegistry == nil {
+func (h *interactActionHandler) resolveIndexToSelector(clientID string, tabID int, index int, generation string) (string, bool, bool, string) {
+	if h.parent.elementIndexRegistry == nil {
 		return "", false, false, ""
 	}
-	return h.elementIndexRegistry.resolve(clientID, tabID, index, generation)
+	return h.parent.elementIndexRegistry.resolve(clientID, tabID, index, generation)
 }
 
 func formatIndexGenerationConflict(expected, actual string) string {

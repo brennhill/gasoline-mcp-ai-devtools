@@ -76,7 +76,7 @@ func (h *ToolHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONR
 func (h *ToolHandler) appendInteractiveToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
 	listReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID, ClientID: req.ClientID}
 	listArgs, _ := json.Marshal(map[string]any{"what": "list_interactive", "visible_only": true})
-	listResp := h.handleListInteractive(listReq, listArgs)
+	listResp := h.interactAction().handleListInteractive(listReq, listArgs)
 
 	var listResult MCPToolResult
 	if err := json.Unmarshal(listResp.Result, &listResult); err != nil || listResult.IsError {

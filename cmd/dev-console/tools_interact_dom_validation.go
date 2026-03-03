@@ -10,7 +10,7 @@ import (
 )
 
 // resolveDOMSelectorFromIndex resolves index -> selector for primitive actions that omitted selector/element_id.
-func (h *ToolHandler) resolveDOMSelectorFromIndex(req JSONRPCRequest, args json.RawMessage, params *domPrimitiveParams) (json.RawMessage, JSONRPCResponse, bool) {
+func (h *interactActionHandler) resolveDOMSelectorFromIndex(req JSONRPCRequest, args json.RawMessage, params *domPrimitiveParams) (json.RawMessage, JSONRPCResponse, bool) {
 	if params.Index == nil || params.Selector != "" || params.ElementID != "" {
 		return args, JSONRPCResponse{}, false
 	}
