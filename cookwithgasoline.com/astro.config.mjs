@@ -6,12 +6,11 @@ export default defineConfig({
   site: 'https://cookwithgasoline.com',
   integrations: [
     starlight({
-      title: 'Gasoline MCP',
-      description:
-        'Browser automation, debugging, demo recording, and interactive web development for MCP-compatible AI agents.',
+      title: 'Gasoline Agentic Devtool',
+      description: 'Accelerating AI driven development',
       logo: {
         src: './src/assets/logo.png',
-        alt: 'Gasoline MCP'
+        alt: 'Gasoline Agentic Devtool'
       },
       favicon: '/images/logo.png',
       social: [

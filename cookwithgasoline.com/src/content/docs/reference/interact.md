@@ -1,5 +1,5 @@
 ---
-title: "interact() — Control the Browser"
+title: "Interact — Control the Browser"
 description: "Complete reference for the interact tool. 59 actions for navigation, DOM manipulation, element discovery, tab management, storage & cookies, dialog handling, file upload, draw mode, recording, compound actions, content extraction, state management, and JavaScript execution."
 ---
 
@@ -24,7 +24,7 @@ interact({what: "batch", steps: [{what: "click", selector: "text=Menu"}, ...]})
 interact({what: "set_cookie", name: "theme", value: "dark", domain: "example.com"})
 ```
 
-## Composable Parameters
+## Common Parameters
 
 These parameters can be added to **any** action:
 
@@ -356,6 +356,21 @@ interact({what: "get_attribute", selector: "#submit", name: "disabled"})
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `name` | string | Attribute name to read |
+
+### query
+
+Run selector queries without mutating page state.
+
+```js
+interact({what: "query", selector: "text=Submit", query_type: "exists"})
+interact({what: "query", selector: ".error", query_type: "count"})
+interact({what: "query", selector: "#status", query_type: "text"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query_type` | string | `exists`, `count`, `text`, `text_all`, or `attributes` |
+| `attribute_names` | array | Attribute names when `query_type` is `attributes` |
 
 ### set_attribute
 
@@ -689,6 +704,22 @@ interact({what: "screenshot", selector: ".hero-section"})
 
 ## Clipboard
 
+### clipboard_read
+
+Read the current clipboard text.
+
+```js
+interact({what: "clipboard_read"})
+```
+
+### clipboard_write
+
+Write text to the clipboard.
+
+```js
+interact({what: "clipboard_write", text: "Deploy status: green"})
+```
+
 ### paste
 
 Paste text at the currently focused element.
@@ -760,6 +791,15 @@ interact({what: "navigate_and_wait_for", url: "https://example.com/dashboard", w
 | `url` | string (required) | URL to navigate to |
 | `wait_for` | string | CSS selector to wait for after navigation |
 | `timeout_ms` | number | Max wait time for the selector |
+
+### navigate_and_document
+
+Navigate and return a structured page snapshot in one call.
+
+```js
+interact({what: "navigate_and_document", url: "https://example.com/docs"})
+interact({what: "navigate_and_document", url: "https://example.com/docs", include_screenshot: true})
+```
 
 ### fill_form
 

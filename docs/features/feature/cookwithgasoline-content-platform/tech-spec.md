@@ -1,45 +1,45 @@
 ---
-doc_type: tech-spec
+doc_type: tech_spec
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
 last_reviewed: 2026-03-03
+owners:
+  - Brenn
 ---
 
-# Cookwithgasoline Content Platform Tech Spec
+# Tech Spec
 
-## Architecture
+## Primary Components
 
-1. Astro site configuration and routing:
-   - `cookwithgasoline.com/astro.config.mjs`
-   - markdown route handlers in `src/pages/`
-2. Content and UX components:
-   - `src/components/Head.astro`
-   - `src/components/Landing.astro`
-   - `src/components/WorkflowLibrary.astro`
-   - `src/components/ArticlesLibrary.astro`
-3. Content data and slug/path utilities:
-   - `src/data/workflows.ts`
-   - `src/utils/contentSlugs.ts`
-   - `src/utils/markdownPaths.ts`
-4. Contract enforcement:
-   - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
-   - wired in CI via `.github/workflows/ci.yml`
+- `cookwithgasoline.com/src/components/Landing.astro`
+- `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
+- `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
+- `cookwithgasoline.com/src/styles/custom.css`
+- `cookwithgasoline.com/src/content/docs/reference/*.md`
+- `cookwithgasoline.com/src/pages/[...slug].md.ts`
+- `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
 
-## Content Contract
+## Contracts and Validation
 
-1. Changed docs/blog content must satisfy required frontmatter and structural checks.
-2. Markdown mirrors must resolve to stable canonical slugs/paths.
-3. LLM export routes must be generated from the same source of truth paths.
+- Content contract: `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- Reference schema sync contract: `scripts/docs/check-reference-schema-sync.mjs`
+- Feature bundle contract: `scripts/docs/check-feature-bundles.js`
 
-## Runtime Flow
+## Data/Content Sources
 
-1. Source docs/blog entries are read from Astro collections.
-2. Slug normalization utilities resolve canonical route paths.
-3. Markdown endpoints emit frontmatter-enriched markdown responses.
-4. CI runs content contract checks to block invalid content changes.
+- Tool mode/action enums are sourced from:
+  - `internal/schema/observe.go`
+  - `internal/schema/analyze.go`
+  - `internal/schema/configure_properties_core.go`
+  - `internal/schema/generate.go`
+  - `internal/schema/interact_actions.go`
 
-## Reliability and Guardrails
+## Failure Modes
 
-1. Keep slug/path resolution centralized in `contentSlugs.ts` + `markdownPaths.ts`.
-2. Keep content contract checks deterministic and script-driven.
-3. Keep markdown route handlers aligned with canonical path generation logic.
+- Missing required headings (`Quick Reference`, `Common Parameters`) in reference docs.
+- Missing mode/action sections after schema changes.
+- Missing required feature bundle docs for this feature directory.
+
+## Linked Architecture
+
+- Canonical flow map: [flow-map.md](./flow-map.md)

@@ -1,41 +1,36 @@
 ---
-doc_type: product-spec
+doc_type: product_spec
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
 last_reviewed: 2026-03-03
+owners:
+  - Brenn
 ---
 
-# Cookwithgasoline Content Platform Product Spec
+# Product Spec
 
-## Problem
+## Objective
 
-Gasoline needs a first-class documentation and discovery surface that works for both humans and LLM agents:
-1. Homepage should clearly explain capability and value.
-2. Workflow discovery should make common tasks easy to find and execute.
-3. Markdown mirrors should provide stable, crawlable, agent-readable routes.
-4. CI must enforce content-contract quality for changed docs/blog files.
+Keep `cookwithgasoline.com` aligned with current product capabilities while preserving a high-conversion marketing layout and machine-readable docs output (`*.md`, `llms.txt`, `llms-full.txt`).
 
-## Product Requirement
+## Scope
 
-Deliver a content platform at `cookwithgasoline.com` that supports:
-1. Human-oriented navigation and workflow discovery.
-2. Agent-oriented markdown exports with canonical paths and metadata.
-3. Repeatable contract validation in CI so content quality does not drift.
+- Homepage and discovery pages with modern rhythm and spacing.
+- Tool reference pages for `observe`, `analyze`, `interact`, `configure`, and `generate`.
+- Blog/article surfaces and markdown mirror routes for agent consumption.
+- Contract checks that prevent docs drift when tool modes/actions change in code.
 
-## Current Scope
+## User Outcomes
 
-1. Landing and workflow/article discovery components.
-2. Markdown route generation for docs/blog content.
-3. LLM-focused text exports (`llms.txt` and full variant).
-4. Content contract linter integrated into CI.
+- Developers can scan homepage + solutions quickly and understand core capabilities.
+- Readers can find accurate, current tool parameters/actions in reference docs.
+- Agents can parse deterministic markdown endpoints for every docs/blog route.
 
 ## Non-Goals
 
-1. Replacing source docs authoring in the main docs tree.
-2. Implementing full CMS/editor workflows in this phase.
+- Final illustration system (placeholder graphics are acceptable during redesign).
+- New backend feature delivery unrelated to documentation or site presentation.
 
-## User Value
+## Linked Architecture
 
-1. Faster onboarding through clearer capability and workflow discovery.
-2. Better retrieval and grounding for agent clients via markdown mirrors.
-3. Lower release risk via automated content-contract enforcement.
+- Canonical flow map: [flow-map.md](./flow-map.md)

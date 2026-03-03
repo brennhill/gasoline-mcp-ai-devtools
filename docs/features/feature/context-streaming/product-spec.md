@@ -203,7 +203,7 @@ await gasoline.configure({
 
 - **Latency:** <100ms from event occurrence to AI notification
 - **Completeness:** 100% of actionable events captured
-- **Efficiency:** Average event <500 bytes; 10-100x less data than polling
+- **Efficiency:** Average event <500 bytes; 10-to-100 times less data than polling
 - **Diagnosis Speed:** 3-5x faster failure diagnosis vs polling
 - **Reliability:** 99.9% delivery rate; no lost events
 
