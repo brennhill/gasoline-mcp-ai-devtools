@@ -23,7 +23,8 @@ type uploadParams struct {
 
 // handleUpload dispatches the "upload" interact action.
 // Validates parameters and queues the upload operation.
-func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	h := u.parent
 	var params uploadParams
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -48,7 +49,7 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 		return *errResp
 	}
 
-	return h.queueUpload(req, args, params, info)
+	return u.queueUpload(req, args, params, info)
 }
 
 // validateUploadParams checks required parameters for the upload action.
@@ -93,7 +94,8 @@ func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPC
 }
 
 // queueUpload builds the upload payload and queues it for the extension.
-func (h *ToolHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
+func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
+	h := u.parent
 	if params.EscalationTimeoutMs <= 0 {
 		params.EscalationTimeoutMs = defaultEscalationTimeoutMs
 	}

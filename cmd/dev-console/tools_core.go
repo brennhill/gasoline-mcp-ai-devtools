@@ -103,6 +103,7 @@ type ToolHandler struct {
 	recordInteractMu         sync.Mutex
 	recordInteract           interactRecordingState
 	recordingInteractHandler *recordingInteractHandler
+	uploadInteractHandler    *uploadInteractHandler
 
 	// Optional evidence capture state keyed by correlation_id.
 	// Tracks before/after screenshots for interact actions when evidence mode is enabled.

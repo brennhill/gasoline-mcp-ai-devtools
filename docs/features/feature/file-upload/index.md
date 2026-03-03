@@ -6,6 +6,7 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-03
 code_paths:
+  - cmd/dev-console/tools_interact_upload_handler.go
   - cmd/dev-console/tools_interact_upload.go
   - cmd/dev-console/upload_handlers.go
   - internal/upload/handlers.go
