@@ -284,7 +284,7 @@ func TestClick_ExtDisconnected_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -405,7 +405,7 @@ func TestClick_NoTabTracking_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -498,7 +498,7 @@ func TestGateOrder_Extension_BeforeTabTracking(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {

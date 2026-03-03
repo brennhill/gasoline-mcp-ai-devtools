@@ -54,7 +54,7 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 	clickJSON, _ := json.Marshal(clickArgs)
 
 	stepStart := time.Now()
-	clickResp := h.handleDOMPrimitive(req, clickJSON, "click")
+	clickResp := h.interactAction().handleDOMPrimitive(req, clickJSON, "click")
 	trace = append(trace, WorkflowStep{
 		Action:   "click_submit",
 		Status:   responseStatus(clickResp),
@@ -146,7 +146,7 @@ func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, 
 		typeArgs["selector"] = field.Selector
 	}
 	argsJSON, _ := json.Marshal(typeArgs)
-	typeResp := h.handleDOMPrimitive(req, argsJSON, "type")
+	typeResp := h.interactAction().handleDOMPrimitive(req, argsJSON, "type")
 	actionUsed := "type"
 
 	// Fallback: if the element is a <select>, retry with "select" action.
@@ -162,7 +162,7 @@ func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, 
 			selectArgs["selector"] = field.Selector
 		}
 		selectJSON, _ := json.Marshal(selectArgs)
-		typeResp = h.handleDOMPrimitive(req, selectJSON, "select")
+		typeResp = h.interactAction().handleDOMPrimitive(req, selectJSON, "select")
 		actionUsed = "select"
 	}
 

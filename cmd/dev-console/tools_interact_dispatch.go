@@ -52,7 +52,7 @@ func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
 			"close_tab":                 h.parent.handleBrowserActionCloseTab,
 			"screenshot":                h.parent.handleScreenshotAlias,
 			"subtitle":                  h.parent.handleSubtitle,
-			"list_interactive":          h.parent.handleListInteractive,
+			"list_interactive":          h.handleListInteractive,
 			"record_start":              h.parent.recordingInteractHandler.handleRecordStart,
 			"record_stop":               h.parent.recordingInteractHandler.handleRecordStop,
 			"upload":                    h.parent.uploadInteractHandler.handleUpload,
@@ -141,7 +141,7 @@ func (h *interactActionHandler) dispatchInteractAction(req JSONRPCRequest, args 
 		return handler(req, args)
 	}
 	if domPrimitiveActions[action] {
-		return h.parent.handleDOMPrimitive(req, args, action)
+		return h.handleDOMPrimitive(req, args, action)
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"))}
 }

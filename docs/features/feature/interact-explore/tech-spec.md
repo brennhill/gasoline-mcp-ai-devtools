@@ -25,6 +25,8 @@ links:
 - action list generation for schema/error hints
 - jitter application policy
 - named vs DOM-primitive action routing
+- `list_interactive` orchestration + index metadata/truncation post-processing
+- DOM primitive selector resolution (`index`/`index_generation`) before queueing `dom_action`
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`
