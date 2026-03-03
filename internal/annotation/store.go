@@ -48,6 +48,9 @@ type Detail struct {
 	AllElements    json.RawMessage   `json:"all_elements,omitempty"`
 	ElementCount   int               `json:"element_count,omitempty"`
 	IframeContent  json.RawMessage   `json:"iframe_content,omitempty"`
+	ParentContext  json.RawMessage   `json:"parent_context,omitempty"`
+	Siblings       json.RawMessage   `json:"siblings,omitempty"`
+	CSSFramework   string            `json:"css_framework,omitempty"`
 }
 
 // Session represents a completed draw mode session.
@@ -123,7 +126,7 @@ func NewStore(detailTTL time.Duration) *Store {
 		details:       make(map[string]*detailEntry),
 		named:         make(map[string]*namedSessionEntry),
 		detailTTL:     detailTTL,
-		sessionTTL:    30 * time.Minute,
+		sessionTTL:    2 * time.Hour,
 		done:          make(chan struct{}),
 		sessionNotify: make(chan struct{}),
 	}

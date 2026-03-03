@@ -775,7 +775,8 @@
             "doctor",
             "security_mode",
             "network_recording",
-            "action_jitter"
+            "action_jitter",
+            "report_issue"
           ],
           "type": "string"
         },
@@ -918,7 +919,10 @@
             "clear",
             "start",
             "stop",
-            "status"
+            "status",
+            "list_templates",
+            "preview",
+            "submit"
           ],
           "type": "string"
         },
@@ -1041,6 +1045,10 @@
           ],
           "type": "string"
         },
+        "template": {
+          "description": "Issue template name (report_issue)",
+          "type": "string"
+        },
         "test_id": {
           "description": "Test boundary ID",
           "type": "string"
@@ -1050,6 +1058,10 @@
           "maximum": 60,
           "minimum": 1,
           "type": "integer"
+        },
+        "title": {
+          "description": "Issue title (report_issue submit)",
+          "type": "string"
         },
         "tool": {
           "description": "Filter describe_capabilities to a single tool by name (e.g. 'observe', 'interact')",
@@ -1065,6 +1077,10 @@
         },
         "url_regex": {
           "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "user_context": {
+          "description": "User description of the issue (report_issue)",
           "type": "string"
         },
         "value": {
@@ -1109,7 +1125,8 @@
             "doctor",
             "security_mode",
             "network_recording",
-            "action_jitter"
+            "action_jitter",
+            "report_issue"
           ],
           "type": "string"
         }
