@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/redaction"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
@@ -40,7 +41,7 @@ func defaultExtensionReadinessTimeout() time.Duration {
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities.
-func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
+func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler := &ToolHandler{
 		MCPHandler:                NewMCPHandler(server, version),
@@ -64,16 +65,16 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize session store (use current working directory as project path).
 	cwd, err := os.Getwd()
 	if err == nil {
-		if store, err := ai.NewSessionStore(cwd); err == nil {
+		if store, err := persistence.NewSessionStore(cwd); err == nil {
 			handler.sessionStoreImpl = store
 		}
 	}
 
 	// Initialize noise filtering with persistence support.
 	if handler.sessionStoreImpl != nil {
-		handler.noiseConfig = ai.NewNoiseConfigWithStore(handler.sessionStoreImpl)
+		handler.noiseConfig = noise.NewNoiseConfigWithStore(handler.sessionStoreImpl)
 	} else {
-		handler.noiseConfig = ai.NewNoiseConfig()
+		handler.noiseConfig = noise.NewNoiseConfig()
 	}
 	handler.redactionEngine = redaction.NewRedactionEngine("")
 
@@ -96,7 +97,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
 	handler.apiContractValidator = analysis.NewAPIContractValidator()
 	handler.sessionManager = session.NewSessionManager(10, newToolCaptureStateReader(handler))
-	handler.auditTrail = audit.NewAuditTrail(audit.AuditConfig{
+	handler.auditTrail = audit.NewAuditTrail(audit.Config{
 		MaxEntries:   10000,
 		Enabled:      true,
 		RedactParams: true,

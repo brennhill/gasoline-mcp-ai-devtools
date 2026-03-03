@@ -21,7 +21,7 @@ var interactModeSpecs = map[string]modeParamSpec{
 	},
 	"get_text": {
 		Hint:     "Read text content of an element",
-		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
+		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "structured"},
 	},
 	"get_value": {
 		Hint:     "Read value of an input element",
@@ -32,8 +32,8 @@ var interactModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
 	},
 	"scroll_to": {
-		Hint:     "Scroll an element into view, or scroll by direction (value='top'|'bottom'|'up'|'down')",
-		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "value"},
+		Hint:     "Scroll an element into view, or scroll container directionally (direction='top'|'bottom'|'up'|'down')",
+		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "direction", "value"},
 	},
 	"get_attribute": {
 		Hint:     "Read an HTML attribute from an element",

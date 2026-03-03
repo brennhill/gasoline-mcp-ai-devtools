@@ -28,7 +28,7 @@ func SetupTestServer(t *testing.T) (*server.Server, string) {
 }
 
 // SetupTestCapture creates a test instance of Capture.
-func SetupTestCapture(t *testing.T) *capture.Capture {
+func SetupTestCapture(t *testing.T) *capture.Store {
 	t.Helper()
 	return capture.NewCapture()
 }

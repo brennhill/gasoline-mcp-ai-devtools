@@ -27,7 +27,7 @@ import (
 type gateTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 // newGateTestEnv creates a test env WITHOUT extension connection (for disconnect tests).
@@ -344,7 +344,6 @@ func (e *gateTestEnv) simulateTabTracking(t *testing.T) {
 	t.Helper()
 	e.capture.SetTrackingStatusForTest(42, "https://example.com")
 }
-
 
 func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
 	t.Parallel()

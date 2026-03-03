@@ -86,6 +86,26 @@ For every feature and every refactor, update docs in the same change:
 
 No code-only refactor is considered complete until this documentation contract is satisfied.
 
+## Engineering Best Practices Contract (Required)
+
+1. Instruction precedence is strict: system > repo policy > task request > style preference.
+2. If requirements are ambiguous, state assumptions explicitly before implementation.
+3. Definition of done includes code + tests + docs + flow maps in the same change.
+4. Lint/type/test must pass, or known failures must be documented with issue links.
+5. Keep modules single-purpose; avoid god objects and hidden shared state.
+6. Keep public interfaces minimal and explicit; cross-feature calls go through clear boundaries.
+7. Refactors must preserve behavior unless a behavior change is explicitly requested.
+8. Every bug fix must include a regression test that fails before and passes after.
+9. Prefer deterministic tests (mocks/fakes/controlled clocks) over sleep-based timing.
+10. Enforce startup and request latency budgets with explicit timeout/retry/backoff policies.
+11. Use structured logs with correlation IDs; avoid protocol-breaking stdout/stderr noise.
+12. Version public contracts and keep wire schemas synchronized across Go/TS boundaries.
+13. Redact secrets from logs/errors/diagnostics and never commit credentials.
+14. New dependencies require explicit justification; remove unused dependencies promptly.
+15. Reviews and handoffs must cover correctness, modularity, performance, testability, docs quality, and DRY adherence.
+16. CI must block merges on broken docs links, missing required docs, or failing quality gates.
+17. ToolHandler naming convention is strict: `tool*` for top-level MCP mode/action entry points, `handle*` for sub-action handlers/helpers.
+
 ## Finding Things
 
 | Need                  | Location                                         |
@@ -100,15 +120,17 @@ No code-only refactor is considered complete until this documentation contract i
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **gasoline** (16542 symbols, 46071 relationships, 300 execution flows).
+This project is indexed by GitNexus as **gasoline** (16709 symbols, 46771 relationships, 300 execution flows).
 
-## Always Start Here
+## Fast Path (Non-Blocking)
 
-1. **Read `gitnexus://repo/{name}/context`** — codebase overview + check index freshness
-2. **Match your task to a skill below** and **read that skill file**
-3. **Follow the skill's workflow and checklist**
+1. Prefer to read `gitnexus://repo/{name}/context` first for codebase overview and index freshness.
+2. Match your task to a skill below and read that skill file when it adds value.
+3. If GitNexus is unavailable, stale, slow, or errors, continue immediately with local code search/tests (`rg`, targeted file reads, and normal test runs).
 
-> If step 1 warns the index is stale, run `npx gitnexus analyze` in the terminal first.
+> GitNexus is advisory, not a gate. Do not pause delivery waiting for GitNexus.
+>
+> If index refresh is useful, run `npx gitnexus analyze` opportunistically. Any stat-line updates in this file (and `AGENTS.md`) are expected automation output; keep them and continue without pausing.
 
 ## Skills
 

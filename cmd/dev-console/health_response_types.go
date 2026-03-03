@@ -26,11 +26,14 @@ type UpgradeInfo struct {
 
 // ServerInfo contains server identification and uptime.
 type ServerInfo struct {
-	Version       string  `json:"version"`
-	UptimeSeconds float64 `json:"uptime_seconds"`
-	PID           int     `json:"pid"`
-	Platform      string  `json:"platform"`
-	GoVersion     string  `json:"go_version"`
+	Version          string  `json:"version"`
+	UptimeSeconds    float64 `json:"uptime_seconds"`
+	PID              int     `json:"pid"`
+	Platform         string  `json:"platform"`
+	GoVersion        string  `json:"go_version"`
+	LaunchMode       string  `json:"launch_mode,omitempty"`
+	LaunchModeReason string  `json:"launch_mode_reason,omitempty"`
+	ParentProcess    string  `json:"parent_process,omitempty"`
 }
 
 // MemoryInfo contains memory usage statistics.

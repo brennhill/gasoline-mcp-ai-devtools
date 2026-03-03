@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 )
 
 // newSequenceTestEnv creates a test env with an isolated session store
@@ -18,7 +18,7 @@ func newSequenceTestEnv(t *testing.T) *toolTestEnv {
 	t.Helper()
 	env := newToolTestEnv(t)
 	// Replace session store with one backed by t.TempDir for isolation
-	store, err := ai.NewSessionStore(t.TempDir())
+	store, err := persistence.NewSessionStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("failed to create isolated session store: %v", err)
 	}

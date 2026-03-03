@@ -114,6 +114,13 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	if _, ok := diagBody["generated_at"]; !ok {
 		t.Fatalf("diagnostics missing generated_at: %v", diagBody)
 	}
+	launchMode, ok := diagBody["launch_mode"].(map[string]any)
+	if !ok {
+		t.Fatalf("diagnostics missing launch_mode payload: %v", diagBody)
+	}
+	if launchMode["mode"] == "" {
+		t.Fatalf("diagnostics launch_mode.mode missing: %v", launchMode)
+	}
 	httpDebug, ok := diagBody["http_debug_log"].(map[string]any)
 	if !ok {
 		t.Fatalf("diagnostics missing http_debug_log payload: %v", diagBody)

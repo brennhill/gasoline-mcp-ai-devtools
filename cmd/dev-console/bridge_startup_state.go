@@ -36,6 +36,12 @@ type respawnPlan struct {
 	failedCh     <-chan struct{}
 }
 
+type peerSignalWaitResult struct {
+	ready    bool
+	failed   bool
+	timedOut bool
+}
+
 // resetSignalsLocked replaces readiness/failure channels for a fresh spawn cycle.
 // Caller must hold s.mu.
 func (s *daemonState) resetSignalsLocked() {
@@ -116,21 +122,72 @@ func (s *daemonState) planRespawnAttempt() respawnPlan {
 	return respawnPlan{}
 }
 
+func waitForRespawnPeerSignals(plan respawnPlan, timeout time.Duration) peerSignalWaitResult {
+	if timeout <= 0 {
+		timeout = daemonStartupReadyTimeout
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-plan.readyCh:
+		return peerSignalWaitResult{ready: true}
+	case <-plan.failedCh:
+		return peerSignalWaitResult{failed: true}
+	case <-timer.C:
+		return peerSignalWaitResult{timedOut: true}
+	}
+}
+
+func (s *daemonState) reclaimRespawnLeadership(expectedReady <-chan struct{}, expectedFailed <-chan struct{}) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.ready {
+		return false
+	}
+	if !s.failed && (s.readyCh != expectedReady || s.failedCh != expectedFailed) {
+		return false
+	}
+
+	s.ready = false
+	s.failed = false
+	s.err = ""
+	s.resetSignalsLocked()
+	return true
+}
+
 // respawnIfNeeded re-launches the daemon if it's not responding.
 // Safe to call from multiple goroutines — only one respawn runs at a time.
 // Returns true if the daemon is ready after the respawn attempt.
 func (s *daemonState) respawnIfNeeded() bool {
-	plan := s.planRespawnAttempt()
-	if plan.alreadyReady {
-		return true
-	}
-	if plan.waitForPeer {
-		select {
-		case <-plan.readyCh:
+	for {
+		plan := s.planRespawnAttempt()
+		if plan.alreadyReady {
 			return true
-		case <-plan.failedCh:
+		}
+		if !plan.waitForPeer {
+			break
+		}
+
+		waitResult := waitForRespawnPeerSignals(plan, daemonStartupReadyTimeout)
+		if waitResult.ready {
+			return true
+		}
+		if waitResult.failed {
 			return false
 		}
+		if waitResult.timedOut {
+			if s.reclaimRespawnLeadership(plan.readyCh, plan.failedCh) {
+				break
+			}
+			// Another goroutine changed state while this caller was waiting; re-plan.
+			continue
+		}
+	}
+
+	if s.port <= 0 {
+		s.markFailed("respawn requested without a valid daemon port")
+		return false
 	}
 
 	stderrf("[gasoline] daemon not responding, respawning on port %d\n", s.port)

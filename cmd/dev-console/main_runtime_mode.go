@@ -36,6 +36,8 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	isTTY, stdinMode := detectStdinMode()
 	mcpConfigPath := findMCPConfig()
 	mode := selectRuntimeMode(cfg, isTTY)
+	launchInfo := classifyLaunchMode(cfg, isTTY)
+	setCurrentLaunchMode(launchInfo)
 	if mode == modeDaemon {
 		setStderrSink(os.Stderr)
 	}
@@ -46,6 +48,26 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 		"has_mcp_config":   mcpConfigPath != "",
 		"selected_runtime": mode,
 	})
+	server.logLifecycle("launch_mode_classified", cfg.port, map[string]any{
+		"launch_mode":      launchInfo.Mode,
+		"launch_reason":    launchInfo.Reason,
+		"parent_process":   launchInfo.ParentProcess,
+		"is_tty":           launchInfo.IsTTY,
+		"strict_required":  launchInfo.StrictRequired,
+		"under_supervisor": launchInfo.UnderSupervisor,
+		"selected_runtime": mode,
+	})
+
+	if warning := buildLaunchModeWarning(launchInfo, cfg.port); warning != "" {
+		server.AddWarning(warning)
+		stderrf("[gasoline] Gasoline appears to be running in non-persistent mode (%s).\n", launchInfo.Reason)
+		stderrf("[gasoline] This will disconnect the extension when the process exits.\n")
+		stderrf("[gasoline] Start persistently: gasoline-mcp --daemon --port %d\n", cfg.port)
+	}
+	if err := enforcePersistentMode(launchInfo); err != nil {
+		stderrf("[gasoline] %v\n", err)
+		os.Exit(1)
+	}
 
 	switch mode {
 	case modeDaemon:

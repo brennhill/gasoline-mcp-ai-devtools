@@ -9,11 +9,13 @@
  * Manages recording controls, timer display, and mic permission flow.
  */
 import { StorageKey } from '../lib/constants.js';
+const START_LABEL = 'Record action sequence';
+const STOP_LABEL = 'Stop action sequence';
 // #lizard forgives
 function showRecording(els, state, name, startTime) {
     state.isRecording = true;
     els.row.classList.add('is-recording');
-    els.label.textContent = 'Stop';
+    els.label.textContent = STOP_LABEL;
     els.statusEl.textContent = '';
     if (els.optionsEl)
         els.optionsEl.style.display = 'none';
@@ -29,7 +31,7 @@ function showRecording(els, state, name, startTime) {
 function showIdle(els, state) {
     state.isRecording = false;
     els.row.classList.remove('is-recording');
-    els.label.textContent = 'Record';
+    els.label.textContent = START_LABEL;
     els.statusEl.textContent = '';
     if (els.optionsEl)
         els.optionsEl.style.display = 'block';

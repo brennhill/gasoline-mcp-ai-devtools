@@ -60,6 +60,13 @@
         "mac": "Alt+Shift+C"
       },
       "description": "Push Chat to AI"
+    },
+    "toggle_action_sequence_recording": {
+      "suggested_key": {
+        "default": "Alt+Shift+R",
+        "mac": "Alt+Shift+R"
+      },
+      "description": "Toggle action sequence recording"
     }
   },
   "web_accessible_resources": [

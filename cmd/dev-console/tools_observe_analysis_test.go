@@ -35,8 +35,14 @@ func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
 	if summary["violation_count"] != 2 {
 		t.Errorf("expected violation_count 2, got %v", summary["violation_count"])
 	}
+	if summary["violations"] != 2 {
+		t.Errorf("expected violations 2, got %v", summary["violations"])
+	}
 	if summary["pass_count"] != 1 {
 		t.Errorf("expected pass_count 1, got %v", summary["pass_count"])
+	}
+	if summary["passes"] != 1 {
+		t.Errorf("expected passes 1, got %v", summary["passes"])
 	}
 }
 
@@ -65,8 +71,14 @@ func TestEnsureA11ySummary_PreservesExistingSummary(t *testing.T) {
 	if summary["violation_count"] != 99 {
 		t.Errorf("expected existing violation_count 99 to be preserved, got %v", summary["violation_count"])
 	}
+	if summary["violations"] != 99 {
+		t.Errorf("expected canonical violations 99 to be backfilled, got %v", summary["violations"])
+	}
 	if summary["pass_count"] != 88 {
 		t.Errorf("expected existing pass_count 88 to be preserved, got %v", summary["pass_count"])
+	}
+	if summary["passes"] != 88 {
+		t.Errorf("expected canonical passes 88 to be backfilled, got %v", summary["passes"])
 	}
 	if summary["custom_field"] != "preserved" {
 		t.Errorf("expected custom_field to be preserved, got %v", summary["custom_field"])
@@ -86,8 +98,14 @@ func TestEnsureA11ySummary_NoViolationsNoPassses(t *testing.T) {
 	if summary["violation_count"] != 0 {
 		t.Errorf("expected violation_count 0, got %v", summary["violation_count"])
 	}
+	if summary["violations"] != 0 {
+		t.Errorf("expected violations 0, got %v", summary["violations"])
+	}
 	if summary["pass_count"] != 0 {
 		t.Errorf("expected pass_count 0, got %v", summary["pass_count"])
+	}
+	if summary["passes"] != 0 {
+		t.Errorf("expected passes 0, got %v", summary["passes"])
 	}
 }
 

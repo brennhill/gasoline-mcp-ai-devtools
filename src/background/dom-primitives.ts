@@ -428,8 +428,23 @@ export function domPrimitive(
     return fallback
   }
 
+  function parseNthMatchSelector(sel: string): { base: string; n: number } | null {
+    const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
+    if (!nthMatch) return null
+    const base = nthMatch[1] || ''
+    const n = Number.parseInt(nthMatch[2] || '0', 10)
+    if (!base || Number.isNaN(n) || n < 1) return null
+    return { base, n }
+  }
+
   function resolveElements(sel: string, scope: ParentNode = document): Element[] {
     if (!sel) return []
+    const parsedNth = parseNthMatchSelector(sel)
+    if (parsedNth) {
+      const matches = resolveElements(parsedNth.base, scope)
+      const target = matches[parsedNth.n - 1]
+      return target ? [target] : []
+    }
     if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
     if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
     if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
@@ -446,13 +461,10 @@ export function domPrimitive(
     if (!sel) return null
     if (sel.includes(' >>> ')) return resolveDeepCombinator(sel, scope)
 
-    const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
-    if (nthMatch) {
-      const base = nthMatch[1] || ''
-      const n = Number.parseInt(nthMatch[2] || '0', 10)
-      if (!base || Number.isNaN(n) || n < 1) return null
-      const matches = resolveElements(base, scope)
-      return matches[n - 1] || null
+    const parsedNth = parseNthMatchSelector(sel)
+    if (parsedNth) {
+      const matches = resolveElements(parsedNth.base, scope)
+      return matches[parsedNth.n - 1] || null
     }
 
     if (sel.startsWith('text=')) return resolveByText(sel.slice('text='.length), scope)
@@ -753,7 +765,27 @@ export function domPrimitive(
     const rect = typeof el.getBoundingClientRect === 'function'
       ? el.getBoundingClientRect()
       : ({ width: 0, height: 0 } as DOMRect)
-    return rect.width > 0 && rect.height > 0 && el.offsetParent !== null
+    if (!(rect.width > 0 && rect.height > 0)) return false
+    if (el.offsetParent === null) {
+      const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null
+      const position = style?.position || ''
+      if (position !== 'fixed' && position !== 'sticky') return false
+    }
+
+    // #384: Prefer in-viewport actionable targets for disambiguation.
+    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0)
+    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+      ? window.innerWidth
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0)
+    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const right = typeof rect.right === 'number' ? rect.right : left + rect.width
+    const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
+    const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth)
+    const intersectsY = viewHeight <= 0 || (bottom > 0 && top < viewHeight)
+    return intersectsX && intersectsY
   }
 
   function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
@@ -1030,7 +1062,7 @@ export function domPrimitive(
           return {
             element: visible[0],
             match_count: 1,
-            match_strategy: 'dismiss_close_button_selector',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }
@@ -1038,7 +1070,7 @@ export function domPrimitive(
 
       // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
       const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
-      const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+      const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement as ParentNode)
       const dismissButtons: RankedIntentCandidate[] = []
       for (const btn of uniqueElements(allButtons)) {
         if (!isActionableVisible(btn)) continue
@@ -1048,7 +1080,7 @@ export function domPrimitive(
         else if (dismissVerb.test(label)) score += 700
         if (submitVerb.test(label)) score -= 600
         // SVG close icons: button containing only an SVG (common close icon pattern)
-        const hasSvgIcon = btn.querySelector('svg') !== null
+        const hasSvgIcon = typeof btn.querySelector === 'function' && btn.querySelector('svg') !== null
         const textLen = (btn.textContent || '').trim().length
         if (hasSvgIcon && textLen <= 2) score += 500
         // Small buttons in header area are likely close buttons
@@ -1062,7 +1094,7 @@ export function domPrimitive(
         return {
           element: dismissButtons[0]!.element,
           match_count: 1,
-          match_strategy: 'dismiss_text_button',
+          match_strategy: 'intent_dismiss_top_overlay',
           scope_selector_used: requestedScope || 'intent:auto_top_overlay'
         }
       }
@@ -1077,7 +1109,7 @@ export function domPrimitive(
           return {
             element: candidate,
             match_count: 1,
-            match_strategy: 'dismiss_attr_match',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }
@@ -1609,16 +1641,26 @@ export function domPrimitive(
 
   /** Capture current viewport/scroll position for action responses. */
   function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
+    const w = typeof window !== 'undefined' ? window : null
+    const docEl = document?.documentElement
+    const body = document?.body
     return {
-      scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
-      scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
-      viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
-      viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
+      scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+      scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
+      viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
+      viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
       page_height: Math.max(
-        document.body?.scrollHeight || 0,
-        document.documentElement?.scrollHeight || 0
+        body?.scrollHeight || 0,
+        docEl?.scrollHeight || 0
       )
     }
+  }
+
+  function dispatchEventIfPossible(target: EventTarget | null | undefined, event: Event): void {
+    if (!target) return
+    const dispatch = (target as { dispatchEvent?: unknown }).dispatchEvent
+    if (typeof dispatch !== 'function') return
+    dispatch.call(target, event)
   }
 
   // #368: Check if an overlay might be obscuring the target element
@@ -1626,7 +1668,7 @@ export function domPrimitive(
     const overlay = findTopmostOverlay()
     if (!overlay) return {}
     // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
-    if (overlay.contains(targetEl)) return {}
+    if (typeof (overlay as { contains?: unknown }).contains === 'function' && overlay.contains(targetEl)) return {}
     const overlayInfo = describeOverlay(overlay)
     return {
       overlay_warning: `An overlay (${overlayInfo.overlay_type}) is covering the page. The action targeted the intended element, but input may be intercepted. Use dismiss_top_overlay to close it first.`,
@@ -2185,7 +2227,27 @@ export function domPrimitive(
           return null
         }
 
-        const direction = (options.value || '').toLowerCase()
+        function scrollToY(container: HTMLElement, top: number): void {
+          if (typeof (container as { scrollTo?: unknown }).scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' })
+            return
+          }
+          ;(container as { scrollTop?: number }).scrollTop = top
+        }
+
+        function scrollByY(container: HTMLElement, deltaY: number): void {
+          if (typeof (container as { scrollBy?: unknown }).scrollBy === 'function') {
+            container.scrollBy({ top: deltaY, behavior: 'smooth' })
+            return
+          }
+          const currentTop = typeof (container as { scrollTop?: unknown }).scrollTop === 'number'
+            ? Number((container as { scrollTop?: unknown }).scrollTop)
+            : 0
+          ;(container as { scrollTop?: number }).scrollTop = currentTop + deltaY
+        }
+
+        // Accept both `direction` (preferred) and legacy `value` for backward compatibility.
+        const direction = (options.direction || options.value || '').toLowerCase()
         const tag = node.tagName.toLowerCase()
 
         // Check if the target itself is a scrollable container
@@ -2198,21 +2260,32 @@ export function domPrimitive(
             return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll'
           })()
 
-        // Directional scrolling within a container
-        if (direction && (isContainer || tag === 'body' || tag === 'html')) {
-          const container = isContainer ? (node as HTMLElement) : (findScrollableContainer(node) || document.documentElement)
+        // Directional scrolling within the resolved container (target, ancestor, or page root)
+        const directionalContainer = (() => {
+          if (isContainer) return node as HTMLElement
+          const ancestor = findScrollableContainer(node)
+          if (ancestor) return ancestor
+          if (typeof document !== 'undefined' && document.scrollingElement instanceof HTMLElement) {
+            return document.scrollingElement
+          }
+          if (tag === 'body' || tag === 'html') return document.documentElement as HTMLElement
+          return document.documentElement as HTMLElement
+        })()
+
+        if (direction && directionalContainer) {
+          const container = directionalContainer
           switch (direction) {
             case 'top':
-              container.scrollTo({ top: 0, behavior: 'smooth' })
+              scrollToY(container, 0)
               return mutatingSuccess(node, { reason: 'scrolled_container_top' })
             case 'bottom':
-              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+              scrollToY(container, container.scrollHeight)
               return mutatingSuccess(node, { reason: 'scrolled_container_bottom' })
             case 'up':
-              container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, -container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_up' })
             case 'down':
-              container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_down' })
           }
         }
@@ -2401,11 +2474,11 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             // Also try the overlay element directly
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo
@@ -2450,10 +2523,10 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',

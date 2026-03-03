@@ -63,7 +63,7 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolConfigureTelemetry(req, args)
 	},
 	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleDescribeCapabilities(req, args)
+		return h.toolConfigureDescribeCapabilities(req, args)
 	},
 	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureRestart(req)

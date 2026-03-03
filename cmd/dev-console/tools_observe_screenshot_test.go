@@ -5,6 +5,8 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -249,5 +251,159 @@ func TestGetScreenshot_NoDataURL_StillReturnsTextResult(t *testing.T) {
 	}
 	if result.Content[0].Type != "text" {
 		t.Errorf("content block type = %q, want 'text'", result.Content[0].Type)
+	}
+}
+
+func TestGetScreenshot_SaveTo_WritesFileAndReturnsPath(t *testing.T) {
+	t.Parallel()
+	env := newToolTestEnv(t)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com")
+
+	fakeImageData := []byte("save-to-test-image")
+	base64Data := base64.StdEncoding.EncodeToString(fakeImageData)
+	screenshotResult := map[string]any{
+		"filename": "example.com-20240101-120000.png",
+		"path":     "/tmp/screenshots/example.com-20240101-120000.png",
+		"data_url": "data:image/png;base64," + base64Data,
+	}
+
+	savePath := filepath.Join(t.TempDir(), "captures", "manual", "audit-shot.png")
+	req := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"screenshot","save_to":"` + savePath + `"}`)
+
+	var resp mcp.JSONRPCResponse
+	done := make(chan struct{})
+	go func() {
+		resp = observe.GetScreenshot(env.handler, req, args)
+		close(done)
+	}()
+
+	var queryID string
+	for i := 0; i < 100; i++ {
+		time.Sleep(10 * time.Millisecond)
+		pending := env.capture.GetPendingQueries()
+		for _, q := range pending {
+			if q.Type == "screenshot" {
+				queryID = q.ID
+				break
+			}
+		}
+		if queryID != "" {
+			break
+		}
+	}
+	if queryID == "" {
+		t.Fatal("no screenshot query found")
+	}
+
+	resultJSON, _ := json.Marshal(screenshotResult)
+	env.capture.SetQueryResult(queryID, resultJSON)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("GetScreenshot timed out")
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if len(result.Content) == 0 || result.Content[0].Type != "text" {
+		t.Fatalf("expected text response block, got: %+v", result.Content)
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("failed to parse response json: %v", err)
+	}
+
+	if got, want := responseData["save_to"], savePath; got != want {
+		t.Fatalf("save_to = %v, want %q", got, want)
+	}
+
+	written, err := os.ReadFile(savePath)
+	if err != nil {
+		t.Fatalf("expected screenshot file at save_to path: %v", err)
+	}
+	if string(written) != string(fakeImageData) {
+		t.Fatalf("written file bytes mismatch: got %q want %q", string(written), string(fakeImageData))
+	}
+}
+
+func TestGetScreenshot_SaveTo_InvalidExtensionReturnsSaveError(t *testing.T) {
+	t.Parallel()
+	env := newToolTestEnv(t)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com")
+
+	fakeImageData := []byte("save-to-test-image")
+	base64Data := base64.StdEncoding.EncodeToString(fakeImageData)
+	screenshotResult := map[string]any{
+		"filename": "example.com-20240101-120000.png",
+		"path":     "/tmp/screenshots/example.com-20240101-120000.png",
+		"data_url": "data:image/png;base64," + base64Data,
+	}
+
+	invalidPath := filepath.Join(t.TempDir(), "captures", "manual", "audit-shot.txt")
+	req := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"screenshot","save_to":"` + invalidPath + `"}`)
+
+	var resp mcp.JSONRPCResponse
+	done := make(chan struct{})
+	go func() {
+		resp = observe.GetScreenshot(env.handler, req, args)
+		close(done)
+	}()
+
+	var queryID string
+	for i := 0; i < 100; i++ {
+		time.Sleep(10 * time.Millisecond)
+		pending := env.capture.GetPendingQueries()
+		for _, q := range pending {
+			if q.Type == "screenshot" {
+				queryID = q.ID
+				break
+			}
+		}
+		if queryID != "" {
+			break
+		}
+	}
+	if queryID == "" {
+		t.Fatal("no screenshot query found")
+	}
+
+	resultJSON, _ := json.Marshal(screenshotResult)
+	env.capture.SetQueryResult(queryID, resultJSON)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("GetScreenshot timed out")
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if len(result.Content) == 0 || result.Content[0].Type != "text" {
+		t.Fatalf("expected text response block, got: %+v", result.Content)
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("failed to parse response json: %v", err)
+	}
+
+	saveErr, ok := responseData["save_to_error"].(string)
+	if !ok || saveErr == "" {
+		t.Fatalf("expected save_to_error in response, got: %v", responseData["save_to_error"])
+	}
+	if !strings.Contains(saveErr, ".png") && !strings.Contains(saveErr, ".jpg") {
+		t.Fatalf("save_to_error should mention valid extensions, got: %q", saveErr)
+	}
+
+	if _, err := os.Stat(invalidPath); !os.IsNotExist(err) {
+		t.Fatalf("invalid save_to path should not create file: stat err = %v", err)
 	}
 }

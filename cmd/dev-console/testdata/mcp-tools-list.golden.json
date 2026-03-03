@@ -191,7 +191,7 @@
           "type": "string"
         },
         "summary": {
-          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history, transients)",
+          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients)",
           "type": "boolean"
         },
         "telemetry_mode": {
@@ -1270,6 +1270,16 @@
           "description": "Link to error/investigation",
           "type": "string"
         },
+        "direction": {
+          "description": "Scroll direction for scroll_to: top, bottom, up, or down (preferred over value)",
+          "enum": [
+            "top",
+            "bottom",
+            "up",
+            "down"
+          ],
+          "type": "string"
+        },
         "domain": {
           "description": "Cookie domain (set_cookie/delete_cookie)",
           "type": "string"
@@ -1377,7 +1387,7 @@
         },
         "nth": {
           "description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
-          "type": "number"
+          "type": "integer"
         },
         "observe_mutations": {
           "description": "Track element-level DOM mutations during action execution",
@@ -1519,7 +1529,7 @@
           "type": "string"
         },
         "value": {
-          "description": "Value for select/set_attribute",
+          "description": "Value for select/set_attribute. Also accepted by scroll_to as a legacy direction alias.",
           "type": "string"
         },
         "visible_only": {

@@ -11,9 +11,11 @@ type domPrimitiveParams struct {
 	ScopeSelector string   `json:"scope_selector,omitempty"`
 	ElementID     string   `json:"element_id,omitempty"`
 	Index         *int     `json:"index,omitempty"`
+	Nth           *int     `json:"nth,omitempty"`
 	IndexGen      string   `json:"index_generation,omitempty"`
 	Text          string   `json:"text,omitempty"`
 	Value         string   `json:"value,omitempty"`
+	Direction     string   `json:"direction,omitempty"`
 	Clear         bool     `json:"clear,omitempty"`
 	Checked       *bool    `json:"checked,omitempty"`
 	Name          string   `json:"name,omitempty"`
@@ -24,6 +26,7 @@ type domPrimitiveParams struct {
 	Y             *float64 `json:"y,omitempty"`
 	URLContains   string   `json:"url_contains,omitempty"`
 	Absent        bool     `json:"absent,omitempty"`
+	Structured    bool     `json:"structured,omitempty"`
 }
 
 type hardwareClickParams struct {

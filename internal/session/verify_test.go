@@ -26,7 +26,7 @@ type mockVerifyState struct {
 	consoleWarnings []SnapshotError
 	networkRequests []SnapshotNetworkRequest
 	wsConnections   []SnapshotWSConnection
-	performance     *performance.PerformanceSnapshot
+	performance     *performance.Snapshot
 	pageURL         string
 }
 
@@ -58,7 +58,7 @@ func (m *mockVerifyState) GetWSConnections() []SnapshotWSConnection {
 	return m.wsConnections
 }
 
-func (m *mockVerifyState) GetPerformance() *performance.PerformanceSnapshot {
+func (m *mockVerifyState) GetPerformance() *performance.Snapshot {
 	return m.performance
 }
 
@@ -81,9 +81,9 @@ func TestVerificationManager_Start(t *testing.T) {
 			{Method: "POST", URL: "/api/login", Status: 500, Duration: 150},
 			{Method: "GET", URL: "/api/users", Status: 200, Duration: 50},
 		},
-		performance: &performance.PerformanceSnapshot{
+		performance: &performance.Snapshot{
 			URL: "http://localhost:3000/login",
-			Timing: performance.PerformanceTiming{
+			Timing: performance.Timing{
 				Load: 3200,
 			},
 		},
@@ -402,7 +402,7 @@ func TestVerificationManager_Compare_Regressed(t *testing.T) {
 func TestVerificationManager_Compare_NoIssuesDetected(t *testing.T) {
 	t.Parallel()
 	mock := &mockVerifyState{
-		consoleErrors:   nil, // No errors
+		consoleErrors: nil, // No errors
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "GET", URL: "/api/users", Status: 200},
 		},
@@ -679,9 +679,9 @@ func TestVerificationManager_NetworkStatusChange(t *testing.T) {
 func TestVerificationManager_PerformanceDiff(t *testing.T) {
 	t.Parallel()
 	mock := &mockVerifyState{
-		performance: &performance.PerformanceSnapshot{
+		performance: &performance.Snapshot{
 			URL: "http://localhost:3000",
-			Timing: performance.PerformanceTiming{
+			Timing: performance.Timing{
 				Load: 3200,
 			},
 		},
@@ -692,9 +692,9 @@ func TestVerificationManager_PerformanceDiff(t *testing.T) {
 	startResult, _ := vm.Start("perf-test", "")
 
 	// Performance improved
-	mock.performance = &performance.PerformanceSnapshot{
+	mock.performance = &performance.Snapshot{
 		URL: "http://localhost:3000",
-		Timing: performance.PerformanceTiming{
+		Timing: performance.Timing{
 			Load: 1100,
 		},
 	}

@@ -17,7 +17,7 @@ func (h *ToolHandler) Close() {
 }
 
 // GetCapture returns the capture instance.
-func (h *ToolHandler) GetCapture() *capture.Capture {
+func (h *ToolHandler) GetCapture() *capture.Store {
 	return h.capture
 }
 

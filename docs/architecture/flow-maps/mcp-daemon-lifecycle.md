@@ -41,10 +41,11 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 2. `runMCPMode` initializes capture and routes.
 3. Startup loops begin (`startVersionCheckLoop`, screenshot limiter cleanup).
 4. Upgrade monitoring is configured (`configureBinaryUpgradeMonitoring`).
-5. Startup policy + stale PID + port preflight checks run.
-6. HTTP server is created and bound (`startHTTPServer`).
-7. PID file and daemon lock are persisted.
-8. Runtime blocks on `awaitShutdownSignal`.
+5. Launch mode is classified (`persistent` vs `likely_transient`) and one-shot warning/strict policy is applied.
+6. Startup policy + stale PID + port preflight checks run.
+7. HTTP server is created and bound (`startHTTPServer`).
+8. PID file and daemon lock are persisted.
+9. Runtime blocks on `awaitShutdownSignal`.
 
 ## Error and Recovery Paths
 
@@ -58,6 +59,7 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - `binaryUpgradeState` is shared read state for health/handler warnings.
 - PID file + daemon lock reflect active owner and are cleared on shutdown.
 - `httpDone` channel is the listener liveness signal.
+- Launch-mode classification is surfaced in health/diagnostics for operator visibility.
 
 ## Code Paths
 

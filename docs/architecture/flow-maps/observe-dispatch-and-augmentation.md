@@ -13,12 +13,16 @@ code_paths:
   - cmd/dev-console/tools_observe_registry.go
   - cmd/dev-console/tools_observe_response.go
   - cmd/dev-console/tools_observe_analysis.go
+  - cmd/dev-console/tools_shared_queries.go
+  - internal/a11ysummary/summary.go
   - cmd/dev-console/tools_observe_bundling.go
   - internal/tools/observe/
 test_paths:
   - cmd/dev-console/tools_observe_handler_test.go
   - cmd/dev-console/tools_observe_blackbox_test.go
   - cmd/dev-console/tools_observe_audit_test.go
+  - cmd/dev-console/tools_observe_analysis_test.go
+  - internal/a11ysummary/summary_test.go
   - cmd/dev-console/tools_observe_unit_test.go
   - cmd/dev-console/tools_schema_parity_test.go
 ---
@@ -54,12 +58,15 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 - Missing mode returns `ErrMissingParam` with valid mode hint.
 - Unknown mode returns `ErrUnknownMode` with canonical mode list.
 - Conflicting `what` vs alias values return alias conflict response.
+- For `network_bodies`, empty-result hints incorporate active filters (`url`, `method`, `status_*`, `body_key`, `body_path`) so recovery guidance matches the exact query.
 
 ## State and Contracts
 
 - `observeHandlers` is the source of truth for mode availability.
 - `serverSideObserveModes` defines which modes skip disconnect warnings.
 - Schema parity tests must stay aligned with `observeHandlers` keys.
+- Accessibility summary payloads are normalized through `internal/a11ysummary` so canonical keys (`violations`, `passes`, `incomplete`, `inapplicable`) and legacy aliases (`*_count`) remain synchronized.
+- `websocket_status` honors `summary:true` by returning compact connection/url previews instead of full connection objects.
 
 ## Code Paths
 
@@ -67,7 +74,9 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 - `cmd/dev-console/tools_observe_registry.go`
 - `cmd/dev-console/tools_observe_response.go`
 - `cmd/dev-console/tools_observe_analysis.go`
+- `cmd/dev-console/tools_shared_queries.go`
 - `cmd/dev-console/tools_observe_bundling.go`
+- `internal/a11ysummary/summary.go`
 - `internal/tools/observe/`
 
 ## Test Paths
@@ -75,6 +84,8 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 - `cmd/dev-console/tools_observe_handler_test.go`
 - `cmd/dev-console/tools_observe_blackbox_test.go`
 - `cmd/dev-console/tools_observe_audit_test.go`
+- `cmd/dev-console/tools_observe_analysis_test.go`
+- `internal/a11ysummary/summary_test.go`
 - `cmd/dev-console/tools_observe_unit_test.go`
 - `cmd/dev-console/tools_schema_parity_test.go`
 

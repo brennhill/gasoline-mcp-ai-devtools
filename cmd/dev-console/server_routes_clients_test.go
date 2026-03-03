@@ -73,7 +73,7 @@ func (m *mockClientRegistry) Get(id string) any {
 }
 
 // newCaptureWithRegistry creates a capture instance with a mock client registry.
-func newCaptureWithRegistry(t *testing.T) *capture.Capture {
+func newCaptureWithRegistry(t *testing.T) *capture.Store {
 	t.Helper()
 	cap := capture.NewCapture()
 	cap.SetClientRegistryForTest(newMockClientRegistry())

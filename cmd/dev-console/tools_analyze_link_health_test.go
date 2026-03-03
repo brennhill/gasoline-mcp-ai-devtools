@@ -24,7 +24,7 @@ import (
 type analyzeTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {

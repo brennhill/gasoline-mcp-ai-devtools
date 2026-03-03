@@ -11,7 +11,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
-func getIndexedDBListing(cap *capture.Capture) (map[string]any, error) {
+func getIndexedDBListing(cap *capture.Store) (map[string]any, error) {
 	data, err := executeObserveScript(cap, indexedDBListingScript, "observe_storage_indexeddb", indexedDBQueryTimeout)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func getIndexedDBListing(cap *capture.Capture) (map[string]any, error) {
 	return data, nil
 }
 
-func getIndexedDBEntries(cap *capture.Capture, database, store string, limit int) (map[string]any, error) {
+func getIndexedDBEntries(cap *capture.Store, database, store string, limit int) (map[string]any, error) {
 	script := buildIndexedDBEntriesScript(database, store, limit)
 	data, err := executeObserveScript(cap, script, "observe_indexeddb_entries", indexedDBQueryTimeout)
 	if err != nil {
@@ -69,7 +69,7 @@ func getIndexedDBEntries(cap *capture.Capture, database, store string, limit int
 	return data, nil
 }
 
-func executeObserveScript(cap *capture.Capture, script, reason string, timeout time.Duration) (map[string]any, error) {
+func executeObserveScript(cap *capture.Store, script, reason string, timeout time.Duration) (map[string]any, error) {
 	params, _ := json.Marshal(map[string]any{
 		"script":     script,
 		"timeout_ms": int(timeout.Milliseconds()),

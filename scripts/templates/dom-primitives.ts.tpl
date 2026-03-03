@@ -273,16 +273,26 @@ export function domPrimitive(
 
   /** Capture current viewport/scroll position for action responses. */
   function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
+    const w = typeof window !== 'undefined' ? window : null
+    const docEl = document?.documentElement
+    const body = document?.body
     return {
-      scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
-      scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
-      viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
-      viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
+      scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+      scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
+      viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
+      viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
       page_height: Math.max(
-        document.body?.scrollHeight || 0,
-        document.documentElement?.scrollHeight || 0
+        body?.scrollHeight || 0,
+        docEl?.scrollHeight || 0
       )
     }
+  }
+
+  function dispatchEventIfPossible(target: EventTarget | null | undefined, event: Event): void {
+    if (!target) return
+    const dispatch = (target as { dispatchEvent?: unknown }).dispatchEvent
+    if (typeof dispatch !== 'function') return
+    dispatch.call(target, event)
   }
 
   // #368: Check if an overlay might be obscuring the target element
@@ -290,7 +300,7 @@ export function domPrimitive(
     const overlay = findTopmostOverlay()
     if (!overlay) return {}
     // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
-    if (overlay.contains(targetEl)) return {}
+    if (typeof (overlay as { contains?: unknown }).contains === 'function' && overlay.contains(targetEl)) return {}
     const overlayInfo = describeOverlay(overlay)
     return {
       overlay_warning: `An overlay (${overlayInfo.overlay_type}) is covering the page. The action targeted the intended element, but input may be intercepted. Use dismiss_top_overlay to close it first.`,
@@ -849,7 +859,27 @@ export function domPrimitive(
           return null
         }
 
-        const direction = (options.value || '').toLowerCase()
+        function scrollToY(container: HTMLElement, top: number): void {
+          if (typeof (container as { scrollTo?: unknown }).scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' })
+            return
+          }
+          ;(container as { scrollTop?: number }).scrollTop = top
+        }
+
+        function scrollByY(container: HTMLElement, deltaY: number): void {
+          if (typeof (container as { scrollBy?: unknown }).scrollBy === 'function') {
+            container.scrollBy({ top: deltaY, behavior: 'smooth' })
+            return
+          }
+          const currentTop = typeof (container as { scrollTop?: unknown }).scrollTop === 'number'
+            ? Number((container as { scrollTop?: unknown }).scrollTop)
+            : 0
+          ;(container as { scrollTop?: number }).scrollTop = currentTop + deltaY
+        }
+
+        // Accept both `direction` (preferred) and legacy `value` for backward compatibility.
+        const direction = (options.direction || options.value || '').toLowerCase()
         const tag = node.tagName.toLowerCase()
 
         // Check if the target itself is a scrollable container
@@ -862,21 +892,32 @@ export function domPrimitive(
             return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll'
           })()
 
-        // Directional scrolling within a container
-        if (direction && (isContainer || tag === 'body' || tag === 'html')) {
-          const container = isContainer ? (node as HTMLElement) : (findScrollableContainer(node) || document.documentElement)
+        // Directional scrolling within the resolved container (target, ancestor, or page root)
+        const directionalContainer = (() => {
+          if (isContainer) return node as HTMLElement
+          const ancestor = findScrollableContainer(node)
+          if (ancestor) return ancestor
+          if (typeof document !== 'undefined' && document.scrollingElement instanceof HTMLElement) {
+            return document.scrollingElement
+          }
+          if (tag === 'body' || tag === 'html') return document.documentElement as HTMLElement
+          return document.documentElement as HTMLElement
+        })()
+
+        if (direction && directionalContainer) {
+          const container = directionalContainer
           switch (direction) {
             case 'top':
-              container.scrollTo({ top: 0, behavior: 'smooth' })
+              scrollToY(container, 0)
               return mutatingSuccess(node, { reason: 'scrolled_container_top' })
             case 'bottom':
-              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+              scrollToY(container, container.scrollHeight)
               return mutatingSuccess(node, { reason: 'scrolled_container_bottom' })
             case 'up':
-              container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, -container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_up' })
             case 'down':
-              container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_down' })
           }
         }
@@ -1065,11 +1106,11 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             // Also try the overlay element directly
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo
@@ -1114,10 +1155,10 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',

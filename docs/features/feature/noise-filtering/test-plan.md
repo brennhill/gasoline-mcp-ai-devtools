@@ -113,7 +113,7 @@ last_reviewed: 2026-02-16
 - Security invariants (auth responses, app errors protection)
 - Framework detection (React, Next.js, Vite signatures)
 
-**Test File:** `internal/ai/ai_noise_test.go`
+**Test File:** `internal/noise/noise_test.go`
 
 #### Key Test Cases:
 1. `TestNewNoiseConfigHasAllBuiltins` — Verify ~50 built-in rules present
@@ -337,4 +337,3 @@ Per QA Plan section DL-1 through DL-3 (marked CRITICAL):
 | **Data Leak Tests** | ⚠️ | **CRITICAL: DL-1, DL-2, DL-3 NOT YET TESTED** |
 | **Filtering Logic Tests** | ⏳ | **Recommended: New cat-20-filtering-logic (10+ tests)** |
 | **Overall Readiness** | ⚠️ | **Persistence validated. CRITICAL data leak tests required before release.** |
-

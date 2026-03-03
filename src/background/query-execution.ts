@@ -153,8 +153,38 @@ export async function executeViaScriptingAPI(
               // Fall through to Object.keys() enumeration
             }
           }
+          const keys = Object.keys(obj).slice(0, 50)
+          // #389: Some host objects expose data only via prototype getters
+          // (DOMRect/CSSStyleDeclaration-like values). If no enumerable keys exist,
+          // introspect prototype property names and capture primitive getter values.
+          if (keys.length === 0) {
+            try {
+              const proto = Object.getPrototypeOf(obj)
+              if (proto && proto !== Object.prototype) {
+                const hostResult: Record<string, unknown> = {}
+                const propNames = Object.getOwnPropertyNames(proto).slice(0, 120)
+                for (const key of propNames) {
+                  if (key === 'constructor') continue
+                  try {
+                    const value = (obj as Record<string, unknown>)[key]
+                    const valueType = typeof value
+                    if (value === undefined || valueType === 'function') continue
+                    if (valueType === 'string' || valueType === 'number' || valueType === 'boolean' || value === null) {
+                      hostResult[key] = value
+                    }
+                  } catch {
+                    // Ignore getter access errors.
+                  }
+                  if (Object.keys(hostResult).length >= 50) break
+                }
+                if (Object.keys(hostResult).length > 0) return hostResult
+              }
+            } catch {
+              // Fall through to default object key enumeration.
+            }
+          }
           const result: Record<string, unknown> = {}
-          for (const key of Object.keys(obj).slice(0, 50)) {
+          for (const key of keys) {
             try {
               result[key] = serialize((obj as Record<string, unknown>)[key], depth + 1, seen)
             } catch {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -184,9 +184,9 @@ func (h *ToolHandler) IsConsoleNoise(entry map[string]any) bool {
 // This is the same logic as noiseActionAutoDetect() but designed for background use.
 func (h *ToolHandler) runNoiseAutoDetect() {
 	h.server.mu.RLock()
-	consoleEntries := make([]ai.LogEntry, len(h.server.entries))
+	consoleEntries := make([]noise.LogEntry, len(h.server.entries))
 	for i, e := range h.server.entries {
-		consoleEntries[i] = ai.LogEntry(e)
+		consoleEntries[i] = noise.LogEntry(e)
 	}
 	h.server.mu.RUnlock()
 
@@ -195,7 +195,7 @@ func (h *ToolHandler) runNoiseAutoDetect() {
 
 	proposals := h.noiseConfig.AutoDetect(consoleEntries, networkBodies, wsEvents)
 	if len(proposals) > 0 {
-		var toApply []ai.NoiseRule
+		var toApply []noise.NoiseRule
 		for _, p := range proposals {
 			if p.Confidence >= 0.9 {
 				toApply = append(toApply, p.Rule)

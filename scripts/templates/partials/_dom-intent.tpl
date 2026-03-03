@@ -165,7 +165,27 @@
     const rect = typeof el.getBoundingClientRect === 'function'
       ? el.getBoundingClientRect()
       : ({ width: 0, height: 0 } as DOMRect)
-    return rect.width > 0 && rect.height > 0 && el.offsetParent !== null
+    if (!(rect.width > 0 && rect.height > 0)) return false
+    if (el.offsetParent === null) {
+      const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null
+      const position = style?.position || ''
+      if (position !== 'fixed' && position !== 'sticky') return false
+    }
+
+    // #384: Prefer in-viewport actionable targets for disambiguation.
+    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0)
+    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+      ? window.innerWidth
+      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0)
+    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const right = typeof rect.right === 'number' ? rect.right : left + rect.width
+    const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
+    const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth)
+    const intersectsY = viewHeight <= 0 || (bottom > 0 && top < viewHeight)
+    return intersectsX && intersectsY
   }
 
   function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
@@ -442,7 +462,7 @@
           return {
             element: visible[0],
             match_count: 1,
-            match_strategy: 'dismiss_close_button_selector',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }
@@ -450,7 +470,7 @@
 
       // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
       const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
-      const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+      const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement as ParentNode)
       const dismissButtons: RankedIntentCandidate[] = []
       for (const btn of uniqueElements(allButtons)) {
         if (!isActionableVisible(btn)) continue
@@ -460,7 +480,7 @@
         else if (dismissVerb.test(label)) score += 700
         if (submitVerb.test(label)) score -= 600
         // SVG close icons: button containing only an SVG (common close icon pattern)
-        const hasSvgIcon = btn.querySelector('svg') !== null
+        const hasSvgIcon = typeof btn.querySelector === 'function' && btn.querySelector('svg') !== null
         const textLen = (btn.textContent || '').trim().length
         if (hasSvgIcon && textLen <= 2) score += 500
         // Small buttons in header area are likely close buttons
@@ -474,7 +494,7 @@
         return {
           element: dismissButtons[0]!.element,
           match_count: 1,
-          match_strategy: 'dismiss_text_button',
+          match_strategy: 'intent_dismiss_top_overlay',
           scope_selector_used: requestedScope || 'intent:auto_top_overlay'
         }
       }
@@ -489,7 +509,7 @@
           return {
             element: candidate,
             match_count: 1,
-            match_strategy: 'dismiss_attr_match',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }

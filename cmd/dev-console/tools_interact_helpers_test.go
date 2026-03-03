@@ -22,7 +22,7 @@ import (
 type interactHelpersTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newInteractHelpersTestEnv(t *testing.T) *interactHelpersTestEnv {

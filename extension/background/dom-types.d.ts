@@ -122,6 +122,7 @@ export interface DOMPrimitiveOptions {
     text?: string;
     key?: string;
     value?: string;
+    direction?: string;
     clear?: boolean;
     checked?: boolean;
     name?: string;

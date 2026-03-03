@@ -19,7 +19,7 @@ import (
 )
 
 // initCapture creates and configures the capture buffers with lifecycle logging.
-func initCapture(server *Server, port int) *capture.Capture {
+func initCapture(server *Server, port int) *capture.Store {
 	cap := capture.NewCapture()
 	cap.SetServerVersion(version)
 	cap.SetLifecycleCallback(func(event string, data map[string]any) {

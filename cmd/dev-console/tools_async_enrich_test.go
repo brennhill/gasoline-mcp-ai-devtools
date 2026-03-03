@@ -219,6 +219,46 @@ func TestEnrichCommandResponseData_NoResultField(t *testing.T) {
 	}
 }
 
+func TestEnrichCommandResponseData_MatchedSurfacedTopLevel(t *testing.T) {
+	t.Parallel()
+
+	result := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"matched": {
+			"tag": "button",
+			"role": "button",
+			"classes": ["btn", "btn-primary"],
+			"text_preview": "Submit",
+			"bbox": {"x": 12, "y": 34, "width": 120, "height": 32}
+		}
+	}`)
+
+	responseData := map[string]any{}
+	embeddedErr, hasErr := enrichCommandResponseData(result, responseData)
+	if hasErr {
+		t.Fatalf("unexpected embedded error: %s", embeddedErr)
+	}
+
+	matched, ok := responseData["matched"].(map[string]any)
+	if !ok {
+		t.Fatal("matched should be surfaced at top level")
+	}
+	if matched["tag"] != "button" {
+		t.Fatalf("matched.tag = %v, want button", matched["tag"])
+	}
+	if matched["text_preview"] != "Submit" {
+		t.Fatalf("matched.text_preview = %v, want Submit", matched["text_preview"])
+	}
+	bbox, ok := matched["bbox"].(map[string]any)
+	if !ok {
+		t.Fatal("matched.bbox should be present")
+	}
+	if bbox["width"] != float64(120) {
+		t.Fatalf("matched.bbox.width = %v, want 120", bbox["width"])
+	}
+}
+
 // ============================================
 // stripEnrichedFieldsFromResult tests
 // ============================================
@@ -231,6 +271,7 @@ func TestStripEnrichedFieldsFromResult_RemovesDuplicates(t *testing.T) {
 		"effective_title": "Example",
 		"match_count":     float64(1),
 		"match_strategy":  "selector",
+		"matched":         map[string]any{"tag": "button"},
 		"result": json.RawMessage(`{
 			"success": true,
 			"action": "click",
@@ -240,6 +281,7 @@ func TestStripEnrichedFieldsFromResult_RemovesDuplicates(t *testing.T) {
 			"effective_title": "Example",
 			"match_count": 1,
 			"match_strategy": "selector",
+			"matched": {"tag":"button"},
 			"target_context": {"source": "tracked_tab"},
 			"content_script_status": "loaded"
 		}`),
@@ -264,7 +306,7 @@ func TestStripEnrichedFieldsFromResult_RemovesDuplicates(t *testing.T) {
 	}
 
 	// Enriched fields must be stripped
-	for _, key := range []string{"timing", "effective_url", "effective_title", "match_count", "match_strategy", "target_context", "content_script_status"} {
+	for _, key := range []string{"timing", "effective_url", "effective_title", "match_count", "match_strategy", "matched", "target_context", "content_script_status"} {
 		if _, ok := resultMap[key]; ok {
 			t.Errorf("%s should be stripped from result after enrichment", key)
 		}
@@ -357,11 +399,11 @@ func TestStripSuccessOnlyFields_RemovesRoutingFields(t *testing.T) {
 
 	responseData := map[string]any{
 		"status":                "complete",
-		"target_context":       map[string]any{"source": "tracked_tab"},
+		"target_context":        map[string]any{"source": "tracked_tab"},
 		"content_script_status": "loaded",
-		"created_at":           "2026-02-26T00:00:00Z",
-		"trace_id":             "dom_click_123",
-		"effective_url":        "https://example.com",
+		"created_at":            "2026-02-26T00:00:00Z",
+		"trace_id":              "dom_click_123",
+		"effective_url":         "https://example.com",
 	}
 
 	stripSuccessOnlyFields(responseData)

@@ -108,7 +108,7 @@ interface FormattedAxeResults {
   passes?: FormattedAxeViolation[]
   incomplete?: FormattedAxeViolation[]
   inapplicable?: FormattedAxeViolation[]
-  // TODO(#276): Unify summary field naming between Go (violation_count) and TS (violations).
+  // Canonical summary keys used by extension payloads.
   summary: {
     violations: number
     passes: number
@@ -398,7 +398,7 @@ export async function runAxeAuditWithTimeout(
     return await Promise.race([
       runAxeAudit(params),
       new Promise<FormattedAxeResults>((resolve) => {
-        setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs)
+        setTimeout(() => resolve(emptyPartialResult('Accessibility audit timeout')), timeoutMs)
       })
     ])
   } catch (err) {

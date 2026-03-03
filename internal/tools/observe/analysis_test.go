@@ -21,14 +21,14 @@ import (
 // ============================================
 
 type mockA11yDeps struct {
-	cap           *capture.Capture
+	cap           *capture.Store
 	a11yResult    json.RawMessage
 	a11yErr       error
 	diagnosticStr string
 }
 
 func (m *mockA11yDeps) DiagnosticHintString() string { return m.diagnosticStr }
-func (m *mockA11yDeps) GetCapture() *capture.Capture { return m.cap }
+func (m *mockA11yDeps) GetCapture() *capture.Store   { return m.cap }
 func (m *mockA11yDeps) GetLogEntries() ([]mcp.LogEntry, []time.Time) {
 	return nil, nil
 }
@@ -290,14 +290,14 @@ func TestBuildA11ySummary_Compact(t *testing.T) {
 		},
 		"violations": []any{
 			map[string]any{
-				"id":      "color-contrast",
-				"impact":  "serious",
-				"nodes":   []any{map[string]any{}, map[string]any{}, map[string]any{}},
+				"id":     "color-contrast",
+				"impact": "serious",
+				"nodes":  []any{map[string]any{}, map[string]any{}, map[string]any{}},
 			},
 			map[string]any{
-				"id":      "image-alt",
-				"impact":  "critical",
-				"nodes":   []any{map[string]any{}},
+				"id":     "image-alt",
+				"impact": "critical",
+				"nodes":  []any{map[string]any{}},
 			},
 		},
 		"incomplete": []any{
@@ -415,6 +415,16 @@ func TestRunA11yAudit_TimeoutReturnsPartialResults(t *testing.T) {
 	}
 	if _, ok := data["summary"]; !ok {
 		t.Error("partial result should include 'summary' field")
+	}
+	summary, ok := data["summary"].(map[string]any)
+	if !ok {
+		t.Fatalf("partial result summary should be object, got %T", data["summary"])
+	}
+	if summary["violations"] != float64(0) || summary["violation_count"] != float64(0) {
+		t.Errorf("expected zero violations summary aliases, got %+v", summary)
+	}
+	if summary["passes"] != float64(0) || summary["pass_count"] != float64(0) {
+		t.Errorf("expected zero passes summary aliases, got %+v", summary)
 	}
 	if data["partial"] != true {
 		t.Errorf("partial result should have partial=true, got: %v", data["partial"])

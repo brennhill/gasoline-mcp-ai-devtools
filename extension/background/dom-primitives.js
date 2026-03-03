@@ -418,9 +418,25 @@ export function domPrimitive(action, selector, options) {
         }
         return fallback;
     }
+    function parseNthMatchSelector(sel) {
+        const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
+        if (!nthMatch)
+            return null;
+        const base = nthMatch[1] || '';
+        const n = Number.parseInt(nthMatch[2] || '0', 10);
+        if (!base || Number.isNaN(n) || n < 1)
+            return null;
+        return { base, n };
+    }
     function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
+        const parsedNth = parseNthMatchSelector(sel);
+        if (parsedNth) {
+            const matches = resolveElements(parsedNth.base, scope);
+            const target = matches[parsedNth.n - 1];
+            return target ? [target] : [];
+        }
         if (sel.startsWith('text='))
             return resolveByTextAll(sel.slice('text='.length), scope);
         if (sel.startsWith('role='))
@@ -443,14 +459,10 @@ export function domPrimitive(action, selector, options) {
             return null;
         if (sel.includes(' >>> '))
             return resolveDeepCombinator(sel, scope);
-        const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
-        if (nthMatch) {
-            const base = nthMatch[1] || '';
-            const n = Number.parseInt(nthMatch[2] || '0', 10);
-            if (!base || Number.isNaN(n) || n < 1)
-                return null;
-            const matches = resolveElements(base, scope);
-            return matches[n - 1] || null;
+        const parsedNth = parseNthMatchSelector(sel);
+        if (parsedNth) {
+            const matches = resolveElements(parsedNth.base, scope);
+            return matches[parsedNth.n - 1] || null;
         }
         if (sel.startsWith('text='))
             return resolveByText(sel.slice('text='.length), scope);
@@ -728,7 +740,28 @@ export function domPrimitive(action, selector, options) {
         const rect = typeof el.getBoundingClientRect === 'function'
             ? el.getBoundingClientRect()
             : { width: 0, height: 0 };
-        return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+        if (!(rect.width > 0 && rect.height > 0))
+            return false;
+        if (el.offsetParent === null) {
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null;
+            const position = style?.position || '';
+            if (position !== 'fixed' && position !== 'sticky')
+                return false;
+        }
+        // #384: Prefer in-viewport actionable targets for disambiguation.
+        const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+            ? window.innerHeight
+            : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0);
+        const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+            ? window.innerWidth
+            : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0);
+        const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
+        const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const right = typeof rect.right === 'number' ? rect.right : left + rect.width;
+        const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height;
+        const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth);
+        const intersectsY = viewHeight <= 0 || (bottom > 0 && top < viewHeight);
+        return intersectsX && intersectsY;
     }
     function extractBoundingBox(el) {
         if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function') {
@@ -972,14 +1005,14 @@ export function domPrimitive(action, selector, options) {
                     return {
                         element: visible[0],
                         match_count: 1,
-                        match_strategy: 'dismiss_close_button_selector',
+                        match_strategy: 'intent_dismiss_top_overlay',
                         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                     };
                 }
             }
             // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
             const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i;
-            const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement);
+            const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement);
             const dismissButtons = [];
             for (const btn of uniqueElements(allButtons)) {
                 if (!isActionableVisible(btn))
@@ -993,7 +1026,7 @@ export function domPrimitive(action, selector, options) {
                 if (submitVerb.test(label))
                     score -= 600;
                 // SVG close icons: button containing only an SVG (common close icon pattern)
-                const hasSvgIcon = btn.querySelector('svg') !== null;
+                const hasSvgIcon = typeof btn.querySelector === 'function' && btn.querySelector('svg') !== null;
                 const textLen = (btn.textContent || '').trim().length;
                 if (hasSvgIcon && textLen <= 2)
                     score += 500;
@@ -1010,7 +1043,7 @@ export function domPrimitive(action, selector, options) {
                 return {
                     element: dismissButtons[0].element,
                     match_count: 1,
-                    match_strategy: 'dismiss_text_button',
+                    match_strategy: 'intent_dismiss_top_overlay',
                     scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                 };
             }
@@ -1025,7 +1058,7 @@ export function domPrimitive(action, selector, options) {
                     return {
                         element: candidate,
                         match_count: 1,
-                        match_strategy: 'dismiss_attr_match',
+                        match_strategy: 'intent_dismiss_top_overlay',
                         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                     };
                 }
@@ -1525,13 +1558,24 @@ export function domPrimitive(action, selector, options) {
     const resolvedAmbiguousMatches = resolved.ambiguous_matches;
     /** Capture current viewport/scroll position for action responses. */
     function captureViewport() {
+        const w = typeof window !== 'undefined' ? window : null;
+        const docEl = document?.documentElement;
+        const body = document?.body;
         return {
-            scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
-            scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
-            viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
-            viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
-            page_height: Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0)
+            scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+            scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
+            viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
+            viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
+            page_height: Math.max(body?.scrollHeight || 0, docEl?.scrollHeight || 0)
         };
+    }
+    function dispatchEventIfPossible(target, event) {
+        if (!target)
+            return;
+        const dispatch = target.dispatchEvent;
+        if (typeof dispatch !== 'function')
+            return;
+        dispatch.call(target, event);
     }
     // #368: Check if an overlay might be obscuring the target element
     function detectOverlayWarning(targetEl) {
@@ -1539,7 +1583,7 @@ export function domPrimitive(action, selector, options) {
         if (!overlay)
             return {};
         // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
-        if (overlay.contains(targetEl))
+        if (typeof overlay.contains === 'function' && overlay.contains(targetEl))
             return {};
         const overlayInfo = describeOverlay(overlay);
         return {
@@ -2065,7 +2109,26 @@ export function domPrimitive(action, selector, options) {
                     }
                     return null;
                 }
-                const direction = (options.value || '').toLowerCase();
+                function scrollToY(container, top) {
+                    if (typeof container.scrollTo === 'function') {
+                        container.scrollTo({ top, behavior: 'smooth' });
+                        return;
+                    }
+                    ;
+                    container.scrollTop = top;
+                }
+                function scrollByY(container, deltaY) {
+                    if (typeof container.scrollBy === 'function') {
+                        container.scrollBy({ top: deltaY, behavior: 'smooth' });
+                        return;
+                    }
+                    const currentTop = typeof container.scrollTop === 'number'
+                        ? Number(container.scrollTop)
+                        : 0;
+                    container.scrollTop = currentTop + deltaY;
+                }
+                // Accept both `direction` (preferred) and legacy `value` for backward compatibility.
+                const direction = (options.direction || options.value || '').toLowerCase();
                 const tag = node.tagName.toLowerCase();
                 // Check if the target itself is a scrollable container
                 const isContainer = node instanceof HTMLElement &&
@@ -2077,21 +2140,34 @@ export function domPrimitive(action, selector, options) {
                     const ovY = s.overflowY || '';
                     return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll';
                 })();
-                // Directional scrolling within a container
-                if (direction && (isContainer || tag === 'body' || tag === 'html')) {
-                    const container = isContainer ? node : (findScrollableContainer(node) || document.documentElement);
+                // Directional scrolling within the resolved container (target, ancestor, or page root)
+                const directionalContainer = (() => {
+                    if (isContainer)
+                        return node;
+                    const ancestor = findScrollableContainer(node);
+                    if (ancestor)
+                        return ancestor;
+                    if (typeof document !== 'undefined' && document.scrollingElement instanceof HTMLElement) {
+                        return document.scrollingElement;
+                    }
+                    if (tag === 'body' || tag === 'html')
+                        return document.documentElement;
+                    return document.documentElement;
+                })();
+                if (direction && directionalContainer) {
+                    const container = directionalContainer;
                     switch (direction) {
                         case 'top':
-                            container.scrollTo({ top: 0, behavior: 'smooth' });
+                            scrollToY(container, 0);
                             return mutatingSuccess(node, { reason: 'scrolled_container_top' });
                         case 'bottom':
-                            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                            scrollToY(container, container.scrollHeight);
                             return mutatingSuccess(node, { reason: 'scrolled_container_bottom' });
                         case 'up':
-                            container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' });
+                            scrollByY(container, -container.clientHeight * 0.8);
                             return mutatingSuccess(node, { reason: 'scrolled_container_up' });
                         case 'down':
-                            container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' });
+                            scrollByY(container, container.clientHeight * 0.8);
                             return mutatingSuccess(node, { reason: 'scrolled_container_down' });
                     }
                 }
@@ -2252,11 +2328,11 @@ export function domPrimitive(action, selector, options) {
                         key: 'Escape', code: 'Escape', keyCode: 27,
                         bubbles: true, cancelable: true
                     };
-                    document.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    document.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb));
                     // Also try the overlay element directly
-                    node.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb));
                     return mutatingSuccess(node, {
                         strategy: 'escape_key',
                         ...overlayInfo
@@ -2303,10 +2379,10 @@ export function domPrimitive(action, selector, options) {
                         key: 'Escape', code: 'Escape', keyCode: 27,
                         bubbles: true, cancelable: true
                     };
-                    document.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    document.dispatchEvent(new KeyboardEvent('keyup', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb));
                     return mutatingSuccess(node, {
                         dismissed_count: 1,
                         strategy: 'escape_key',

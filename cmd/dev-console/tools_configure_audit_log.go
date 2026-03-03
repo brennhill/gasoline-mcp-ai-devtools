@@ -60,7 +60,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		})}
 	}
 
-	filter := audit.AuditFilter{
+	filter := audit.Filter{
 		AuditSessionID: params.AuditSessionID,
 		ToolName:       params.ToolName,
 		Limit:          params.Limit,

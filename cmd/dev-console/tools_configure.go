@@ -126,9 +126,9 @@ func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json
 	return h.configureTestBoundaryEndImpl(req, args)
 }
 
-// handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
+// toolConfigureDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
 // Supports filtering by tool name and mode to reduce payload size.
 // When summary=true, returns only tool name → { description, dispatch_param, modes }.
-func (h *ToolHandler) handleDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return h.configureDescribeCapabilitiesImpl(req, args)
 }

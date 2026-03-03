@@ -70,12 +70,12 @@ type VerificationSession struct {
 
 // VerifSnapshot is a point-in-time capture of browser state for verification.
 type VerifSnapshot struct {
-	CapturedAt         time.Time                        `json:"captured_at"`
-	ConsoleErrors      []VerifyError                    `json:"console_errors"`
-	NetworkErrors      []VerifyNetworkEntry             `json:"network_errors"`        // Only 4xx/5xx responses
-	AllNetworkRequests []VerifyNetworkEntry             `json:"all_network,omitempty"` // All requests (for comparison)
-	PageURL            string                           `json:"page_url,omitempty"`
-	Performance        *performance.PerformanceSnapshot `json:"performance,omitempty"`
+	CapturedAt         time.Time             `json:"captured_at"`
+	ConsoleErrors      []VerifyError         `json:"console_errors"`
+	NetworkErrors      []VerifyNetworkEntry  `json:"network_errors"`        // Only 4xx/5xx responses
+	AllNetworkRequests []VerifyNetworkEntry  `json:"all_network,omitempty"` // All requests (for comparison)
+	PageURL            string                `json:"page_url,omitempty"`
+	Performance        *performance.Snapshot `json:"performance,omitempty"`
 }
 
 // VerifyError represents a console error in a verification snapshot.

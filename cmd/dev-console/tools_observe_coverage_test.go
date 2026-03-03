@@ -52,7 +52,7 @@ func TestToolGetWebVitals_WithData(t *testing.T) {
 		{
 			URL:       "https://example.com",
 			Timestamp: "2024-01-01T00:00:00Z",
-			Timing: performance.PerformanceTiming{
+			Timing: performance.Timing{
 				LargestContentfulPaint: &lcp,
 				FirstContentfulPaint:   &fcp,
 				DomContentLoaded:       800,

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
@@ -38,14 +39,14 @@ func (r testRedactor) RedactMapValues(data map[string]any) map[string]any {
 }
 
 type fakeToolHandlerForMCP struct {
-	cap      *capture.Capture
+	cap      *capture.Store
 	limiter  RateLimiter
 	redactor RedactionEngine
 	tools    []MCPTool
 	handleFn func(req JSONRPCRequest, name string, arguments json.RawMessage) (JSONRPCResponse, bool)
 }
 
-func (f *fakeToolHandlerForMCP) GetCapture() *capture.Capture { return f.cap }
+func (f *fakeToolHandlerForMCP) GetCapture() *capture.Store { return f.cap }
 func (f *fakeToolHandlerForMCP) GetToolCallLimiter() RateLimiter {
 	return f.limiter
 }
@@ -188,7 +189,9 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 }
 
 func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
-	t.Parallel()
+	origLastNotify := updateNotifyLastShown
+	updateNotifyLastShown = time.Now()
+	t.Cleanup(func() { updateNotifyLastShown = origLastNotify })
 
 	h := NewMCPHandler(nil, "v-test")
 	th := &fakeToolHandlerForMCP{

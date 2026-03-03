@@ -11,7 +11,8 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pagination"
 )
 
-// TODO: Add data_age_ms, page_ready_for_commands, tab_status to OpenAPI spec.
+// NOTE: data_age_ms is documented in observe schema/tests; page_ready_for_commands
+// and tab_status are mode-specific fields on observe(page) responses.
 
 // ResponseMetadata provides freshness information for buffer-backed observe responses.
 type ResponseMetadata struct {
@@ -26,7 +27,7 @@ type ResponseMetadata struct {
 }
 
 // BuildResponseMetadata constructs freshness metadata for an observe response.
-func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) ResponseMetadata {
+func BuildResponseMetadata(cap *capture.Store, newestEntry time.Time) ResponseMetadata {
 	now := time.Now()
 	meta := ResponseMetadata{
 		RetrievedAt: now.Format(time.RFC3339),
@@ -47,7 +48,7 @@ func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) Response
 }
 
 // BuildPaginatedResponseMetadata merges freshness metadata with cursor pagination metadata.
-func BuildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
+func BuildPaginatedResponseMetadata(cap *capture.Store, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
 	base := BuildResponseMetadata(cap, newestEntry)
 	meta := map[string]any{
 		"retrieved_at": base.RetrievedAt,

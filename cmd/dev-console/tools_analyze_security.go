@@ -14,7 +14,7 @@ import (
 // Security Tool Implementations
 // ============================================
 
-func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleAnalyzeSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SeverityMin string   `json:"severity_min"`
 		Checks      []string `json:"checks"`
@@ -58,7 +58,7 @@ func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage
 	}
 
 	if params.Summary {
-		if scanResult, ok := result.(security.SecurityScanResult); ok {
+		if scanResult, ok := result.(security.ScanResult); ok {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security audit summary", buildSecurityAuditSummary(scanResult))}
 		}
 	}
@@ -105,7 +105,7 @@ func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMes
 
 var severityOrder = map[string]int{"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
-func buildSecurityAuditSummary(result security.SecurityScanResult) map[string]any {
+func buildSecurityAuditSummary(result security.ScanResult) map[string]any {
 	bySeverity := make(map[string]int)
 	for _, f := range result.Findings {
 		bySeverity[f.Severity]++
@@ -117,7 +117,7 @@ func buildSecurityAuditSummary(result security.SecurityScanResult) map[string]an
 	}
 
 	// Sort findings by severity (critical first)
-	sorted := make([]security.SecurityFinding, len(result.Findings))
+	sorted := make([]security.Finding, len(result.Findings))
 	copy(sorted, result.Findings)
 	for i := 0; i < len(sorted)-1; i++ {
 		for j := i + 1; j < len(sorted); j++ {

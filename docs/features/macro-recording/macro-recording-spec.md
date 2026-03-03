@@ -379,7 +379,7 @@ Deletes a saved sequence.
 
 ### Session Store (persistence)
 
-Sequences are stored using the existing `configure(action="store")` persistence layer (`internal/ai/ai_persistence.go`). The session store supports namespaced key-value storage with Save/Load/List/Delete operations. Sequences use a dedicated namespace `"sequences"` to avoid collisions with other stored data.
+Sequences are stored using the existing `configure(action="store")` persistence layer (`internal/persistence/persistence_store.go`). The session store supports namespaced key-value storage with Save/Load/List/Delete operations. Sequences use a dedicated namespace `"sequences"` to avoid collisions with other stored data.
 
 **Storage format on disk:** `~/.gasoline/store/sequences/{name}.json`
 

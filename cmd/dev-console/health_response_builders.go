@@ -14,7 +14,7 @@ import (
 
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
-func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
+func (hm *HealthMetrics) GetHealth(cap *capture.Store, server *Server, ver string) MCPHealthResponse {
 	resp := MCPHealthResponse{
 		Server:           hm.buildServerInfo(ver),
 		Memory:           buildMemoryInfo(cap),
@@ -48,17 +48,21 @@ func buildUpgradeInfo() *UpgradeInfo {
 
 // buildServerInfo returns server identification and uptime.
 func (hm *HealthMetrics) buildServerInfo(ver string) ServerInfo {
+	launch := getCurrentLaunchMode()
 	return ServerInfo{
-		Version:       ver,
-		UptimeSeconds: hm.GetUptime().Seconds(),
-		PID:           os.Getpid(),
-		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
-		GoVersion:     runtime.Version(),
+		Version:          ver,
+		UptimeSeconds:    hm.GetUptime().Seconds(),
+		PID:              os.Getpid(),
+		Platform:         runtime.GOOS + "/" + runtime.GOARCH,
+		GoVersion:        runtime.Version(),
+		LaunchMode:       launch.Mode,
+		LaunchModeReason: launch.Reason,
+		ParentProcess:    launch.ParentProcess,
 	}
 }
 
 // buildMemoryInfo returns runtime memory statistics.
-func buildMemoryInfo(cap *capture.Capture) MemoryInfo {
+func buildMemoryInfo(cap *capture.Store) MemoryInfo {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -75,7 +79,7 @@ func buildMemoryInfo(cap *capture.Capture) MemoryInfo {
 }
 
 // buildBuffersInfo returns buffer utilization stats from capture and server.
-func buildBuffersInfo(cap *capture.Capture, server *Server) BuffersInfo {
+func buildBuffersInfo(cap *capture.Store, server *Server) BuffersInfo {
 	var networkEntries, wsEntries, actionEntries int
 	if cap != nil {
 		health := cap.GetHealthSnapshot()
@@ -123,7 +127,7 @@ func getConsoleStats(server *Server) (int, int, int64) {
 }
 
 // buildRateLimitInfo returns rate limiting state from capture.
-func buildRateLimitInfo(cap *capture.Capture) RateLimitingInfo {
+func buildRateLimitInfo(cap *capture.Store) RateLimitingInfo {
 	info := RateLimitingInfo{Threshold: capture.RateLimitThreshold}
 	if cap != nil {
 		health := cap.GetHealthSnapshot()
@@ -162,7 +166,7 @@ func (hm *HealthMetrics) buildAuditInfo() AuditInfo {
 }
 
 // buildPilotInfo returns AI Web Pilot status from capture.
-func buildPilotInfo(cap *capture.Capture) PilotInfo {
+func buildPilotInfo(cap *capture.Store) PilotInfo {
 	defaultStatus := PilotInfo{Source: "never_connected"}
 	if cap == nil {
 		return defaultStatus

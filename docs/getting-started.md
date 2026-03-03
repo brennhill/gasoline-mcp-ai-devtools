@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-24
+last_reviewed: 2026-03-02
 ---
 
 ## <i class="fas fa-fire"></i> 1. Ignite the Server & Configure Clients
@@ -54,6 +54,27 @@ Click the Gasoline Agentic Browser icon in your toolbar — it should show **Con
 The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
 
 <i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for manual setup if needed.
+
+### Launch Mode Guard (Persistent vs Transient)
+
+Gasoline now classifies launch context at startup:
+
+- `persistent`: expected long-lived runtime (daemon flag, supervisor, or non-interactive stdio).
+- `likely_transient`: interactive shell launch likely to disconnect when the process exits.
+
+If launch mode is `likely_transient`, Gasoline prints a one-time warning with remediation:
+
+```bash
+gasoline-mcp --daemon --port 7890
+```
+
+To enforce this in CI/team environments, set:
+
+```bash
+GASOLINE_REQUIRE_PERSISTENT=true
+```
+
+When strict mode is enabled, Gasoline exits non-zero on `likely_transient` launches.
 
 ## <i class="fas fa-check-circle"></i> Verify the Flame
 
