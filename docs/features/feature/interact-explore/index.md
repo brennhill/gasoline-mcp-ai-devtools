@@ -66,7 +66,7 @@ test_paths:
 ## TL;DR
 - Status: shipped
 - Tool: `interact`
-- Mode key: `action`
+- Mode key: `what` (deprecated alias: `action`)
 - Contract source: `cmd/dev-console/tools_schema.go`
 
 ## Specs
