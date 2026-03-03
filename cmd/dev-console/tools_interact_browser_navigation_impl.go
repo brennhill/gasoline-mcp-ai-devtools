@@ -41,7 +41,7 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 	}
 
 	correlationID := newCorrelationID("nav")
-	h.parent.armEvidenceForCommand(correlationID, "navigate", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "navigate", args, req.ClientID)
 
 	h.stashPerfSnapshotImpl(correlationID)
 
@@ -98,7 +98,7 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 	}
 
 	correlationID := newCorrelationID("refresh")
-	h.parent.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
 
 	h.stashPerfSnapshotImpl(correlationID)
 
@@ -127,7 +127,7 @@ func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, 
 	}
 
 	correlationID := newCorrelationID("back")
-	h.parent.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -153,7 +153,7 @@ func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCReques
 	}
 
 	correlationID := newCorrelationID("forward")
-	h.parent.armEvidenceForCommand(correlationID, "forward", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "forward", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",

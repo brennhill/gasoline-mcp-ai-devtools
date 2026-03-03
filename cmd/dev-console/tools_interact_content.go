@@ -42,7 +42,7 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 	}
 
 	correlationID := newCorrelationID(correlationPrefix)
-	h.parent.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
 
 	// Structured params — no embedded script. The content script handles extraction directly.
 	queryParams, _ := json.Marshal(map[string]any{

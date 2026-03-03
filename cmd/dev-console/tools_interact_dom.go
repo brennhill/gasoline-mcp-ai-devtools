@@ -87,7 +87,7 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 	args = normalizeDOMActionArgs(args, action)
 
 	correlationID := newCorrelationID("dom_" + action)
-	h.parent.armEvidenceForCommand(correlationID, action, args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",

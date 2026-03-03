@@ -15,9 +15,9 @@ import (
 // finalizeResponseEnrichment attaches evidence, transient elements, and retry context
 // to the response data in a single call. Consolidates the repeated triplet pattern.
 func (h *ToolHandler) finalizeResponseEnrichment(corrID string, responseData map[string]any, cmd queries.CommandResult) {
-	h.attachEvidencePayload(corrID, responseData)
+	h.interactAction().attachEvidencePayload(corrID, responseData)
 	h.attachTransientElements(responseData, cmd.CreatedAt)
-	h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+	h.interactAction().attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
 }
 
 func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {

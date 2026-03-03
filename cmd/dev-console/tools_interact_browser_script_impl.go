@@ -43,7 +43,7 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 
 	// Queue highlight command for extension.
 	correlationID := newCorrelationID("highlight")
-	h.parent.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "highlight",
@@ -95,7 +95,7 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 	}
 
 	correlationID := newCorrelationID("exec")
-	h.parent.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "execute",

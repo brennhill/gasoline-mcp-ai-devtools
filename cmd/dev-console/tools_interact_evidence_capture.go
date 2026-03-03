@@ -60,13 +60,13 @@ func defaultEvidenceCapture(h *ToolHandler, clientID string) evidenceShot {
 	}
 }
 
-func (h *ToolHandler) captureEvidenceWithRetry(clientID string) evidenceShot {
+func (h *interactActionHandler) captureEvidenceWithRetry(clientID string) evidenceShot {
 	retries := evidenceRetryCount()
 	attempts := retries + 1
 	last := evidenceShot{Error: "evidence_capture_not_attempted"}
 
 	for i := 0; i < attempts; i++ {
-		shot := evidenceCaptureFn(h, clientID)
+		shot := evidenceCaptureFn(h.parent, clientID)
 		shot.Attempts = i + 1
 		if strings.TrimSpace(shot.Path) != "" {
 			return shot
