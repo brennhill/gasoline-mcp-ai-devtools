@@ -308,7 +308,7 @@ a.sl-link-button[data-variant='primary']:hover {
 }
 
 .landing-content code {
-  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   font-size: 0.9em;
 }
 

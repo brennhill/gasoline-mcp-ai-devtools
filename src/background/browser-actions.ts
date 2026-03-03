@@ -91,7 +91,15 @@ export async function handleNavigateAction(
   if (await pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
     actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success')
-    return enrichWithCSP(tabId, { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' })
+    return enrichWithCSP(tabId, {
+      success: true,
+      action: 'navigate',
+      url,
+      final_url: tab.url,
+      title: tab.title,
+      content_script_status: 'loaded',
+      message: 'Content script ready'
+    })
   }
 
   if (tab.url?.startsWith('file://')) {
@@ -137,7 +145,12 @@ export async function handleNavigateAction(
   })
 }
 
-async function handleNewTabAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult> {
+async function handleNewTabAction(
+  tabId: number,
+  url: string,
+  actionToast: ActionToastFn,
+  reason?: string
+): Promise<BrowserActionResult> {
   if (!url) return { success: false, error: 'missing_url', message: 'URL required for new_tab action' }
   actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000)
   const newTab = await chrome.tabs.create({ url, active: false })
@@ -179,8 +192,8 @@ export async function handleBrowserAction(
     typeof params?.action === 'string' && params.action.trim() !== ''
       ? params.action
       : typeof params?.what === 'string'
-      ? params.what
-      : undefined
+        ? params.what
+        : undefined
 
   if (!isAiWebPilotEnabled()) {
     return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
@@ -194,7 +207,12 @@ export async function handleBrowserAction(
         await waitForTabLoad(tabId)
         actionToast(tabId, reason || 'refresh', undefined, 'success')
         const refreshedTab = await chrome.tabs.get(tabId)
-        return enrichWithCSP(tabId, { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title })
+        return enrichWithCSP(tabId, {
+          success: true,
+          action: 'refresh',
+          url: refreshedTab.url,
+          title: refreshedTab.title
+        })
       }
       case 'navigate':
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for navigate action' }

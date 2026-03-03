@@ -81,10 +81,7 @@ func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	count := len(c.extensionLogs.logs)
-	c.extensionLogs.logs = make([]ExtensionLog, 0)
-
-	return count
+	return c.extensionLogs.clear()
 }
 
 // ClearAll resets all capture-owned in-memory telemetry state.

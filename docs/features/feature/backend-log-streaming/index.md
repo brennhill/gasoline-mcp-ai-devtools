@@ -4,7 +4,7 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
@@ -17,6 +17,7 @@ code_paths:
   - internal/capture/enhanced_actions.go
   - internal/capture/enhanced-actions-types.go
   - internal/capture/extension_log_redaction.go
+  - internal/capture/extension_log_store.go
   - internal/capture/extension_logs.go
   - internal/capture/extension_state.go
   - internal/capture/extension-logging-types.go
@@ -41,6 +42,7 @@ code_paths:
   - internal/capture/settings.go
   - internal/capture/status.go
   - internal/capture/sync.go
+  - internal/capture/sync_processing.go
   - internal/capture/test_helpers.go
   - internal/capture/testhelpers.go
   - internal/capture/ttl.go
@@ -50,7 +52,9 @@ code_paths:
   - internal/capture/websocket.go
   - src/lib/network.ts
   - src/lib/websocket.ts
-test_paths: []
+test_paths:
+  - internal/capture/extension_log_store_test.go
+  - internal/capture/buffer_clear_test.go
 ---
 
 # Backend Log Streaming

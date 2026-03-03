@@ -296,6 +296,20 @@ export interface FormDiscoveryQueryMessage {
     readonly params?: string | Record<string, unknown>;
 }
 /**
+ * Form state query message
+ */
+export interface FormStateQueryMessage {
+    readonly type: 'FORM_STATE_QUERY';
+    readonly params?: string | Record<string, unknown>;
+}
+/**
+ * Data table query message
+ */
+export interface DataTableQueryMessage {
+    readonly type: 'DATA_TABLE_QUERY';
+    readonly params?: string | Record<string, unknown>;
+}
+/**
  * Draw mode control messages (background to content)
  */
 export interface DrawModeStartMessage {
@@ -358,15 +372,15 @@ export interface RecordingWatermarkMessage {
 /**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | FormStateQueryMessage | DataTableQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */
-export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_INJECT_BRIDGE_PONG' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE' | 'GASOLINE_LINK_HEALTH_RESPONSE';
+export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_INJECT_BRIDGE_PONG' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE' | 'GASOLINE_LINK_HEALTH_RESPONSE' | 'GASOLINE_FORM_STATE_RESPONSE' | 'GASOLINE_DATA_TABLE_RESPONSE';
 /**
  * Content to page messages (postMessage types)
  */
-export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_INJECT_BRIDGE_PING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL' | 'GASOLINE_LINK_HEALTH_QUERY';
+export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_INJECT_BRIDGE_PING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL' | 'GASOLINE_LINK_HEALTH_QUERY' | 'GASOLINE_FORM_STATE_QUERY' | 'GASOLINE_DATA_TABLE_QUERY';
 /**
  * Start recording message (SW → offscreen)
  */

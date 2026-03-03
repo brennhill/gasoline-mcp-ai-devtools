@@ -1,6 +1,6 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
 import { SettingName } from '../lib/constants.js';
-import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
+import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleFormStateQuery, handleDataTableQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 import { toggleChatWidget } from './ui/chat-widget.js';
@@ -102,6 +102,8 @@ export function initRuntimeMessageListener() {
         LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}), sr),
         COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}), sr),
         FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr),
+        FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery((msg.params ?? {}), sr),
+        DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery((msg.params ?? {}), sr),
         GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
         GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
         GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)

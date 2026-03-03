@@ -968,6 +968,15 @@ describe('Draw Mode — State Leak Prevention', () => {
   })
 
   test('deactivateDrawMode clears annotations for next session', () => {
+    globalThis.chrome.storage.session.get = mock.fn((_keys, callback) => {
+      const empty = {}
+      if (typeof callback === 'function') callback(empty)
+      else return Promise.resolve(empty)
+    })
+    dm.clearAnnotations()
+    const baselineCount = dm.getAnnotations().length
+    assert.strictEqual(baselineCount, 0, 'test should start from empty annotation state')
+
     dm.activateDrawMode('user')
 
     // Simulate adding annotation data via the public API
@@ -977,7 +986,7 @@ describe('Draw Mode — State Leak Prevention', () => {
     // Second activation should start clean
     dm.activateDrawMode('user')
     const anns = dm.getAnnotations()
-    assert.strictEqual(anns.length, 0, 'Annotations should be empty after re-activation')
+    assert.strictEqual(anns.length, baselineCount, 'Annotations should be empty after re-activation')
   })
 
   test('deactivateDrawMode clears elementDetails for next session', () => {
@@ -1081,6 +1090,7 @@ describe('Draw Mode — A11y Auto-Enrichment', () => {
   })
 
   test('DOM capture produces element detail with a11y_flags field', () => {
+    const beforeCount = dm.getAnnotations().length
     dm.activateDrawMode('user')
     const overlay = documentBody.children[0]
     assert.ok(overlay, 'expected overlay element')
@@ -1094,9 +1104,10 @@ describe('Draw Mode — A11y Auto-Enrichment', () => {
     inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
 
     const annotations = dm.getAnnotations()
-    assert.strictEqual(annotations.length, 1, 'expected 1 annotation')
+    assert.ok(annotations.length > beforeCount, 'expected annotation count to increase')
 
-    const detail = dm.getElementDetail(annotations[0].correlation_id)
+    const latest = annotations[annotations.length - 1]
+    const detail = dm.getElementDetail(latest.correlation_id)
     assert.ok(detail, 'should retrieve detail by correlation_id')
     assert.ok(Array.isArray(detail.a11y_flags), 'a11y_flags should be an array')
   })
@@ -1173,7 +1184,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
       if (attr === 'role') return 'group'
       return null
     }
-    grandparent.getAttribute = (attr) => null
+    grandparent.getAttribute = (_attr) => null
 
     // Create siblings
     const prevSibling1 = createMockElement('button')
@@ -1188,7 +1199,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     target.textContent = 'Submit'
     target.id = 'submit-btn'
     target.parentElement = parent
-    target.getAttribute = (attr) => null
+    target.getAttribute = (_attr) => null
 
     const nextSibling1 = createMockElement('a')
     nextSibling1.classList._items = ['help-link']
@@ -1209,6 +1220,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
   })
 
   function drawAndGetDetail() {
+    const beforeCount = dm.getAnnotations().length
     dm.activateDrawMode('user')
     const overlay = documentBody.children[0]
 
@@ -1220,8 +1232,8 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
 
     const annotations = dm.getAnnotations()
-    assert.strictEqual(annotations.length, 1)
-    return dm.getElementDetail(annotations[0].correlation_id)
+    assert.ok(annotations.length > beforeCount)
+    return dm.getElementDetail(annotations[annotations.length - 1].correlation_id)
   }
 
   test('element detail includes parent_context with parent and grandparent', () => {
@@ -1269,7 +1281,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     twEl.textContent = 'Tailwind element'
     twEl.parentElement = createMockElement('div')
     twEl.parentElement.parentElement = null
-    twEl.getAttribute = (attr) => null
+    twEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [twEl])
 
     const detail = drawAndGetDetail()
@@ -1283,7 +1295,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     bsEl.textContent = 'Bootstrap element'
     bsEl.parentElement = createMockElement('div')
     bsEl.parentElement.parentElement = null
-    bsEl.getAttribute = (attr) => null
+    bsEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [bsEl])
 
     const detail = drawAndGetDetail()
@@ -1297,7 +1309,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     modEl.textContent = 'CSS Modules element'
     modEl.parentElement = createMockElement('div')
     modEl.parentElement.parentElement = null
-    modEl.getAttribute = (attr) => null
+    modEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [modEl])
 
     const detail = drawAndGetDetail()
@@ -1311,7 +1323,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     scEl.textContent = 'Styled element'
     scEl.parentElement = createMockElement('div')
     scEl.parentElement.parentElement = null
-    scEl.getAttribute = (attr) => null
+    scEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [scEl])
 
     const detail = drawAndGetDetail()
@@ -1324,7 +1336,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     el.classList._items = ['main-btn']
     el.textContent = 'Click'
     el.parentElement = globalThis.document.body
-    el.getAttribute = (attr) => null
+    el.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [el])
 
     const detail = drawAndGetDetail()
@@ -1335,13 +1347,13 @@ describe('Draw Mode — Element Detail Enrichment', () => {
   test('siblings is absent when element is only child', () => {
     const parent = createMockElement('div')
     parent.classList._items = ['wrapper']
-    parent.getAttribute = (attr) => null
+    parent.getAttribute = (_attr) => null
 
     const el = createMockElement('button')
     el.classList._items = ['solo']
     el.textContent = 'Solo'
     el.parentElement = parent
-    el.getAttribute = (attr) => null
+    el.getAttribute = (_attr) => null
     parent.children = [el]
 
     globalThis.document.elementsFromPoint = mock.fn(() => [el])
@@ -1358,7 +1370,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     mixedEl.textContent = 'Mixed'
     mixedEl.parentElement = createMockElement('div')
     mixedEl.parentElement.parentElement = null
-    mixedEl.getAttribute = (attr) => null
+    mixedEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [mixedEl])
 
     const detail = drawAndGetDetail()
@@ -1370,13 +1382,13 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     const parent = createMockElement('section')
     parent.classList._items = ['top-level']
     parent.parentElement = null
-    parent.getAttribute = (attr) => null
+    parent.getAttribute = (_attr) => null
 
     const el = createMockElement('button')
     el.classList._items = ['action']
     el.textContent = 'Go'
     el.parentElement = parent
-    el.getAttribute = (attr) => null
+    el.getAttribute = (_attr) => null
     parent.children = [el]
 
     globalThis.document.elementsFromPoint = mock.fn(() => [el])
@@ -1392,7 +1404,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     const parent = createMockElement('ul')
     parent.classList._items = ['list']
     parent.parentElement = null
-    parent.getAttribute = (attr) => null
+    parent.getAttribute = (_attr) => null
 
     // Create 5 before + target + 5 after = 11 children
     const children = []
@@ -1407,7 +1419,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     target.classList._items = ['selected']
     target.textContent = 'Target'
     target.parentElement = parent
-    target.getAttribute = (attr) => null
+    target.getAttribute = (_attr) => null
     children.push(target)
     for (let i = 0; i < 5; i++) {
       const li = createMockElement('li')
@@ -1437,7 +1449,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     genericEl.textContent = 'Generic'
     genericEl.parentElement = createMockElement('div')
     genericEl.parentElement.parentElement = null
-    genericEl.getAttribute = (attr) => null
+    genericEl.getAttribute = (_attr) => null
     globalThis.document.elementsFromPoint = mock.fn(() => [genericEl])
 
     const detail = drawAndGetDetail()

@@ -525,6 +525,36 @@ registerCommand('form_discovery', async (ctx) => {
         });
     }
 });
+registerCommand('form_state', async (ctx) => {
+    try {
+        const result = await chrome.tabs.sendMessage(ctx.tabId, {
+            type: 'FORM_STATE_QUERY',
+            params: ctx.query.params
+        });
+        ctx.sendResult(result);
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'form_state_failed',
+            message: err.message || 'Form state extraction failed'
+        });
+    }
+});
+registerCommand('data_table', async (ctx) => {
+    try {
+        const result = await chrome.tabs.sendMessage(ctx.tabId, {
+            type: 'DATA_TABLE_QUERY',
+            params: ctx.query.params
+        });
+        ctx.sendResult(result);
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'data_table_failed',
+            message: err.message || 'Data table extraction failed'
+        });
+    }
+});
 // =============================================================================
 // DRAW MODE
 // =============================================================================

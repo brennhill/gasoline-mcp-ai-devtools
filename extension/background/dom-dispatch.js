@@ -219,7 +219,10 @@ async function executeWaitFor(target, params) {
         : domAction === 'wait_for_absent'
             ? `Element still present within ${timeoutMs}ms: ${selector}`
             : undefined;
-    return lastResult ?? {
+    if (lastResult?.error === 'timeout') {
+        return lastResult;
+    }
+    return {
         success: false,
         action: 'wait_for',
         selector,

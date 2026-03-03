@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: dom-selector-resolution-and-disambiguation
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 owners:
   - Brenn
 ---
@@ -11,7 +11,7 @@ owners:
 
 ## Scope
 
-Selector resolution inside extension DOM primitives used by `interact` mutating actions (`click`, `type`, `select`, `focus`, `scroll_to`, and intent helpers).
+Selector resolution inside extension DOM primitives used by `interact` mutating actions (`click`, `type`, `select`, `check`, `focus`, `paste`, `key_press`, `scroll_to`, and intent helpers), including modal-overlay blocking guards.
 
 ## Entrypoints
 
@@ -28,6 +28,7 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 6. `resolveElement` uses the same helper for single-target resolution.
 7. Action runs against the resolved element and reports match strategy (`nth_param`, `nth_match_selector`, `selector`, or scoped variants).
 8. For `scroll_to` with directional intent, the resolved target picks a container in priority order: target if scrollable -> nearest scrollable ancestor -> document scrolling root.
+9. Before mutating/focus actions execute, modal-overlay guard checks whether the target is outside the top dialog and returns `blocked_by_overlay` when input would be hijacked.
 
 ## Error and Recovery Paths
 
@@ -36,6 +37,7 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 3. Invalid `nth` type returns `invalid_nth`.
 4. Out-of-range `nth` returns `nth_out_of_range`.
 5. Duplicate unresolved selectors surface `ambiguous_target` guidance to use `nth`, `:nth-match(N)`, or `scope_selector`.
+6. If a modal dialog blocks the resolved target, actions return `blocked_by_overlay` with `dismiss_top_overlay` recovery guidance.
 
 ## State and Contracts
 
@@ -60,6 +62,7 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 ## Test Paths
 
 - `extension/background/dom-primitives.test.js`
+- `tests/extension/list-interactive-selector-roundtrip.test.js`
 - `cmd/dev-console/tools_async_enrich_test.go`
 - `cmd/dev-console/tools_interact_rich_test.go`
 - `cmd/dev-console/cli_test.go`

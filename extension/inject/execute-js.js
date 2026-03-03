@@ -35,6 +35,40 @@ function serializeObject(obj, depth, seen) {
     }
     const result = {};
     const keys = Object.keys(obj).slice(0, 50);
+    // Host objects like DOMRect/CSSStyleDeclaration expose values via prototype getters,
+    // so Object.keys() can be empty even when useful primitive fields exist.
+    if (keys.length === 0) {
+        try {
+            const proto = Object.getPrototypeOf(obj);
+            if (proto && proto !== Object.prototype) {
+                const hostResult = {};
+                const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
+                for (const key of propNames) {
+                    if (key === 'constructor')
+                        continue;
+                    try {
+                        const hostValue = obj[key];
+                        const hostType = typeof hostValue;
+                        if (hostValue === undefined || hostType === 'function')
+                            continue;
+                        if (hostType === 'string' || hostType === 'number' || hostType === 'boolean' || hostValue === null) {
+                            hostResult[key] = hostValue;
+                        }
+                    }
+                    catch {
+                        // Ignore getter access errors and continue.
+                    }
+                    if (Object.keys(hostResult).length >= 50)
+                        break;
+                }
+                if (Object.keys(hostResult).length > 0)
+                    return hostResult;
+            }
+        }
+        catch {
+            // Fall through to default enumeration.
+        }
+    }
     for (const key of keys) {
         try {
             result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);

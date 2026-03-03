@@ -63,9 +63,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       deps.setInactive()
       const tabId = deps.getTabId()
       if (tabId) {
-        chrome.tabs
-          .sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false })
-          .catch(() => {})
+        chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => {})
       }
       deps.clearRecordingState().catch(() => {})
     }

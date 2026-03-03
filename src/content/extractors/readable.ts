@@ -18,10 +18,26 @@ export interface ReadableResult {
 
 /** Tags and selectors to strip from content before extracting text. */
 const REMOVE_SELECTORS = [
-  'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-  '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]',
-  '.ad', '.ads', '.advertisement', '.social-share', '.comments', '.sidebar',
-  '.related-posts', '.newsletter'
+  'nav',
+  'header',
+  'footer',
+  'aside',
+  'script',
+  'style',
+  'noscript',
+  'svg',
+  '[role="navigation"]',
+  '[role="banner"]',
+  '[role="contentinfo"]',
+  '[aria-hidden="true"]',
+  '.ad',
+  '.ads',
+  '.advertisement',
+  '.social-share',
+  '.comments',
+  '.sidebar',
+  '.related-posts',
+  '.newsletter'
 ]
 
 /**

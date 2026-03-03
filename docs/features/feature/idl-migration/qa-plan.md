@@ -1,0 +1,18 @@
+---
+doc_type: qa-plan
+feature_id: feature-idl-migration
+status: draft
+last_reviewed: 2026-03-03
+---
+
+# IDL Migration QA Plan
+
+## Required Scenarios
+1. Generated wire outputs are deterministic across repeated runs.
+2. Drift check fails when generated artifacts are stale.
+3. MCP `tools/list` output remains schema-compatible after migration.
+4. Existing schema invariant tests continue passing.
+
+## Automated Targets
+- Generator check mode (`--check`)
+- `internal/schema/invariants_test.go`

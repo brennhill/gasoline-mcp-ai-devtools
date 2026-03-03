@@ -128,10 +128,10 @@ export const SettingName = {
   NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
   ACTION_TOASTS: 'setActionToastsEnabled',
   SUBTITLES: 'setSubtitlesEnabled',
-  SERVER_URL: 'setServerUrl',
+  SERVER_URL: 'setServerUrl'
 } as const
 
-export type SettingNameValue = typeof SettingName[keyof typeof SettingName]
+export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName]
 
 /** All valid setting names as a Set (for runtime validation) */
 export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
@@ -151,7 +151,7 @@ export const INJECT_FORWARDED_SETTINGS: ReadonlySet<string> = new Set<string>([
   SettingName.PERFORMANCE_SNAPSHOT,
   SettingName.DEFERRAL,
   SettingName.NETWORK_BODY_CAPTURE,
-  SettingName.SERVER_URL,
+  SettingName.SERVER_URL
 ])
 
 // =============================================================================
@@ -186,5 +186,5 @@ export const StorageKey = {
   PENDING_RECORDING: 'gasoline_pending_recording',
   PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
   MIC_GRANTED: 'gasoline_mic_granted',
-  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref'
 } as const

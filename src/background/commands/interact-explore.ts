@@ -20,8 +20,18 @@ function readableContentScript(): Record<string, unknown> {
     if (!el) return ''
     const clone = el.cloneNode(true) as Element
     const removeTags = [
-      'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-      '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]',
+      'nav',
+      'header',
+      'footer',
+      'aside',
+      'script',
+      'style',
+      'noscript',
+      'svg',
+      '[role="navigation"]',
+      '[role="banner"]',
+      '[role="contentinfo"]',
+      '[aria-hidden="true"]',
       '.ad,.ads,.advertisement,.social-share,.comments,.sidebar,.related-posts,.newsletter'
     ]
     for (const sel of removeTags) {
@@ -33,8 +43,16 @@ function readableContentScript(): Record<string, unknown> {
 
   function findMainContent(): { el: Element; text: string } {
     const candidates = [
-      'article', 'main', '[role="main"]', '.post-content', '.entry-content',
-      '.article-body', '.article-content', '.story-body', '#content', '.content'
+      'article',
+      'main',
+      '[role="main"]',
+      '.post-content',
+      '.entry-content',
+      '.article-body',
+      '.article-content',
+      '.story-body',
+      '#content',
+      '.content'
     ]
     for (const sel of candidates) {
       const el = document.querySelector(sel)
@@ -84,7 +102,9 @@ registerCommand('explore_page', async (ctx) => {
     if (targetUrl) {
       // Validate URL scheme — only http/https allowed (security: prevent javascript:/data:/chrome: injection)
       if (!/^https?:\/\//i.test(targetUrl)) {
-        throw new Error('Only http/https URLs are supported for explore_page navigation, got: ' + targetUrl.split(':')[0] + ':')
+        throw new Error(
+          'Only http/https URLs are supported for explore_page navigation, got: ' + targetUrl.split(':')[0] + ':'
+        )
       }
       // Register onUpdated listener BEFORE calling tabs.update to prevent race condition
       // where the page load completes before the listener is attached (#9.3.2, #9.7.5).
@@ -115,26 +135,34 @@ registerCommand('explore_page', async (ctx) => {
     // 2. Run all data collection in parallel — capture errors for _errors array (#9.7.4)
     const [interactiveResults, readableResults, navResults] = await Promise.all([
       // Interactive elements
-      chrome.scripting.executeScript({
-        target: { tabId: ctx.tabId, allFrames: true },
-        world: 'MAIN',
-        func: domPrimitiveListInteractive,
-        args: ['']
-      }).catch((err: Error) => [{ result: { success: false, error: err.message, _source: 'interactive' } }]),
+      chrome.scripting
+        .executeScript({
+          target: { tabId: ctx.tabId, allFrames: true },
+          world: 'MAIN',
+          func: domPrimitiveListInteractive,
+          args: ['']
+        })
+        .catch((err: Error) => [{ result: { success: false, error: err.message, _source: 'interactive' } }]),
 
       // Readable content
-      chrome.scripting.executeScript({
-        target: { tabId: ctx.tabId },
-        world: 'ISOLATED',
-        func: readableContentScript
-      }).catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
+      chrome.scripting
+        .executeScript({
+          target: { tabId: ctx.tabId },
+          world: 'ISOLATED',
+          func: readableContentScript
+        })
+        .catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
 
       // Navigation links (uses shared dom-primitives-nav-discovery)
-      chrome.scripting.executeScript({
-        target: { tabId: ctx.tabId },
-        world: 'ISOLATED',
-        func: domPrimitiveNavDiscovery
-      }).catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'navigation' } }])
+      chrome.scripting
+        .executeScript({
+          target: { tabId: ctx.tabId },
+          world: 'ISOLATED',
+          func: domPrimitiveNavDiscovery
+        })
+        .catch((err: Error) => [
+          { result: { error: 'extraction_failed', _reason: err.message, _source: 'navigation' } }
+        ])
     ])
 
     // Process interactive elements (capped at 100)
@@ -167,22 +195,18 @@ registerCommand('explore_page', async (ctx) => {
     }
 
     // Apply limit if specified
-    const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
-      ? ctx.params.limit
-      : cappedElements.length
+    const limit =
+      typeof ctx.params.limit === 'number' && ctx.params.limit > 0 ? ctx.params.limit : cappedElements.length
     const finalElements = cappedElements.slice(0, limit)
 
     // Process readable content
     const readableFirst = readableResults?.[0]?.result
-    const readable = readableFirst && typeof readableFirst === 'object'
-      ? readableFirst as Record<string, unknown>
-      : null
+    const readable =
+      readableFirst && typeof readableFirst === 'object' ? (readableFirst as Record<string, unknown>) : null
 
     // Process navigation links
     const navFirst = navResults?.[0]?.result
-    const navigation = navFirst && typeof navFirst === 'object'
-      ? navFirst as Record<string, unknown>
-      : null
+    const navigation = navFirst && typeof navFirst === 'object' ? (navFirst as Record<string, unknown>) : null
 
     // Build composite payload
     const payload: Record<string, unknown> = {

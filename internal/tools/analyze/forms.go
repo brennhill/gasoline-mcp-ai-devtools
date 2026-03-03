@@ -40,3 +40,22 @@ func ParseFormValidationArgs(args json.RawMessage) (*FormValidationArgs, error) 
 	}
 	return &params, nil
 }
+
+// DataTableArgs holds parsed arguments for table extraction queries.
+type DataTableArgs struct {
+	Selector string `json:"selector,omitempty"`
+	MaxRows  int    `json:"max_rows,omitempty"`
+	MaxCols  int    `json:"max_cols,omitempty"`
+	TabID    int    `json:"tab_id,omitempty"`
+}
+
+// ParseDataTableArgs validates and parses table extraction arguments.
+func ParseDataTableArgs(args json.RawMessage) (*DataTableArgs, error) {
+	var params DataTableArgs
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return nil, err
+		}
+	}
+	return &params, nil
+}

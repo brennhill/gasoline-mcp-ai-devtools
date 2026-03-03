@@ -40,8 +40,18 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
     messageType: SettingName.ACTION_REPLAY,
     default: true
   },
-  { id: 'toggle-screenshot', storageKey: StorageKey.SCREENSHOT_ON_ERROR, messageType: 'setScreenshotOnError', default: true },
-  { id: 'toggle-source-maps', storageKey: StorageKey.SOURCE_MAP_ENABLED, messageType: 'setSourceMapEnabled', default: true },
+  {
+    id: 'toggle-screenshot',
+    storageKey: StorageKey.SCREENSHOT_ON_ERROR,
+    messageType: 'setScreenshotOnError',
+    default: true
+  },
+  {
+    id: 'toggle-source-maps',
+    storageKey: StorageKey.SOURCE_MAP_ENABLED,
+    messageType: 'setSourceMapEnabled',
+    default: true
+  },
   {
     id: 'toggle-network-body-capture',
     storageKey: StorageKey.NETWORK_BODY_CAPTURE_ENABLED,

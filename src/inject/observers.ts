@@ -8,7 +8,11 @@
  * performance, and WebSocket events.
  */
 
-import { installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from '../lib/performance.js'
+import {
+  installPerformanceCapture,
+  uninstallPerformanceCapture,
+  setPerformanceMarksEnabled
+} from '../lib/performance.js'
 import { installPerfObservers } from '../lib/perf-snapshot.js'
 import {
   installWebSocketCapture,

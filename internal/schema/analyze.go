@@ -15,7 +15,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_validation", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
+					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -24,7 +24,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"selector": map[string]any{
 					"type":        "string",
-					"description": "CSS selector (dom, accessibility, computed_styles, forms)",
+					"description": "CSS selector (dom, accessibility, computed_styles, forms, form_state, data_table)",
 				},
 				"frame": map[string]any{
 					"description": "Target iframe: CSS selector, 0-based index, or \"all\" (dom, accessibility)",
@@ -85,6 +85,14 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				"max_workers": map[string]any{
 					"type":        "number",
 					"description": "Max concurrent workers (link_health)",
+				},
+				"max_rows": map[string]any{
+					"type":        "number",
+					"description": "Max rows to return per table (data_table)",
+				},
+				"max_cols": map[string]any{
+					"type":        "number",
+					"description": "Max columns to return per table (data_table)",
 				},
 				"checks": map[string]any{
 					"type":        "array",

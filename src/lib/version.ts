@@ -64,4 +64,3 @@ export function isVersionNewer(newer: string, older: string): boolean {
   const result = compareVersions(newer, older)
   return result === 1
 }
-

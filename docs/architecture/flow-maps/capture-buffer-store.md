@@ -11,7 +11,8 @@ owners:
 ## Scope
 
 Refactor `internal/capture` to group websocket/network/action ring-buffer state into
-`BufferStore`, reducing `Capture` field sprawl without changing behavior.
+`BufferStore`, and extension-log append/eviction/copy/clear behavior into
+`ExtensionLogBuffer` helpers, reducing `Capture` field sprawl without changing behavior.
 
 ## Entrypoints
 
@@ -29,6 +30,8 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 4. Eviction methods trim `c.buffers.*` slices and keep memory counters in sync.
 5. Accessor/read APIs expose cloned snapshots from `c.buffers.*` data.
 6. Clear/reset APIs zero `c.buffers.*` slices and counters.
+7. Extension log ingestion paths (`AddExtensionLogs`, sync ingest) call `ExtensionLogBuffer.append`.
+8. Extension log reads/clears use `ExtensionLogBuffer.snapshot` and `ExtensionLogBuffer.clear`.
 
 ## Error and Recovery Paths
 
@@ -46,12 +49,15 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 ## Code Paths
 
 - `internal/capture/buffer_store.go`
+- `internal/capture/extension_log_store.go`
 - `internal/capture/capture-struct.go`
 - `internal/capture/network_bodies.go`
 - `internal/capture/websocket.go`
 - `internal/capture/ws_connection_tracker.go`
 - `internal/capture/enhanced_actions.go`
 - `internal/capture/buffer_clear.go`
+- `internal/capture/extension_logs.go`
+- `internal/capture/sync_processing.go`
 - `internal/capture/accessor_*.go`
 - `internal/capture/memory.go`
 
@@ -61,12 +67,13 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/network_bodies_test.go`
 - `internal/capture/websocket_test.go`
 - `internal/capture/enhanced_actions_test.go`
+- `internal/capture/extension_log_store_test.go`
 - `internal/capture/coverage_boost_unit_test.go`
 - `internal/capture/test_helpers.go`
 
 ## Edit Guardrails
 
 1. New buffer fields should be added to `BufferStore`, not directly to `Capture`.
-2. Keep all `BufferStore` reads/writes under `Capture.mu` lock discipline.
+2. Keep all `BufferStore` and `ExtensionLogBuffer` reads/writes under `Capture.mu` lock discipline.
 3. Any counter reset behavior must be explicitly tested in `buffer_clear` and `memory` tests.
 4. Preserve compatibility of `Capture` public methods; do not expose `BufferStore` directly.

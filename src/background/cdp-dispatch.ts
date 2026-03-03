@@ -89,7 +89,7 @@ function charToKeyInfo(char: string): { key: string; code: string; keyCode: numb
     '/': { code: 'Slash', keyCode: 191 },
     '`': { code: 'Backquote', keyCode: 192 },
     // Shifted variants
-    '_': { code: 'Minus', keyCode: 189 },
+    _: { code: 'Minus', keyCode: 189 },
     '+': { code: 'Equal', keyCode: 187 },
     '{': { code: 'BracketLeft', keyCode: 219 },
     '}': { code: 'BracketRight', keyCode: 221 },
@@ -103,7 +103,7 @@ function charToKeyInfo(char: string): { key: string; code: string; keyCode: numb
     '!': { code: 'Digit1', keyCode: 49 },
     '@': { code: 'Digit2', keyCode: 50 },
     '#': { code: 'Digit3', keyCode: 51 },
-    '$': { code: 'Digit4', keyCode: 52 },
+    $: { code: 'Digit4', keyCode: 52 },
     '%': { code: 'Digit5', keyCode: 53 },
     '^': { code: 'Digit6', keyCode: 54 },
     '&': { code: 'Digit7', keyCode: 55 },
@@ -125,10 +125,7 @@ async function cdpSend(tabId: number, method: string, params: Record<string, unk
   await chrome.debugger.sendCommand({ tabId }, method, params)
 }
 
-async function resolveCoordinates(
-  tabId: number,
-  params: CDPActionParams
-): Promise<{ x: number; y: number }> {
+async function resolveCoordinates(tabId: number, params: CDPActionParams): Promise<{ x: number; y: number }> {
   if (typeof params.x === 'number' && typeof params.y === 'number') {
     return { x: params.x, y: params.y }
   }
@@ -145,10 +142,10 @@ async function resolveCoordinates(
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   })()`
 
-  const evalResult = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
+  const evalResult = (await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
     expression,
     returnByValue: true
-  }) as { result?: { value?: { x: number; y: number } | null } }
+  })) as { result?: { value?: { x: number; y: number } | null } }
 
   const coords = evalResult?.result?.value
   if (!coords) {
@@ -281,9 +278,7 @@ async function cdpKeyPress(tabId: number, params: CDPActionParams): Promise<Reco
 
 function parseCDPParams(query: PendingQuery): CDPActionParams | null {
   try {
-    const raw = typeof query.params === 'string'
-      ? JSON.parse(query.params)
-      : query.params
+    const raw = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
     if (!raw || typeof raw !== 'object' || !('action' in raw)) return null
     return raw as CDPActionParams
   } catch {
@@ -428,10 +423,7 @@ function cdpResolveAndPrepare(
 
 type ResolvedElement = NonNullable<ReturnType<typeof cdpResolveAndPrepare>>
 
-async function resolveElement(
-  tabId: number,
-  params: DOMActionParams
-): Promise<ResolvedElement | null> {
+async function resolveElement(tabId: number, params: DOMActionParams): Promise<ResolvedElement | null> {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     world: 'MAIN',
@@ -574,6 +566,11 @@ export async function tryCDPEscalation(
   params: DOMActionParams
 ): Promise<DOMResult | null> {
   if (!CDP_ESCALATABLE.has(action)) return null
+  // If CDP is unavailable in this runtime (tests, constrained extension contexts),
+  // skip escalation before any DOM probing so normal DOM primitives remain deterministic.
+  if (!chrome?.debugger?.attach || !chrome?.debugger?.sendCommand || !chrome?.debugger?.detach) {
+    return null
+  }
 
   const selector = params.selector || ''
   const startTime = Date.now()

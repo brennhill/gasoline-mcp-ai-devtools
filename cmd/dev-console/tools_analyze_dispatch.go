@@ -71,13 +71,19 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 
 	// Inspect and visual (#79, #81, #82)
 	"computed_styles": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolComputedStyles(req, args)
+		return toolComputedStyles(h, req, args)
 	},
 	"forms": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolFormDiscovery(req, args)
+		return toolFormDiscovery(h, req, args)
+	},
+	"form_state": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return toolFormState(h, req, args)
 	},
 	"form_validation": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolFormValidation(req, args)
+		return toolFormValidation(h, req, args)
+	},
+	"data_table": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return toolDataTable(h, req, args)
 	},
 	"visual_baseline": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolVisualBaseline(req, args)
