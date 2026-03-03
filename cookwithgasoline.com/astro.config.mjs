@@ -7,7 +7,8 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Gasoline MCP',
-      description: 'Enabling Full-stack Automated AI Debugging. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant.',
+      description:
+        'Browser automation, debugging, demo recording, and interactive web development for MCP-compatible AI agents.',
       logo: {
         src: './src/assets/logo.png',
         alt: 'Gasoline MCP',
@@ -46,6 +47,8 @@ export default defineConfig({
             { label: 'Downloads', slug: 'downloads' },
             { label: 'Quick Start', slug: 'getting-started' },
             { label: 'Features', slug: 'features' },
+            { label: 'Discover Workflows', slug: 'discover-workflows' },
+            { label: 'Articles', slug: 'articles' },
           ],
         },
         {
@@ -65,6 +68,7 @@ export default defineConfig({
         {
           label: 'Tool Reference',
           items: [
+            { label: 'Reference Overview', slug: 'reference' },
             { label: 'observe()', slug: 'reference/observe' },
             { label: 'analyze()', slug: 'reference/analyze' },
             { label: 'generate()', slug: 'reference/generate' },

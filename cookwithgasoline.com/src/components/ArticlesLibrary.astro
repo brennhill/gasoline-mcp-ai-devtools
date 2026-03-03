@@ -1,0 +1,151 @@
+---
+import { getCollection } from 'astro:content';
+import { resolveDocSlug } from '../utils/contentSlugs';
+
+const stripMarkdown = (content: string) =>
+  content
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/[#>*_~-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const docs = await getCollection('docs');
+const blogEntries = docs.filter((entry) => resolveDocSlug(entry).startsWith('blog/'));
+
+const articles = blogEntries
+  .map((entry) => {
+    const slug = resolveDocSlug(entry);
+    const parsedDate = entry.data.date ? new Date(entry.data.date) : new Date(0);
+    const tags = Array.isArray(entry.data.tags) ? entry.data.tags.map((tag) => String(tag)) : [];
+    const excerptSource = String(entry.data.description || '').trim() || stripMarkdown(entry.body).slice(0, 260);
+
+    return {
+      slug: `/${slug}/`,
+      title: entry.data.title || 'Untitled Article',
+      excerpt: excerptSource,
+      dateISO: Number.isNaN(parsedDate.getTime()) ? '1970-01-01T00:00:00.000Z' : parsedDate.toISOString(),
+      dateLabel: Number.isNaN(parsedDate.getTime())
+        ? 'Unknown date'
+        : parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      tags,
+      primaryTag: tags[0] || 'update',
+    };
+  })
+  .sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+
+const allTags = ['all', ...new Set(articles.flatMap((article) => article.tags.map((tag) => tag.toLowerCase())))];
+---
+
+<section class="articles-library-shell" data-articles-library>
+  <div class="articles-library-hero">
+    <p class="landing-eyebrow">ARTICLES</p>
+    <h2>Shipping notes, deep dives, and practical playbooks</h2>
+    <p>
+      Keep the marketing voice and technical guidance in one place. Every article also gets an agent-friendly markdown route.
+    </p>
+  </div>
+
+  <div class="articles-controls">
+    <label class="search-control">
+      <span class="sr-only">Search articles</span>
+      <input
+        type="search"
+        placeholder="Search articles..."
+        data-article-search
+        autocomplete="off"
+      />
+    </label>
+
+    <label>
+      <span class="sr-only">Filter tag</span>
+      <select data-article-tag>
+        {
+          allTags.map((tag) => (
+            <option value={tag}>{tag === 'all' ? 'All topics' : tag}</option>
+          ))
+        }
+      </select>
+    </label>
+
+    <p class="articles-count" data-article-count>
+      Showing {articles.length} of {articles.length} articles
+    </p>
+  </div>
+
+  <div class="articles-grid" data-articles-grid>
+    {
+      articles.map((article) => (
+        <article
+          class="article-card"
+          data-article-card
+          data-date={article.dateISO}
+          data-search={`${article.title} ${article.excerpt} ${article.tags.join(' ')}`.toLowerCase()}
+          data-tags={article.tags.map((tag) => tag.toLowerCase()).join(',')}
+        >
+          <div class="article-card-top">
+            <span class="article-tag">{article.primaryTag}</span>
+            <time datetime={article.dateISO}>{article.dateLabel}</time>
+          </div>
+          <h2>{article.title}</h2>
+          <p>{article.excerpt}</p>
+          <div class="article-card-bottom">
+            <a href={article.slug}>Read article</a>
+            <a href={`${article.slug.replace(/\/$/, '')}.md`} class="article-md-link">Agent markdown</a>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+
+  <p class="article-empty" data-article-empty hidden>No articles match this query. Try another term or tag.</p>
+</section>
+
+<script>
+  const root = document.querySelector('[data-articles-library]');
+
+  if (root) {
+    const searchInput = root.querySelector('[data-article-search]');
+    const tagFilter = root.querySelector('[data-article-tag]');
+    const cards = Array.from(root.querySelectorAll('[data-article-card]'));
+    const countLabel = root.querySelector('[data-article-count]');
+    const emptyState = root.querySelector('[data-article-empty]');
+
+    const applyFilters = () => {
+      if (!searchInput || !tagFilter || !countLabel || !emptyState) {
+        return;
+      }
+
+      const query = searchInput.value.trim().toLowerCase();
+      const selectedTag = tagFilter.value;
+
+      const visibleCards = cards.filter((card) => {
+        const searchBlob = card.dataset.search || '';
+        const tagBlob = card.dataset.tags || '';
+        const queryMatch = !query || searchBlob.includes(query);
+        const tagMatch = selectedTag === 'all' || tagBlob.split(',').includes(selectedTag);
+        return queryMatch && tagMatch;
+      });
+
+      visibleCards.sort((a, b) => (b.dataset.date || '').localeCompare(a.dataset.date || ''));
+
+      cards.forEach((card) => {
+        card.hidden = true;
+      });
+
+      visibleCards.forEach((card, index) => {
+        card.hidden = false;
+        card.style.order = String(index);
+      });
+
+      countLabel.textContent = `Showing ${visibleCards.length} of ${cards.length} articles`;
+      emptyState.hidden = visibleCards.length > 0;
+    };
+
+    searchInput?.addEventListener('input', applyFilters);
+    tagFilter?.addEventListener('change', applyFilters);
+    applyFilters();
+  }
+</script>

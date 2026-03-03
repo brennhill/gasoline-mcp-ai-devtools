@@ -51,3 +51,4 @@ Each flow map should include:
 - [Test Generation Dispatch](./test-generation-dispatch.md)
 - [Issue Reporting Submission](./issue-reporting-submission.md)
 - [Annotation Detail Enrichment](./annotation-detail-enrichment.md)
+- [Cookwithgasoline Content Publishing and Agent Markdown](./cookwithgasoline-content-publishing-and-agent-markdown.md)

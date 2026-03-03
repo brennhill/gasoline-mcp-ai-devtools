@@ -1,6 +1,6 @@
 import type { APIRoute, GetStaticPaths } from 'astro';
 import { getCollection } from 'astro:content';
-import { resolveDocSlug } from '../../utils/contentSlugs';
+import { resolveDocSlug } from '../utils/contentSlugs';
 
 export const prerender = true;
 
@@ -11,22 +11,24 @@ function toYamlString(value: unknown) {
   return `'${text}'`;
 }
 
-const slugToPath = (slug: string | undefined) => slug || 'index';
-
 function renderFrontmatter(entry: any) {
   const title = entry.data?.title ?? 'Gasoline MCP';
   const description = entry.data?.description ?? entry.data?.summary ?? '';
   const resolvedSlug = resolveDocSlug(entry);
+  const canonicalPath = resolvedSlug === '' ? '/' : `/${resolvedSlug}/`;
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\n---`;
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\n---`;
+}
+
+function findEntryBySlugPath(docs: any[], slugPath: string) {
+  return docs.find((doc) => resolveDocSlug(doc) === slugPath);
 }
 
 export const GET: APIRoute = async ({ params }) => {
   const docs = await getCollection('docs');
-  const slugPath = slugToPath(params.slug as string | undefined);
-  const requestedSlug = slugPath === 'index' ? '' : slugPath;
+  const slugPath = (params.slug as string | undefined) || '';
 
-  const entry = docs.find((doc) => resolveDocSlug(doc) === requestedSlug);
+  const entry = findEntryBySlugPath(docs, slugPath);
   if (!entry) {
     return new Response('# Not found\n', {
       status: 404,
@@ -53,6 +55,10 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
   return docs
     .map((doc) => resolveDocSlug(doc))
-    .map((slug) => (slug === '' ? 'index' : slug))
-    .map((slug) => ({ params: { slug } }));
+    .filter((slug) => slug !== '')
+    .map((slug) => ({
+      params: {
+        slug,
+      },
+    }));
 };
