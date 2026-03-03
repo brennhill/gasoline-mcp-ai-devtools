@@ -516,7 +516,7 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 99, ClientID: "client-a"}
 
-	disabled := env.handler.handleRecordStart(req, json.RawMessage(`{"name":"x"}`))
+	disabled := env.handler.recordingInteractHandler.handleRecordStart(req, json.RawMessage(`{"name":"x"}`))
 	disabledResult := parseToolResult(t, disabled)
 	if !disabledResult.IsError {
 		t.Fatal("expected record_start to fail when pilot is disabled")
@@ -524,13 +524,13 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 
 	env.capture.SetPilotEnabled(true)
 
-	invalidAudio := env.handler.handleRecordStart(req, json.RawMessage(`{"audio":"speaker"}`))
+	invalidAudio := env.handler.recordingInteractHandler.handleRecordStart(req, json.RawMessage(`{"audio":"speaker"}`))
 	invalidAudioResult := parseToolResult(t, invalidAudio)
 	if !invalidAudioResult.IsError {
 		t.Fatal("expected invalid audio mode to return error")
 	}
 
-	startResp := env.handler.handleRecordStart(req, json.RawMessage(`{"name":"My Video","fps":120,"audio":"tab","tab_id":7}`))
+	startResp := env.handler.recordingInteractHandler.handleRecordStart(req, json.RawMessage(`{"name":"My Video","fps":120,"audio":"tab","tab_id":7}`))
 	startResult := parseToolResult(t, startResp)
 	startData := parseResponseJSON(t, startResult)
 
@@ -575,7 +575,7 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 		t.Fatalf("start query params = %s, want record_start action", string(paramsJSON))
 	}
 
-	stopBeforeReady := env.handler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
+	stopBeforeReady := env.handler.recordingInteractHandler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
 	stopBeforeReadyResult := parseToolResult(t, stopBeforeReady)
 	if !stopBeforeReadyResult.IsError {
 		t.Fatal("record_stop should fail fast while record_start is still awaiting user gesture")
@@ -591,7 +591,7 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 
 	env.capture.ApplyCommandResult(startCorrelationID, "complete", json.RawMessage(`{"status":"recording","name":"My Video"}`), "")
 
-	stopResp := env.handler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
+	stopResp := env.handler.recordingInteractHandler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
 	stopResult := parseToolResult(t, stopResp)
 	stopData := parseResponseJSON(t, stopResult)
 	if stopData["status"] != "queued" {

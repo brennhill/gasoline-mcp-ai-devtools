@@ -106,6 +106,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 
 	// Initialize upload security config from package-level var set by CLI.
 	handler.uploadSecurity = uploadSecurityConfig
+	handler.recordingInteractHandler = newRecordingInteractHandler(handler)
 
 	// Initialize dispatch modules and tool schemas once at startup.
 	handler.ensureToolModules()
