@@ -19,6 +19,7 @@ import type { ConnectionStatus } from './state.js'
 import type { BrowserStateSnapshot, StateAction } from './state.js'
 import type { DomQueryResult } from './dom.js'
 import type { A11yAuditResult } from './accessibility.js'
+import type { RuntimeMessageName } from '../lib/constants.js'
 
 // =============================================================================
 // BACKGROUND MESSAGE TYPES (chrome.runtime messages)
@@ -469,6 +470,13 @@ export interface RecordingWatermarkMessage {
 }
 
 /**
+ * Request content launcher re-show after user reopens popup.
+ */
+export interface ShowTrackedHoverLauncherMessage {
+  readonly type: typeof RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
+}
+
+/**
  * Union of all content-script-bound messages
  */
 export type ContentMessage =
@@ -488,6 +496,7 @@ export type ContentMessage =
   | ActionToastMessage
   | SubtitleMessage
   | RecordingWatermarkMessage
+  | ShowTrackedHoverLauncherMessage
   | DrawModeStartMessage
   | DrawModeStopMessage
   | GetAnnotationsMessage

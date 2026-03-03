@@ -136,6 +136,14 @@ export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName]
 /** All valid setting names as a Set (for runtime validation) */
 export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
 
+// =============================================================================
+// RUNTIME MESSAGE NAMES — Shared one-off message names used across contexts.
+// =============================================================================
+
+export const RuntimeMessageName = {
+  SHOW_TRACKED_HOVER_LAUNCHER: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER'
+} as const
+
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
  * These are the settings that the inject script knows how to handle.
@@ -183,6 +191,7 @@ export const StorageKey = {
   ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
   SUBTITLES_ENABLED: 'subtitlesEnabled',
   RECORDING: 'gasoline_recording',
+  TRACKED_HOVER_LAUNCHER_HIDDEN: 'gasoline_tracked_hover_launcher_hidden',
   PENDING_RECORDING: 'gasoline_pending_recording',
   PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
   MIC_GRANTED: 'gasoline_mic_granted',

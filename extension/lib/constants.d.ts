@@ -71,9 +71,12 @@ export declare const SettingName: {
     readonly SUBTITLES: "setSubtitlesEnabled";
     readonly SERVER_URL: "setServerUrl";
 };
-export type SettingNameValue = typeof SettingName[keyof typeof SettingName];
+export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
 /** All valid setting names as a Set (for runtime validation) */
 export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
+export declare const RuntimeMessageName: {
+    readonly SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
+};
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
  * These are the settings that the inject script knows how to handle.
@@ -106,6 +109,7 @@ export declare const StorageKey: {
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
     readonly RECORDING: "gasoline_recording";
+    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
     readonly PENDING_RECORDING: "gasoline_pending_recording";
     readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
     readonly MIC_GRANTED: "gasoline_mic_granted";
