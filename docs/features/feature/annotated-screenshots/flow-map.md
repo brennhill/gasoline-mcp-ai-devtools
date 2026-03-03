@@ -11,4 +11,4 @@ last_reviewed: 2026-03-03
 This feature's canonical flow maps:
 
 - **Annotation Detail Enrichment:** [annotation-detail-enrichment.md](../../../architecture/flow-maps/annotation-detail-enrichment.md) — parent context, siblings, CSS framework detection, error correlation, LLM hints
-- **Annotation Waiter and Flush:** [analyze-annotations-waiter-and-flush.md](../../../architecture/flow-maps/analyze-annotations-waiter-and-flush.md) — blocking wait, async polling, flush recovery
+- **Annotation Waiter and Flush:** [analyze-annotations-waiter-and-flush.md](../../../architecture/flow-maps/analyze-annotations-waiter-and-flush.md) — blocking wait, async polling, flush recovery, and cross-project URL scoping safety

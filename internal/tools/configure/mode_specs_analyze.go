@@ -42,7 +42,7 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 	},
 	"annotations": {
 		Hint:     "List annotations from a draw/annotation session",
-		Optional: []string{"annot_session", "wait", "timeout_ms"},
+		Optional: []string{"annot_session", "wait", "timeout_ms", "url", "url_pattern"},
 	},
 	"annotation_detail": {
 		Hint:     "Full DOM/style details for a specific annotation",
