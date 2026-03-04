@@ -750,6 +750,78 @@ func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing
 }
 
 // ============================================
+// interact(action:"list_interactive") — near_x/near_y/near_radius → scope_rect conversion (#448)
+// ============================================
+
+func TestToolsInteractDOMPrimitive_NearParamsConvertToScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	resp := callInteractRaw(h, `{"what":"list_interactive","near_x":500,"near_y":300,"near_radius":150}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("list_interactive with near params should queue, got error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for list_interactive")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	scopeRect, ok := payload["scope_rect"].(map[string]any)
+	if !ok {
+		t.Fatalf("scope_rect missing from payload — near_x/near_y/near_radius should convert to scope_rect: %s", string(pq.Params))
+	}
+	// near_x=500, near_y=300, near_radius=150 → scope_rect={x:350, y:150, width:300, height:300}
+	if x, _ := scopeRect["x"].(float64); x != 350 {
+		t.Errorf("scope_rect.x = %v, want 350", x)
+	}
+	if y, _ := scopeRect["y"].(float64); y != 150 {
+		t.Errorf("scope_rect.y = %v, want 150", y)
+	}
+	if w, _ := scopeRect["width"].(float64); w != 300 {
+		t.Errorf("scope_rect.width = %v, want 300", w)
+	}
+	if h, _ := scopeRect["height"].(float64); h != 300 {
+		t.Errorf("scope_rect.height = %v, want 300", h)
+	}
+}
+
+func TestToolsInteractDOMPrimitive_NearParamsDoNotOverrideScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	// Explicit scope_rect takes precedence over near params
+	resp := callInteractRaw(h, `{"what":"list_interactive","near_x":500,"near_y":300,"near_radius":150,"scope_rect":{"x":0,"y":0,"width":100,"height":100}}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("unexpected error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	scopeRect := payload["scope_rect"].(map[string]any)
+	if x, _ := scopeRect["x"].(float64); x != 0 {
+		t.Errorf("explicit scope_rect.x should be preserved, got %v", x)
+	}
+}
+
+// ============================================
 // interact(action:"save_state") — Response Fields
 // ============================================
 

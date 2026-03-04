@@ -102,6 +102,7 @@ export interface DOMResult {
     overlay_selector?: string;
     overlay_text_preview?: string;
     overlay_warning?: string;
+    overlay_source?: 'extension' | 'page';
     stable?: boolean;
     timed_out?: boolean;
     waited_ms?: number;

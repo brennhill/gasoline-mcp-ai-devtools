@@ -321,6 +321,8 @@
     requestedScope: string,
     activeScope: ParentNode
   ): { element?: Element; error?: DOMResult; match_count?: number; match_strategy?: string; scope_selector_used?: string } {
+    // #444: Shared TTL for dismiss loop detection across dismiss_top_overlay and auto_dismiss_overlays
+    const dismissStampTTL = 30000 // 30 seconds
     const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply|confirm|yes|allow|accept)/i
     const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i
     const composerVerb = /(start( a)? post|create post|write (a )?post|what'?s on your mind|share( an)? update|compose|new post)/i
@@ -445,6 +447,28 @@
         return {
           error: domError('overlay_not_found', 'No visible dialog/overlay/modal found to dismiss.')
         }
+      }
+
+      // #444: Dismiss loop detection — check if this overlay was already attempted
+      const priorStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+      if (priorStamp) {
+        const elapsed = Date.now() - Number(priorStamp)
+        if (elapsed < dismissStampTTL) {
+          const info = describeOverlay(overlayElement)
+          const loopError = domError(
+            'dismiss_loop_detected',
+            `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
+            'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
+            'navigate away, or ignore it if it does not block interaction.'
+          )
+          loopError.overlay_type = info.overlay_type
+          loopError.overlay_selector = info.overlay_selector
+          loopError.overlay_text_preview = info.overlay_text_preview
+          loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
+          return { error: loopError }
+        }
+        // Stale stamp — clear it and proceed
+        overlayElement.removeAttribute('data-gasoline-dismiss-ts')
       }
 
       // Strategy A: Try expanded close button selectors within the overlay
@@ -582,6 +606,26 @@
       // Strategy 2: Fall back to dismiss_top_overlay multi-strategy approach
       const overlayElement = findTopmostOverlay()
       if (overlayElement) {
+        // #444: Dismiss loop detection — same check as dismiss_top_overlay
+        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+        if (priorAutoStamp) {
+          const elapsed = Date.now() - Number(priorAutoStamp)
+          if (elapsed < dismissStampTTL) {
+            const info = describeOverlay(overlayElement)
+            const loopError = domError(
+              'dismiss_loop_detected',
+              `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
+              'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
+              'navigate away, or ignore it if it does not block interaction.'
+            )
+            loopError.overlay_type = info.overlay_type
+            loopError.overlay_selector = info.overlay_selector
+            loopError.overlay_text_preview = info.overlay_text_preview
+            loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
+            return { error: loopError }
+          }
+          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+        }
         // Reuse the dismiss_top_overlay strategy chain
         const closeButtonSelectors = [
           'button.close', '.btn-close',
@@ -707,4 +751,35 @@
     })()
     const textPreview = ((el as HTMLElement).textContent || '').trim().slice(0, 120)
     return { overlay_type: overlayType, overlay_selector: overlaySelector, overlay_text_preview: textPreview }
+  }
+
+  // #445: Detect if an overlay was injected by a browser extension
+  function detectExtensionOverlay(el: Element): boolean {
+    // Check for chrome-extension:// URLs in iframes or resource links within the overlay
+    const iframes = el instanceof HTMLElement ? el.querySelectorAll('iframe, img, script, link') : []
+    for (let i = 0; i < iframes.length; i++) {
+      const child = iframes[i]!
+      const src = child.getAttribute('src') || child.getAttribute('href') || ''
+      if (src.startsWith('chrome-extension://') || src.startsWith('moz-extension://')) return true
+    }
+    // Check if the element is inside a shadow DOM hosted by a custom element
+    // (extensions often inject shadow DOMs for style isolation).
+    // Walk up through shadow boundaries by jumping to the host element.
+    let node: Node | null = el
+    while (node) {
+      const root: Node | null = typeof node.getRootNode === 'function' ? node.getRootNode() : null
+      if (root && root !== document && root instanceof ShadowRoot) {
+        const host: Element | undefined = (root as ShadowRoot & { host?: Element }).host
+        if (host) {
+          const hostTag = host.tagName?.toLowerCase() || ''
+          // Extension-injected elements typically use custom element names
+          if (hostTag.includes('-') && !hostTag.startsWith('slot')) return true
+          // Cross the shadow boundary to continue walking up the tree
+          node = host
+          continue
+        }
+      }
+      node = (node as Element).parentElement || null
+    }
+    return false
   }

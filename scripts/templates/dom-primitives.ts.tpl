@@ -1131,6 +1131,15 @@ export function domPrimitive(
           })()
           const overlayInfo = describeOverlay(overlayEl)
 
+          // #444: Stamp overlay with dismiss timestamp for loop detection
+          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
+            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
+          }
+
+          // #445: Detect extension-sourced overlays
+          const extSource = detectExtensionOverlay(overlayEl)
+          const sourceInfo = extSource ? { overlay_source: 'extension' as const } : { overlay_source: 'page' as const }
+
           // Strategy: escape_fallback — dispatch Escape key instead of clicking
           if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
             const escKb: KeyboardEventInit & { keyCode?: number } = {
@@ -1144,7 +1153,8 @@ export function domPrimitive(
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               strategy: 'escape_key',
-              ...overlayInfo
+              ...overlayInfo,
+              ...sourceInfo
             })
           }
 
@@ -1163,7 +1173,8 @@ export function domPrimitive(
           return mutatingSuccess(node, {
             strategy,
             selector_used: selector || resolvedMatchStrategy,
-            ...overlayInfo
+            ...overlayInfo,
+            ...sourceInfo
           })
         }),
 
@@ -1180,6 +1191,15 @@ export function domPrimitive(
           })()
           const overlayInfo = describeOverlay(overlayEl)
 
+          // #444: Stamp overlay with dismiss timestamp for loop detection
+          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
+            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
+          }
+
+          // #445: Detect extension-sourced overlays
+          const extSource = detectExtensionOverlay(overlayEl)
+          const sourceInfo = extSource ? { overlay_source: 'extension' as const } : { overlay_source: 'page' as const }
+
           // Strategy: escape_fallback — dispatch Escape key instead of clicking
           if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
             const escKb: KeyboardEventInit & { keyCode?: number } = {
@@ -1193,7 +1213,8 @@ export function domPrimitive(
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',
-              ...overlayInfo
+              ...overlayInfo,
+              ...sourceInfo
             })
           }
 
@@ -1210,7 +1231,8 @@ export function domPrimitive(
             dismissed_count: 1,
             strategy,
             selector_used: selector || resolvedMatchStrategy,
-            ...overlayInfo
+            ...overlayInfo,
+            ...sourceInfo
           })
         }),
 

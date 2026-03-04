@@ -258,7 +258,11 @@
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          const target = interactive || parent
+          // #443: If no interactive ancestor, check for an interactive child element
+          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
+            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
+            : null
+          const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target) || !isVisible(target)) continue
           if (!seen.has(target)) {
             seen.add(target)
@@ -330,7 +334,11 @@
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          const target = interactive || parent
+          // #443: If no interactive ancestor, check for an interactive child element
+          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
+            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
+            : null
+          const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target)) continue
           if (!fallback) fallback = target
           if (isVisible(target)) return target

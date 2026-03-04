@@ -372,6 +372,7 @@ export function domPrimitiveListInteractive(
     bbox: { x: number; y: number; width: number; height: number }
     visible: boolean
     in_overlay?: boolean
+    distance_px?: number // #448: distance from scope_rect center
   }[] = []
 
   // First pass: collect raw entries with their base selectors
@@ -389,6 +390,7 @@ export function domPrimitiveListInteractive(
     bbox: { x: number; y: number; width: number; height: number }
     visible: boolean
     inOverlay: boolean
+    distance_px?: number // #448: computed when scopeRect is present
   }[] = []
 
   const scopeRoot = resolveScopeRoot(scopeSelector)
@@ -510,20 +512,39 @@ export function domPrimitiveListInteractive(
     }
   }
 
-  // Sort spatially: visible elements in reading order (top-to-bottom, left-to-right),
-  // invisible elements at the end. Elements within 10px vertically are treated as same row.
-  const ROW_THRESHOLD = 10
-  finalEntries.sort((a, b) => {
-    if (a.visible && !b.visible) return -1
-    if (!a.visible && b.visible) return 1
-    if (!a.visible && !b.visible) return 0
-    const sameRow = Math.abs(a.bbox.y - b.bbox.y) <= ROW_THRESHOLD
-    if (sameRow) return a.bbox.x - b.bbox.x
-    return a.bbox.y - b.bbox.y
-  })
+  // #448: When scope_rect is provided, compute distance from center and sort by proximity.
+  // Otherwise, sort spatially in reading order (top-to-bottom, left-to-right).
+  if (scopeRect) {
+    const centerX = scopeRect.x + scopeRect.width / 2
+    const centerY = scopeRect.y + scopeRect.height / 2
+    for (const entry of finalEntries) {
+      const elCenterX = entry.bbox.x + entry.bbox.width / 2
+      const elCenterY = entry.bbox.y + entry.bbox.height / 2
+      const dx = elCenterX - centerX
+      const dy = elCenterY - centerY
+      entry.distance_px = Math.round(Math.sqrt(dx * dx + dy * dy))
+    }
+    finalEntries.sort((a, b) => {
+      if (a.visible && !b.visible) return -1
+      if (!a.visible && b.visible) return 1
+      return (a.distance_px || 0) - (b.distance_px || 0)
+    })
+  } else {
+    // Default: spatial reading order
+    const ROW_THRESHOLD = 10
+    finalEntries.sort((a, b) => {
+      if (a.visible && !b.visible) return -1
+      if (!a.visible && b.visible) return 1
+      if (!a.visible && !b.visible) return 0
+      const sameRow = Math.abs(a.bbox.y - b.bbox.y) <= ROW_THRESHOLD
+      if (sameRow) return a.bbox.x - b.bbox.x
+      return a.bbox.y - b.bbox.y
+    })
+  }
 
   for (let i = 0; i < finalEntries.length; i++) {
     const entry = finalEntries[i]!
+    const distPx = entry.distance_px
     elements.push({
       index: i,
       tag: entry.tag,
@@ -536,6 +557,7 @@ export function domPrimitiveListInteractive(
       placeholder: entry.placeholder,
       bbox: entry.bbox,
       visible: entry.visible,
+      ...(distPx !== undefined ? { distance_px: distPx } : {}),
       ...(entry.inOverlay ? { in_overlay: true } : {})
     })
   }

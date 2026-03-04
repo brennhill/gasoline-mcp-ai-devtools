@@ -36,11 +36,39 @@ func normalizeDOMActionArgs(args json.RawMessage, action string) json.RawMessage
 			payload["scope_rect"] = annotationRect
 		}
 	}
+	// #448: Convert near_x/near_y/near_radius to scope_rect for region-scoped discovery
+	if _, hasScopeRect := payload["scope_rect"]; !hasScopeRect {
+		nearX, hasX := toFloat64(payload["near_x"])
+		nearY, hasY := toFloat64(payload["near_y"])
+		nearR, hasR := toFloat64(payload["near_radius"])
+		if hasX && hasY && hasR && nearR > 0 {
+			payload["scope_rect"] = map[string]any{
+				"x":      nearX - nearR,
+				"y":      nearY - nearR,
+				"width":  nearR * 2,
+				"height": nearR * 2,
+			}
+		}
+	}
 	normalized, err := json.Marshal(payload)
 	if err != nil {
 		return args
 	}
 	return normalized
+}
+
+// toFloat64 extracts a float64 from an any value (handles int, float64, json.Number).
+func toFloat64(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
+	}
+	return 0, false
 }
 
 func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
