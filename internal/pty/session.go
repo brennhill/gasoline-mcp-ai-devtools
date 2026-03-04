@@ -251,10 +251,25 @@ func (s *Session) Scrollback() []byte {
 	return out
 }
 
+
 // Pid returns the child process PID, or -1 if not started.
 func (s *Session) Pid() int {
 	if s.cmd.Process == nil {
 		return -1
 	}
 	return s.cmd.Process.Pid
+}
+
+// ForceRedraw sends SIGWINCH to the child process, forcing TUI applications
+// to redraw. Used on WebSocket reconnect where the terminal dimensions may
+// not have changed (so TIOCSWINSZ alone wouldn't trigger SIGWINCH).
+func (s *Session) ForceRedraw() {
+	s.mu.Lock() // lint:manual-unlock — unlock before signal
+	if s.closed || s.cmd.Process == nil {
+		s.mu.Unlock()
+		return
+	}
+	proc := s.cmd.Process
+	s.mu.Unlock()
+	_ = proc.Signal(syscall.SIGWINCH)
 }

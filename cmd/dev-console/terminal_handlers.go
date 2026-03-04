@@ -142,6 +142,10 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 				return
 			}
 		}
+		// Force TUI redraw after scrollback replay. The client sends a resize
+		// on connect, but if dimensions haven't changed TIOCSWINSZ won't trigger
+		// SIGWINCH. Explicit SIGWINCH ensures TUI apps (Claude, etc.) redraw.
+		sess.ForceRedraw()
 	}
 
 	terminalWSLoop(conn, bufrw, sess)
@@ -173,22 +177,23 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	}()
 
 	// WebSocket → PTY (upstream): read frames and dispatch.
-	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, sess.Close() handles teardown
+	// NOTE: Do NOT call sess.Close() on WebSocket disconnect — the session
+	// must survive page refreshes so the browser can reconnect with scrollback replay.
+	// Sessions are only killed explicitly via POST /terminal/stop (the Exit button).
+	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn
 		for {
 			_ = conn.SetReadDeadline(time.Now().Add(terminalWSIdleTimeout))
 
 			fin, opcode, payload, err := wsReadFrame(rw)
 			if err != nil {
-				sess.Close()
-				return
+				return // WebSocket closed — stop relaying but keep PTY alive
 			}
 			_ = fin // Terminal messages are not fragmented in practice.
 
 			switch {
 			case opcode == 0x8: // Close
 				_ = wsWriteFrame(rw, 0x8, nil)
-				sess.Close()
-				return
+				return // WebSocket closed — stop relaying but keep PTY alive
 			case opcode == 0x9: // Ping → Pong
 				_ = wsWriteFrame(rw, 0xA, payload)
 			case opcode == 0x2: // Binary — raw keystrokes → PTY stdin

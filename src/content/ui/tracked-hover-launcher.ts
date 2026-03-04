@@ -198,7 +198,7 @@ function formatAnnotationsForTerminal(annotations: AnnotationDetail[], pageUrl: 
     lines.push(`${i + 1}. "${text}" — ${sel}${loc}`)
   }
   lines.push('')
-  lines.push('A screenshot with the annotations is available via observe(what="screenshot").')
+  lines.push('The annotations are available via analyze(what="annotations").')
   lines.push('')
   return lines.join('\n')
 }

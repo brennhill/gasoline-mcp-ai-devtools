@@ -46,6 +46,11 @@ async function initializeExtensionAsync() {
         }
         // Mark the current state version
         await markStateVersion();
+        // Allow content scripts to access chrome.storage.session (required for terminal state persistence).
+        // Without this, content scripts silently fail to read/write session storage.
+        if (chrome.storage.session?.setAccessLevel) {
+            await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
+        }
         // ============= STEP 2: Load debug mode =============
         const debugEnabled = await loadDebugModeState();
         setDebugMode(debugEnabled);
