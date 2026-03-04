@@ -4,7 +4,7 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 code_paths:
   - cmd/dev-console/tools_interact_action_handler.go
   - cmd/dev-console/tools_interact_entrypoint.go
@@ -44,6 +44,13 @@ code_paths:
   - src/background/dom-primitives.ts
   - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
+  - src/background/dom-primitives-list-interactive.ts
+  - scripts/templates/partials/_dom-intent.tpl
+  - scripts/templates/partials/_dom-selectors.tpl
+  - scripts/templates/dom-primitives.ts.tpl
+  - cmd/dev-console/tools_async_result_normalization.go
+  - cmd/dev-console/tools_async_formatting.go
+  - cmd/dev-console/tools_summary_pref.go
 test_paths:
   - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_interact_rich_test.go
@@ -59,6 +66,8 @@ test_paths:
   - tests/extension/execute-js.test.js
   - internal/tools/interact/workflow_test.go
   - internal/tools/configure/mode_specs_test.go
+  - extension/background/dom-primitives-overlay.test.js
+  - cmd/dev-console/tools_async_enrich_test.go
 ---
 
 # Interact Tool

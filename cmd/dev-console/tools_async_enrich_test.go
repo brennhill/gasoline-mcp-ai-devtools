@@ -548,3 +548,68 @@ func TestAnnotateInteractFailureRecovery_BlockedByOverlay(t *testing.T) {
 		t.Error("hint should be present for blocked_by_overlay")
 	}
 }
+
+// ============================================
+// stripSummaryModeFields tests (#447)
+// ============================================
+
+func TestStripSummaryModeFields_RemovesVerboseFields(t *testing.T) {
+	t.Parallel()
+	responseData := map[string]any{
+		"status":             "complete",
+		"dom_summary":        "added 3 elements, removed 1",
+		"dom_mutations":      []any{map[string]any{"type": "added", "tag": "div"}},
+		"dom_changes":        map[string]any{"added": 3, "removed": 1, "modified": 0, "summary": "x"},
+		"perf_diff":          map[string]any{"fcp_delta_ms": 100},
+		"evidence":           map[string]any{"before": "data:...", "after": "data:..."},
+		"transient_elements": []any{map[string]any{"type": "toast"}},
+		"trace":              map[string]any{"trace_id": "t-1", "timeline": "queued→sent→complete"},
+		"timing":             map[string]any{"total_ms": 150},
+		"matched":            map[string]any{"tag": "button", "text_preview": "Submit"},
+		"effective_url":      "https://example.com",
+	}
+
+	stripSummaryModeFields(responseData)
+
+	for _, key := range []string{"dom_summary", "dom_mutations", "perf_diff", "evidence", "transient_elements", "trace"} {
+		if _, ok := responseData[key]; ok {
+			t.Errorf("%s should be stripped in summary mode", key)
+		}
+	}
+
+	// Keep essential fields
+	for _, key := range []string{"status", "dom_changes", "timing", "matched", "effective_url"} {
+		if _, ok := responseData[key]; !ok {
+			t.Errorf("%s should survive summary mode stripping", key)
+		}
+	}
+}
+
+func TestStripSummaryModeFields_KeepsErrorFields(t *testing.T) {
+	t.Parallel()
+	responseData := map[string]any{
+		"status":  "error",
+		"error":   "element_not_found",
+		"message": "No element matches selector",
+		"retry":   "Try a different selector",
+		"hint":    "diagnostic hint",
+	}
+
+	stripSummaryModeFields(responseData)
+
+	for _, key := range []string{"error", "message", "retry", "hint"} {
+		if _, ok := responseData[key]; !ok {
+			t.Errorf("%s should survive summary mode (needed for error recovery)", key)
+		}
+	}
+}
+
+func TestStripSummaryModeFields_NoOpOnEmptyData(t *testing.T) {
+	t.Parallel()
+	responseData := map[string]any{"status": "complete"}
+	// Should not panic
+	stripSummaryModeFields(responseData)
+	if _, ok := responseData["status"]; !ok {
+		t.Error("status should survive")
+	}
+}

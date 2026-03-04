@@ -119,6 +119,24 @@ func stripSuccessOnlyFields(responseData map[string]any) {
 	delete(responseData, "trace_id")
 }
 
+// stripSummaryModeFields removes verbose fields from interact responses when
+// summary mode is active. Keeps essential fields (status, timing, matched, errors)
+// while stripping detailed diagnostics and large payloads (#447).
+func stripSummaryModeFields(responseData map[string]any) {
+	for _, key := range []string{
+		"dom_summary",        // text description of mutations — dom_changes counts suffice
+		"dom_mutations",      // individual mutation entries
+		"perf_diff",          // performance before/after delta
+		"evidence",           // before/after screenshot bundle (most verbose)
+		"transient_elements", // captured UI toasts/alerts
+		"trace",              // execution trace timeline
+		"analysis",           // long-form analysis text
+		"viewport",           // scroll/size metadata
+	} {
+		delete(responseData, key)
+	}
+}
+
 // stripRetryContextOnSuccess removes retry_context when the command succeeded
 // on the first attempt (no retry occurred), saving ~50 tokens per response.
 func stripRetryContextOnSuccess(responseData map[string]any) {

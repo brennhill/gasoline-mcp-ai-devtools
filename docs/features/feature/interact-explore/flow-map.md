@@ -16,3 +16,4 @@ Related flow maps:
 - [DOM Selector Resolution and Disambiguation](../../../architecture/flow-maps/dom-selector-resolution-and-disambiguation.md)
 - [Interact Action Toast Label Normalization](../../../architecture/flow-maps/interact-action-toast-label-normalization.md)
 - [Interact Action Surface Registry](../../../architecture/flow-maps/interact-action-surface-registry.md)
+- [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
