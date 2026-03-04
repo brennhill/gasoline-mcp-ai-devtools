@@ -9,7 +9,6 @@ linters:
   enable:
     - ineffassign    # Ineffectual assignments
     - staticcheck    # Static analysis (comprehensive)
-    - unused         # Unused variables, functions, types
     - errcheck       # Unchecked error returns (json.Encode, io.Close, etc.)
     - govet          # Go vet with shadow detection
     - copyloopvar    # Loop variable capture bugs (Go 1.22+)
