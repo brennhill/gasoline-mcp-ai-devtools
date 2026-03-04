@@ -18,7 +18,7 @@ const (
 	recordStopCommandTimeout  = 90 * time.Second
 )
 
-// interactRecordingState tracks interact(record_start/record_stop) lifecycle.
+// interactRecordingState tracks interact(screen_recording_start/screen_recording_stop) lifecycle.
 type interactRecordingState struct {
 	State              string
 	StartCorrelationID string

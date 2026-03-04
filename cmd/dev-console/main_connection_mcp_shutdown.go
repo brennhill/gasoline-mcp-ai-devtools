@@ -56,6 +56,9 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 
 	server.shutdownAsyncLogger(2 * time.Second)
 	server.closeAnnotationStore()
+	if server.ptyManager != nil {
+		server.ptyManager.StopAll()
+	}
 	removePIDFile(port)
 	removeDaemonLockIfOwned(os.Getpid())
 }

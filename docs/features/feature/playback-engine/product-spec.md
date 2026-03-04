@@ -40,7 +40,7 @@ Wire `executeAction` to dispatch real browser commands through the existing Pend
 6. **LLM queries results** — `observe({what: "playback_results", playback_id: "..."})` returns partial or final report
 
 ### Why configure, not interact:
-- Playback is a **session-level operation** (start, monitor, query results) — same pattern as `recording_start`/`recording_stop`
+- Playback is a **session-level operation** (start, monitor, query results) — same pattern as `event_recording_start`/`event_recording_stop`
 - `interact()` is for individual atomic actions; playback orchestrates many
 - Aligns with the existing `configure()` session management surface
 
@@ -125,10 +125,10 @@ Manual boundary control is still supported (omit `auto_boundary`, manage boundar
 ### Workflow 5: Compose Video Recording with Playback
 
 ```
-1. LLM: interact({action: "record_start", name: "regression-replay"})
+1. LLM: interact({action: "screen_recording_start", name: "regression-replay"})
 2. LLM: configure({action: "playback", recording_id: "checkout-flow"})
 3. LLM polls observe({what: "playback_results", playback_id: "..."}) until status: "completed"
-4. LLM: interact({action: "record_stop"})
+4. LLM: interact({action: "screen_recording_stop"})
 → Narrated regression test video (subtitles auto-captured during playback)
 ```
 

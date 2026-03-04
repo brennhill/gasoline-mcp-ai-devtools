@@ -729,7 +729,7 @@ End a test boundary.
 |-----------|------|----------|---------|-------------|
 | test_id | string | yes | -- | Test identifier |
 
-##### configure({what: "recording_start"})
+##### configure({what: "event_recording_start"})
 
 Start a flow recording.
 
@@ -739,7 +739,7 @@ Start a flow recording.
 | url | string | no | "about:blank" | URL filter |
 | sensitive_data_enabled | boolean | no | false | Include sensitive data |
 
-##### configure({what: "recording_stop"})
+##### configure({what: "event_recording_stop"})
 
 Stop a flow recording.
 
@@ -965,7 +965,7 @@ Delete a saved state.
 |-----------|------|----------|---------|-------------|
 | snapshot_name | string | yes | -- | State name |
 
-##### interact({what: "record_start"})
+##### interact({what: "screen_recording_start"})
 
 Start screen recording.
 
@@ -975,7 +975,7 @@ Start screen recording.
 | audio | string | no | -- | Audio mode: tab, mic, both |
 | fps | number | no | 15 | FPS (5-60) |
 
-##### interact({what: "record_stop"})
+##### interact({what: "screen_recording_stop"})
 
 Stop screen recording.
 

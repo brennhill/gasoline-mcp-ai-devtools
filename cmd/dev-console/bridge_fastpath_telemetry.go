@@ -39,13 +39,6 @@ func snapshotFastPathResourceReadCounters() (success int64, failure int64) {
 	return fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure
 }
 
-func resetFastPathResourceReadCounters() {
-	fastPathResourceReadCounters.mu.Lock()
-	defer fastPathResourceReadCounters.mu.Unlock()
-	fastPathResourceReadCounters.success = 0
-	fastPathResourceReadCounters.failure = 0
-}
-
 func fastPathResourceReadLogPath() (string, error) {
 	return statecfg.InRoot("logs", "bridge-fastpath-resource-read.jsonl")
 }
@@ -90,13 +83,6 @@ type bridgeFastPathCounters struct {
 }
 
 var fastPathCounters bridgeFastPathCounters
-
-func resetFastPathCounters() {
-	fastPathCounters.mu.Lock()
-	defer fastPathCounters.mu.Unlock()
-	fastPathCounters.success = 0
-	fastPathCounters.failure = 0
-}
 
 func fastPathTelemetryLogPath() (string, error) {
 	return statecfg.InRoot("logs", "bridge-fastpath-events.jsonl")

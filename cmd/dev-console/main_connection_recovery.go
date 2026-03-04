@@ -7,23 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"syscall"
 	"time"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
-
-func recoverVersionMismatchServer(server *Server, port int, apiKey string, mcpEndpoint string) bool {
-	server.logLifecycle("version_mismatch_recycle_start", port, nil)
-	if !stopServerForUpgrade(port) {
-		server.logLifecycle("version_mismatch_recycle_failed", port, nil)
-		return false
-	}
-	return respawnDaemon(server, port, apiKey, mcpEndpoint)
-}
 
 func stopServerForUpgrade(port int) bool {
 	_ = tryShutdownViaHTTP(port)
@@ -112,78 +99,4 @@ func terminatePIDQuiet(pid int, force bool) {
 	if isProcessAlive(pid) {
 		_ = process.Kill()
 	}
-}
-
-// recoverZombieServer attempts to detect and kill a zombie server process,
-// then respawn a fresh one. Returns true if recovery succeeded.
-func recoverZombieServer(server *Server, port int, apiKey string, mcpEndpoint string) bool {
-	zombiePID := readPIDFile(port)
-	if zombiePID <= 0 {
-		return false
-	}
-	if !killZombieProcess(server, port, zombiePID) {
-		return false
-	}
-	return respawnDaemon(server, port, apiKey, mcpEndpoint)
-}
-
-// killZombieProcess sends SIGTERM then SIGKILL to a zombie server process.
-// Returns true if the process was found alive and terminated.
-func killZombieProcess(server *Server, port int, zombiePID int) bool {
-	zombieProcess, err := os.FindProcess(zombiePID)
-	if err != nil {
-		return false
-	}
-	if zombieProcess.Signal(syscall.Signal(0)) != nil {
-		return false
-	}
-
-	server.logLifecycle("zombie_sigterm", port, map[string]any{"zombie_pid": zombiePID})
-	_ = zombieProcess.Signal(syscall.SIGTERM)
-	time.Sleep(2 * time.Second)
-
-	if zombieProcess.Signal(syscall.Signal(0)) != nil {
-		removePIDFile(port)
-		return true
-	}
-
-	server.logLifecycle("zombie_sigkill", port, map[string]any{"zombie_pid": zombiePID})
-	_ = zombieProcess.Signal(syscall.SIGKILL)
-	time.Sleep(500 * time.Millisecond)
-	removePIDFile(port)
-	return true
-}
-
-// respawnDaemon starts a fresh daemon server and bridges stdin/stdout if successful.
-func respawnDaemon(server *Server, port int, apiKey string, mcpEndpoint string) bool {
-	server.logLifecycle("zombie_recovery_respawn", port, nil)
-	exe, err := os.Executable()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Failed to resolve executable path for respawn: %v\n", err)
-		return false
-	}
-	args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
-	if stateDir := os.Getenv(state.StateDirEnv); stateDir != "" {
-		args = append(args, "--state-dir", stateDir)
-	}
-	if apiKey != "" {
-		args = append(args, "--api-key", apiKey)
-	}
-
-	cmd := exec.Command(exe, args...) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags
-	cmd.Args[0] = daemonProcessArgv0(exe)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	util.SetDetachedProcess(cmd)
-	if err := cmd.Start(); err != nil {
-		sendStartupError("Failed to respawn after zombie recovery: " + err.Error())
-		os.Exit(1)
-	}
-
-	if waitForServer(port, 10*time.Second) {
-		server.logLifecycle("zombie_recovery_success", port, nil)
-		bridgeStdioToHTTP(mcpEndpoint)
-		return true
-	}
-	return false
 }

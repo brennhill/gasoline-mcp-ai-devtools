@@ -6,12 +6,12 @@ func configureCoreProperties() map[string]any {
 	return map[string]any{
 		"what": map[string]any{
 			"type": "string",
-			"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
+			"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "event_recording_start", "event_recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
 		},
 		"action": map[string]any{
 			"type":        "string",
 			"description": "Deprecated alias for 'what'",
-			"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
+			"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "event_recording_start", "event_recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
 		},
 		"mode": map[string]any{
 			"type":        "string",

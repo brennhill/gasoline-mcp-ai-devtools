@@ -26,13 +26,6 @@ type Security struct {
 	userDenyPatterns []string
 }
 
-// NewSecurity creates a Security with the given upload directory and deny patterns.
-// For production use, prefer ValidateUploadDir which also validates the directory.
-// This constructor is useful for tests that need direct control.
-func NewSecurity(uploadDir string, userDenyPatterns []string) *Security {
-	return &Security{uploadDir: uploadDir, userDenyPatterns: userDenyPatterns}
-}
-
 // ============================================
 // Startup Validation
 // ============================================

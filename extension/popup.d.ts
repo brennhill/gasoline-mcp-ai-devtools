@@ -19,5 +19,5 @@ export { isInternalUrl } from './popup/ui-utils.js';
 /**
  * Initialize the popup
  */
-export declare function initPopup(): Promise<void>;
+export declare function initPopup(): void;
 //# sourceMappingURL=popup.d.ts.map

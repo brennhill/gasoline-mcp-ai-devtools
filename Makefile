@@ -17,7 +17,7 @@ PLATFORMS := \
 
 .PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-integration test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
-	lint lint-go lint-js lint-dead lint-dead-go lint-dead-ts format format-fix typecheck check check-wire-drift ci \
+	lint lint-go lint-js lint-dead lint-dead-go lint-dead-ts format format-fix typecheck check check-wire-drift check-ts-json-casing ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
@@ -285,7 +285,10 @@ check: check-file-length lint lint-boundaries lint-json-casing format typecheck 
 check-wire-drift:
 	@node scripts/generate-wire-types.js --check
 
-check-invariants: check-wire-drift
+check-ts-json-casing:
+	@node scripts/check-ts-json-casing.js
+
+check-invariants: check-wire-drift check-ts-json-casing
 	@./scripts/check-esm-extensions.sh
 	@./scripts/check-sync-invariants.sh
 	@./scripts/check-bridge-stdout-invariant.sh

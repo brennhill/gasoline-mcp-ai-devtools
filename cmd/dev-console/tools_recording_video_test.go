@@ -518,7 +518,7 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 	disabled := env.handler.recordingInteractHandler.handleRecordStart(req, json.RawMessage(`{"name":"x"}`))
 	disabledResult := parseToolResult(t, disabled)
 	if !disabledResult.IsError {
-		t.Fatal("expected record_start to fail when pilot is disabled")
+		t.Fatal("expected screen_recording_start to fail when pilot is disabled")
 	}
 
 	env.capture.SetPilotEnabled(true)
@@ -534,58 +534,58 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 	startData := parseResponseJSON(t, startResult)
 
 	if startData["status"] != "queued" {
-		t.Fatalf("record_start status = %v, want queued", startData["status"])
+		t.Fatalf("screen_recording_start status = %v, want queued", startData["status"])
 	}
 	if startData["recording_state"] != recordingStateAwaitingGesture {
-		t.Fatalf("record_start recording_state = %v, want %q", startData["recording_state"], recordingStateAwaitingGesture)
+		t.Fatalf("screen_recording_start recording_state = %v, want %q", startData["recording_state"], recordingStateAwaitingGesture)
 	}
 	if startData["requires_user_gesture"] != true {
-		t.Fatalf("record_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
+		t.Fatalf("screen_recording_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
 	}
 	userPrompt, _ := startData["user_prompt"].(string)
 	if !strings.Contains(strings.ToLower(userPrompt), "click the gasoline icon") {
-		t.Fatalf("record_start user_prompt = %q, want guidance to click the Gasoline icon", userPrompt)
+		t.Fatalf("screen_recording_start user_prompt = %q, want guidance to click the Gasoline icon", userPrompt)
 	}
 	if int(startData["fps"].(float64)) != 60 {
-		t.Fatalf("record_start fps = %v, want clamped 60", startData["fps"])
+		t.Fatalf("screen_recording_start fps = %v, want clamped 60", startData["fps"])
 	}
 	if startData["audio"] != "tab" {
-		t.Fatalf("record_start audio = %v, want tab", startData["audio"])
+		t.Fatalf("screen_recording_start audio = %v, want tab", startData["audio"])
 	}
 	if !strings.Contains(startData["name"].(string), "my-video--") {
-		t.Fatalf("record_start name = %q, want sanitized timestamped name", startData["name"])
+		t.Fatalf("screen_recording_start name = %q, want sanitized timestamped name", startData["name"])
 	}
 	if !strings.HasSuffix(startData["path"].(string), ".webm") {
-		t.Fatalf("record_start path = %q, want .webm suffix", startData["path"])
+		t.Fatalf("screen_recording_start path = %q, want .webm suffix", startData["path"])
 	}
 
 	lastQuery := env.capture.GetLastPendingQuery()
 	if lastQuery == nil {
-		t.Fatal("expected pending query for record_start")
+		t.Fatal("expected pending query for screen_recording_start")
 	}
-	if lastQuery.Type != "record_start" || lastQuery.TabID != 7 {
+	if lastQuery.Type != "screen_recording_start" || lastQuery.TabID != 7 {
 		t.Fatalf("unexpected start query: %+v", *lastQuery)
 	}
 	paramsJSON, err := io.ReadAll(bytes.NewReader(lastQuery.Params))
 	if err != nil {
 		t.Fatalf("read start query params error: %v", err)
 	}
-	if !strings.Contains(string(paramsJSON), `"action":"record_start"`) {
-		t.Fatalf("start query params = %s, want record_start action", string(paramsJSON))
+	if !strings.Contains(string(paramsJSON), `"action":"screen_recording_start"`) {
+		t.Fatalf("start query params = %s, want screen_recording_start action", string(paramsJSON))
 	}
 
 	stopBeforeReady := env.handler.recordingInteractHandler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
 	stopBeforeReadyResult := parseToolResult(t, stopBeforeReady)
 	if !stopBeforeReadyResult.IsError {
-		t.Fatal("record_stop should fail fast while record_start is still awaiting user gesture")
+		t.Fatal("screen_recording_stop should fail fast while screen_recording_start is still awaiting user gesture")
 	}
 	if !strings.Contains(strings.ToLower(stopBeforeReadyResult.Content[0].Text), recordingStateAwaitingGesture) {
-		t.Fatalf("record_stop error should mention %q state, got: %s", recordingStateAwaitingGesture, stopBeforeReadyResult.Content[0].Text)
+		t.Fatalf("screen_recording_stop error should mention %q state, got: %s", recordingStateAwaitingGesture, stopBeforeReadyResult.Content[0].Text)
 	}
 
 	startCorrelationID, _ := startData["correlation_id"].(string)
 	if startCorrelationID == "" {
-		t.Fatal("record_start response missing correlation_id")
+		t.Fatal("screen_recording_start response missing correlation_id")
 	}
 
 	env.capture.ApplyCommandResult(startCorrelationID, "complete", json.RawMessage(`{"status":"recording","name":"My Video"}`), "")
@@ -594,17 +594,17 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 	stopResult := parseToolResult(t, stopResp)
 	stopData := parseResponseJSON(t, stopResult)
 	if stopData["status"] != "queued" {
-		t.Fatalf("record_stop status = %v, want queued", stopData["status"])
+		t.Fatalf("screen_recording_stop status = %v, want queued", stopData["status"])
 	}
 	if stopData["recording_state"] != recordingStateStopping {
-		t.Fatalf("record_stop recording_state = %v, want %q", stopData["recording_state"], recordingStateStopping)
+		t.Fatalf("screen_recording_stop recording_state = %v, want %q", stopData["recording_state"], recordingStateStopping)
 	}
 
 	stopQuery := env.capture.GetLastPendingQuery()
 	if stopQuery == nil {
-		t.Fatal("expected pending query for record_stop")
+		t.Fatal("expected pending query for screen_recording_stop")
 	}
-	if stopQuery.Type != "record_stop" || stopQuery.TabID != 7 {
+	if stopQuery.Type != "screen_recording_stop" || stopQuery.TabID != 7 {
 		t.Fatalf("unexpected stop query: %+v", *stopQuery)
 	}
 }

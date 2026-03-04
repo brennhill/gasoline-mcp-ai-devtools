@@ -67,10 +67,3 @@ func TestGetTemplate_AllHaveUserReportedLabel(t *testing.T) {
 		}
 	}
 }
-
-func TestTemplateCount_MatchesNames(t *testing.T) {
-	t.Parallel()
-	if TemplateCount() != len(TemplateNames()) {
-		t.Fatalf("TemplateCount() = %d, TemplateNames() has %d", TemplateCount(), len(TemplateNames()))
-	}
-}

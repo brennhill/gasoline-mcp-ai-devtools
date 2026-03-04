@@ -301,7 +301,7 @@ function handleMessage(
       return false
 
     default:
-      // Unknown message type
+      deps.debugLog('capture', 'Unhandled message type', { type: messageType })
       return false
   }
 }
@@ -444,19 +444,29 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
 }
 
 function handleCaptureScreenshot(sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
+  deps.debugLog('capture', 'handleCaptureScreenshot ENTER')
   if (typeof chrome === 'undefined' || !chrome.tabs) {
+    deps.debugLog('capture', 'handleCaptureScreenshot: no chrome.tabs')
     sendResponse({ success: false, error: 'Chrome tabs API not available' })
     return
   }
 
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    deps.debugLog('capture', 'handleCaptureScreenshot: tabs.query', { count: tabs.length, tabId: tabs[0]?.id })
     if (tabs[0]?.id) {
-      const result = await deps.captureScreenshot(tabs[0].id, null)
-      if (result.success && result.entry) {
-        deps.addToLogBatcher(result.entry)
+      try {
+        const result = await deps.captureScreenshot(tabs[0].id, null)
+        deps.debugLog('capture', 'handleCaptureScreenshot: result', { success: result.success, error: result.error })
+        if (result.success && result.entry) {
+          deps.addToLogBatcher(result.entry)
+        }
+        sendResponse(result)
+      } catch (err) {
+        deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: (err as Error).message })
+        sendResponse({ success: false, error: (err as Error).message })
       }
-      sendResponse(result)
     } else {
+      deps.debugLog('capture', 'handleCaptureScreenshot: no active tab')
       sendResponse({ success: false, error: 'No active tab' })
     }
   })

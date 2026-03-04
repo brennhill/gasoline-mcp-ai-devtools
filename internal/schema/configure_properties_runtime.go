@@ -34,7 +34,7 @@ func configureRuntimeProperties() map[string]any {
 		},
 		"recording_id": map[string]any{
 			"type":        "string",
-			"description": "Recording ID (recording_stop, playback)",
+			"description": "Recording ID (event_recording_stop, playback)",
 		},
 		"sensitive_data_enabled": map[string]any{
 			"type":        "boolean",

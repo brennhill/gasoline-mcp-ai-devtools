@@ -15,8 +15,8 @@ Browser observability for AI coding agents. 5 tools for real-time browser teleme
 | observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
 | analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
 | generate | Create artifacts from captured data | what: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
-| configure | Session settings and utilities | what: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | what: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, open_composer, submit_active_composer, confirm_top_dialog, dismiss_top_overlay, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab, switch_tab, close_tab, screenshot (alias of observe what=screenshot) |
+| configure | Session settings and utilities | what: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, event_recording_start, event_recording_stop, playback, log_diff |
+| interact | Browser automation (needs AI Web Pilot) | what: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, open_composer, submit_active_composer, confirm_top_dialog, dismiss_top_overlay, list_interactive, save_state, load_state, list_states, delete_state, screen_recording_start, screen_recording_stop, upload, draw_mode_start, back, forward, new_tab, switch_tab, close_tab, screenshot (alias of observe what=screenshot) |
 
 ## Key Patterns
 
@@ -74,9 +74,9 @@ Use restart_on_eviction=true if a cursor expires.
   {"tool":"interact","arguments":{"what":"list_interactive","scope_selector":"main"}}
 
   // Record a user flow for playback
-  {"tool":"configure","arguments":{"what":"recording_start","name":"my-flow"}}
+  {"tool":"configure","arguments":{"what":"event_recording_start","name":"my-flow"}}
   // ... perform actions ...
-  {"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
+  {"tool":"configure","arguments":{"what":"event_recording_stop","recording_id":"..."}}
 
   // List saved recordings
   {"tool":"observe","arguments":{"what":"recordings"}}
@@ -130,10 +130,10 @@ var quickstartContent = `# Gasoline MCP Quickstart
 {"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}
 
 ## 9. Start Recording
-{"tool":"configure","arguments":{"what":"recording_start","name":"demo-run"}}
+{"tool":"configure","arguments":{"what":"event_recording_start","name":"demo-run"}}
 
 ## 10. Stop Recording
-{"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
+{"tool":"configure","arguments":{"what":"event_recording_stop","recording_id":"..."}}
 
 ## 11. Navigate and Take Screenshot
 {"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}

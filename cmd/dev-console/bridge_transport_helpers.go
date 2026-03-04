@@ -5,16 +5,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"io"
-	"net/http"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 type bridgeSessionStats struct {
@@ -74,68 +70,4 @@ func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, s
 		}
 		_ = appendExitDiagnostic("bridge_exit", extra)
 	}
-}
-
-// bridgeStdioToHTTP forwards JSON-RPC messages between stdin/stdout and HTTP endpoint.
-func bridgeStdioToHTTP(endpoint string) {
-	reader := bufio.NewReaderSize(os.Stdin, 64*1024)
-
-	client := &http.Client{} // per-request timeouts via context
-
-	var wg sync.WaitGroup
-	responseSent := make(chan bool, 1)
-	var responseOnce sync.Once
-	stats := &bridgeSessionStats{}
-	signalResponseSent := func() {
-		responseOnce.Do(func() { responseSent <- true })
-	}
-
-	var readErr error
-	for {
-		line, framing, err := readMCPStdioMessage(reader)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			debugf("stdin read error: %v", err)
-			readErr = err
-			break
-		}
-		if len(line) == 0 {
-			continue
-		}
-		stats.requests++
-		if framing == bridge.StdioFramingContentLength {
-			stats.contentLengthFraming++
-		} else {
-			stats.lineFraming++
-		}
-
-		var req JSONRPCRequest
-		if err := json.Unmarshal(line, &req); err != nil {
-			stats.parseErrors++
-			sendBridgeParseError(line, err, framing)
-			signalResponseSent()
-			continue
-		}
-		if req.HasInvalidID() {
-			stats.invalidIDs++
-			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present", framing)
-			signalResponseSent()
-			continue
-		}
-		debugf("request method=%s id=%v", req.Method, req.ID)
-		stats.lastMethod = req.Method
-
-		timeout := toolCallTimeout(req)
-		reqCopy, lineCopy := req, append([]byte(nil), line...)
-		stats.forwarded++
-		wg.Add(1)
-		util.SafeGo(func() {
-			defer wg.Done()
-			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, nil, signalResponseSent, framing)
-		})
-	}
-
-	bridgeShutdown(&wg, readErr, responseSent, stats)
 }

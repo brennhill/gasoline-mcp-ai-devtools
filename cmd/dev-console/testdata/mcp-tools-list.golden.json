@@ -760,7 +760,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), event_recording_start/event_recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -776,8 +776,8 @@
             "streaming",
             "test_boundary_start",
             "test_boundary_end",
-            "recording_start",
-            "recording_stop",
+            "event_recording_start",
+            "event_recording_stop",
             "playback",
             "log_diff",
             "telemetry",
@@ -962,7 +962,7 @@
           "type": "string"
         },
         "recording_id": {
-          "description": "Recording ID (recording_stop, playback)",
+          "description": "Recording ID (event_recording_stop, playback)",
           "type": "string"
         },
         "replay_id": {
@@ -1126,8 +1126,8 @@
             "streaming",
             "test_boundary_start",
             "test_boundary_end",
-            "recording_start",
-            "recording_stop",
+            "event_recording_start",
+            "event_recording_stop",
             "playback",
             "log_diff",
             "telemetry",
@@ -1220,8 +1220,8 @@
             "fill_form_and_submit",
             "fill_form",
             "run_a11y_and_export_sarif",
-            "record_start",
-            "record_stop",
+            "screen_recording_start",
+            "screen_recording_stop",
             "upload",
             "draw_mode_start",
             "hardware_click",
@@ -1644,8 +1644,8 @@
             "fill_form_and_submit",
             "fill_form",
             "run_a11y_and_export_sarif",
-            "record_start",
-            "record_stop",
+            "screen_recording_start",
+            "screen_recording_stop",
             "upload",
             "draw_mode_start",
             "hardware_click",

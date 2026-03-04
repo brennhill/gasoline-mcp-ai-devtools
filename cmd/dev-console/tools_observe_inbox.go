@@ -29,14 +29,15 @@ func (h *ToolHandler) toolObserveInbox(req JSONRPCRequest, _ json.RawMessage) JS
 	})}
 }
 
-// appendPushPiggyback adds a hint to any tool response when the inbox has pending events.
+// appendPushPiggyback drains the push inbox and inlines events into any tool response.
+// Screenshots are delivered as image content blocks so the LLM sees them immediately.
 func (h *ToolHandler) appendPushPiggyback(resp JSONRPCResponse) JSONRPCResponse {
 	if h.server.pushInbox == nil {
 		return resp
 	}
 
-	count := h.server.pushInbox.Len()
-	if count == 0 {
+	events := h.server.pushInbox.DrainAll()
+	if len(events) == 0 {
 		return resp
 	}
 
@@ -45,11 +46,42 @@ func (h *ToolHandler) appendPushPiggyback(resp JSONRPCResponse) JSONRPCResponse 
 		return resp
 	}
 
-	hint := fmt.Sprintf("\n\n_pending_push: %d event(s) in inbox. Use observe({what: \"inbox\"}) to retrieve.", count)
-	result.Content = append(result.Content, MCPContentBlock{
-		Type: "text",
-		Text: hint,
-	})
+	for _, ev := range events {
+		switch ev.Type {
+		case "screenshot":
+			label := fmt.Sprintf("\n\n_push_screenshot: captured from %s", ev.PageURL)
+			if ev.Note != "" {
+				label += " — " + ev.Note
+			}
+			result.Content = append(result.Content, MCPContentBlock{Type: "text", Text: label})
+			if ev.ScreenshotB64 != "" {
+				result.Content = append(result.Content, MCPContentBlock{
+					Type:     "image",
+					Data:     ev.ScreenshotB64,
+					MimeType: "image/jpeg",
+				})
+			}
+		case "annotations":
+			label := fmt.Sprintf("\n\n_push_annotations: from %s", ev.PageURL)
+			if ev.AnnotSession != "" {
+				label += fmt.Sprintf(" (session: %s)", ev.AnnotSession)
+			}
+			if len(ev.Annotations) > 0 {
+				label += "\n" + string(ev.Annotations)
+			}
+			result.Content = append(result.Content, MCPContentBlock{Type: "text", Text: label})
+		case "chat":
+			result.Content = append(result.Content, MCPContentBlock{
+				Type: "text",
+				Text: fmt.Sprintf("\n\n_push_chat: %s\n[from: %s]", ev.Message, ev.PageURL),
+			})
+		default:
+			result.Content = append(result.Content, MCPContentBlock{
+				Type: "text",
+				Text: fmt.Sprintf("\n\n_push_%s: event from %s", ev.Type, ev.PageURL),
+			})
+		}
+	}
 
 	resultJSON, _ := json.Marshal(result)
 	resp.Result = json.RawMessage(resultJSON)

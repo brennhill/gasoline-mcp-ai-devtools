@@ -1,4 +1,4 @@
-// Purpose: Interact handler implementations for record_start and record_stop actions.
+// Purpose: Interact handler implementations for screen_recording_start and screen_recording_stop actions.
 // Why: Separates request validation/queueing from path helpers and state-machine logic.
 // Docs: docs/features/feature/tab-recording/index.md
 
@@ -11,17 +11,17 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
-// queueRecordStart creates the pending query and returns the response for a record_start action.
+// queueRecordStart creates the pending query and returns the response for a screen_recording_start action.
 func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
 	h := r.parent
 	correlationID := newCorrelationID("rec")
 
-	extParams := map[string]any{"action": "record_start", "name": fullName, "fps": fps, "audio": audio}
+	extParams := map[string]any{"action": "screen_recording_start", "name": fullName, "fps": fps, "audio": audio}
 	// Error impossible: map contains only primitive types from input
 	extJSON, _ := json.Marshal(extParams)
 
 	query := queries.PendingQuery{
-		Type:          "record_start",
+		Type:          "screen_recording_start",
 		Params:        json.RawMessage(extJSON),
 		TabID:         tabID,
 		CorrelationID: correlationID,
@@ -29,7 +29,7 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
 	r.setInteractRecordingStart(correlationID)
 
-	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
+	h.recordAIAction("screen_recording_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
 		"status":                "queued",
@@ -45,7 +45,7 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 	})}
 }
 
-// handleRecordStart processes interact({action: "record_start"}).
+// handleRecordStart processes interact({action: "screen_recording_start"}).
 // Generates the filename, forwards to extension via PendingQuery.
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -87,7 +87,7 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 	return r.queueRecordStart(req, fullName, params.Audio, videoPath, fps, params.TabID)
 }
 
-// handleRecordStop processes interact({action: "record_stop"}).
+// handleRecordStop processes interact({action: "screen_recording_stop"}).
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	h := r.parent
@@ -107,16 +107,16 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 
 	recordingState := r.resolveInteractRecordingState()
 	if recordingState.State != recordingStateRecording {
-		retry := "Run interact(action:'record_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
+		retry := "Run interact(action:'screen_recording_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
 		if recordingState.State == recordingStateAwaitingGesture {
 			retry = "Recording start is still awaiting user gesture. Ask the user to click the Gasoline icon, then retry stop after start reports status 'recording'."
 		}
 		if recordingState.State == recordingStateStopping {
-			retry = "A previous record_stop is still in progress. Poll observe(what:'command_result') for the stop correlation_id and wait for a terminal status."
+			retry = "A previous screen_recording_stop is still in progress. Poll observe(what:'command_result') for the stop correlation_id and wait for a terminal status."
 		}
 		msg := fmt.Sprintf("Cannot stop recording while state is %q", recordingState.State)
 		if recordingState.StartCorrelationID == "" {
-			msg = "Cannot stop recording: no active interact(record_start) session found"
+			msg = "Cannot stop recording: no active interact(screen_recording_start) session found"
 		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -128,13 +128,13 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	correlationID := newCorrelationID("recstop")
 
 	extParams := map[string]any{
-		"action": "record_stop",
+		"action": "screen_recording_stop",
 	}
 	// Error impossible: map contains only string values
 	extJSON, _ := json.Marshal(extParams)
 
 	query := queries.PendingQuery{
-		Type:          "record_stop",
+		Type:          "screen_recording_stop",
 		Params:        json.RawMessage(extJSON),
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
@@ -142,7 +142,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
 	r.setInteractRecordingStopping(correlationID)
 
-	h.recordAIAction("record_stop", "", nil)
+	h.recordAIAction("screen_recording_stop", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stop queued", map[string]any{
 		"status":          "queued",

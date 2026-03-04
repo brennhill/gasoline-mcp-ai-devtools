@@ -11,9 +11,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 // checkScreenshotRateLimit enforces per-client screenshot rate limiting.
@@ -137,5 +139,23 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 		resultJSON, _ := json.Marshal(queryResult)
 		cap.SetQueryResult(body.QueryID, resultJSON)
 	}
+
+	// Push screenshot notification to MCP inbox for non-query screenshots
+	// (hover launcher, error-triggered). Query screenshots are already delivered via query result.
+	if body.QueryID == "" && s.pushRouter != nil {
+		b64 := body.DataURL
+		if idx := strings.Index(b64, ","); idx >= 0 {
+			b64 = b64[idx+1:]
+		}
+		ev := push.PushEvent{
+			ID:            pushEventID("push-ss"),
+			Type:          "screenshot",
+			Timestamp:     time.Now(),
+			PageURL:       body.URL,
+			ScreenshotB64: b64,
+		}
+		_, _ = s.pushRouter.DeliverPush(ev)
+	}
+
 	jsonResponse(w, http.StatusOK, result)
 }

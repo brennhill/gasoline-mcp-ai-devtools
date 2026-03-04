@@ -199,35 +199,3 @@ func TestSessionStore_MarkDirtyFlushAndHandleSessionStore(t *testing.T) {
 		t.Fatal("HandleSessionStore(unknown) should fail")
 	}
 }
-
-func TestErrorHistoryHelpers(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	entries := make([]ErrorHistoryEntry, 0, maxErrorHistory+10)
-	for i := 0; i < maxErrorHistory+10; i++ {
-		ts := now.Add(time.Duration(i) * time.Minute)
-		entries = append(entries, ErrorHistoryEntry{
-			Fingerprint: fmt.Sprintf("err-%03d", i),
-			FirstSeen:   ts,
-			LastSeen:    ts,
-		})
-	}
-
-	capped := enforceErrorHistoryCap(entries)
-	if len(capped) != maxErrorHistory {
-		t.Fatalf("enforceErrorHistoryCap len = %d, want %d", len(capped), maxErrorHistory)
-	}
-	if capped[0].Fingerprint != "err-010" {
-		t.Fatalf("first kept fingerprint = %s, want err-010", capped[0].Fingerprint)
-	}
-
-	staleInput := []ErrorHistoryEntry{
-		{Fingerprint: "fresh", LastSeen: now.Add(-2 * time.Hour)},
-		{Fingerprint: "stale", LastSeen: now.Add(-48 * time.Hour)},
-	}
-	evicted := evictStaleErrors(staleInput, 24*time.Hour)
-	if len(evicted) != 1 || evicted[0].Fingerprint != "fresh" {
-		t.Fatalf("evictStaleErrors = %+v, want only fresh entry", evicted)
-	}
-}

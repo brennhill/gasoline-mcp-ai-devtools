@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
@@ -52,6 +53,9 @@ type Server struct {
 	// Push delivery pipeline
 	pushInbox  *push.PushInbox
 	pushRouter *push.Router
+
+	// Terminal PTY session manager
+	ptyManager *pty.Manager
 }
 
 // NewServer creates a new server instance.
@@ -68,6 +72,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		warningSeen:     make(map[string]struct{}),
 		annotationStore: NewAnnotationStore(10 * time.Minute),
 		pushInbox:       push.NewPushInbox(50),
+		ptyManager:      pty.NewManager(),
 	}
 
 	// Initialize push router with capability sync callback

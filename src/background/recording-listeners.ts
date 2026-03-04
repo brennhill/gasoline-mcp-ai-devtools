@@ -70,7 +70,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
   )
 
   /**
-   * Handle popup-initiated record_start / record_stop messages.
+   * Handle popup-initiated screen_recording_start / screen_recording_stop messages.
    * These are direct chrome.runtime messages from the popup, not MCP pending queries.
    */
   chrome.runtime.onMessage.addListener(
@@ -81,8 +81,8 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
     ) => {
       // Only accept messages from the extension itself (popup)
       if (sender.id !== chrome.runtime.id) return false
-      if (message.type === 'record_start') {
-        console.log(LOG, 'Popup record_start received', { audio: message.audio })
+      if (message.type === 'screen_recording_start') {
+        console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio })
         chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
           let slug = 'recording'
           try {
@@ -96,7 +96,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
             /* use default */
           }
           const audio = message.audio ?? ''
-          console.log(LOG, 'Popup record_start \u2192 startRecording', {
+          console.log(LOG, 'Popup screen_recording_start \u2192 startRecording', {
             slug,
             audio,
             tabUrl: tabs[0]?.url?.substring(0, 60)
@@ -104,26 +104,26 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
           deps
             .startRecording(slug, 15, '', audio, true)
             .then((result) => {
-              console.log(LOG, 'Popup record_start result:', result)
+              console.log(LOG, 'Popup screen_recording_start result:', result)
               sendResponse(result)
             })
             .catch((err) => {
-              console.error(LOG, 'Popup record_start EXCEPTION:', err)
+              console.error(LOG, 'Popup screen_recording_start EXCEPTION:', err)
               sendResponse({ status: 'error' })
             })
         })
         return true // async response
       }
-      if (message.type === 'record_stop') {
-        console.log(LOG, 'Popup record_stop received')
+      if (message.type === 'screen_recording_stop') {
+        console.log(LOG, 'Popup screen_recording_stop received')
         deps
           .stopRecording()
           .then((result) => {
-            console.log(LOG, 'Popup record_stop result:', result)
+            console.log(LOG, 'Popup screen_recording_stop result:', result)
             sendResponse(result)
           })
           .catch((err) => {
-            console.error(LOG, 'Popup record_stop EXCEPTION:', err)
+            console.error(LOG, 'Popup screen_recording_stop EXCEPTION:', err)
             sendResponse({ status: 'error' })
           })
         return true // async response

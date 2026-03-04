@@ -35,25 +35,11 @@ var (
 		"https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest")
 )
 
-// getGitHubAPIURL returns the current GitHub API URL (thread-safe).
-func getGitHubAPIURL() string {
-	versionCheckMu.Lock()
-	defer versionCheckMu.Unlock()
-	return githubAPIURL
-}
-
 // getAvailableVersion returns the currently known newer release version, if any.
 func getAvailableVersion() string {
 	versionCheckMu.Lock()
 	defer versionCheckMu.Unlock()
 	return availableVersion
-}
-
-// setGitHubAPIURL sets the GitHub API URL (thread-safe). Used by tests.
-func setGitHubAPIURL(url string) {
-	versionCheckMu.Lock()
-	defer versionCheckMu.Unlock()
-	githubAPIURL = url
 }
 
 // getEnvOrDefault returns the environment variable value or a default if not set

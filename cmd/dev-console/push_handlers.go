@@ -171,6 +171,25 @@ func (s *Server) handlePushCapabilities(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// handlePushDrain drains the push inbox and returns events as JSON.
+// Called by the bridge process to relay push events to Claude via stdio.
+func (s *Server) handlePushDrain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if s.pushInbox == nil {
+		jsonResponse(w, http.StatusOK, map[string]any{"events": []any{}, "count": 0})
+		return
+	}
+	events := s.pushInbox.DrainAll()
+	if len(events) == 0 {
+		jsonResponse(w, http.StatusOK, map[string]any{"events": []any{}, "count": 0})
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{"events": events, "count": len(events)})
+}
+
 // pushDrawModeCompletion builds an annotation PushEvent and routes it.
 func (s *Server) pushDrawModeCompletion(body *drawModeRequest, screenshotPath string, annotations []Annotation) {
 	if s.pushRouter == nil {

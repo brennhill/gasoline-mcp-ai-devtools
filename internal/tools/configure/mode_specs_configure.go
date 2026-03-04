@@ -43,11 +43,11 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Hint:     "Mark end of a test boundary",
 		Required: []string{"test_id"},
 	},
-	"recording_start": {
+	"event_recording_start": {
 		Hint:     "Start recording browser session (actions + video)",
 		Optional: []string{"name", "tab_id", "sensitive_data_enabled"},
 	},
-	"recording_stop": {
+	"event_recording_stop": {
 		Hint:     "Stop an active browser recording",
 		Optional: []string{"recording_id"},
 	},

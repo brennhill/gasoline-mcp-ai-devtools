@@ -83,16 +83,6 @@ func flushStdout() {
 	syncStdoutBestEffort()
 }
 
-// sendJSONResponse marshals a response and sends it to stdout, handling errors gracefully
-func sendJSONResponse(resp any, id any) {
-	respJSON, err := json.Marshal(resp)
-	if err != nil {
-		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error(), bridge.StdioFramingLine)
-		return
-	}
-	writeMCPPayload(respJSON, bridge.StdioFramingLine)
-}
-
 // bridgeStdioToHTTPFast forwards JSON-RPC with fast-start: responds to initialize/tools/list
 // immediately while daemon starts in background. Only blocks on tools/call.
 // #lizard forgives
@@ -100,6 +90,10 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	reader := bufio.NewReaderSize(os.Stdin, 64*1024)
 
 	client := &http.Client{} // per-request timeouts via context
+
+	// Start push relay goroutine to poll daemon inbox and relay to Claude via stdio.
+	pushRelayDone := make(chan struct{})
+	startBridgePushRelay(client, endpoint, pushRelayDone)
 
 	var wg sync.WaitGroup
 	responseSent := make(chan bool, 1)
@@ -197,6 +191,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		})
 	}
 
+	close(pushRelayDone)
 	bridgeShutdown(&wg, readErr, responseSent, stats)
 }
 

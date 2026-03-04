@@ -1,0 +1,499 @@
+/**
+ * Purpose: In-browser terminal widget that embeds a PTY-backed terminal via iframe.
+ * Why: Provides a Lovable-like experience — chat with any CLI (claude, codex, aider) from
+ * a browser overlay while seeing code edits reflected via hot reload on the tracked page.
+ * Docs: docs/features/feature/terminal/index.md
+ */
+
+import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+
+const WIDGET_ID = 'gasoline-terminal-widget'
+const IFRAME_ID = 'gasoline-terminal-iframe'
+const HEADER_ID = 'gasoline-terminal-header'
+
+interface TerminalConfig {
+  cmd?: string
+  args?: string[]
+  dir?: string
+  serverUrl?: string
+}
+
+interface TerminalSessionState {
+  token: string
+  sessionId: string
+}
+
+let widgetEl: HTMLDivElement | null = null
+let iframeEl: HTMLIFrameElement | null = null
+let sessionState: TerminalSessionState | null = null
+let visible = false
+let serverUrl = DEFAULT_SERVER_URL
+
+function getServerUrl(): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
+        if (chrome.runtime.lastError) {
+          resolve(DEFAULT_SERVER_URL) // Storage read failed — fall back to default
+          return
+        }
+        const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+        serverUrl = url
+        resolve(url)
+      })
+    } catch {
+      resolve(DEFAULT_SERVER_URL) // Extension context invalidated
+    }
+  })
+}
+
+function getTerminalConfig(): Promise<TerminalConfig> {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result: Record<string, unknown>) => {
+        if (chrome.runtime.lastError) {
+          resolve({}) // Storage read failed — use defaults
+          return
+        }
+        const config = (result[StorageKey.TERMINAL_CONFIG] as TerminalConfig) || {}
+        resolve(config)
+      })
+    } catch {
+      resolve({}) // Extension context invalidated
+    }
+  })
+}
+
+function saveTerminalConfig(config: TerminalConfig): void {
+  try {
+    chrome.storage.local.set({ [StorageKey.TERMINAL_CONFIG]: config }, () => {
+      void chrome.runtime.lastError // Best-effort persistence
+    })
+  } catch {
+    // Extension context invalidated — config won't persist but session still works
+  }
+}
+
+async function startSession(config: TerminalConfig): Promise<TerminalSessionState | null> {
+  const url = await getServerUrl()
+  try {
+    const resp = await fetch(`${url}/terminal/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cmd: config.cmd || '',
+        args: config.args || [],
+        dir: config.dir || ''
+      })
+    })
+    if (!resp.ok) {
+      const body = await resp.json() as { error?: string; message?: string; instruction?: string; command?: string }
+      // Sandbox restriction — show actionable instructions to the user.
+      if (resp.status === 503 && body.error === 'sandbox_restricted') {
+        showSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
+        return null
+      }
+      // If session already exists, try to get config to find the token
+      if (resp.status === 409) {
+        // Session already running — stop and retry once
+        await fetch(`${url}/terminal/stop`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: 'default' })
+        })
+        return startSession(config)
+      }
+      console.warn('[Gasoline] Terminal session rejected (HTTP ' + resp.status + '): ' +
+        (body.error ?? 'unknown') + '. Check the daemon logs for details.')
+      return null
+    }
+    const data = await resp.json() as { session_id: string; token: string; pid: number }
+    return { sessionId: data.session_id, token: data.token }
+  } catch (err) {
+    console.warn('[Gasoline] Terminal session start failed: ' +
+      (err instanceof Error ? err.message : String(err)) +
+      '. Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser')
+    return null
+  }
+}
+
+function showSandboxError(message: string, instruction: string, command: string): void {
+  // Remove any existing widget/error overlay
+  const existing = document.getElementById(WIDGET_ID)
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.id = WIDGET_ID
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    width: '420px',
+    maxWidth: 'calc(100vw - 32px)',
+    zIndex: '2147483644',
+    background: '#1a1b26',
+    border: '1px solid #f7768e',
+    borderRadius: '12px',
+    padding: '20px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    color: '#a9b1d6'
+  })
+
+  const title = document.createElement('div')
+  title.textContent = 'Terminal Unavailable'
+  Object.assign(title.style, {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#f7768e',
+    marginBottom: '8px'
+  })
+
+  const msg = document.createElement('div')
+  msg.textContent = message
+  Object.assign(msg.style, {
+    fontSize: '12px',
+    color: '#787c99',
+    marginBottom: '12px',
+    lineHeight: '1.4'
+  })
+
+  const inst = document.createElement('div')
+  inst.textContent = instruction
+  Object.assign(inst.style, {
+    fontSize: '12px',
+    color: '#a9b1d6',
+    marginBottom: '8px'
+  })
+
+  const cmdBox = document.createElement('div')
+  Object.assign(cmdBox.style, {
+    background: '#16161e',
+    border: '1px solid #292e42',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    fontFamily: '"SF Mono", "Fira Code", Menlo, Monaco, monospace',
+    fontSize: '12px',
+    color: '#9ece6a',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px'
+  })
+  const cmdText = document.createElement('span')
+  cmdText.textContent = command
+  cmdText.style.flex = '1'
+  const copyIcon = document.createElement('span')
+  copyIcon.textContent = 'Copy'
+  Object.assign(copyIcon.style, {
+    fontSize: '11px',
+    color: '#565f89',
+    flexShrink: '0'
+  })
+  cmdBox.appendChild(cmdText)
+  cmdBox.appendChild(copyIcon)
+  cmdBox.addEventListener('click', () => {
+    void navigator.clipboard.writeText(command).then(() => {
+      copyIcon.textContent = 'Copied!'
+      copyIcon.style.color = '#9ece6a'
+      setTimeout(() => {
+        copyIcon.textContent = 'Copy'
+        copyIcon.style.color = '#565f89'
+      }, 2000)
+    }).catch(() => {
+      copyIcon.textContent = 'Select & copy manually'
+      copyIcon.style.color = '#f7768e'
+    })
+  })
+
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = 'Dismiss'
+  closeBtn.type = 'button'
+  Object.assign(closeBtn.style, {
+    background: '#292e42',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '6px 16px',
+    color: '#a9b1d6',
+    fontSize: '12px',
+    cursor: 'pointer',
+    width: '100%'
+  })
+  closeBtn.addEventListener('click', () => {
+    overlay.remove()
+    widgetEl = null
+    visible = false
+  })
+
+  overlay.appendChild(title)
+  overlay.appendChild(msg)
+  overlay.appendChild(inst)
+  overlay.appendChild(cmdBox)
+  overlay.appendChild(closeBtn)
+
+  widgetEl = overlay
+  visible = true
+  const target = document.body || document.documentElement
+  if (target) target.appendChild(overlay)
+}
+
+function createWidget(token: string): HTMLDivElement {
+  const widget = document.createElement('div')
+  widget.id = WIDGET_ID
+  Object.assign(widget.style, {
+    position: 'fixed',
+    bottom: '0',
+    right: '0',
+    width: '50vw',
+    height: '40vh',
+    minWidth: '400px',
+    minHeight: '250px',
+    maxWidth: '100vw',
+    maxHeight: '80vh',
+    zIndex: '2147483644',
+    display: 'flex',
+    flexDirection: 'column',
+    borderRadius: '12px 0 0 0',
+    overflow: 'hidden',
+    boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.3)',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    transition: 'opacity 200ms ease, transform 200ms ease',
+    transformOrigin: 'bottom right'
+  })
+
+  // Resize handle (top-left corner)
+  const resizeHandle = document.createElement('div')
+  Object.assign(resizeHandle.style, {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    width: '12px',
+    height: '12px',
+    cursor: 'nw-resize',
+    zIndex: '10'
+  })
+  setupResize(resizeHandle, widget)
+  widget.appendChild(resizeHandle)
+
+  // Header bar
+  const header = document.createElement('div')
+  header.id = HEADER_ID
+  Object.assign(header.style, {
+    height: '32px',
+    background: '#16161e',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 8px 0 12px',
+    gap: '8px',
+    borderBottom: '1px solid #292e42',
+    cursor: 'default',
+    flexShrink: '0'
+  })
+
+  const titleSpan = document.createElement('span')
+  titleSpan.textContent = 'Terminal'
+  Object.assign(titleSpan.style, {
+    color: '#787c99',
+    fontSize: '12px',
+    fontWeight: '600',
+    flex: '1',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    userSelect: 'none'
+  })
+
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = '\u2715'
+  closeBtn.title = 'Close terminal'
+  closeBtn.type = 'button'
+  Object.assign(closeBtn.style, {
+    width: '24px',
+    height: '24px',
+    border: 'none',
+    background: 'transparent',
+    color: '#565f89',
+    fontSize: '14px',
+    cursor: 'pointer',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: '0'
+  })
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.background = '#292e42'
+    closeBtn.style.color = '#a9b1d6'
+  })
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.background = 'transparent'
+    closeBtn.style.color = '#565f89'
+  })
+  closeBtn.addEventListener('click', (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    hideTerminal()
+  })
+
+  header.appendChild(titleSpan)
+  header.appendChild(closeBtn)
+
+  // Iframe
+  const iframe = document.createElement('iframe')
+  iframe.id = IFRAME_ID
+  iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`
+  Object.assign(iframe.style, {
+    flex: '1',
+    width: '100%',
+    border: 'none',
+    background: '#1a1b26'
+  })
+  iframe.setAttribute('allow', 'clipboard-write')
+
+  widget.appendChild(header)
+  widget.appendChild(iframe)
+
+  iframeEl = iframe
+
+  // Listen for messages from the terminal iframe
+  window.addEventListener('message', handleIframeMessage)
+
+  return widget
+}
+
+function handleIframeMessage(event: MessageEvent): void {
+  if (!event.data || event.data.source !== 'gasoline-terminal') return
+  // Only accept messages from the daemon's origin (localhost)
+  try {
+    const origin = new URL(serverUrl).origin
+    if (event.origin !== origin) return
+  } catch {
+    return // Malformed serverUrl — reject all messages
+  }
+  // Handle terminal events (connected, disconnected, exited)
+  if (event.data.event === 'exited') {
+    // Process exited — could auto-restart or show status
+  }
+}
+
+function setupResize(handle: HTMLElement, widget: HTMLElement): void {
+  let startX = 0
+  let startY = 0
+  let startWidth = 0
+  let startHeight = 0
+
+  function onMouseDown(e: MouseEvent): void {
+    e.preventDefault()
+    startX = e.clientX
+    startY = e.clientY
+    startWidth = widget.offsetWidth
+    startHeight = widget.offsetHeight
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    // Prevent iframe from stealing mouse events during resize
+    if (iframeEl) iframeEl.style.pointerEvents = 'none'
+  }
+
+  function onMouseMove(e: MouseEvent): void {
+    const newWidth = startWidth - (e.clientX - startX)
+    const newHeight = startHeight - (e.clientY - startY)
+    widget.style.width = Math.max(400, Math.min(window.innerWidth, newWidth)) + 'px'
+    widget.style.height = Math.max(250, Math.min(window.innerHeight * 0.8, newHeight)) + 'px'
+  }
+
+  function onMouseUp(): void {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    if (iframeEl) iframeEl.style.pointerEvents = 'auto'
+    // Notify iframe to refit terminal
+    notifyIframe('resize')
+  }
+
+  handle.addEventListener('mousedown', onMouseDown)
+}
+
+function notifyIframe(command: string, data?: Record<string, unknown>): void {
+  if (!iframeEl?.contentWindow) return
+  let origin = '*'
+  try { origin = new URL(serverUrl).origin } catch { /* fall back to wildcard */ }
+  iframeEl.contentWindow.postMessage({
+    target: 'gasoline-terminal',
+    command,
+    ...data
+  }, origin)
+}
+
+export function hideTerminal(): void {
+  if (!widgetEl) return
+  visible = false
+  widgetEl.style.opacity = '0'
+  widgetEl.style.transform = 'translateY(20px) scale(0.98)'
+  widgetEl.style.pointerEvents = 'none'
+}
+
+export function showTerminal(): void {
+  if (!widgetEl) return
+  visible = true
+  widgetEl.style.opacity = '1'
+  widgetEl.style.transform = 'translateY(0) scale(1)'
+  widgetEl.style.pointerEvents = 'auto'
+  notifyIframe('focus')
+}
+
+export function isTerminalVisible(): boolean {
+  return visible
+}
+
+export async function toggleTerminal(): Promise<void> {
+  if (visible && widgetEl) {
+    hideTerminal()
+    return
+  }
+
+  // If widget exists but hidden, just show it
+  if (widgetEl && sessionState) {
+    showTerminal()
+    return
+  }
+
+  // Start a new session
+  await getServerUrl()
+  const config = await getTerminalConfig()
+  const state = await startSession(config)
+  if (!state) return
+
+  sessionState = state
+
+  // Create and mount the widget
+  if (widgetEl) {
+    widgetEl.remove()
+    widgetEl = null
+  }
+  widgetEl = createWidget(state.token)
+  const target = document.body || document.documentElement
+  if (!target) return
+  target.appendChild(widgetEl)
+
+  // Animate in
+  widgetEl.style.opacity = '0'
+  widgetEl.style.transform = 'translateY(20px) scale(0.98)'
+  requestAnimationFrame(() => {
+    showTerminal()
+  })
+}
+
+export function unmountTerminal(): void {
+  window.removeEventListener('message', handleIframeMessage)
+  if (widgetEl) {
+    widgetEl.remove()
+    widgetEl = null
+  }
+  iframeEl = null
+  sessionState = null
+  visible = false
+}
+
+// Re-export for launcher integration
+export { saveTerminalConfig }
+export type { TerminalConfig }

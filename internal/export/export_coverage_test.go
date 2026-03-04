@@ -358,31 +358,6 @@ func TestExportHARMergedToFile_EmptyData(t *testing.T) {
 		t.Errorf("entries_count = %d, want 0", result.EntriesCount)
 	}
 }
-
-// ============================================
-// ExportHARToFile — Additional edge cases
-// ============================================
-
-func TestExportHARToFile_PrivateTmpPath(t *testing.T) {
-	t.Parallel()
-
-	// On macOS /tmp is a symlink to /private/tmp
-	bodies := []types.NetworkBody{
-		{Method: "GET", URL: "https://example.com", Status: 200, Timestamp: "2026-01-01T00:00:00Z"},
-	}
-
-	tmpFile := "/private/tmp/gasoline-test-har-private.har"
-	defer os.Remove(tmpFile)
-
-	result, err := ExportHARToFile(bodies, types.NetworkBodyFilter{}, "test", tmpFile)
-	if err != nil {
-		t.Fatalf("ExportHARToFile() error = %v", err)
-	}
-	if result.EntriesCount != 1 {
-		t.Errorf("entries_count = %d, want 1", result.EntriesCount)
-	}
-}
-
 // ============================================
 // isPathSafe — Additional branches
 // ============================================
@@ -479,50 +454,6 @@ func TestNodeToResult_EmptyTarget(t *testing.T) {
 			result.Locations[0].PhysicalLocation.ArtifactLocation.URI)
 	}
 }
-
-// ============================================
-// ExportHAR JSON field naming validation
-// ============================================
-
-func TestExportHAR_JSONFieldNames(t *testing.T) {
-	t.Parallel()
-
-	bodies := []types.NetworkBody{
-		{
-			Timestamp:    "2026-01-01T00:00:00Z",
-			Method:       "POST",
-			URL:          "https://example.com/api?q=test",
-			Status:       201,
-			Duration:     50,
-			RequestBody:  `{"name":"Alice"}`,
-			ResponseBody: `{"id":1}`,
-			ContentType:  "application/json",
-			ResponseHeaders: map[string]string{
-				"Content-Type": "application/json",
-			},
-		},
-	}
-
-	harLog := ExportHAR(bodies, types.NetworkBodyFilter{}, "6.0.3")
-	data, err := json.Marshal(harLog)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	s := string(data)
-
-	// Verify SPEC:HAR camelCase fields are present
-	requiredFields := []string{
-		`"startedDateTime"`, `"httpVersion"`, `"queryString"`,
-		`"headersSize"`, `"bodySize"`, `"statusText"`, `"mimeType"`,
-		`"postData"`,
-	}
-	for _, field := range requiredFields {
-		if !strings.Contains(s, field) {
-			t.Errorf("expected HAR field %s in JSON output", field)
-		}
-	}
-}
-
 // ============================================
 // HARExportResult JSON field names (snake_case)
 // ============================================

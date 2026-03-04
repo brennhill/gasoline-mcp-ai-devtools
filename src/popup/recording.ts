@@ -25,8 +25,8 @@ interface RecordingState {
   timerInterval: ReturnType<typeof setInterval> | null
 }
 
-const START_LABEL = 'Record action sequence'
-const STOP_LABEL = 'Stop action sequence'
+const START_LABEL = 'Record screen'
+const STOP_LABEL = 'Stop recording'
 
 // #lizard forgives
 function showRecording(els: RecordingElements, state: RecordingState, name: string, startTime: number): void {
@@ -135,13 +135,13 @@ function showMicPermissionPrompt(saveInfoEl: HTMLElement, audioMode: string): vo
 }
 
 function sendRecordStart(els: RecordingElements, state: RecordingState, audioMode: string): void {
-  console.log('[Gasoline REC] Popup: sendStart() called, sending record_start with audio:', audioMode)
+  console.log('[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:', audioMode)
   chrome.runtime.sendMessage(
-    { type: 'record_start', audio: audioMode },
+    { type: 'screen_recording_start', audio: audioMode },
     (resp: { status?: string; name?: string; startTime?: number; error?: string } | undefined) => {
-      console.log('[Gasoline REC] Popup: record_start response:', resp)
+      console.log('[Gasoline REC] Popup: screen_recording_start response:', resp)
       if (chrome.runtime.lastError) {
-        console.error('[Gasoline REC] Popup: record_start lastError:', chrome.runtime.lastError.message)
+        console.error('[Gasoline REC] Popup: screen_recording_start lastError:', chrome.runtime.lastError.message)
       }
       if (resp?.status === 'recording' && resp.name) {
         showRecording(els, state, resp.name, resp.startTime ?? Date.now())
@@ -191,13 +191,13 @@ function handleStartClick(els: RecordingElements, state: RecordingState): void {
 function handleStopClick(els: RecordingElements, state: RecordingState): void {
   els.row.classList.remove('is-recording')
   els.label.textContent = 'Saving...'
-  console.log('[Gasoline REC] Popup: sending record_stop')
+  console.log('[Gasoline REC] Popup: sending screen_recording_stop')
   chrome.runtime.sendMessage(
-    { type: 'record_stop' },
+    { type: 'screen_recording_stop' },
     (resp: { status?: string; name?: string; path?: string; error?: string } | undefined) => {
-      console.log('[Gasoline REC] Popup: record_stop response:', resp)
+      console.log('[Gasoline REC] Popup: screen_recording_stop response:', resp)
       if (chrome.runtime.lastError) {
-        console.error('[Gasoline REC] Popup: record_stop lastError:', chrome.runtime.lastError.message)
+        console.error('[Gasoline REC] Popup: screen_recording_stop lastError:', chrome.runtime.lastError.message)
       }
       showIdle(els, state)
       showSaveResult(els.saveInfoEl, resp)

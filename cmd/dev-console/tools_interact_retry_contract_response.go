@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -123,51 +122,4 @@ func buildRetryEvidenceSummary(correlationID, reason string, retryContext map[st
 		}
 	}
 	return summary
-}
-
-func retryContextAttempt(data map[string]any) (int, bool) {
-	retryContext, ok := data["retry_context"].(map[string]any)
-	if !ok {
-		return 0, false
-	}
-	v, ok := retryContext["attempt"].(float64)
-	if !ok {
-		return 0, false
-	}
-	return int(v), true
-}
-
-func retryContextChangedStrategy(data map[string]any) (bool, bool) {
-	retryContext, ok := data["retry_context"].(map[string]any)
-	if !ok {
-		return false, false
-	}
-	v, ok := retryContext["changed_strategy"].(bool)
-	return v, ok
-}
-
-func retryContextTerminal(data map[string]any) (bool, bool) {
-	retryContext, ok := data["retry_context"].(map[string]any)
-	if !ok {
-		return false, false
-	}
-	v, ok := retryContext["terminal_stop"].(bool)
-	return v, ok
-}
-
-func retryContextReason(data map[string]any) string {
-	retryContext, ok := data["retry_context"].(map[string]any)
-	if !ok {
-		return ""
-	}
-	v, _ := retryContext["reason"].(string)
-	return strings.TrimSpace(v)
-}
-
-func retryContextString(data map[string]any) string {
-	retryContext, ok := data["retry_context"].(map[string]any)
-	if !ok {
-		return ""
-	}
-	return fmt.Sprintf("%v", retryContext)
 }

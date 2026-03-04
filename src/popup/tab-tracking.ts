@@ -128,7 +128,7 @@ function handleStopTracking(): void {
       if (btn) showIdleState(btn)
 
       // Stop recording if active
-      chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
+      chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
         if (chrome.runtime.lastError) {
           /* no recording active — expected */
         }
@@ -147,7 +147,7 @@ function handleStopTracking(): void {
   })
 }
 
-export async function initTrackPageButton(): Promise<void> {
+export function initTrackPageButton(): void {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
   if (!btn) return
 

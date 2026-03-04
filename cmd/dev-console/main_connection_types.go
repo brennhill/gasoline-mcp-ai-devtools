@@ -5,7 +5,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -14,19 +13,8 @@ type serverVersionMismatchError struct {
 	actual   string
 }
 
-func (e *serverVersionMismatchError) Error() string {
-	return fmt.Sprintf("server version mismatch: expected %s, got %s", e.expected, e.actual)
-}
-
 type nonGasolineServiceError struct {
 	serviceName string
-}
-
-func (e *nonGasolineServiceError) Error() string {
-	if e.serviceName == "" {
-		return "port occupied by non-gasoline service"
-	}
-	return fmt.Sprintf("port occupied by non-gasoline service %q", e.serviceName)
 }
 
 type healthMetadata struct {

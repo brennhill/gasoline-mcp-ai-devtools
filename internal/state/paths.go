@@ -72,11 +72,6 @@ func ProjectDir(projectPath string) (string, error) {
 	return filepath.Join(root, "projects", rel), nil
 }
 
-// LogsDir returns the logs directory under RootDir.
-func LogsDir() (string, error) {
-	return InRoot("logs")
-}
-
 // DefaultLogFile returns the default structured log file path.
 func DefaultLogFile() (string, error) {
 	return InRoot("logs", "gasoline.jsonl")

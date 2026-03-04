@@ -195,5 +195,7 @@ export const StorageKey = {
   PENDING_RECORDING: 'gasoline_pending_recording',
   PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
   MIC_GRANTED: 'gasoline_mic_granted',
-  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref'
+  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+  TERMINAL_CONFIG: 'gasoline_terminal_config',
+  POPUP_LAST_STATUS: 'gasoline_popup_last_status'
 } as const

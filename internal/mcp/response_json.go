@@ -52,18 +52,6 @@ func ErrorResponse(text string) json.RawMessage {
 	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
 }
 
-// MarkdownResponse constructs an MCP tool result with a summary line
-// followed by markdown-formatted content (typically a table).
-// Use for flat, uniform data where columns are consistent across rows.
-func MarkdownResponse(summary string, markdown string) json.RawMessage {
-	text := summary + "\n\n" + markdown
-
-	result := MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: text}},
-	}
-	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
-}
-
 // JSONErrorResponse constructs an MCP tool error result with a summary line
 // followed by compact JSON. Sets IsError: true so LLMs recognize the failure.
 func JSONErrorResponse(summary string, data any) json.RawMessage {

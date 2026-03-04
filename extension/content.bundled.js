@@ -24,6 +24,7 @@
   }
 
   // extension/lib/constants.js
+  var DEFAULT_SERVER_URL = "http://localhost:7890";
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
@@ -79,7 +80,9 @@
     PENDING_RECORDING: "gasoline_pending_recording",
     PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
     MIC_GRANTED: "gasoline_mic_granted",
-    RECORD_AUDIO_PREF: "gasoline_record_audio_pref"
+    RECORD_AUDIO_PREF: "gasoline_record_audio_pref",
+    TERMINAL_CONFIG: "gasoline_terminal_config",
+    POPUP_LAST_STATUS: "gasoline_popup_last_status"
   };
 
   // extension/content/tab-tracking.js
@@ -1394,9 +1397,9 @@
       clearSubtitle();
     }, SUBTITLE_AUTO_TIMEOUT_MS);
   }
-  function toggleRecordingWatermark(visible) {
+  function toggleRecordingWatermark(visible2) {
     const ELEMENT_ID = "gasoline-recording-watermark";
-    if (!visible) {
+    if (!visible2) {
       const existing = document.getElementById(ELEMENT_ID);
       if (existing) {
         existing.style.opacity = "0";
@@ -1926,6 +1929,422 @@
     }
   }
 
+  // extension/content/ui/terminal-widget.js
+  var WIDGET_ID2 = "gasoline-terminal-widget";
+  var IFRAME_ID = "gasoline-terminal-iframe";
+  var HEADER_ID = "gasoline-terminal-header";
+  var widgetEl = null;
+  var iframeEl = null;
+  var sessionState = null;
+  var visible = false;
+  var serverUrl = DEFAULT_SERVER_URL;
+  function getServerUrl() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve(DEFAULT_SERVER_URL);
+            return;
+          }
+          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+          serverUrl = url;
+          resolve(url);
+        });
+      } catch {
+        resolve(DEFAULT_SERVER_URL);
+      }
+    });
+  }
+  function getTerminalConfig() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve({});
+            return;
+          }
+          const config = result[StorageKey.TERMINAL_CONFIG] || {};
+          resolve(config);
+        });
+      } catch {
+        resolve({});
+      }
+    });
+  }
+  async function startSession(config) {
+    const url = await getServerUrl();
+    try {
+      const resp = await fetch(`${url}/terminal/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cmd: config.cmd || "",
+          args: config.args || [],
+          dir: config.dir || ""
+        })
+      });
+      if (!resp.ok) {
+        const body = await resp.json();
+        if (resp.status === 503 && body.error === "sandbox_restricted") {
+          showSandboxError(body.message ?? "", body.instruction ?? "", body.command ?? "");
+          return null;
+        }
+        if (resp.status === 409) {
+          await fetch(`${url}/terminal/stop`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: "default" })
+          });
+          return startSession(config);
+        }
+        console.warn("[Gasoline] Terminal session rejected (HTTP " + resp.status + "): " + (body.error ?? "unknown") + ". Check the daemon logs for details.");
+        return null;
+      }
+      const data = await resp.json();
+      return { sessionId: data.session_id, token: data.token };
+    } catch (err) {
+      console.warn("[Gasoline] Terminal session start failed: " + (err instanceof Error ? err.message : String(err)) + ". Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser");
+      return null;
+    }
+  }
+  function showSandboxError(message, instruction, command) {
+    const existing = document.getElementById(WIDGET_ID2);
+    if (existing)
+      existing.remove();
+    const overlay = document.createElement("div");
+    overlay.id = WIDGET_ID2;
+    Object.assign(overlay.style, {
+      position: "fixed",
+      bottom: "16px",
+      right: "16px",
+      width: "420px",
+      maxWidth: "calc(100vw - 32px)",
+      zIndex: "2147483644",
+      background: "#1a1b26",
+      border: "1px solid #f7768e",
+      borderRadius: "12px",
+      padding: "20px",
+      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: "#a9b1d6"
+    });
+    const title = document.createElement("div");
+    title.textContent = "Terminal Unavailable";
+    Object.assign(title.style, {
+      fontSize: "14px",
+      fontWeight: "600",
+      color: "#f7768e",
+      marginBottom: "8px"
+    });
+    const msg = document.createElement("div");
+    msg.textContent = message;
+    Object.assign(msg.style, {
+      fontSize: "12px",
+      color: "#787c99",
+      marginBottom: "12px",
+      lineHeight: "1.4"
+    });
+    const inst = document.createElement("div");
+    inst.textContent = instruction;
+    Object.assign(inst.style, {
+      fontSize: "12px",
+      color: "#a9b1d6",
+      marginBottom: "8px"
+    });
+    const cmdBox = document.createElement("div");
+    Object.assign(cmdBox.style, {
+      background: "#16161e",
+      border: "1px solid #292e42",
+      borderRadius: "6px",
+      padding: "10px 12px",
+      fontFamily: '"SF Mono", "Fira Code", Menlo, Monaco, monospace',
+      fontSize: "12px",
+      color: "#9ece6a",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      marginBottom: "12px"
+    });
+    const cmdText = document.createElement("span");
+    cmdText.textContent = command;
+    cmdText.style.flex = "1";
+    const copyIcon = document.createElement("span");
+    copyIcon.textContent = "Copy";
+    Object.assign(copyIcon.style, {
+      fontSize: "11px",
+      color: "#565f89",
+      flexShrink: "0"
+    });
+    cmdBox.appendChild(cmdText);
+    cmdBox.appendChild(copyIcon);
+    cmdBox.addEventListener("click", () => {
+      void navigator.clipboard.writeText(command).then(() => {
+        copyIcon.textContent = "Copied!";
+        copyIcon.style.color = "#9ece6a";
+        setTimeout(() => {
+          copyIcon.textContent = "Copy";
+          copyIcon.style.color = "#565f89";
+        }, 2e3);
+      }).catch(() => {
+        copyIcon.textContent = "Select & copy manually";
+        copyIcon.style.color = "#f7768e";
+      });
+    });
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Dismiss";
+    closeBtn.type = "button";
+    Object.assign(closeBtn.style, {
+      background: "#292e42",
+      border: "none",
+      borderRadius: "6px",
+      padding: "6px 16px",
+      color: "#a9b1d6",
+      fontSize: "12px",
+      cursor: "pointer",
+      width: "100%"
+    });
+    closeBtn.addEventListener("click", () => {
+      overlay.remove();
+      widgetEl = null;
+      visible = false;
+    });
+    overlay.appendChild(title);
+    overlay.appendChild(msg);
+    overlay.appendChild(inst);
+    overlay.appendChild(cmdBox);
+    overlay.appendChild(closeBtn);
+    widgetEl = overlay;
+    visible = true;
+    const target = document.body || document.documentElement;
+    if (target)
+      target.appendChild(overlay);
+  }
+  function createWidget(token) {
+    const widget = document.createElement("div");
+    widget.id = WIDGET_ID2;
+    Object.assign(widget.style, {
+      position: "fixed",
+      bottom: "0",
+      right: "0",
+      width: "50vw",
+      height: "40vh",
+      minWidth: "400px",
+      minHeight: "250px",
+      maxWidth: "100vw",
+      maxHeight: "80vh",
+      zIndex: "2147483644",
+      display: "flex",
+      flexDirection: "column",
+      borderRadius: "12px 0 0 0",
+      overflow: "hidden",
+      boxShadow: "0 -4px 24px rgba(0, 0, 0, 0.3)",
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      transition: "opacity 200ms ease, transform 200ms ease",
+      transformOrigin: "bottom right"
+    });
+    const resizeHandle = document.createElement("div");
+    Object.assign(resizeHandle.style, {
+      position: "absolute",
+      top: "0",
+      left: "0",
+      width: "12px",
+      height: "12px",
+      cursor: "nw-resize",
+      zIndex: "10"
+    });
+    setupResize(resizeHandle, widget);
+    widget.appendChild(resizeHandle);
+    const header = document.createElement("div");
+    header.id = HEADER_ID;
+    Object.assign(header.style, {
+      height: "32px",
+      background: "#16161e",
+      display: "flex",
+      alignItems: "center",
+      padding: "0 8px 0 12px",
+      gap: "8px",
+      borderBottom: "1px solid #292e42",
+      cursor: "default",
+      flexShrink: "0"
+    });
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = "Terminal";
+    Object.assign(titleSpan.style, {
+      color: "#787c99",
+      fontSize: "12px",
+      fontWeight: "600",
+      flex: "1",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      userSelect: "none"
+    });
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "\u2715";
+    closeBtn.title = "Close terminal";
+    closeBtn.type = "button";
+    Object.assign(closeBtn.style, {
+      width: "24px",
+      height: "24px",
+      border: "none",
+      background: "transparent",
+      color: "#565f89",
+      fontSize: "14px",
+      cursor: "pointer",
+      borderRadius: "4px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: "0"
+    });
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.background = "#292e42";
+      closeBtn.style.color = "#a9b1d6";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.background = "transparent";
+      closeBtn.style.color = "#565f89";
+    });
+    closeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideTerminal();
+    });
+    header.appendChild(titleSpan);
+    header.appendChild(closeBtn);
+    const iframe = document.createElement("iframe");
+    iframe.id = IFRAME_ID;
+    iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`;
+    Object.assign(iframe.style, {
+      flex: "1",
+      width: "100%",
+      border: "none",
+      background: "#1a1b26"
+    });
+    iframe.setAttribute("allow", "clipboard-write");
+    widget.appendChild(header);
+    widget.appendChild(iframe);
+    iframeEl = iframe;
+    window.addEventListener("message", handleIframeMessage);
+    return widget;
+  }
+  function handleIframeMessage(event) {
+    if (!event.data || event.data.source !== "gasoline-terminal")
+      return;
+    try {
+      const origin = new URL(serverUrl).origin;
+      if (event.origin !== origin)
+        return;
+    } catch {
+      return;
+    }
+    if (event.data.event === "exited") {
+    }
+  }
+  function setupResize(handle, widget) {
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    function onMouseDown(e) {
+      e.preventDefault();
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = widget.offsetWidth;
+      startHeight = widget.offsetHeight;
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      if (iframeEl)
+        iframeEl.style.pointerEvents = "none";
+    }
+    function onMouseMove(e) {
+      const newWidth = startWidth - (e.clientX - startX);
+      const newHeight = startHeight - (e.clientY - startY);
+      widget.style.width = Math.max(400, Math.min(window.innerWidth, newWidth)) + "px";
+      widget.style.height = Math.max(250, Math.min(window.innerHeight * 0.8, newHeight)) + "px";
+    }
+    function onMouseUp() {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      if (iframeEl)
+        iframeEl.style.pointerEvents = "auto";
+      notifyIframe("resize");
+    }
+    handle.addEventListener("mousedown", onMouseDown);
+  }
+  function notifyIframe(command, data) {
+    if (!iframeEl?.contentWindow)
+      return;
+    let origin = "*";
+    try {
+      origin = new URL(serverUrl).origin;
+    } catch {
+    }
+    iframeEl.contentWindow.postMessage({
+      target: "gasoline-terminal",
+      command,
+      ...data
+    }, origin);
+  }
+  function hideTerminal() {
+    if (!widgetEl)
+      return;
+    visible = false;
+    widgetEl.style.opacity = "0";
+    widgetEl.style.transform = "translateY(20px) scale(0.98)";
+    widgetEl.style.pointerEvents = "none";
+  }
+  function showTerminal() {
+    if (!widgetEl)
+      return;
+    visible = true;
+    widgetEl.style.opacity = "1";
+    widgetEl.style.transform = "translateY(0) scale(1)";
+    widgetEl.style.pointerEvents = "auto";
+    notifyIframe("focus");
+  }
+  async function toggleTerminal() {
+    if (visible && widgetEl) {
+      hideTerminal();
+      return;
+    }
+    if (widgetEl && sessionState) {
+      showTerminal();
+      return;
+    }
+    await getServerUrl();
+    const config = await getTerminalConfig();
+    const state = await startSession(config);
+    if (!state)
+      return;
+    sessionState = state;
+    if (widgetEl) {
+      widgetEl.remove();
+      widgetEl = null;
+    }
+    widgetEl = createWidget(state.token);
+    const target = document.body || document.documentElement;
+    if (!target)
+      return;
+    target.appendChild(widgetEl);
+    widgetEl.style.opacity = "0";
+    widgetEl.style.transform = "translateY(20px) scale(0.98)";
+    requestAnimationFrame(() => {
+      showTerminal();
+    });
+  }
+  function unmountTerminal() {
+    window.removeEventListener("message", handleIframeMessage);
+    if (widgetEl) {
+      widgetEl.remove();
+      widgetEl = null;
+    }
+    iframeEl = null;
+    sessionState = null;
+    visible = false;
+  }
+
   // extension/content/ui/tracked-hover-launcher.js
   var ROOT_ID = "gasoline-tracked-hover-launcher";
   var PANEL_ID = "gasoline-tracked-hover-panel";
@@ -1969,8 +2388,8 @@
     recordingActive = active;
     if (!recordButtonEl)
       return;
-    recordButtonEl.textContent = active ? "Stop" : "Rec";
-    recordButtonEl.title = active ? "Stop recording" : "Start recording";
+    recordButtonEl.textContent = active ? "\u23F9" : "\u25C9";
+    recordButtonEl.title = active ? "Stop recording" : "Record actions \u2014 capture clicks and inputs for replay";
     recordButtonEl.style.background = active ? "#c0392b" : "#f3f4f6";
     recordButtonEl.style.color = active ? "#fff" : "#1f2937";
     recordButtonEl.style.borderColor = active ? "#a93226" : "#d1d5db";
@@ -1981,26 +2400,42 @@
     return Boolean(value.active);
   }
   function syncRecordingStateFromStorage() {
-    chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-      updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]));
-    });
+    try {
+      chrome.storage.local.get([StorageKey.RECORDING], (result) => {
+        if (chrome.runtime.lastError)
+          return;
+        updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]));
+      });
+    } catch {
+    }
   }
   function syncHiddenStateFromStorage(onSynced) {
-    chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-      hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+    try {
+      chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
+        if (chrome.runtime.lastError) {
+          onSynced();
+          return;
+        }
+        hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+        onSynced();
+      });
+    } catch {
       onSynced();
-    });
+    }
   }
   function persistHiddenState(hidden) {
-    if (hidden) {
-      chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+    try {
+      if (hidden) {
+        chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+          void chrome.runtime.lastError;
+        });
+        return;
+      }
+      chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
         void chrome.runtime.lastError;
       });
-      return;
+    } catch {
     }
-    chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-      void chrome.runtime.lastError;
-    });
   }
   function installRecordingStorageSync() {
     if (recordingStorageListener)
@@ -2054,6 +2489,10 @@
   }
   async function startDrawMode() {
     try {
+      if (!chrome?.runtime?.getURL) {
+        console.warn("[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
+        return;
+      }
       const drawModeModule = await import(
         /* webpackIgnore: true */
         chrome.runtime.getURL("content/draw-mode.js")
@@ -2061,17 +2500,73 @@
       if (typeof drawModeModule.activateDrawMode === "function") {
         drawModeModule.activateDrawMode("user");
       }
+    } catch (err) {
+      console.warn("[Gasoline] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
+    }
+  }
+  var shutterAudioCtx = null;
+  function playShutterSound() {
+    try {
+      if (!shutterAudioCtx || shutterAudioCtx.state === "closed") {
+        shutterAudioCtx = new AudioContext();
+      }
+      const ctx = shutterAudioCtx;
+      if (ctx.state === "suspended")
+        void ctx.resume();
+      const duration = 0.08;
+      const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const t = i / data.length;
+        const envelope = t < 0.1 ? t * 10 : Math.exp(-12 * (t - 0.1));
+        data[i] = (Math.random() * 2 - 1) * envelope * 0.3;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
     } catch {
     }
   }
-  function runScreenshotCapture() {
-    chrome.runtime.sendMessage({ type: "captureScreenshot" }, () => {
-      void chrome.runtime.lastError;
+  function showScreenshotFlash(success) {
+    const flash = document.createElement("div");
+    Object.assign(flash.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483647",
+      background: success ? "rgba(250,204,21,0.3)" : "rgba(239,68,68,0.25)",
+      pointerEvents: "none",
+      opacity: "1"
     });
+    document.documentElement.appendChild(flash);
+    setTimeout(() => {
+      flash.style.transition = "opacity 300ms ease-out";
+      flash.style.opacity = "0";
+    }, 120);
+    setTimeout(() => flash.remove(), 450);
+  }
+  function runScreenshotCapture() {
+    if (!shutterAudioCtx || shutterAudioCtx.state === "closed") {
+      try {
+        shutterAudioCtx = new AudioContext();
+      } catch {
+      }
+    }
+    try {
+      chrome.runtime.sendMessage({ type: "captureScreenshot" }, (response) => {
+        const err = chrome.runtime.lastError;
+        const success = !err && response !== void 0 && response.success !== false;
+        showScreenshotFlash(success);
+        if (success)
+          playShutterSound();
+      });
+    } catch {
+      showScreenshotFlash(false);
+    }
   }
   function toggleRecordingAction() {
     const wasActive = recordingActive;
-    const message = wasActive ? { type: "record_stop" } : { type: "record_start", audio: "" };
+    const message = wasActive ? { type: "screen_recording_stop" } : { type: "screen_recording_start", audio: "" };
     const button = recordButtonEl;
     if (button)
       button.disabled = true;
@@ -2102,25 +2597,31 @@
     button.title = title;
     button.type = "button";
     Object.assign(button.style, {
-      height: "34px",
-      minWidth: "54px",
-      borderRadius: "10px",
+      height: "48px",
+      minWidth: "68px",
+      borderRadius: "12px",
       border: "1px solid #d1d5db",
       background: "#f3f4f6",
       color: "#1f2937",
-      fontSize: "12px",
+      fontSize: "32px",
+      lineHeight: "1",
       fontWeight: "600",
       cursor: "pointer",
-      padding: "0 10px",
+      padding: "0 14px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       transition: "transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease"
     });
     button.addEventListener("mouseenter", () => {
       button.style.transform = "translateY(-1px)";
       button.style.boxShadow = "0 4px 12px rgba(15, 23, 42, 0.12)";
+      button.style.color = "#ea580c";
     });
     button.addEventListener("mouseleave", () => {
       button.style.transform = "translateY(0)";
       button.style.boxShadow = "none";
+      button.style.color = "#1f2937";
     });
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -2161,12 +2662,27 @@
     });
     return link;
   }
+  function injectPulseKeyframes() {
+    if (document.getElementById("gasoline-pulse-keyframes"))
+      return;
+    const style = document.createElement("style");
+    style.id = "gasoline-pulse-keyframes";
+    style.textContent = `
+    @keyframes gasoline-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
+      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+    }
+  `;
+    (document.head || document.documentElement).appendChild(style);
+  }
   function createLauncherUi() {
+    injectPulseKeyframes();
     const root = document.createElement("div");
     root.id = ROOT_ID;
     Object.assign(root.style, {
       position: "fixed",
-      top: "18px",
+      top: "33vh",
       right: "18px",
       zIndex: "2147483643",
       display: "flex",
@@ -2179,9 +2695,9 @@
     Object.assign(panel.style, {
       display: "flex",
       alignItems: "center",
-      gap: "6px",
-      padding: "7px",
-      borderRadius: "18px",
+      gap: "3px",
+      padding: "4px",
+      borderRadius: "16px",
       background: "#ffffff",
       border: "1px solid rgba(15, 23, 42, 0.12)",
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.2)",
@@ -2193,30 +2709,41 @@
       backdropFilter: "saturate(160%) blur(6px)",
       willChange: "opacity, transform"
     });
-    const drawButton = createActionButton("Draw", "Start annotation draw mode", () => {
+    const drawButton = createActionButton("\u270E", "Annotate the page \u2014 draw, highlight, and mark up elements", () => {
       panelPinned = false;
       setPanelOpen(false);
       void startDrawMode();
     });
-    const recordButton = createActionButton("Rec", "Start recording", () => {
+    drawButton.style.fontSize = "36px";
+    const recordButton = createActionButton("\u25C9", "Record actions \u2014 capture clicks and inputs for replay", () => {
       panelPinned = true;
       toggleRecordingAction();
     });
     recordButtonEl = recordButton;
-    const screenshotButton = createActionButton("Shot", "Capture screenshot", () => {
+    recordButton.style.fontSize = "34px";
+    const screenshotButton = createActionButton("\u2316", "Screenshot \u2014 capture the current page and send to AI", () => {
       panelPinned = false;
       setPanelOpen(false);
       runScreenshotCapture();
     });
-    const settingsButton = createActionButton("\u2699", "Launcher settings", () => {
+    screenshotButton.style.fontSize = "38px";
+    screenshotButton.style.paddingBottom = "8px";
+    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open an interactive CLI session", () => {
+      panelPinned = false;
+      setPanelOpen(false);
+      void toggleTerminal();
+    });
+    terminalButton.style.fontSize = "30px";
+    const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);
     });
-    settingsButton.style.minWidth = "38px";
-    settingsButton.style.padding = "0";
+    settingsButton.style.fontSize = "45px";
+    settingsButton.style.paddingBottom = "4px";
     panel.appendChild(drawButton);
     panel.appendChild(recordButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(terminalButton);
     panel.appendChild(settingsButton);
     const settingsMenu = document.createElement("div");
     settingsMenu.id = SETTINGS_MENU_ID;
@@ -2253,20 +2780,32 @@
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
-    toggle.textContent = "G";
     toggle.title = "Gasoline quick actions";
+    const toggleIcon = document.createElement("img");
+    toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
+    toggleIcon.alt = "Gasoline";
+    Object.assign(toggleIcon.style, {
+      width: "52px",
+      height: "52px",
+      borderRadius: "50%",
+      pointerEvents: "none"
+    });
+    toggle.appendChild(toggleIcon);
     Object.assign(toggle.style, {
-      width: "44px",
-      height: "44px",
-      borderRadius: "22px",
-      border: "2px solid #2563eb",
-      background: "#ffffff",
-      color: "#1d4ed8",
-      fontSize: "16px",
-      fontWeight: "700",
+      width: "52px",
+      height: "52px",
+      borderRadius: "50%",
+      border: "none",
+      background: "transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       cursor: "pointer",
+      padding: "0",
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
-      transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease"
+      transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease",
+      overflow: "hidden",
+      animation: "gasoline-pulse 2.5s ease-in-out infinite"
     });
     toggle.addEventListener("mouseenter", () => {
       toggle.style.transform = "translateY(-1px)";
@@ -2330,6 +2869,7 @@
       rootEl = null;
     }
     uninstallRecordingStorageSync();
+    unmountTerminal();
   }
   function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;

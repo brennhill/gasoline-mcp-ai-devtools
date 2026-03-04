@@ -36,12 +36,7 @@ export declare let debugMode: boolean;
 export declare let connectionStatus: MutableConnectionStatus;
 export declare let currentLogLevel: string;
 export declare let screenshotOnError: boolean;
-export declare let _captureOverrides: Record<string, string>;
 export declare let aiControlled: boolean;
-export declare let _connectionCheckRunning: boolean;
-export declare let __aiWebPilotEnabledCache: boolean;
-export declare let __aiWebPilotCacheInitialized: boolean;
-export declare let __pilotInitCallback: (() => void) | null;
 export declare const extensionLogQueue: ExtensionLogQueueEntry[];
 export declare function getServerUrl(): string;
 export declare function isDebugMode(): boolean;
@@ -71,12 +66,7 @@ export declare function setAiWebPilotCacheInitialized(initialized: boolean): voi
 export declare function setPilotInitCallback(callback: (() => void) | null): void;
 export declare function applyCaptureOverrides(overrides: Record<string, string>): void;
 /**
- * Reset pilot cache for testing
- */
-export declare function _resetPilotCacheForTesting(value?: boolean): void;
-/**
  * Check if AI Web Pilot is enabled
  */
 export declare function isAiWebPilotEnabled(): boolean;
-export declare function resetStateForTesting(): void;
 //# sourceMappingURL=state.d.ts.map

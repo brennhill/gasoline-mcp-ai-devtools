@@ -50,11 +50,6 @@ func (s *Server) loadEntries() error {
 	return scanner.Err()
 }
 
-// saveEntries writes all entries to file (caller must hold s.mu).
-func (s *Server) saveEntries() error {
-	return s.saveEntriesCopy(s.entries)
-}
-
 // saveEntriesCopy writes the given entries to file without acquiring the lock.
 // The caller is responsible for providing a snapshot of the entries.
 // Uses atomic write pattern: write to temp file then rename for safety.
