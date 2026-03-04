@@ -63,6 +63,8 @@ export function debugLog(category, message, data = null) {
         }
     }
 }
+;
+globalThis.__GASOLINE_DEBUG_LOG__ = debugLog;
 /**
  * Get all debug log entries
  */
@@ -79,7 +81,8 @@ export function clearDebugLog() {
  * Export debug log as JSON string
  */
 export function exportDebugLog() {
-    return JSON.stringify({
+    return JSON.stringify(// WIRE-OK: local debug export, not sent to server
+    {
         exportedAt: new Date().toISOString(),
         version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest().version : 'test',
         debugMode: isDebugMode(),

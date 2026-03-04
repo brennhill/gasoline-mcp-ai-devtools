@@ -55,7 +55,7 @@ describe('Enhanced wait_for dispatch routing (#371, #362)', () => {
         onMessage: { addListener: mock.fn() },
         onInstalled: { addListener: mock.fn() },
         sendMessage: mock.fn(() => Promise.resolve()),
-        getManifest: () => ({ version: '0.7.10' })
+        getManifest: () => ({ version: '0.7.11' })
       },
       scripting: {
         executeScript: mock.fn((opts) => {

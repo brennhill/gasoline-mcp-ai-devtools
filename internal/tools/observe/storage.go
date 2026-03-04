@@ -11,20 +11,6 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
-// parseSummaryParam extracts the summary boolean from request args. Defaults to true.
-func parseSummaryParam(args json.RawMessage) bool {
-	if len(args) == 0 {
-		return true
-	}
-	var p struct {
-		Summary *bool `json:"summary"`
-	}
-	if json.Unmarshal(args, &p) != nil || p.Summary == nil {
-		return true
-	}
-	return *p.Summary
-}
-
 // summarizeStorageMap returns a summary of a key-value storage map.
 func summarizeStorageMap(data map[string]any) map[string]any {
 	keys := make([]string, 0, len(data))

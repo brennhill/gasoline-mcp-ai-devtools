@@ -22,6 +22,7 @@ import { RuntimeMessageName, StorageKey } from './lib/constants.js'
 import { updateConnectionStatus } from './popup/status-display.js'
 import { setupRecordingUI } from './popup/recording.js'
 import { setupDrawModeButton } from './popup/draw-mode.js'
+import { setupActionRecordingUI } from './popup/action-recording.js'
 import { initFeatureToggles } from './popup/feature-toggles.js'
 import { initTrackPageButton } from './popup/tab-tracking.js'
 import { initAiWebPilotToggle } from './popup/ai-web-pilot.js'
@@ -42,6 +43,14 @@ export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking.
 export { handleWebSocketModeChange } from './popup/settings.js'
 export { initWebSocketModeSelector } from './popup/settings.js'
 export { isInternalUrl } from './popup/ui-utils.js'
+
+// Apply theme early to prevent flash of unstyled content (moved from inline script for CSP compliance).
+try {
+  chrome.storage.local.get('theme', (r: Record<string, unknown>) => {
+    void chrome.runtime.lastError
+    if (r?.['theme'] === 'light') document.body.classList.add('light-theme')
+  })
+} catch { /* storage unavailable — default dark theme */ }
 
 const DEFAULT_MAX_ENTRIES = 1000
 const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE: ShowTrackedHoverLauncherMessage = {
@@ -113,54 +122,80 @@ function requestTrackedHoverLauncherReshow(): void {
   })
 }
 
+/** Cache status to session storage so the popup renders instantly on next open. */
+function cacheStatus(status: PopupConnectionStatus): void {
+  try {
+    chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
+      void chrome.runtime.lastError
+    })
+  } catch { /* best-effort */ }
+}
+
 /**
  * Initialize the popup
  */
-export async function initPopup(): Promise<void> {
+export function initPopup(): void {
   // Re-show tracked-tab quick launcher if user hid it from the page UI.
   requestTrackedHoverLauncherReshow()
 
-  // Request current status from background - may fail if service worker is inactive
+  // 1) Hydrate immediately from cached status (local, no network, no IPC wait).
+  try {
+    chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result: Record<string, unknown>) => {
+      void chrome.runtime.lastError
+      const cached = result?.[StorageKey.POPUP_LAST_STATUS] as PopupConnectionStatus | undefined
+      if (cached) updateConnectionStatus(cached)
+    })
+  } catch { /* session storage unavailable — will show defaults until fresh data arrives */ }
+
+  // 2) Request fresh status from background worker (async — updates UI when ready).
   try {
     chrome.runtime.sendMessage({ type: 'getStatus' }, (status: PopupConnectionStatus | undefined) => {
       if (chrome.runtime.lastError) {
-        // Background service worker may be inactive or restarting
         updateConnectionStatus({
           connected: false,
           entries: 0,
           maxEntries: DEFAULT_MAX_ENTRIES,
           errorCount: 0,
           logFile: '',
-          error: 'Extension restarting - please wait a moment and reopen popup'
+          error: 'Extension restarting — please wait a moment and reopen popup'
         })
         return
       }
       if (status) {
         updateConnectionStatus(status)
+        cacheStatus(status)
       }
     })
   } catch {
-    // Extension context invalidated or other critical error
     updateConnectionStatus({
       connected: false,
       entries: 0,
       maxEntries: DEFAULT_MAX_ENTRIES,
       errorCount: 0,
       logFile: '',
-      error: 'Extension error - try reloading the extension'
+      error: 'Extension error — try reloading the extension'
     })
   }
 
-  // Initialize recording UI
+  // Initialize all UI synchronously — no awaits, no blocking.
+  // Each init reads chrome.storage via callback and updates DOM when ready.
+  // None depend on each other, so they all fire in parallel.
   setupRecordingUI()
+  setupActionRecordingUI()
+  initFeatureToggles()
+  initWebSocketModeSelector()
+  initAiWebPilotToggle()
+  initTrackPageButton()
+  setupWebSocketUI()
+  setupToggleWarnings()
+  setupDrawModeButton()
 
-  // Check for pending recording that needs activeTab gesture.
-  // When the user clicks the extension icon, activeTab is granted for the active tab.
-  // The popup auto-sends RECORDING_GESTURE_GRANTED to unblock the service worker,
-  // and shows visual feedback so the user knows recording is starting.
+  const clearBtn = document.getElementById('clear-btn')
+  if (clearBtn) clearBtn.addEventListener('click', handleClearLogs)
+
+  // Check for pending recording that needs activeTab gesture (fire-and-forget).
   chrome.storage.local.get(StorageKey.PENDING_RECORDING, (result: Record<string, unknown>) => {
     if (result[StorageKey.PENDING_RECORDING]) {
-      // Show immediate feedback in the recording row
       const recordLabel = document.getElementById('record-label')
       const recordStatus = document.getElementById('recording-status')
       const recordOptions = document.getElementById('record-options')
@@ -173,32 +208,12 @@ export async function initPopup(): Promise<void> {
     }
   })
 
-  // Initialize feature toggles
-  await initFeatureToggles()
-
-  // Initialize WebSocket mode selector
-  await initWebSocketModeSelector()
-
-  // Initialize AI Web Pilot toggle
-  await initAiWebPilotToggle()
-
-  // Initialize Track This Page button
-  await initTrackPageButton()
-
-  setupWebSocketUI()
-  setupToggleWarnings()
-
-  const clearBtn = document.getElementById('clear-btn')
-  if (clearBtn) clearBtn.addEventListener('click', handleClearLogs)
-
-  // Initialize draw mode button
-  setupDrawModeButton()
-
   // Listen for status updates
   chrome.runtime.onMessage.addListener(
     (message: { type: string; status?: PopupConnectionStatus; enabled?: boolean }) => {
       if (message.type === 'statusUpdate' && message.status) {
         updateConnectionStatus(message.status)
+        cacheStatus(message.status)
       } else if (message.type === 'pilotStatusChanged') {
         // Update toggle to reflect confirmed state from background
         const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null

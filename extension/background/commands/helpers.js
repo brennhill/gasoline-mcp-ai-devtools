@@ -5,7 +5,13 @@ import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
 import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
 export function debugLog(category, message, data = null) {
-    // Keep helpers independent from index.ts to avoid circular imports during registry boot.
+    const globalLogger = globalThis
+        .__GASOLINE_DEBUG_LOG__;
+    if (typeof globalLogger === 'function') {
+        globalLogger(category, message, data);
+        return;
+    }
+    // Keep helpers usable before the main debug logger is initialized.
     const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
     if (!debugEnabled)
         return;
@@ -173,7 +179,7 @@ const TARGETED_QUERY_TYPES = new Set([
     'a11y',
     'dom_action',
     'upload',
-    'record_start',
+    'screen_recording_start',
     'execute',
     'link_health',
     'draw_mode',

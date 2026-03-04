@@ -32,15 +32,3 @@ func (c *Capture) SetTestBoundaryEnd(id string) {
 	defer c.mu.Unlock()
 	delete(c.extensionState.activeTestIDs, id)
 }
-
-// getExtensionSnapshot returns a snapshot of extension state.
-// MUST be called with c.mu held (RLock or Lock).
-func (c *Capture) getExtensionSnapshot() ExtensionSnapshot {
-	return ExtensionSnapshot{
-		LastPollAt:          c.extensionState.lastPollAt,
-		ExtSessionID:        c.extensionState.extSessionID,
-		ExtSessionChangedAt: c.extensionState.extSessionChangedAt,
-		PilotEnabled:        c.extensionState.pilotEnabled,
-		ActiveTestIDCount:   len(c.extensionState.activeTestIDs),
-	}
-}

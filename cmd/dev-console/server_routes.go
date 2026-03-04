@@ -19,6 +19,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Store) *http.ServeMux {
 	}
 
 	registerUploadRoutes(mux, server)
+	registerTerminalRoutes(mux, server.ptyManager, cap)
 	registerCoreRoutes(mux, server, cap)
 
 	return mux
@@ -178,6 +179,11 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 	mux.HandleFunc("/push/capabilities", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handlePushCapabilities(w, r)
 	})))
+	// Bridge push relay: internal endpoint for the bridge process to drain push events.
+	// No extensionOnly — called by the bridge process, not the browser extension.
+	mux.HandleFunc("/push/drain", func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushDrain(w, r)
+	})
 
 	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

@@ -35,22 +35,6 @@ func (h *testGenHandler) dataProvider() testgen.DataProvider {
 	return &toolHandlerDataProvider{h: h}
 }
 
-func (h *testGenHandler) findTargetError(errorID string) (LogEntry, string, int64) {
-	return testgen.FindTargetError(h.dataProvider(), errorID)
-}
-
-func (h *testGenHandler) getActionsInTimeWindow(centerTimestamp int64, windowMs int64) ([]capture.EnhancedAction, error) {
-	return testgen.GetActionsInTimeWindow(h.dataProvider(), centerTimestamp, windowMs)
-}
-
-func (h *testGenHandler) countNetworkAssertions() int {
-	return testgen.CountNetworkAssertions(h.dataProvider())
-}
-
-func (h *testGenHandler) collectErrorMessages(limit int) []string {
-	return testgen.CollectErrorMessages(h.dataProvider(), limit)
-}
-
 func (h *testGenHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error) {
 	return testgen.GenerateTestFromError(h.dataProvider(), req)
 }

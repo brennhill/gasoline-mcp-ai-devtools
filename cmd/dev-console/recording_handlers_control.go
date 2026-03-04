@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// toolConfigureRecordingStart handles configure(action: "recording_start", name: "...", url: "...")
-func (h *ToolHandler) toolConfigureRecordingStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolConfigureEventRecordingStart handles configure(action: "event_recording_start", name: "...", url: "...")
+func (h *ToolHandler) toolConfigureEventRecordingStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Name                 string `json:"name"`
 		URL                  string `json:"url"`
@@ -58,8 +58,8 @@ func (h *ToolHandler) toolConfigureRecordingStart(req JSONRPCRequest, args json.
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording started", responseData)}
 }
 
-// toolConfigureRecordingStop handles configure(action: "recording_stop", recording_id: "...")
-func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolConfigureEventRecordingStop handles configure(action: "event_recording_stop", recording_id: "...")
+func (h *ToolHandler) toolConfigureEventRecordingStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		RecordingID string `json:"recording_id"`
 	}
@@ -70,7 +70,7 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 	}
 
 	if params.RecordingID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from recording_start", withParam("recording_id"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from event_recording_start", withParam("recording_id"))}
 	}
 
 	// Call capture to stop recording
@@ -79,7 +79,7 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrInternal,
 			fmt.Sprintf("Failed to stop recording: %v", err),
-			"No active recording with this ID. Start one first: configure({what: 'recording_start', name: 'my-recording'})",
+			"No active recording with this ID. Start one first: configure({what: 'event_recording_start', name: 'my-recording'})",
 		)}
 	}
 

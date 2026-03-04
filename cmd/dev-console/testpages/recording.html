@@ -100,7 +100,7 @@
     <h1>🎬 Recording Test Page</h1>
     <p>
       Embedded YouTube lofi stream — the same stream used in smoke test 10.x.
-      Provides a local, branded target for <code>record_start</code> / <code>record_stop</code>
+      Provides a local, branded target for <code>screen_recording_start</code> / <code>screen_recording_stop</code>
       and tab audio capture (<code>audio:"tab"</code>) without navigating to YouTube directly.
     </p>
   </div>
@@ -139,7 +139,7 @@
     <div class="gh-section-header">
       <span class="dot dot-amber"></span>
       <h2>Smoke Test 10 — Quick Reference</h2>
-      <span class="section-meta">record_start · record_stop · watermark persistence</span>
+      <span class="section-meta">screen_recording_start · screen_recording_stop · watermark persistence</span>
     </div>
     <div class="gh-section-body">
       <div class="recording-step">
@@ -152,7 +152,7 @@
         <div class="step-num">2</div>
         <div class="step-text">
           Start tab recording (video only):
-          <br><span class="step-code">interact(record_start, name:"smoke-video-test")</span>
+          <br><span class="step-code">interact(screen_recording_start, name:"smoke-video-test")</span>
         </div>
       </div>
       <div class="recording-step">
@@ -165,14 +165,14 @@
       <div class="recording-step">
         <div class="step-num">4</div>
         <div class="step-text">
-          Stop and verify: <span class="step-code">interact(record_stop)</span>
+          Stop and verify: <span class="step-code">interact(screen_recording_stop)</span>
           then <span class="step-code">observe(saved_videos, last_n:5)</span>
         </div>
       </div>
       <div class="recording-step">
         <div class="step-num">5</div>
         <div class="step-text">
-          For audio test: <span class="step-code">interact(record_start, name:"smoke-audio-test", audio:"tab")</span>.
+          For audio test: <span class="step-code">interact(screen_recording_start, name:"smoke-audio-test", audio:"tab")</span>.
           Start YouTube playback first, then verify <code>has_audio:true</code> in saved_videos.
         </div>
       </div>

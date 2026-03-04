@@ -114,5 +114,7 @@ export declare const StorageKey: {
     readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
     readonly MIC_GRANTED: "gasoline_mic_granted";
     readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
+    readonly TERMINAL_CONFIG: "gasoline_terminal_config";
+    readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
 };
 //# sourceMappingURL=constants.d.ts.map

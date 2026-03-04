@@ -43,14 +43,6 @@ func checkStateDirectory() {
 	fmt.Println()
 }
 
-// runSetupCheck verifies setup and prints diagnostic information.
-func runSetupCheck(port int) {
-	_ = runSetupCheckWithOptions(port, setupCheckOptions{
-		minSamples:      50,
-		maxFailureRatio: -1,
-	})
-}
-
 func runSetupCheckWithOptions(port int, options setupCheckOptions) bool {
 	fmt.Println()
 	fmt.Println("GASOLINE SETUP CHECK")

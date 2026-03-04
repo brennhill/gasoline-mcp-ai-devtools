@@ -142,10 +142,9 @@ export async function captureScreenshot(
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify({
-        dataUrl,
+        data_url: dataUrl,
         url: tab.url,
-        errorId: relatedErrorId || '',
-        errorType: errorType || ''
+        correlation_id: relatedErrorId || ''
       })
     })
 

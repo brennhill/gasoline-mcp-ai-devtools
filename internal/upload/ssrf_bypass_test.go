@@ -64,34 +64,6 @@ func TestSSRFBypassIPv6MappedIPv4(t *testing.T) {
 		})
 	}
 }
-
-func TestSSRFBypassCredentialsInURL(t *testing.T) {
-	originalSkip := SkipSSRFCheckEnabled()
-	SetSkipSSRFCheck(false)
-	defer func() { SetSkipSSRFCheck(originalSkip) }()
-
-	tests := []struct {
-		name string
-		url  string
-	}{
-		{"credentials with loopback", "http://admin:password@127.0.0.1:80/"},
-		{"credentials with private IP", "http://user:pass@192.168.1.1/"},
-		{"credentials with localhost", "http://admin:password@localhost:8080/"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateFormActionURL(tt.url)
-			if err == nil {
-				t.Errorf("ValidateFormActionURL() expected error for URL with credentials and private IP %q, got nil", tt.url)
-			}
-			if err != nil && !strings.Contains(err.Error(), "private") && !strings.Contains(err.Error(), "localhost") {
-				t.Logf("ValidateFormActionURL() error for %q: %v", tt.url, err)
-			}
-		})
-	}
-}
-
 func TestSSRFBypassDNSRebinding(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping DNS-dependent test in short mode")

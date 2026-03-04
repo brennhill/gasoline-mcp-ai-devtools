@@ -38,13 +38,6 @@ func SSRFAllowedHosts() []string {
 	return cp
 }
 
-// SetSkipSSRFCheck toggles private-IP bypass (test use only).
-func SetSkipSSRFCheck(skip bool) {
-	ssrfMu.Lock()
-	defer ssrfMu.Unlock()
-	ssrfSkipCheck = skip
-}
-
 // SkipSSRFCheckEnabled returns true when private-IP blocking is bypassed.
 func SkipSSRFCheckEnabled() bool {
 	ssrfMu.RLock()

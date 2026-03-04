@@ -128,12 +128,6 @@ func persistDrawSession(body *drawModeRequest, screenshotPath string, annotation
 	_ = os.WriteFile(path, data, 0o600)
 }
 
-// storeAnnotationSession creates and persists an annotation session, returning
-// the stored session for response building.
-func storeAnnotationSession(body *drawModeRequest, screenshotPath string, annotations []Annotation) {
-	storeAnnotationSessionInStore(globalAnnotationStore, body, screenshotPath, annotations)
-}
-
 func storeAnnotationSessionInStore(store *AnnotationStore, body *drawModeRequest, screenshotPath string, annotations []Annotation) {
 	if store == nil || body == nil {
 		return

@@ -313,7 +313,7 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 // ============================================================================
 
 // Test Case 2.1: Create Recording Metadata
-// GIVEN: User calls configure({action: 'recording_start', name: 'checkout', url: 'https://...'})
+// GIVEN: User calls configure({action: 'event_recording_start', name: 'checkout', url: 'https://...'})
 // WHEN: Recording created
 // THEN: metadata.json saved to ~/.gasoline/recordings/{id}/metadata.json
 // AND: File contains: id, name, created_at, duration, action_count, start_url, viewport, sensitive_data_enabled
@@ -419,7 +419,7 @@ func TestRecordingAddActions(t *testing.T) {
 
 // Test Case 2.3: Persist Recording to Disk
 // GIVEN: Active recording with 10 actions
-// WHEN: configure({action: 'recording_stop', recording_id: '...'})
+// WHEN: configure({action: 'event_recording_stop', recording_id: '...'})
 // THEN: metadata.json persisted with all 10 actions
 // AND: File readable as valid JSON
 // AND: action_count = 10
@@ -516,7 +516,7 @@ func TestRecordingSensitiveDataRedaction(t *testing.T) {
 }
 
 // Test Case 2.5: Sensitive Data Full Capture (Opt-In)
-// GIVEN: User calls configure({action: 'recording_start', sensitive_data_enabled: true})
+// GIVEN: User calls configure({action: 'event_recording_start', sensitive_data_enabled: true})
 // AND: Extension shows warning popup (mocked in test)
 // WHEN: Type action on password input: "test_password"
 // THEN: Stored as: {type: "type", text: "test_password", ...}
@@ -572,7 +572,7 @@ func TestRecordingSensitiveDataOptIn(t *testing.T) {
 
 // Test Case 2.6: Storage Quota Enforcement
 // GIVEN: Recording storage at 100% (1GB used)
-// WHEN: User calls configure({action: 'recording_start', name: 'new'})
+// WHEN: User calls configure({action: 'event_recording_start', name: 'new'})
 // THEN: Error returned: "recording_storage_full: Recording storage at capacity (1GB)..."
 // AND: No recording created
 // AND: Next call still fails (no auto-delete)
@@ -1392,7 +1392,7 @@ func TestLogDiffCategorize(t *testing.T) {
 
 // Test Case 5.1: Start Recording
 // GIVEN: User clicks "Start Recording" in extension popup
-// WHEN: Extension calls configure({action: 'recording_start', name: 'checkout'})
+// WHEN: Extension calls configure({action: 'event_recording_start', name: 'checkout'})
 // THEN: Status = "ok", recording_id returned
 // AND: Extension shows recording UI (red dot, action counter)
 // AND: Starts capturing actions (clicks, typing, navigation)
@@ -1401,7 +1401,7 @@ func TestExtensionStartRecording(t *testing.T) {
 
 	capture := setupTestCapture(t)
 
-	// Simulate extension calling recording_start via configure tool
+	// Simulate extension calling event_recording_start via configure tool
 	recordingID, err := capture.StartRecording("checkout", "https://example.com/checkout", false)
 	if err != nil {
 		t.Fatalf("Failed to start recording: %v", err)
@@ -1447,7 +1447,7 @@ func TestExtensionStartRecording(t *testing.T) {
 // Test Case 5.2: Stop Recording
 // GIVEN: Recording active with 12 captured actions
 // WHEN: User clicks "Stop Recording" in extension popup
-// THEN: Calls configure({action: 'recording_stop', recording_id: '...'})
+// THEN: Calls configure({action: 'event_recording_stop', recording_id: '...'})
 // AND: Response: {status: "ok", action_count: 12, duration_ms: 34521}
 // AND: Extension stops capturing
 // AND: Shows summary (12 actions, 34.5 seconds)
@@ -1513,7 +1513,7 @@ func TestExtensionStopRecording(t *testing.T) {
 
 // Test Case 5.3: Auto-Name Recording
 // GIVEN: Recording captures flow on https://example.com/checkout
-// AND: No explicit name provided in recording_start
+// AND: No explicit name provided in event_recording_start
 // WHEN: Recording stopped
 // THEN: Auto-name from page title: "Checkout - Example Store"
 // AND: metadata.json: name = "Checkout - Example Store"

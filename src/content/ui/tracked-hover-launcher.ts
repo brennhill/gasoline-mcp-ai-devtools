@@ -6,6 +6,7 @@
 
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
+import { toggleTerminal, unmountTerminal } from './terminal-widget.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
 const PANEL_ID = 'gasoline-tracked-hover-panel'
@@ -54,8 +55,8 @@ function setSettingsMenuOpen(open: boolean): void {
 function updateRecordButtonState(active: boolean): void {
   recordingActive = active
   if (!recordButtonEl) return
-  recordButtonEl.textContent = active ? 'Stop' : 'Rec'
-  recordButtonEl.title = active ? 'Stop recording' : 'Start recording'
+  recordButtonEl.textContent = active ? '\u23F9' : '\u25C9'
+  recordButtonEl.title = active ? 'Stop recording' : 'Record actions — capture clicks and inputs for replay'
   recordButtonEl.style.background = active ? '#c0392b' : '#f3f4f6'
   recordButtonEl.style.color = active ? '#fff' : '#1f2937'
   recordButtonEl.style.borderColor = active ? '#a93226' : '#d1d5db'
@@ -67,29 +68,45 @@ function readRecordingActive(value: unknown): boolean {
 }
 
 function syncRecordingStateFromStorage(): void {
-  chrome.storage.local.get([StorageKey.RECORDING], (result: Record<string, unknown>) => {
-    updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]))
-  })
+  try {
+    chrome.storage.local.get([StorageKey.RECORDING], (result: Record<string, unknown>) => {
+      if (chrome.runtime.lastError) return // Storage read failed — keep current state
+      updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]))
+    })
+  } catch {
+    // Extension context invalidated — content script outlived the extension lifecycle
+  }
 }
 
 function syncHiddenStateFromStorage(onSynced: () => void): void {
-  chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result: Record<string, unknown>) => {
-    hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN])
-    onSynced()
-  })
+  try {
+    chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result: Record<string, unknown>) => {
+      if (chrome.runtime.lastError) {
+        onSynced() // Proceed with default state on storage failure
+        return
+      }
+      hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN])
+      onSynced()
+    })
+  } catch {
+    onSynced() // Extension context invalidated — proceed with defaults
+  }
 }
 
 function persistHiddenState(hidden: boolean): void {
-  if (hidden) {
-    chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+  try {
+    if (hidden) {
+      chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+        void chrome.runtime.lastError // Best-effort persistence — no user-visible impact on failure
+      })
+      return
+    }
+    chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
       void chrome.runtime.lastError
     })
-    return
+  } catch {
+    // Extension context invalidated — hidden state won't persist but functionality is unaffected
   }
-
-  chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-    void chrome.runtime.lastError
-  })
 }
 
 function installRecordingStorageSync(): void {
@@ -146,24 +163,92 @@ function applyVisibilityFromState(): void {
 
 async function startDrawMode(): Promise<void> {
   try {
+    if (!chrome?.runtime?.getURL) {
+      console.warn('[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.')
+      return
+    }
     const drawModeModule = await import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
     if (typeof drawModeModule.activateDrawMode === 'function') {
       drawModeModule.activateDrawMode('user')
     }
-  } catch {
-    // Best-effort action; runtime listener provides canonical error handling.
+  } catch (err) {
+    console.warn('[Gasoline] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
+      '. The extension may need to be reloaded at chrome://extensions.')
   }
 }
 
-function runScreenshotCapture(): void {
-  chrome.runtime.sendMessage({ type: 'captureScreenshot' }, () => {
-    void chrome.runtime.lastError
+// Primed AudioContext — created during user gesture so it won't be blocked.
+// Reused across captures; closed lazily by the browser when the page unloads.
+let shutterAudioCtx: AudioContext | null = null
+
+function playShutterSound(): void {
+  try {
+    if (!shutterAudioCtx || shutterAudioCtx.state === 'closed') {
+      shutterAudioCtx = new AudioContext()
+    }
+    const ctx = shutterAudioCtx
+    // Resume in case the context was suspended (autoplay policy)
+    if (ctx.state === 'suspended') void ctx.resume()
+    const duration = 0.08
+    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length
+      const envelope = t < 0.1 ? t * 10 : Math.exp(-12 * (t - 0.1))
+      data[i] = (Math.random() * 2 - 1) * envelope * 0.3
+    }
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.connect(ctx.destination)
+    source.start()
+  } catch {
+    // Audio unavailable — silent fallback
+  }
+}
+
+function showScreenshotFlash(success: boolean): void {
+  const flash = document.createElement('div')
+  Object.assign(flash.style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '2147483647',
+    background: success ? 'rgba(250,204,21,0.3)' : 'rgba(239,68,68,0.25)',
+    pointerEvents: 'none',
+    opacity: '1'
   })
+  document.documentElement.appendChild(flash)
+  // Hold the flash visible for 120ms before fading out
+  setTimeout(() => {
+    flash.style.transition = 'opacity 300ms ease-out'
+    flash.style.opacity = '0'
+  }, 120)
+  setTimeout(() => flash.remove(), 450)
+}
+
+function runScreenshotCapture(): void {
+  // Prime the AudioContext during the user gesture (click) so Chrome allows playback.
+  if (!shutterAudioCtx || shutterAudioCtx.state === 'closed') {
+    try { shutterAudioCtx = new AudioContext() } catch { /* no audio */ }
+  }
+
+  try {
+    chrome.runtime.sendMessage(
+      { type: 'captureScreenshot' },
+      (response: { success?: boolean; error?: string } | undefined) => {
+        const err = chrome.runtime.lastError
+        const success = !err && response !== undefined && response.success !== false
+        showScreenshotFlash(success)
+        if (success) playShutterSound()
+      }
+    )
+  } catch {
+    showScreenshotFlash(false)
+  }
 }
 
 function toggleRecordingAction(): void {
   const wasActive = recordingActive
-  const message = wasActive ? { type: 'record_stop' } : { type: 'record_start', audio: '' }
+  const message = wasActive ? { type: 'screen_recording_stop' } : { type: 'screen_recording_start', audio: '' }
   const button = recordButtonEl
   if (button) button.disabled = true
 
@@ -203,26 +288,32 @@ function createActionButton(label: string, title: string, onClick: () => void): 
   button.title = title
   button.type = 'button'
   Object.assign(button.style, {
-    height: '34px',
-    minWidth: '54px',
-    borderRadius: '10px',
+    height: '48px',
+    minWidth: '68px',
+    borderRadius: '12px',
     border: '1px solid #d1d5db',
     background: '#f3f4f6',
     color: '#1f2937',
-    fontSize: '12px',
+    fontSize: '32px',
+    lineHeight: '1',
     fontWeight: '600',
     cursor: 'pointer',
-    padding: '0 10px',
+    padding: '0 14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     transition:
       'transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease'
   })
   button.addEventListener('mouseenter', () => {
     button.style.transform = 'translateY(-1px)'
     button.style.boxShadow = '0 4px 12px rgba(15, 23, 42, 0.12)'
+    button.style.color = '#ea580c'
   })
   button.addEventListener('mouseleave', () => {
     button.style.transform = 'translateY(0)'
     button.style.boxShadow = 'none'
+    button.style.color = '#1f2937'
   })
   button.addEventListener('click', (event: MouseEvent) => {
     event.preventDefault()
@@ -265,12 +356,28 @@ function createSettingsMenuLink(label: string, href: string): HTMLAnchorElement 
   return link
 }
 
+function injectPulseKeyframes(): void {
+  if (document.getElementById('gasoline-pulse-keyframes')) return
+  const style = document.createElement('style')
+  style.id = 'gasoline-pulse-keyframes'
+  style.textContent = `
+    @keyframes gasoline-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
+      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+    }
+  `
+  ;(document.head || document.documentElement).appendChild(style)
+}
+
 function createLauncherUi(): HTMLDivElement {
+  injectPulseKeyframes()
+
   const root = document.createElement('div')
   root.id = ROOT_ID
   Object.assign(root.style, {
     position: 'fixed',
-    top: '18px',
+    top: '33vh',
     right: '18px',
     zIndex: '2147483643',
     display: 'flex',
@@ -284,9 +391,9 @@ function createLauncherUi(): HTMLDivElement {
   Object.assign(panel.style, {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '7px',
-    borderRadius: '18px',
+    gap: '3px',
+    padding: '4px',
+    borderRadius: '16px',
     background: '#ffffff',
     border: '1px solid rgba(15, 23, 42, 0.12)',
     boxShadow: '0 8px 24px rgba(15, 23, 42, 0.2)',
@@ -299,34 +406,46 @@ function createLauncherUi(): HTMLDivElement {
     willChange: 'opacity, transform'
   })
 
-  const drawButton = createActionButton('Draw', 'Start annotation draw mode', () => {
+  const drawButton = createActionButton('\u270E', 'Annotate the page — draw, highlight, and mark up elements', () => {
     panelPinned = false
     setPanelOpen(false)
     void startDrawMode()
   })
+  drawButton.style.fontSize = '36px'
 
-  const recordButton = createActionButton('Rec', 'Start recording', () => {
+  const recordButton = createActionButton('\u25C9', 'Record actions — capture clicks and inputs for replay', () => {
     panelPinned = true
     toggleRecordingAction()
   })
   recordButtonEl = recordButton
+  recordButton.style.fontSize = '34px'
 
-  const screenshotButton = createActionButton('Shot', 'Capture screenshot', () => {
+  const screenshotButton = createActionButton('\u2316', 'Screenshot — capture the current page and send to AI', () => {
     panelPinned = false
     setPanelOpen(false)
     runScreenshotCapture()
   })
+  screenshotButton.style.fontSize = '38px'
+  screenshotButton.style.paddingBottom = '8px'
 
-  const settingsButton = createActionButton('⚙', 'Launcher settings', () => {
+  const terminalButton = createActionButton('_\u276F', 'Terminal — open an interactive CLI session', () => {
+    panelPinned = false
+    setPanelOpen(false)
+    void toggleTerminal()
+  })
+  terminalButton.style.fontSize = '30px'
+
+  const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
     panelPinned = true
     setSettingsMenuOpen(!settingsMenuOpen)
   })
-  settingsButton.style.minWidth = '38px'
-  settingsButton.style.padding = '0'
+  settingsButton.style.fontSize = '45px'
+  settingsButton.style.paddingBottom = '4px'
 
   panel.appendChild(drawButton)
   panel.appendChild(recordButton)
   panel.appendChild(screenshotButton)
+  panel.appendChild(terminalButton)
   panel.appendChild(settingsButton)
 
   const settingsMenu = document.createElement('div')
@@ -371,20 +490,34 @@ function createLauncherUi(): HTMLDivElement {
   const toggle = document.createElement('button')
   toggle.id = TOGGLE_ID
   toggle.type = 'button'
-  toggle.textContent = 'G'
   toggle.title = 'Gasoline quick actions'
+
+  const toggleIcon = document.createElement('img')
+  toggleIcon.src = chrome.runtime.getURL('icons/icon.svg')
+  toggleIcon.alt = 'Gasoline'
+  Object.assign(toggleIcon.style, {
+    width: '52px',
+    height: '52px',
+    borderRadius: '50%',
+    pointerEvents: 'none'
+  })
+  toggle.appendChild(toggleIcon)
+
   Object.assign(toggle.style, {
-    width: '44px',
-    height: '44px',
-    borderRadius: '22px',
-    border: '2px solid #2563eb',
-    background: '#ffffff',
-    color: '#1d4ed8',
-    fontSize: '16px',
-    fontWeight: '700',
+    width: '52px',
+    height: '52px',
+    borderRadius: '50%',
+    border: 'none',
+    background: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     cursor: 'pointer',
+    padding: '0',
     boxShadow: '0 8px 24px rgba(15, 23, 42, 0.25)',
-    transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease'
+    transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease',
+    overflow: 'hidden',
+    animation: 'gasoline-pulse 2.5s ease-in-out infinite'
   })
   toggle.addEventListener('mouseenter', () => {
     toggle.style.transform = 'translateY(-1px)'
@@ -451,6 +584,7 @@ function unmountLauncher(): void {
     rootEl = null
   }
   uninstallRecordingStorageSync()
+  unmountTerminal()
 }
 
 export function setTrackedHoverLauncherEnabled(enabled: boolean): void {

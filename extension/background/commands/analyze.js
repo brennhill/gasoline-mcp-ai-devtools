@@ -5,9 +5,8 @@
 // analyze.ts — Command handlers for the analyze MCP tool.
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.
-import { isAiWebPilotEnabled } from '../state.js';
 import { registerCommand } from './registry.js';
-import { isContentScriptUnreachableError } from './helpers.js';
+import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js';
 // =============================================================================
 // FRAME ROUTING HELPERS
 // =============================================================================
@@ -526,20 +525,9 @@ registerCommand('data_table', async (ctx) => {
 // DRAW MODE
 // =============================================================================
 registerCommand('draw_mode', async (ctx) => {
-    if (!isAiWebPilotEnabled()) {
-        ctx.sendResult({
-            error: 'ai_web_pilot_disabled',
-            message: 'AI Web Pilot is not enabled in the extension popup'
-        });
+    if (!requireAiWebPilot(ctx))
         return;
-    }
-    let params;
-    try {
-        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
-    }
-    catch {
-        params = {};
-    }
+    const params = ctx.params;
     if (params.action === 'start') {
         try {
             const result = await chrome.tabs.sendMessage(ctx.tabId, {

@@ -72,7 +72,7 @@ func (h *ToolHandler) formatErrorCommandResult(req JSONRPCRequest, cmd queries.C
 
 	// Add corrective hints for common out-of-order errors.
 	if strings.Contains(cmd.Error, "No active recording") {
-		responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
+		responseData["retry"] = "No recording is active. Start one first: interact({what: 'screen_recording_start', name: 'my-recording'}) or configure({what: 'event_recording_start', name: 'my-recording'})"
 	}
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)

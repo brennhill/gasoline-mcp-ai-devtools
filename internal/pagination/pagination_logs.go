@@ -5,8 +5,6 @@
 package pagination
 
 import (
-	"fmt"
-
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
@@ -19,24 +17,6 @@ func entryStr(entry LogEntry, key string) string {
 	if v, ok := entry[key]; ok {
 		if s, ok := v.(string); ok {
 			return s
-		}
-	}
-	return ""
-}
-
-// entryDisplay extracts a field from a LogEntry and returns it as a display string.
-// Handles numeric types by converting to string representation.
-func entryDisplay(entry LogEntry, key string) string {
-	if v, ok := entry[key]; ok {
-		switch val := v.(type) {
-		case string:
-			return val
-		case int:
-			return fmt.Sprintf("%d", val)
-		case int64:
-			return fmt.Sprintf("%d", val)
-		case float64:
-			return fmt.Sprintf("%.0f", val)
 		}
 	}
 	return ""
@@ -91,21 +71,4 @@ func ApplyLogCursorPagination(
 		Limit:             limit,
 		RestartOnEviction: restartOnEviction,
 	})
-}
-
-// SerializeLogEntryWithSequence converts a LogEntryWithSequence to a JSON-serializable map.
-func SerializeLogEntryWithSequence(enriched LogEntryWithSequence) map[string]any {
-	result := map[string]any{
-		"level":     entryStr(enriched.Entry, "level"),
-		"message":   entryStr(enriched.Entry, "message"),
-		"source":    entryStr(enriched.Entry, "source"),
-		"timestamp": enriched.Timestamp,
-		"sequence":  enriched.Sequence,
-	}
-
-	if tabID := entryDisplay(enriched.Entry, "tabId"); tabID != "" {
-		result["tab_id"] = tabID
-	}
-
-	return result
 }

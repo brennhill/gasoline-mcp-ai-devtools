@@ -161,32 +161,3 @@ func cliParseFlag(args []string, flag string) (string, []string) {
 	}
 	return "", args
 }
-
-// cliParseFlagInt extracts an integer flag value from args.
-func cliParseFlagInt(args []string, flag string) (int, bool, []string) {
-	val, remaining := cliParseFlag(args, flag)
-	if val == "" {
-		return 0, false, args
-	}
-	var n int
-	for _, c := range val {
-		if c < '0' || c > '9' {
-			return 0, false, args
-		}
-		n = n*10 + int(c-'0')
-	}
-	return n, true, remaining
-}
-
-// cliParseFlagBool checks if a boolean flag is present in args.
-func cliParseFlagBool(args []string, flag string) (bool, []string) {
-	for i, a := range args {
-		if a == flag {
-			remaining := make([]string, 0, len(args)-1)
-			remaining = append(remaining, args[:i]...)
-			remaining = append(remaining, args[i+1:]...)
-			return true, remaining
-		}
-	}
-	return false, args
-}

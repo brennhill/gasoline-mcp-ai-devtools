@@ -88,16 +88,3 @@ func (h *ToolHandler) maybeInjectSummary(args json.RawMessage) json.RawMessage {
 	result, _ := json.Marshal(m)
 	return result
 }
-
-// argHasKey checks if a JSON object contains a specific key.
-func argHasKey(args json.RawMessage, key string) bool {
-	if len(args) == 0 || string(args) == "null" {
-		return false
-	}
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(args, &m); err != nil {
-		return false
-	}
-	_, ok := m[key]
-	return ok
-}

@@ -1471,52 +1471,60 @@ function detectComponentSource(el) {
 
 const MAX_PERSISTED_ANNOTATIONS = 50
 
+// Guard: detect if chrome.storage.session is accessible in this execution context.
+// In web_accessible_resource contexts the API object exists but every call throws
+// "Access to storage is not allowed from this context". We disable persistence
+// permanently on the first failure to avoid noisy console errors.
+let storageAvailable = (typeof chrome !== 'undefined' && !!chrome.storage?.session)
+
 function persistAnnotations() {
   if (saveTimeout) clearTimeout(saveTimeout)
   saveTimeout = setTimeout(() => {
-    if (typeof chrome !== 'undefined' && chrome.storage?.session) {
-      try {
-        const key = 'gasoline_draw_annotations'
-        // Cap stored annotations to prevent quota overflow
-        const toStore =
-          annotations.length > MAX_PERSISTED_ANNOTATIONS ? annotations.slice(-MAX_PERSISTED_ANNOTATIONS) : annotations
-        chrome.storage.session.set(
-          {
-            [key]: {
-              annotations: toStore,
-              page_url: window.location.href,
-              timestamp: Date.now()
-            }
-          },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.warn('[gasoline] Draw mode storage error:', chrome.runtime.lastError.message)
-            }
+    if (!storageAvailable) return
+    try {
+      const key = 'gasoline_draw_annotations'
+      const toStore =
+        annotations.length > MAX_PERSISTED_ANNOTATIONS ? annotations.slice(-MAX_PERSISTED_ANNOTATIONS) : annotations
+      chrome.storage.session.set(
+        {
+          [key]: {
+            annotations: toStore,
+            page_url: window.location.href,
+            timestamp: Date.now()
           }
-        )
-      } catch {
-        // Storage may not be available in all contexts
-      }
+        },
+        () => {
+          if (chrome.runtime?.lastError) {
+            storageAvailable = false
+          }
+        }
+      )
+    } catch {
+      storageAvailable = false
     }
   }, 500) // Debounce 500ms
 }
 
 function clearPersistedAnnotations() {
-  if (typeof chrome === 'undefined' || !chrome.storage?.session) return
+  if (!storageAvailable) return
   try {
-    chrome.storage.session.remove('gasoline_draw_annotations')
+    chrome.storage.session.remove('gasoline_draw_annotations', () => {
+      if (chrome.runtime?.lastError) {
+        storageAvailable = false
+      }
+    })
   } catch {
-    // Storage may not be available
+    storageAvailable = false
   }
 }
 
 function loadAnnotations() {
-  if (typeof chrome === 'undefined' || !chrome.storage?.session) return
+  if (!storageAvailable) return
   try {
     const key = 'gasoline_draw_annotations'
     chrome.storage.session.get([key], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn('[gasoline] Draw mode load error:', chrome.runtime.lastError.message)
+      if (chrome.runtime?.lastError) {
+        storageAvailable = false
         return
       }
       const data = result?.[key]
@@ -1526,7 +1534,7 @@ function loadAnnotations() {
       }
     })
   } catch {
-    // Ignore storage read errors
+    storageAvailable = false
   }
 }
 

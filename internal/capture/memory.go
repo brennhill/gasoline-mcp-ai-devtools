@@ -41,11 +41,6 @@ func (s *BufferStore) calcNBMemory() int64 {
 	return s.networkBodyMemoryTotal
 }
 
-// calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock).
-func (s *BufferStore) calcActionMemory() int64 {
-	return int64(len(s.enhancedActions)) * actionMemoryFixed
-}
-
 // ============================================
 // Public Memory Accessors
 // ============================================

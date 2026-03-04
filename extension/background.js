@@ -79,10 +79,6 @@ export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher
 // =============================================================================
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './background/message-handlers.js';
 // =============================================================================
-// === INTERNAL USE (Underscore Prefix)
-// =============================================================================
-export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting } from './background/state.js';
-// =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================
 if (typeof globalThis.process === 'undefined') {

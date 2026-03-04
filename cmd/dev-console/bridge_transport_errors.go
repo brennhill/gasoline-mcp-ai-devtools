@@ -74,12 +74,6 @@ func sendBridgeError(id any, code int, message string, framing bridge.StdioFrami
 	writeMCPPayload(respJSON, framing)
 }
 
-// sendToolError sends a tool result with isError: true (soft error, not protocol error).
-// This tells the LLM the tool ran but returned an error, allowing it to retry.
-func sendToolError(id any, message string, framing bridge.StdioFraming) {
-	sendToolErrorWithOptions(id, message, framing, bridgeToolErrorOptions{})
-}
-
 func sendToolErrorWithOptions(id any, message string, framing bridge.StdioFraming, opts bridgeToolErrorOptions) {
 	errorCode := opts.ErrorCode
 	if errorCode == "" {

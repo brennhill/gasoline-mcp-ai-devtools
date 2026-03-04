@@ -372,25 +372,6 @@ func TestPIDFile_Ports(t *testing.T) {
 		}
 	}
 }
-
-// ---------------------------------------------------------------------------
-// LogsDir, RecordingsDir, ScreenshotsDir, SecurityConfigFile — verify paths
-// ---------------------------------------------------------------------------
-
-func TestLogsDirPath(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv(StateDirEnv, root)
-	t.Setenv(xdgStateHomeEnv, "")
-
-	got, err := LogsDir()
-	if err != nil {
-		t.Fatalf("LogsDir() error = %v", err)
-	}
-	if got != filepath.Join(root, "logs") {
-		t.Fatalf("LogsDir() = %q, want %q", got, filepath.Join(root, "logs"))
-	}
-}
-
 func TestRecordingsDirPath(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(StateDirEnv, root)
@@ -673,23 +654,6 @@ func TestProjectDir_ErrorWhenRootDirFails(t *testing.T) {
 		t.Fatal("ProjectDir() expected error when RootDir fails, got nil")
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Functions that delegate to InRoot — error propagation when RootDir fails
-// ---------------------------------------------------------------------------
-
-func TestLogsDir_ErrorPropagation(t *testing.T) {
-	t.Setenv(StateDirEnv, "")
-	t.Setenv(xdgStateHomeEnv, "")
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
-
-	_, err := LogsDir()
-	if err == nil {
-		t.Fatal("LogsDir() expected error when RootDir fails, got nil")
-	}
-}
-
 func TestDefaultLogFile_ErrorPropagation(t *testing.T) {
 	t.Setenv(StateDirEnv, "")
 	t.Setenv(xdgStateHomeEnv, "")

@@ -6,7 +6,7 @@
 
 // interact.ts — Command handlers for the interact MCP tool.
 // Handles: subtitle, highlight, browser_action, dom_action, upload,
-//          execute, record_start, record_stop, state_*.
+//          execute, screen_recording_start, screen_recording_stop, state_*.
 
 import { isAiWebPilotEnabled } from '../state.js'
 import { executeDOMAction } from '../dom-dispatch.js'
@@ -94,10 +94,10 @@ registerCommand('upload', async (ctx) => {
 })
 
 // =============================================================================
-// RECORD START
+// SCREEN RECORDING START
 // =============================================================================
 
-registerCommand('record_start', async (ctx) => {
+registerCommand('screen_recording_start', async (ctx) => {
   if (!requireAiWebPilot(ctx)) return
   const params = ctx.params as { name?: string; fps?: number; audio?: string }
   const result = await startRecording(
@@ -112,10 +112,10 @@ registerCommand('record_start', async (ctx) => {
 })
 
 // =============================================================================
-// RECORD STOP
+// SCREEN RECORDING STOP
 // =============================================================================
 
-registerCommand('record_stop', async (ctx) => {
+registerCommand('screen_recording_stop', async (ctx) => {
   if (!requireAiWebPilot(ctx)) return
   const result = await stopRecording()
   ctx.sendResult(result)

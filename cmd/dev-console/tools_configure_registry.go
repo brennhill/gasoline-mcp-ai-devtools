@@ -45,11 +45,11 @@ var configureHandlers = map[string]ConfigureHandler{
 	"test_boundary_end": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureTestBoundaryEnd(req, args)
 	},
-	"recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRecordingStart(req, args)
+	"event_recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureEventRecordingStart(req, args)
 	},
-	"recording_stop": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRecordingStop(req, args)
+	"event_recording_stop": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureEventRecordingStop(req, args)
 	},
 	"playback": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigurePlayback(req, args)

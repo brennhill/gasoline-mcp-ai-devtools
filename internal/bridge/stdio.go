@@ -23,14 +23,6 @@ const (
 	StdioFramingContentLength
 )
 
-// ReadStdioMessage reads one MCP message from a buffered reader.
-// Supports both line-delimited JSON and Content-Length framed messages.
-// maxBodySize caps the Content-Length value to prevent memory exhaustion.
-func ReadStdioMessage(reader *bufio.Reader, maxBodySize int) ([]byte, error) {
-	msg, _, err := ReadStdioMessageWithMode(reader, maxBodySize)
-	return msg, err
-}
-
 // ReadStdioMessageWithMode reads one MCP message and returns the detected framing mode.
 // Supports both line-delimited JSON and Content-Length framed messages.
 func ReadStdioMessageWithMode(reader *bufio.Reader, maxBodySize int) ([]byte, StdioFraming, error) {

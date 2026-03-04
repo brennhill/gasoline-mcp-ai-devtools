@@ -134,12 +134,6 @@ func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
 	return true
 }
 
-// verifyBinaryVersion executes the binary with --version and parses the output.
-// Expects output like "gasoline v0.8.0" or just "0.8.0".
-func verifyBinaryVersion(path string) (string, error) {
-	return verifyBinaryVersionWithTimeout(path, defaultVersionVerifyTimeout)
-}
-
 // verifyBinaryVersionWithTimeout executes the binary with --version and parses the output.
 // Timeout is injected for deterministic tests that should not mutate package globals.
 func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string, error) {

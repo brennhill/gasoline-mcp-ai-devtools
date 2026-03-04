@@ -48,7 +48,3 @@ func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(fina
 func withRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
 	return mcp.WithRecoveryToolCall(toolCall)
 }
-
-func retryDefaultsForCode(code string) []func(*StructuredError) {
-	return mcp.RetryDefaultsForCode(code)
-}

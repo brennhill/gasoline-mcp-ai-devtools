@@ -268,7 +268,7 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'a11y',
   'dom_action',
   'upload',
-  'record_start',
+  'screen_recording_start',
   'execute',
   'link_health',
   'draw_mode',

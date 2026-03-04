@@ -3,6 +3,11 @@
 # Launches 8 groups of category tests, collects results, prints summary.
 # Compatible with bash 3.2+ (macOS default).
 # NO set -e: we need to collect all results even if some groups fail.
+#
+# NOTE: cat-27-interactive-overlays.sh is NOT included here — it requires
+# a human operator to visually verify browser overlays (subtitle, draw mode,
+# recording watermark, action toast, tracked hover launcher island).
+# Run it standalone: bash scripts/tests/cat-27-interactive-overlays.sh <port>
 
 # ── Dependency Checks ─────────────────────────────────────
 check_deps() {

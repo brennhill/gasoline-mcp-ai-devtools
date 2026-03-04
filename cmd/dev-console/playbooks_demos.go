@@ -35,9 +35,9 @@ Expected:
 Goal: show record → action → stop workflow.
 
 Steps:
-1. {"tool":"configure","arguments":{"what":"recording_start","name":"demo-flow"}}
+1. {"tool":"configure","arguments":{"what":"event_recording_start","name":"demo-flow"}}
 2. {"tool":"interact","arguments":{"what":"navigate","url":"http://localhost:xxxx"}}
-3. {"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
+3. {"tool":"configure","arguments":{"what":"event_recording_stop","recording_id":"..."}}
 
 Expected:
 - Saved recording ID and playback instructions

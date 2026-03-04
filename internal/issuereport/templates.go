@@ -43,11 +43,6 @@ var templates = map[string]IssueTemplate{
 	},
 }
 
-// TemplateCount returns the number of available templates.
-func TemplateCount() int {
-	return len(templates)
-}
-
 // TemplateNames returns the sorted list of available template names.
 // Derived from the map keys to prevent drift.
 func TemplateNames() []string {

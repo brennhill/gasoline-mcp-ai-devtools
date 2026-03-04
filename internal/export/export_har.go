@@ -108,29 +108,6 @@ type HARExportResult struct {
 	FileSizeBytes int64  `json:"file_size_bytes"`
 }
 
-// ============================================
-// Export Functions
-// ============================================
-
-// ExportHAR converts captured network bodies to a HAR 1.2 log, applying filters.
-// Entries are returned in chronological order (oldest first).
-func ExportHAR(bodies []types.NetworkBody, filter types.NetworkBodyFilter, creatorVersion string) HARLog {
-	entries := make([]HAREntry, 0)
-	for _, body := range bodies {
-		if !matchesHARFilter(body, filter) {
-			continue
-		}
-		entries = append(entries, networkBodyToHAREntry(body))
-	}
-	return buildHARLog(entries, creatorVersion)
-}
-
-// ExportHARToFile exports HAR to a JSON file on disk.
-func ExportHARToFile(bodies []types.NetworkBody, filter types.NetworkBodyFilter, creatorVersion string, path string) (HARExportResult, error) {
-	harLog := ExportHAR(bodies, filter, creatorVersion)
-	return writeHARToFile(harLog, path)
-}
-
 // ExportHARMerged merges NetworkBody entries with NetworkWaterfall entries into a single HAR log.
 // Bodies provide full request/response data. Waterfall entries that match a body URL enrich its
 // timings. Waterfall-only entries become lightweight HAR entries with timing and size but no body.

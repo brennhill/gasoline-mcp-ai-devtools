@@ -8,7 +8,6 @@ import (
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func safeMarshal(v any, fallback string) json.RawMessage {
@@ -23,10 +22,6 @@ func mcpTextResponse(text string) json.RawMessage {
 	return mcp.TextResponse(text)
 }
 
-func mcpErrorResponse(text string) json.RawMessage {
-	return mcp.ErrorResponse(text)
-}
-
 // ResponseFormat tags each response for documentation and testing.
 type ResponseFormat string
 
@@ -35,24 +30,12 @@ const (
 	FormatJSON     ResponseFormat = "json"
 )
 
-func mcpMarkdownResponse(summary string, markdown string) json.RawMessage {
-	return mcp.MarkdownResponse(summary, markdown)
-}
-
 func mcpJSONErrorResponse(summary string, data any) json.RawMessage {
 	return mcp.JSONErrorResponse(summary, data)
 }
 
 func mcpJSONResponse(summary string, data any) json.RawMessage {
 	return mcp.JSONResponse(summary, data)
-}
-
-func markdownTable(headers []string, rows [][]string) string {
-	return mcp.MarkdownTable(headers, rows)
-}
-
-func truncate(s string, maxLen int) string {
-	return util.Truncate(s, maxLen)
 }
 
 func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {

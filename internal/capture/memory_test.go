@@ -137,41 +137,6 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 			mem, expectedMin, expectedMax, reqSize, respSize)
 	}
 }
-
-func TestMemory_CalcActionMemory_PerEntryEstimate(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	c.mu.Lock()
-	c.buffers.enhancedActions = append(c.buffers.enhancedActions, makeAction())
-	c.buffers.actionAddedAt = append(c.buffers.actionAddedAt, time.Now())
-	c.mu.Unlock()
-
-	c.mu.RLock()
-	mem := c.buffers.calcActionMemory()
-	c.mu.RUnlock()
-
-	expected := int64(500)
-	if mem != expected {
-		t.Errorf("calcActionMemory() = %d, expected %d for 1 action", mem, expected)
-	}
-}
-
-func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	c.mu.RLock()
-	ws := c.buffers.calcWSMemory()
-	nb := c.buffers.calcNBMemory()
-	actions := c.buffers.calcActionMemory()
-	c.mu.RUnlock()
-
-	if ws != 0 || nb != 0 || actions != 0 {
-		t.Errorf("expected all zero for empty buffers, got ws=%d nb=%d actions=%d", ws, nb, actions)
-	}
-}
-
 // ============================================
 // Running Total Accuracy
 // ============================================
