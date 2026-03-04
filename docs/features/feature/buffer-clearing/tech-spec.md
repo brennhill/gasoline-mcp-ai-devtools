@@ -40,7 +40,7 @@ Add `buffer` parameter to configure tool schema:
 "buffer": map[string]interface{}{
   "type":        "string",
   "description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
-  "enum":        []string{"network", "websocket", "actions", "logs", "all"},
+  "enum":        []string{"network", "websocket", "actions", "logs", "inbox", "all"},
 },
 ```
 
