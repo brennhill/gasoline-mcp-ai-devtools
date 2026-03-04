@@ -136,6 +136,10 @@
                 if (msg.cli) {
                   headerLabel.textContent = msg.cli;
                 }
+              } else if (msg.type === 'idle_timeout') {
+                term.write('\r\n\x1b[33m[Connection idle — reconnecting...]\x1b[0m\r\n');
+                statusDot.className = 'status error';
+                notifyParent('disconnected', { reason: 'idle_timeout' });
               } else if (msg.type === 'exited') {
                 term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
                 statusDot.className = 'status';

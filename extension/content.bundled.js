@@ -1938,6 +1938,9 @@
   var WIDGET_ID2 = "gasoline-terminal-widget";
   var IFRAME_ID = "gasoline-terminal-iframe";
   var HEADER_ID = "gasoline-terminal-header";
+  var DISCONNECT_TERMINAL_BUTTON_ID = "gasoline-terminal-disconnect-button";
+  var MINIMIZE_TERMINAL_BUTTON_ID = "gasoline-terminal-minimize-button";
+  var CLOSE_TERMINAL_BUTTON_ID = "gasoline-terminal-close-button";
   var widgetEl = null;
   var iframeEl = null;
   var resizeHandleEl = null;
@@ -2292,11 +2295,12 @@
       whiteSpace: "nowrap",
       userSelect: "none"
     });
-    const minimizeBtn = document.createElement("button");
-    minimizeBtn.textContent = "\u2581";
-    minimizeBtn.title = "Minimize terminal";
-    minimizeBtn.type = "button";
-    Object.assign(minimizeBtn.style, {
+    const minimizeTerminalButton = document.createElement("button");
+    minimizeTerminalButton.id = MINIMIZE_TERMINAL_BUTTON_ID;
+    minimizeTerminalButton.textContent = "\u2581";
+    minimizeTerminalButton.title = "Minimize terminal";
+    minimizeTerminalButton.type = "button";
+    Object.assign(minimizeTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2310,24 +2314,25 @@
       justifyContent: "center",
       flexShrink: "0"
     });
-    minimizeBtn.addEventListener("mouseenter", () => {
-      minimizeBtn.style.background = "#292e42";
-      minimizeBtn.style.color = "#a9b1d6";
+    minimizeTerminalButton.addEventListener("mouseenter", () => {
+      minimizeTerminalButton.style.background = "#292e42";
+      minimizeTerminalButton.style.color = "#a9b1d6";
     });
-    minimizeBtn.addEventListener("mouseleave", () => {
-      minimizeBtn.style.background = "transparent";
-      minimizeBtn.style.color = "#565f89";
+    minimizeTerminalButton.addEventListener("mouseleave", () => {
+      minimizeTerminalButton.style.background = "transparent";
+      minimizeTerminalButton.style.color = "#565f89";
     });
-    minimizeBtn.addEventListener("click", (e) => {
+    minimizeTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleMinimize(widget, minimizeBtn, header);
+      toggleMinimize(widget, minimizeTerminalButton, header);
     });
-    const exitBtn = document.createElement("button");
-    exitBtn.textContent = "\u23FB";
-    exitBtn.title = "Exit AI session";
-    exitBtn.type = "button";
-    Object.assign(exitBtn.style, {
+    const disconnectTerminalButton = document.createElement("button");
+    disconnectTerminalButton.id = DISCONNECT_TERMINAL_BUTTON_ID;
+    disconnectTerminalButton.textContent = "\u23FB";
+    disconnectTerminalButton.title = "disconnect terminal & and end session";
+    disconnectTerminalButton.type = "button";
+    Object.assign(disconnectTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2343,28 +2348,29 @@
       opacity: "0.7",
       transition: "opacity 150ms ease, background 150ms ease, box-shadow 150ms ease"
     });
-    exitBtn.addEventListener("mouseenter", () => {
-      exitBtn.style.background = "#3b1219";
-      exitBtn.style.opacity = "1";
-      exitBtn.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
+    disconnectTerminalButton.addEventListener("mouseenter", () => {
+      disconnectTerminalButton.style.background = "#3b1219";
+      disconnectTerminalButton.style.opacity = "1";
+      disconnectTerminalButton.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
     });
-    exitBtn.addEventListener("mouseleave", () => {
-      exitBtn.style.background = "transparent";
-      exitBtn.style.opacity = "0.7";
-      exitBtn.style.boxShadow = "none";
+    disconnectTerminalButton.addEventListener("mouseleave", () => {
+      disconnectTerminalButton.style.background = "transparent";
+      disconnectTerminalButton.style.opacity = "0.7";
+      disconnectTerminalButton.style.boxShadow = "none";
     });
-    exitBtn.addEventListener("click", (e) => {
+    disconnectTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       void exitTerminalSession();
     });
     const spacer = document.createElement("div");
     spacer.style.flex = "1";
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "\u2715";
-    closeBtn.title = "Close terminal";
-    closeBtn.type = "button";
-    Object.assign(closeBtn.style, {
+    const closeTerminalButton = document.createElement("button");
+    closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID;
+    closeTerminalButton.textContent = "\u2715";
+    closeTerminalButton.title = "Close terminal";
+    closeTerminalButton.type = "button";
+    Object.assign(closeTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2378,15 +2384,15 @@
       justifyContent: "center",
       flexShrink: "0"
     });
-    closeBtn.addEventListener("mouseenter", () => {
-      closeBtn.style.background = "#292e42";
-      closeBtn.style.color = "#a9b1d6";
+    closeTerminalButton.addEventListener("mouseenter", () => {
+      closeTerminalButton.style.background = "#292e42";
+      closeTerminalButton.style.color = "#a9b1d6";
     });
-    closeBtn.addEventListener("mouseleave", () => {
-      closeBtn.style.background = "transparent";
-      closeBtn.style.color = "#565f89";
+    closeTerminalButton.addEventListener("mouseleave", () => {
+      closeTerminalButton.style.background = "transparent";
+      closeTerminalButton.style.color = "#565f89";
     });
-    closeBtn.addEventListener("click", (e) => {
+    closeTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       hideTerminal();
@@ -2394,14 +2400,14 @@
     header.addEventListener("click", () => {
       if (!minimized)
         return;
-      toggleMinimize(widget, minimizeBtn, header);
+      toggleMinimize(widget, minimizeTerminalButton, header);
     });
     header.appendChild(statusDot);
     header.appendChild(titleSpan);
-    header.appendChild(exitBtn);
+    header.appendChild(disconnectTerminalButton);
     header.appendChild(spacer);
-    header.appendChild(minimizeBtn);
-    header.appendChild(closeBtn);
+    header.appendChild(minimizeTerminalButton);
+    header.appendChild(closeTerminalButton);
     const iframe = document.createElement("iframe");
     iframe.id = IFRAME_ID;
     iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
@@ -2450,6 +2456,10 @@
         break;
       case "disconnected":
         updateStatusDot("disconnected");
+        if (event.data.data?.reason === "idle_timeout") {
+          clearPersistedSession();
+          sessionState = null;
+        }
         break;
       case "exited":
         updateStatusDot("exited");
@@ -2632,9 +2642,9 @@
       showTerminal();
       if (startMinimized) {
         const header = widgetEl?.querySelector("#" + HEADER_ID);
-        const minimizeBtn = header?.querySelector("button");
-        if (widgetEl && header && minimizeBtn) {
-          toggleMinimize(widgetEl, minimizeBtn, header);
+        const minimizeTerminalButton = header?.querySelector("#" + MINIMIZE_TERMINAL_BUTTON_ID);
+        if (widgetEl && header && minimizeTerminalButton) {
+          toggleMinimize(widgetEl, minimizeTerminalButton, header);
         }
       }
     });

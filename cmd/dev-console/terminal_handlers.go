@@ -19,8 +19,9 @@ import (
 )
 
 // terminalWSIdleTimeout is the idle timeout for terminal WebSocket connections.
-// Longer than the test harness since terminal sessions are long-lived.
-const terminalWSIdleTimeout = 5 * time.Minute
+// Set high — terminal users may step away for extended periods. On timeout the
+// connection closes cleanly and the browser auto-reconnects with scrollback replay.
+const terminalWSIdleTimeout = 2 * time.Hour
 
 // terminalReadBufSize is the buffer size for PTY reads relayed to the browser.
 const terminalReadBufSize = 4096
@@ -147,13 +148,13 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		}
 	}
 
-	terminalWSLoop(conn, bufrw, sess)
+	terminalWSLoop(conn, bufrw, sess, mgr)
 }
 
 // terminalWSLoop relays data between a WebSocket connection and a PTY session.
 // Downstream (PTY → browser): binary WebSocket frames with raw terminal output.
 // Upstream (browser → PTY): binary frames as keystrokes, text frames as JSON control messages.
-func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
+func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr *pty.Manager) {
 	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
 	done := make(chan struct{})
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, defer close(done) handles teardown
@@ -180,12 +181,20 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	// must survive page refreshes so the browser can reconnect with scrollback replay.
 	// Sessions are only killed explicitly via POST /terminal/stop (the Exit button).
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn
+		defer conn.Close() // Close conn on exit so downstream detects it and browser auto-reconnects
 		for {
 			_ = conn.SetReadDeadline(time.Now().Add(terminalWSIdleTimeout))
 
 			fin, opcode, payload, err := wsReadFrame(rw)
 			if err != nil {
-				return // WebSocket closed — stop relaying but keep PTY alive
+				// If idle timeout, notify the user and kill the session.
+				// Page refresh starts a fresh session handshake.
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					msg := []byte(`{"type":"idle_timeout"}`)
+					_ = wsWriteFrame(rw, 0x1, msg)
+					_ = mgr.Stop(sess.ID)
+				}
+				return
 			}
 			_ = fin // Terminal messages are not fragmented in practice.
 
