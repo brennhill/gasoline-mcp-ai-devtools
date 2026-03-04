@@ -61,7 +61,7 @@ var interactActionSpecs = []InteractActionSpec{
 	{Name: "hover", Hint: "Trigger hover state on an element for tooltip discovery", Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"}},
 	{Name: "auto_dismiss_overlays", Hint: "Auto-dismiss cookie consent banners and overlays using known framework selectors", Optional: []string{"timeout_ms"}},
 	{Name: "wait_for_stable", Hint: "Wait for DOM stability (no mutations for stability_ms). Returns stable/timed_out status", Optional: []string{"stability_ms", "timeout_ms"}},
-	{Name: "list_interactive", Hint: "List all clickable/typeable elements on the page. Use limit to cap results", Optional: []string{"visible_only", "frame", "scope_selector", "limit"}},
+	{Name: "list_interactive", Hint: "List all clickable/typeable elements on the page. Use limit to cap results", Optional: []string{"visible_only", "frame", "scope_selector", "scope_rect", "text_contains", "role", "exclude_nav", "limit"}},
 	{Name: "get_readable", Hint: "Extract readable text content from the page", Optional: []string{"frame"}},
 	{Name: "get_markdown", Hint: "Extract page content as markdown", Optional: []string{"frame"}},
 	{Name: "navigate_and_wait_for", Hint: "Navigate to a URL and wait for a selector to appear", Optional: []string{"url", "wait_for", "include_content"}},

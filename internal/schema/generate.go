@@ -9,7 +9,7 @@ import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 func GenerateToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "generate",
-		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
+		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
