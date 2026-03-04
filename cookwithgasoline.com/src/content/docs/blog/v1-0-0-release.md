@@ -45,4 +45,4 @@ This is early. Very early. But it works.
 
 **Next steps:** Add network request capture, implement MCP protocol, persistent storage.
 
-See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.
+See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.

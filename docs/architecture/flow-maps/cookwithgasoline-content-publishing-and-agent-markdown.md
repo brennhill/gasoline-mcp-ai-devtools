@@ -9,23 +9,37 @@ feature_ids:
   - feature-cookwithgasoline-content-platform
 entrypoints:
   - cookwithgasoline.com/src/content/docs/index.mdx
+  - cookwithgasoline.com/src/content/docs/downloads.md
   - cookwithgasoline.com/src/pages/[...slug].md.ts
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-downloads-page-contract.mjs
+  - scripts/docs/check-landing-layout-contract.mjs
+  - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
 code_paths:
   - cookwithgasoline.com/astro.config.mjs
+  - cookwithgasoline.com/public/images/integrations/*.svg
+  - cookwithgasoline.com/public/images/landing/*.svg
   - cookwithgasoline.com/public/images/solutions-seo-signal.svg
   - cookwithgasoline.com/src/content/docs/articles/*.md
+  - cookwithgasoline.com/src/content/docs/downloads.md
+  - cookwithgasoline.com/src/content/docs/guides/seo-analysis.md
+  - cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md
+  - cookwithgasoline.com/src/content/docs/index.mdx
   - cookwithgasoline.com/src/content/docs/reference/index.md
   - cookwithgasoline.com/src/content/docs/reference/observe.md
   - cookwithgasoline.com/src/content/docs/reference/analyze.md
   - cookwithgasoline.com/src/content/docs/reference/interact.md
   - cookwithgasoline.com/src/content/docs/reference/configure.md
   - cookwithgasoline.com/src/content/docs/reference/generate.md
+  - cookwithgasoline.com/src/components/Footer.astro
   - cookwithgasoline.com/src/components/Head.astro
   - cookwithgasoline.com/src/components/Landing.astro
+  - cookwithgasoline.com/src/components/ThemeProvider.astro
+  - cookwithgasoline.com/src/components/ThemeSelect.astro
   - cookwithgasoline.com/src/components/WorkflowLibrary.astro
   - cookwithgasoline.com/src/components/ArticlesLibrary.astro
+  - cookwithgasoline.com/src/styles/custom.css
   - cookwithgasoline.com/src/data/workflows.ts
   - cookwithgasoline.com/src/pages/[...slug].md.ts
   - cookwithgasoline.com/src/pages/index.md.ts
@@ -34,12 +48,18 @@ code_paths:
   - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
   - cookwithgasoline.com/src/utils/markdownPaths.ts
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-downloads-page-contract.mjs
+  - scripts/docs/check-landing-layout-contract.mjs
+  - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
   - scripts/docs/check-feature-bundles.js
   - .github/workflows/ci.yml
 test_paths:
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-downloads-page-contract.mjs
+  - scripts/docs/check-landing-layout-contract.mjs
+  - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
 ---
 
@@ -47,13 +67,17 @@ test_paths:
 
 ## Scope
 
-Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, reference-page readability fixes, schema-synced tool-mode coverage, section spacing/overflow hardening for full-page scroll rhythm, and 100x-style split solutions panels with in-panel synthetic visuals + Gasoline-themed callout overlays), workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
+Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, tightened hero typography, light-theme header title color tuning, reference-page readability fixes, schema-synced tool-mode coverage, section spacing/overflow hardening for full-page scroll rhythm, a branded integrations card with real agent logos + hover-widget concept preview, split solutions panels with in-panel Gasoline mock visuals + annotation callouts, large-screen left/right stagger offsets for solutions visual rhythm, light-only theme enforcement with no user theme dropdown, updated CTA/footer link treatments, and new task-specific guide pages for SEO and annotation-skill-terminal workflows), plus downloads-page requirement clarity (native binary runtime with optional npm/Node path) and expressive-code frame chrome cleanup driven by annotation feedback. Also covers workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
 
 ## Entrypoints
 
 - Splash homepage in `cookwithgasoline.com/src/content/docs/index.mdx`
+- Downloads page content in `cookwithgasoline.com/src/content/docs/downloads.md`
 - Agent markdown mirror route in `cookwithgasoline.com/src/pages/[...slug].md.ts`
 - Content contract gate in `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- Downloads page contract gate in `scripts/docs/check-downloads-page-contract.mjs`
+- Landing layout contract gate in `scripts/docs/check-landing-layout-contract.mjs`
+- Light-theme contract gate in `scripts/docs/check-light-theme-contract.mjs`
 - Reference/schema sync gate in `scripts/docs/check-reference-schema-sync.mjs`
 
 ## Primary Flow
@@ -65,6 +89,9 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 5. `<link rel="alternate" type="text/markdown">` in `Head.astro` points each HTML route to its markdown mirror.
 6. `llms.txt` and `llms-full.txt` enumerate markdown/HTML URLs from `src/utils/markdownPaths.ts`.
 7. CI executes `docs:ci` to enforce feature bundle completeness, content contract compliance, and schema-to-reference mode coverage.
+8. Downloads-page copy and expressive-code visual guardrails are enforced by `check-downloads-page-contract.mjs`.
+9. Large-screen solutions-panel staggering is enforced by `check-landing-layout-contract.mjs`.
+10. Light-only theme behavior and selector removal are enforced by `check-light-theme-contract.mjs`.
 
 ## Error and Recovery Paths
 
@@ -88,10 +115,20 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 ## Code Paths
 
 - `cookwithgasoline.com/astro.config.mjs`
+- `cookwithgasoline.com/public/images/integrations/*.svg`
+- `cookwithgasoline.com/public/images/landing/*.svg`
 - `cookwithgasoline.com/src/components/Head.astro`
+- `cookwithgasoline.com/src/components/Footer.astro`
 - `cookwithgasoline.com/src/components/Landing.astro`
+- `cookwithgasoline.com/src/components/ThemeProvider.astro`
+- `cookwithgasoline.com/src/components/ThemeSelect.astro`
 - `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
 - `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
+- `cookwithgasoline.com/src/styles/custom.css`
+- `cookwithgasoline.com/src/content/docs/index.mdx`
+- `cookwithgasoline.com/src/content/docs/downloads.md`
+- `cookwithgasoline.com/src/content/docs/guides/seo-analysis.md`
+- `cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md`
 - `cookwithgasoline.com/src/data/workflows.ts`
 - `cookwithgasoline.com/src/pages/[...slug].md.ts`
 - `cookwithgasoline.com/src/pages/index.md.ts`
@@ -100,6 +137,9 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 - `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
 - `cookwithgasoline.com/src/utils/markdownPaths.ts`
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-downloads-page-contract.mjs`
+- `scripts/docs/check-landing-layout-contract.mjs`
+- `scripts/docs/check-light-theme-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
 - `scripts/docs/check-feature-bundles.js`
 - `.github/workflows/ci.yml`
@@ -107,6 +147,9 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 ## Test Paths
 
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-downloads-page-contract.mjs`
+- `scripts/docs/check-landing-layout-contract.mjs`
+- `scripts/docs/check-light-theme-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
 - `scripts/docs/check-feature-bundles.js`
 

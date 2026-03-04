@@ -47,4 +47,4 @@ This version taught us that:
 
 **Lesson learned:** HTTP polling doesn't work for a telemetry system. Next version will use WebSockets.
 
-See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.
+See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.

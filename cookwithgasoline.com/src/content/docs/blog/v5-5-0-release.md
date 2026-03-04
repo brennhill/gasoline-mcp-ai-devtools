@@ -91,4 +91,4 @@ Or update your MCP configuration:
 
 ## Full Changelog
 
-[GitHub Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.5.0)
+[GitHub Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.5.0)

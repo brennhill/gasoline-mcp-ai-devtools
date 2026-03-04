@@ -38,8 +38,9 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    #header { display: none; }
     #terminal-container {
-      height: calc(100% - 32px);
+      height: 100%;
       width: 100%;
     }
   </style>
@@ -101,6 +102,40 @@
       var ws = null;
       var reconnectTimer = null;
       var reconnectDelay = 1000;
+      var lastTypingNotifyAt = 0;
+
+      function notifyFocusState(focused) {
+        notifyParent('focus', { focused: !!focused });
+      }
+
+      function notifyTypingHeartbeat() {
+        var now = Date.now();
+        if (now - lastTypingNotifyAt < 120) return;
+        lastTypingNotifyAt = now;
+        notifyParent('typing', { at: now });
+      }
+
+      function softRedraw() {
+        fitTerminal();
+        if (typeof term.refresh === 'function') {
+          try {
+            term.refresh(0, Math.max(0, term.rows - 1));
+          } catch (_) {
+            // Best effort redraw only; safe to ignore.
+          }
+        }
+      }
+
+      function bindFocusBridge() {
+        var textarea = term && term.textarea;
+        if (!textarea) return;
+        textarea.addEventListener('focus', function() {
+          notifyFocusState(true);
+        });
+        textarea.addEventListener('blur', function() {
+          notifyFocusState(false);
+        });
+      }
 
       function connect() {
         var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -136,10 +171,6 @@
                 if (msg.cli) {
                   headerLabel.textContent = msg.cli;
                 }
-              } else if (msg.type === 'idle_timeout') {
-                term.write('\r\n\x1b[33m[Connection idle — reconnecting...]\x1b[0m\r\n');
-                statusDot.className = 'status error';
-                notifyParent('disconnected', { reason: 'idle_timeout' });
               } else if (msg.type === 'exited') {
                 term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
                 statusDot.className = 'status';
@@ -154,6 +185,7 @@
         ws.onclose = function() {
           statusDot.className = 'status';
           notifyParent('disconnected', {});
+          notifyFocusState(false);
           scheduleReconnect();
         };
 
@@ -173,6 +205,8 @@
 
       // Terminal input → WebSocket (binary)
       term.onData(function(data) {
+        notifyTypingHeartbeat();
+        notifyFocusState(true);
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(new TextEncoder().encode(data));
         }
@@ -212,6 +246,12 @@
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(fitTerminal, 100);
       });
+      window.addEventListener('blur', function() {
+        notifyFocusState(false);
+      });
+      window.addEventListener('focus', function() {
+        notifyFocusState(document.activeElement === term.textarea);
+      });
 
       // PostMessage API for parent frame communication
       function notifyParent(event, data) {
@@ -229,9 +269,13 @@
         switch (event.data.command) {
           case 'focus':
             term.focus();
+            notifyFocusState(true);
             break;
           case 'resize':
             fitTerminal();
+            break;
+          case 'redraw':
+            softRedraw();
             break;
           case 'write':
             if (event.data.text && ws && ws.readyState === WebSocket.OPEN) {
@@ -242,8 +286,10 @@
       });
 
       // Start connection
+      bindFocusBridge();
       connect();
       term.focus();
+      notifyFocusState(true);
     })();
   </script>
 </body>

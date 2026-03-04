@@ -5,12 +5,25 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, StorageKey } from '../../lib/constants.js';
+import { showActionToast } from './toast.js';
 const WIDGET_ID = 'gasoline-terminal-widget';
 const IFRAME_ID = 'gasoline-terminal-iframe';
 const HEADER_ID = 'gasoline-terminal-header';
 const DISCONNECT_TERMINAL_BUTTON_ID = 'gasoline-terminal-disconnect-button';
+const REDRAW_TERMINAL_BUTTON_ID = 'gasoline-terminal-redraw-button';
 const MINIMIZE_TERMINAL_BUTTON_ID = 'gasoline-terminal-minimize-button';
 const CLOSE_TERMINAL_BUTTON_ID = 'gasoline-terminal-close-button';
+const DEFAULT_WIDGET_WIDTH = '50vw';
+const DEFAULT_WIDGET_HEIGHT = '40vh';
+const MIN_WIDGET_WIDTH = '400px';
+const MIN_WIDGET_HEIGHT = '250px';
+const MAX_WIDGET_WIDTH = '100vw';
+const MAX_WIDGET_HEIGHT = '80vh';
+const MINIMIZED_WIDGET_HEIGHT = '32px';
+const TERMINAL_WRITE_SUBMIT_DELAY_MS = 600;
+const TERMINAL_TYPING_IDLE_MS = 1500;
+const TERMINAL_GUARD_POLL_MS = 200;
+const TERMINAL_GUARD_TOAST_INTERVAL_MS = 3000;
 let widgetEl = null;
 let iframeEl = null;
 let resizeHandleEl = null;
@@ -19,6 +32,14 @@ let visible = false;
 let minimized = false;
 let savedHeight = '';
 let serverUrl = DEFAULT_SERVER_URL;
+let terminalFocused = false;
+let lastTypingAt = 0;
+let queuedWrites = [];
+let queuedWriteFlushTimer = null;
+let queuedSubmitTimer = null;
+let queuedWriteInFlight = false;
+let lastGuardToastAt = 0;
+let terminalConnected = false;
 /** Compute the terminal server URL from a base daemon URL (port + TERMINAL_PORT_OFFSET). */
 function getTerminalServerUrl(baseUrl) {
     const url = new URL(baseUrl);
@@ -322,18 +343,19 @@ function showSandboxError(message, instruction, command) {
         target.appendChild(overlay);
 }
 function createWidget(token) {
+    terminalConnected = false;
     const widget = document.createElement('div');
     widget.id = WIDGET_ID;
     Object.assign(widget.style, {
         position: 'fixed',
         bottom: '0',
         right: '0',
-        width: '50vw',
-        height: '40vh',
-        minWidth: '400px',
-        minHeight: '250px',
-        maxWidth: '100vw',
-        maxHeight: '80vh',
+        width: DEFAULT_WIDGET_WIDTH,
+        height: DEFAULT_WIDGET_HEIGHT,
+        minWidth: MIN_WIDGET_WIDTH,
+        minHeight: MIN_WIDGET_HEIGHT,
+        maxWidth: MAX_WIDGET_WIDTH,
+        maxHeight: MAX_WIDGET_HEIGHT,
         zIndex: '2147483644',
         display: 'flex',
         flexDirection: 'column',
@@ -384,7 +406,7 @@ function createWidget(token) {
         transition: 'background 200ms ease'
     });
     const titleSpan = document.createElement('span');
-    titleSpan.textContent = 'Terminal';
+    titleSpan.textContent = 'Gasoline Terminal';
     Object.assign(titleSpan.style, {
         color: '#787c99',
         fontSize: '12px',
@@ -467,6 +489,38 @@ function createWidget(token) {
     // Spacer pushes minimize/close to the right
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
+    const redrawTerminalButton = document.createElement('button');
+    redrawTerminalButton.id = REDRAW_TERMINAL_BUTTON_ID;
+    redrawTerminalButton.textContent = '\u21BB'; // ↻
+    redrawTerminalButton.title = 'Redraw terminal graphics';
+    redrawTerminalButton.type = 'button';
+    Object.assign(redrawTerminalButton.style, {
+        width: '24px',
+        height: '24px',
+        border: 'none',
+        background: 'transparent',
+        color: '#565f89',
+        fontSize: '14px',
+        cursor: 'pointer',
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: '0'
+    });
+    redrawTerminalButton.addEventListener('mouseenter', () => {
+        redrawTerminalButton.style.background = '#292e42';
+        redrawTerminalButton.style.color = '#a9b1d6';
+    });
+    redrawTerminalButton.addEventListener('mouseleave', () => {
+        redrawTerminalButton.style.background = 'transparent';
+        redrawTerminalButton.style.color = '#565f89';
+    });
+    redrawTerminalButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        redrawTerminal(widget, header, minimizeTerminalButton);
+    });
     const closeTerminalButton = document.createElement('button');
     closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID;
     closeTerminalButton.textContent = '\u2715';
@@ -509,6 +563,7 @@ function createWidget(token) {
     header.appendChild(titleSpan);
     header.appendChild(disconnectTerminalButton);
     header.appendChild(spacer);
+    header.appendChild(redrawTerminalButton);
     header.appendChild(minimizeTerminalButton);
     header.appendChild(closeTerminalButton);
     // Iframe
@@ -561,19 +616,38 @@ function handleIframeMessage(event) {
     switch (event.data.event) {
         case 'connected':
             updateStatusDot('connected');
+            terminalConnected = true;
+            if (queuedWrites.length > 0 && !queuedWriteInFlight) {
+                scheduleQueuedWriteFlush(0);
+            }
             break;
         case 'disconnected':
             updateStatusDot('disconnected');
-            // Idle timeout — session was killed server-side. Clear persisted state
-            // so page refresh starts a fresh session handshake.
-            if (event.data.data?.reason === 'idle_timeout') {
-                clearPersistedSession();
-                sessionState = null;
-            }
+            terminalConnected = false;
+            terminalFocused = false;
             break;
         case 'exited':
             updateStatusDot('exited');
+            terminalConnected = false;
+            terminalFocused = false;
+            resetWriteGuardState();
             break;
+        case 'focus':
+            terminalFocused = Boolean(event.data.data?.focused);
+            if (terminalFocused) {
+                lastTypingAt = Date.now();
+            }
+            else if (queuedWrites.length > 0 && !queuedWriteInFlight) {
+                scheduleQueuedWriteFlush(0);
+            }
+            break;
+        case 'typing': {
+            const rawAt = event.data.data?.at;
+            const parsedAt = typeof rawAt === 'number' && Number.isFinite(rawAt) ? rawAt : Date.now();
+            terminalFocused = true;
+            lastTypingAt = parsedAt;
+            break;
+        }
     }
 }
 function setupResize(handle, widget) {
@@ -609,12 +683,46 @@ function setupResize(handle, widget) {
     }
     handle.addEventListener('mousedown', onMouseDown);
 }
+function redrawTerminal(widget, header, minimizeButton) {
+    if (minimized) {
+        toggleMinimize(widget, minimizeButton, header);
+    }
+    savedHeight = DEFAULT_WIDGET_HEIGHT;
+    widget.style.bottom = '0';
+    widget.style.right = '0';
+    widget.style.width = DEFAULT_WIDGET_WIDTH;
+    widget.style.height = DEFAULT_WIDGET_HEIGHT;
+    widget.style.minWidth = MIN_WIDGET_WIDTH;
+    widget.style.minHeight = MIN_WIDGET_HEIGHT;
+    widget.style.maxWidth = MAX_WIDGET_WIDTH;
+    widget.style.maxHeight = MAX_WIDGET_HEIGHT;
+    widget.style.opacity = '1';
+    widget.style.transform = 'translateY(0) scale(1)';
+    widget.style.pointerEvents = 'auto';
+    if (iframeEl) {
+        iframeEl.style.display = 'block';
+        updateStatusDot('disconnected');
+        iframeEl.src = iframeEl.src;
+    }
+    if (resizeHandleEl)
+        resizeHandleEl.style.display = 'block';
+    minimizeButton.textContent = '\u2581'; // ▁
+    minimizeButton.title = 'Minimize terminal';
+    header.style.cursor = 'default';
+    header.style.borderBottom = '1px solid #292e42';
+    visible = true;
+    requestAnimationFrame(() => {
+        notifyIframe('resize');
+        notifyIframe('focus');
+    });
+    persistUIState('open');
+}
 function toggleMinimize(widget, btn, header) {
     if (minimized) {
         // Restore
         minimized = false;
-        widget.style.height = savedHeight || '40vh';
-        widget.style.minHeight = '250px';
+        widget.style.height = savedHeight || DEFAULT_WIDGET_HEIGHT;
+        widget.style.minHeight = MIN_WIDGET_HEIGHT;
         if (iframeEl)
             iframeEl.style.display = 'block';
         if (resizeHandleEl)
@@ -629,9 +737,9 @@ function toggleMinimize(widget, btn, header) {
     else {
         // Minimize
         minimized = true;
-        savedHeight = widget.style.height || '40vh';
-        widget.style.height = '32px';
-        widget.style.minHeight = '32px';
+        savedHeight = widget.style.height || DEFAULT_WIDGET_HEIGHT;
+        widget.style.height = MINIMIZED_WIDGET_HEIGHT;
+        widget.style.minHeight = MINIMIZED_WIDGET_HEIGHT;
         if (iframeEl)
             iframeEl.style.display = 'none';
         if (resizeHandleEl)
@@ -657,6 +765,95 @@ function notifyIframe(command, data) {
         ...data
     }, origin);
 }
+function resetWriteGuardState() {
+    queuedWrites = [];
+    terminalFocused = false;
+    lastTypingAt = 0;
+    queuedWriteInFlight = false;
+    lastGuardToastAt = 0;
+    if (queuedWriteFlushTimer !== null) {
+        clearTimeout(queuedWriteFlushTimer);
+        queuedWriteFlushTimer = null;
+    }
+    if (queuedSubmitTimer !== null) {
+        clearTimeout(queuedSubmitTimer);
+        queuedSubmitTimer = null;
+    }
+}
+function shouldDeferQueuedWrite(nowMs = Date.now()) {
+    if (!terminalFocused)
+        return false;
+    return nowMs - lastTypingAt < TERMINAL_TYPING_IDLE_MS;
+}
+function maybeShowQueuedWriteToast(nowMs = Date.now()) {
+    if (nowMs - lastGuardToastAt < TERMINAL_GUARD_TOAST_INTERVAL_MS)
+        return;
+    lastGuardToastAt = nowMs;
+    showActionToast('waiting for user to stop typing', 'Queued terminal action', 'warning', 1800);
+}
+function scheduleQueuedWriteFlush(delayMs = 0) {
+    if (queuedWriteFlushTimer !== null)
+        clearTimeout(queuedWriteFlushTimer);
+    queuedWriteFlushTimer = setTimeout(() => {
+        queuedWriteFlushTimer = null;
+        flushQueuedWrites();
+    }, delayMs);
+}
+function scheduleQueuedSubmit(delayMs) {
+    if (queuedSubmitTimer !== null)
+        clearTimeout(queuedSubmitTimer);
+    queuedSubmitTimer = setTimeout(() => {
+        queuedSubmitTimer = null;
+        if (!visible || !iframeEl) {
+            resetWriteGuardState();
+            return;
+        }
+        if (!terminalConnected) {
+            scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
+            return;
+        }
+        if (shouldDeferQueuedWrite()) {
+            maybeShowQueuedWriteToast();
+            scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
+            return;
+        }
+        notifyIframe('write', { text: '\r' });
+        notifyIframe('focus');
+        queuedWriteInFlight = false;
+        if (queuedWrites.length > 0) {
+            scheduleQueuedWriteFlush(0);
+        }
+    }, delayMs);
+}
+function flushQueuedWrites() {
+    if (!visible || !iframeEl) {
+        resetWriteGuardState();
+        return;
+    }
+    if (!terminalConnected) {
+        scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
+        return;
+    }
+    if (queuedWriteInFlight)
+        return;
+    if (queuedWrites.length === 0) {
+        lastGuardToastAt = 0;
+        return;
+    }
+    if (shouldDeferQueuedWrite()) {
+        maybeShowQueuedWriteToast();
+        scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
+        return;
+    }
+    const nextWrite = queuedWrites.shift();
+    if (!nextWrite)
+        return;
+    lastGuardToastAt = 0;
+    queuedWriteInFlight = true;
+    notifyIframe('redraw');
+    notifyIframe('write', { text: nextWrite });
+    scheduleQueuedSubmit(TERMINAL_WRITE_SUBMIT_DELAY_MS);
+}
 export function hideTerminal() {
     if (!widgetEl)
         return;
@@ -664,6 +861,7 @@ export function hideTerminal() {
     widgetEl.style.opacity = '0';
     widgetEl.style.transform = 'translateY(20px) scale(0.98)';
     widgetEl.style.pointerEvents = 'none';
+    resetWriteGuardState();
     persistUIState('closed');
     // Session stays alive — can reconnect via toggle or page reload
 }
@@ -777,6 +975,8 @@ function mountWidget(token, startMinimized) {
 }
 function unmountTerminal() {
     window.removeEventListener('message', handleIframeMessage);
+    resetWriteGuardState();
+    terminalConnected = false;
     if (widgetEl) {
         widgetEl.remove();
         widgetEl = null;
@@ -794,13 +994,10 @@ export function writeToTerminal(text) {
         return;
     // Strip trailing whitespace/newlines — we'll send our own Enter to submit.
     const trimmed = text.replace(/[\r\n\s]+$/, '');
-    notifyIframe('write', { text: trimmed });
-    // Delay must be long enough for the AI CLI's TUI to finish processing the pasted
-    // text (especially large multi-line annotations). Send \r (carriage return) which
-    // is the actual Enter keypress byte in a terminal — more reliable than \n for TUIs.
-    setTimeout(() => {
-        notifyIframe('write', { text: '\r' });
-    }, 600);
+    if (!trimmed)
+        return;
+    queuedWrites.push(trimmed);
+    scheduleQueuedWriteFlush(0);
 }
 // Re-export for launcher integration
 export { saveTerminalConfig };

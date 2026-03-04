@@ -58,4 +58,4 @@ npx gasoline-mcp@5.7.5
 
 ## Full Changelog
 
-See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.7.5).
+See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.5).
