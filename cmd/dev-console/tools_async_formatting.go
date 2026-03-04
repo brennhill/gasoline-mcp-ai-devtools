@@ -171,6 +171,10 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	stripSuccessOnlyFields(responseData)
 	stripRetryContextOnSuccess(responseData)
+	// #447: Strip verbose fields when summary mode is active
+	if h.loadSummaryPref() {
+		stripSummaryModeFields(responseData)
+	}
 	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }

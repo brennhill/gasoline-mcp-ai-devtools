@@ -99,6 +99,8 @@ export interface DOMResult {
   overlay_selector?: string
   overlay_text_preview?: string
   overlay_warning?: string
+  // #445: extension vs page overlay source
+  overlay_source?: 'extension' | 'page'
   // wait_for_stable fields (#344)
   stable?: boolean
   timed_out?: boolean
