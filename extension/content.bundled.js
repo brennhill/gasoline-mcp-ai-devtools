@@ -2053,11 +2053,11 @@
   async function validateSession(token) {
     try {
       const url = await getServerUrl();
-      const resp = await fetch(`${url}/terminal/config`, { signal: AbortSignal.timeout(2e3) });
+      const resp = await fetch(`${url}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
       if (!resp.ok)
         return false;
       const data = await resp.json();
-      return (data.count ?? 0) > 0;
+      return data.valid === true;
     } catch {
       return false;
     }
@@ -2263,6 +2263,16 @@
       cursor: "default",
       flexShrink: "0"
     });
+    const statusDot = document.createElement("span");
+    statusDot.className = "gasoline-terminal-status-dot";
+    Object.assign(statusDot.style, {
+      width: "8px",
+      height: "8px",
+      borderRadius: "50%",
+      background: "#565f89",
+      flexShrink: "0",
+      transition: "background 200ms ease"
+    });
     const titleSpan = document.createElement("span");
     titleSpan.textContent = "Terminal";
     Object.assign(titleSpan.style, {
@@ -2378,6 +2388,7 @@
         return;
       toggleMinimize(widget, minimizeBtn, header);
     });
+    header.appendChild(statusDot);
     header.appendChild(titleSpan);
     header.appendChild(exitBtn);
     header.appendChild(spacer);
@@ -2399,6 +2410,22 @@
     window.addEventListener("message", handleIframeMessage);
     return widget;
   }
+  function updateStatusDot(state) {
+    const dot = widgetEl?.querySelector(".gasoline-terminal-status-dot");
+    if (!dot)
+      return;
+    switch (state) {
+      case "connected":
+        dot.style.background = "#9ece6a";
+        break;
+      case "disconnected":
+        dot.style.background = "#e0af68";
+        break;
+      case "exited":
+        dot.style.background = "#f7768e";
+        break;
+    }
+  }
   function handleIframeMessage(event) {
     if (!event.data || event.data.source !== "gasoline-terminal")
       return;
@@ -2409,7 +2436,16 @@
     } catch {
       return;
     }
-    if (event.data.event === "exited") {
+    switch (event.data.event) {
+      case "connected":
+        updateStatusDot("connected");
+        break;
+      case "disconnected":
+        updateStatusDot("disconnected");
+        break;
+      case "exited":
+        updateStatusDot("exited");
+        break;
     }
   }
   function setupResize(handle, widget) {
@@ -2503,7 +2539,8 @@
         await fetch(`${serverUrl}/terminal/stop`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: sessionState.sessionId })
+          body: JSON.stringify({ id: sessionState.sessionId }),
+          signal: AbortSignal.timeout(3e3)
         });
       } catch {
       }
@@ -2606,8 +2643,8 @@
     const trimmed = text.replace(/[\r\n\s]+$/, "");
     notifyIframe("write", { text: trimmed });
     setTimeout(() => {
-      notifyIframe("write", { text: "\n" });
-    }, 150);
+      notifyIframe("write", { text: "\r" });
+    }, 600);
   }
 
   // extension/content/ui/tracked-hover-launcher.js
@@ -3242,7 +3279,6 @@
     }
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
-    unmountTerminal();
   }
   function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -217,8 +218,24 @@ func (s *Session) Close() error {
 	// Close PTY master — this also signals EOF to the child.
 	err := s.ptmx.Close()
 
-	// Reap the child process (non-blocking wait).
-	_ = s.cmd.Wait()
+	// Reap the child process with a timeout. If SIGTERM + PTY close aren't
+	// enough, escalate to SIGKILL. Without this timeout, cmd.Wait() blocks
+	// indefinitely and deadlocks the Manager (which holds its write lock).
+	done := make(chan struct{})
+	go func() { // lint:allow-bare-goroutine — one-shot reaper, closes done channel
+		_ = s.cmd.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		// Child exited cleanly.
+	case <-time.After(2 * time.Second):
+		// Escalate to SIGKILL.
+		if s.cmd.Process != nil {
+			_ = s.cmd.Process.Kill()
+		}
+		<-done // Wait for reap after SIGKILL.
+	}
 	return err
 }
 
@@ -251,6 +268,18 @@ func (s *Session) Scrollback() []byte {
 	return out
 }
 
+
+// IsAlive returns true if the session is not closed and the child process is still running.
+func (s *Session) IsAlive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.cmd.Process == nil {
+		return false
+	}
+	// Signal 0 checks process existence without sending a signal.
+	err := s.cmd.Process.Signal(syscall.Signal(0))
+	return err == nil
+}
 
 // Pid returns the child process PID, or -1 if not started.
 func (s *Session) Pid() int {
