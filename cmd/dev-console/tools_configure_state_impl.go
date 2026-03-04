@@ -126,7 +126,7 @@ func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessag
 
 	cleared, ok := h.clearConfiguredBuffer(buffer)
 	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Unknown buffer: "+buffer, "Use a valid buffer value", withParam("buffer"), withHint("all, network, websocket, actions, logs"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Unknown buffer: "+buffer, "Use a valid buffer value", withParam("buffer"), withHint("all, network, websocket, actions, logs, inbox"))}
 	}
 
 	responseData := map[string]any{"status": "ok", "buffer": buffer, "cleared": cleared}
@@ -143,6 +143,10 @@ func (h *ToolHandler) clearConfiguredBuffer(buffer string) (any, bool) {
 		cleared := map[string]any{
 			"buffers":                "all",
 			"extension_logs_cleared": h.capture.ClearExtensionLogs(),
+		}
+		if h.server.pushInbox != nil {
+			drained := h.server.pushInbox.DrainAll()
+			cleared["push_events_drained"] = len(drained)
 		}
 		if h.annotationStore != nil {
 			annotationCleared := h.annotationStore.ClearAll()
@@ -167,6 +171,12 @@ func (h *ToolHandler) clearConfiguredBuffer(buffer string) (any, bool) {
 		logCount := h.server.getEntryCount()
 		h.server.clearEntries()
 		return map[string]int{"logs": logCount}, true
+	case "inbox":
+		if h.server.pushInbox != nil {
+			drained := h.server.pushInbox.DrainAll()
+			return map[string]int{"push_events": len(drained)}, true
+		}
+		return map[string]int{"push_events": 0}, true
 	default:
 		return nil, false
 	}

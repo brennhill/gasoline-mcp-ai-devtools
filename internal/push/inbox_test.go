@@ -96,6 +96,78 @@ func TestInbox_PreserveExplicitTimestamp(t *testing.T) {
 	}
 }
 
+func TestInbox_ScreenshotDedup_ConsecutiveSameTabURL(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "ss-1", Type: "screenshot", TabID: 1, PageURL: "https://example.com", ScreenshotB64: "old"})
+	q.Enqueue(PushEvent{ID: "ss-2", Type: "screenshot", TabID: 1, PageURL: "https://example.com", ScreenshotB64: "new"})
+
+	if q.Len() != 1 {
+		t.Fatalf("expected 1 (deduped), got %d", q.Len())
+	}
+	events := q.DrainAll()
+	if events[0].ID != "ss-2" {
+		t.Fatalf("expected replacement event ss-2, got %s", events[0].ID)
+	}
+	if events[0].ScreenshotB64 != "new" {
+		t.Fatal("expected new screenshot data to replace old")
+	}
+}
+
+func TestInbox_ScreenshotDedup_DifferentURL(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "ss-1", Type: "screenshot", TabID: 1, PageURL: "https://a.com"})
+	q.Enqueue(PushEvent{ID: "ss-2", Type: "screenshot", TabID: 1, PageURL: "https://b.com"})
+
+	if q.Len() != 2 {
+		t.Fatalf("different URLs should not dedup, got %d", q.Len())
+	}
+}
+
+func TestInbox_ScreenshotDedup_DifferentTab(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "ss-1", Type: "screenshot", TabID: 1, PageURL: "https://example.com"})
+	q.Enqueue(PushEvent{ID: "ss-2", Type: "screenshot", TabID: 2, PageURL: "https://example.com"})
+
+	if q.Len() != 2 {
+		t.Fatalf("different tabs should not dedup, got %d", q.Len())
+	}
+}
+
+func TestInbox_ScreenshotDedup_NonScreenshotNotDeduped(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "c-1", Type: "chat", Message: "hello"})
+	q.Enqueue(PushEvent{ID: "c-2", Type: "chat", Message: "hello"})
+
+	if q.Len() != 2 {
+		t.Fatalf("chat events should never dedup, got %d", q.Len())
+	}
+}
+
+func TestInbox_ScreenshotDedup_InterruptedByOtherEvent(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "ss-1", Type: "screenshot", TabID: 1, PageURL: "https://example.com"})
+	q.Enqueue(PushEvent{ID: "c-1", Type: "chat", Message: "break"})
+	q.Enqueue(PushEvent{ID: "ss-2", Type: "screenshot", TabID: 1, PageURL: "https://example.com"})
+
+	if q.Len() != 3 {
+		t.Fatalf("screenshot after non-screenshot should not dedup, got %d", q.Len())
+	}
+}
+
+func TestInbox_ScreenshotDedup_PreservesNote(t *testing.T) {
+	q := NewPushInbox(10)
+	q.Enqueue(PushEvent{ID: "ss-1", Type: "screenshot", TabID: 1, PageURL: "https://example.com", Note: "old note"})
+	q.Enqueue(PushEvent{ID: "ss-2", Type: "screenshot", TabID: 1, PageURL: "https://example.com", Note: "new note"})
+
+	events := q.DrainAll()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 deduped event, got %d", len(events))
+	}
+	if events[0].Note != "new note" {
+		t.Fatalf("expected new note, got %q", events[0].Note)
+	}
+}
+
 func TestInbox_BulkEviction(t *testing.T) {
 	q := NewPushInbox(2)
 	q.Enqueue(PushEvent{ID: "1"})

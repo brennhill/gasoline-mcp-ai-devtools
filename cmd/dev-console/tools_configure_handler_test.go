@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 // ============================================
@@ -299,7 +301,7 @@ func TestToolsConfigureClear_SpecificBuffers(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	buffers := []string{"network", "websocket", "actions", "logs"}
+	buffers := []string{"network", "websocket", "actions", "logs", "inbox"}
 	for _, buffer := range buffers {
 		t.Run(buffer, func(t *testing.T) {
 			resp := callConfigureRaw(h, `{"what":"clear","buffer":"`+buffer+`"}`)
@@ -318,6 +320,67 @@ func TestToolsConfigureClear_SpecificBuffers(t *testing.T) {
 
 			assertSnakeCaseFields(t, string(resp.Result))
 		})
+	}
+}
+
+func TestToolsConfigureClear_AllDrainsInbox(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	// Enqueue a push event into the inbox.
+	h.server.pushInbox.Enqueue(push.PushEvent{ID: "ss-1", Type: "screenshot", PageURL: "https://example.com"})
+	if h.server.pushInbox.Len() != 1 {
+		t.Fatal("precondition: inbox should have 1 event")
+	}
+
+	resp := callConfigureRaw(h, `{"what":"clear","buffer":"all"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("clear all should succeed, got: %s", result.Content[0].Text)
+	}
+
+	if h.server.pushInbox.Len() != 0 {
+		t.Fatalf("inbox should be empty after clear all, got %d", h.server.pushInbox.Len())
+	}
+
+	data := extractResultJSON(t, result)
+	cleared, _ := data["cleared"].(map[string]any)
+	if cleared == nil {
+		t.Fatal("cleared should be a map")
+	}
+	if _, ok := cleared["push_events_drained"]; !ok {
+		t.Error("cleared should report push_events_drained count")
+	}
+}
+
+func TestToolsConfigureClear_InboxBuffer(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	h.server.pushInbox.Enqueue(push.PushEvent{ID: "ss-1", Type: "screenshot"})
+	h.server.pushInbox.Enqueue(push.PushEvent{ID: "ss-2", Type: "chat"})
+
+	resp := callConfigureRaw(h, `{"what":"clear","buffer":"inbox"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("clear inbox should succeed, got: %s", result.Content[0].Text)
+	}
+
+	if h.server.pushInbox.Len() != 0 {
+		t.Fatalf("inbox should be empty, got %d", h.server.pushInbox.Len())
+	}
+
+	data := extractResultJSON(t, result)
+	if data["buffer"] != "inbox" {
+		t.Errorf("buffer = %v, want 'inbox'", data["buffer"])
+	}
+	cleared, _ := data["cleared"].(map[string]any)
+	if cleared == nil {
+		t.Fatal("cleared should be a map")
+	}
+	count, _ := cleared["push_events"].(float64) // JSON numbers are float64
+	if count != 2 {
+		t.Errorf("push_events = %v, want 2", count)
 	}
 }
 

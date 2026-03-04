@@ -25,12 +25,23 @@ func NewPushInbox(maxLen int) *PushInbox {
 }
 
 // Enqueue adds an event, evicting oldest if full. Returns eviction count.
+// Consecutive screenshots from the same tab+URL are deduplicated: the newer
+// screenshot replaces the previous one instead of appending.
 func (q *PushInbox) Enqueue(ev PushEvent) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if ev.Timestamp.IsZero() {
 		ev.Timestamp = time.Now()
+	}
+
+	// Dedup: replace last event if both are screenshots from same tab+URL.
+	if ev.Type == "screenshot" && len(q.events) > 0 {
+		last := &q.events[len(q.events)-1]
+		if last.Type == "screenshot" && last.TabID == ev.TabID && last.PageURL == ev.PageURL {
+			*last = ev
+			return 0
+		}
 	}
 
 	q.events = append(q.events, ev)
