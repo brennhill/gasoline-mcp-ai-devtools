@@ -3,61 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gasoline Agentic Browser</title>
+    <title>Gasoline Devtools</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <h1>
       <img class="logo" src="icons/icon-48.png" alt="" />
-      Gasoline Agentic Browser
+      Gasoline Devtools
     </h1>
 
     <div class="status-row">
       <span class="status-label">Status</span>
       <span id="status" class="status-value disconnected">Disconnected</span>
-    </div>
-
-    <div class="section" style="margin-top: 12px">
-      <div class="section-title">Tab Tracking</div>
-      <div id="track-hero" style="text-align: center; padding: 12px 0">
-        <button
-          id="track-page-btn"
-          style="
-            background: #1a3a5c;
-            color: #58a6ff;
-            border: 2px solid #58a6ff;
-            font-size: 16px;
-            font-weight: 600;
-            padding: 14px 16px;
-          "
-          title="Start capturing telemetry from this browser tab only"
-        >
-          Track This Tab
-        </button>
-        <p id="track-hero-desc" style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5">
-          Click to start monitoring this tab's console, network, and errors
-        </p>
-      </div>
-      <div
-        id="no-tracking-warning"
-        style="
-          display: none;
-          margin-top: 8px;
-          padding: 8px 12px;
-          background: rgba(248, 81, 73, 0.1);
-          border: 1px solid rgba(248, 81, 73, 0.3);
-          border-radius: 6px;
-          font-size: 12px;
-          color: #f85149;
-        "
-      >
-        No tab tracked - data capture disabled
-      </div>
-      <div id="tracking-bar" class="tracking-bar" style="display: none">
-        <div class="tracking-bar-indicator"></div>
-        <div id="tracking-bar-url" class="tracking-bar-url" title="Click to switch to tracked tab"></div>
-        <button id="tracking-bar-stop" class="tracking-bar-stop" title="Stop tracking">&#x2715;</button>
-      </div>
     </div>
 
     <!-- Inline troubleshooting - shows immediately when disconnected -->
@@ -103,12 +60,6 @@
           <span style="color: #444; margin: 0 6px">|</span>
           <a href="options.html" style="color: #58a6ff; text-decoration: none; font-size: 11px">Custom port →</a>
         </p>
-        <!-- AI-READABLE: Gasoline MCP server connection failed.
-             Default server: http://localhost:7890
-             Start command: npx gasoline-agentic-browser
-             Verify: curl http://localhost:7890/health
-             Check port: lsof -i :7890
-             The server must be running for the extension to send logs. -->
       </div>
     </div>
 
@@ -150,60 +101,50 @@
       </p>
     </div>
 
-    <div class="status-row">
-      <span class="status-label">Log Entries</span>
-      <span id="entries-count" class="status-value">0 / 1000</span>
-    </div>
-
-    <div class="status-row">
-      <span class="status-label">Log Errors Seen</span>
-      <span id="error-count" class="status-value badge">0</span>
-    </div>
-
-    <div id="error-message"></div>
-
-    <div
-      id="context-warning"
-      style="
-        display: none;
-        margin-top: 8px;
-        padding: 8px 12px;
-        background: rgba(210, 153, 34, 0.1);
-        border: 1px solid #d29922;
-        border-radius: 6px;
-        font-size: 12px;
-        color: #d29922;
-      "
-    >
-      <span style="font-weight: 600">⚠ Large context annotations</span>
-      <p id="context-warning-text" style="margin-top: 4px; color: #aaa"></p>
-    </div>
-
-    <div id="health-indicators" style="display: none; margin-bottom: 12px">
+    <div class="section" style="margin-top: 12px">
+      <div class="section-title">Tab Control</div>
+      <div id="track-hero" style="text-align: center; padding: 12px 0">
+        <button
+          id="track-page-btn"
+          style="
+            background: #1a3a5c;
+            color: #58a6ff;
+            border: 2px solid #58a6ff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 16px;
+          "
+          title="Start capturing telemetry from this browser tab only"
+        >
+          Track This Tab
+        </button>
+        <p id="track-hero-desc" style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5">
+          Click to start monitoring this tab's console, network, and errors
+        </p>
+      </div>
       <div
-        id="health-circuit-breaker"
-        style="display: none; padding: 6px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 4px"
-      ></div>
-      <div
-        id="health-memory-pressure"
-        style="display: none; padding: 6px 10px; border-radius: 4px; font-size: 12px"
-      ></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Annotate</div>
-      <div class="feature-section">
-        <div id="draw-mode-row" class="record-row">
-          <div class="record-icon" id="draw-mode-icon">
-            <div class="record-icon-dot" id="draw-mode-dot"></div>
-          </div>
-          <span id="draw-mode-label" class="record-label">Annotate</span>
-          <span id="draw-mode-status" class="record-status" style="font-size: 11px; color: #666"></span>
-        </div>
+        id="no-tracking-warning"
+        style="
+          display: none;
+          margin-top: 8px;
+          padding: 8px 12px;
+          background: rgba(248, 81, 73, 0.1);
+          border: 1px solid rgba(248, 81, 73, 0.3);
+          border-radius: 6px;
+          font-size: 12px;
+          color: #f85149;
+        "
+      >
+        No tab tracked - data capture disabled
+      </div>
+      <div id="tracking-bar" class="tracking-bar" style="display: none">
+        <div class="tracking-bar-indicator"></div>
+        <div id="tracking-bar-url" class="tracking-bar-url" title="Click to switch to tracked tab"></div>
+        <button id="tracking-bar-stop" class="tracking-bar-stop" title="Stop tracking">&#x2715;</button>
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" style="margin-top: 0">
       <div class="section-title">Screen Recording</div>
       <div class="feature-section">
         <div id="record-row" class="record-row">

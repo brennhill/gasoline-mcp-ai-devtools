@@ -14,6 +14,36 @@ import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages
 
 const LOG = '[Gasoline REC]'
 
+// Badge timer — shows elapsed time on extension icon (not captured by tabCapture)
+let badgeTimerInterval: ReturnType<typeof setInterval> | null = null
+let badgeStartTime: number | null = null
+
+function startBadgeTimer(startTime: number): void {
+  stopBadgeTimer()
+  badgeStartTime = startTime
+  chrome.action.setBadgeBackgroundColor({ color: '#dc2626' })
+  updateBadge()
+  badgeTimerInterval = setInterval(updateBadge, 1000)
+}
+
+function updateBadge(): void {
+  if (!badgeStartTime) return
+  const elapsed = Math.round((Date.now() - badgeStartTime) / 1000)
+  const mins = Math.floor(elapsed / 60)
+  const secs = elapsed % 60
+  const text = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
+  chrome.action.setBadgeText({ text })
+}
+
+function stopBadgeTimer(): void {
+  if (badgeTimerInterval) {
+    clearInterval(badgeTimerInterval)
+    badgeTimerInterval = null
+  }
+  badgeStartTime = null
+  chrome.action.setBadgeText({ text: '' })
+}
+
 /** Dependencies injected by recording.ts to avoid circular imports. */
 export interface RecordingListenerDeps {
   startRecording: (
@@ -60,11 +90,8 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
         status: message.status,
         name: message.name
       })
+      stopBadgeTimer()
       deps.setInactive()
-      const tabId = deps.getTabId()
-      if (tabId) {
-        chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => {})
-      }
       deps.clearRecordingState().catch(() => {})
     }
   )
@@ -105,6 +132,9 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
             .startRecording(slug, 15, '', audio, true)
             .then((result) => {
               console.log(LOG, 'Popup screen_recording_start result:', result)
+              if (result.status === 'recording' && result.startTime) {
+                startBadgeTimer(result.startTime)
+              }
               sendResponse(result)
             })
             .catch((err) => {
@@ -116,6 +146,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       }
       if (message.type === 'screen_recording_stop') {
         console.log(LOG, 'Popup screen_recording_stop received')
+        stopBadgeTimer()
         deps
           .stopRecording()
           .then((result) => {

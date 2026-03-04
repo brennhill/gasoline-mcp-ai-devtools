@@ -451,6 +451,20 @@ function renderAnnotations() {
   drawExistingAnnotations()
 }
 
+function drawRoundRect(x, y, w, h, radius) {
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + w - radius, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+  ctx.lineTo(x + w, y + h - radius)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+  ctx.lineTo(x + radius, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+  ctx.lineTo(x, y + radius)
+  ctx.quadraticCurveTo(x, y, x + radius, y)
+  ctx.closePath()
+}
+
 function drawExistingAnnotations() {
   if (!ctx) return
   for (let i = 0; i < annotations.length; i++) {
@@ -460,40 +474,68 @@ function drawExistingAnnotations() {
       continue
     }
 
-    // Semi-transparent fill
+    // Semi-transparent fill with rounded corners
+    ctx.save()
+    drawRoundRect(r.x, r.y, r.width, r.height, 4)
     ctx.fillStyle = ANNOTATION_FILL
-    ctx.fillRect(r.x, r.y, r.width, r.height)
-
-    // Solid stroke
+    ctx.fill()
     ctx.strokeStyle = ANNOTATION_COLOR
     ctx.lineWidth = ANNOTATION_STROKE_WIDTH
     ctx.setLineDash([])
-    ctx.strokeRect(r.x, r.y, r.width, r.height)
+    ctx.stroke()
+    ctx.restore()
 
-    // Number badge (top-left corner)
-    const badgeSize = 20
+    // Number badge (top-left, offset outward)
+    const badgeSize = 22
+    const badgeX = r.x - 4
+    const badgeY = r.y - 4
     ctx.fillStyle = ANNOTATION_COLOR
     ctx.beginPath()
-    ctx.arc(r.x, r.y, badgeSize / 2, 0, Math.PI * 2)
+    ctx.arc(badgeX, badgeY, badgeSize / 2, 0, Math.PI * 2)
     ctx.fill()
+    // White ring
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.stroke()
     ctx.fillStyle = '#fff'
     ctx.font = 'bold 11px -apple-system, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(String(i + 1), r.x, r.y)
+    ctx.fillText(String(i + 1), badgeX, badgeY)
 
-    // Text label (below rectangle)
+    // Text label pill (below rectangle)
     if (ann.text) {
-      const labelY = r.y + r.height + 16
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+      ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       const textWidth = ctx.measureText(ann.text).width
-      const padding = 6
-      ctx.fillRect(r.x - padding, labelY - 12, textWidth + padding * 2, 18)
-      ctx.fillStyle = '#fff'
-      ctx.font = '12px -apple-system, sans-serif'
+      const padX = 10
+      const padY = 6
+      const pillH = 26
+      const pillW = textWidth + padX * 2
+      const pillX = r.x
+      const pillY = r.y + r.height + 8
+      const pillR = 6
+
+      // Shadow
+      ctx.save()
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
+      ctx.shadowBlur = 8
+      ctx.shadowOffsetY = 2
+      drawRoundRect(pillX, pillY, pillW, pillH, pillR)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)'
+      ctx.fill()
+      ctx.restore()
+
+      // Border
+      drawRoundRect(pillX, pillY, pillW, pillH, pillR)
+      ctx.strokeStyle = ANNOTATION_COLOR
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+
+      // Text
+      ctx.fillStyle = '#f1f5f9'
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
-      ctx.fillText(ann.text, r.x, labelY)
+      ctx.fillText(ann.text, pillX + padX, pillY + pillH / 2)
     }
   }
 }

@@ -12,17 +12,15 @@ const ROOT_ID = 'gasoline-tracked-hover-launcher'
 const PANEL_ID = 'gasoline-tracked-hover-panel'
 const TOGGLE_ID = 'gasoline-tracked-hover-toggle'
 const SETTINGS_MENU_ID = 'gasoline-tracked-hover-settings-menu'
-const STORAGE_AREA_LOCAL = 'local'
-
-type RecordingStorageValue = { active?: boolean }
 
 let rootEl: HTMLDivElement | null = null
 let panelEl: HTMLDivElement | null = null
 let settingsMenuEl: HTMLDivElement | null = null
-let recordButtonEl: HTMLButtonElement | null = null
-let recordingActive = false
+let stopButtonEl: HTMLButtonElement | null = null
+let toggleEl: HTMLButtonElement | null = null
 let panelPinned = false
 let settingsMenuOpen = false
+let recordingActive = false
 let trackedEnabled = false
 let hiddenUntilPopupOpen = false
 let hideTimer: ReturnType<typeof setTimeout> | null = null
@@ -52,30 +50,58 @@ function setSettingsMenuOpen(open: boolean): void {
   settingsMenuEl.style.pointerEvents = open ? 'auto' : 'none'
 }
 
-function updateRecordButtonState(active: boolean): void {
-  recordingActive = active
-  if (!recordButtonEl) return
-  recordButtonEl.textContent = active ? '\u23F9' : '\u25C9'
-  recordButtonEl.title = active ? 'Stop recording' : 'Record actions — capture clicks and inputs for replay'
-  recordButtonEl.style.background = active ? '#c0392b' : '#f3f4f6'
-  recordButtonEl.style.color = active ? '#fff' : '#1f2937'
-  recordButtonEl.style.borderColor = active ? '#a93226' : '#d1d5db'
+function stopRecordingAction(): void {
+  try {
+    chrome.runtime.sendMessage(
+      { type: 'screen_recording_stop' },
+      (response: { status?: string; error?: string } | undefined) => {
+        void chrome.runtime.lastError
+        if ((response as { status?: string } | undefined)?.status === 'saved') {
+          updateStopButtonVisibility(false)
+        }
+      }
+    )
+  } catch {
+    // Extension context invalidated
+  }
 }
 
-function readRecordingActive(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false
-  return Boolean((value as RecordingStorageValue).active)
+function updateStopButtonVisibility(active: boolean): void {
+  recordingActive = active
+  if (!stopButtonEl) return
+  stopButtonEl.style.display = active ? 'flex' : 'none'
 }
 
 function syncRecordingStateFromStorage(): void {
   try {
     chrome.storage.local.get([StorageKey.RECORDING], (result: Record<string, unknown>) => {
-      if (chrome.runtime.lastError) return // Storage read failed — keep current state
-      updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]))
+      if (chrome.runtime.lastError) return
+      const rec = result[StorageKey.RECORDING]
+      const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
+      updateStopButtonVisibility(active)
     })
   } catch {
-    // Extension context invalidated — content script outlived the extension lifecycle
+    // Extension context invalidated
   }
+}
+
+function installRecordingStorageSync(): void {
+  if (recordingStorageListener) return
+  recordingStorageListener = (changes, areaName) => {
+    if (areaName !== 'local') return
+    const change = changes[StorageKey.RECORDING]
+    if (!change) return
+    const rec = change.newValue
+    const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
+    updateStopButtonVisibility(active)
+  }
+  chrome.storage.onChanged.addListener(recordingStorageListener)
+}
+
+function uninstallRecordingStorageSync(): void {
+  if (!recordingStorageListener) return
+  chrome.storage.onChanged.removeListener(recordingStorageListener)
+  recordingStorageListener = null
 }
 
 function syncHiddenStateFromStorage(onSynced: () => void): void {
@@ -107,23 +133,6 @@ function persistHiddenState(hidden: boolean): void {
   } catch {
     // Extension context invalidated — hidden state won't persist but functionality is unaffected
   }
-}
-
-function installRecordingStorageSync(): void {
-  if (recordingStorageListener) return
-  recordingStorageListener = (changes, areaName) => {
-    if (areaName !== STORAGE_AREA_LOCAL) return
-    const recordingChange = changes[StorageKey.RECORDING]
-    if (!recordingChange) return
-    updateRecordButtonState(readRecordingActive(recordingChange.newValue))
-  }
-  chrome.storage.onChanged.addListener(recordingStorageListener)
-}
-
-function uninstallRecordingStorageSync(): void {
-  if (!recordingStorageListener) return
-  chrome.storage.onChanged.removeListener(recordingStorageListener)
-  recordingStorageListener = null
 }
 
 function hideLauncherUntilPopupReopen(): void {
@@ -246,42 +255,6 @@ function runScreenshotCapture(): void {
   }
 }
 
-function toggleRecordingAction(): void {
-  const wasActive = recordingActive
-  const message = wasActive ? { type: 'screen_recording_stop' } : { type: 'screen_recording_start', audio: '' }
-  const button = recordButtonEl
-  if (button) button.disabled = true
-
-  chrome.runtime.sendMessage(
-    message,
-    (
-      response:
-        | { status?: 'recording' | 'saved' | 'error'; error?: string }
-        | { success?: boolean; error?: string }
-        | undefined
-    ) => {
-      if (button) button.disabled = false
-      if (chrome.runtime.lastError) return
-
-      const responseStatus = (response as { status?: string } | undefined)?.status
-      if (wasActive) {
-        if (responseStatus !== 'saved') {
-          syncRecordingStateFromStorage()
-          return
-        }
-        updateRecordButtonState(false)
-        return
-      }
-
-      if (responseStatus === 'recording') {
-        updateRecordButtonState(true)
-        return
-      }
-      syncRecordingStateFromStorage()
-    }
-  )
-}
-
 function createActionButton(label: string, title: string, onClick: () => void): HTMLButtonElement {
   const button = document.createElement('button')
   button.textContent = label
@@ -323,14 +296,52 @@ function createActionButton(label: string, title: string, onClick: () => void): 
   return button
 }
 
-function createSettingsMenuLink(label: string, href: string): HTMLAnchorElement {
+const ICON_DOCS = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+const ICON_GITHUB = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>'
+const ICON_HIDE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+
+function createSettingsMenuItem(iconSvg: string, label: string): HTMLElement {
+  const item = document.createElement('div')
+  Object.assign(item.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#111827',
+    fontSize: '12px',
+    fontWeight: '600',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    background: '#f9fafb',
+    cursor: 'pointer',
+    transition: 'transform 120ms ease, background-color 140ms ease'
+  })
+  const iconSpan = document.createElement('span')
+  iconSpan.innerHTML = iconSvg
+  Object.assign(iconSpan.style, { display: 'flex', alignItems: 'center', flexShrink: '0' })
+  const textSpan = document.createElement('span')
+  textSpan.textContent = label
+  item.appendChild(iconSpan)
+  item.appendChild(textSpan)
+  item.addEventListener('mouseenter', () => {
+    item.style.transform = 'translateX(1px)'
+    item.style.background = '#f3f4f6'
+  })
+  item.addEventListener('mouseleave', () => {
+    item.style.transform = 'translateX(0)'
+    item.style.background = '#f9fafb'
+  })
+  return item
+}
+
+function createSettingsMenuLink(iconSvg: string, label: string, href: string): HTMLAnchorElement {
   const link = document.createElement('a')
-  link.textContent = label
   link.href = href
   link.target = '_blank'
   link.rel = 'noopener noreferrer'
   Object.assign(link.style, {
-    display: 'block',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
     color: '#111827',
     textDecoration: 'none',
     fontSize: '12px',
@@ -340,6 +351,13 @@ function createSettingsMenuLink(label: string, href: string): HTMLAnchorElement 
     background: '#f9fafb',
     transition: 'transform 120ms ease, background-color 140ms ease'
   })
+  const iconSpan = document.createElement('span')
+  iconSpan.innerHTML = iconSvg
+  Object.assign(iconSpan.style, { display: 'flex', alignItems: 'center', flexShrink: '0' })
+  const textSpan = document.createElement('span')
+  textSpan.textContent = label
+  link.appendChild(iconSpan)
+  link.appendChild(textSpan)
   link.addEventListener('mouseenter', () => {
     link.style.transform = 'translateX(1px)'
     link.style.background = '#f3f4f6'
@@ -383,7 +401,9 @@ function createLauncherUi(): HTMLDivElement {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    opacity: '0.65',
+    transition: 'opacity 200ms ease'
   })
 
   const panel = document.createElement('div')
@@ -413,13 +433,6 @@ function createLauncherUi(): HTMLDivElement {
   })
   drawButton.style.fontSize = '36px'
 
-  const recordButton = createActionButton('\u25C9', 'Record actions — capture clicks and inputs for replay', () => {
-    panelPinned = true
-    toggleRecordingAction()
-  })
-  recordButtonEl = recordButton
-  recordButton.style.fontSize = '34px'
-
   const screenshotButton = createActionButton('\u2316', 'Screenshot — capture the current page and send to AI', () => {
     panelPinned = false
     setPanelOpen(false)
@@ -442,8 +455,24 @@ function createLauncherUi(): HTMLDivElement {
   settingsButton.style.fontSize = '45px'
   settingsButton.style.paddingBottom = '4px'
 
+  const stopButton = createActionButton('\u23F9', 'Stop recording', () => {
+    stopRecordingAction()
+  })
+  stopButton.style.fontSize = '34px'
+  stopButton.style.background = '#c0392b'
+  stopButton.style.color = '#fff'
+  stopButton.style.borderColor = '#a93226'
+  stopButton.style.display = 'none'
+  stopButton.addEventListener('mouseenter', () => {
+    stopButton.style.color = '#fff'
+  })
+  stopButton.addEventListener('mouseleave', () => {
+    stopButton.style.color = '#fff'
+  })
+  stopButtonEl = stopButton
+
   panel.appendChild(drawButton)
-  panel.appendChild(recordButton)
+  panel.appendChild(stopButton)
   panel.appendChild(screenshotButton)
   panel.appendChild(terminalButton)
   panel.appendChild(settingsButton)
@@ -471,17 +500,16 @@ function createLauncherUi(): HTMLDivElement {
     willChange: 'opacity, transform'
   })
 
-  const docsLink = createSettingsMenuLink('Docs', 'https://cookwithgasoline.com/docs')
+  const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', 'https://cookwithgasoline.com/docs')
   const repoLink = createSettingsMenuLink(
-    'GitHub Repository',
+    ICON_GITHUB, 'GitHub Repository',
     'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp'
   )
 
-  const hideButton = createActionButton('Hide Gasoline Devtool', 'Hide launcher until popup is opened again', () => {
+  const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Gasoline Devtool')
+  hideButton.addEventListener('click', () => {
     hideLauncherUntilPopupReopen()
   })
-  hideButton.style.width = '100%'
-  hideButton.style.justifyContent = 'center'
 
   settingsMenu.appendChild(docsLink)
   settingsMenu.appendChild(repoLink)
@@ -537,12 +565,16 @@ function createLauncherUi(): HTMLDivElement {
     if (!panelPinned) setSettingsMenuOpen(false)
   })
 
+  toggleEl = toggle
+
   root.addEventListener('mouseenter', () => {
+    root.style.opacity = '1'
     clearHideTimer()
     setPanelOpen(true)
   })
 
   root.addEventListener('mouseleave', () => {
+    if (!panelPinned && !settingsMenuOpen) root.style.opacity = '0.65'
     if (panelPinned || settingsMenuOpen) return
     clearHideTimer()
     hideTimer = setTimeout(() => {
@@ -578,7 +610,9 @@ function unmountLauncher(): void {
   setSettingsMenuOpen(false)
   panelEl = null
   settingsMenuEl = null
-  recordButtonEl = null
+  stopButtonEl = null
+  toggleEl = null
+  recordingActive = false
   if (rootEl) {
     rootEl.remove()
     rootEl = null

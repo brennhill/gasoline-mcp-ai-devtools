@@ -11,8 +11,24 @@
 import { StorageKey } from '../lib/constants.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
+const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
+function applyRecordHighlight(els) {
+    const section = els.row.closest('.section');
+    if (section)
+        section.classList.add('record-highlight');
+    els.label.textContent = HIGHLIGHT_LABEL;
+}
+function removeRecordHighlight(els) {
+    const section = els.row.closest('.section');
+    if (section)
+        section.classList.remove('record-highlight');
+    if (els.label.textContent === HIGHLIGHT_LABEL) {
+        els.label.textContent = START_LABEL;
+    }
+}
 // #lizard forgives
 function showRecording(els, state, name, startTime) {
+    removeRecordHighlight(els);
     state.isRecording = true;
     els.row.classList.add('is-recording');
     els.label.textContent = STOP_LABEL;
@@ -30,6 +46,7 @@ function showRecording(els, state, name, startTime) {
 }
 function showIdle(els, state) {
     state.isRecording = false;
+    removeRecordHighlight(els);
     els.row.classList.remove('is-recording');
     els.label.textContent = START_LABEL;
     els.statusEl.textContent = '';
@@ -202,6 +219,15 @@ export function setupRecordingUI() {
             showRecording(els, state, rec.name, rec.startTime);
         }
         row.style.visibility = 'visible';
+        // Check for highlight request from hover launcher
+        chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
+            void chrome.runtime.lastError;
+            const pending = pendingResult[StorageKey.PENDING_RECORDING];
+            if (pending?.highlight && !state.isRecording) {
+                applyRecordHighlight(els);
+                chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+            }
+        });
     });
     chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && changes[StorageKey.RECORDING]) {
@@ -249,6 +275,7 @@ export function setupRecordingUI() {
     });
     row.addEventListener('click', () => {
         console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording);
+        removeRecordHighlight(els);
         if (state.isRecording) {
             handleStopClick(els, state);
         }

@@ -70,6 +70,8 @@ import {
   installTabUpdatedListener,
   installDrawModeCommandListener,
   installRecordingShortcutCommandListener,
+  installScreenRecordingCommandListener,
+  installContextMenus,
   saveSetting,
   forwardToAllContentScripts,
   handleTrackedTabClosed,
@@ -300,6 +302,12 @@ async function initializeExtensionAsync(): Promise<void> {
       },
       (msg) => console.log(`[Gasoline] ${msg}`)
     )
+
+    // ============= STEP 9.9: Install screen recording shortcut + context menus =============
+    const screenRecHandlers = { isRecording, startRecording, stopRecording }
+    const actionRecHandlers = { isRecording, startRecording, stopRecording }
+    installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
+    installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
 
     // ============= STEP 10: Set disconnected badge immediately =============
     // Badge must reflect disconnected state BEFORE the async health check.

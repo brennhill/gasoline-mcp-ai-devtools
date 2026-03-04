@@ -229,6 +229,9 @@ export type BackgroundMessage =
   | DrawModeCaptureScreenshotMessage
   | DrawModeCompletedMessage
   | PushChatMessage
+  | ScreenRecordingStartMessage
+  | ScreenRecordingStopMessage
+  | OpenPopupForRecordingMessage
 
 /**
  * Draw mode: content script requests screenshot capture
@@ -258,6 +261,28 @@ interface PushChatMessage {
   readonly type: 'GASOLINE_PUSH_CHAT'
   readonly message: string
   readonly page_url: string
+}
+
+/**
+ * Screen recording start (from popup or hover launcher).
+ */
+interface ScreenRecordingStartMessage {
+  readonly type: 'screen_recording_start'
+  readonly audio?: string
+}
+
+/**
+ * Screen recording stop (from popup or hover launcher).
+ */
+interface ScreenRecordingStopMessage {
+  readonly type: 'screen_recording_stop'
+}
+
+/**
+ * Content script requests popup open to activate activeTab for tabCapture.
+ */
+interface OpenPopupForRecordingMessage {
+  readonly type: 'GASOLINE_OPEN_POPUP_FOR_RECORDING'
 }
 
 /**

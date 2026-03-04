@@ -301,7 +301,8 @@ function handleMessage(
       return false
 
     default:
-      deps.debugLog('capture', 'Unhandled message type', { type: messageType })
+      // screen_recording_start/stop, OFFSCREEN_*, MIC_GRANTED_CLOSE_TAB, REVEAL_FILE
+      // are handled by recording-listeners.ts — return false so they can handle it.
       return false
   }
 }

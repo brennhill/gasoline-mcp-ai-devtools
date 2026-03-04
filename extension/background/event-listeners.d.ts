@@ -84,6 +84,34 @@ export interface RecordingShortcutHandlers {
  * Shortcut is defined in manifest as `toggle_action_sequence_recording`.
  */
 export declare function installRecordingShortcutCommandListener(handlers: RecordingShortcutHandlers, logFn?: (message: string) => void): void;
+export interface ScreenRecordingHandlers {
+    isRecording: () => boolean;
+    startRecording: (name: string, fps?: number, queryId?: string, audio?: string, fromPopup?: boolean, targetTabId?: number) => Promise<{
+        status: string;
+        name: string;
+        startTime?: number;
+        error?: string;
+    }>;
+    stopRecording: (truncated?: boolean) => Promise<{
+        status: string;
+        name: string;
+        duration_seconds?: number;
+        size_bytes?: number;
+        truncated?: boolean;
+        path?: string;
+        error?: string;
+    }>;
+}
+/**
+ * Install keyboard shortcut listener for screen recording toggle (Alt+Shift+R).
+ * Also handles context menu clicks for recording and annotation.
+ */
+export declare function installScreenRecordingCommandListener(handlers: ScreenRecordingHandlers, logFn?: (message: string) => void): void;
+/**
+ * Create context menu items for Gasoline actions.
+ * Chrome auto-groups multiple items under a parent with the extension icon.
+ */
+export declare function installContextMenus(recordingHandlers: ScreenRecordingHandlers, actionRecordingHandlers: RecordingShortcutHandlers, logFn?: (message: string) => void): void;
 /**
  * Ping content script to check if it's loaded
  */

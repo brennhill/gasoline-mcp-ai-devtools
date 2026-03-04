@@ -10,7 +10,7 @@
 import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
-import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
+import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener, installContextMenus, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
 import { installPushCommandListener, installChatCommandListener } from './push-handler.js';
 import { isRecording, startRecording, stopRecording } from './recording.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
@@ -207,6 +207,11 @@ async function initializeExtensionAsync() {
             startRecording,
             stopRecording
         }, (msg) => console.log(`[Gasoline] ${msg}`));
+        // ============= STEP 9.9: Install screen recording shortcut + context menus =============
+        const screenRecHandlers = { isRecording, startRecording, stopRecording };
+        const actionRecHandlers = { isRecording, startRecording, stopRecording };
+        installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`));
+        installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`));
         // ============= STEP 10: Set disconnected badge immediately =============
         // Badge must reflect disconnected state BEFORE the async health check.
         // Without this, a stale "connected" badge persists from a previous SW session
