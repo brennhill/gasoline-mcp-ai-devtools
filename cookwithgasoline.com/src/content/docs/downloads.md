@@ -99,7 +99,8 @@ make build
 ## System Requirements
 
 - **Browser:** Chrome/Chromium 120+ (for MV3 support)
-- **Node.js:** 18+ (for CLI tools)
+- **Runtime:** Native Go binary (no Node.js required for standalone binary installs)
+- **Node.js:** 18+ (optional, only if you install via npm)
 - **Platform:** macOS, Linux, Windows
 - **MCP Client:** Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
 
