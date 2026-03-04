@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Docs: docs/features/feature/terminal/index.md -->
   <title>Gasoline Terminal</title>
   <link rel="stylesheet" href="/terminal/static/xterm.css">
   <style>
@@ -90,7 +91,7 @@
           brightCyan: '#7dcfff',
           brightWhite: '#c0caf5'
         },
-        scrollback: 10000,
+        scrollback: 1500,
         allowProposedApi: true
       });
 
@@ -135,6 +136,10 @@
                 if (msg.cli) {
                   headerLabel.textContent = msg.cli;
                 }
+              } else if (msg.type === 'idle_timeout') {
+                term.write('\r\n\x1b[33m[Connection idle — reconnecting...]\x1b[0m\r\n');
+                statusDot.className = 'status error';
+                notifyParent('disconnected', { reason: 'idle_timeout' });
               } else if (msg.type === 'exited') {
                 term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
                 statusDot.className = 'status';

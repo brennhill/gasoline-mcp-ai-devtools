@@ -2,6 +2,7 @@
  * Purpose: Shared constants (server defaults, serialization limits, buffer sizes, storage keys, feature toggles) used across all extension modules.
  */
 export declare const DEFAULT_SERVER_URL = "http://localhost:7890";
+export declare const TERMINAL_PORT_OFFSET = 1;
 export declare const MAX_STRING_LENGTH = 10240;
 export declare const MAX_RESPONSE_LENGTH = 5120;
 export declare const MAX_DEPTH = 10;

@@ -1,5 +1,6 @@
 // manager.go — PTY session manager: create, get, destroy sessions with auth tokens.
 // Why: Centralizes session lifecycle and token-based access control for the terminal WebSocket endpoint.
+// Docs: docs/features/feature/terminal/index.md
 
 package pty
 
@@ -136,12 +137,13 @@ func (m *Manager) Get(id string) (*Session, error) {
 }
 
 // Stop destroys a session by ID, cleaning up PTY and child process.
+// Removes map entries under lock, then closes the session outside the lock
+// so that slow Close() calls (up to 2s) don't block concurrent reads.
 func (m *Manager) Stop(id string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	sess, ok := m.sessions[id]
 	if !ok {
+		m.mu.Unlock()
 		return fmt.Errorf("%w: %s", ErrSessionNotFound, id)
 	}
 
@@ -153,21 +155,26 @@ func (m *Manager) Stop(id string) error {
 		}
 	}
 	delete(m.sessions, id)
+	m.mu.Unlock()
 
 	return sess.Close()
 }
 
 // StopAll destroys all active sessions. Called during daemon shutdown.
+// Collects sessions under lock, clears maps, then closes sessions outside the
+// lock so that slow Close() calls (up to 2s each) don't block concurrent reads.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for id, sess := range m.sessions {
-		_ = sess.Close()
-		delete(m.sessions, id)
+	toClose := make([]*Session, 0, len(m.sessions))
+	for _, sess := range m.sessions {
+		toClose = append(toClose, sess)
 	}
-	for token := range m.tokens {
-		delete(m.tokens, token)
+	m.sessions = make(map[string]*Session)
+	m.tokens = make(map[string]string)
+	m.mu.Unlock()
+
+	for _, sess := range toClose {
+		_ = sess.Close()
 	}
 }
 

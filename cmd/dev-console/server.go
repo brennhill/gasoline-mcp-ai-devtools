@@ -57,6 +57,9 @@ type Server struct {
 	// Terminal PTY session manager
 	ptyManager *pty.Manager
 
+	// Terminal server port (0 = terminal server not running)
+	terminalPort int
+
 	// Active codebase path — set via MCP configure(what='store', key='active_codebase')
 	// or via the extension options page. Used as default CWD for terminal sessions.
 	activeCodebaseMu sync.RWMutex
@@ -173,6 +176,20 @@ func (s *Server) closeAnnotationStore() {
 	if store != nil {
 		store.Close()
 	}
+}
+
+// setTerminalPort stores the port the terminal server is listening on.
+func (s *Server) setTerminalPort(port int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.terminalPort = port
+}
+
+// getTerminalPort returns the terminal server port (0 if not running).
+func (s *Server) getTerminalPort() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.terminalPort
 }
 
 // GetActiveCodebase returns the active codebase path (thread-safe).

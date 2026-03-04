@@ -79,6 +79,7 @@ Features with active code implementations referencing their feature docs.
 | self-testing | `feature/self-testing/` | product-spec.md, qa-plan.md, tech-spec.md | Self-testing and health check infrastructure |
 | tab-recording | `feature/tab-recording/` | product-spec.md, qa-plan.md, tech-spec.md | Tab video/audio recording capture |
 | tab-tracking-ux | `feature/tab-tracking-ux/` | product-spec.md, qa-plan.md, tech-spec.md | Tab tracking UX and multi-tab management |
+| terminal | `feature/terminal/` | index.md, flow-map.md | In-browser terminal widget with dedicated server on port+1 |
 | test-generation | `feature/test-generation/` | product-spec.md, qa-plan.md, tech-spec.md, uat-guide.md | E2E test generation from browser sessions |
 | transient-capture | `feature/transient-capture/` | index.md | Capture transient UI elements (tooltips, toasts) |
 | ttl-retention | `feature/ttl-retention/` | product-spec.md, qa-plan.md, tech-spec.md | TTL-based data retention and eviction |
@@ -156,9 +157,9 @@ Features that are documented but not yet implemented in code.
 
 | Status | Count |
 |--------|-------|
-| Shipped | 50 |
+| Shipped | 51 |
 | Proposed | 60 |
-| **Total** | **110** |
+| **Total** | **111** |
 
 ---
 

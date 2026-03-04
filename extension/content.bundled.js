@@ -25,6 +25,7 @@
 
   // extension/lib/constants.js
   var DEFAULT_SERVER_URL = "http://localhost:7890";
+  var TERMINAL_PORT_OFFSET = 1;
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
@@ -1937,6 +1938,9 @@
   var WIDGET_ID2 = "gasoline-terminal-widget";
   var IFRAME_ID = "gasoline-terminal-iframe";
   var HEADER_ID = "gasoline-terminal-header";
+  var DISCONNECT_TERMINAL_BUTTON_ID = "gasoline-terminal-disconnect-button";
+  var MINIMIZE_TERMINAL_BUTTON_ID = "gasoline-terminal-minimize-button";
+  var CLOSE_TERMINAL_BUTTON_ID = "gasoline-terminal-close-button";
   var widgetEl = null;
   var iframeEl = null;
   var resizeHandleEl = null;
@@ -1945,6 +1949,11 @@
   var minimized = false;
   var savedHeight = "";
   var serverUrl = DEFAULT_SERVER_URL;
+  function getTerminalServerUrl(baseUrl) {
+    const url = new URL(baseUrl);
+    url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
+    return url.origin;
+  }
   function getServerUrl() {
     return new Promise((resolve) => {
       try {
@@ -2052,23 +2061,25 @@
   }
   async function validateSession(token) {
     try {
-      const url = await getServerUrl();
-      const resp = await fetch(`${url}/terminal/config`, { signal: AbortSignal.timeout(2e3) });
+      const base = await getServerUrl();
+      const termUrl = getTerminalServerUrl(base);
+      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
       if (!resp.ok)
         return false;
       const data = await resp.json();
-      return (data.count ?? 0) > 0;
+      return data.valid === true;
     } catch {
       return false;
     }
   }
   async function startSession(config) {
-    const url = await getServerUrl();
+    const base = await getServerUrl();
+    const termUrl = getTerminalServerUrl(base);
     const aiCommand = await getTerminalAICommand();
     const devRoot = await getTerminalDevRoot();
     try {
       const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
-      const resp = await fetch(`${url}/terminal/start`, {
+      const resp = await fetch(`${termUrl}/terminal/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2263,6 +2274,16 @@
       cursor: "default",
       flexShrink: "0"
     });
+    const statusDot = document.createElement("span");
+    statusDot.className = "gasoline-terminal-status-dot";
+    Object.assign(statusDot.style, {
+      width: "8px",
+      height: "8px",
+      borderRadius: "50%",
+      background: "#565f89",
+      flexShrink: "0",
+      transition: "background 200ms ease"
+    });
     const titleSpan = document.createElement("span");
     titleSpan.textContent = "Terminal";
     Object.assign(titleSpan.style, {
@@ -2274,11 +2295,12 @@
       whiteSpace: "nowrap",
       userSelect: "none"
     });
-    const minimizeBtn = document.createElement("button");
-    minimizeBtn.textContent = "\u2581";
-    minimizeBtn.title = "Minimize terminal";
-    minimizeBtn.type = "button";
-    Object.assign(minimizeBtn.style, {
+    const minimizeTerminalButton = document.createElement("button");
+    minimizeTerminalButton.id = MINIMIZE_TERMINAL_BUTTON_ID;
+    minimizeTerminalButton.textContent = "\u2581";
+    minimizeTerminalButton.title = "Minimize terminal";
+    minimizeTerminalButton.type = "button";
+    Object.assign(minimizeTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2292,24 +2314,25 @@
       justifyContent: "center",
       flexShrink: "0"
     });
-    minimizeBtn.addEventListener("mouseenter", () => {
-      minimizeBtn.style.background = "#292e42";
-      minimizeBtn.style.color = "#a9b1d6";
+    minimizeTerminalButton.addEventListener("mouseenter", () => {
+      minimizeTerminalButton.style.background = "#292e42";
+      minimizeTerminalButton.style.color = "#a9b1d6";
     });
-    minimizeBtn.addEventListener("mouseleave", () => {
-      minimizeBtn.style.background = "transparent";
-      minimizeBtn.style.color = "#565f89";
+    minimizeTerminalButton.addEventListener("mouseleave", () => {
+      minimizeTerminalButton.style.background = "transparent";
+      minimizeTerminalButton.style.color = "#565f89";
     });
-    minimizeBtn.addEventListener("click", (e) => {
+    minimizeTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleMinimize(widget, minimizeBtn, header);
+      toggleMinimize(widget, minimizeTerminalButton, header);
     });
-    const exitBtn = document.createElement("button");
-    exitBtn.textContent = "\u23FB";
-    exitBtn.title = "Exit AI session";
-    exitBtn.type = "button";
-    Object.assign(exitBtn.style, {
+    const disconnectTerminalButton = document.createElement("button");
+    disconnectTerminalButton.id = DISCONNECT_TERMINAL_BUTTON_ID;
+    disconnectTerminalButton.textContent = "\u23FB";
+    disconnectTerminalButton.title = "disconnect terminal & and end session";
+    disconnectTerminalButton.type = "button";
+    Object.assign(disconnectTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2325,28 +2348,29 @@
       opacity: "0.7",
       transition: "opacity 150ms ease, background 150ms ease, box-shadow 150ms ease"
     });
-    exitBtn.addEventListener("mouseenter", () => {
-      exitBtn.style.background = "#3b1219";
-      exitBtn.style.opacity = "1";
-      exitBtn.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
+    disconnectTerminalButton.addEventListener("mouseenter", () => {
+      disconnectTerminalButton.style.background = "#3b1219";
+      disconnectTerminalButton.style.opacity = "1";
+      disconnectTerminalButton.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
     });
-    exitBtn.addEventListener("mouseleave", () => {
-      exitBtn.style.background = "transparent";
-      exitBtn.style.opacity = "0.7";
-      exitBtn.style.boxShadow = "none";
+    disconnectTerminalButton.addEventListener("mouseleave", () => {
+      disconnectTerminalButton.style.background = "transparent";
+      disconnectTerminalButton.style.opacity = "0.7";
+      disconnectTerminalButton.style.boxShadow = "none";
     });
-    exitBtn.addEventListener("click", (e) => {
+    disconnectTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       void exitTerminalSession();
     });
     const spacer = document.createElement("div");
     spacer.style.flex = "1";
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "\u2715";
-    closeBtn.title = "Close terminal";
-    closeBtn.type = "button";
-    Object.assign(closeBtn.style, {
+    const closeTerminalButton = document.createElement("button");
+    closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID;
+    closeTerminalButton.textContent = "\u2715";
+    closeTerminalButton.title = "Close terminal";
+    closeTerminalButton.type = "button";
+    Object.assign(closeTerminalButton.style, {
       width: "24px",
       height: "24px",
       border: "none",
@@ -2360,15 +2384,15 @@
       justifyContent: "center",
       flexShrink: "0"
     });
-    closeBtn.addEventListener("mouseenter", () => {
-      closeBtn.style.background = "#292e42";
-      closeBtn.style.color = "#a9b1d6";
+    closeTerminalButton.addEventListener("mouseenter", () => {
+      closeTerminalButton.style.background = "#292e42";
+      closeTerminalButton.style.color = "#a9b1d6";
     });
-    closeBtn.addEventListener("mouseleave", () => {
-      closeBtn.style.background = "transparent";
-      closeBtn.style.color = "#565f89";
+    closeTerminalButton.addEventListener("mouseleave", () => {
+      closeTerminalButton.style.background = "transparent";
+      closeTerminalButton.style.color = "#565f89";
     });
-    closeBtn.addEventListener("click", (e) => {
+    closeTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       hideTerminal();
@@ -2376,16 +2400,17 @@
     header.addEventListener("click", () => {
       if (!minimized)
         return;
-      toggleMinimize(widget, minimizeBtn, header);
+      toggleMinimize(widget, minimizeTerminalButton, header);
     });
+    header.appendChild(statusDot);
     header.appendChild(titleSpan);
-    header.appendChild(exitBtn);
+    header.appendChild(disconnectTerminalButton);
     header.appendChild(spacer);
-    header.appendChild(minimizeBtn);
-    header.appendChild(closeBtn);
+    header.appendChild(minimizeTerminalButton);
+    header.appendChild(closeTerminalButton);
     const iframe = document.createElement("iframe");
     iframe.id = IFRAME_ID;
-    iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`;
+    iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
     Object.assign(iframe.style, {
       flex: "1",
       width: "100%",
@@ -2399,17 +2424,46 @@
     window.addEventListener("message", handleIframeMessage);
     return widget;
   }
+  function updateStatusDot(state) {
+    const dot = widgetEl?.querySelector(".gasoline-terminal-status-dot");
+    if (!dot)
+      return;
+    switch (state) {
+      case "connected":
+        dot.style.background = "#9ece6a";
+        break;
+      case "disconnected":
+        dot.style.background = "#e0af68";
+        break;
+      case "exited":
+        dot.style.background = "#f7768e";
+        break;
+    }
+  }
   function handleIframeMessage(event) {
     if (!event.data || event.data.source !== "gasoline-terminal")
       return;
     try {
-      const origin = new URL(serverUrl).origin;
-      if (event.origin !== origin)
+      const termOrigin = getTerminalServerUrl(serverUrl);
+      if (event.origin !== termOrigin)
         return;
     } catch {
       return;
     }
-    if (event.data.event === "exited") {
+    switch (event.data.event) {
+      case "connected":
+        updateStatusDot("connected");
+        break;
+      case "disconnected":
+        updateStatusDot("disconnected");
+        if (event.data.data?.reason === "idle_timeout") {
+          clearPersistedSession();
+          sessionState = null;
+        }
+        break;
+      case "exited":
+        updateStatusDot("exited");
+        break;
     }
   }
   function setupResize(handle, widget) {
@@ -2479,7 +2533,7 @@
       return;
     let origin = "*";
     try {
-      origin = new URL(serverUrl).origin;
+      origin = getTerminalServerUrl(serverUrl);
     } catch {
     }
     iframeEl.contentWindow.postMessage({
@@ -2500,10 +2554,12 @@
   async function exitTerminalSession() {
     if (sessionState) {
       try {
-        await fetch(`${serverUrl}/terminal/stop`, {
+        const termUrl = getTerminalServerUrl(serverUrl);
+        await fetch(`${termUrl}/terminal/stop`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: sessionState.sessionId })
+          body: JSON.stringify({ id: sessionState.sessionId }),
+          signal: AbortSignal.timeout(3e3)
         });
       } catch {
       }
@@ -2559,6 +2615,12 @@
     const alive = await validateSession(persisted.session.token);
     if (!alive) {
       clearPersistedSession();
+      const config = await getTerminalConfig();
+      const state = await startSession(config);
+      if (!state)
+        return;
+      sessionState = state;
+      mountWidget(state.token, persisted.uiState === "minimized");
       return;
     }
     sessionState = persisted.session;
@@ -2580,9 +2642,9 @@
       showTerminal();
       if (startMinimized) {
         const header = widgetEl?.querySelector("#" + HEADER_ID);
-        const minimizeBtn = header?.querySelector("button");
-        if (widgetEl && header && minimizeBtn) {
-          toggleMinimize(widgetEl, minimizeBtn, header);
+        const minimizeTerminalButton = header?.querySelector("#" + MINIMIZE_TERMINAL_BUTTON_ID);
+        if (widgetEl && header && minimizeTerminalButton) {
+          toggleMinimize(widgetEl, minimizeTerminalButton, header);
         }
       }
     });
@@ -2606,8 +2668,8 @@
     const trimmed = text.replace(/[\r\n\s]+$/, "");
     notifyIframe("write", { text: trimmed });
     setTimeout(() => {
-      notifyIframe("write", { text: "\n" });
-    }, 150);
+      notifyIframe("write", { text: "\r" });
+    }, 600);
   }
 
   // extension/content/ui/tracked-hover-launcher.js
@@ -2629,6 +2691,32 @@
   var recordingStorageListener = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
+  async function checkTerminalReachable() {
+    try {
+      let baseUrl = DEFAULT_SERVER_URL;
+      try {
+        const result = await new Promise((resolve) => {
+          chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
+            if (chrome.runtime.lastError) {
+              resolve({});
+              return;
+            }
+            resolve(r);
+          });
+        });
+        baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+      } catch {
+      }
+      const url = new URL(baseUrl);
+      url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
+      const resp = await fetch(`${url.origin}/terminal/config`, {
+        signal: AbortSignal.timeout(2e3)
+      });
+      return resp.ok;
+    } catch {
+      return false;
+    }
+  }
   function clearHideTimer() {
     if (!hideTimer)
       return;
@@ -3056,19 +3144,23 @@
     });
     screenshotButton.style.fontSize = "26px";
     screenshotButton.style.paddingBottom = "5px";
-    const isLocalPage = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|file:\/\/)/.test(location.href);
-    const terminalButton = createActionButton("_\u276F", isLocalPage ? "Terminal \u2014 open an interactive CLI session" : "Terminal \u2014 only available on localhost (CSP restricts connections to the daemon)", () => {
-      if (!isLocalPage)
+    let terminalReachable = true;
+    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open an interactive CLI session", () => {
+      if (!terminalReachable)
         return;
       panelPinned = false;
       setPanelOpen(false);
       void toggleTerminal();
     });
     terminalButton.style.fontSize = "21px";
-    if (!isLocalPage) {
-      terminalButton.style.opacity = "0.35";
-      terminalButton.style.cursor = "not-allowed";
-    }
+    void checkTerminalReachable().then((reachable) => {
+      terminalReachable = reachable;
+      if (!reachable) {
+        terminalButton.style.opacity = "0.35";
+        terminalButton.style.cursor = "not-allowed";
+        terminalButton.title = "Terminal \u2014 unavailable (CSP blocks connections to the daemon, or terminal server not running)";
+      }
+    });
     const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);
@@ -3242,7 +3334,6 @@
     }
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
-    unmountTerminal();
   }
   function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;

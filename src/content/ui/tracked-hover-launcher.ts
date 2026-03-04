@@ -5,8 +5,8 @@
  */
 
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
-import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
-import { toggleTerminal, unmountTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
+import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js'
+import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
 const PANEL_ID = 'gasoline-tracked-hover-panel'
@@ -29,6 +29,34 @@ let recordingStorageListener:
   | null = null
 let runtimeListenerInstalled = false
 let annotationListenerInstalled = false
+
+/**
+ * Check if the terminal server is reachable from this page.
+ * CSP on non-localhost pages may block connections to localhost.
+ * Returns true if reachable, false if blocked by CSP or unreachable.
+ */
+async function checkTerminalReachable(): Promise<boolean> {
+  try {
+    let baseUrl = DEFAULT_SERVER_URL
+    try {
+      const result = await new Promise<Record<string, unknown>>((resolve) => {
+        chrome.storage.local.get([StorageKey.SERVER_URL], (r: Record<string, unknown>) => {
+          if (chrome.runtime.lastError) { resolve({}); return }
+          resolve(r)
+        })
+      })
+      baseUrl = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+    } catch { /* use default */ }
+    const url = new URL(baseUrl)
+    url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET)
+    const resp = await fetch(`${url.origin}/terminal/config`, {
+      signal: AbortSignal.timeout(2000)
+    })
+    return resp.ok
+  } catch {
+    return false
+  }
+}
 
 function clearHideTimer(): void {
   if (!hideTimer) return
@@ -494,20 +522,23 @@ function createLauncherUi(): HTMLDivElement {
   screenshotButton.style.fontSize = '26px'
   screenshotButton.style.paddingBottom = '5px'
 
-  const isLocalPage = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|file:\/\/)/.test(location.href)
-  const terminalButton = createActionButton('_\u276F', isLocalPage
-    ? 'Terminal — open an interactive CLI session'
-    : 'Terminal — only available on localhost (CSP restricts connections to the daemon)', () => {
-    if (!isLocalPage) return
+  let terminalReachable = true // Assume reachable until proven otherwise
+  const terminalButton = createActionButton('_\u276F', 'Terminal — open an interactive CLI session', () => {
+    if (!terminalReachable) return
     panelPinned = false
     setPanelOpen(false)
     void toggleTerminal()
   })
   terminalButton.style.fontSize = '21px'
-  if (!isLocalPage) {
-    terminalButton.style.opacity = '0.35'
-    terminalButton.style.cursor = 'not-allowed'
-  }
+  // Proactively check if the terminal server is reachable (CSP may block localhost on external pages).
+  void checkTerminalReachable().then((reachable) => {
+    terminalReachable = reachable
+    if (!reachable) {
+      terminalButton.style.opacity = '0.35'
+      terminalButton.style.cursor = 'not-allowed'
+      terminalButton.title = 'Terminal — unavailable (CSP blocks connections to the daemon, or terminal server not running)'
+    }
+  })
 
   const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
     panelPinned = true
@@ -700,7 +731,8 @@ function unmountLauncher(): void {
   }
   uninstallRecordingStorageSync()
   uninstallAnnotationListener()
-  unmountTerminal()
+  // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
+  // The PTY session survives launcher hide/show so users don't lose work.
 }
 
 export function setTrackedHoverLauncherEnabled(enabled: boolean): void {

@@ -34,6 +34,7 @@ type ServerInfo struct {
 	LaunchMode       string  `json:"launch_mode,omitempty"`
 	LaunchModeReason string  `json:"launch_mode_reason,omitempty"`
 	ParentProcess    string  `json:"parent_process,omitempty"`
+	TerminalPort     int     `json:"terminal_port,omitempty"` // 0 = terminal server not running
 }
 
 // MemoryInfo contains memory usage statistics.

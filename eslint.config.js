@@ -42,6 +42,9 @@ export default [
       'extension/inject.bundled.js',
       'extension/early-patch.bundled.js',
       'extension/offscreen.bundled.js',
+      'extension/popup.bundled.js',
+      // Vendored terminal assets (xterm.js)
+      'cmd/dev-console/terminal_assets/**',
       // Generated smoke fixture bundles
       'cmd/dev-console/testpages/frameworks/*.bundle.js'
     ]

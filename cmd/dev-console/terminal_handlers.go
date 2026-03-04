@@ -1,6 +1,7 @@
 // terminal_handlers.go — HTTP handlers for the in-browser terminal.
 // Why: Isolates terminal WebSocket upgrade, session lifecycle, and static asset serving
 // from the main route wiring for maintainability and test focus.
+// Docs: docs/features/feature/terminal/index.md
 
 package main
 
@@ -18,8 +19,9 @@ import (
 )
 
 // terminalWSIdleTimeout is the idle timeout for terminal WebSocket connections.
-// Longer than the test harness since terminal sessions are long-lived.
-const terminalWSIdleTimeout = 5 * time.Minute
+// Set high — terminal users may step away for extended periods. On timeout the
+// connection closes cleanly and the browser auto-reconnects with scrollback replay.
+const terminalWSIdleTimeout = 2 * time.Hour
 
 // terminalReadBufSize is the buffer size for PTY reads relayed to the browser.
 const terminalReadBufSize = 4096
@@ -56,15 +58,17 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 		handleTerminalStop(w, r, mgr)
 	}))
 
+	// Session validation — checks a specific token against a live session.
+	mux.HandleFunc("/terminal/validate", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		handleTerminalValidate(w, r, mgr)
+	}))
+
 	// Session configuration.
 	mux.HandleFunc("/terminal/config", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalConfig(w, r, mgr)
 	}))
 
-	// Active codebase GET/PUT — extension reads/writes the default terminal CWD.
-	mux.HandleFunc("/config/active-codebase", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleActiveCodebase(w, r, server)
-	})))
+	// NOTE: /config/active-codebase is registered in registerCoreRoutes (not terminal-specific).
 }
 
 // handleTerminalPage serves the terminal HTML page.
@@ -142,19 +146,15 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 				return
 			}
 		}
-		// Force TUI redraw after scrollback replay. The client sends a resize
-		// on connect, but if dimensions haven't changed TIOCSWINSZ won't trigger
-		// SIGWINCH. Explicit SIGWINCH ensures TUI apps (Claude, etc.) redraw.
-		sess.ForceRedraw()
 	}
 
-	terminalWSLoop(conn, bufrw, sess)
+	terminalWSLoop(conn, bufrw, sess, mgr)
 }
 
 // terminalWSLoop relays data between a WebSocket connection and a PTY session.
 // Downstream (PTY → browser): binary WebSocket frames with raw terminal output.
 // Upstream (browser → PTY): binary frames as keystrokes, text frames as JSON control messages.
-func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
+func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr *pty.Manager) {
 	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
 	done := make(chan struct{})
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, defer close(done) handles teardown
@@ -181,12 +181,20 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	// must survive page refreshes so the browser can reconnect with scrollback replay.
 	// Sessions are only killed explicitly via POST /terminal/stop (the Exit button).
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn
+		defer conn.Close() // Close conn on exit so downstream detects it and browser auto-reconnects
 		for {
 			_ = conn.SetReadDeadline(time.Now().Add(terminalWSIdleTimeout))
 
 			fin, opcode, payload, err := wsReadFrame(rw)
 			if err != nil {
-				return // WebSocket closed — stop relaying but keep PTY alive
+				// If idle timeout, notify the user and kill the session.
+				// Page refresh starts a fresh session handshake.
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					msg := []byte(`{"type":"idle_timeout"}`)
+					_ = wsWriteFrame(rw, 0x1, msg)
+					_ = mgr.Stop(sess.ID)
+				}
+				return
 			}
 			_ = fin // Terminal messages are not fragmented in practice.
 
@@ -226,6 +234,10 @@ func handleTerminalControlMessage(payload []byte, sess *pty.Session) {
 	case "resize":
 		if msg.Cols > 0 && msg.Rows > 0 {
 			_ = sess.Resize(uint16(msg.Cols), uint16(msg.Rows))
+			// Always force SIGWINCH so TUI apps redraw — TIOCSWINSZ only
+			// sends SIGWINCH when dimensions actually change, but on reconnect
+			// the dimensions may match while the display is stale.
+			sess.ForceRedraw()
 		}
 	}
 }
@@ -330,12 +342,7 @@ func autoDetectCWD(cap *capture.Store) string {
 		return ""
 	}
 
-	// The List() return type is any — extract CWD from the first client.
-	// ClientRegistry.List() returns []*ClientState which has a CWD field.
-	type cwdExtractor interface {
-		GetCWD() string
-	}
-
+	// List() returns any — extract CWD from the first client.
 	switch v := clients.(type) {
 	case []any:
 		for _, c := range v {
@@ -413,6 +420,26 @@ func handleTerminalConfig(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// handleTerminalValidate checks whether a specific token maps to a live PTY session.
+// Returns {"valid": true} if the token resolves to a running session, false otherwise.
+func handleTerminalValidate(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) {
+	if r.Method != "GET" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		return
+	}
+	sess, err := mgr.GetByToken(token)
+	if err != nil {
+		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]bool{"valid": sess.IsAlive()})
 }
 
 // handleActiveCodebase gets or sets the active codebase path used as terminal CWD.

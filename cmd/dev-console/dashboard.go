@@ -104,6 +104,20 @@ func handleStatusAPI(server *Server, cap *capture.Store, mcpHandler *MCPHandler)
 
 		resp["buffers"] = buffers
 
+		// Terminal server status
+		termPort := server.getTerminalPort()
+		termInfo := map[string]any{
+			"port":     termPort,
+			"running":  termPort > 0,
+			"sessions": 0,
+		}
+		if server.ptyManager != nil {
+			termInfo["sessions"] = server.ptyManager.Count()
+			termInfo["session_ids"] = server.ptyManager.List()
+		}
+		resp["terminal"] = termInfo
+		resp["listen_port"] = server.getListenPort()
+
 		if mcpHandler != nil && mcpHandler.toolHandler != nil {
 			if th, ok := mcpHandler.toolHandler.(*ToolHandler); ok && th.healthMetrics != nil {
 				resp["audit"] = th.healthMetrics.buildAuditInfo()

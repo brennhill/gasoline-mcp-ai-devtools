@@ -5,11 +5,14 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 
-import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, StorageKey } from '../../lib/constants.js'
 
 const WIDGET_ID = 'gasoline-terminal-widget'
 const IFRAME_ID = 'gasoline-terminal-iframe'
 const HEADER_ID = 'gasoline-terminal-header'
+const DISCONNECT_TERMINAL_BUTTON_ID = 'gasoline-terminal-disconnect-button'
+const MINIMIZE_TERMINAL_BUTTON_ID = 'gasoline-terminal-minimize-button'
+const CLOSE_TERMINAL_BUTTON_ID = 'gasoline-terminal-close-button'
 
 interface TerminalConfig {
   cmd?: string
@@ -31,6 +34,13 @@ let visible = false
 let minimized = false
 let savedHeight = ''
 let serverUrl = DEFAULT_SERVER_URL
+
+/** Compute the terminal server URL from a base daemon URL (port + TERMINAL_PORT_OFFSET). */
+function getTerminalServerUrl(baseUrl: string): string {
+  const url = new URL(baseUrl)
+  url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET)
+  return url.origin
+}
 
 function getServerUrl(): Promise<string> {
   return new Promise((resolve) => {
@@ -164,25 +174,29 @@ function loadPersistedSession(): Promise<{ session: TerminalSessionState | null;
 /** Validate that a persisted token is still alive on the daemon. */
 async function validateSession(token: string): Promise<boolean> {
   try {
-    const url = await getServerUrl()
-    const resp = await fetch(`${url}/terminal/config`, { signal: AbortSignal.timeout(2000) })
+    const base = await getServerUrl()
+    const termUrl = getTerminalServerUrl(base)
+    const resp = await fetch(
+      `${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(2000) }
+    )
     if (!resp.ok) return false
-    const data = await resp.json() as { count?: number }
-    // If there are active sessions, the token is likely valid
-    return (data.count ?? 0) > 0
+    const data = await resp.json() as { valid?: boolean }
+    return data.valid === true
   } catch {
     return false
   }
 }
 
 async function startSession(config: TerminalConfig): Promise<TerminalSessionState | null> {
-  const url = await getServerUrl()
+  const base = await getServerUrl()
+  const termUrl = getTerminalServerUrl(base)
   const aiCommand = await getTerminalAICommand()
   const devRoot = await getTerminalDevRoot()
   try {
     // Build init_command: unset CLAUDECODE to avoid nesting detection, then launch the AI tool.
     const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : ''
-    const resp = await fetch(`${url}/terminal/start`, {
+    const resp = await fetch(`${termUrl}/terminal/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -399,6 +413,18 @@ function createWidget(token: string): HTMLDivElement {
     flexShrink: '0'
   })
 
+  // Connection status dot
+  const statusDot = document.createElement('span')
+  statusDot.className = 'gasoline-terminal-status-dot'
+  Object.assign(statusDot.style, {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: '#565f89',
+    flexShrink: '0',
+    transition: 'background 200ms ease'
+  })
+
   const titleSpan = document.createElement('span')
   titleSpan.textContent = 'Terminal'
   Object.assign(titleSpan.style, {
@@ -412,11 +438,12 @@ function createWidget(token: string): HTMLDivElement {
   })
 
   // Minimize button
-  const minimizeBtn = document.createElement('button')
-  minimizeBtn.textContent = '\u2581' // ▁
-  minimizeBtn.title = 'Minimize terminal'
-  minimizeBtn.type = 'button'
-  Object.assign(minimizeBtn.style, {
+  const minimizeTerminalButton = document.createElement('button')
+  minimizeTerminalButton.id = MINIMIZE_TERMINAL_BUTTON_ID
+  minimizeTerminalButton.textContent = '\u2581' // ▁
+  minimizeTerminalButton.title = 'Minimize terminal'
+  minimizeTerminalButton.type = 'button'
+  Object.assign(minimizeTerminalButton.style, {
     width: '24px',
     height: '24px',
     border: 'none',
@@ -430,26 +457,27 @@ function createWidget(token: string): HTMLDivElement {
     justifyContent: 'center',
     flexShrink: '0'
   })
-  minimizeBtn.addEventListener('mouseenter', () => {
-    minimizeBtn.style.background = '#292e42'
-    minimizeBtn.style.color = '#a9b1d6'
+  minimizeTerminalButton.addEventListener('mouseenter', () => {
+    minimizeTerminalButton.style.background = '#292e42'
+    minimizeTerminalButton.style.color = '#a9b1d6'
   })
-  minimizeBtn.addEventListener('mouseleave', () => {
-    minimizeBtn.style.background = 'transparent'
-    minimizeBtn.style.color = '#565f89'
+  minimizeTerminalButton.addEventListener('mouseleave', () => {
+    minimizeTerminalButton.style.background = 'transparent'
+    minimizeTerminalButton.style.color = '#565f89'
   })
-  minimizeBtn.addEventListener('click', (e: MouseEvent) => {
+  minimizeTerminalButton.addEventListener('click', (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    toggleMinimize(widget, minimizeBtn, header)
+    toggleMinimize(widget, minimizeTerminalButton, header)
   })
 
   // Exit session button — kills the PTY. Placed left, next to title, glows red.
-  const exitBtn = document.createElement('button')
-  exitBtn.textContent = '\u23FB' // ⏻ power symbol
-  exitBtn.title = 'Exit AI session'
-  exitBtn.type = 'button'
-  Object.assign(exitBtn.style, {
+  const disconnectTerminalButton = document.createElement('button')
+  disconnectTerminalButton.id = DISCONNECT_TERMINAL_BUTTON_ID
+  disconnectTerminalButton.textContent = '\u23FB' // ⏻ power symbol
+  disconnectTerminalButton.title = 'disconnect terminal & and end session'
+  disconnectTerminalButton.type = 'button'
+  Object.assign(disconnectTerminalButton.style, {
     width: '24px',
     height: '24px',
     border: 'none',
@@ -465,17 +493,17 @@ function createWidget(token: string): HTMLDivElement {
     opacity: '0.7',
     transition: 'opacity 150ms ease, background 150ms ease, box-shadow 150ms ease'
   })
-  exitBtn.addEventListener('mouseenter', () => {
-    exitBtn.style.background = '#3b1219'
-    exitBtn.style.opacity = '1'
-    exitBtn.style.boxShadow = '0 0 8px rgba(247, 118, 142, 0.4)'
+  disconnectTerminalButton.addEventListener('mouseenter', () => {
+    disconnectTerminalButton.style.background = '#3b1219'
+    disconnectTerminalButton.style.opacity = '1'
+    disconnectTerminalButton.style.boxShadow = '0 0 8px rgba(247, 118, 142, 0.4)'
   })
-  exitBtn.addEventListener('mouseleave', () => {
-    exitBtn.style.background = 'transparent'
-    exitBtn.style.opacity = '0.7'
-    exitBtn.style.boxShadow = 'none'
+  disconnectTerminalButton.addEventListener('mouseleave', () => {
+    disconnectTerminalButton.style.background = 'transparent'
+    disconnectTerminalButton.style.opacity = '0.7'
+    disconnectTerminalButton.style.boxShadow = 'none'
   })
-  exitBtn.addEventListener('click', (e: MouseEvent) => {
+  disconnectTerminalButton.addEventListener('click', (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     void exitTerminalSession()
@@ -485,11 +513,12 @@ function createWidget(token: string): HTMLDivElement {
   const spacer = document.createElement('div')
   spacer.style.flex = '1'
 
-  const closeBtn = document.createElement('button')
-  closeBtn.textContent = '\u2715'
-  closeBtn.title = 'Close terminal'
-  closeBtn.type = 'button'
-  Object.assign(closeBtn.style, {
+  const closeTerminalButton = document.createElement('button')
+  closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID
+  closeTerminalButton.textContent = '\u2715'
+  closeTerminalButton.title = 'Close terminal'
+  closeTerminalButton.type = 'button'
+  Object.assign(closeTerminalButton.style, {
     width: '24px',
     height: '24px',
     border: 'none',
@@ -503,15 +532,15 @@ function createWidget(token: string): HTMLDivElement {
     justifyContent: 'center',
     flexShrink: '0'
   })
-  closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.background = '#292e42'
-    closeBtn.style.color = '#a9b1d6'
+  closeTerminalButton.addEventListener('mouseenter', () => {
+    closeTerminalButton.style.background = '#292e42'
+    closeTerminalButton.style.color = '#a9b1d6'
   })
-  closeBtn.addEventListener('mouseleave', () => {
-    closeBtn.style.background = 'transparent'
-    closeBtn.style.color = '#565f89'
+  closeTerminalButton.addEventListener('mouseleave', () => {
+    closeTerminalButton.style.background = 'transparent'
+    closeTerminalButton.style.color = '#565f89'
   })
-  closeBtn.addEventListener('click', (e: MouseEvent) => {
+  closeTerminalButton.addEventListener('click', (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     hideTerminal()
@@ -520,19 +549,20 @@ function createWidget(token: string): HTMLDivElement {
   // Title bar click restores when minimized
   header.addEventListener('click', () => {
     if (!minimized) return
-    toggleMinimize(widget, minimizeBtn, header)
+    toggleMinimize(widget, minimizeTerminalButton, header)
   })
 
+  header.appendChild(statusDot)
   header.appendChild(titleSpan)
-  header.appendChild(exitBtn)
+  header.appendChild(disconnectTerminalButton)
   header.appendChild(spacer)
-  header.appendChild(minimizeBtn)
-  header.appendChild(closeBtn)
+  header.appendChild(minimizeTerminalButton)
+  header.appendChild(closeTerminalButton)
 
   // Iframe
   const iframe = document.createElement('iframe')
   iframe.id = IFRAME_ID
-  iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`
+  iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`
   Object.assign(iframe.style, {
     flex: '1',
     width: '100%',
@@ -552,18 +582,48 @@ function createWidget(token: string): HTMLDivElement {
   return widget
 }
 
+function updateStatusDot(state: 'connected' | 'disconnected' | 'exited'): void {
+  const dot = widgetEl?.querySelector('.gasoline-terminal-status-dot') as HTMLElement | null
+  if (!dot) return
+  switch (state) {
+    case 'connected':
+      dot.style.background = '#9ece6a' // green
+      break
+    case 'disconnected':
+      dot.style.background = '#e0af68' // orange
+      break
+    case 'exited':
+      dot.style.background = '#f7768e' // red
+      break
+  }
+}
+
 function handleIframeMessage(event: MessageEvent): void {
   if (!event.data || event.data.source !== 'gasoline-terminal') return
-  // Only accept messages from the daemon's origin (localhost)
+  // Only accept messages from the terminal server's origin (localhost:port+1)
   try {
-    const origin = new URL(serverUrl).origin
-    if (event.origin !== origin) return
+    const termOrigin = getTerminalServerUrl(serverUrl)
+    if (event.origin !== termOrigin) return
   } catch {
     return // Malformed serverUrl — reject all messages
   }
-  // Handle terminal events (connected, disconnected, exited)
-  if (event.data.event === 'exited') {
-    // Process exited — could auto-restart or show status
+  // Handle terminal connection lifecycle events
+  switch (event.data.event as string) {
+    case 'connected':
+      updateStatusDot('connected')
+      break
+    case 'disconnected':
+      updateStatusDot('disconnected')
+      // Idle timeout — session was killed server-side. Clear persisted state
+      // so page refresh starts a fresh session handshake.
+      if (event.data.data?.reason === 'idle_timeout') {
+        clearPersistedSession()
+        sessionState = null
+      }
+      break
+    case 'exited':
+      updateStatusDot('exited')
+      break
   }
 }
 
@@ -636,7 +696,7 @@ function toggleMinimize(widget: HTMLElement, btn: HTMLButtonElement, header: HTM
 function notifyIframe(command: string, data?: Record<string, unknown>): void {
   if (!iframeEl?.contentWindow) return
   let origin = '*'
-  try { origin = new URL(serverUrl).origin } catch { /* fall back to wildcard */ }
+  try { origin = getTerminalServerUrl(serverUrl) } catch { /* fall back to wildcard */ }
   iframeEl.contentWindow.postMessage({
     target: 'gasoline-terminal',
     command,
@@ -656,15 +716,17 @@ export function hideTerminal(): void {
 
 /** Kill the PTY session on the daemon and tear down the widget completely. */
 export async function exitTerminalSession(): Promise<void> {
-  // Stop the PTY on the daemon
+  // Stop the PTY on the daemon (with timeout so the UI never hangs).
   if (sessionState) {
     try {
-      await fetch(`${serverUrl}/terminal/stop`, {
+      const termUrl = getTerminalServerUrl(serverUrl)
+      await fetch(`${termUrl}/terminal/stop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sessionState.sessionId })
+        body: JSON.stringify({ id: sessionState.sessionId }),
+        signal: AbortSignal.timeout(3000)
       })
-    } catch { /* daemon unreachable — session will expire on its own */ }
+    } catch { /* daemon unreachable or timeout — tear down locally */ }
   }
   clearPersistedSession()
   unmountTerminal()
@@ -727,7 +789,13 @@ export async function restoreTerminalIfNeeded(): Promise<void> {
   await getServerUrl()
   const alive = await validateSession(persisted.session.token)
   if (!alive) {
+    // Session died (daemon restart, process exited) but UI was open — start fresh.
     clearPersistedSession()
+    const config = await getTerminalConfig()
+    const state = await startSession(config)
+    if (!state) return
+    sessionState = state
+    mountWidget(state.token, persisted.uiState === 'minimized')
     return
   }
 
@@ -753,15 +821,15 @@ function mountWidget(token: string, startMinimized: boolean): void {
     // Apply minimized state after show animation
     if (startMinimized) {
       const header = widgetEl?.querySelector('#' + HEADER_ID)
-      const minimizeBtn = header?.querySelector('button') as HTMLButtonElement | null
-      if (widgetEl && header && minimizeBtn) {
-        toggleMinimize(widgetEl, minimizeBtn, header as HTMLElement)
+      const minimizeTerminalButton = header?.querySelector('#' + MINIMIZE_TERMINAL_BUTTON_ID) as HTMLButtonElement | null
+      if (widgetEl && header && minimizeTerminalButton) {
+        toggleMinimize(widgetEl, minimizeTerminalButton, header as HTMLElement)
       }
     }
   })
 }
 
-export function unmountTerminal(): void {
+function unmountTerminal(): void {
   window.removeEventListener('message', handleIframeMessage)
   if (widgetEl) {
     widgetEl.remove()
@@ -781,10 +849,12 @@ export function writeToTerminal(text: string): void {
   // Strip trailing whitespace/newlines — we'll send our own Enter to submit.
   const trimmed = text.replace(/[\r\n\s]+$/, '')
   notifyIframe('write', { text: trimmed })
-  // Brief delay so the AI CLI's TUI can process the pasted text, then press Enter to submit.
+  // Delay must be long enough for the AI CLI's TUI to finish processing the pasted
+  // text (especially large multi-line annotations). Send \r (carriage return) which
+  // is the actual Enter keypress byte in a terminal — more reliable than \n for TUIs.
   setTimeout(() => {
-    notifyIframe('write', { text: '\n' })
-  }, 150)
+    notifyIframe('write', { text: '\r' })
+  }, 600)
 }
 
 // Re-export for launcher integration
