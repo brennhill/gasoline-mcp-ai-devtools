@@ -189,6 +189,104 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 	}
 }
 
+func TestHandleTerminalValidate_ValidToken(t *testing.T) {
+	mgr := pty.NewManager()
+	defer mgr.StopAll()
+
+	result, err := mgr.Start(pty.StartConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/terminal/validate?token="+result.Token, nil)
+	rec := httptest.NewRecorder()
+	handleTerminalValidate(rec, req, mgr)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp map[string]bool
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !resp["valid"] {
+		t.Fatal("expected valid=true for live session")
+	}
+}
+
+func TestHandleTerminalValidate_InvalidToken(t *testing.T) {
+	mgr := pty.NewManager()
+
+	req := httptest.NewRequest("GET", "/terminal/validate?token=bogus", nil)
+	rec := httptest.NewRecorder()
+	handleTerminalValidate(rec, req, mgr)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp map[string]bool
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["valid"] {
+		t.Fatal("expected valid=false for bogus token")
+	}
+}
+
+func TestHandleTerminalValidate_EmptyToken(t *testing.T) {
+	mgr := pty.NewManager()
+
+	req := httptest.NewRequest("GET", "/terminal/validate", nil)
+	rec := httptest.NewRecorder()
+	handleTerminalValidate(rec, req, mgr)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp map[string]bool
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["valid"] {
+		t.Fatal("expected valid=false for empty token")
+	}
+}
+
+func TestHandleTerminalValidate_StaleToken(t *testing.T) {
+	mgr := pty.NewManager()
+
+	// Start and immediately stop to create a stale token.
+	result, err := mgr.Start(pty.StartConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	token := result.Token
+	if err := mgr.Stop("default"); err != nil {
+		t.Fatalf("stop: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/terminal/validate?token="+token, nil)
+	rec := httptest.NewRecorder()
+	handleTerminalValidate(rec, req, mgr)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp map[string]bool
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["valid"] {
+		t.Fatal("expected valid=false for stale token (session stopped)")
+	}
+}
+
 func TestHandleTerminalWS_MissingToken(t *testing.T) {
 	mgr := pty.NewManager()
 

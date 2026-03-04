@@ -140,12 +140,11 @@ function loadPersistedSession() {
 async function validateSession(token) {
     try {
         const url = await getServerUrl();
-        const resp = await fetch(`${url}/terminal/config`, { signal: AbortSignal.timeout(2000) });
+        const resp = await fetch(`${url}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2000) });
         if (!resp.ok)
             return false;
         const data = await resp.json();
-        // If there are active sessions, the token is likely valid
-        return (data.count ?? 0) > 0;
+        return data.valid === true;
     }
     catch {
         return false;
@@ -362,6 +361,17 @@ function createWidget(token) {
         cursor: 'default',
         flexShrink: '0'
     });
+    // Connection status dot
+    const statusDot = document.createElement('span');
+    statusDot.className = 'gasoline-terminal-status-dot';
+    Object.assign(statusDot.style, {
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        background: '#565f89',
+        flexShrink: '0',
+        transition: 'background 200ms ease'
+    });
     const titleSpan = document.createElement('span');
     titleSpan.textContent = 'Terminal';
     Object.assign(titleSpan.style, {
@@ -481,6 +491,7 @@ function createWidget(token) {
             return;
         toggleMinimize(widget, minimizeBtn, header);
     });
+    header.appendChild(statusDot);
     header.appendChild(titleSpan);
     header.appendChild(exitBtn);
     header.appendChild(spacer);
@@ -504,6 +515,22 @@ function createWidget(token) {
     window.addEventListener('message', handleIframeMessage);
     return widget;
 }
+function updateStatusDot(state) {
+    const dot = widgetEl?.querySelector('.gasoline-terminal-status-dot');
+    if (!dot)
+        return;
+    switch (state) {
+        case 'connected':
+            dot.style.background = '#9ece6a'; // green
+            break;
+        case 'disconnected':
+            dot.style.background = '#e0af68'; // orange
+            break;
+        case 'exited':
+            dot.style.background = '#f7768e'; // red
+            break;
+    }
+}
 function handleIframeMessage(event) {
     if (!event.data || event.data.source !== 'gasoline-terminal')
         return;
@@ -516,9 +543,17 @@ function handleIframeMessage(event) {
     catch {
         return; // Malformed serverUrl — reject all messages
     }
-    // Handle terminal events (connected, disconnected, exited)
-    if (event.data.event === 'exited') {
-        // Process exited — could auto-restart or show status
+    // Handle terminal connection lifecycle events
+    switch (event.data.event) {
+        case 'connected':
+            updateStatusDot('connected');
+            break;
+        case 'disconnected':
+            updateStatusDot('disconnected');
+            break;
+        case 'exited':
+            updateStatusDot('exited');
+            break;
     }
 }
 function setupResize(handle, widget) {
@@ -614,16 +649,17 @@ export function hideTerminal() {
 }
 /** Kill the PTY session on the daemon and tear down the widget completely. */
 export async function exitTerminalSession() {
-    // Stop the PTY on the daemon
+    // Stop the PTY on the daemon (with timeout so the UI never hangs).
     if (sessionState) {
         try {
             await fetch(`${serverUrl}/terminal/stop`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: sessionState.sessionId })
+                body: JSON.stringify({ id: sessionState.sessionId }),
+                signal: AbortSignal.timeout(3000)
             });
         }
-        catch { /* daemon unreachable — session will expire on its own */ }
+        catch { /* daemon unreachable or timeout — tear down locally */ }
     }
     clearPersistedSession();
     unmountTerminal();
@@ -731,10 +767,12 @@ export function writeToTerminal(text) {
     // Strip trailing whitespace/newlines — we'll send our own Enter to submit.
     const trimmed = text.replace(/[\r\n\s]+$/, '');
     notifyIframe('write', { text: trimmed });
-    // Brief delay so the AI CLI's TUI can process the pasted text, then press Enter to submit.
+    // Delay must be long enough for the AI CLI's TUI to finish processing the pasted
+    // text (especially large multi-line annotations). Send \r (carriage return) which
+    // is the actual Enter keypress byte in a terminal — more reliable than \n for TUIs.
     setTimeout(() => {
-        notifyIframe('write', { text: '\n' });
-    }, 150);
+        notifyIframe('write', { text: '\r' });
+    }, 600);
 }
 // Re-export for launcher integration
 export { saveTerminalConfig };

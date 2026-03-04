@@ -56,6 +56,11 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 		handleTerminalStop(w, r, mgr)
 	}))
 
+	// Session validation — checks a specific token against a live session.
+	mux.HandleFunc("/terminal/validate", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		handleTerminalValidate(w, r, mgr)
+	}))
+
 	// Session configuration.
 	mux.HandleFunc("/terminal/config", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalConfig(w, r, mgr)
@@ -142,10 +147,6 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 				return
 			}
 		}
-		// Force TUI redraw after scrollback replay. The client sends a resize
-		// on connect, but if dimensions haven't changed TIOCSWINSZ won't trigger
-		// SIGWINCH. Explicit SIGWINCH ensures TUI apps (Claude, etc.) redraw.
-		sess.ForceRedraw()
 	}
 
 	terminalWSLoop(conn, bufrw, sess)
@@ -226,6 +227,10 @@ func handleTerminalControlMessage(payload []byte, sess *pty.Session) {
 	case "resize":
 		if msg.Cols > 0 && msg.Rows > 0 {
 			_ = sess.Resize(uint16(msg.Cols), uint16(msg.Rows))
+			// Always force SIGWINCH so TUI apps redraw — TIOCSWINSZ only
+			// sends SIGWINCH when dimensions actually change, but on reconnect
+			// the dimensions may match while the display is stale.
+			sess.ForceRedraw()
 		}
 	}
 }
@@ -413,6 +418,26 @@ func handleTerminalConfig(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// handleTerminalValidate checks whether a specific token maps to a live PTY session.
+// Returns {"valid": true} if the token resolves to a running session, false otherwise.
+func handleTerminalValidate(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) {
+	if r.Method != "GET" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		return
+	}
+	sess, err := mgr.GetByToken(token)
+	if err != nil || sess == nil {
+		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]bool{"valid": sess.IsAlive()})
 }
 
 // handleActiveCodebase gets or sets the active codebase path used as terminal CWD.

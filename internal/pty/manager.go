@@ -158,16 +158,20 @@ func (m *Manager) Stop(id string) error {
 }
 
 // StopAll destroys all active sessions. Called during daemon shutdown.
+// Collects sessions under lock, clears maps, then closes sessions outside the
+// lock so that slow Close() calls (up to 2s each) don't block concurrent reads.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for id, sess := range m.sessions {
-		_ = sess.Close()
-		delete(m.sessions, id)
+	toClose := make([]*Session, 0, len(m.sessions))
+	for _, sess := range m.sessions {
+		toClose = append(toClose, sess)
 	}
-	for token := range m.tokens {
-		delete(m.tokens, token)
+	m.sessions = make(map[string]*Session)
+	m.tokens = make(map[string]string)
+	m.mu.Unlock()
+
+	for _, sess := range toClose {
+		_ = sess.Close()
 	}
 }
 

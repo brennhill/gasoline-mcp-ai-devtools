@@ -6,7 +6,7 @@
 
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
-import { toggleTerminal, unmountTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
+import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
 const PANEL_ID = 'gasoline-tracked-hover-panel'
@@ -700,7 +700,8 @@ function unmountLauncher(): void {
   }
   uninstallRecordingStorageSync()
   uninstallAnnotationListener()
-  unmountTerminal()
+  // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
+  // The PTY session survives launcher hide/show so users don't lose work.
 }
 
 export function setTrackedHoverLauncherEnabled(enabled: boolean): void {
