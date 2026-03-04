@@ -39,7 +39,7 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 
 #### What's New in 0.7.x
 
-- **5th Tool: analyze** — Active analysis with 15 modes (DOM queries, accessibility, security audits, link health, visual annotations, API validation)
+- **5th Tool: analyze** — Active analysis with 27 modes (DOM queries, accessibility, security audits, link health, visual annotations, API validation, forms, visual diff, and more)
 - **Link Health & Validation** — Browser-based link checker with CORS detection and SSRF-safe server-side validation
 - **Draw Mode & Visual Annotations** — Draw rectangles and type feedback directly on the page with multi-page sessions
 - **Test Healing & Classification** — Self-healing Playwright selectors and context-aware test generation
@@ -53,13 +53,6 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 
 ```bash
 npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
-```
-
-### pip
-
-```bash
-pip install gasoline-agentic-browser
-gasoline-agentic-browser --help
 ```
 
 ### From Source
@@ -83,7 +76,7 @@ make build
 
 - **Browser:** Chrome/Chromium 120+ (for MV3 support)
 - **Runtime:** Native Go binary (no Node.js required for standalone binary installs)
-- **Node.js:** 18+ (optional, only if you install via npm)
+- **Node.js:** 20+ (optional, only if you install via npm)
 - **Platform:** macOS, Linux, Windows
 - **MCP Client:** Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
 

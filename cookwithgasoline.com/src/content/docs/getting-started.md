@@ -93,7 +93,7 @@ git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
 cd gasoline-agentic-browser-devtools-mcp
 go run ./cmd/dev-console
 ```
-Requires [Go 1.21+](https://go.dev/).
+Requires [Go 1.24+](https://go.dev/).
 
 ## Next Steps
 
