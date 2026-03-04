@@ -51,4 +51,4 @@ Gasoline v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio serve
 
 **Milestone:** This was the version that proved the concept could work. Everything from here builds on this foundation.
 
-See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.
+See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.

@@ -61,7 +61,7 @@ Same binary, same behavior. Platform-specific wheels for macOS (arm64, x64), Lin
 
 ## Known Issues
 
-Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/KNOWN-ISSUES.md) for details:
+Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/KNOWN-ISSUES.md) for details:
 
 - `query_dom` not yet implemented
 - Accessibility audit runtime error
@@ -91,4 +91,4 @@ Or update your `.mcp.json`:
 
 ## Full Changelog
 
-[GitHub Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.1.0) · [CHANGELOG.md](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/CHANGELOG.md)
+[GitHub Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.1.0) · [CHANGELOG.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/CHANGELOG.md)

@@ -47,4 +47,4 @@ pip install gasoline-mcp==0.7.0
 
 ### Full Changelog
 
-[View on GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v0.7.0)
+[View on GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v0.7.0)

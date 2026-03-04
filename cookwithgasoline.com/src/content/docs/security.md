@@ -194,8 +194,8 @@ The entire codebase is open under **AGPL-3.0**:
 
 ```bash
 # Verify the binary yourself
-git clone https://github.com/brennhill/gasoline
-cd gasoline && make build
+git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
+cd gasoline-agentic-browser-devtools-mcp && make build
 shasum -a 256 bin/gasoline-*
 ```
 

@@ -36,4 +36,4 @@ Install the browser extension from the Chrome Web Store or load it manually via 
 
 ## Full Changelog
 
-[v5.0.0 Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.0.0)
+[v5.0.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.0.0)
