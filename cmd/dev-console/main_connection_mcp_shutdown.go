@@ -16,7 +16,8 @@ import (
 // HTTP listener dies unexpectedly, then performs graceful cleanup.
 // The httpDone channel closes if srv.Serve() exits for any reason other than
 // a clean Shutdown — this prevents zombie daemons that are alive but deaf.
-func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-chan struct{}) {
+// termSrv and termDone are optional (nil if terminal server failed to start).
+func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-chan struct{}, termSrv *http.Server, termDone <-chan struct{}) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -46,6 +47,15 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		"unexpected":      shutdownSource == "http_listener_died",
 	}); diagPath != "" && shutdownSource == "http_listener_died" {
 		stderrf("[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
+	}
+
+	// Shut down terminal server first (if running) — non-blocking, best-effort.
+	if termSrv != nil {
+		termCtx, termCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		if err := termSrv.Shutdown(termCtx); err != nil {
+			server.logLifecycle("terminal_shutdown_error", port, map[string]any{"error": err.Error()})
+		}
+		termCancel()
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

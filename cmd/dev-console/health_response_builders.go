@@ -15,8 +15,12 @@ import (
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
 func (hm *HealthMetrics) GetHealth(cap *capture.Store, server *Server, ver string) MCPHealthResponse {
+	serverInfo := hm.buildServerInfo(ver)
+	if server != nil {
+		serverInfo.TerminalPort = server.getTerminalPort()
+	}
 	resp := MCPHealthResponse{
-		Server:           hm.buildServerInfo(ver),
+		Server:           serverInfo,
 		Memory:           buildMemoryInfo(cap),
 		Buffers:          buildBuffersInfo(cap, server),
 		RateLimiting:     buildRateLimitInfo(cap),

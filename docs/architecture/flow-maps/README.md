@@ -65,3 +65,4 @@ Each flow map should include:
 - [Request Session Client Registry and `/clients` Routes](./request-session-client-registry-and-clients-routes.md)
 - [Push Alert Notification Emission](./push-alert-notification-emission.md)
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
+- [Terminal Server Isolation](./terminal-server-isolation.md)

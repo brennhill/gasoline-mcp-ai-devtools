@@ -5,7 +5,7 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 
-import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, StorageKey } from '../../lib/constants.js'
 
 const WIDGET_ID = 'gasoline-terminal-widget'
 const IFRAME_ID = 'gasoline-terminal-iframe'
@@ -31,6 +31,13 @@ let visible = false
 let minimized = false
 let savedHeight = ''
 let serverUrl = DEFAULT_SERVER_URL
+
+/** Compute the terminal server URL from a base daemon URL (port + TERMINAL_PORT_OFFSET). */
+function getTerminalServerUrl(baseUrl: string): string {
+  const url = new URL(baseUrl)
+  url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET)
+  return url.origin
+}
 
 function getServerUrl(): Promise<string> {
   return new Promise((resolve) => {
@@ -164,9 +171,10 @@ function loadPersistedSession(): Promise<{ session: TerminalSessionState | null;
 /** Validate that a persisted token is still alive on the daemon. */
 async function validateSession(token: string): Promise<boolean> {
   try {
-    const url = await getServerUrl()
+    const base = await getServerUrl()
+    const termUrl = getTerminalServerUrl(base)
     const resp = await fetch(
-      `${url}/terminal/validate?token=${encodeURIComponent(token)}`,
+      `${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`,
       { signal: AbortSignal.timeout(2000) }
     )
     if (!resp.ok) return false
@@ -178,13 +186,14 @@ async function validateSession(token: string): Promise<boolean> {
 }
 
 async function startSession(config: TerminalConfig): Promise<TerminalSessionState | null> {
-  const url = await getServerUrl()
+  const base = await getServerUrl()
+  const termUrl = getTerminalServerUrl(base)
   const aiCommand = await getTerminalAICommand()
   const devRoot = await getTerminalDevRoot()
   try {
     // Build init_command: unset CLAUDECODE to avoid nesting detection, then launch the AI tool.
     const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : ''
-    const resp = await fetch(`${url}/terminal/start`, {
+    const resp = await fetch(`${termUrl}/terminal/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -547,7 +556,7 @@ function createWidget(token: string): HTMLDivElement {
   // Iframe
   const iframe = document.createElement('iframe')
   iframe.id = IFRAME_ID
-  iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`
+  iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`
   Object.assign(iframe.style, {
     flex: '1',
     width: '100%',
@@ -585,10 +594,10 @@ function updateStatusDot(state: 'connected' | 'disconnected' | 'exited'): void {
 
 function handleIframeMessage(event: MessageEvent): void {
   if (!event.data || event.data.source !== 'gasoline-terminal') return
-  // Only accept messages from the daemon's origin (localhost)
+  // Only accept messages from the terminal server's origin (localhost:port+1)
   try {
-    const origin = new URL(serverUrl).origin
-    if (event.origin !== origin) return
+    const termOrigin = getTerminalServerUrl(serverUrl)
+    if (event.origin !== termOrigin) return
   } catch {
     return // Malformed serverUrl — reject all messages
   }
@@ -675,7 +684,7 @@ function toggleMinimize(widget: HTMLElement, btn: HTMLButtonElement, header: HTM
 function notifyIframe(command: string, data?: Record<string, unknown>): void {
   if (!iframeEl?.contentWindow) return
   let origin = '*'
-  try { origin = new URL(serverUrl).origin } catch { /* fall back to wildcard */ }
+  try { origin = getTerminalServerUrl(serverUrl) } catch { /* fall back to wildcard */ }
   iframeEl.contentWindow.postMessage({
     target: 'gasoline-terminal',
     command,
@@ -698,7 +707,8 @@ export async function exitTerminalSession(): Promise<void> {
   // Stop the PTY on the daemon (with timeout so the UI never hangs).
   if (sessionState) {
     try {
-      await fetch(`${serverUrl}/terminal/stop`, {
+      const termUrl = getTerminalServerUrl(serverUrl)
+      await fetch(`${termUrl}/terminal/stop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: sessionState.sessionId }),
@@ -767,7 +777,13 @@ export async function restoreTerminalIfNeeded(): Promise<void> {
   await getServerUrl()
   const alive = await validateSession(persisted.session.token)
   if (!alive) {
+    // Session died (daemon restart, process exited) but UI was open — start fresh.
     clearPersistedSession()
+    const config = await getTerminalConfig()
+    const state = await startSession(config)
+    if (!state) return
+    sessionState = state
+    mountWidget(state.token, persisted.uiState === 'minimized')
     return
   }
 
