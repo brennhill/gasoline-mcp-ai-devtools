@@ -335,12 +335,7 @@ func autoDetectCWD(cap *capture.Store) string {
 		return ""
 	}
 
-	// The List() return type is any — extract CWD from the first client.
-	// ClientRegistry.List() returns []*ClientState which has a CWD field.
-	type cwdExtractor interface {
-		GetCWD() string
-	}
-
+	// List() returns any — extract CWD from the first client.
 	switch v := clients.(type) {
 	case []any:
 		for _, c := range v {
@@ -433,7 +428,7 @@ func handleTerminalValidate(w http.ResponseWriter, r *http.Request, mgr *pty.Man
 		return
 	}
 	sess, err := mgr.GetByToken(token)
-	if err != nil || sess == nil {
+	if err != nil {
 		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
 		return
 	}
