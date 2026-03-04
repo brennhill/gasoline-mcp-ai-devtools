@@ -164,22 +164,6 @@ export function initPopup() {
     const clearBtn = document.getElementById('clear-btn');
     if (clearBtn)
         clearBtn.addEventListener('click', handleClearLogs);
-    // Check for pending recording that needs activeTab gesture (fire-and-forget).
-    chrome.storage.local.get(StorageKey.PENDING_RECORDING, (result) => {
-        if (result[StorageKey.PENDING_RECORDING]) {
-            const recordLabel = document.getElementById('record-label');
-            const recordStatus = document.getElementById('recording-status');
-            const recordOptions = document.getElementById('record-options');
-            if (recordLabel)
-                recordLabel.textContent = 'Starting...';
-            if (recordStatus)
-                recordStatus.textContent = 'Permission granted';
-            if (recordOptions)
-                recordOptions.style.display = 'none';
-            chrome.runtime.sendMessage({ type: 'RECORDING_GESTURE_GRANTED' });
-            chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
-        }
-    });
     // Listen for status updates
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'statusUpdate' && message.status) {

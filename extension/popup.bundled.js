@@ -237,7 +237,23 @@
   // extension/popup/recording.js
   var START_LABEL = "Record screen";
   var STOP_LABEL = "Stop recording";
+  var HIGHLIGHT_LABEL = "\u25CF \xAB Click here to record";
+  function applyRecordHighlight(els) {
+    const section = els.row.closest(".section");
+    if (section)
+      section.classList.add("record-highlight");
+    els.label.textContent = HIGHLIGHT_LABEL;
+  }
+  function removeRecordHighlight(els) {
+    const section = els.row.closest(".section");
+    if (section)
+      section.classList.remove("record-highlight");
+    if (els.label.textContent === HIGHLIGHT_LABEL) {
+      els.label.textContent = START_LABEL;
+    }
+  }
   function showRecording(els, state, name, startTime) {
+    removeRecordHighlight(els);
     state.isRecording = true;
     els.row.classList.add("is-recording");
     els.label.textContent = STOP_LABEL;
@@ -255,6 +271,7 @@
   }
   function showIdle(els, state) {
     state.isRecording = false;
+    removeRecordHighlight(els);
     els.row.classList.remove("is-recording");
     els.label.textContent = START_LABEL;
     els.statusEl.textContent = "";
@@ -419,6 +436,14 @@
         showRecording(els, state, rec.name, rec.startTime);
       }
       row.style.visibility = "visible";
+      chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
+        void chrome.runtime.lastError;
+        const pending = pendingResult[StorageKey.PENDING_RECORDING];
+        if (pending?.highlight && !state.isRecording) {
+          applyRecordHighlight(els);
+          chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+        }
+      });
     });
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.RECORDING]) {
@@ -464,6 +489,7 @@
     });
     row.addEventListener("click", () => {
       console.log("[Gasoline REC] Popup: record row clicked, isRecording:", state.isRecording);
+      removeRecordHighlight(els);
       if (state.isRecording) {
         handleStopClick(els, state);
       } else {
@@ -1163,21 +1189,6 @@
     const clearBtn = document.getElementById("clear-btn");
     if (clearBtn)
       clearBtn.addEventListener("click", handleClearLogs);
-    chrome.storage.local.get(StorageKey.PENDING_RECORDING, (result) => {
-      if (result[StorageKey.PENDING_RECORDING]) {
-        const recordLabel = document.getElementById("record-label");
-        const recordStatus = document.getElementById("recording-status");
-        const recordOptions = document.getElementById("record-options");
-        if (recordLabel)
-          recordLabel.textContent = "Starting...";
-        if (recordStatus)
-          recordStatus.textContent = "Permission granted";
-        if (recordOptions)
-          recordOptions.style.display = "none";
-        chrome.runtime.sendMessage({ type: "RECORDING_GESTURE_GRANTED" });
-        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
-      }
-    });
     chrome.runtime.onMessage.addListener((message) => {
       if (message.type === "statusUpdate" && message.status) {
         updateConnectionStatus(message.status);

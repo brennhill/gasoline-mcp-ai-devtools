@@ -301,17 +301,9 @@ export async function startRecording(
       })
       .catch(() => {})
 
-    // Show recording watermark overlay in the page
-    chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
-
-    // Re-send watermark when recording tab navigates or content script re-injects
+    // Watermark removed — badge timer on extension icon replaces it (not captured by tabCapture)
     if (tabUpdateListener) chrome.tabs.onUpdated.removeListener(tabUpdateListener)
-    tabUpdateListener = (updatedTabId: number, changeInfo: { status?: string }) => {
-      if (updatedTabId === recordingState.tabId && changeInfo.status === 'complete' && recordingState.active) {
-        chrome.tabs.sendMessage(updatedTabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
-      }
-    }
-    chrome.tabs.onUpdated.addListener(tabUpdateListener)
+    tabUpdateListener = null
 
     console.log(LOG, 'Recording STARTED successfully', { name, tabId: tab.id, audioMode: audio, fps })
     return { status: 'recording', name, startTime: recordingState.startTime }
@@ -363,11 +355,6 @@ export async function stopRecording(truncated: boolean = false): Promise<{
   // Mark as no longer active immediately to prevent double-stop
   recordingState.active = false
   console.log(LOG, 'Marked active=false, sending STOP to offscreen')
-
-  // Hide recording watermark overlay
-  if (tabId) {
-    chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => {})
-  }
 
   try {
     // Send stop command to offscreen document and wait for result (30s timeout for upload)
