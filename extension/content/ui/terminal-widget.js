@@ -747,7 +747,7 @@ function mountWidget(token, startMinimized) {
         }
     });
 }
-export function unmountTerminal() {
+function unmountTerminal() {
     window.removeEventListener('message', handleIframeMessage);
     if (widgetEl) {
         widgetEl.remove();

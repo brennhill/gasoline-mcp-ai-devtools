@@ -268,7 +268,6 @@ func (s *Session) Scrollback() []byte {
 	return out
 }
 
-
 // IsAlive returns true if the session is not closed and the child process is still running.
 func (s *Session) IsAlive() bool {
 	s.mu.Lock()

@@ -801,7 +801,7 @@ function mountWidget(token: string, startMinimized: boolean): void {
   })
 }
 
-export function unmountTerminal(): void {
+function unmountTerminal(): void {
   window.removeEventListener('message', handleIframeMessage)
   if (widgetEl) {
     widgetEl.remove()

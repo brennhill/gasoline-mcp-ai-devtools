@@ -136,12 +136,13 @@ func (m *Manager) Get(id string) (*Session, error) {
 }
 
 // Stop destroys a session by ID, cleaning up PTY and child process.
+// Removes map entries under lock, then closes the session outside the lock
+// so that slow Close() calls (up to 2s) don't block concurrent reads.
 func (m *Manager) Stop(id string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	sess, ok := m.sessions[id]
 	if !ok {
+		m.mu.Unlock()
 		return fmt.Errorf("%w: %s", ErrSessionNotFound, id)
 	}
 
@@ -153,6 +154,7 @@ func (m *Manager) Stop(id string) error {
 		}
 	}
 	delete(m.sessions, id)
+	m.mu.Unlock()
 
 	return sess.Close()
 }

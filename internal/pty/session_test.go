@@ -193,6 +193,29 @@ func TestSession_Close(t *testing.T) {
 	}
 }
 
+func TestSession_IsAlive(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	// Running session should be alive.
+	if !sess.IsAlive() {
+		t.Fatal("expected IsAlive()=true for running session")
+	}
+
+	// After close, should not be alive.
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if sess.IsAlive() {
+		t.Fatal("expected IsAlive()=false after Close()")
+	}
+}
+
 func TestSession_Pid(t *testing.T) {
 	sess, err := Spawn(SpawnConfig{
 		Cmd:  "/bin/sh",
