@@ -6,11 +6,11 @@ export default defineConfig({
   site: 'https://cookwithgasoline.com',
   integrations: [
     starlight({
-      title: 'Gasoline Agentic Devtool',
-      description: 'Accelerating AI driven development',
+      title: 'Gasoline Agentic Devtools',
+      description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
         src: './src/assets/logo.png',
-        alt: 'Gasoline Agentic Devtool'
+        alt: 'Gasoline Agentic Devtools'
       },
       favicon: '/images/logo.png',
       social: [
@@ -22,7 +22,9 @@ export default defineConfig({
       ],
       customCss: ['./src/styles/custom.css'],
       components: {
-        Footer: './src/components/Footer.astro'
+        Footer: './src/components/Footer.astro',
+        ThemeProvider: './src/components/ThemeProvider.astro',
+        ThemeSelect: './src/components/ThemeSelect.astro'
       },
       plugins: [
         starlightBlog({
@@ -80,6 +82,8 @@ export default defineConfig({
         {
           label: 'Guides',
           items: [
+            { label: 'SEO Analysis', slug: 'guides/seo-analysis' },
+            { label: 'Annotation + Skills + Terminal', slug: 'guides/annotation-skill-terminal-workflow' },
             { label: 'Product Demos', slug: 'guides/product-demos' },
             { label: 'Demo Scripts', slug: 'guides/demo-scripts' },
             { label: 'Debug Web Apps', slug: 'guides/debug-webapps' },
