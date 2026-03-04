@@ -5,7 +5,7 @@ status: in_progress
 feature_type: feature
 owners:
   - Brenn
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 code_paths:
   - cookwithgasoline.com/astro.config.mjs
   - cookwithgasoline.com/public/images/solutions-seo-signal.svg
@@ -43,7 +43,7 @@ test_paths:
 ## TL;DR
 
 - Status: in_progress
-- Scope: full homepage theme reset to a update theme to more modern layout, plus hero flame-only favicon-style flicker, reference-page readability fixes (heading dedupe + contrast), schema-synced reference mode/action coverage, scroll-rhythm spacing/overflow hardening, workflow discovery, split `blog` (date-driven) vs `articles` (topic-driven), and automated markdown mirrors for docs/blog/articles pages
+- Scope: full homepage theme reset to a update theme to more modern layout, plus hero flame-only favicon-style flicker, reference-page readability fixes (heading dedupe + contrast), schema-synced reference mode/action coverage, scroll-rhythm spacing/overflow hardening, workflow discovery, split `blog` (date-driven) vs `articles` (topic-driven), and automated markdown mirrors for docs/blog/articles pages. Home solutions now use five 100x-style split panels with large left-side visual mocks, Gasoline-themed annotation callouts, and right-side CTA/copy blocks.
 - Current IA policy: `/blog/*` is release-note history, `/articles/*` is evergreen topic content.
 - Primary guardrail: CI docs contracts (`content-contract` + reference schema sync + feature bundle strict check)
 

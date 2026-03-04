@@ -477,85 +477,277 @@ h6 {
   font-weight: 500;
 }
 
-.gmodern-solutions-grid {
+.gmodern-solutions-panels {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.1rem;
+  gap: 1.15rem;
   text-align: left;
 }
 
-.gmodern-solution {
-  border: 1px solid var(--g-border-strong);
+.gmodern-solution-panel {
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 42%, var(--g-border));
   border-radius: 16px;
-  padding: 1rem;
+  overflow: hidden;
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: minmax(0, 46%) minmax(0, 54%);
+  min-height: clamp(380px, 34vw, 500px);
+  background: color-mix(in srgb, var(--g-surface) 92%, transparent);
 }
 
-.gmodern-solution-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.8rem;
-  align-items: center;
+.gmodern-solution-panel-visual {
+  position: relative;
+  padding: clamp(1rem, 2.5vw, 1.8rem);
+  border-right: 1px solid color-mix(in srgb, var(--g-border-strong) 24%, var(--g-border));
 }
 
-.gmodern-solution-head h3 {
-  margin: 0;
-  font-size: 1.14rem;
+.gmodern-solution-workbench {
+  position: relative;
+  height: 100%;
 }
 
-.gmodern-solution-head img {
-  width: 120px;
+.gmodern-workbench-form {
+  max-width: 320px;
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 48%, var(--g-border));
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--g-border-strong) 28%, transparent);
-}
-
-.gmodern-solution p {
-  margin: 0;
-  color: color-mix(in srgb, var(--g-ink-soft) 85%, #000);
-  line-height: 1.5;
-}
-
-.gmodern-solution ul {
-  margin: 0;
-  padding-left: 1.05rem;
+  background: color-mix(in srgb, var(--g-surface) 92%, transparent);
+  padding: 0.9rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.72rem;
 }
 
-.gmodern-solution li {
-  font-size: 0.85rem;
-  color: color-mix(in srgb, var(--g-ink-soft) 82%, #000);
+.gmodern-workbench-form label {
+  display: grid;
+  gap: 0.34rem;
 }
 
-.gmodern-solution a {
-  text-decoration: none;
+.gmodern-workbench-form label span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--g-ink-soft) 80%, #000);
+}
+
+.gmodern-workbench-form label div {
+  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 45%, var(--g-border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--g-surface) 97%, transparent);
+  color: color-mix(in srgb, var(--g-ink-soft) 78%, #000);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  padding: 0.56rem 0.58rem;
+  white-space: pre-line;
+}
+
+.gmodern-workbench-form button {
+  min-height: 41px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--g-ink);
+  color: #f2f2ee;
   font-weight: 700;
+  font-family: var(--g-body);
+}
+
+.gmodern-workbench-metric {
+  position: absolute;
+  right: clamp(-0.2rem, -0.4vw, -0.35rem);
+  bottom: clamp(0.2rem, 1vw, 0.8rem);
+  width: min(360px, 66%);
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 55%, var(--g-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--g-surface) 96%, transparent);
+  box-shadow: 0 18px 30px color-mix(in srgb, var(--g-ink) 15%, transparent);
+  padding: 0.74rem 0.82rem;
+  display: grid;
+  gap: 0.58rem;
+}
+
+.gmodern-workbench-metric h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.gmodern-workbench-donut {
+  width: 84px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--g-surface) 96%, transparent) 49%, transparent 51%),
+    conic-gradient(var(--g-ink) 0 62%, color-mix(in srgb, var(--g-border-strong) 55%, var(--g-border)) 62% 76%, #d9d7d0 76% 100%);
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 42%, var(--g-border));
+}
+
+.gmodern-workbench-donut span {
+  font-weight: 700;
+  font-size: 1.18rem;
   color: var(--g-ink);
 }
 
-.gmodern-solution a:hover {
-  text-decoration: underline;
+.gmodern-workbench-metric ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.24rem;
 }
 
-.gmodern-solution--cream {
-  background: #f3d9b8;
+.gmodern-workbench-metric li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--g-ink-soft) 80%, #000);
 }
 
-.gmodern-solution--sand {
-  background: #d8c9ad;
+.gmodern-workbench-metric li strong {
+  font-size: 0.85rem;
+  color: var(--g-ink);
 }
 
-.gmodern-solution--rose {
-  background: #e3c0c0;
+.gmodern-workbench-callouts {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
 }
 
-.gmodern-solution--mint {
-  background: #c8dbc8;
+.gmodern-workbench-callout {
+  position: absolute;
+  max-width: min(220px, 60%);
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--g-border-strong) 45%, var(--g-border));
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--g-ink) 12%, transparent);
+  padding: 0.48rem 0.62rem;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  font-weight: 600;
 }
 
-.gmodern-solution--sky {
-  background: #c6d6eb;
+.gmodern-workbench-callout--top-left {
+  top: -0.3rem;
+  left: -0.15rem;
+}
+
+.gmodern-workbench-callout--top-right {
+  top: -0.35rem;
+  right: 0.15rem;
+}
+
+.gmodern-workbench-callout--mid-right {
+  top: 42%;
+  right: -0.2rem;
+}
+
+.gmodern-workbench-callout--bottom-left {
+  bottom: -0.25rem;
+  left: -0.05rem;
+}
+
+.gmodern-workbench-callout--bottom-right {
+  bottom: -0.3rem;
+  right: 0.2rem;
+}
+
+.gmodern-workbench-callout--amber {
+  background: #fff1cf;
+  border-color: #d9ad57;
+  color: #5f4108;
+}
+
+.gmodern-workbench-callout--orange {
+  background: #ffe4cf;
+  border-color: #df8a3a;
+  color: #6b3704;
+}
+
+.gmodern-workbench-callout--red {
+  background: #ffd9d5;
+  border-color: #d96a5d;
+  color: #6f2620;
+}
+
+.gmodern-workbench-callout--mint {
+  background: #dff2e6;
+  border-color: #73b089;
+  color: #1e5632;
+}
+
+.gmodern-workbench-callout--sky {
+  background: #dceefe;
+  border-color: #6b93bd;
+  color: #1d4161;
+}
+
+.gmodern-workbench-callout--ink {
+  background: #e7edf3;
+  border-color: #6f8498;
+  color: #17314a;
+}
+
+.gmodern-solution-panel-body {
+  padding: clamp(1.4rem, 3.1vw, 2.45rem);
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+  background: color-mix(in srgb, var(--g-surface) 98%, transparent);
+}
+
+.gmodern-panel-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  font-family: var(--g-mono);
+  color: #8d33d6;
+}
+
+.gmodern-solution-panel-body h3 {
+  margin: 0;
+  font-size: clamp(1.62rem, 3.5vw, 3rem);
+  line-height: 1.06;
+}
+
+.gmodern-solution-panel-body p {
+  margin: 0;
+  font-size: clamp(1rem, 1.7vw, 1.08rem);
+  line-height: 1.42;
+  color: color-mix(in srgb, var(--g-ink-soft) 90%, #000);
+  max-width: 55ch;
+}
+
+.gmodern-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.gmodern-solution-panel .gmodern-btn {
+  min-height: 50px;
+  padding-inline: 1.3rem;
+}
+
+.gmodern-solution-panel--olive .gmodern-solution-panel-visual {
+  background: #d9ddcb;
+}
+
+.gmodern-solution-panel--sand .gmodern-solution-panel-visual {
+  background: #ddd4c4;
+}
+
+.gmodern-solution-panel--rose .gmodern-solution-panel-visual {
+  background: #e4cbca;
+}
+
+.gmodern-solution-panel--mint .gmodern-solution-panel-visual {
+  background: #d2ddcf;
+}
+
+.gmodern-solution-panel--sky .gmodern-solution-panel-visual {
+  background: #cad9e5;
 }
 
 .gmodern-cta {
@@ -888,8 +1080,30 @@ code:not(pre code) {
   }
 
   .gmodern-transform-grid,
-  .gmodern-solutions-grid {
+  .gmodern-solutions-panels {
     grid-template-columns: 1fr;
+  }
+
+  .gmodern-solution-panel {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .gmodern-solution-panel-visual {
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--g-border-strong) 24%, var(--g-border));
+  }
+
+  .gmodern-solution-workbench {
+    min-height: 285px;
+  }
+
+  .gmodern-workbench-metric {
+    width: min(360px, 76%);
+  }
+
+  .gmodern-workbench-callout {
+    max-width: min(210px, 64%);
   }
 }
 
@@ -905,6 +1119,39 @@ code:not(pre code) {
   .gasoline-footer-content {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .gmodern-solutions h2 {
+    font-size: clamp(1.7rem, 9vw, 2.4rem);
+  }
+
+  .gmodern-workbench-form {
+    max-width: 100%;
+  }
+
+  .gmodern-workbench-metric {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    margin-top: 0.7rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .gmodern-workbench-callouts {
+    position: static;
+    margin-top: 0.55rem;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .gmodern-workbench-callout {
+    position: static;
+    max-width: 100%;
+  }
+
+  .gmodern-panel-actions .gmodern-btn {
+    width: 100%;
   }
 }
 

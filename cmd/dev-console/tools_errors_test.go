@@ -106,52 +106,6 @@ func TestStructuredError_CanonicalRecoveryContractFields(t *testing.T) {
 	}
 }
 
-func TestStructuredError_ErrorCodes_RetryableDefaults(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		code      string
-		retryable bool
-		retryMs   int
-	}{
-		{ErrExtTimeout, true, 1000},
-		{ErrExtError, true, 2000},
-		{ErrRateLimited, true, 1000},
-		{ErrInvalidParam, false, 0},
-		{ErrMissingParam, false, 0},
-		{ErrInternal, false, 0},
-		{ErrUnknownMode, false, 0},
-		{ErrNoData, true, 2000},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.code, func(t *testing.T) {
-			opts := retryDefaultsForCode(tc.code)
-			result := mcpStructuredError(tc.code, "test", "test", opts...)
-
-			se := extractStructuredErrorJSON(t, result)
-
-			retryable, _ := se["retryable"].(bool)
-			if retryable != tc.retryable {
-				t.Errorf("code %s: retryable = %v, want %v", tc.code, retryable, tc.retryable)
-			}
-
-			if tc.retryMs > 0 {
-				retryAfterMs, ok := se["retry_after_ms"].(float64)
-				if !ok {
-					t.Errorf("code %s: retry_after_ms missing", tc.code)
-				} else if int(retryAfterMs) != tc.retryMs {
-					t.Errorf("code %s: retry_after_ms = %v, want %v", tc.code, retryAfterMs, tc.retryMs)
-				}
-			} else {
-				if _, exists := se["retry_after_ms"]; exists {
-					t.Errorf("code %s: retry_after_ms should not be present", tc.code)
-				}
-			}
-		})
-	}
-}
-
 // ============================================
 // Action/Selector Context Tests
 // ============================================

@@ -19,7 +19,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Store) *http.ServeMux {
 	}
 
 	registerUploadRoutes(mux, server)
-	registerTerminalRoutes(mux, server.ptyManager, cap)
+	registerTerminalRoutes(mux, server, server.ptyManager, cap)
 	registerCoreRoutes(mux, server, cap)
 
 	return mux

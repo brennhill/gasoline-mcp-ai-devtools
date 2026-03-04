@@ -13,13 +13,18 @@ import (
 	"unsafe"
 )
 
+// maxScrollback is the maximum size of the terminal output scrollback buffer (256 KB).
+const maxScrollback = 256 * 1024
+
 // Session wraps a PTY master + child process for interactive terminal I/O.
 type Session struct {
-	ID     string
-	ptmx   *os.File
-	cmd    *exec.Cmd
-	mu     sync.Mutex
-	closed bool
+	ID         string
+	ptmx       *os.File
+	cmd        *exec.Cmd
+	mu         sync.Mutex
+	closed     bool
+	scrollback []byte     // ring buffer of recent PTY output for reconnect replay
+	scrollMu   sync.Mutex // protects scrollback
 }
 
 // winsize matches the C struct winsize for TIOCSWINSZ.
@@ -156,7 +161,7 @@ func Spawn(cfg SpawnConfig) (*Session, error) {
 
 // Read reads from the PTY master (child's stdout/stderr).
 func (s *Session) Read(buf []byte) (int, error) {
-	s.mu.Lock()
+	s.mu.Lock() // lint:manual-unlock — unlock before blocking I/O
 	if s.closed {
 		s.mu.Unlock()
 		return 0, ErrSessionClosed
@@ -168,7 +173,7 @@ func (s *Session) Read(buf []byte) (int, error) {
 
 // Write writes to the PTY master (child's stdin).
 func (s *Session) Write(data []byte) (int, error) {
-	s.mu.Lock()
+	s.mu.Lock() // lint:manual-unlock — unlock before blocking I/O
 	if s.closed {
 		s.mu.Unlock()
 		return 0, ErrSessionClosed
@@ -180,7 +185,7 @@ func (s *Session) Write(data []byte) (int, error) {
 
 // Resize changes the terminal dimensions.
 func (s *Session) Resize(cols, rows uint16) error {
-	s.mu.Lock()
+	s.mu.Lock() // lint:manual-unlock — unlock before ioctl syscall
 	if s.closed {
 		s.mu.Unlock()
 		return ErrSessionClosed
@@ -220,6 +225,30 @@ func (s *Session) Close() error {
 // Wait waits for the child process to exit and returns its error (nil on clean exit).
 func (s *Session) Wait() error {
 	return s.cmd.Wait()
+}
+
+// AppendScrollback appends data to the scrollback buffer, evicting oldest bytes
+// if the buffer exceeds maxScrollback.
+func (s *Session) AppendScrollback(data []byte) {
+	s.scrollMu.Lock() // lint:manual-unlock — simple lock/unlock in same function
+	s.scrollback = append(s.scrollback, data...)
+	if len(s.scrollback) > maxScrollback {
+		// Trim to keep only the most recent maxScrollback bytes.
+		s.scrollback = s.scrollback[len(s.scrollback)-maxScrollback:]
+	}
+	s.scrollMu.Unlock()
+}
+
+// Scrollback returns a copy of the current scrollback buffer.
+func (s *Session) Scrollback() []byte {
+	s.scrollMu.Lock()
+	defer s.scrollMu.Unlock()
+	if len(s.scrollback) == 0 {
+		return nil
+	}
+	out := make([]byte, len(s.scrollback))
+	copy(out, s.scrollback)
+	return out
 }
 
 // Pid returns the child process PID, or -1 if not started.

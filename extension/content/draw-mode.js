@@ -1657,6 +1657,19 @@ export function deactivateAndSendResults() {
       } catch {
         // Extension context may be invalidated
       }
+
+      // Dispatch CustomEvent so content-script peers (e.g. terminal launcher)
+      // can auto-send annotation summaries without round-tripping through background.
+      try {
+        window.dispatchEvent(new CustomEvent('gasoline-annotations-ready', {
+          detail: {
+            annotations: result.annotations,
+            page_url: pageUrl
+          }
+        }))
+      } catch {
+        // CustomEvent dispatch failed — non-critical
+      }
     }, 300)
   }
 

@@ -27,49 +27,173 @@ const transformationCards = [
 const solutions = [
   {
     id: 'seo',
-    title: 'SEO',
-    copy: 'Validate canonical tags, metadata, heading structure, and crawl pathways from rendered pages before release.',
-    bullets: ['DOM extraction for metadata parity', 'Link-health checks for broken journeys', 'Agent-readable markdown mirrors for indexing'],
+    title: 'SEO Analysis',
+    copy: 'Drop in competitor URLs and instantly compare metadata quality, crawl paths, and optimization opportunities from rendered pages.',
     href: '/guides/api-validation/',
-    cta: 'View SEO flow',
-    bgClass: 'gmodern-solution--cream',
-    image: '/images/solutions-seo-signal.svg'
+    cta: 'Explore SEO workflow',
+    bgClass: 'gmodern-solution-panel--olive',
+    visual: {
+      fields: [
+        { label: 'Your website URL', value: 'https://yourwebsite.com' },
+        { label: 'Competitor URL(s)', value: 'https://competitor1.com\nhttps://competitor2.com' }
+      ],
+      button: 'Run SEO audit',
+      metricTitle: 'Search visibility delta',
+      score: 192,
+      metrics: [
+        { label: 'Your website', value: 58 },
+        { label: 'Competitor1', value: 39 },
+        { label: 'Competitor2', value: 115 }
+      ],
+      callouts: [
+        {
+          text: 'Rendered-page signals beat raw HTML assumptions for search quality.',
+          tone: 'amber',
+          position: 'gmodern-workbench-callout--top-right'
+        },
+        {
+          text: 'Crawl-path gaps become obvious when visual + metadata checks run together.',
+          tone: 'ink',
+          position: 'gmodern-workbench-callout--bottom-left'
+        }
+      ]
+    }
   },
   {
     id: 'product',
     title: 'Product Development',
-    copy: 'Capture annotation sessions to align design intent, implementation, and acceptance criteria in one visual narrative.',
-    bullets: ['Annotation sessions across multi-page flows', 'Visual issue rollups', 'Diff-backed release reviews'],
+    copy: 'Capture annotation sessions while building so design intent, engineering tasks, and release decisions stay aligned.',
     href: '/reference/analyze/',
-    cta: 'Inspect annotations',
-    bgClass: 'gmodern-solution--sand'
+    cta: 'Explore annotation workflow',
+    bgClass: 'gmodern-solution-panel--sand',
+    visual: {
+      fields: [
+        { label: 'Prototype URL', value: 'https://app.example.com/checkout' },
+        { label: 'Review focus', value: 'Contrast, spacing, and conversion friction' }
+      ],
+      button: 'Start annotation review',
+      metricTitle: 'Annotation resolution',
+      score: 74,
+      metrics: [
+        { label: 'Open notes', value: 14 },
+        { label: 'Fixed this sprint', value: 37 },
+        { label: 'Ready for release', value: 23 }
+      ],
+      callouts: [
+        {
+          text: 'Annotations turn design feedback into concrete engineering tasks.',
+          tone: 'orange',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Screenshot evidence keeps product, design, and engineering aligned.',
+          tone: 'mint',
+          position: 'gmodern-workbench-callout--mid-right'
+        }
+      ]
+    }
   },
   {
     id: 'debug',
     title: 'Debugging',
-    copy: 'Correlate console errors, network bodies, and DOM mutations so root cause is obvious and reproducible.',
-    bullets: ['Observe error bundles and timelines', 'Inspect network waterfall + payloads', 'Verify fixes in replay'],
+    copy: 'Correlate console errors, network payloads, and DOM mutations in one place so root cause is obvious and reproducible.',
     href: '/guides/debug-webapps/',
-    cta: 'Start debugging',
-    bgClass: 'gmodern-solution--rose'
+    cta: 'Explore debugging workflow',
+    bgClass: 'gmodern-solution-panel--rose',
+    visual: {
+      fields: [
+        { label: 'Failing route', value: '/checkout/payment' },
+        { label: 'Repro clue', value: 'Submit payment after address edit' }
+      ],
+      button: 'Capture debug trace',
+      metricTitle: 'Error source mix',
+      score: 43,
+      metrics: [
+        { label: 'Console errors', value: 11 },
+        { label: 'Network failures', value: 18 },
+        { label: 'DOM regressions', value: 14 }
+      ],
+      callouts: [
+        {
+          text: 'Error + network + DOM in one timeline means faster root-cause discovery.',
+          tone: 'red',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Replay the failing path and verify the fix with the same evidence.',
+          tone: 'ink',
+          position: 'gmodern-workbench-callout--bottom-right'
+        }
+      ]
+    }
   },
   {
-    id: 'a11y',
-    title: 'Accessibility',
-    copy: 'Run a11y audits with scope and tags, export SARIF, and keep accessibility checks first-class in delivery.',
-    bullets: ['WCAG-tagged audits', 'Scoped accessibility checks', 'SARIF export for CI pipelines'],
-    href: '/guides/accessibility/',
-    cta: 'Run accessibility checks',
-    bgClass: 'gmodern-solution--mint'
+    id: 'demos',
+    title: 'Product Demos',
+    copy: 'Record repeatable, local-first product demos with subtitles and scripted walkthroughs for sales, onboarding, and release launches.',
+    href: '/guides/product-demos/',
+    cta: 'Explore demo workflow',
+    bgClass: 'gmodern-solution-panel--mint',
+    visual: {
+      fields: [
+        { label: 'Demo URL', value: 'https://app.example.com/onboarding' },
+        { label: 'Narration cue', value: 'Highlight instant bug triage and replay' }
+      ],
+      button: 'Record demo run',
+      metricTitle: 'Demo readiness',
+      score: 88,
+      metrics: [
+        { label: 'Script steps', value: 26 },
+        { label: 'Auto subtitles', value: 19 },
+        { label: 'Pass-through runs', value: 21 }
+      ],
+      callouts: [
+        {
+          text: 'Pictures are worth 1,000 words to an AI reviewer and your stakeholders.',
+          tone: 'orange',
+          position: 'gmodern-workbench-callout--top-right'
+        },
+        {
+          text: 'Annotations + subtitles make every demo clear, repeatable, and shareable.',
+          tone: 'mint',
+          position: 'gmodern-workbench-callout--bottom-left'
+        }
+      ]
+    }
   },
   {
     id: 'automation',
     title: 'Automation',
-    copy: 'Automate browser tasks with robust selectors, batch actions, and reusable workflows that scale with your team.',
-    bullets: ['interact actions across web surfaces', 'Batch/replay sequence support', 'Demo + regression artifact generation'],
+    copy: 'Automate browser tasks with robust selectors, batch actions, and reusable sequences that scale across teams.',
     href: '/guides/automate-and-notify/',
-    cta: 'Build automations',
-    bgClass: 'gmodern-solution--sky'
+    cta: 'Explore automation workflow',
+    bgClass: 'gmodern-solution-panel--sky',
+    visual: {
+      fields: [
+        { label: 'Workflow target', value: 'https://admin.example.com/reports' },
+        { label: 'Run schedule', value: 'Weekdays at 8:00 AM and 4:00 PM' }
+      ],
+      button: 'Execute automation',
+      metricTitle: 'Automation throughput',
+      score: 156,
+      metrics: [
+        { label: 'Tasks queued', value: 48 },
+        { label: 'Tasks completed', value: 92 },
+        { label: 'Exceptions', value: 16 }
+      ],
+      callouts: [
+        {
+          text: 'Run once, save the sequence, and replay across environments.',
+          tone: 'amber',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Interactive workflows stay resilient with semantic selectors and guardrails.',
+          tone: 'sky',
+          position: 'gmodern-workbench-callout--bottom-right'
+        }
+      ]
+    }
   }
 ]
 ---
@@ -126,19 +250,49 @@ const solutions = [
       <h2>See how Gasoline Agentic Devtool ACCELERATES all your development needs.</h2>
     </header>
 
-    <div class="gmodern-solutions-grid">
+    <div class="gmodern-solutions-panels">
       {
         solutions.map((solution) => (
-          <article class={`gmodern-solution ${solution.bgClass}`}>
-            <div class="gmodern-solution-head">
-              <h3>{solution.title}</h3>
-              {solution.image ? <img src={solution.image} alt="SEO capability graphic" loading="lazy" /> : null}
+          <article class={`gmodern-solution-panel ${solution.bgClass}`}>
+            <div class="gmodern-solution-panel-visual">
+              <div class="gmodern-solution-workbench">
+                <div class="gmodern-workbench-form">
+                  {solution.visual.fields.map((field) => (
+                    <label>
+                      <span>{field.label}</span>
+                      <div>{field.value}</div>
+                    </label>
+                  ))}
+                  <button type="button">{solution.visual.button}</button>
+                </div>
+                <aside class="gmodern-workbench-metric" aria-hidden="true">
+                  <h4>{solution.visual.metricTitle}</h4>
+                  <div class="gmodern-workbench-donut">
+                    <span>{solution.visual.score}</span>
+                  </div>
+                  <ul>
+                    {solution.visual.metrics.map((metric) => <li>{metric.label}<strong>{metric.value}</strong></li>)}
+                  </ul>
+                </aside>
+                <ul class="gmodern-workbench-callouts" aria-hidden="true">
+                  {solution.visual.callouts.map((callout) => (
+                    <li class={`gmodern-workbench-callout gmodern-workbench-callout--${callout.tone} ${callout.position}`}>
+                      {callout.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <p>{solution.copy}</p>
-            <ul>
-              {solution.bullets.map((bullet) => <li>{bullet}</li>)}
-            </ul>
-            <a href={solution.href}>{solution.cta}</a>
+
+            <div class="gmodern-solution-panel-body">
+              <p class="gmodern-panel-kicker">{solution.id === 'demos' ? 'PRODUCT DEMOS' : solution.id.toUpperCase()}</p>
+              <h3>{solution.title}</h3>
+              <p>{solution.copy}</p>
+              <div class="gmodern-panel-actions">
+                <a href={solution.href} class="gmodern-btn gmodern-btn--outline">{solution.cta}</a>
+                <a href="/downloads/" class="gmodern-btn gmodern-btn--solid">Install &amp; Automate Now</a>
+              </div>
+            </div>
           </article>
         ))
       }

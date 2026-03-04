@@ -505,37 +505,6 @@ func TestUploadInteg_HTTP_OSAutomation_SuccessPath(t *testing.T) {
 }
 
 // ============================================
-// 10. truncate() helper
-// ============================================
-
-func TestUploadInteg_Truncate(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  string
-		maxLen int
-		want   string
-	}{
-		{"shorter", "hello", 10, "hello"},
-		{"exact", "hello", 5, "hello"},
-		{"over", "hello world", 8, "hello..."},
-		{"empty", "", 5, ""},
-		{"maxLen 3", "hello", 3, "..."},
-		{"maxLen 2", "hello", 2, ".."},
-		{"maxLen 1", "hello", 1, "."},
-		{"maxLen 0", "hello", 0, ""},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := truncate(tc.input, tc.maxLen)
-			if got != tc.want {
-				t.Errorf("truncate(%q, %d) = %q, want %q", tc.input, tc.maxLen, got, tc.want)
-			}
-		})
-	}
-}
-
-// ============================================
 // 11. File permission edge case in form submit
 // ============================================
 

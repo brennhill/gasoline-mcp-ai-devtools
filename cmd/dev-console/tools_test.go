@@ -595,22 +595,6 @@ func TestMcpTextResponse(t *testing.T) {
 	}
 }
 
-func TestMcpErrorResponse(t *testing.T) {
-	resp := mcpErrorResponse("Something went wrong")
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp, &result); err != nil {
-		t.Fatalf("Failed to unmarshal: %v", err)
-	}
-
-	if !result.IsError {
-		t.Error("Expected IsError to be true")
-	}
-
-	if result.Content[0].Text != "Something went wrong" {
-		t.Errorf("Expected error text, got '%s'", result.Content[0].Text)
-	}
-}
 
 func TestMcpJSONResponse(t *testing.T) {
 	data := map[string]any{

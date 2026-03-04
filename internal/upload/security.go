@@ -26,6 +26,11 @@ type Security struct {
 	userDenyPatterns []string
 }
 
+// NewSecurity creates a Security directly without startup validation (test use only).
+func NewSecurity(uploadDir string, userDenyPatterns []string) *Security {
+	return &Security{uploadDir: uploadDir, userDenyPatterns: userDenyPatterns}
+}
+
 // ============================================
 // Startup Validation
 // ============================================

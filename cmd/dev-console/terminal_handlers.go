@@ -26,7 +26,7 @@ const terminalReadBufSize = 4096
 
 // registerTerminalRoutes adds terminal-related routes to the mux.
 // NOT MCP — These are daemon-served endpoints for the in-browser terminal.
-func registerTerminalRoutes(mux *http.ServeMux, mgr *pty.Manager, cap *capture.Store) {
+func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager, cap *capture.Store) {
 	// Serve terminal HTML page.
 	mux.HandleFunc("/terminal", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalPage(w, r)
@@ -50,7 +50,7 @@ func registerTerminalRoutes(mux *http.ServeMux, mgr *pty.Manager, cap *capture.S
 
 	// Session lifecycle.
 	mux.HandleFunc("/terminal/start", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalStart(w, r, mgr, cap)
+		handleTerminalStart(w, r, server, mgr, cap)
 	}))
 	mux.HandleFunc("/terminal/stop", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalStop(w, r, mgr)
@@ -60,6 +60,11 @@ func registerTerminalRoutes(mux *http.ServeMux, mgr *pty.Manager, cap *capture.S
 	mux.HandleFunc("/terminal/config", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalConfig(w, r, mgr)
 	}))
+
+	// Active codebase GET/PUT — extension reads/writes the default terminal CWD.
+	mux.HandleFunc("/config/active-codebase", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		handleActiveCodebase(w, r, server)
+	})))
 }
 
 // handleTerminalPage serves the terminal HTML page.
@@ -125,6 +130,20 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		return
 	}
 
+	// Replay scrollback so the reconnecting terminal sees prior output.
+	if history := sess.Scrollback(); len(history) > 0 {
+		// Send in chunks to avoid oversized frames.
+		for off := 0; off < len(history); off += terminalReadBufSize {
+			end := off + terminalReadBufSize
+			if end > len(history) {
+				end = len(history)
+			}
+			if err := wsWriteFrame(bufrw, 0x2, history[off:end]); err != nil {
+				return
+			}
+		}
+	}
+
 	terminalWSLoop(conn, bufrw, sess)
 }
 
@@ -134,7 +153,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
 	done := make(chan struct{})
-	go func() {
+	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, defer close(done) handles teardown
 		defer close(done)
 		buf := make([]byte, terminalReadBufSize)
 		for {
@@ -145,6 +164,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 				return
 			}
 			if n > 0 {
+				sess.AppendScrollback(buf[:n])
 				if err := wsWriteFrame(rw, 0x2, buf[:n]); err != nil {
 					return
 				}
@@ -153,7 +173,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	}()
 
 	// WebSocket → PTY (upstream): read frames and dispatch.
-	go func() {
+	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, sess.Close() handles teardown
 		for {
 			_ = conn.SetReadDeadline(time.Now().Add(terminalWSIdleTimeout))
 
@@ -206,7 +226,7 @@ func handleTerminalControlMessage(payload []byte, sess *pty.Session) {
 }
 
 // handleTerminalStart creates a new terminal session.
-func handleTerminalStart(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, cap *capture.Store) {
+func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server, mgr *pty.Manager, cap *capture.Store) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
@@ -215,12 +235,13 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, mgr *pty.Manage
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 
 	var req struct {
-		ID   string   `json:"id"`
-		Cmd  string   `json:"cmd"`
-		Args []string `json:"args"`
-		Dir  string   `json:"dir"`
-		Cols int      `json:"cols"`
-		Rows int      `json:"rows"`
+		ID          string   `json:"id"`
+		Cmd         string   `json:"cmd"`
+		Args        []string `json:"args"`
+		Dir         string   `json:"dir"`
+		Cols        int      `json:"cols"`
+		Rows        int      `json:"rows"`
+		InitCommand string   `json:"init_command"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
@@ -232,7 +253,10 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, mgr *pty.Manage
 		req.Cmd = "/bin/zsh"
 	}
 
-	// Auto-detect CWD from client registry if not specified.
+	// CWD priority: request dir > active_codebase (set via MCP/extension) > auto-detect
+	if req.Dir == "" && server != nil {
+		req.Dir = server.GetActiveCodebase()
+	}
 	if req.Dir == "" && cap != nil {
 		req.Dir = autoDetectCWD(cap)
 	}
@@ -245,6 +269,19 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, mgr *pty.Manage
 		Cols: uint16(req.Cols),
 		Rows: uint16(req.Rows),
 	})
+	// Write init_command to PTY stdin after shell has time to initialize.
+	if err == nil && req.InitCommand != "" {
+		go func(sessionID, initCmd string) {
+			time.Sleep(500 * time.Millisecond)
+			sess, getErr := mgr.Get(sessionID)
+			if getErr != nil {
+				return
+			}
+			// Write the command followed by newline so the shell executes it.
+			cmd := initCmd + "\n"
+			_, _ = sess.Write([]byte(cmd))
+		}(result.SessionID, req.InitCommand)
+	}
 	if err != nil {
 		// Detect macOS sandbox restriction (MCP stdio-spawned daemon can't fork).
 		if isSandboxError(err) {
@@ -256,7 +293,17 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, mgr *pty.Manage
 			})
 			return
 		}
-		jsonResponse(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		// Return existing session's token so the client can reconnect instead of killing it.
+		sessionID := req.ID
+		if sessionID == "" {
+			sessionID = "default"
+		}
+		existingToken := mgr.GetTokenForSession(sessionID)
+		jsonResponse(w, http.StatusConflict, map[string]any{
+			"error":      err.Error(),
+			"session_id": sessionID,
+			"token":      existingToken,
+		})
 		return
 	}
 
@@ -357,6 +404,32 @@ func handleTerminalConfig(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 		jsonResponse(w, http.StatusOK, map[string]any{
 			"sessions": sessions,
 			"count":    mgr.Count(),
+		})
+	default:
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+// handleActiveCodebase gets or sets the active codebase path used as terminal CWD.
+func handleActiveCodebase(w http.ResponseWriter, r *http.Request, server *Server) {
+	switch r.Method {
+	case "GET":
+		jsonResponse(w, http.StatusOK, map[string]string{
+			"active_codebase": server.GetActiveCodebase(),
+		})
+	case "PUT", "POST":
+		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+		var body struct {
+			Path string `json:"path"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+			return
+		}
+		server.SetActiveCodebase(strings.TrimSpace(body.Path))
+		jsonResponse(w, http.StatusOK, map[string]string{
+			"status":          "ok",
+			"active_codebase": server.GetActiveCodebase(),
 		})
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})

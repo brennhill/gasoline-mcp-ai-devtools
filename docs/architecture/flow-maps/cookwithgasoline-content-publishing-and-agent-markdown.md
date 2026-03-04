@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: cookwithgasoline-content-publishing-and-agent-markdown
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 owners:
   - Brenn
 feature_ids:
@@ -47,7 +47,7 @@ test_paths:
 
 ## Scope
 
-Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, reference-page readability fixes, schema-synced tool-mode coverage, and section spacing/overflow hardening for full-page scroll rhythm), workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
+Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, reference-page readability fixes, schema-synced tool-mode coverage, section spacing/overflow hardening for full-page scroll rhythm, and 100x-style split solutions panels with in-panel synthetic visuals + Gasoline-themed callout overlays), workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
 
 ## Entrypoints
 

@@ -1431,6 +1431,39 @@
         }
       }
     },
+    "/push/drain": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Drain push events",
+        "description": "Returns and clears all queued push events. Used internally by the bridge process to relay push notifications to the MCP client.",
+        "operationId": "drainPushEvents",
+        "responses": {
+          "200": {
+            "description": "Queued push events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tests/": {
       "get": {
         "tags": [

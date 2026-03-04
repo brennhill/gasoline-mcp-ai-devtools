@@ -95,7 +95,7 @@ func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
 	}
 	oldOut := os.Stdout
 	os.Stdout = w
-	runSetupCheck(port)
+	runSetupCheckWithOptions(port, setupCheckOptions{})
 	os.Stdout = oldOut
 	_ = w.Close()
 	out, err := io.ReadAll(r)

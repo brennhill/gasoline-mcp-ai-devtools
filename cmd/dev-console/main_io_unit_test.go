@@ -60,7 +60,7 @@ func TestRunSetupCheckPortInUseBranch(t *testing.T) {
 	port := ln.Addr().(*net.TCPAddr).Port
 
 	output := captureStdout(t, func() {
-		runSetupCheck(port)
+		runSetupCheckWithOptions(port, setupCheckOptions{})
 	})
 	if !strings.Contains(output, "Checking port availability... FAILED") {
 		t.Fatalf("setup check output missing failed-port branch: %q", output)

@@ -24,7 +24,7 @@ const (
 // and relays events to Claude Code via MCP sampling/createMessage or notifications.
 // Stops when the done channel is closed (bridge shutdown).
 func startBridgePushRelay(client *http.Client, endpoint string, done <-chan struct{}) {
-	go func() {
+	go func() { // lint:allow-bare-goroutine — lifecycle-tied to done channel
 		ticker := time.NewTicker(pushRelayPollInterval)
 		defer ticker.Stop()
 

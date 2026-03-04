@@ -111,6 +111,18 @@ func (m *Manager) GetByToken(token string) (*Session, error) {
 	return sess, nil
 }
 
+// GetTokenForSession returns the auth token for a session ID, or empty string if not found.
+func (m *Manager) GetTokenForSession(id string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for token, sid := range m.tokens {
+		if sid == id {
+			return token
+		}
+	}
+	return ""
+}
+
 // Get returns the session by ID.
 func (m *Manager) Get(id string) (*Session, error) {
 	m.mu.RLock()
