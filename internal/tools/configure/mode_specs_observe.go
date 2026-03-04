@@ -29,7 +29,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"websocket_status": {
 		Hint:     "Active WebSocket connection states",
-		Optional: []string{"limit"},
+		Optional: []string{"url", "connection_id", "summary"},
 	},
 	"actions": {
 		Hint:     "User interaction log (clicks, inputs, navigation). summary=true returns counts by type + time range",
@@ -50,8 +50,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"limit", "summary"},
 	},
 	"pilot": {
-		Hint:     "AI Web Pilot connection status and availability",
-		Optional: []string{"limit"},
+		Hint: "AI Web Pilot connection status and availability",
 	},
 	"timeline": {
 		Hint:     "Merged chronological view of actions, errors, network, and WebSocket events. summary=true returns counts by type",
@@ -112,7 +111,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"transients": {
 		Hint:     "Captured transient UI elements (toasts, alerts, snackbars)",
-		Optional: []string{"limit", "summary"},
+		Optional: []string{"limit", "classification", "url", "summary"},
 	},
 	"inbox": {
 		Hint: "Drain pending push events queued for MCP clients",

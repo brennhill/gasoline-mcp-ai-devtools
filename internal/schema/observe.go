@@ -187,7 +187,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"summary": map[string]any{
 					"type":        "boolean",
-					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients)",
+					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients, storage)",
 				},
 				"visible_only": map[string]any{
 					"type":        "boolean",

@@ -1,4 +1,4 @@
-// Purpose: Dispatches generate tool modes (reproduction, test, pr_summary, sarif, har, csp, sri) and assembles output artifacts.
+// Purpose: Dispatches generate tool modes (reproduction, test, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify) and assembles output artifacts.
 // Why: Acts as the top-level router for all artifact generation, delegating format-specific logic to sub-handlers.
 // Docs: docs/features/feature/test-generation/index.md
 package main
