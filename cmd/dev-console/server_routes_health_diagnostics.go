@@ -40,6 +40,10 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 			"dropped_count": s.getLogDropCount(),
 		},
 	}
+	if termPort := s.getTerminalPort(); termPort > 0 {
+		resp["terminal_port"] = termPort
+	}
+
 	successReads, failedReads := snapshotFastPathResourceReadCounters()
 	resp["bridge_fastpath"] = map[string]any{
 		"resources_read_success": successReads,

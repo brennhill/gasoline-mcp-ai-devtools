@@ -1,5 +1,6 @@
 // manager.go — PTY session manager: create, get, destroy sessions with auth tokens.
 // Why: Centralizes session lifecycle and token-based access control for the terminal WebSocket endpoint.
+// Docs: docs/features/feature/terminal/index.md
 
 package pty
 

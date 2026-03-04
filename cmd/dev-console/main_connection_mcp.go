@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"runtime"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // runMCPMode runs the server in MCP mode:
@@ -43,14 +45,39 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	}
 	persistDaemonRuntimeState(server, port)
 
+	// Start dedicated terminal server on port+1.
+	// Non-fatal: if the terminal port is busy, log a warning and continue without terminal.
+	termPort := port + terminalPortOffset
+	termMux := setupTerminalMux(server, server.ptyManager, cap)
+	termSrv, termDone, termErr := startTerminalServer(server, termPort, termMux)
+	if termErr != nil {
+		stderrf("[gasoline] WARNING: terminal server failed to start on port %d: %v\n", termPort, termErr)
+		stderrf("[gasoline] Terminal features are unavailable. Free port %d or use a different base port.\n", termPort)
+		server.logLifecycle("terminal_server_bind_failed", termPort, map[string]any{
+			"error":     termErr.Error(),
+			"term_port": termPort,
+		})
+	} else {
+		server.setTerminalPort(termPort)
+		server.logLifecycle("terminal_server_started", termPort, nil)
+		// Monitor terminal server — log if it dies, but do NOT bring down main daemon.
+		util.SafeGo(func() {
+			<-termDone
+			stderrf("[gasoline] terminal server on port %d exited unexpectedly\n", termPort)
+			server.logLifecycle("terminal_server_died", termPort, nil)
+			server.setTerminalPort(0) // Mark as unavailable
+		})
+	}
+
 	server.logLifecycle("startup", port, map[string]any{
-		"version":    version,
-		"go_version": runtime.Version(),
-		"os":         runtime.GOOS,
-		"arch":       runtime.GOARCH,
+		"version":       version,
+		"go_version":    runtime.Version(),
+		"os":            runtime.GOOS,
+		"arch":          runtime.GOARCH,
+		"terminal_port": termPort,
 	})
 	server.logLifecycle("mcp_transport_ready", port, nil)
 
-	awaitShutdownSignal(server, srv, port, httpDone)
+	awaitShutdownSignal(server, srv, port, httpDone, termSrv, termDone)
 	return nil
 }

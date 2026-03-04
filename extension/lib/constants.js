@@ -7,6 +7,8 @@
 import { scaleTimeout } from './timeouts.js';
 // Server defaults
 export const DEFAULT_SERVER_URL = 'http://localhost:7890';
+// Terminal server runs on a dedicated port (main port + offset) for isolation.
+export const TERMINAL_PORT_OFFSET = 1;
 // Serialization limits
 export const MAX_STRING_LENGTH = 10240; // 10KB
 export const MAX_RESPONSE_LENGTH = 5120; // 5KB

@@ -1,5 +1,6 @@
 // session.go — PTY session: spawns a CLI subprocess in a pseudo-terminal.
 // Why: Isolates PTY lifecycle (open, I/O, resize, close) from session management and HTTP transport.
+// Docs: docs/features/feature/terminal/index.md
 
 package pty
 

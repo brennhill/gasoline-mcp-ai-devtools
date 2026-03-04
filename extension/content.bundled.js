@@ -25,6 +25,7 @@
 
   // extension/lib/constants.js
   var DEFAULT_SERVER_URL = "http://localhost:7890";
+  var TERMINAL_PORT_OFFSET = 1;
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
@@ -1945,6 +1946,11 @@
   var minimized = false;
   var savedHeight = "";
   var serverUrl = DEFAULT_SERVER_URL;
+  function getTerminalServerUrl(baseUrl) {
+    const url = new URL(baseUrl);
+    url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
+    return url.origin;
+  }
   function getServerUrl() {
     return new Promise((resolve) => {
       try {
@@ -2052,8 +2058,9 @@
   }
   async function validateSession(token) {
     try {
-      const url = await getServerUrl();
-      const resp = await fetch(`${url}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
+      const base = await getServerUrl();
+      const termUrl = getTerminalServerUrl(base);
+      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
       if (!resp.ok)
         return false;
       const data = await resp.json();
@@ -2063,12 +2070,13 @@
     }
   }
   async function startSession(config) {
-    const url = await getServerUrl();
+    const base = await getServerUrl();
+    const termUrl = getTerminalServerUrl(base);
     const aiCommand = await getTerminalAICommand();
     const devRoot = await getTerminalDevRoot();
     try {
       const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
-      const resp = await fetch(`${url}/terminal/start`, {
+      const resp = await fetch(`${termUrl}/terminal/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2396,7 +2404,7 @@
     header.appendChild(closeBtn);
     const iframe = document.createElement("iframe");
     iframe.id = IFRAME_ID;
-    iframe.src = `${serverUrl}/terminal?token=${encodeURIComponent(token)}`;
+    iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
     Object.assign(iframe.style, {
       flex: "1",
       width: "100%",
@@ -2430,8 +2438,8 @@
     if (!event.data || event.data.source !== "gasoline-terminal")
       return;
     try {
-      const origin = new URL(serverUrl).origin;
-      if (event.origin !== origin)
+      const termOrigin = getTerminalServerUrl(serverUrl);
+      if (event.origin !== termOrigin)
         return;
     } catch {
       return;
@@ -2515,7 +2523,7 @@
       return;
     let origin = "*";
     try {
-      origin = new URL(serverUrl).origin;
+      origin = getTerminalServerUrl(serverUrl);
     } catch {
     }
     iframeEl.contentWindow.postMessage({
@@ -2536,7 +2544,8 @@
   async function exitTerminalSession() {
     if (sessionState) {
       try {
-        await fetch(`${serverUrl}/terminal/stop`, {
+        const termUrl = getTerminalServerUrl(serverUrl);
+        await fetch(`${termUrl}/terminal/stop`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: sessionState.sessionId }),
@@ -2596,6 +2605,12 @@
     const alive = await validateSession(persisted.session.token);
     if (!alive) {
       clearPersistedSession();
+      const config = await getTerminalConfig();
+      const state = await startSession(config);
+      if (!state)
+        return;
+      sessionState = state;
+      mountWidget(state.token, persisted.uiState === "minimized");
       return;
     }
     sessionState = persisted.session;
@@ -2666,6 +2681,32 @@
   var recordingStorageListener = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
+  async function checkTerminalReachable() {
+    try {
+      let baseUrl = DEFAULT_SERVER_URL;
+      try {
+        const result = await new Promise((resolve) => {
+          chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
+            if (chrome.runtime.lastError) {
+              resolve({});
+              return;
+            }
+            resolve(r);
+          });
+        });
+        baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+      } catch {
+      }
+      const url = new URL(baseUrl);
+      url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
+      const resp = await fetch(`${url.origin}/terminal/config`, {
+        signal: AbortSignal.timeout(2e3)
+      });
+      return resp.ok;
+    } catch {
+      return false;
+    }
+  }
   function clearHideTimer() {
     if (!hideTimer)
       return;
@@ -3093,19 +3134,23 @@
     });
     screenshotButton.style.fontSize = "26px";
     screenshotButton.style.paddingBottom = "5px";
-    const isLocalPage = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|file:\/\/)/.test(location.href);
-    const terminalButton = createActionButton("_\u276F", isLocalPage ? "Terminal \u2014 open an interactive CLI session" : "Terminal \u2014 only available on localhost (CSP restricts connections to the daemon)", () => {
-      if (!isLocalPage)
+    let terminalReachable = true;
+    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open an interactive CLI session", () => {
+      if (!terminalReachable)
         return;
       panelPinned = false;
       setPanelOpen(false);
       void toggleTerminal();
     });
     terminalButton.style.fontSize = "21px";
-    if (!isLocalPage) {
-      terminalButton.style.opacity = "0.35";
-      terminalButton.style.cursor = "not-allowed";
-    }
+    void checkTerminalReachable().then((reachable) => {
+      terminalReachable = reachable;
+      if (!reachable) {
+        terminalButton.style.opacity = "0.35";
+        terminalButton.style.cursor = "not-allowed";
+        terminalButton.title = "Terminal \u2014 unavailable (CSP blocks connections to the daemon, or terminal server not running)";
+      }
+    });
     const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);

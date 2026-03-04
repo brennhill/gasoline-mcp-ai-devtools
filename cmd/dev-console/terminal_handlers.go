@@ -1,6 +1,7 @@
 // terminal_handlers.go — HTTP handlers for the in-browser terminal.
 // Why: Isolates terminal WebSocket upgrade, session lifecycle, and static asset serving
 // from the main route wiring for maintainability and test focus.
+// Docs: docs/features/feature/terminal/index.md
 
 package main
 
@@ -66,10 +67,7 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 		handleTerminalConfig(w, r, mgr)
 	}))
 
-	// Active codebase GET/PUT — extension reads/writes the default terminal CWD.
-	mux.HandleFunc("/config/active-codebase", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleActiveCodebase(w, r, server)
-	})))
+	// NOTE: /config/active-codebase is registered in registerCoreRoutes (not terminal-specific).
 }
 
 // handleTerminalPage serves the terminal HTML page.
