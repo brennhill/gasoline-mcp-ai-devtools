@@ -56,6 +56,11 @@ type Server struct {
 
 	// Terminal PTY session manager
 	ptyManager *pty.Manager
+
+	// Active codebase path — set via MCP configure(what='store', key='active_codebase')
+	// or via the extension options page. Used as default CWD for terminal sessions.
+	activeCodebaseMu sync.RWMutex
+	activeCodebase   string
 }
 
 // NewServer creates a new server instance.
@@ -168,6 +173,20 @@ func (s *Server) closeAnnotationStore() {
 	if store != nil {
 		store.Close()
 	}
+}
+
+// GetActiveCodebase returns the active codebase path (thread-safe).
+func (s *Server) GetActiveCodebase() string {
+	s.activeCodebaseMu.RLock()
+	defer s.activeCodebaseMu.RUnlock()
+	return s.activeCodebase
+}
+
+// SetActiveCodebase updates the active codebase path (thread-safe).
+func (s *Server) SetActiveCodebase(path string) {
+	s.activeCodebaseMu.Lock()
+	defer s.activeCodebaseMu.Unlock()
+	s.activeCodebase = path
 }
 
 // Close gracefully shuts down the server, draining the async log writer.

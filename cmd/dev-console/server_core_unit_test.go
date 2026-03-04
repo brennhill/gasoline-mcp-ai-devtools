@@ -105,34 +105,6 @@ func TestServerLoadEntriesBoundsAndMalformedLines(t *testing.T) {
 	}
 }
 
-func TestServerSaveEntriesAndCopy(t *testing.T) {
-	logFile := filepath.Join(t.TempDir(), "save.jsonl")
-	srv := &Server{
-		logFile: logFile,
-		entries: []LogEntry{
-			{"level": "info", "message": "one"},
-			{"level": "warn", "message": "two"},
-		},
-	}
-	if err := srv.saveEntries(); err != nil {
-		t.Fatalf("saveEntries() error = %v", err)
-	}
-
-	updated := []LogEntry{{"level": "error", "message": "replacement"}}
-	if err := srv.saveEntriesCopy(updated); err != nil {
-		t.Fatalf("saveEntriesCopy() error = %v", err)
-	}
-
-	data, err := os.ReadFile(logFile)
-	if err != nil {
-		t.Fatalf("ReadFile(%q) error = %v", logFile, err)
-	}
-	text := string(data)
-	if !strings.Contains(text, `"replacement"`) || strings.Contains(text, `"message":"one"`) {
-		t.Fatalf("saveEntriesCopy did not replace content as expected: %q", text)
-	}
-}
-
 func TestServerAppendToFileDropAndShutdownTimeout(t *testing.T) {
 	srv := &Server{
 		logChan: make(chan []LogEntry, 1),

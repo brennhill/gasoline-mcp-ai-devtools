@@ -115,6 +115,10 @@ export declare const StorageKey: {
     readonly MIC_GRANTED: "gasoline_mic_granted";
     readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
     readonly TERMINAL_CONFIG: "gasoline_terminal_config";
+    readonly TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command";
+    readonly TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root";
     readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
+    readonly TERMINAL_SESSION: "gasoline_terminal_session";
+    readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
 };
 //# sourceMappingURL=constants.d.ts.map

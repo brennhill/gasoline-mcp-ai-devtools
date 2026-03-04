@@ -197,5 +197,9 @@ export const StorageKey = {
   MIC_GRANTED: 'gasoline_mic_granted',
   RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
   TERMINAL_CONFIG: 'gasoline_terminal_config',
-  POPUP_LAST_STATUS: 'gasoline_popup_last_status'
+  TERMINAL_AI_COMMAND: 'gasoline_terminal_ai_command',
+  TERMINAL_DEV_ROOT: 'gasoline_terminal_dev_root',
+  POPUP_LAST_STATUS: 'gasoline_popup_last_status',
+  TERMINAL_SESSION: 'gasoline_terminal_session',
+  TERMINAL_UI_STATE: 'gasoline_terminal_ui_state'
 } as const

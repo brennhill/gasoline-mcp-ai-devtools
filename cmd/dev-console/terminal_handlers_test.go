@@ -52,7 +52,7 @@ func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	handleTerminalStart(rec, req, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -85,7 +85,7 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	// First start.
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("first start: expected 200, got %d", rec.Code)
 	}
@@ -93,7 +93,7 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	// Second start with same ID.
 	req = httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec = httptest.NewRecorder()
-	handleTerminalStart(rec, req, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("duplicate start: expected 409, got %d", rec.Code)
 	}
@@ -108,7 +108,7 @@ func TestHandleTerminalStart_DefaultsToShell(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	handleTerminalStart(rec, req, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -126,7 +126,7 @@ func TestHandleTerminalStop_DestroysSession(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(startBody))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil)
 
 	// Stop it.
 	stopBody, _ := json.Marshal(map[string]any{"id": "default"})

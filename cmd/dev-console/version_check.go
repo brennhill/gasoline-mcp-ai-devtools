@@ -35,6 +35,20 @@ var (
 		"https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest")
 )
 
+// getGitHubAPIURL returns the current GitHub API URL (test use only).
+func getGitHubAPIURL() string {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	return githubAPIURL
+}
+
+// setGitHubAPIURL overrides the GitHub API URL (test use only).
+func setGitHubAPIURL(url string) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	githubAPIURL = url
+}
+
 // getAvailableVersion returns the currently known newer release version, if any.
 func getAvailableVersion() string {
 	versionCheckMu.Lock()

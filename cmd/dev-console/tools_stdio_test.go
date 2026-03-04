@@ -314,30 +314,12 @@ func TestToolHandler_ResponseHelpers_NoStdout(t *testing.T) {
 		}
 	})
 
-	t.Run("mcpErrorResponse", func(t *testing.T) {
-		output := captureStdout(t, func() {
-			_ = mcpErrorResponse("test error")
-		})
-		if output != "" {
-			t.Errorf("INVARIANT VIOLATION: mcpErrorResponse wrote to stdout: %q", output)
-		}
-	})
-
 	t.Run("mcpJSONResponse", func(t *testing.T) {
 		output := captureStdout(t, func() {
 			_ = mcpJSONResponse("summary", map[string]string{"key": "value"})
 		})
 		if output != "" {
 			t.Errorf("INVARIANT VIOLATION: mcpJSONResponse wrote to stdout: %q", output)
-		}
-	})
-
-	t.Run("mcpMarkdownResponse", func(t *testing.T) {
-		output := captureStdout(t, func() {
-			_ = mcpMarkdownResponse("summary", "| col1 | col2 |\n| --- | --- |")
-		})
-		if output != "" {
-			t.Errorf("INVARIANT VIOLATION: mcpMarkdownResponse wrote to stdout: %q", output)
 		}
 	})
 

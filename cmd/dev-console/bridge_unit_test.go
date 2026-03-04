@@ -67,7 +67,7 @@ func TestSendToolError(t *testing.T) {
 	origStdout := os.Stdout
 	os.Stdout = w
 
-	sendToolError("req-1", "Server is starting up. Please retry.", bridge.StdioFramingLine)
+	sendToolErrorWithOptions("req-1", "Server is starting up. Please retry.", bridge.StdioFramingLine, bridgeToolErrorOptions{})
 
 	os.Stdout = origStdout
 	_ = w.Close()

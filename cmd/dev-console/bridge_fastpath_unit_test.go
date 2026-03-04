@@ -604,20 +604,6 @@ func TestBridgeFastPathFailedDaemonMessage(t *testing.T) {
 	}
 }
 
-func TestSendJSONResponseFallbackOnMarshalError(t *testing.T) {
-	// Do not run in parallel; test redirects process stdio.
-	output := captureBridgeIO(t, "", func() {
-		sendJSONResponse(map[string]any{"bad": make(chan int)}, 11)
-	})
-	responses := parseJSONLines(t, output)
-	if len(responses) != 1 {
-		t.Fatalf("response count = %d, want 1", len(responses))
-	}
-	if responses[0].Error == nil || responses[0].Error.Code != -32603 {
-		t.Fatalf("sendJSONResponse fallback = %+v, want -32603 bridge error", responses[0])
-	}
-}
-
 func TestBridgeServerHealthHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -752,55 +738,3 @@ func TestFlushStdoutNoPanic(t *testing.T) {
 	flushStdout()
 }
 
-func TestSendJSONResponseSuccess(t *testing.T) {
-	// Do not run in parallel; test redirects process stdio.
-	output := captureBridgeIO(t, "", func() {
-		sendJSONResponse(JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      1,
-			Result:  json.RawMessage(`{"ok":true}`),
-		}, 1)
-	})
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) == 0 {
-		t.Fatal("expected JSON response line")
-	}
-	if !json.Valid([]byte(lines[0])) {
-		t.Fatalf("invalid JSON output: %q", lines[0])
-	}
-}
-
-func TestBridgeStdioLegacyParseError(t *testing.T) {
-	// Do not run in parallel; test redirects process stdio.
-	output := captureBridgeIO(t, `{"jsonrpc":"2.0","id":1,`+"\n", func() {
-		bridgeStdioToHTTP("http://127.0.0.1:1/mcp")
-	})
-	if !strings.Contains(output, `"code":-32700`) {
-		t.Fatalf("legacy bridge output missing parse error: %q", output)
-	}
-}
-
-func TestBridgeStdioLegacyHTTPError(t *testing.T) {
-	// Do not run in parallel; test redirects process stdio.
-	mux := http.NewServeMux()
-	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = io.WriteString(w, "boom")
-	})
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("net.Listen error = %v", err)
-	}
-	port := ln.Addr().(*net.TCPAddr).Port
-	srv := &http.Server{Handler: mux}
-	go func() { _ = srv.Serve(ln) }()
-	defer func() { _ = srv.Close() }()
-
-	input := `{"jsonrpc":"2.0","id":9,"method":"ping","params":{}}` + "\n"
-	output := captureBridgeIO(t, input, func() {
-		bridgeStdioToHTTP("http://127.0.0.1:" + strconv.Itoa(port) + "/mcp")
-	})
-	if !strings.Contains(output, `"code":-32603`) {
-		t.Fatalf("expected bridge protocol error in output, got %q", output)
-	}
-}

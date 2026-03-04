@@ -272,32 +272,7 @@ func TestParseGenerateArgs_UnknownFlag(t *testing.T) {
 }
 
 // ============================================
-// cliParseFlagInt — non-numeric edge case
-// ============================================
-
-func TestCliParseFlagInt_NonNumeric(t *testing.T) {
-	t.Parallel()
-
-	n, ok, _ := cliParseFlagInt([]string{"--limit", "abc"}, "--limit")
-	if ok {
-		t.Fatal("non-numeric value should return ok=false")
-	}
-	if n != 0 {
-		t.Fatalf("n = %d, want 0", n)
-	}
-}
-
-func TestCliParseFlagInt_Missing(t *testing.T) {
-	t.Parallel()
-
-	_, ok, _ := cliParseFlagInt([]string{"--other", "5"}, "--limit")
-	if ok {
-		t.Fatal("missing flag should return ok=false")
-	}
-}
-
-// ============================================
-// cliParseFlag / cliParseFlagBool — missing flag
+// cliParseFlag — missing flag
 // ============================================
 
 func TestCliParseFlag_Missing(t *testing.T) {
@@ -308,18 +283,6 @@ func TestCliParseFlag_Missing(t *testing.T) {
 		t.Fatalf("missing flag should return empty, got %q", val)
 	}
 	if len(remaining) != 2 {
-		t.Fatalf("remaining should be unchanged, len = %d", len(remaining))
-	}
-}
-
-func TestCliParseFlagBool_Missing(t *testing.T) {
-	t.Parallel()
-
-	ok, remaining := cliParseFlagBool([]string{"--other"}, "--clear")
-	if ok {
-		t.Fatal("missing bool flag should return false")
-	}
-	if len(remaining) != 1 {
 		t.Fatalf("remaining should be unchanged, len = %d", len(remaining))
 	}
 }

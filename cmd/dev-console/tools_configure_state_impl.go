@@ -65,6 +65,14 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 		h.parent.invalidateSummaryPref()
 	}
 
+	// Sync active_codebase to server-level field for terminal CWD fallback.
+	if compositeArgs.Key == "active_codebase" && action == "save" && h.parent.server != nil {
+		var path string
+		if err := json.Unmarshal(data, &path); err == nil {
+			h.parent.server.SetActiveCodebase(path)
+		}
+	}
+
 	// Parse result back to map for response.
 	var responseData map[string]any
 	if err := json.Unmarshal(result, &responseData); err != nil {

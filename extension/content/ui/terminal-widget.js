@@ -10,8 +10,11 @@ const IFRAME_ID = 'gasoline-terminal-iframe';
 const HEADER_ID = 'gasoline-terminal-header';
 let widgetEl = null;
 let iframeEl = null;
+let resizeHandleEl = null;
 let sessionState = null;
 let visible = false;
+let minimized = false;
+let savedHeight = '';
 let serverUrl = DEFAULT_SERVER_URL;
 function getServerUrl() {
     return new Promise((resolve) => {
@@ -58,16 +61,111 @@ function saveTerminalConfig(config) {
         // Extension context invalidated — config won't persist but session still works
     }
 }
+function getTerminalAICommand() {
+    return new Promise((resolve) => {
+        try {
+            chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
+                if (chrome.runtime.lastError) {
+                    resolve('claude');
+                    return;
+                }
+                const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || 'claude';
+                resolve(cmd);
+            });
+        }
+        catch {
+            resolve('claude');
+        }
+    });
+}
+function getTerminalDevRoot() {
+    return new Promise((resolve) => {
+        try {
+            chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
+                if (chrome.runtime.lastError) {
+                    resolve('');
+                    return;
+                }
+                resolve(result[StorageKey.TERMINAL_DEV_ROOT] || '');
+            });
+        }
+        catch {
+            resolve('');
+        }
+    });
+}
+function persistSession(state) {
+    try {
+        chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: state }, () => {
+            void chrome.runtime.lastError;
+        });
+    }
+    catch { /* extension context invalidated */ }
+}
+function clearPersistedSession() {
+    try {
+        chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
+            void chrome.runtime.lastError;
+        });
+    }
+    catch { /* extension context invalidated */ }
+}
+function persistUIState(uiState) {
+    try {
+        chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
+            void chrome.runtime.lastError;
+        });
+    }
+    catch { /* extension context invalidated */ }
+}
+function loadPersistedSession() {
+    return new Promise((resolve) => {
+        try {
+            chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
+                if (chrome.runtime.lastError) {
+                    resolve({ session: null, uiState: 'closed' });
+                    return;
+                }
+                const session = result[StorageKey.TERMINAL_SESSION];
+                const uiState = result[StorageKey.TERMINAL_UI_STATE] || 'closed';
+                resolve({ session: session || null, uiState });
+            });
+        }
+        catch {
+            resolve({ session: null, uiState: 'closed' });
+        }
+    });
+}
+/** Validate that a persisted token is still alive on the daemon. */
+async function validateSession(token) {
+    try {
+        const url = await getServerUrl();
+        const resp = await fetch(`${url}/terminal/config`, { signal: AbortSignal.timeout(2000) });
+        if (!resp.ok)
+            return false;
+        const data = await resp.json();
+        // If there are active sessions, the token is likely valid
+        return (data.count ?? 0) > 0;
+    }
+    catch {
+        return false;
+    }
+}
 async function startSession(config) {
     const url = await getServerUrl();
+    const aiCommand = await getTerminalAICommand();
+    const devRoot = await getTerminalDevRoot();
     try {
+        // Build init_command: unset CLAUDECODE to avoid nesting detection, then launch the AI tool.
+        const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : '';
         const resp = await fetch(`${url}/terminal/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 cmd: config.cmd || '',
                 args: config.args || [],
-                dir: config.dir || ''
+                dir: config.dir || devRoot || '',
+                init_command: initCommand
             })
         });
         if (!resp.ok) {
@@ -77,22 +175,20 @@ async function startSession(config) {
                 showSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '');
                 return null;
             }
-            // If session already exists, try to get config to find the token
-            if (resp.status === 409) {
-                // Session already running — stop and retry once
-                await fetch(`${url}/terminal/stop`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: 'default' })
-                });
-                return startSession(config);
+            // Session already exists — reconnect using the returned token.
+            if (resp.status === 409 && body.token) {
+                const state = { sessionId: body.session_id ?? 'default', token: body.token };
+                persistSession(state);
+                return state;
             }
             console.warn('[Gasoline] Terminal session rejected (HTTP ' + resp.status + '): ' +
                 (body.error ?? 'unknown') + '. Check the daemon logs for details.');
             return null;
         }
         const data = await resp.json();
-        return { sessionId: data.session_id, token: data.token };
+        const state = { sessionId: data.session_id, token: data.token };
+        persistSession(state);
+        return state;
     }
     catch (err) {
         console.warn('[Gasoline] Terminal session start failed: ' +
@@ -250,6 +346,7 @@ function createWidget(token) {
         zIndex: '10'
     });
     setupResize(resizeHandle, widget);
+    resizeHandleEl = resizeHandle;
     widget.appendChild(resizeHandle);
     // Header bar
     const header = document.createElement('div');
@@ -271,12 +368,82 @@ function createWidget(token) {
         color: '#787c99',
         fontSize: '12px',
         fontWeight: '600',
-        flex: '1',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         userSelect: 'none'
     });
+    // Minimize button
+    const minimizeBtn = document.createElement('button');
+    minimizeBtn.textContent = '\u2581'; // ▁
+    minimizeBtn.title = 'Minimize terminal';
+    minimizeBtn.type = 'button';
+    Object.assign(minimizeBtn.style, {
+        width: '24px',
+        height: '24px',
+        border: 'none',
+        background: 'transparent',
+        color: '#565f89',
+        fontSize: '14px',
+        cursor: 'pointer',
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: '0'
+    });
+    minimizeBtn.addEventListener('mouseenter', () => {
+        minimizeBtn.style.background = '#292e42';
+        minimizeBtn.style.color = '#a9b1d6';
+    });
+    minimizeBtn.addEventListener('mouseleave', () => {
+        minimizeBtn.style.background = 'transparent';
+        minimizeBtn.style.color = '#565f89';
+    });
+    minimizeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMinimize(widget, minimizeBtn, header);
+    });
+    // Exit session button — kills the PTY. Placed left, next to title, glows red.
+    const exitBtn = document.createElement('button');
+    exitBtn.textContent = '\u23FB'; // ⏻ power symbol
+    exitBtn.title = 'Exit AI session';
+    exitBtn.type = 'button';
+    Object.assign(exitBtn.style, {
+        width: '24px',
+        height: '24px',
+        border: 'none',
+        background: 'transparent',
+        color: '#f7768e',
+        fontSize: '12px',
+        cursor: 'pointer',
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: '0',
+        opacity: '0.7',
+        transition: 'opacity 150ms ease, background 150ms ease, box-shadow 150ms ease'
+    });
+    exitBtn.addEventListener('mouseenter', () => {
+        exitBtn.style.background = '#3b1219';
+        exitBtn.style.opacity = '1';
+        exitBtn.style.boxShadow = '0 0 8px rgba(247, 118, 142, 0.4)';
+    });
+    exitBtn.addEventListener('mouseleave', () => {
+        exitBtn.style.background = 'transparent';
+        exitBtn.style.opacity = '0.7';
+        exitBtn.style.boxShadow = 'none';
+    });
+    exitBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void exitTerminalSession();
+    });
+    // Spacer pushes minimize/close to the right
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '\u2715';
     closeBtn.title = 'Close terminal';
@@ -308,7 +475,16 @@ function createWidget(token) {
         e.stopPropagation();
         hideTerminal();
     });
+    // Title bar click restores when minimized
+    header.addEventListener('click', () => {
+        if (!minimized)
+            return;
+        toggleMinimize(widget, minimizeBtn, header);
+    });
     header.appendChild(titleSpan);
+    header.appendChild(exitBtn);
+    header.appendChild(spacer);
+    header.appendChild(minimizeBtn);
     header.appendChild(closeBtn);
     // Iframe
     const iframe = document.createElement('iframe');
@@ -378,6 +554,40 @@ function setupResize(handle, widget) {
     }
     handle.addEventListener('mousedown', onMouseDown);
 }
+function toggleMinimize(widget, btn, header) {
+    if (minimized) {
+        // Restore
+        minimized = false;
+        widget.style.height = savedHeight || '40vh';
+        widget.style.minHeight = '250px';
+        if (iframeEl)
+            iframeEl.style.display = 'block';
+        if (resizeHandleEl)
+            resizeHandleEl.style.display = 'block';
+        btn.textContent = '\u2581'; // ▁
+        btn.title = 'Minimize terminal';
+        header.style.cursor = 'default';
+        header.style.borderBottom = '1px solid #292e42';
+        notifyIframe('resize');
+        persistUIState('open');
+    }
+    else {
+        // Minimize
+        minimized = true;
+        savedHeight = widget.style.height || '40vh';
+        widget.style.height = '32px';
+        widget.style.minHeight = '32px';
+        if (iframeEl)
+            iframeEl.style.display = 'none';
+        if (resizeHandleEl)
+            resizeHandleEl.style.display = 'none';
+        btn.textContent = '\u25A1'; // □
+        btn.title = 'Restore terminal';
+        header.style.cursor = 'pointer';
+        header.style.borderBottom = 'none';
+        persistUIState('minimized');
+    }
+}
 function notifyIframe(command, data) {
     if (!iframeEl?.contentWindow)
         return;
@@ -399,6 +609,24 @@ export function hideTerminal() {
     widgetEl.style.opacity = '0';
     widgetEl.style.transform = 'translateY(20px) scale(0.98)';
     widgetEl.style.pointerEvents = 'none';
+    persistUIState('closed');
+    // Session stays alive — can reconnect via toggle or page reload
+}
+/** Kill the PTY session on the daemon and tear down the widget completely. */
+export async function exitTerminalSession() {
+    // Stop the PTY on the daemon
+    if (sessionState) {
+        try {
+            await fetch(`${serverUrl}/terminal/stop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: sessionState.sessionId })
+            });
+        }
+        catch { /* daemon unreachable — session will expire on its own */ }
+    }
+    clearPersistedSession();
+    unmountTerminal();
 }
 export function showTerminal() {
     if (!widgetEl)
@@ -408,6 +636,7 @@ export function showTerminal() {
     widgetEl.style.transform = 'translateY(0) scale(1)';
     widgetEl.style.pointerEvents = 'auto';
     notifyIframe('focus');
+    persistUIState(minimized ? 'minimized' : 'open');
 }
 export function isTerminalVisible() {
     return visible;
@@ -422,19 +651,47 @@ export async function toggleTerminal() {
         showTerminal();
         return;
     }
-    // Start a new session
+    // Try to reconnect to a persisted session first
     await getServerUrl();
+    const persisted = await loadPersistedSession();
+    if (persisted.session) {
+        const alive = await validateSession(persisted.session.token);
+        if (alive) {
+            sessionState = persisted.session;
+            mountWidget(persisted.session.token, persisted.uiState === 'minimized');
+            return;
+        }
+        // Session died — clear stale state and start fresh
+        clearPersistedSession();
+    }
+    // Start a new session
     const config = await getTerminalConfig();
     const state = await startSession(config);
     if (!state)
         return;
     sessionState = state;
-    // Create and mount the widget
+    mountWidget(state.token, false);
+}
+/** Restore terminal on page load if it was previously open/minimized. */
+export async function restoreTerminalIfNeeded() {
+    const persisted = await loadPersistedSession();
+    if (!persisted.session || persisted.uiState === 'closed')
+        return;
+    await getServerUrl();
+    const alive = await validateSession(persisted.session.token);
+    if (!alive) {
+        clearPersistedSession();
+        return;
+    }
+    sessionState = persisted.session;
+    mountWidget(persisted.session.token, persisted.uiState === 'minimized');
+}
+function mountWidget(token, startMinimized) {
     if (widgetEl) {
         widgetEl.remove();
         widgetEl = null;
     }
-    widgetEl = createWidget(state.token);
+    widgetEl = createWidget(token);
     const target = document.body || document.documentElement;
     if (!target)
         return;
@@ -444,6 +701,14 @@ export async function toggleTerminal() {
     widgetEl.style.transform = 'translateY(20px) scale(0.98)';
     requestAnimationFrame(() => {
         showTerminal();
+        // Apply minimized state after show animation
+        if (startMinimized) {
+            const header = widgetEl?.querySelector('#' + HEADER_ID);
+            const minimizeBtn = header?.querySelector('button');
+            if (widgetEl && header && minimizeBtn) {
+                toggleMinimize(widgetEl, minimizeBtn, header);
+            }
+        }
     });
 }
 export function unmountTerminal() {
@@ -453,8 +718,23 @@ export function unmountTerminal() {
         widgetEl = null;
     }
     iframeEl = null;
+    resizeHandleEl = null;
     sessionState = null;
     visible = false;
+    minimized = false;
+    savedHeight = '';
+}
+/** Write text to the terminal PTY stdin via the iframe postMessage bridge, then press Enter to submit. */
+export function writeToTerminal(text) {
+    if (!visible || !iframeEl)
+        return;
+    // Strip trailing whitespace/newlines — we'll send our own Enter to submit.
+    const trimmed = text.replace(/[\r\n\s]+$/, '');
+    notifyIframe('write', { text: trimmed });
+    // Brief delay so the AI CLI's TUI can process the pasted text, then press Enter to submit.
+    setTimeout(() => {
+        notifyIframe('write', { text: '\n' });
+    }, 150);
 }
 // Re-export for launcher integration
 export { saveTerminalConfig };

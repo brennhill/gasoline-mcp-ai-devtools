@@ -71,7 +71,10 @@ func TestOSAutomation_RejectsSmokeTmpPathOutsideDefaultUploadDir(t *testing.T) {
 		t.Fatalf("failed to write smoke file: %v", err)
 	}
 
-	sec := upload.NewSecurity(allowedDir, nil)
+	sec, secErr := upload.ValidateUploadDir(allowedDir, nil)
+	if secErr != nil {
+		t.Fatalf("ValidateUploadDir() error = %v", secErr)
+	}
 	resp := handleOSAutomationInternal(OSAutomationInjectRequest{
 		FilePath:   smokeFile,
 		BrowserPID: 12345, // skip PID auto-detect in test

@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js';
-import { toggleTerminal, unmountTerminal } from './terminal-widget.js';
+import { toggleTerminal, unmountTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
 const TOGGLE_ID = 'gasoline-tracked-hover-toggle';
@@ -22,6 +22,7 @@ let hiddenUntilPopupOpen = false;
 let hideTimer = null;
 let recordingStorageListener = null;
 let runtimeListenerInstalled = false;
+let annotationListenerInstalled = false;
 function clearHideTimer() {
     if (!hideTimer)
         return;
@@ -159,6 +160,50 @@ function applyVisibilityFromState() {
     }
     unmountLauncher();
 }
+function formatAnnotationsForTerminal(annotations, pageUrl) {
+    if (annotations.length === 0)
+        return '';
+    const lines = [
+        'The user just annotated the page with the following feedback. Please review and implement these changes:',
+        '',
+        `Page: ${pageUrl}`,
+        ''
+    ];
+    for (let i = 0; i < annotations.length; i++) {
+        const a = annotations[i];
+        const text = a.text || '(no label)';
+        const sel = a.selector || 'unknown';
+        const r = a.rect;
+        const loc = r ? ` (${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)})` : '';
+        lines.push(`${i + 1}. "${text}" — ${sel}${loc}`);
+    }
+    lines.push('');
+    lines.push('A screenshot with the annotations is available via observe(what="screenshot").');
+    lines.push('');
+    return lines.join('\n');
+}
+function handleAnnotationsReady(event) {
+    const detail = event.detail;
+    if (!detail?.annotations?.length)
+        return;
+    if (!isTerminalVisible())
+        return;
+    const text = formatAnnotationsForTerminal(detail.annotations, detail.page_url || location.href);
+    if (text)
+        writeToTerminal(text);
+}
+function installAnnotationListener() {
+    if (annotationListenerInstalled)
+        return;
+    annotationListenerInstalled = true;
+    window.addEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+}
+function uninstallAnnotationListener() {
+    if (!annotationListenerInstalled)
+        return;
+    annotationListenerInstalled = false;
+    window.removeEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+}
 async function startDrawMode() {
     try {
         if (!chrome?.runtime?.getURL) {
@@ -249,17 +294,17 @@ function createActionButton(label, title, onClick) {
     button.title = title;
     button.type = 'button';
     Object.assign(button.style, {
-        height: '48px',
-        minWidth: '68px',
-        borderRadius: '12px',
+        height: '34px',
+        minWidth: '48px',
+        borderRadius: '9px',
         border: '1px solid #d1d5db',
         background: '#f3f4f6',
         color: '#1f2937',
-        fontSize: '32px',
+        fontSize: '22px',
         lineHeight: '1',
         fontWeight: '600',
         cursor: 'pointer',
-        padding: '0 14px',
+        padding: '0 10px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -392,9 +437,9 @@ function createLauncherUi() {
     Object.assign(panel.style, {
         display: 'flex',
         alignItems: 'center',
-        gap: '3px',
-        padding: '4px',
-        borderRadius: '16px',
+        gap: '2px',
+        padding: '3px',
+        borderRadius: '11px',
         background: '#ffffff',
         border: '1px solid rgba(15, 23, 42, 0.12)',
         boxShadow: '0 8px 24px rgba(15, 23, 42, 0.2)',
@@ -411,30 +456,39 @@ function createLauncherUi() {
         setPanelOpen(false);
         void startDrawMode();
     });
-    drawButton.style.fontSize = '36px';
+    drawButton.style.fontSize = '25px';
     const screenshotButton = createActionButton('\u2316', 'Screenshot — capture the current page and send to AI', () => {
         panelPinned = false;
         setPanelOpen(false);
         runScreenshotCapture();
     });
-    screenshotButton.style.fontSize = '38px';
-    screenshotButton.style.paddingBottom = '8px';
-    const terminalButton = createActionButton('_\u276F', 'Terminal — open an interactive CLI session', () => {
+    screenshotButton.style.fontSize = '26px';
+    screenshotButton.style.paddingBottom = '5px';
+    const isLocalPage = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|file:\/\/)/.test(location.href);
+    const terminalButton = createActionButton('_\u276F', isLocalPage
+        ? 'Terminal — open an interactive CLI session'
+        : 'Terminal — only available on localhost (CSP restricts connections to the daemon)', () => {
+        if (!isLocalPage)
+            return;
         panelPinned = false;
         setPanelOpen(false);
         void toggleTerminal();
     });
-    terminalButton.style.fontSize = '30px';
+    terminalButton.style.fontSize = '21px';
+    if (!isLocalPage) {
+        terminalButton.style.opacity = '0.35';
+        terminalButton.style.cursor = 'not-allowed';
+    }
     const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
         panelPinned = true;
         setSettingsMenuOpen(!settingsMenuOpen);
     });
-    settingsButton.style.fontSize = '45px';
-    settingsButton.style.paddingBottom = '4px';
+    settingsButton.style.fontSize = '31px';
+    settingsButton.style.paddingBottom = '3px';
     const stopButton = createActionButton('\u23F9', 'Stop recording', () => {
         stopRecordingAction();
     });
-    stopButton.style.fontSize = '34px';
+    stopButton.style.fontSize = '24px';
     stopButton.style.background = '#c0392b';
     stopButton.style.color = '#fff';
     stopButton.style.borderColor = '#a93226';
@@ -450,12 +504,23 @@ function createLauncherUi() {
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
     panel.appendChild(terminalButton);
+    const dotSep = document.createElement('span');
+    dotSep.textContent = '\u22EE';
+    Object.assign(dotSep.style, {
+        color: '#9ca3af',
+        fontSize: '16px',
+        lineHeight: '1',
+        padding: '0 1px',
+        userSelect: 'none',
+        pointerEvents: 'none'
+    });
+    panel.appendChild(dotSep);
     panel.appendChild(settingsButton);
     const settingsMenu = document.createElement('div');
     settingsMenu.id = SETTINGS_MENU_ID;
     Object.assign(settingsMenu.style, {
         position: 'absolute',
-        top: '52px',
+        top: '40px',
         right: '0',
         minWidth: '220px',
         display: 'flex',
@@ -490,15 +555,15 @@ function createLauncherUi() {
     toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
     toggleIcon.alt = 'Gasoline';
     Object.assign(toggleIcon.style, {
-        width: '52px',
-        height: '52px',
+        width: '36px',
+        height: '36px',
         borderRadius: '50%',
         pointerEvents: 'none'
     });
     toggle.appendChild(toggleIcon);
     Object.assign(toggle.style, {
-        width: '52px',
-        height: '52px',
+        width: '36px',
+        height: '36px',
         borderRadius: '50%',
         border: 'none',
         background: 'transparent',
@@ -565,6 +630,14 @@ function mountLauncher() {
         return;
     target.appendChild(rootEl);
     installRecordingStorageSync();
+    installAnnotationListener();
+    // Restore terminal after page finishes loading so the iframe doesn't stall the page.
+    if (document.readyState === 'complete') {
+        void restoreTerminalIfNeeded();
+    }
+    else {
+        window.addEventListener('load', () => void restoreTerminalIfNeeded(), { once: true });
+    }
 }
 function unmountLauncher() {
     clearHideTimer();
@@ -580,6 +653,7 @@ function unmountLauncher() {
         rootEl = null;
     }
     uninstallRecordingStorageSync();
+    uninstallAnnotationListener();
     unmountTerminal();
 }
 export function setTrackedHoverLauncherEnabled(enabled) {

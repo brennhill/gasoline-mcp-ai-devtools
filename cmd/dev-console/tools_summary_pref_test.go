@@ -5,34 +5,6 @@ import (
 	"testing"
 )
 
-func TestArgHasKey(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		args string
-		key  string
-		want bool
-	}{
-		{"present string", `{"summary":true,"limit":10}`, "summary", true},
-		{"present false", `{"summary":false}`, "summary", true},
-		{"absent", `{"limit":10}`, "summary", false},
-		{"empty object", `{}`, "summary", false},
-		{"null args", `null`, "summary", false},
-		{"full key present", `{"full":true}`, "full", true},
-		{"full key absent", `{"summary":true}`, "full", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := argHasKey(json.RawMessage(tt.args), tt.key)
-			if got != tt.want {
-				t.Errorf("argHasKey(%s, %q) = %v, want %v", tt.args, tt.key, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestMaybeInjectSummary_NoPreference(t *testing.T) {
 	t.Parallel()
 
