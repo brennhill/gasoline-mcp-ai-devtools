@@ -37,8 +37,14 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", mcp.WithParam("scope"))}
 	}
 
-	_, trackedTabID, _ := deps.GetCapture().GetTrackingStatus()
+	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
 	params.Limit = clampLimit(params.Limit, 100)
+
+	// Default URL filter to the tracked page URL so logs are scoped to
+	// the current page, not stale entries from previous navigations.
+	if params.URL == "" && params.Scope == "current_page" && trackedTabURL != "" {
+		params.URL = trackedTabURL
+	}
 
 	rawEntries, _ := deps.GetLogEntries()
 	totalAdded := deps.GetLogTotalAdded()

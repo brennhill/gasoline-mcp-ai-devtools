@@ -27,7 +27,10 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", mcp.WithParam("scope"))}
 	}
 
-	_, trackedTabID, _ := deps.GetCapture().GetTrackingStatus()
+	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
+	if params.URL == "" && params.Scope == "current_page" && trackedTabURL != "" {
+		params.URL = trackedTabURL
+	}
 	entries, _ := deps.GetLogEntries()
 
 	noiseSuppressed := 0
