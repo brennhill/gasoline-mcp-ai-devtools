@@ -88,6 +88,8 @@ Redraw behavior:
 
 This is a UI-only recovery path; server session identity and process lifetime are unchanged.
 
+Note: this header redraw control is separate from the queued-write `redraw` postMessage command, which is a soft xterm canvas refresh and does not reload iframe/session.
+
 ## Typing-Aware Write Guard
 
 Parent widget now treats terminal auto-writes as queued jobs:
@@ -98,7 +100,8 @@ Parent widget now treats terminal auto-writes as queued jobs:
 4. On defer, widget shows throttled toast: `waiting for user to stop typing`.
 5. On flush, parent sends `redraw` then `write(text)`.
 6. Enter submit (`\r`) is delayed (600ms) and re-guarded; if user starts typing again, submit waits.
-7. After submit, parent sends `focus` to return caret to xterm.
+7. If WS disconnects before queued submit, submit waits for reconnect and then resumes.
+8. After submit, parent sends `focus` to return caret to xterm.
 
 Iframe support in `terminal.html`:
 
