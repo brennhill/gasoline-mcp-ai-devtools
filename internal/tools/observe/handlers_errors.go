@@ -86,10 +86,14 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", buildErrorsSummary(errors, noiseSuppressed, responseMeta))}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", map[string]any{
+	response := map[string]any{
 		"errors":   errors,
 		"count":    len(errors),
 		"metadata": responseMeta,
 		"scope":    params.Scope,
-	})}
+	}
+	if len(errors) == 0 {
+		response["hint"] = errorsEmptyHint(params.Scope)
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", response)}
 }

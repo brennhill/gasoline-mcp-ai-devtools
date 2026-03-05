@@ -113,6 +113,15 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		Summary      bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
+
+	if params.Direction != "" && params.Direction != "incoming" && params.Direction != "outgoing" {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
+			mcp.ErrInvalidParam, "Invalid direction: "+params.Direction,
+			"Use 'incoming' or 'outgoing'",
+			mcp.WithParam("direction"), mcp.WithHint("Valid values: incoming, outgoing"),
+		)}
+	}
+
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allEvents := deps.GetCapture().GetAllWebSocketEvents()

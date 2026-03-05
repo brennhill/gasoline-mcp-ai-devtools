@@ -80,11 +80,15 @@ func GetSessionTimeline(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 		entries = entries[:params.Limit]
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Timeline", map[string]any{
+	response := map[string]any{
 		"entries":  entries,
 		"count":    len(entries),
 		"metadata": BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
+	}
+	if len(entries) == 0 {
+		response["hint"] = timelineEmptyHint()
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Timeline", response)}
 }
 
 func collectTimelineEntries(deps Deps, inc timelineIncludes) []timelineEntry {

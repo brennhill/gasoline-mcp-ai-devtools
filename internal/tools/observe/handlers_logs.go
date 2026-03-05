@@ -37,6 +37,14 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		params.Level = ""
 	}
 
+	if params.MinLevel != "" && LogLevelRank(params.MinLevel) < 0 {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
+			mcp.ErrInvalidParam, "Invalid min_level: "+params.MinLevel,
+			"Use one of: debug, log, info, warn, error",
+			mcp.WithParam("min_level"), mcp.WithHint("Valid values: debug, log, info, warn, error"),
+		)}
+	}
+
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}
@@ -156,6 +164,9 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		"logs":     logs,
 		"count":    len(logs),
 		"metadata": meta,
+	}
+	if len(logs) == 0 {
+		response["hint"] = logsEmptyHint(params.Scope, params.MinLevel)
 	}
 
 	if params.IncludeExtension {

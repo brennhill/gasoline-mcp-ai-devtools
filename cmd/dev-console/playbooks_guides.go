@@ -13,7 +13,7 @@ Agentic Browser Devtools - rapid e2e web development. 5 tools for real-time brow
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
 | observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, history, pilot, timeline, error_bundles, screenshot, storage, indexeddb, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, playback_results, log_diff_report, summarized_logs, page_inventory, transients, inbox |
-| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, navigation_patterns, api_validation, annotations, annotation_detail, draw_history, draw_session, computed_styles, forms, form_state, form_validation, data_table, visual_baseline, visual_diff, visual_baselines, navigation, page_structure, audit, feature_gates |
+| analyze | Trigger active analysis (synchronous by default) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, navigation_patterns, api_validation, annotations, annotation_detail, draw_history, draw_session, computed_styles, forms, form_state, form_validation, data_table, visual_baseline, visual_diff, visual_baselines, navigation, page_structure, audit, feature_gates |
 | generate | Create artifacts from captured data | what: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
 | configure | Session settings and utilities | what: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, event_recording_start, event_recording_stop, playback, log_diff, telemetry, describe_capabilities, diff_sessions, audit_log, restart, save_sequence, get_sequence, list_sequences, delete_sequence, replay_sequence, doctor, security_mode, network_recording, action_jitter, report_issue, tutorial, examples |
 | interact | Browser automation (needs AI Web Pilot) | what: highlight, subtitle, save_state, load_state, list_states, delete_state, set_storage, delete_storage, clear_storage, set_cookie, delete_cookie, execute_js, navigate, refresh, back, forward, new_tab, switch_tab, close_tab, screenshot, click, type, select, check, get_text, get_value, get_attribute, query, set_attribute, focus, scroll_to, wait_for, key_press, paste, open_composer, submit_active_composer, confirm_top_dialog, dismiss_top_overlay, hover, auto_dismiss_overlays, wait_for_stable, list_interactive, get_readable, get_markdown, navigate_and_wait_for, navigate_and_document, fill_form_and_submit, fill_form, run_a11y_and_export_sarif, screen_recording_start, screen_recording_stop, upload, draw_mode_start, hardware_click, activate_tab, explore_page, batch, clipboard_read, clipboard_write |
@@ -25,9 +25,11 @@ Always verify the extension is connected before debugging:
   {"tool":"configure","arguments":{"what":"health"}}
 If extension_connected is false, ask the user to click "Track This Tab" in the extension popup.
 
-### Async Commands (analyze tool)
-analyze dispatches queries to the extension asynchronously. Poll for results:
-  1. {"tool":"analyze","arguments":{"what":"accessibility"}}  -> returns correlation_id
+### Analyze Tool (Synchronous by Default)
+analyze blocks until the extension returns a result (up to 15s). No polling needed:
+  {"tool":"analyze","arguments":{"what":"accessibility"}}
+For long-running analyses, set background:true to get a correlation_id and poll:
+  1. {"tool":"analyze","arguments":{"what":"accessibility","background":true}}  -> returns correlation_id
   2. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
 ### Pagination (observe tool)
@@ -92,6 +94,7 @@ Use restart_on_eviction=true if a cursor expires.
 
 ## Tips
 
+- Best starting point: interact(what:"explore_page") returns a comprehensive page overview with interactive elements, headings, and semantic structure
 - Start with configure(what:"health") to verify extension is connected
 - Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
 - Use observe(what:"page") to confirm which URL the browser is on
@@ -118,43 +121,41 @@ var quickstartContent = `# Gasoline MCP Quickstart
 ## 5. WebSocket Status
 {"tool":"observe","arguments":{"what":"websocket_status"}}
 
-## 6. Accessibility Audit (Async)
+## 6. Explore the Page (Best Starting Point)
+{"tool":"interact","arguments":{"what":"explore_page"}}
+
+## 7. Accessibility Audit
 {"tool":"analyze","arguments":{"what":"accessibility"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
-## 7. DOM Query (Async)
+## 8. DOM Query
 {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
-## 8. Performance Check
+## 9. Performance Check
 {"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}
 
-## 9. Start Recording
+## 10. Start Recording
 {"tool":"configure","arguments":{"what":"event_recording_start","name":"demo-run"}}
 
-## 10. Stop Recording
+## 11. Stop Recording
 {"tool":"configure","arguments":{"what":"event_recording_stop","recording_id":"..."}}
 
-## 11. Navigate and Take Screenshot
+## 12. Navigate and Take Screenshot
 {"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}
 {"tool":"observe","arguments":{"what":"screenshot"}}
 
-## 12. Click a Button
+## 13. Click a Button
 {"tool":"interact","arguments":{"what":"click","selector":"text=Sign In"}}
 
-## 13. Type Into a Field
+## 14. Type Into a Field
 {"tool":"interact","arguments":{"what":"type","selector":"input[name=email]","text":"user@example.com"}}
 
-## 14. Fill and Submit a Form
-{"tool":"interact","arguments":{"what":"click","selector":"input[name=email]"}}
-{"tool":"interact","arguments":{"what":"type","selector":"input[name=email]","text":"user@example.com"}}
-{"tool":"interact","arguments":{"what":"type","selector":"input[name=password]","text":"password123"}}
-{"tool":"interact","arguments":{"what":"click","selector":"button[type=submit]"}}
+## 15. Fill and Submit a Form (Single Call)
+{"tool":"interact","arguments":{"what":"fill_form_and_submit","selector":"form","fields":{"email":"user@example.com","password":"password123"}}}
 
-## 15. Discover Interactive Elements
+## 16. Discover Interactive Elements
 {"tool":"interact","arguments":{"what":"list_interactive","scope_selector":"form"}}
 
-## 16. Interact Failure Recovery (Quick)
+## 17. Interact Failure Recovery (Quick)
 
 - element_not_found
   - Run interact({what:"list_interactive", scope_selector:"<container>"}) and retry with element_id/index.

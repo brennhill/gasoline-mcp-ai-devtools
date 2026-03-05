@@ -141,6 +141,7 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSO
 			mcp.ErrQueueFull,
 			"Command queue full: "+qerr.Error(),
 			"Wait for in-flight commands to complete, then retry.",
+			mcp.WithRecoveryToolCall(map[string]any{"tool": "observe", "arguments": map[string]any{"what": "pending_commands"}}),
 		)}
 	}
 

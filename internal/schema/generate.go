@@ -9,7 +9,7 @@ import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 func GenerateToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "generate",
-		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
+		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.\n\nPrerequisites: Most modes require captured data first — use observe to verify data exists before generating. reproduction needs captured actions (observe what='actions'). har needs network bodies (observe what='network_bodies'). Use save_to param to write output directly to a file path.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

@@ -24,6 +24,10 @@ func (h *ToolHandler) enqueuePendingQuery(req JSONRPCRequest, query queries.Pend
 			fmt.Sprintf("Command queue is full; unable to enqueue action type=%q", query.Type),
 			"Wait for in-flight commands to complete, then retry.",
 			withRetryable(true), withRetryAfterMs(1000), h.diagnosticHint(),
+			withRecoveryToolCall(map[string]any{
+				"tool":      "observe",
+				"arguments": map[string]any{"what": "pending_commands"},
+			}),
 		), true
 	}
 

@@ -70,11 +70,17 @@ func (h *ToolHandler) toolConfigureDescribeCapabilities(req JSONRPCRequest, args
 			return succeed(req, "Capabilities", modeCap)
 		}
 
-		return succeed(req, "Capabilities", map[string]any{
+		result := map[string]any{
 			"version":          version,
 			"protocol_version": "2024-11-05",
 			"tools":            map[string]any{params.Tool: toolCap},
-		})
+		}
+		if module, ok := h.toolModules.get(params.Tool); ok {
+			if examples := module.Examples(); len(examples) > 0 {
+				result["examples"] = examples
+			}
+		}
+		return succeed(req, "Capabilities", result)
 	}
 
 	// Full or summary response (no filters).

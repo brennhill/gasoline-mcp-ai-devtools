@@ -30,8 +30,8 @@ func TestToolObserveFailedCommands_NoFailed(t *testing.T) {
 	}
 
 	data := parseResponseJSON(t, result)
-	if status, _ := data["status"].(string); status != "ok" {
-		t.Fatalf("status = %q, want ok", status)
+	if _, hasStatus := data["status"]; hasStatus {
+		t.Fatal("failed_commands response should not include 'status' field")
 	}
 	count, _ := data["count"].(float64)
 	if count != 0 {

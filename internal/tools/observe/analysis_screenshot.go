@@ -76,7 +76,9 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		"",
 	)
 	if qerr != nil {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrQueueFull, "Command queue full: "+qerr.Error(), "Wait for in-flight commands to complete, then retry.")}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrQueueFull, "Command queue full: "+qerr.Error(), "Wait for in-flight commands to complete, then retry.",
+			mcp.WithRecoveryToolCall(map[string]any{"tool": "observe", "arguments": map[string]any{"what": "pending_commands"}}),
+		)}
 	}
 
 	result, err := cap.WaitForResult(queryID, 20*time.Second)
