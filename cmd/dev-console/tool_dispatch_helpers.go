@@ -30,19 +30,21 @@ func (h *ToolHandler) dispatchTool(req JSONRPCRequest, args json.RawMessage, reg
 		return *errResp
 	}
 
+	deprecatedIn, removeIn := findAliasParamDeprecation(usedAliasParam, reg.AliasDefs)
+
 	handler, ok := reg.Handlers[what]
 	if !ok {
 		validModes := reg.Resolution.ValidModes
 		resp := fail(req, ErrUnknownMode, "Unknown "+reg.Resolution.ToolName+" mode: "+what,
 			"Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes), describeCapabilitiesRecovery(reg.Resolution.ToolName))
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, deprecatedIn, removeIn)
 	}
 
 	if reg.PreDispatch != nil {
 		var preResp *JSONRPCResponse
 		args, preResp = reg.PreDispatch(h, req, args, what)
 		if preResp != nil {
-			return appendCanonicalWhatAliasWarning(*preResp, usedAliasParam, what)
+			return appendCanonicalWhatAliasWarning(*preResp, usedAliasParam, what, deprecatedIn, removeIn)
 		}
 	}
 
@@ -52,7 +54,7 @@ func (h *ToolHandler) dispatchTool(req JSONRPCRequest, args json.RawMessage, reg
 		resp = reg.PostDispatch(h, req, resp, what)
 	}
 
-	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, deprecatedIn, removeIn)
 }
 
 // method adapts a ToolHandler method (that takes req, args) into a ModeHandler.
@@ -73,16 +75,26 @@ func method(fn func(*ToolHandler, JSONRPCRequest, json.RawMessage) JSONRPCRespon
 // FallbackFn gates the fallback: when set, the alias value is only used as a mode selector when
 // FallbackFn returns true. When nil, any non-empty alias value is accepted as a fallback.
 type modeAlias struct {
-	JSONField  string            // JSON field name in args (e.g. "action", "mode", "format")
-	ConflictFn func(string) bool // Optional: only raise conflict when this returns true
-	FallbackFn func(string) bool // Optional: only use as fallback mode when this returns true
+	JSONField    string            // JSON field name in args (e.g. "action", "mode", "format")
+	ConflictFn   func(string) bool // Optional: only raise conflict when this returns true
+	FallbackFn   func(string) bool // Optional: only use as fallback mode when this returns true
+	DeprecatedIn string            // Semver when deprecated (e.g. "0.7.0"); empty = not tracked
+	RemoveIn     string            // Semver when removal is planned (e.g. "0.9.0"); empty = not tracked
+}
+
+// modeValueAlias maps a shorthand mode value to its canonical name with deprecation tracking.
+type modeValueAlias struct {
+	Canonical    string // Canonical mode name (e.g. "network_waterfall")
+	DeprecatedIn string // Semver when deprecated (e.g. "0.7.0")
+	RemoveIn     string // Semver when removal is planned (e.g. "0.9.0")
 }
 
 // modeResolution bundles context needed for mode resolution error messages.
 type modeResolution struct {
-	ToolName   string            // For error messages (e.g. "observe", "analyze")
-	ValidModes string            // Sorted comma-separated list for hints
-	Aliases    map[string]string // Mode aliases (e.g. "network" -> "network_waterfall")
+	ToolName      string                     // For error messages (e.g. "observe", "analyze")
+	ValidModes    string                     // Sorted comma-separated list for hints
+	Aliases       map[string]string          // Mode aliases (e.g. "network" -> "network_waterfall") — legacy, used when ValueAliases is nil
+	ValueAliases  map[string]modeValueAlias  // Mode aliases with deprecation metadata — preferred over Aliases
 }
 
 // resolveToolMode extracts and resolves the 'what' parameter from args, checking alias params
@@ -162,13 +174,30 @@ func resolveToolMode(
 	}
 
 	// Apply mode aliases (e.g. "network" -> "network_waterfall").
-	if res.Aliases != nil {
+	if res.ValueAliases != nil {
+		if va, ok := res.ValueAliases[what]; ok {
+			what = va.Canonical
+		}
+	} else if res.Aliases != nil {
 		if canonical, ok := res.Aliases[what]; ok {
 			what = canonical
 		}
 	}
 
 	return what, usedAliasParam, nil
+}
+
+// findAliasParamDeprecation returns the deprecation metadata for a used alias param.
+func findAliasParamDeprecation(usedAliasParam string, aliasDefs []modeAlias) (deprecatedIn, removeIn string) {
+	if usedAliasParam == "" {
+		return "", ""
+	}
+	for _, ad := range aliasDefs {
+		if ad.JSONField == usedAliasParam {
+			return ad.DeprecatedIn, ad.RemoveIn
+		}
+	}
+	return "", ""
 }
 
 // aliasFieldNames extracts JSON field names from alias definitions.

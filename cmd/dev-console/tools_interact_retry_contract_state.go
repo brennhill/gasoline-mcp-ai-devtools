@@ -55,37 +55,37 @@ func (h *interactActionHandler) armRetryContract(correlationID, action string, a
 }
 
 func (h *interactActionHandler) getRetryState(correlationID string) (*commandRetryState, bool) {
-	h.parent.retryContractMu.Lock()
-	defer h.parent.retryContractMu.Unlock()
-	state, ok := h.parent.retryByCommand[correlationID]
+	h.retryContractMu.Lock()
+	defer h.retryContractMu.Unlock()
+	state, ok := h.retryByCommand[correlationID]
 	return state, ok
 }
 
 func (h *interactActionHandler) storeRetryState(correlationID string, state *commandRetryState) {
-	h.parent.retryContractMu.Lock()
-	defer h.parent.retryContractMu.Unlock()
+	h.retryContractMu.Lock()
+	defer h.retryContractMu.Unlock()
 
-	if h.parent.retryByCommand == nil {
-		h.parent.retryByCommand = make(map[string]*commandRetryState)
+	if h.retryByCommand == nil {
+		h.retryByCommand = make(map[string]*commandRetryState)
 	}
-	h.parent.retryByCommand[correlationID] = state
+	h.retryByCommand[correlationID] = state
 	h.pruneRetryStatesLocked(2048)
 }
 
 func (h *interactActionHandler) pruneRetryStatesLocked(maxEntries int) {
-	if len(h.parent.retryByCommand) <= maxEntries {
+	if len(h.retryByCommand) <= maxEntries {
 		return
 	}
 
 	var oldestKey string
 	var oldestTime time.Time
-	for key, st := range h.parent.retryByCommand {
+	for key, st := range h.retryByCommand {
 		if oldestKey == "" || st.CreatedAt.Before(oldestTime) {
 			oldestKey = key
 			oldestTime = st.CreatedAt
 		}
 	}
 	if oldestKey != "" {
-		delete(h.parent.retryByCommand, oldestKey)
+		delete(h.retryByCommand, oldestKey)
 	}
 }

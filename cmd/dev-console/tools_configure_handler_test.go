@@ -83,7 +83,7 @@ func TestToolsConfigureDispatch_UnknownActionAliasAddsCanonicalWhatWarning(t *te
 	}
 	foundCanonicalWarning := false
 	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+		if strings.Contains(block.Text, "deprecated") {
 			foundCanonicalWarning = true
 			break
 		}
@@ -116,7 +116,7 @@ func TestToolsConfigureDispatch_ActionAliasAddsCanonicalWhatWarning(t *testing.T
 	}
 	foundCanonicalWarning := false
 	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+		if strings.Contains(block.Text, "deprecated") {
 			foundCanonicalWarning = true
 			break
 		}

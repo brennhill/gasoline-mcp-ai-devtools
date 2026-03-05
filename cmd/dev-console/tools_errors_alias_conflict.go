@@ -8,11 +8,18 @@ import (
 	"strings"
 )
 
-func appendCanonicalWhatAliasWarning(resp JSONRPCResponse, aliasParam, mode string) JSONRPCResponse {
+func appendCanonicalWhatAliasWarning(resp JSONRPCResponse, aliasParam, mode, deprecatedIn, removeIn string) JSONRPCResponse {
 	if strings.TrimSpace(aliasParam) == "" || strings.TrimSpace(mode) == "" {
 		return resp
 	}
-	warning := fmt.Sprintf("Accepted alias parameter '%s'; canonical parameter is 'what' (use what=%q).", aliasParam, mode)
+	var warning string
+	if deprecatedIn != "" && removeIn != "" {
+		warning = fmt.Sprintf("Parameter '%s' is deprecated (since %s, removal planned %s); use what=%q.", aliasParam, deprecatedIn, removeIn, mode)
+	} else if deprecatedIn != "" {
+		warning = fmt.Sprintf("Parameter '%s' is deprecated (since %s); use what=%q.", aliasParam, deprecatedIn, mode)
+	} else {
+		warning = fmt.Sprintf("Accepted alias parameter '%s'; canonical parameter is 'what' (use what=%q).", aliasParam, mode)
+	}
 	return appendWarningsToResponse(resp, []string{warning})
 }
 

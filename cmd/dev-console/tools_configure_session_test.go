@@ -36,8 +36,9 @@ func TestToolLoadSessionContext_NilStore(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	// Force error path by setting sessionStoreImpl to nil
+	// Force error path by setting sessionStoreImpl to nil on both the handler and sub-handler.
 	env.handler.sessionStoreImpl = nil
+	env.handler.configureSessionHandler.sessionStoreImpl = nil
 
 	args := json.RawMessage(`{"what":"load"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}

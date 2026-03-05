@@ -1,4 +1,4 @@
-// Purpose: Adapts ToolHandler state to the internal testgen DataProvider API.
+// Purpose: Adapts testGenHandler deps to the internal testgen DataProvider API.
 // Why: Isolates data access and wrapper delegation from request parsing/response formatting.
 // Docs: docs/features/feature/test-generation/index.md
 
@@ -9,30 +9,27 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/testgen"
 )
 
-// toolHandlerDataProvider adapts *ToolHandler to testgen.DataProvider.
+// toolHandlerDataProvider adapts testGenHandlerDeps to testgen.DataProvider.
 type toolHandlerDataProvider struct {
-	h *testGenHandler
+	deps testGenHandlerDeps
 }
 
 func (a *toolHandlerDataProvider) GetLogEntries() []map[string]any {
-	a.h.parent.server.mu.RLock()
-	entries := make([]LogEntry, len(a.h.parent.server.entries))
-	copy(entries, a.h.parent.server.entries)
-	a.h.parent.server.mu.RUnlock()
+	entries, _ := a.deps.GetLogEntries()
 	return entries
 }
 
 func (a *toolHandlerDataProvider) GetAllEnhancedActions() []capture.EnhancedAction {
-	return a.h.parent.capture.GetAllEnhancedActions()
+	return a.deps.GetCapture().GetAllEnhancedActions()
 }
 
 func (a *toolHandlerDataProvider) GetNetworkBodies() []capture.NetworkBody {
-	return a.h.parent.capture.GetNetworkBodies()
+	return a.deps.GetCapture().GetNetworkBodies()
 }
 
 // dataProvider returns a testgen.DataProvider backed by this test-generation handler.
 func (h *testGenHandler) dataProvider() testgen.DataProvider {
-	return &toolHandlerDataProvider{h: h}
+	return &toolHandlerDataProvider{deps: h.deps}
 }
 
 func (h *testGenHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error) {

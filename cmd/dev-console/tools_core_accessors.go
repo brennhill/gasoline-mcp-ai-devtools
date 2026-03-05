@@ -4,9 +4,11 @@
 package main
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // Close cancels the shutdown context, unblocking any in-flight readiness gates.
@@ -38,6 +40,16 @@ func (h *ToolHandler) GetLogTotalAdded() int64 {
 	h.server.mu.RLock()
 	defer h.server.mu.RUnlock()
 	return h.server.logTotalAdded
+}
+
+// armEvidenceForCommand delegates evidence arming to the interactActionHandler.
+func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args json.RawMessage, clientID string) {
+	h.interactAction().armEvidenceForCommand(correlationID, action, args, clientID)
+}
+
+// getCommandResult returns a command result by correlation ID from the capture store.
+func (h *ToolHandler) getCommandResult(correlationID string) (*queries.CommandResult, bool) {
+	return h.capture.GetCommandResult(correlationID)
 }
 
 // GetAnnotationStore returns the annotation store for draw mode data.

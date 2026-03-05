@@ -43,16 +43,16 @@ var analyzeHandlers = map[string]ModeHandler{
 	},
 }
 
-// analyzeAliases maps shorthand names to their canonical analyze mode names.
-var analyzeAliases = map[string]string{
-	"a11y":    "accessibility",
-	"history": "navigation_patterns",
+// analyzeValueAliases maps shorthand names to their canonical analyze mode names with deprecation metadata.
+var analyzeValueAliases = map[string]modeValueAlias{
+	"a11y":    {Canonical: "accessibility", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	"history": {Canonical: "navigation_patterns", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // analyzeAliasParams defines the deprecated alias parameters for the analyze tool.
 var analyzeAliasParams = []modeAlias{
-	{JSONField: "mode"},
-	{JSONField: "action"},
+	{JSONField: "mode", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	{JSONField: "action", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
@@ -63,9 +63,9 @@ var analyzeRegistry = toolRegistry{
 	Handlers:  analyzeHandlers,
 	AliasDefs: analyzeAliasParams,
 	Resolution: modeResolution{
-		ToolName:   "analyze",
-		ValidModes: "", // populated lazily
-		Aliases:    analyzeAliases,
+		ToolName:     "analyze",
+		ValidModes:   "", // populated lazily
+		ValueAliases: analyzeValueAliases,
 	},
 }
 

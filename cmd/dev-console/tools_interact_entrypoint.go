@@ -48,12 +48,16 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 			withHint("Valid values: "+validActions))
 	}
 
+	// Interact 'action' alias deprecation tracking.
+	const interactActionDeprecatedIn = "0.7.0"
+	const interactActionRemoveIn = "0.9.0"
+
 	if _, err := parseEvidenceMode(args); err != nil {
 		resp := fail(req, ErrInvalidParam,
 			"Invalid 'evidence' value",
 			"Use evidence='off' (default), 'on_mutation', or 'always'",
 			withParam("evidence"))
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, interactActionDeprecatedIn, interactActionRemoveIn)
 	}
 
 	// Quiet alias: async → background.
@@ -103,7 +107,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.interactAction().appendInteractiveToResponse(resp, req)
 	}
 
-	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, interactActionDeprecatedIn, interactActionRemoveIn)
 	return resp
 }
 

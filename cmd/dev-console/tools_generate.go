@@ -45,8 +45,8 @@ func isGenerateMode(v string) bool {
 // since "action" can also be a sub-action parameter (e.g. test_heal action=analyze).
 // Both ConflictFn and FallbackFn are gated to handler membership.
 var generateAliasParams = []modeAlias{
-	{JSONField: "format"},
-	{JSONField: "action", ConflictFn: isGenerateMode, FallbackFn: isGenerateMode},
+	{JSONField: "format", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	{JSONField: "action", ConflictFn: isGenerateMode, FallbackFn: isGenerateMode, DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.

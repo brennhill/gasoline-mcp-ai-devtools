@@ -54,10 +54,10 @@ var observeHandlers = map[string]ModeHandler{
 	"log_diff_report":   method((*ToolHandler).toolGetLogDiffReport),
 }
 
-// observeAliases maps shorthand names to their canonical observe mode names.
-var observeAliases = map[string]string{
-	"network": "network_waterfall",
-	"ws":      "websocket_events",
+// observeValueAliases maps shorthand names to their canonical observe mode names with deprecation metadata.
+var observeValueAliases = map[string]modeValueAlias{
+	"network": {Canonical: "network_waterfall", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	"ws":      {Canonical: "websocket_events", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // serverSideObserveModes lists modes that don't depend on live extension data.

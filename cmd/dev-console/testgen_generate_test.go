@@ -22,9 +22,8 @@ func newTestToolHandler() *ToolHandler {
 		mu:      sync.RWMutex{},
 	}
 	return &ToolHandler{
-		MCPHandler:           &MCPHandler{server: srv},
-		capture:              cap,
-		elementIndexRegistry: newElementIndexRegistry(),
+		MCPHandler: &MCPHandler{server: srv},
+		capture:    cap,
 	}
 }
 

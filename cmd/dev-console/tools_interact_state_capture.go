@@ -24,10 +24,10 @@ type stateCaptureResult = act.StateCaptureResult
 // captureState attempts to capture form values, scroll position, and web storage from the browser.
 // Always returns a stateCaptureResult with an explicit Status the caller can surface to the LLM.
 func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResult {
-	if !h.parent.capture.IsPilotActionAllowed() {
+	if !h.deps.GetCapture().IsPilotActionAllowed() {
 		return stateCaptureResult{Status: act.StateCaptureStatusPilotDisabled}
 	}
-	if !h.parent.capture.IsExtensionConnected() {
+	if !h.deps.GetCapture().IsExtensionConnected() {
 		return stateCaptureResult{Status: act.StateCaptureStatusExtensionDisconnected}
 	}
 
@@ -44,11 +44,11 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 
-	cmd, found := h.parent.capture.WaitForCommand(correlationID, stateCaptureTimeout)
+	cmd, found := h.deps.GetCapture().WaitForCommand(correlationID, stateCaptureTimeout)
 	if !found || cmd.Status == "pending" {
 		return stateCaptureResult{Status: act.StateCaptureStatusTimeout}
 	}
@@ -84,7 +84,7 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return ""
 	}
 
@@ -95,7 +95,7 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 // and the state contains a non-empty URL. Mutates stateData to add tracking fields.
 func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
 	savedURL, ok := stateData["url"].(string)
-	if !ok || savedURL == "" || !h.parent.capture.IsPilotActionAllowed() || !h.parent.capture.IsExtensionConnected() {
+	if !ok || savedURL == "" || !h.deps.GetCapture().IsPilotActionAllowed() || !h.deps.GetCapture().IsExtensionConnected() {
 		return
 	}
 	correlationID := newCorrelationID("nav")
@@ -106,7 +106,7 @@ func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateDat
 		Params:        navArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 	stateData["navigation_queued"] = true

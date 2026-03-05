@@ -25,12 +25,12 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
 	}
 
-	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+	if resp, blocked := h.deps.requireSessionStore(req); blocked {
 		return resp
 	}
 
-	_, tabID, tabURL := h.parent.capture.GetTrackingStatus()
-	tabTitle := h.parent.capture.GetTrackedTabTitle()
+	_, tabID, tabURL := h.deps.GetCapture().GetTrackingStatus()
+	tabTitle := h.deps.GetCapture().GetTrackedTabTitle()
 
 	stateData := map[string]any{
 		"url":      tabURL,
@@ -50,7 +50,7 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 	}
 
 	// Server-side redaction: scrub sensitive values before persisting to disk (#132)
-	if re := h.parent.GetRedactionEngine(); re != nil {
+	if re := h.deps.GetRedactionEngine(); re != nil {
 		stateData = re.RedactMapValues(stateData)
 	}
 
@@ -59,11 +59,11 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 		return fail(req, ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")
 	}
 
-	if err := h.parent.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
+	if err := h.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
 		return fail(req, ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")
 	}
 
-	h.parent.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
+	h.deps.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
 
 	return succeed(req, "State saved", map[string]any{
 		"status":        "saved",
@@ -91,13 +91,13 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
 	}
 
-	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+	if resp, blocked := h.deps.requireSessionStore(req); blocked {
 		return resp
 	}
 
-	data, err := h.parent.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
+	data, err := h.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
 	if err != nil {
-		return fail(req, ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.parent.diagnosticHint())
+		return fail(req, ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.deps.diagnosticHint())
 	}
 
 	var stateData map[string]any
@@ -125,9 +125,9 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 
 	if !hasData {
 		responseData["state_restore"] = act.StateRestoreStatusNoData
-	} else if !h.parent.capture.IsPilotActionAllowed() {
+	} else if !h.deps.GetCapture().IsPilotActionAllowed() {
 		responseData["state_restore"] = act.StateRestoreStatusPilotDisabled
-	} else if !h.parent.capture.IsExtensionConnected() {
+	} else if !h.deps.GetCapture().IsExtensionConnected() {
 		responseData["state_restore"] = act.StateRestoreStatusExtensionDown
 	} else {
 		restoreCorrelationID := h.queueStateRestore(req, formValues, scrollPos, localStorage, sessionStorage, cookies)
@@ -135,7 +135,7 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 		responseData["restore_correlation_id"] = restoreCorrelationID
 	}
 
-	h.parent.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
+	h.deps.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
 
 	return succeed(req, "State loaded", responseData)
 }

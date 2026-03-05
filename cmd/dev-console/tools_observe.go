@@ -10,8 +10,8 @@ import (
 
 // observeAliasParams defines the deprecated alias parameters for the observe tool.
 var observeAliasParams = []modeAlias{
-	{JSONField: "mode"},
-	{JSONField: "action"},
+	{JSONField: "mode", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	{JSONField: "action", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // observeRegistry is the tool registry for observe dispatch.
@@ -19,9 +19,9 @@ var observeRegistry = toolRegistry{
 	Handlers:  observeHandlers,
 	AliasDefs: observeAliasParams,
 	Resolution: modeResolution{
-		ToolName:   "observe",
-		ValidModes: "", // populated lazily
-		Aliases:    observeAliases,
+		ToolName:     "observe",
+		ValidModes:   "", // populated lazily
+		ValueAliases: observeValueAliases,
 	},
 	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, _ string) (json.RawMessage, *JSONRPCResponse) {
 		return h.maybeInjectSummary(args), nil

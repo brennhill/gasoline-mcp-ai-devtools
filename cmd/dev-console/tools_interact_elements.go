@@ -98,10 +98,10 @@ func (h *interactActionHandler) buildElementIndexFromResponse(clientID string, t
 				indexMap[int(indexVal)] = selector
 			}
 		}
-		if h.parent.elementIndexRegistry == nil {
-			h.parent.elementIndexRegistry = newElementIndexRegistry()
+		if h.elementIndexRegistry == nil {
+			h.elementIndexRegistry = newElementIndexRegistry()
 		}
-		return h.parent.elementIndexRegistry.store(clientID, tabID, generation, indexMap)
+		return h.elementIndexRegistry.store(clientID, tabID, generation, indexMap)
 	}
 	return ""
 }
@@ -208,10 +208,10 @@ var extractElementList = act.ExtractElementList
 
 // resolveIndexToSelector looks up a selector from the scoped element index store.
 func (h *interactActionHandler) resolveIndexToSelector(clientID string, tabID int, index int, generation string) (string, bool, bool, string) {
-	if h.parent.elementIndexRegistry == nil {
+	if h.elementIndexRegistry == nil {
 		return "", false, false, ""
 	}
-	return h.parent.elementIndexRegistry.resolve(clientID, tabID, index, generation)
+	return h.elementIndexRegistry.resolve(clientID, tabID, index, generation)
 }
 
 func formatIndexGenerationConflict(expected, actual string) string {
