@@ -17,3 +17,4 @@ Notable coverage:
 - CRX fallback packaging in `scripts/build-crx.js` archives the full `extension/` directory to prevent missing MV3 module imports.
 - Startup integrity regression checks assert manifest file paths, service worker import graph resolution, and CSP-safe extension HTML scripts.
 - Install-script fallback now uses STABLE branch source archive so users receive latest stable extension fixes even when release zip is stale.
+- Windows installer force-stops stale `gasoline.exe`, retries replacement, and prints loud manual recovery guidance if file/process locks persist.

@@ -48,6 +48,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 3. Extension staging always includes required MV3 module files for service-worker registration.
 4. Installer output uses a consistent, polished step-and-checklist presentation across entrypoints.
 5. Extension HTML pages must stay MV3 CSP-safe (no inline `<script>` blocks).
+6. Windows install must aggressively stop stale `gasoline.exe` before replacement and surface manual recovery instructions if a lock survives.
 
 ## Entrypoints
 
@@ -58,18 +59,19 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 ## Primary Flow
 
 1. Installer resolves platform and downloads/stages binary + extension artifacts.
-2. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
-3. Extension staging validates required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`).
-4. If the release extension zip is incomplete, installer falls back to `refs/heads/STABLE.zip` source extraction and validates again.
-5. Wrapper/native install writes MCP client configs.
-6. Config entries prefer resolved binary paths over transient launchers.
-7. Installer prints explicit manual extension checklist:
+2. Windows PowerShell installer force-stops stale `gasoline.exe` processes before binary replacement and retries replacement on lock contention.
+3. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
+4. Extension staging validates required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`).
+5. If the release extension zip is incomplete, installer falls back to `refs/heads/STABLE.zip` source extraction and validates again.
+6. Wrapper/native install writes MCP client configs.
+7. Config entries prefer resolved binary paths over transient launchers.
+8. Installer prints explicit manual extension checklist:
    - open extensions page
    - enable developer mode
    - load unpacked extension folder
    - pin extension
    - click Track This Tab
-8. Installer surfaces a branded panel-style summary at completion with the resolved binary path.
+9. If binary replacement cannot fully evict stale server state, installer emits a high-visibility warning panel with manual kill/retry commands.
 
 ## Error and Recovery Paths
 
@@ -77,6 +79,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 2. If release extension zip is missing required module files, installer falls back to STABLE branch source zip and revalidates staged files.
 3. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
 4. Missing client config directories are skipped without aborting install.
+5. If `gasoline.exe` remains locked after forced stop + `taskkill`, installer warns explicitly that the old server may still be running and prints manual cleanup commands.
 
 ## State and Contracts
 
@@ -85,6 +88,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 3. Release extension artifacts must include the full extension tree so MV3 module imports resolve at runtime.
 4. Extension HTML pages must avoid inline scripts that violate MV3 CSP.
 5. Installer output must never imply that browser extension installation is fully automatic.
+6. Windows installer must not silently ignore stale-server lock failures during binary replacement.
 
 ## Code Paths
 

@@ -54,3 +54,28 @@ test('powershell installer validates theme bootstrap and falls back to STABLE so
     'install.ps1 must not fall back to version tag source zip for extension staging'
   )
 })
+
+test('powershell installer force-stops stale server and prints manual recovery warning', () => {
+  const script = fs.readFileSync(INSTALL_PS1, 'utf8')
+
+  assert.match(
+    script,
+    /Stop-GasolineServerProcesses/,
+    'install.ps1 must include explicit server stop logic before binary replacement'
+  )
+  assert.match(
+    script,
+    /taskkill\s+\/F\s+\/PID/,
+    'install.ps1 must escalate to taskkill for stubborn running processes'
+  )
+  assert.match(
+    script,
+    /INSTALL WARNING: MANUAL ACTION REQUIRED/,
+    'install.ps1 must print a high-visibility warning block when server replacement fails'
+  )
+  assert.match(
+    script,
+    /Get-Process gasoline -ErrorAction SilentlyContinue \| Stop-Process -Force/,
+    'install.ps1 must provide manual process kill instructions'
+  )
+})

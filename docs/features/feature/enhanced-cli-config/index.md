@@ -54,3 +54,6 @@ test_paths:
 ## Code and Tests
 
 Add concrete implementation and test links here as this feature evolves.
+
+Recent stable hardening:
+- Windows installer (`scripts/install.ps1`) now force-stops stale `gasoline.exe`, retries binary replacement, and emits manual recovery commands when lock eviction fails.

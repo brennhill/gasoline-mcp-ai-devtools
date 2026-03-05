@@ -16,8 +16,128 @@ $REPO = "brennhill/gasoline-mcp-ai-devtools"
 $INSTALL_DIR = Join-Path $HOME ".gasoline"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
 $EXT_DIR = Join-Path $INSTALL_DIR "extension"
+$GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
+$INSTALL_WARNINGS = New-Object System.Collections.Generic.List[string]
+$script:WARNINGS_PRINTED = $false
+
+function Add-InstallWarning {
+    param([string]$Message)
+    if (-not [string]::IsNullOrWhiteSpace($Message)) {
+        [void]$INSTALL_WARNINGS.Add($Message)
+    }
+}
+
+function Show-InstallWarnings {
+    if ($script:WARNINGS_PRINTED -or $INSTALL_WARNINGS.Count -eq 0) {
+        return
+    }
+    $script:WARNINGS_PRINTED = $true
+
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host "🚨 INSTALL WARNING: MANUAL ACTION REQUIRED" -ForegroundColor Red
+    foreach ($warning in $INSTALL_WARNINGS) {
+        Write-Host " - $warning" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "The old server may still be running. Kill it manually:" -ForegroundColor Red
+    Write-Host "  Get-Process gasoline -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
+    Write-Host "  taskkill /F /IM gasoline.exe /T" -ForegroundColor Yellow
+    Write-Host "  Remove-Item `"$GASOLINE_BIN`" -Force" -ForegroundColor Yellow
+    Write-Host "Then re-run installer:" -ForegroundColor Red
+    Write-Host "  irm https://raw.githubusercontent.com/$REPO/STABLE/scripts/install.ps1 | iex" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Red
+}
+
+function Get-GasolineServerPids {
+    $pids = @()
+    $targetPath = [System.IO.Path]::GetFullPath($GASOLINE_BIN).ToLowerInvariant()
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'gasoline.exe'" -ErrorAction SilentlyContinue
+
+    foreach ($proc in $processes) {
+        if (-not $proc.ProcessId) { continue }
+
+        if ([string]::IsNullOrWhiteSpace($proc.ExecutablePath)) {
+            # No path info: still kill to avoid stale lock survivors.
+            $pids += [int]$proc.ProcessId
+            continue
+        }
+
+        try {
+            $procPath = [System.IO.Path]::GetFullPath($proc.ExecutablePath).ToLowerInvariant()
+            if ($procPath -eq $targetPath) {
+                $pids += [int]$proc.ProcessId
+            }
+        } catch {
+            $pids += [int]$proc.ProcessId
+        }
+    }
+
+    return @($pids | Sort-Object -Unique)
+}
+
+function Stop-GasolineServerProcesses {
+    $targetPids = @(Get-GasolineServerPids)
+    if ($targetPids.Count -eq 0) {
+        return $true
+    }
+
+    Write-Host "🛑 Stopping running Gasoline server: PID(s) $($targetPids -join ', ')"
+    foreach ($procId in $targetPids) {
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    }
+
+    Start-Sleep -Milliseconds 350
+    $remaining = @(Get-GasolineServerPids)
+    if ($remaining.Count -eq 0) {
+        return $true
+    }
+
+    Write-Host "⚠️  Escalating termination with taskkill..." -ForegroundColor Yellow
+    foreach ($procId in $remaining) {
+        & taskkill /F /PID $procId /T *> $null
+    }
+
+    Start-Sleep -Milliseconds 500
+    $remaining = @(Get-GasolineServerPids)
+    if ($remaining.Count -eq 0) {
+        return $true
+    }
+
+    Add-InstallWarning "Old server is still running after forced stop attempt (PID(s): $($remaining -join ', '))."
+    return $false
+}
+
+function Replace-GasolineBinary {
+    param(
+        [string]$StagePath,
+        [string]$LivePath
+    )
+
+    $maxAttempts = 4
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        [void](Stop-GasolineServerProcesses)
+        try {
+            if (Test-Path $LivePath) {
+                Remove-Item -Path $LivePath -Force -ErrorAction Stop
+            }
+            Move-Item -Path $StagePath -Destination $LivePath -Force -ErrorAction Stop
+            return $true
+        } catch {
+            if ($attempt -lt $maxAttempts) {
+                Write-Host "⚠️  Binary replace attempt $attempt/$maxAttempts failed; retrying..." -ForegroundColor Yellow
+                Start-Sleep -Milliseconds (400 * $attempt)
+                continue
+            }
+            Add-InstallWarning "Could not replace $LivePath due to an active file/process lock."
+            return $false
+        }
+    }
+
+    return $false
+}
 
 Write-Host ""
 Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
@@ -63,14 +183,18 @@ Reset-ExtensionDir
 Write-Host "📁 Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
-$GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
+$INSTALL_BIN = $GASOLINE_BIN
 $BINARY_NAME = "gasoline-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
+$STAGED_BIN = "$GASOLINE_BIN.tmp"
 
 Write-Host "⬇️  Downloading latest binary..."
 # Download to a temporary '.tmp' file to ensure an atomic replacement later.
-Invoke-WebRequest -Uri $BINARY_URL -OutFile "$GASOLINE_BIN.tmp"
+if (Test-Path $STAGED_BIN) {
+    Remove-Item -Path $STAGED_BIN -Force -ErrorAction SilentlyContinue
+}
+Invoke-WebRequest -Uri $BINARY_URL -OutFile $STAGED_BIN
 
 # 4. Integrity Verification: Verify the SHA-256 hash against the official release manifest.
 try {
@@ -80,7 +204,7 @@ try {
     if ($expectedLine) {
         $expectedHash = ($expectedLine -split "\s+")[0]
         # Calculate the hash of the downloaded file using built-in Windows security tools.
-        $actualHash = (Get-FileHash "$GASOLINE_BIN.tmp" -Algorithm SHA256).Hash.ToLower()
+        $actualHash = (Get-FileHash $STAGED_BIN -Algorithm SHA256).Hash.ToLower()
         if ($expectedHash -ne $actualHash) {
             Write-Error "❌ Checksum verification failed! The download may be corrupted."
         }
@@ -91,8 +215,19 @@ try {
     Write-Host "⚠️  Checksum verification skipped (could not fetch manifest)." -ForegroundColor Yellow
 }
 
-# Atomically replace the old binary with the newly downloaded and verified version.
-Move-Item -Path "$GASOLINE_BIN.tmp" -Destination $GASOLINE_BIN -Force
+# Force-stop old server, then replace binary with retries for lock contention.
+if (-not (Replace-GasolineBinary -StagePath $STAGED_BIN -LivePath $GASOLINE_BIN)) {
+    $FALLBACK_BIN = Join-Path $BIN_DIR "gasoline.new.exe"
+    try {
+        Move-Item -Path $STAGED_BIN -Destination $FALLBACK_BIN -Force -ErrorAction Stop
+        $INSTALL_BIN = $FALLBACK_BIN
+        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because gasoline.exe could not be replaced."
+    } catch {
+        Add-InstallWarning "Downloaded update could not be installed. gasoline.exe is likely still locked by a running process."
+    }
+} else {
+    Write-Host "✅ Binary replaced: $GASOLINE_BIN"
+}
 
 # 5. Extension Staging: Refresh the browser extension files.
 # Tries the optimized release asset first, falling back to the full source zip if missing.
@@ -138,4 +273,12 @@ Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
 #   - Reset any running Gasoline processes.
 #   - Display final success message and extension instructions.
 Write-Host "🚀 Finalizing configuration..."
-& $GASOLINE_BIN --install
+if (-not (Test-Path $INSTALL_BIN)) {
+    Add-InstallWarning "Installer could not locate an executable to run for --install."
+    Show-InstallWarnings
+    throw "Gasoline binary install failed. See warning panel for manual recovery steps."
+}
+
+& $INSTALL_BIN --install
+[void](Stop-GasolineServerProcesses)
+Show-InstallWarnings
