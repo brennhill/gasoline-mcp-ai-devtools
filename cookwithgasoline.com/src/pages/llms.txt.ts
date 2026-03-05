@@ -6,7 +6,11 @@ export const prerender = true
 
 export const GET: APIRoute = async () => {
   const urls = await getAllMarkdownPaths({ includeHtml: false })
-  const lines = [`# docs_version: ${siteVersionLabel} (${siteReleaseChannel})`, ...urls]
+  const lines = [
+    `# docs_version: ${siteVersionLabel} (${siteReleaseChannel})`,
+    '# search_synonyms: /search-synonyms.json',
+    ...urls
+  ]
   return new Response(lines.join('\n') + '\n', {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

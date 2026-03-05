@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: recording-control-and-playback
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -20,6 +20,8 @@ test_paths:
   - cmd/dev-console/recording_playback_result_test.go
   - cmd/dev-console/tools_observe_contract_test.go
   - cmd/dev-console/tools_configure_audit_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Recording Control and Playback

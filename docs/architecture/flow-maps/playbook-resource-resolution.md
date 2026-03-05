@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: playbook-resource-resolution
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -21,6 +21,8 @@ test_paths:
   - cmd/dev-console/bridge_fastpath_unit_test.go
   - cmd/dev-console/bridge_faststart_extended_test.go
   - cmd/dev-console/playbooks_content_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Playbook Resource Resolution

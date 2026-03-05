@@ -20,6 +20,11 @@ test_paths:
   - cmd/dev-console/native_install_test.go
   - npm/gasoline-agentic-browser/lib/install.test.js
   - pypi/gasoline-agentic-browser/tests/test_install.py
+  - pypi/gasoline-mcp/tests/test_install.py
+  - pypi/gasoline-mcp/tests/test_skills.py
+  - tests/cli/cli-integration.test.cjs
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Enhanced Cli Config

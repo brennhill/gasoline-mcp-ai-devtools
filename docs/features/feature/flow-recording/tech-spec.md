@@ -4,7 +4,9 @@ status: in-progress
 version: 0.7.12
 doc_type: tech-spec
 feature_id: feature-flow-recording
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tech Spec: Flow Recording & Playback (Regression Testing)

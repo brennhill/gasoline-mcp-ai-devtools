@@ -1,19 +1,22 @@
 ---
 title: API and Tool Reference
 description: Readthedocs-style entry point for Gasoline MCP tool APIs, request shapes, and common usage patterns.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference']
 ---
 
 Use this page as the structured starting point for all MCP tool docs.
 
 ## Quick Reference
 
-| Tool | Primary Purpose | Entry Doc |
-| --- | --- | --- |
-| `Observe` | Read browser logs, requests, errors, and captured state | [Observe](/reference/observe/) |
-| `Analyze` | Run audits and deeper analyses (performance, accessibility, security) | [Analyze](/reference/analyze/) |
-| `Interact` | Navigate pages and perform browser actions | [Interact](/reference/interact/) |
-| `Configure` | Manage sessions, noise rules, persistence, and recorder settings | [Configure](/reference/configure/) |
-| `Generate` | Produce reproductions, reports, and tests from captured data | [Generate](/reference/generate/) |
+| Tool | Primary Purpose | Entry Doc | Executable Examples |
+| --- | --- | --- | --- |
+| `Observe` | Read browser logs, requests, errors, and captured state | [Observe](/reference/observe/) | [Observe Examples](/reference/examples/observe-examples/) |
+| `Analyze` | Run audits and deeper analyses (performance, accessibility, security) | [Analyze](/reference/analyze/) | [Analyze Examples](/reference/examples/analyze-examples/) |
+| `Interact` | Navigate pages and perform browser actions | [Interact](/reference/interact/) | [Interact Examples](/reference/examples/interact-examples/) |
+| `Configure` | Manage sessions, noise rules, persistence, and recorder settings | [Configure](/reference/configure/) | [Configure Examples](/reference/examples/configure-examples/) |
+| `Generate` | Produce reproductions, reports, and tests from captured data | [Generate](/reference/generate/) | [Generate Examples](/reference/examples/generate-examples/) |
 
 ## Common Parameters
 

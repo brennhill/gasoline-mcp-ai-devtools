@@ -4,7 +4,10 @@ scope: feature/flow-recording/qa
 ai-priority: medium
 tags: [testing, scenarios]
 relates-to: [product-spec.md, tech-spec.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Recording Scenarios & Edge Cases

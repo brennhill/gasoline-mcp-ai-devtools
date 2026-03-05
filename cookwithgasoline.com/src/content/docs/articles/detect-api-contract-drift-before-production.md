@@ -4,6 +4,9 @@ description: "A beginner-friendly, step-by-step guide to catching API contract d
 date: 2026-03-03
 authors: [brenn]
 tags: [api, validation, debugging, how-to]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['api', 'validation', 'debugging', 'how-to', 'articles', 'detect', 'contract', 'drift', 'before', 'production']
 ---
 
 You ship a feature. It works in your browser. Then someone says: “The mobile app is broken.”

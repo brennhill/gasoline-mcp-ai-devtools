@@ -29,6 +29,8 @@ test_paths:
   - npm run smoke:annotation-parity
   - npm run smoke:annotation-parity-suite
   - npm run smoke:annotation-parity-benchmark
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Annotated Screenshots

@@ -4,7 +4,7 @@ feature_id: feature-gasoline-ci
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 code_paths:
   - Makefile
   - .github/workflows/ci.yml
@@ -20,6 +20,8 @@ test_paths:
   - cmd/dev-console/tools_schema_parity_test.go
   - cmd/dev-console/tools_interact_navigate_document_test.go
   - cmd/dev-console/tools_contract_enforcement_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Gasoline Ci

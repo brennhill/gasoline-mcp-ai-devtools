@@ -4,7 +4,7 @@ feature_id: feature-request-session-correlation
 status: active
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/client_registry_adapter.go
   - cmd/dev-console/main_connection_mcp_bootstrap.go
@@ -15,6 +15,8 @@ code_paths:
 test_paths:
   - cmd/dev-console/server_routes_clients_test.go
   - internal/session/client_registry_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Request Session Correlation

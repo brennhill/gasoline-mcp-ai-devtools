@@ -5,6 +5,9 @@ relates-to: [normalized-event-schema]
 blocks: []
 last-updated: 2026-02-28
 issue: 303
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # IDL Migration for Go/TS Boundary — Design Specification

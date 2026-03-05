@@ -1,9 +1,14 @@
 ---
 title: "Generate — Create Artifacts"
 description: "Complete reference for the generate tool. 13 formats for producing Playwright tests, reproduction scripts, HAR exports, SARIF reports, CSP headers, SRI hashes, PR summaries, visual tests, annotation reports, test healing, and failure classification."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'generate']
 ---
 
 The `generate` tool creates production-ready artifacts from captured browser data. Tests, reproduction scripts, reports, and exports — all generated from real browser sessions.
+
+Need one runnable call + response shape + failure fix for every mode? See [Generate Executable Examples](/reference/examples/generate-examples/).
 
 ## Quick Reference
 

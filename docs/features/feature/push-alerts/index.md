@@ -4,7 +4,7 @@ feature_id: feature-push-alerts
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/alerts.go
   - cmd/dev-console/streaming.go
@@ -23,6 +23,8 @@ test_paths:
   - cmd/dev-console/alerts_unit_test.go
   - internal/push/inbox_test.go
   - cmd/dev-console/tools_observe_inbox_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Push Alerts

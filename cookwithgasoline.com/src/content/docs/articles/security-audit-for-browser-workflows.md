@@ -4,6 +4,9 @@ description: "A practical, beginner-friendly workflow for running browser securi
 date: 2026-03-03
 authors: [brenn]
 tags: [security, audit, browser, risk]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['security', 'audit', 'browser', 'risk', 'articles', 'workflows']
 ---
 
 Security reviews often feel intimidating. They do not have to.

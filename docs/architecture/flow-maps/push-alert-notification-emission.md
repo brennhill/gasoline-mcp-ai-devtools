@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: push-alert-notification-emission
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -22,6 +22,8 @@ test_paths:
   - internal/streaming/stream_test.go
   - internal/streaming/alerts_test.go
   - cmd/dev-console/alerts_unit_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Push Alert Notification Emission

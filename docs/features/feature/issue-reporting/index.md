@@ -4,7 +4,7 @@ feature_id: feature-issue-reporting
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_configure_report_issue.go
   - internal/issuereport/types.go
@@ -16,6 +16,8 @@ test_paths:
   - internal/issuereport/templates_test.go
   - internal/issuereport/sanitize_test.go
   - internal/issuereport/submit_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Issue Reporting

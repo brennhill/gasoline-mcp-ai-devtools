@@ -4,7 +4,7 @@ feature_id: feature-link-health
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_analyze.go
   - src/lib/link-health.ts
@@ -13,6 +13,8 @@ code_paths:
   - src/inject/message-handlers.ts
 test_paths:
   - cmd/dev-console/tools_analyze_validation_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Link Health

@@ -29,6 +29,8 @@ test_paths:
   - internal/a11ysummary/summary_test.go
   - internal/tools/observe/analysis_test.go
   - internal/tools/observe/analysis_save_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Observe

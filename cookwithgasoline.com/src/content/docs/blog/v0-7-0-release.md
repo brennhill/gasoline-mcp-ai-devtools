@@ -4,6 +4,9 @@ description: "Major release: complete browser observability platform for AI codi
 date: 2026-02-15
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v0']
 ---
 
 ## What's New in v0.7.0

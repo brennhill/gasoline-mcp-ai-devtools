@@ -3,6 +3,14 @@
 // Overrides Starlight's default Footer component
 import Default from '@astrojs/starlight/components/Footer.astro';
 import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion';
+import { getRelatedGuides } from '../data/relatedGuides';
+
+const entryData = Astro.locals.starlightRoute?.entry?.data ?? {};
+const verifiedVersion =
+  typeof entryData.last_verified_version === 'string' ? entryData.last_verified_version : null;
+const verifiedDate =
+  typeof entryData.last_verified_date === 'string' ? entryData.last_verified_date : null;
+const relatedGuides = getRelatedGuides(Astro.locals.starlightRoute?.entry?.slug ?? '');
 ---
 
 <Default><slot /></Default>
@@ -13,6 +21,26 @@ import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion';
     <div class="gasoline-footer-copy">
       <p>Gasoline Agentic Devtools &copy; 2025-2026 and crafted with care by <a href="https://www.linkedin.com/in/brennhill/" target="_blank" rel="noopener">Brenn Hill</a>. <em>Pouring fuel on the AI development fire.</em></p>
       <p class="gasoline-footer-version">Docs version: <strong>{siteVersionLabel}</strong> ({siteReleaseChannel})</p>
+      {
+        verifiedVersion && verifiedDate && (
+          <p class="gasoline-footer-version">
+            Verified on: <strong>{verifiedVersion}</strong> ({verifiedDate})
+          </p>
+        )
+      }
+      {
+        relatedGuides.length > 0 && (
+          <p class="gasoline-footer-related">
+            Related guides:{' '}
+            {relatedGuides.map((guide, index) => (
+              <>
+                {index > 0 && ', '}
+                <a href={guide.href}>{guide.label}</a>
+              </>
+            ))}
+          </p>
+        )
+      }
       <p class="gasoline-footer-blogline">Read the latest updates on the <a href="/blog/">Blog</a>.</p>
     </div>
   </div>

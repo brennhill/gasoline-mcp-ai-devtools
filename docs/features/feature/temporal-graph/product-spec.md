@@ -6,8 +6,11 @@ mode: history, record_event
 version: 0.7.12
 doc_type: product-spec
 feature_id: feature-temporal-graph
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
+
 # Product Spec: Temporal Graph
 
 User-facing requirements, rationale, and deprecations for the Temporal Graph feature.

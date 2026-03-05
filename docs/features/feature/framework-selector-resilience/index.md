@@ -19,6 +19,8 @@ test_paths:
   - scripts/smoke-tests/29-framework-selector-resilience.sh
   - scripts/smoke-test.sh --only 29
   - npm run smoke:framework-parity
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Framework Selector Resilience

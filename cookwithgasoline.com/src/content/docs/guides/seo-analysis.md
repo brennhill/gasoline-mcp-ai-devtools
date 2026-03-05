@@ -1,6 +1,9 @@
 ---
 title: SEO Analysis Workflow
 description: Run practical SEO checks with Gasoline by comparing rendered metadata, crawl behavior, and on-page quality signals across your site and competitors.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['guides', 'seo', 'analysis']
 ---
 
 # SEO Analysis Workflow

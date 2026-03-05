@@ -4,6 +4,9 @@ description: "A beginner-friendly guide to automated accessibility checks and SA
 date: 2026-03-03
 authors: [brenn]
 tags: [accessibility, ci, sarif, testing]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['accessibility', 'ci', 'sarif', 'testing', 'articles', 'run', 'audits', 'export']
 ---
 
 Accessibility work should be continuous, not last-minute.

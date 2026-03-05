@@ -1,6 +1,9 @@
 ---
 title: Gasoline + Gemini CLI
 description: "Configure Gasoline as an MCP server for Gemini CLI. Give Gemini access to browser console logs, network errors, and DOM state."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['mcp', 'integration', 'gemini']
 ---
 
 Gasoline is an open-source MCP server that gives Gemini CLI access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.

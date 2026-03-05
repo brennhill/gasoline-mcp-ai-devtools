@@ -4,6 +4,9 @@ description: "A practical walkthrough for reproducing browser bugs that appear i
 date: 2026-03-03
 authors: [brenn]
 tags: [ci, debugging, testing, regression]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['ci', 'debugging', 'testing', 'regression', 'articles', 'reproduce', 'works', 'locally', 'fails', 'browser', 'bugs']
 ---
 
 “Works on my machine” is not a joke. It is a real mismatch between environments.

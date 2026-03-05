@@ -4,7 +4,7 @@ feature_id: feature-file-upload
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_interact_upload_handler.go
   - cmd/dev-console/tools_interact_upload.go
@@ -20,6 +20,8 @@ test_paths:
   - internal/upload/os_automation_test.go
   - scripts/smoke-tests/test-upload-server.py
   - scripts/smoke-tests/15-file-upload.sh
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # File Upload

@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: interact-action-surface-registry
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -19,6 +19,8 @@ test_paths:
   - internal/tools/configure/mode_specs_test.go
   - cmd/dev-console/tools_schema_parity_test.go
   - cmd/dev-console/tools_interact_navigate_document_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interact Action Surface Registry

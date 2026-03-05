@@ -26,6 +26,8 @@ test_paths:
   - internal/a11ysummary/summary_test.go
   - cmd/dev-console/tools_observe_unit_test.go
   - cmd/dev-console/tools_schema_parity_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Observe Dispatch and Augmentation

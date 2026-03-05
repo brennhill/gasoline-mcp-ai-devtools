@@ -4,7 +4,10 @@ scope: feature/design-audit-archival/tracking
 ai-priority: medium
 tags: [tracking]
 relates-to: [product-spec.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Design Audit & Archival — Feature Tracking

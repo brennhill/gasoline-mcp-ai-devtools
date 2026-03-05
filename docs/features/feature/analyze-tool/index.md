@@ -35,6 +35,8 @@ test_paths:
   - internal/annotation/store_test.go
   - internal/tools/analyze/forms_test.go
   - tests/extension/data-table.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Analyze Tool

@@ -7,18 +7,25 @@ owners:
   - Brenn
 last_reviewed: 2026-03-05
 code_paths:
+  - package.json
   - .vale.ini
   - .vale/styles/Gasoline/*.yml
   - cookwithgasoline.com/astro.config.mjs
+  - cookwithgasoline.com/src/content.config.ts
   - cookwithgasoline.com/public/images/integrations/*.svg
   - cookwithgasoline.com/public/images/landing/*.svg
   - cookwithgasoline.com/public/images/solutions-seo-signal.svg
   - cookwithgasoline.com/src/content/docs/articles/*.md
+  - cookwithgasoline.com/src/content/docs/blog/*.md
   - cookwithgasoline.com/src/content/docs/downloads.md
+  - cookwithgasoline.com/src/content/docs/guides/start-here-by-role.md
+  - cookwithgasoline.com/src/content/docs/guides/tracks/*.md
+  - cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md
   - cookwithgasoline.com/src/content/docs/guides/seo-analysis.md
   - cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md
   - cookwithgasoline.com/src/content/docs/index.mdx
   - cookwithgasoline.com/src/content/docs/reference/index.md
+  - cookwithgasoline.com/src/content/docs/reference/examples/*.md
   - cookwithgasoline.com/src/content/docs/reference/observe.md
   - cookwithgasoline.com/src/content/docs/reference/analyze.md
   - cookwithgasoline.com/src/content/docs/reference/interact.md
@@ -29,31 +36,46 @@ code_paths:
   - cookwithgasoline.com/src/components/Landing.astro
   - cookwithgasoline.com/src/components/WorkflowLibrary.astro
   - cookwithgasoline.com/src/components/ArticlesLibrary.astro
+  - cookwithgasoline.com/src/data/relatedGuides.ts
+  - cookwithgasoline.com/src/data/searchSynonyms.ts
   - cookwithgasoline.com/src/data/workflows.ts
   - cookwithgasoline.com/src/pages/[...slug].md.ts
   - cookwithgasoline.com/src/pages/index.md.ts
   - cookwithgasoline.com/src/pages/llms.txt.ts
   - cookwithgasoline.com/src/pages/llms-full.txt.ts
   - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
+  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
   - cookwithgasoline.com/src/styles/custom.css
   - cookwithgasoline.com/src/utils/markdownPaths.ts
   - cookwithgasoline.com/src/utils/siteVersion.ts
+  - scripts/docs/check-docs-quality-gates.mjs
+  - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
+  - scripts/docs/generate-reference-executable-examples.mjs
+  - scripts/docs/normalize-site-tags.mjs
+  - scripts/docs/sync-verification-metadata.mjs
   - scripts/docs/run-vale-on-changed.mjs
   - scripts/docs/check-reference-schema-sync.mjs
   - scripts/docs/check-feature-bundles.js
   - .github/workflows/ci.yml
 test_paths:
+  - scripts/docs/check-docs-quality-gates.mjs
+  - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
+  - scripts/docs/generate-reference-executable-examples.mjs
+  - scripts/docs/normalize-site-tags.mjs
+  - scripts/docs/sync-verification-metadata.mjs
   - scripts/docs/run-vale-on-changed.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Cookwithgasoline Content Platform

@@ -4,7 +4,7 @@ feature_id: feature-mcp-persistent-server
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/mcp_identity.go
   - cmd/dev-console/bridge.go
@@ -15,6 +15,8 @@ code_paths:
 test_paths:
   - cmd/dev-console/bridge_startup_contention_test.go
   - cmd/dev-console/bridge_faststart_extended_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # MCP Persistent Server

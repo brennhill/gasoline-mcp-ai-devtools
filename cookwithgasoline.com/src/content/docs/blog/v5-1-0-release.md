@@ -8,6 +8,9 @@ tags:
   - releases
   - security
   - privacy
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['--releases', 'releases', 'security', 'privacy', 'blog', 'v5', 'release']
 ---
 
 Gasoline v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.

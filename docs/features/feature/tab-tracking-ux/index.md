@@ -4,7 +4,7 @@ feature_id: feature-tab-tracking-ux
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - src/lib/constants.ts
   - src/types/runtime-messages.ts
@@ -17,6 +17,8 @@ code_paths:
 test_paths:
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/content.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tab Tracking Ux

@@ -2,6 +2,7 @@ import type { APIRoute, GetStaticPaths } from 'astro'
 import { getCollection } from 'astro:content'
 import { resolveDocSlug } from '../utils/contentSlugs'
 import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion'
+import { getRelatedGuides } from '../data/relatedGuides'
 
 export const prerender = true
 
@@ -15,13 +16,22 @@ function toYamlString(value: unknown) {
   return `'${text}'`
 }
 
+function toYamlArray(values: string[]) {
+  if (values.length === 0) return '[]'
+  return `[${values.map((value) => toYamlString(value)).join(', ')}]`
+}
+
 function renderFrontmatter(entry: any) {
   const title = entry.data?.title ?? 'Gasoline MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
   const canonicalPath = resolvedSlug === '' ? '/' : `/${resolvedSlug}/`
+  const verifiedVersion = entry.data?.last_verified_version ?? siteVersionLabel
+  const verifiedDate = entry.data?.last_verified_date ?? new Date().toISOString().slice(0, 10)
+  const normalizedTags = Array.isArray(entry.data?.normalized_tags) ? entry.data.normalized_tags : []
+  const relatedGuides = getRelatedGuides(resolvedSlug).map((guide) => guide.href)
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\nlast_verified_version: ${toYamlString(verifiedVersion)}\nlast_verified_date: ${toYamlString(verifiedDate)}\nnormalized_tags: ${toYamlArray(normalizedTags)}\nrelated_guides: ${toYamlArray(relatedGuides)}\n---`
 }
 
 function findEntryBySlugPath(docs: any[], slugPath: string) {

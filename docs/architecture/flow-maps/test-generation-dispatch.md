@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: test-generation-dispatch
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -27,6 +27,8 @@ test_paths:
   - cmd/dev-console/testgen_classify_dispatch_test.go
   - internal/testgen/generate_test.go
   - internal/testgen/helpers_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Test Generation Dispatch

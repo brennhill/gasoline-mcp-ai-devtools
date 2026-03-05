@@ -4,7 +4,10 @@ scope: feature/in-browser-agent-panel/runtime
 ai-priority: high
 tags: [runtime, golang, transport, redaction, approvals, reliability]
 relates-to: [product-spec.md, tech-spec.md, ../../../architecture/ADR-003-agent-panel-redaction-first.md]
-last-verified: 2026-02-16
+last-verified: 2026-03-05
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Runtime Spec: Browser UI + Go Orchestrator

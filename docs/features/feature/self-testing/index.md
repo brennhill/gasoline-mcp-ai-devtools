@@ -4,13 +4,15 @@ feature_id: feature-self-testing
 status: in-progress
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/server_routes.go
   - cmd/dev-console/testpages_http.go
   - cmd/dev-console/testpages_websocket.go
 test_paths:
   - cmd/dev-console/testpages_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Self Testing

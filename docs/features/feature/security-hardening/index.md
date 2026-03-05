@@ -4,7 +4,7 @@ feature_id: feature-security-hardening
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - internal/security/security_config_policy.go
   - internal/security/security_config_mode.go
@@ -13,6 +13,8 @@ test_paths:
   - internal/security/security_config_unit_test.go
   - internal/security/security_boundary_test.go
   - internal/security/security_config_path_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Security Hardening

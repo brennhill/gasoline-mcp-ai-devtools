@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: self-testing-test-harness
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -15,6 +15,8 @@ code_paths:
   - cmd/dev-console/testpages_websocket.go
 test_paths:
   - cmd/dev-console/testpages_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Self-Testing Test Harness

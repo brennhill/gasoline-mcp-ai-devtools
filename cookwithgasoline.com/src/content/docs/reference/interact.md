@@ -1,9 +1,14 @@
 ---
 title: "Interact — Control the Browser"
 description: "Complete reference for the interact tool. 59 actions for navigation, DOM manipulation, element discovery, tab management, storage & cookies, dialog handling, file upload, draw mode, recording, compound actions, content extraction, state management, and JavaScript execution."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'interact']
 ---
 
 The `interact` tool gives the AI control over the browser — navigate, click, type, read elements, run JavaScript, upload files, record sessions, manage state, and display narration. **Requires AI Web Pilot to be enabled** in the extension popup.
+
+Need one runnable call + response shape + failure fix for every action? See [Interact Executable Examples](/reference/examples/interact-examples/).
 
 :::note[Synchronous Mode]
 Tools now block until the extension returns a result (up to 15s). Set `background: true` to return immediately with a `correlation_id`.
