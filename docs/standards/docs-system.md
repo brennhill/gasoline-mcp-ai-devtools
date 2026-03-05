@@ -58,6 +58,9 @@ See: [LLM Flow Map Placement Best Practice](./llm-flow-map-best-practice.md)
    - `python3 scripts/lint-documentation.py`
 5. Enforce feature bundle contract:
    - `node scripts/docs/check-feature-bundles.js`
+6. Enforce content writing/voice contract:
+   - `node scripts/docs/check-content-style-contract.mjs`
+   - `node scripts/docs/run-vale-on-changed.mjs`
 
 ## Definition of Done (Docs)
 

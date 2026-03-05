@@ -6,6 +6,62 @@ import path from 'node:path';
 
 const DOCS_PREFIX = 'cookwithgasoline.com/src/content/docs/';
 const DOC_EXT_RE = /\.(md|mdx)$/;
+const VERSION_SURFACES = [
+  {
+    path: 'cookwithgasoline.com/src/components/Footer.astro',
+    checks: [
+      {
+        pattern: /Docs version:\s*<strong>\{siteVersionLabel\}<\/strong>\s*\(\{siteReleaseChannel\}\)/,
+        message:
+          'Footer must render docs version label and latest channel from siteVersion utility.'
+      }
+    ]
+  },
+  {
+    path: 'cookwithgasoline.com/src/pages/index.md.ts',
+    checks: [
+      { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
+      { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
+      { pattern: /\\ndocs_channel:\s*\$\{toYamlString\(siteReleaseChannel\)\}/, message: 'Must set docs_channel frontmatter key.' }
+    ]
+  },
+  {
+    path: 'cookwithgasoline.com/src/pages/[...slug].md.ts',
+    checks: [
+      { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
+      { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
+      { pattern: /\\ndocs_channel:\s*\$\{toYamlString\(siteReleaseChannel\)\}/, message: 'Must set docs_channel frontmatter key.' }
+    ]
+  },
+  {
+    path: 'cookwithgasoline.com/src/pages/markdown/[...slug].md.ts',
+    checks: [
+      { pattern: /from '\.\.\/\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
+      { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
+      { pattern: /\\ndocs_channel:\s*\$\{toYamlString\(siteReleaseChannel\)\}/, message: 'Must set docs_channel frontmatter key.' }
+    ]
+  },
+  {
+    path: 'cookwithgasoline.com/src/pages/llms.txt.ts',
+    checks: [
+      { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
+      {
+        pattern: /# docs_version:\s*\$\{siteVersionLabel\}\s*\(\$\{siteReleaseChannel\}\)/,
+        message: 'llms.txt must include docs version header line.'
+      }
+    ]
+  },
+  {
+    path: 'cookwithgasoline.com/src/pages/llms-full.txt.ts',
+    checks: [
+      { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
+      {
+        pattern: /# docs_version:\s*\$\{siteVersionLabel\}\s*\(\$\{siteReleaseChannel\}\)/,
+        message: 'llms-full.txt must include docs version header line.'
+      }
+    ]
+  }
+];
 
 function splitEnvFileList(value) {
   return value
@@ -116,6 +172,20 @@ function hasAnyH2(body) {
   return /^##\s+\S/m.test(body);
 }
 
+async function validateVersionSurfaceContracts() {
+  const violations = [];
+  for (const surface of VERSION_SURFACES) {
+    const absolutePath = path.resolve(surface.path);
+    const content = await fs.readFile(absolutePath, 'utf8');
+    for (const check of surface.checks) {
+      if (!check.pattern.test(content)) {
+        violations.push(`${surface.path}: ${check.message}`);
+      }
+    }
+  }
+  return violations;
+}
+
 function validateFile(relativePath, content) {
   const errors = [];
   const frontmatter = requireFrontmatterBlock(content);
@@ -168,8 +238,9 @@ function validateFile(relativePath, content) {
 async function main() {
   const changed = getChangedFiles();
   const docsTargets = changed.filter((file) => file.startsWith(DOCS_PREFIX) && DOC_EXT_RE.test(file));
+  const versionSurfaceViolations = await validateVersionSurfaceContracts();
 
-  if (docsTargets.length === 0) {
+  if (docsTargets.length === 0 && versionSurfaceViolations.length === 0) {
     console.log('Content contract: no changed docs/blog/articles files detected.');
     return;
   }
@@ -187,7 +258,20 @@ async function main() {
   }
 
   if (violations.length === 0) {
-    console.log(`Content contract: ${docsTargets.length} changed docs/blog/articles file(s) passed.`);
+    if (versionSurfaceViolations.length === 0) {
+      console.log(`Content contract: ${docsTargets.length} changed docs/blog/articles file(s) passed.`);
+      return;
+    }
+  }
+
+  if (versionSurfaceViolations.length > 0) {
+    violations.push({
+      file: 'version-surfaces',
+      errors: versionSurfaceViolations
+    });
+  }
+
+  if (violations.length === 0) {
     return;
   }
 
