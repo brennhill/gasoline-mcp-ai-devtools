@@ -49,11 +49,8 @@ var analyzeValueAliases = map[string]modeValueAlias{
 	"history": {Canonical: "navigation_patterns", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
-// analyzeAliasParams defines the deprecated alias parameters for the analyze tool.
-var analyzeAliasParams = []modeAlias{
-	{JSONField: "mode", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
-	{JSONField: "action", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
-}
+// analyzeAliasParams references the shared default mode/action aliases.
+var analyzeAliasParams = defaultModeActionAliases
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
 func getValidAnalyzeModes() string { return sortedMapKeys(analyzeHandlers) }

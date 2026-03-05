@@ -2849,6 +2849,7 @@
     state.sessionState = persisted.session;
     mountWidget(persisted.session.token, persisted.uiState === "minimized");
   }
+  var MAX_QUEUED_WRITES = 200;
   function writeToTerminal(text) {
     if (!state.visible || !state.iframeEl)
       return;
@@ -2856,6 +2857,9 @@
     if (!trimmed)
       return;
     state.queuedWrites.push(trimmed);
+    if (state.queuedWrites.length > MAX_QUEUED_WRITES) {
+      state.queuedWrites = state.queuedWrites.slice(-MAX_QUEUED_WRITES);
+    }
     scheduleQueuedWriteFlush(0);
   }
   function mountWidget(token, startMinimized) {

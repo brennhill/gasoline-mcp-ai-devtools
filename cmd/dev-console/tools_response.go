@@ -67,6 +67,23 @@ func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCRe
 	return mcp.AppendWarningsToResponse(resp, warnings)
 }
 
+// mutateToolResult unmarshals the response result into MCPToolResult, applies the
+// mutation function, and remarshals. Returns the original response unchanged if
+// unmarshal or remarshal fails.
+func mutateToolResult(resp JSONRPCResponse, fn func(*MCPToolResult)) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	fn(&result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
 // injectCSPBlockedActions adds blocked_actions and blocked_reason to a JSON
 // response when the current page CSP restricts script execution. When CSP is
 // clear the response is returned unchanged (zero token cost). (#262)
@@ -80,43 +97,37 @@ func (h *ToolHandler) injectCSPBlockedActions(resp JSONRPCResponse) JSONRPCRespo
 		return resp
 	}
 
-	// Parse the response to inject fields into the JSON data payload.
-	var result mcp.MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil || len(result.Content) == 0 {
-		return resp
-	}
-
-	text := result.Content[0].Text
-	// Find the JSON object within the text (after the summary line).
-	jsonStart := -1
-	for i := 0; i < len(text); i++ {
-		if text[i] == '{' {
-			jsonStart = i
-			break
+	return mutateToolResult(resp, func(r *MCPToolResult) {
+		if len(r.Content) == 0 {
+			return
 		}
-	}
-	if jsonStart < 0 {
-		return resp
-	}
 
-	var data map[string]any
-	if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {
-		return resp
-	}
+		text := r.Content[0].Text
+		// Find the JSON object within the text (after the summary line).
+		jsonStart := -1
+		for i := 0; i < len(text); i++ {
+			if text[i] == '{' {
+				jsonStart = i
+				break
+			}
+		}
+		if jsonStart < 0 {
+			return
+		}
 
-	data["blocked_actions"] = actions
-	data["blocked_reason"] = reason
+		var data map[string]any
+		if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {
+			return
+		}
 
-	dataJSON, err := json.Marshal(data)
-	if err != nil {
-		return resp
-	}
+		data["blocked_actions"] = actions
+		data["blocked_reason"] = reason
 
-	result.Content[0].Text = text[:jsonStart] + string(dataJSON)
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+		dataJSON, err := json.Marshal(data)
+		if err != nil {
+			return
+		}
+
+		r.Content[0].Text = text[:jsonStart] + string(dataJSON)
+	})
 }

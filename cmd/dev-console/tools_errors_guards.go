@@ -28,6 +28,18 @@ func checkGuards(req JSONRPCRequest, guards ...guardCheck) (JSONRPCResponse, boo
 	return JSONRPCResponse{}, false
 }
 
+// checkGuardsWithOpts runs each guard in order with extra StructuredError options,
+// returning the first blocking response. Used by handlers like handleDOMPrimitive
+// that need to pass contextOpts (action, selector) through to guard error responses.
+func checkGuardsWithOpts(req JSONRPCRequest, opts []func(*StructuredError), guards ...guardCheck) (JSONRPCResponse, bool) {
+	for _, g := range guards {
+		if resp, blocked := g(req, opts...); blocked {
+			return resp, true
+		}
+	}
+	return JSONRPCResponse{}, false
+}
+
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
 func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {

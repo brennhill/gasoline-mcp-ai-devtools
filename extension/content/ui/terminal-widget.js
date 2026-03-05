@@ -198,6 +198,7 @@ export async function restoreTerminalIfNeeded() {
     mountWidget(persisted.session.token, persisted.uiState === 'minimized');
 }
 /** Write text to the terminal PTY stdin via the iframe postMessage bridge, then press Enter to submit. */
+const MAX_QUEUED_WRITES = 200;
 export function writeToTerminal(text) {
     if (!state.visible || !state.iframeEl)
         return;
@@ -206,6 +207,9 @@ export function writeToTerminal(text) {
     if (!trimmed)
         return;
     state.queuedWrites.push(trimmed);
+    if (state.queuedWrites.length > MAX_QUEUED_WRITES) {
+        state.queuedWrites = state.queuedWrites.slice(-MAX_QUEUED_WRITES);
+    }
     scheduleQueuedWriteFlush(0);
 }
 // =============================================================================

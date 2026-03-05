@@ -109,64 +109,63 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 
 // buildFormValidationSummary extracts counts from form validation response.
 func buildFormValidationSummary(resp JSONRPCResponse) JSONRPCResponse {
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
+	// Pre-check: skip error responses before mutation attempt.
+	var peek MCPToolResult
+	if err := json.Unmarshal(resp.Result, &peek); err != nil || peek.IsError {
 		return resp
 	}
 
-	for _, block := range result.Content {
-		if block.Text == "" {
-			continue
-		}
-		idx := -1
-		for i, ch := range block.Text {
-			if ch == '{' {
-				idx = i
-				break
-			}
-		}
-		if idx < 0 {
-			continue
-		}
-
-		var data map[string]any
-		if json.Unmarshal([]byte(block.Text[idx:]), &data) != nil {
-			continue
-		}
-
-		forms := extractFormsList(data)
-		if forms == nil {
-			continue
-		}
-
-		totalForms := len(forms)
-		valid := 0
-		invalid := 0
-		for _, f := range forms {
-			fMap, ok := f.(map[string]any)
-			if !ok {
+	return mutateToolResult(resp, func(r *MCPToolResult) {
+		for _, block := range r.Content {
+			if block.Text == "" {
 				continue
 			}
-			if isValid, ok := fMap["valid"].(bool); ok && isValid {
-				valid++
-			} else {
-				invalid++
+			idx := -1
+			for i, ch := range block.Text {
+				if ch == '{' {
+					idx = i
+					break
+				}
 			}
-		}
+			if idx < 0 {
+				continue
+			}
 
-		summaryData := map[string]any{
-			"total_forms": totalForms,
-			"valid":       valid,
-			"invalid":     invalid,
-		}
-		summaryJSON, _ := json.Marshal(summaryData)
-		result.Content = []MCPContentBlock{{Type: "text", Text: "Form validation summary\n" + string(summaryJSON)}}
-		newResult, _ := json.Marshal(result)
-		resp.Result = newResult
-		return resp
-	}
+			var data map[string]any
+			if json.Unmarshal([]byte(block.Text[idx:]), &data) != nil {
+				continue
+			}
 
-	return resp
+			forms := extractFormsList(data)
+			if forms == nil {
+				continue
+			}
+
+			totalForms := len(forms)
+			valid := 0
+			invalid := 0
+			for _, f := range forms {
+				fMap, ok := f.(map[string]any)
+				if !ok {
+					continue
+				}
+				if isValid, ok := fMap["valid"].(bool); ok && isValid {
+					valid++
+				} else {
+					invalid++
+				}
+			}
+
+			summaryData := map[string]any{
+				"total_forms": totalForms,
+				"valid":       valid,
+				"invalid":     invalid,
+			}
+			summaryJSON, _ := json.Marshal(summaryData)
+			r.Content = []MCPContentBlock{{Type: "text", Text: "Form validation summary\n" + string(summaryJSON)}}
+			return
+		}
+	})
 }
 
 func extractFormsList(data map[string]any) []any {

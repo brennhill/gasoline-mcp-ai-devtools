@@ -112,51 +112,17 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 }
 
 func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("back")
-	h.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"back"}`),
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("back", "", nil)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Back queued")
+	return h.queueBrowserAction(req, args, browserActionOpts{
+		action:         "back",
+		correlationPfx: "back",
+		queuedMsg:      "Back queued",
+	})
 }
 
 func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("forward")
-	h.armEvidenceForCommand(correlationID, "forward", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"forward"}`),
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("forward", "", nil)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Forward queued")
+	return h.queueBrowserAction(req, args, browserActionOpts{
+		action:         "forward",
+		correlationPfx: "forward",
+		queuedMsg:      "Forward queued",
+	})
 }

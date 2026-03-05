@@ -6,19 +6,10 @@ package main
 
 import (
 	"encoding/json"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleClipboardRead reads text from the clipboard via navigator.clipboard.readText().
 func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	script := `(async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -28,24 +19,14 @@ func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args jso
   }
 })()`
 
-	correlationID := newCorrelationID("exec")
-	execArgs, _ := json.Marshal(map[string]any{
-		"script": script,
-		"world":  "main",
-	})
+	resp := h.queueExecuteScript(req, args, "exec", 0, 0, "main", script, "clipboard_read", "Clipboard read queued")
 
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execArgs,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
+	// Record AI action only on success (queueExecuteScript handles guards).
+	if !isErrorResponse(resp) {
+		h.parent.recordAIAction("clipboard_read", "", nil)
 	}
 
-	h.parent.recordAIAction("clipboard_read", "", nil)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Clipboard read queued")
+	return resp
 }
 
 // handleClipboardWrite writes text to the clipboard via navigator.clipboard.writeText().
@@ -63,13 +44,6 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 			withParam("text"))
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	// JSON-encode the text to safely embed it in the script
 	textBytes, _ := json.Marshal(params.Text)
 
@@ -82,22 +56,12 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
   }
 })()`
 
-	correlationID := newCorrelationID("exec")
-	execArgs, _ := json.Marshal(map[string]any{
-		"script": script,
-		"world":  "main",
-	})
+	resp := h.queueExecuteScript(req, args, "exec", 0, 0, "main", script, "clipboard_write", "Clipboard write queued")
 
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execArgs,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
+	// Record AI action only on success (queueExecuteScript handles guards).
+	if !isErrorResponse(resp) {
+		h.parent.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
 	}
 
-	h.parent.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Clipboard write queued")
+	return resp
 }
