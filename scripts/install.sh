@@ -1,20 +1,20 @@
 #!/bin/bash
-# Gasoline Agentic Browser - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+# Gasoline - The Ultimate One-liner Installer
+# https://github.com/brennhill/gasoline-mcp-ai-devtools
 #
 # PURPOSE:
 # This script provides a zero-dependency, platform-aware installation flow for Gasoline.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
+REPO="brennhill/gasoline-mcp-ai-devtools"
 INSTALL_DIR="$HOME/.gasoline"
 BIN_DIR="$INSTALL_DIR/bin"
 EXT_DIR="$INSTALL_DIR/extension"
@@ -25,11 +25,9 @@ VERSION_URL="https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
-DIM='\033[2m'
 NC='\033[0m' # No Color (Reset)
 
 # Cleanup: Ensure temporary files are removed even if the script crashes or is interrupted.
@@ -40,66 +38,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-TOTAL_STEPS=7
-print_panel() {
-    local title="$1"
-    shift
-    echo -e "${CYAN}+----------------------------------------------------------+${NC}"
-    printf "${CYAN}| ${BOLD}%-56s${CYAN} |${NC}\n" "$title"
-    echo -e "${CYAN}+----------------------------------------------------------+${NC}"
-    for line in "$@"; do
-        printf "${CYAN}|${NC} %-58s ${CYAN}|${NC}\n" "$line"
-    done
-    echo -e "${CYAN}+----------------------------------------------------------+${NC}"
-}
-print_banner() {
-    echo -e "${ORANGE}${BOLD}"
-    cat <<'EOF'
+echo -e "${ORANGE}${BOLD}"
+cat <<'EOF'
    ____                 _ _            
   / ___| __ _ ___  ___ | (_)_ __   ___ 
  | |  _ / _` / __|/ _ \| | | '_ \ / _ \
  | |_| | (_| \__ \ (_) | | | | | |  __/
   \____|\__,_|___/\___/|_|_|_| |_|\___|
 EOF
-    echo -e "${NC}"
-    print_panel "GASOLINE INSTALLER" \
-      "Polished one-shot setup for binary + extension + MCP config." \
-      "" \
-      "Install flow:" \
-      "  1) Detect platform and release" \
-      "  2) Download + verify binary" \
-      "  3) Stage extension files" \
-      "  4) Configure MCP clients" \
-      "  5) Show manual browser checklist"
-}
-progress_bar() {
-    local index="$1"
-    local width=28
-    local filled=$(( index * width / TOTAL_STEPS ))
-    local empty=$(( width - filled ))
-    local fill_segment
-    local empty_segment
-    fill_segment=$(printf '%*s' "$filled" '' | tr ' ' '#')
-    empty_segment=$(printf '%*s' "$empty" '' | tr ' ' '-')
-    local pct=$(( index * 100 / TOTAL_STEPS ))
-    echo -e "   ${YELLOW}[${fill_segment}${empty_segment}]${NC} ${pct}%"
-}
-step() {
-    local index="$1"
-    local message="$2"
-    echo -e "\n${BLUE}${BOLD}[$index/$TOTAL_STEPS] $message${NC}"
-    progress_bar "$index"
-}
-step_ok() {
-    local message="$1"
-    echo -e "${GREEN}   ✓ $message${NC}"
-}
-
-step_note() {
-    local message="$1"
-    echo -e "${DIM}   -> $message${NC}"
-}
-
+echo -e "${NC}"
+echo -e "${ORANGE}${BOLD}🔥 Gasoline Installer${NC}"
+echo -e "${BLUE}--------------------------------------------------${NC}"
 reset_extension_dir() {
     rm -rf "$EXT_DIR"
     mkdir -p "$EXT_DIR"
@@ -109,13 +58,11 @@ validate_extension_stage() {
     [ -f "$EXT_DIR/manifest.json" ] &&
     [ -f "$EXT_DIR/background/init.js" ] &&
     [ -f "$EXT_DIR/content/script-injection.js" ] &&
-    [ -f "$EXT_DIR/inject/index.js" ]
+    [ -f "$EXT_DIR/inject/index.js" ] &&
+    [ -f "$EXT_DIR/theme-bootstrap.js" ]
 }
 
-print_banner
-
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
-step 1 "Detecting platform"
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
@@ -140,31 +87,28 @@ if [ "$PLATFORM" == "win32" ]; then
 else
     BINARY_EXT=""
 fi
-step_ok "Platform: $PLATFORM-$E_ARCH"
 
 # 2. Version Check: Fetch the latest stable version number from GitHub.
-step 2 "Resolving latest stable version"
+echo -e "🔍 Checking for updates..."
 VERSION=$(curl -sSL --fail "$VERSION_URL" | tr -d '[:space:]' || true)
 if [ -z "$VERSION" ]; then
     echo -e "${RED}❌ Failed to fetch latest version info.${NC}"
     exit 1
 fi
-step_ok "Version: v$VERSION ($PLATFORM-$E_ARCH)"
+echo -e "✨ Version: v$VERSION ($PLATFORM-$E_ARCH)"
 
 # 3. Directory Setup: Ensure the installation folders exist.
-step 3 "Preparing install directories"
 mkdir -p "$BIN_DIR"
 reset_extension_dir
-step_ok "Install root: $INSTALL_DIR"
+echo -e "📁 Install root: $INSTALL_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
-GASOLINE_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
-BINARY_NAME="gasoline-agentic-browser-$PLATFORM-$E_ARCH$BINARY_EXT"
+GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
+BINARY_NAME="gasoline-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 
-step 4 "Downloading and verifying binary"
-step_note "Downloading release artifact and validating integrity"
+echo -e "⬇️  Downloading latest binary..."
 # Download to a temporary location first to ensure an atomic installation.
 if ! curl -fsSL "$BINARY_URL" -o "$TEMP_ROOT/gasoline_dl"; then
     echo -e "${RED}❌ Download failed.${NC}"
@@ -191,12 +135,10 @@ fi
 # Move the verified binary to its final path and set executable permissions.
 mv "$TEMP_ROOT/gasoline_dl" "$GASOLINE_BIN"
 chmod 755 "$GASOLINE_BIN"
-step_ok "Installed binary: $GASOLINE_BIN"
 
 # 6. Extension Staging: Download and extract the browser extension.
 # We try the optimized extension-only zip first, falling back to the full source zip if needed.
-step 5 "Staging browser extension files (manual browser load required)"
-step_note "Using extension zip when available; source zip fallback for older releases"
+echo -e "⬇️  Refreshing browser extension..."
 EXT_ZIP_NAME="gasoline-extension-v$VERSION.zip"
 EXT_ZIP_URL="https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 TEMP_ZIP="$TEMP_ROOT/extension.zip"
@@ -205,10 +147,10 @@ if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
     # Dedicated extension zip exists (faster); validate required module files after extract.
     reset_extension_dir
     if unzip -q -o "$TEMP_ZIP" -d "$EXT_DIR" && validate_extension_stage; then
-        step_ok "Staged extension directory: $EXT_DIR"
+        echo -e "✅ Staged extension directory: $EXT_DIR"
     else
-        step_note "Release extension zip missing required modules; falling back to source zip"
-        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+        echo -e "${YELLOW}⚠️  Release extension zip missing required modules; falling back to source zip...${NC}"
+        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/heads/STABLE.zip"
         TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
         mkdir -p "$TEMP_EXTRACT"
         if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
@@ -221,7 +163,7 @@ if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
                 echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
                 exit 1
             fi
-            step_ok "Staged extension directory: $EXT_DIR"
+            echo -e "✅ Staged extension directory: $EXT_DIR"
         else
             echo -e "${RED}❌ Failed to download extension source archive.${NC}"
             exit 1
@@ -229,7 +171,7 @@ if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
     fi
 else
     # Fallback to source zip extraction (covers older releases and bad extension zip assets)
-    SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+    SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/heads/STABLE.zip"
     TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
     mkdir -p "$TEMP_EXTRACT"
     if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
@@ -242,7 +184,7 @@ else
             echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
             exit 1
         fi
-        step_ok "Staged extension directory: $EXT_DIR"
+        echo -e "✅ Staged extension directory: $EXT_DIR"
     else
         echo -e "${RED}❌ Failed to download extension source archive.${NC}"
         exit 1
@@ -255,18 +197,5 @@ fi
 #   - Detecting 9+ different MCP clients (Claude, Cursor, Zed, etc.).
 #   - Safely merging JSON configuration for each client.
 #   - Displaying final success message and extension instructions.
-step 6 "Configuring MCP clients with direct binary path (no npx)"
-step_note "Handing off to native installer for client-specific config merges"
+echo -e "⚙️  Finalizing configuration..."
 "$GASOLINE_BIN" --install
-
-step 7 "Reminder: browser extension load is manual"
-print_panel "MANUAL BROWSER CHECKLIST" \
-  "The installer cannot click browser UI controls for you." \
-  "" \
-  "1) Open chrome://extensions (or brave://extensions)" \
-  "2) Enable Developer mode" \
-  "3) Click Load unpacked and select: $EXT_DIR" \
-  "4) Pin Gasoline in the toolbar (recommended)" \
-  "5) Open popup and click Track This Tab"
-
-echo -e "${GREEN}${BOLD}Install flow complete.${NC}"
