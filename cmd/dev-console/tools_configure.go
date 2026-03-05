@@ -9,10 +9,18 @@ import (
 )
 
 // configureAliasParams defines the deprecated alias parameters for the configure tool.
-// ConflictFn gates conflict detection: only flag a what/action conflict when the action value
-// is a known top-level configure mode (since "action" also serves as a sub-action field).
-// FallbackFn is nil so any action value is accepted as a mode fallback when what is absent.
+// "mode" is included for parity with observe and analyze. Both "mode" and "action" have
+// ConflictFn and FallbackFn gates because these fields also serve as sub-parameters
+// (e.g. security_mode uses "mode" as a field, playback uses "action" as a sub-action).
+// Conflicts and fallbacks are only triggered when the value is a known top-level configure mode.
 var configureAliasParams = []modeAlias{
+	{JSONField: "mode", ConflictFn: func(v string) bool {
+		_, ok := configureHandlers[v]
+		return ok
+	}, FallbackFn: func(v string) bool {
+		_, ok := configureHandlers[v]
+		return ok
+	}, DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 	{JSONField: "action", ConflictFn: func(v string) bool {
 		_, ok := configureHandlers[v]
 		return ok

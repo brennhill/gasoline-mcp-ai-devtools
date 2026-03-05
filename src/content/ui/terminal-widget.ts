@@ -236,12 +236,16 @@ export async function restoreTerminalIfNeeded(): Promise<void> {
 }
 
 /** Write text to the terminal PTY stdin via the iframe postMessage bridge, then press Enter to submit. */
+const MAX_QUEUED_WRITES = 200
 export function writeToTerminal(text: string): void {
   if (!state.visible || !state.iframeEl) return
   // Strip trailing whitespace/newlines — we'll send our own Enter to submit.
   const trimmed = text.replace(/[\r\n\s]+$/, '')
   if (!trimmed) return
   state.queuedWrites.push(trimmed)
+  if (state.queuedWrites.length > MAX_QUEUED_WRITES) {
+    state.queuedWrites = state.queuedWrites.slice(-MAX_QUEUED_WRITES)
+  }
   scheduleQueuedWriteFlush(0)
 }
 

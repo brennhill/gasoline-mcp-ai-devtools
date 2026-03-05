@@ -78,11 +78,14 @@ func (s *Store) MarkDrawStarted() {
 // or until timeout expires. Returns (session, timedOut).
 // Loops on wake-ups to handle spurious notifications from unrelated sessions.
 func (s *Store) WaitForSession(timeout time.Duration) (*Session, bool) {
-	s.mu.RLock()
-	sinceTs := s.lastDrawStartedAt
-	s.mu.RUnlock()
-
 	checker := func() any {
+		// T8 fix: re-read lastDrawStartedAt under the lock each iteration.
+		// If the user triggers a new draw cycle (updating lastDrawStartedAt),
+		// the checker must use the fresh threshold to avoid returning a session
+		// from a previous draw cycle.
+		s.mu.RLock()
+		sinceTs := s.lastDrawStartedAt
+		s.mu.RUnlock()
 		if session := s.getSessionSince(sinceTs); session != nil {
 			return session
 		}

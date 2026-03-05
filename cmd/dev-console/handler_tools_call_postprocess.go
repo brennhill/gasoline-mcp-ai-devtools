@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -29,21 +28,13 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 
 // prependWarningToResponse prepends a warning string to the first text block of an MCP response.
 func prependWarningToResponse(resp JSONRPCResponse, warning string) JSONRPCResponse {
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	if len(result.Content) > 0 && result.Content[0].Type == "text" {
-		result.Content[0].Text = warning + result.Content[0].Text
-	} else {
-		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
-	}
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return mutateToolResult(resp, func(r *MCPToolResult) {
+		if len(r.Content) > 0 && r.Content[0].Type == "text" {
+			r.Content[0].Text = warning + r.Content[0].Text
+		} else {
+			r.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, r.Content...)
+		}
+	})
 }
 
 func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCResponse {
@@ -63,23 +54,14 @@ func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCRe
 	warning := "[ALTERED ENVIRONMENT] security_mode=insecure_proxy; production_parity=false. CSP headers are rewritten for debugging.\n\n"
 	resp = prependWarningToResponse(resp, warning)
 
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	if result.Metadata == nil {
-		result.Metadata = make(map[string]any)
-	}
-	result.Metadata["security_mode"] = mode
-	result.Metadata["production_parity"] = productionParity
-	result.Metadata["insecure_rewrites_applied"] = rewrites
-
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return mutateToolResult(resp, func(r *MCPToolResult) {
+		if r.Metadata == nil {
+			r.Metadata = make(map[string]any)
+		}
+		r.Metadata["security_mode"] = mode
+		r.Metadata["production_parity"] = productionParity
+		r.Metadata["insecure_rewrites_applied"] = rewrites
+	})
 }
 
 // maybeAddVersionWarning prepends a version mismatch warning when extension/server major.minor differ.

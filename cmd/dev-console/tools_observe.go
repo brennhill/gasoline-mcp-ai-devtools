@@ -8,11 +8,8 @@ import (
 	"encoding/json"
 )
 
-// observeAliasParams defines the deprecated alias parameters for the observe tool.
-var observeAliasParams = []modeAlias{
-	{JSONField: "mode", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
-	{JSONField: "action", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
-}
+// observeAliasParams references the shared default mode/action aliases.
+var observeAliasParams = defaultModeActionAliases
 
 // observeRegistry is the tool registry for observe dispatch.
 var observeRegistry = toolRegistry{

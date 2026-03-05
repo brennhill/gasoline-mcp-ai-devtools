@@ -66,6 +66,13 @@ func method(fn func(*ToolHandler, JSONRPCRequest, json.RawMessage) JSONRPCRespon
 	return fn
 }
 
+// defaultModeActionAliases defines the standard deprecated alias parameters ("mode", "action")
+// shared by observe and analyze tools. Reference this from tool registries instead of duplicating.
+var defaultModeActionAliases = []modeAlias{
+	{JSONField: "mode", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+	{JSONField: "action", DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
+}
+
 // modeAlias defines a deprecated parameter that can substitute for the canonical 'what' param.
 //
 // ConflictFn gates the conflict check: when set, a conflict is only raised if ConflictFn returns true.

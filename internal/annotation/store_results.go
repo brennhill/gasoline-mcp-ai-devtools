@@ -102,9 +102,18 @@ func URLMatches(urlFilter, pageURL string) bool {
 	if strings.HasSuffix(urlFilter, "/*") {
 		return URLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
 	}
+	// T10 fix: proper glob matching. Split at the first '*' and check that
+	// the URL starts with the prefix and (if present) ends with the suffix.
+	// This prevents "http://localhost:*" from matching "http://localhost-evil.com".
 	if strings.Contains(urlFilter, "*") {
-		prefix := strings.ReplaceAll(urlFilter, "*", "")
-		return strings.HasPrefix(pageURL, prefix)
+		parts := strings.SplitN(urlFilter, "*", 2)
+		if !strings.HasPrefix(pageURL, parts[0]) {
+			return false
+		}
+		if len(parts) > 1 && parts[1] != "" && !strings.HasSuffix(pageURL, parts[1]) {
+			return false
+		}
+		return true
 	}
 
 	filterURL, filterErr := url.Parse(urlFilter)

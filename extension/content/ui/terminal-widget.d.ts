@@ -14,7 +14,6 @@ export declare function isTerminalVisible(): boolean;
 export declare function toggleTerminal(): Promise<void>;
 /** Restore terminal on page load if it was previously open/minimized. */
 export declare function restoreTerminalIfNeeded(): Promise<void>;
-/** Write text to the terminal PTY stdin via the iframe postMessage bridge, then press Enter to submit. */
 export declare function writeToTerminal(text: string): void;
 export { saveTerminalConfig };
 export type { TerminalConfig };

@@ -25,6 +25,7 @@ This gate validates:
 2. `npm run smoke:annotation-parity`
 3. `npm run smoke:annotation-parity-suite`
 4. `npm run smoke:annotation-parity-benchmark`
+5. `bash scripts/smoke-test.sh --start-from 31`
 
 ## Primary Flow
 
@@ -37,13 +38,15 @@ This gate validates:
 4. Module calls `analyze({what:"annotations", annot_session, url:"http://localhost:3000/*"})` and verifies scoped reduction.
 5. Module calls `analyze({what:"annotation_detail", correlation_id})` and verifies selector/tag/framework/context fields.
 6. Module calls `generate` annotation formats and verifies expected outputs.
+7. Runner enforces daemon version parity (`VERSION` vs `/health.version`) before reusing a running daemon in `--only` / `--start-from` mode.
 
 ## Error and Recovery Paths
 
 1. Ingest failure (`/draw-mode/complete`) surfaces HTTP status + response body in failure output.
-2. MCP startup race on `generate` is retried with bounded attempts and delay.
-3. JSON parse failures in gate assertions are treated as hard failures with parse diagnostics.
-4. Scope filter mismatch failures include returned IDs and counts for triage.
+2. Transient startup or eventual-consistency states (`starting up`, `no_data`, `no annotations`) are retried with bounded attempts in module 31.
+3. Resume/version mismatch (`--only` / `--start-from`) triggers daemon restart before module execution.
+4. JSON parse failures in gate assertions are treated as hard failures with parse diagnostics.
+5. Scope filter mismatch failures include returned IDs and counts for triage.
 
 ## State and Contracts
 
@@ -69,6 +72,8 @@ This gate validates:
    - `visual_test` contains `test(` and `page.goto(`
    - `annotation_report` contains markdown report structure
    - `annotation_issues` contains `issues[]` and `total_count`.
+5. Runner contract checks:
+   - when `VERSION` and `/health.version` differ, stale daemon is not reused for resumed smoke runs.
 
 ## Code Paths
 
@@ -79,6 +84,7 @@ This gate validates:
 5. `cmd/dev-console/server_routes_media_draw_mode.go`
 6. `cmd/dev-console/tools_analyze_annotations_handlers.go`
 7. `cmd/dev-console/tools_generate_annotations.go`
+8. `scripts/tests/framework.sh`
 
 ## Test Paths
 

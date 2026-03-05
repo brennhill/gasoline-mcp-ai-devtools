@@ -15,6 +15,16 @@ var validStorageTypes = map[string]string{
 	"sessionStorage": "sessionStorage",
 }
 
+// validateStorageType checks that storage_type is one of the valid storage types.
+// Returns the JS expression (e.g. "localStorage") and true on success, or an error response and false on failure.
+func validateStorageType(req JSONRPCRequest, storageType string) (string, JSONRPCResponse, bool) {
+	storageExpr, ok := validStorageTypes[storageType]
+	if !ok {
+		return "", fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+storageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type")), false
+	}
+	return storageExpr, JSONRPCResponse{}, true
+}
+
 func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		StorageType string  `json:"storage_type"`
@@ -28,9 +38,9 @@ func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.R
 		return resp
 	}
 
-	storageExpr, ok := validStorageTypes[params.StorageType]
+	storageExpr, errResp, ok := validateStorageType(req, params.StorageType)
 	if !ok {
-		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
+		return errResp
 	}
 	if params.Key == "" {
 		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for set_storage action", "Add the 'key' parameter and call again", withParam("key"))
@@ -56,9 +66,9 @@ func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	storageExpr, ok := validStorageTypes[params.StorageType]
+	storageExpr, errResp, ok := validateStorageType(req, params.StorageType)
 	if !ok {
-		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
+		return errResp
 	}
 	if params.Key == "" {
 		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for delete_storage action", "Add the 'key' parameter and call again", withParam("key"))
@@ -80,9 +90,9 @@ func (h *interactActionHandler) handleClearStorage(req JSONRPCRequest, args json
 		return resp
 	}
 
-	storageExpr, ok := validStorageTypes[params.StorageType]
+	storageExpr, errResp, ok := validateStorageType(req, params.StorageType)
 	if !ok {
-		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
+		return errResp
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.clear(); return { ok: true, action: "clear_storage", storage_type: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,

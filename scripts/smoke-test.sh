@@ -16,6 +16,32 @@ PORT="7890"
 START_FROM=""
 ONLY_MODULE=""
 
+normalize_semver() {
+    local raw="${1:-}"
+    raw="$(printf '%s' "$raw" | tr -d '[:space:]')"
+    raw="${raw#v}"
+
+    if [ -z "$raw" ] || [ "$raw" = "unknown" ] || [ "$raw" = "?" ]; then
+        echo ""
+        return 0
+    fi
+
+    local semver
+    semver="$(printf '%s' "$raw" | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?).*/\1/p')"
+    if [ -n "$semver" ]; then
+        echo "$semver"
+    else
+        echo "$raw"
+    fi
+}
+
+versions_match() {
+    local left right
+    left="$(normalize_semver "${1:-}")"
+    right="$(normalize_semver "${2:-}")"
+    [ -n "$left" ] && [ -n "$right" ] && [ "$left" = "$right" ]
+}
+
 # Parse args: positional port + optional --start-from
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -95,6 +121,9 @@ init_smoke "$PORT"
 # Note: init_smoke sets the EXIT trap (_smoke_master_cleanup).
 # Do NOT set another EXIT trap here — use register_cleanup instead.
 
+EXPECTED_VERSION="${VERSION:-unknown}"
+EXPECTED_VERSION_NORM="$(normalize_semver "$EXPECTED_VERSION")"
+
 # ── Module list ──────────────────────────────────────────
 MODULES=(
     "01-bootstrap.sh"
@@ -131,8 +160,13 @@ MODULES=(
 if lsof -ti :"$PORT" >/dev/null 2>&1; then
     existing_ver=$(curl -s --connect-timeout 2 --max-time 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // empty' 2>/dev/null)
     if [ -n "$existing_ver" ]; then
-        echo "  Reusing existing daemon on port $PORT (v${existing_ver})"
-        DAEMON_PID=$(lsof -ti :"$PORT" 2>/dev/null | head -1)
+        if [ -n "$EXPECTED_VERSION_NORM" ] && ! versions_match "$existing_ver" "$EXPECTED_VERSION"; then
+            echo "  Existing daemon version mismatch on port $PORT (have v${existing_ver}, expected v${EXPECTED_VERSION}). Restarting..."
+            kill_server 2>/dev/null || true
+        else
+            echo "  Reusing existing daemon on port $PORT (v${existing_ver})"
+            DAEMON_PID=$(lsof -ti :"$PORT" 2>/dev/null | head -1)
+        fi
     else
         echo "  Port $PORT occupied by non-Gasoline process. Killing..." >&2
         lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
@@ -141,12 +175,16 @@ if lsof -ti :"$PORT" >/dev/null 2>&1; then
 fi
 
 BINARY_VERSION=$("$WRAPPER" --version 2>/dev/null || echo "unknown")
+BINARY_VERSION_NORM="$(normalize_semver "$BINARY_VERSION")"
 echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
 echo "  Binary: $BINARY_VERSION"
-echo "  Expected: $(cat "$RUNNER_DIR/../VERSION" 2>/dev/null || echo "?")"
+echo "  Expected: $EXPECTED_VERSION"
+if [ -n "$BINARY_VERSION_NORM" ] && [ -n "$EXPECTED_VERSION_NORM" ] && ! versions_match "$BINARY_VERSION" "$EXPECTED_VERSION"; then
+    echo "  WARNING: Wrapper version (v${BINARY_VERSION_NORM}) differs from VERSION (v${EXPECTED_VERSION_NORM})."
+fi
 echo "  ${#MODULES[@]} modules"
 echo "============================================================"
 echo ""
@@ -179,6 +217,13 @@ if [ -n "$START_FROM" ]; then
 
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
     daemon_ver=$(echo "$health_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
+    if [ -n "$EXPECTED_VERSION_NORM" ] && ! versions_match "$daemon_ver" "$EXPECTED_VERSION"; then
+        echo "  Resume daemon version mismatch (have v${daemon_ver}, expected v${EXPECTED_VERSION}). Restarting..."
+        start_daemon_with_flags --enable-os-upload-automation || true
+        sleep 2
+        health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+        daemon_ver=$(echo "$health_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
+    fi
     echo "  Daemon version: v${daemon_ver}"
     if echo "$health_body" | jq -e '.capture.extension_connected == true' >/dev/null 2>&1; then
         EXTENSION_CONNECTED=true

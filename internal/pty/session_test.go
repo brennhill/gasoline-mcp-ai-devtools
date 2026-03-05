@@ -3,7 +3,9 @@
 package pty
 
 import (
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -229,5 +231,221 @@ func TestSession_Pid(t *testing.T) {
 	pid := sess.Pid()
 	if pid <= 0 {
 		t.Fatalf("expected positive PID, got: %d", pid)
+	}
+}
+
+// T1 regression: Read/Write during concurrent Close must return ErrSessionClosed,
+// not a raw OS error from a potentially recycled file descriptor.
+func TestSession_ReadDuringClose_ReturnsErrSessionClosed(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	// Start a goroutine that reads forever; it will unblock when Close() closes the fd.
+	readErr := make(chan error, 1)
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			_, err := sess.Read(buf)
+			if err != nil {
+				readErr <- err
+				return
+			}
+		}
+	}()
+
+	// Give the goroutine time to enter the blocking Read syscall.
+	time.Sleep(50 * time.Millisecond)
+
+	// Close the session — the read should unblock with ErrSessionClosed.
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	select {
+	case err := <-readErr:
+		if err != ErrSessionClosed {
+			t.Fatalf("expected ErrSessionClosed from in-flight Read, got: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout waiting for Read to return after Close")
+	}
+}
+
+func TestSession_WriteDuringClose_ReturnsErrSessionClosed(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	// Close the session first.
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	// Write after close must return ErrSessionClosed.
+	_, werr := sess.Write([]byte("hello"))
+	if werr != ErrSessionClosed {
+		t.Fatalf("expected ErrSessionClosed from Write after Close, got: %v", werr)
+	}
+}
+
+// T1 regression: done channel is closed before ptmx, so concurrent callers
+// detect shutdown via the channel rather than hitting a recycled fd.
+func TestSession_DoneChannelClosedBeforePtmx(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	// Before close, done channel should not be closed.
+	select {
+	case <-sess.done:
+		t.Fatal("done channel should not be closed before Close()")
+	default:
+	}
+
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	// After close, done channel must be closed.
+	select {
+	case <-sess.done:
+		// Good — channel is closed.
+	default:
+		t.Fatal("done channel should be closed after Close()")
+	}
+}
+
+// T3 regression: scrollback trimming must not leak memory via backing array retention.
+// Verifies that after eviction, the scrollback slice has its own backing array
+// (length == cap == maxScrollback), not a sub-slice of a larger allocation.
+func TestSession_AppendScrollback_EvictionReleasesBackingArray(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	// Fill scrollback past maxScrollback to trigger eviction.
+	chunk := make([]byte, 1024)
+	for i := range chunk {
+		chunk[i] = 'A'
+	}
+	// Write 2x maxScrollback worth of data to force at least one eviction.
+	iterations := (maxScrollback * 2) / len(chunk)
+	for i := 0; i < iterations; i++ {
+		sess.AppendScrollback(chunk)
+	}
+
+	sess.scrollMu.Lock()
+	sbLen := len(sess.scrollback)
+	sbCap := cap(sess.scrollback)
+	sess.scrollMu.Unlock()
+
+	if sbLen != maxScrollback {
+		t.Fatalf("expected scrollback len=%d, got %d", maxScrollback, sbLen)
+	}
+	// After eviction with make+copy, cap should equal len (no excess backing array).
+	if sbCap != maxScrollback {
+		t.Fatalf("expected scrollback cap=%d (new allocation), got %d (backing array leak)", maxScrollback, sbCap)
+	}
+}
+
+// T3 regression: scrollback below maxScrollback should not trigger eviction.
+func TestSession_AppendScrollback_NoEvictionBelowMax(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	data := []byte("hello")
+	sess.AppendScrollback(data)
+
+	got := sess.Scrollback()
+	if string(got) != "hello" {
+		t.Fatalf("expected %q, got %q", "hello", string(got))
+	}
+}
+
+// T1 regression: concurrent Read/Write/Close must not panic or deadlock.
+func TestSession_ConcurrentReadWriteClose(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	const goroutines = 10
+	var wg sync.WaitGroup
+
+	// Spawn readers.
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			buf := make([]byte, 64)
+			for {
+				_, err := sess.Read(buf)
+				if err != nil {
+					return
+				}
+			}
+		}()
+	}
+
+	// Spawn writers.
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				_, err := sess.Write([]byte("x"))
+				if err != nil {
+					return
+				}
+				runtime.Gosched()
+			}
+		}()
+	}
+
+	// Let them run briefly, then close.
+	time.Sleep(50 * time.Millisecond)
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	// All goroutines must exit within a reasonable time.
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All goroutines exited.
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout: concurrent Read/Write goroutines did not exit after Close")
 	}
 }
