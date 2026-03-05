@@ -30,6 +30,13 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		Summary           bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
+
+	// Quiet alias: level → min_level (threshold, not exact match).
+	if params.Level != "" && params.MinLevel == "" {
+		params.MinLevel = params.Level
+		params.Level = ""
+	}
+
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}

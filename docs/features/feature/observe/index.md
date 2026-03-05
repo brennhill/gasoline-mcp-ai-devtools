@@ -4,7 +4,7 @@ feature_id: feature-observe
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_observe.go
   - cmd/dev-console/tools_observe_registry.go
@@ -50,4 +50,5 @@ test_paths:
 
 Accessibility (`what:"accessibility"`) normalizes `summary` counts with canonical keys (`violations`, `passes`, `incomplete`, `inapplicable`) and preserves legacy aliases (`*_count`) for compatibility.
 WebSocket status (`what:"websocket_status"`) supports `summary:true` with compact URL/connection-id previews while preserving the full default payload when `summary` is omitted.
-Network-bodies empty-result hints now echo all active filters (`url`, `method`, `status_*`, `body_key`, `body_path`) so retry guidance is specific to the current query.
+Network-bodies empty-result hints now echo all active filters (`url`, `method`, `status_*`, `body_path`) so retry guidance is specific to the current query.
+`level` is a quiet alias for `min_level` — accepted at runtime but hidden from schema. Both use threshold semantics (e.g., `warn` returns warn+error).

@@ -1,19 +1,15 @@
 [
   {
     "name": "observe",
-    "description": "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_key/body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
+    "description": "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
     "inputSchema": {
       "properties": {
         "after_cursor": {
-          "description": "Backward pagination cursor from response metadata",
+          "description": "Cursor for older entries (from response metadata)",
           "type": "string"
         },
         "before_cursor": {
-          "description": "Forward pagination cursor",
-          "type": "string"
-        },
-        "body_key": {
-          "description": "Extract values for a JSON key from response_body (network_bodies)",
+          "description": "Cursor for newer entries (from response metadata)",
           "type": "string"
         },
         "body_path": {
@@ -46,6 +42,7 @@
           "type": "string"
         },
         "direction": {
+          "description": "WebSocket message direction filter (websocket_events)",
           "enum": [
             "incoming",
             "outgoing"
@@ -90,17 +87,6 @@
         "last_n": {
           "description": "Return last N items only",
           "type": "number"
-        },
-        "level": {
-          "description": "Exact log level filter (logs)",
-          "enum": [
-            "debug",
-            "log",
-            "info",
-            "warn",
-            "error"
-          ],
-          "type": "string"
         },
         "limit": {
           "description": "Max entries to return (default 100, max 1000)",
@@ -191,7 +177,7 @@
           "type": "string"
         },
         "summary": {
-          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients)",
+          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients, storage)",
           "type": "boolean"
         },
         "telemetry_mode": {
@@ -216,6 +202,7 @@
           "type": "boolean"
         },
         "what": {
+          "description": "Data mode to read from extension buffers",
           "enum": [
             "errors",
             "logs",
@@ -271,7 +258,7 @@
           "type": "string"
         },
         "background": {
-          "description": "Run in background and return a correlation_id immediately.",
+          "description": "Return immediately with correlation_id instead of waiting for result (default: false). For annotations, wait blocks up to timeout_ms before falling back to correlation polling.",
           "type": "boolean"
         },
         "baseline": {
@@ -391,10 +378,6 @@
           "description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit)",
           "type": "boolean"
         },
-        "sync": {
-          "description": "Wait for result (default: true).",
-          "type": "boolean"
-        },
         "tab_id": {
           "description": "Target tab ID (dom, page_summary)",
           "type": "number"
@@ -420,7 +403,7 @@
           "type": "number"
         },
         "timeout_ms": {
-          "description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 15000 (15s), max 600000 (10 min).",
+          "description": "Timeout ms (link_health, page_summary, annotations). For annotations with background:false (default): default 15000 (15s), max 600000 (10 min).",
           "type": "number"
         },
         "url": {
@@ -438,17 +421,14 @@
           },
           "type": "array"
         },
-        "wait": {
-          "description": "Wait for result (default: true). For annotations with wait=true, blocks up to timeout_ms before falling back to correlation polling.",
-          "type": "boolean"
-        },
         "what": {
+          "description": "Analysis mode to run against the page",
           "enum": [
             "dom",
             "performance",
             "accessibility",
             "error_clusters",
-            "history",
+            "navigation_patterns",
             "security_audit",
             "third_party_audit",
             "link_health",
@@ -492,7 +472,7 @@
   },
   {
     "name": "generate",
-    "description": "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
+    "description": "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -616,22 +596,7 @@
           "type": "array"
         },
         "format": {
-          "description": "Deprecated alias for 'what'",
-          "enum": [
-            "reproduction",
-            "test",
-            "pr_summary",
-            "har",
-            "csp",
-            "sri",
-            "sarif",
-            "visual_test",
-            "annotation_report",
-            "annotation_issues",
-            "test_from_context",
-            "test_heal",
-            "test_classify"
-          ],
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
           "type": "string"
         },
         "generate_fixtures": {
@@ -663,6 +628,7 @@
           "type": "string"
         },
         "mode": {
+          "description": "CSP strictness: strict (default), moderate, or report_only (csp)",
           "enum": [
             "strict",
             "moderate",
@@ -678,7 +644,7 @@
           "type": "array"
         },
         "output_format": {
-          "description": "Output format: file or inline (test_from_context)",
+          "description": "Output format. reproduction: 'gasoline-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
           "type": "string"
         },
         "resource_types": {
@@ -734,6 +700,7 @@
           "type": "boolean"
         },
         "what": {
+          "description": "Artifact type to generate from captured data",
           "enum": [
             "reproduction",
             "test",
@@ -760,42 +727,11 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), event_recording_start/event_recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
+    "description": "Session settings and utilities.\n\nSession: store, load, clear, telemetry, security_mode.\nDiagnostics: health, doctor, restart, audit_log, describe_capabilities, report_issue.\nRecording: event_recording_start/stop, playback, log_diff, network_recording.\nSequences: save/get/list/delete/replay_sequence.\nNoise \u0026 streaming: noise_rule, streaming, action_jitter.\nTesting: test_boundary_start/end.\nHelp: tutorial, examples, diff_sessions.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
     "inputSchema": {
       "properties": {
         "action": {
-          "description": "Deprecated alias for 'what'",
-          "enum": [
-            "store",
-            "load",
-            "noise_rule",
-            "clear",
-            "health",
-            "tutorial",
-            "examples",
-            "streaming",
-            "test_boundary_start",
-            "test_boundary_end",
-            "event_recording_start",
-            "event_recording_stop",
-            "playback",
-            "log_diff",
-            "telemetry",
-            "describe_capabilities",
-            "diff_sessions",
-            "audit_log",
-            "restart",
-            "save_sequence",
-            "get_sequence",
-            "list_sequences",
-            "delete_sequence",
-            "replay_sequence",
-            "doctor",
-            "security_mode",
-            "network_recording",
-            "action_jitter",
-            "report_issue"
-          ],
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
           "type": "string"
         },
         "action_jitter_ms": {
@@ -807,6 +743,7 @@
           "type": "string"
         },
         "buffer": {
+          "description": "Buffer to clear (clear). Use 'all' to reset everything",
           "enum": [
             "network",
             "websocket",
@@ -897,19 +834,15 @@
           "type": "string"
         },
         "method": {
-          "description": "Single-rule flattening helper for noise_action=add",
+          "description": "HTTP method filter (noise_action=add, network_recording)",
           "type": "string"
         },
         "mode": {
-          "description": "Security mode target for configure(what='security_mode'). Omit to read current mode.",
-          "enum": [
-            "normal",
-            "insecure_proxy"
-          ],
+          "description": "For security_mode: 'normal' or 'insecure_proxy'. For describe_capabilities: tool mode name to filter (e.g. 'errors', 'click').",
           "type": "string"
         },
         "name": {
-          "description": "Snapshot name, or sequence name for save_sequence/get_sequence/delete_sequence/replay_sequence",
+          "description": "Name for recording, snapshot, or sequence (event_recording_start, diff_sessions, save/get/delete/replay_sequence)",
           "type": "string"
         },
         "namespace": {
@@ -930,7 +863,7 @@
           "type": "string"
         },
         "operation": {
-          "description": "Action-specific operation key",
+          "description": "Sub-operation: audit_log (analyze/report/clear), network_recording (start/stop/status), report_issue (list_templates/preview/submit)",
           "enum": [
             "analyze",
             "report",
@@ -985,6 +918,7 @@
           "type": "boolean"
         },
         "severity_min": {
+          "description": "Min event severity for streaming notifications (streaming)",
           "enum": [
             "info",
             "warning",
@@ -1036,6 +970,7 @@
           "type": "string"
         },
         "streaming_action": {
+          "description": "Push notification operation (streaming). Default: status",
           "enum": [
             "enable",
             "disable",
@@ -1106,6 +1041,7 @@
           "type": "string"
         },
         "verif_session_action": {
+          "description": "Session verification operation (diff_sessions)",
           "enum": [
             "capture",
             "compare",
@@ -1115,6 +1051,7 @@
           "type": "string"
         },
         "what": {
+          "description": "Setting or utility to configure",
           "enum": [
             "store",
             "load",
@@ -1157,7 +1094,7 @@
   },
   {
     "name": "interact",
-    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector/scope_rect to constrain to a page region.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nWorkflows: navigate_and_wait_for, navigate_and_document, fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
+    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector/scope_rect to constrain to a page region. Targeting precedence: element_id \u003e selector \u003e index \u003e x/y. Do not combine.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nWorkflows: navigate_and_wait_for, navigate_and_document, fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
     "inputSchema": {
       "properties": {
         "absent": {
@@ -1166,71 +1103,6 @@
         },
         "action": {
           "description": "Deprecated alias for 'what'. Prefer 'what'.",
-          "enum": [
-            "highlight",
-            "subtitle",
-            "save_state",
-            "state_save",
-            "load_state",
-            "state_load",
-            "list_states",
-            "state_list",
-            "delete_state",
-            "state_delete",
-            "set_storage",
-            "delete_storage",
-            "clear_storage",
-            "set_cookie",
-            "delete_cookie",
-            "execute_js",
-            "navigate",
-            "refresh",
-            "back",
-            "forward",
-            "new_tab",
-            "switch_tab",
-            "close_tab",
-            "screenshot",
-            "click",
-            "type",
-            "select",
-            "check",
-            "get_text",
-            "get_value",
-            "get_attribute",
-            "query",
-            "set_attribute",
-            "focus",
-            "scroll_to",
-            "wait_for",
-            "key_press",
-            "paste",
-            "open_composer",
-            "submit_active_composer",
-            "confirm_top_dialog",
-            "dismiss_top_overlay",
-            "hover",
-            "auto_dismiss_overlays",
-            "wait_for_stable",
-            "list_interactive",
-            "get_readable",
-            "get_markdown",
-            "navigate_and_wait_for",
-            "navigate_and_document",
-            "fill_form_and_submit",
-            "fill_form",
-            "run_a11y_and_export_sarif",
-            "screen_recording_start",
-            "screen_recording_stop",
-            "upload",
-            "draw_mode_start",
-            "hardware_click",
-            "activate_tab",
-            "explore_page",
-            "batch",
-            "clipboard_read",
-            "clipboard_write"
-          ],
           "type": "string"
         },
         "action_diff": {
@@ -1270,7 +1142,7 @@
           "type": "boolean"
         },
         "background": {
-          "description": "Run in background and return a correlation_id immediately.",
+          "description": "Return immediately with correlation_id instead of waiting for result (default: false).",
           "type": "boolean"
         },
         "checked": {
@@ -1524,10 +1396,6 @@
           "description": "Narration text, composable with any action. Empty clears.",
           "type": "string"
         },
-        "sync": {
-          "description": "Wait for result (default: true).",
-          "type": "boolean"
-        },
         "tab_id": {
           "description": "Tab ID (default: active)",
           "type": "number"
@@ -1573,10 +1441,6 @@
           "description": "Only return visible elements (list_interactive)",
           "type": "boolean"
         },
-        "wait": {
-          "description": "Alias for sync (default: true).",
-          "type": "boolean"
-        },
         "wait_for": {
           "description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
           "type": "string"
@@ -1590,17 +1454,14 @@
           "type": "boolean"
         },
         "what": {
+          "description": "Browser action to perform",
           "enum": [
             "highlight",
             "subtitle",
             "save_state",
-            "state_save",
             "load_state",
-            "state_load",
             "list_states",
-            "state_list",
             "delete_state",
-            "state_delete",
             "set_storage",
             "delete_storage",
             "clear_storage",

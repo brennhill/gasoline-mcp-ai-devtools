@@ -9,7 +9,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"logs": {
 		Hint:     "Console log messages with level/source filtering. summary=true returns counts by level/source",
-		Optional: []string{"min_level", "level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope", "summary"},
+		Optional: []string{"min_level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope", "summary"},
 	},
 	"extension_logs": {
 		Hint:     "Gasoline extension internal debug logs",
@@ -21,7 +21,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"network_bodies": {
 		Hint:     "HTTP response bodies with JSON path extraction. summary=true returns status groups + top URLs",
-		Optional: []string{"url", "body_key", "body_path", "method", "status_min", "status_max", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction", "summary"},
+		Optional: []string{"url", "body_path", "method", "status_min", "status_max", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction", "summary"},
 	},
 	"websocket_events": {
 		Hint:     "WebSocket message frames (incoming/outgoing). summary=true returns direction/event counts",
@@ -40,13 +40,13 @@ var observeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"limit"},
 	},
 	"page": {
-		Hint: "Current page URL, title, and tracked tab info",
+		Hint: "Current page URL, title, and tracked tab info (metadata only; for content use analyze/page_summary or interact/explore_page)",
 	},
 	"tabs": {
 		Hint: "All open browser tabs with URLs",
 	},
 	"history": {
-		Hint:     "Recent page navigation history. summary=true returns counts only",
+		Hint:     "Recent page navigation history. summary=true returns counts only (chronological list; for pattern analysis use analyze/navigation_patterns)",
 		Optional: []string{"limit", "summary"},
 	},
 	"pilot": {
@@ -73,8 +73,8 @@ var observeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"database", "store"},
 	},
 	"command_result": {
-		Hint:     "Poll result of an async command by correlation_id",
-		Optional: []string{"correlation_id"},
+		Hint:     "Poll result of an async command. Requires correlation_id from the original call response",
+		Required: []string{"correlation_id"},
 	},
 	"pending_commands": {
 		Hint: "List in-flight async commands awaiting results",
@@ -91,15 +91,17 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"recording_actions": {
 		Hint:     "Action log from a specific recording",
-		Optional: []string{"recording_id", "limit"},
+		Required: []string{"recording_id"},
+		Optional: []string{"limit"},
 	},
 	"playback_results": {
 		Hint:     "Results from replaying a recording",
-		Optional: []string{"recording_id", "limit"},
+		Required: []string{"recording_id"},
+		Optional: []string{"limit"},
 	},
 	"log_diff_report": {
 		Hint:     "Compare error logs between original and replay to find regressions",
-		Optional: []string{"original_id", "replay_id"},
+		Required: []string{"original_id", "replay_id"},
 	},
 	"summarized_logs": {
 		Hint:     "Console messages grouped by fingerprint for pattern detection",

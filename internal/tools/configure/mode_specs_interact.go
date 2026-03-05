@@ -12,6 +12,9 @@ func buildInteractModeSpecs() map[string]modeParamSpec {
 	specs := schema.InteractActionSpecs()
 	out := make(map[string]modeParamSpec, len(specs))
 	for _, spec := range specs {
+		if spec.IsAlias {
+			continue
+		}
 		out[spec.Name] = modeParamSpec{
 			Hint:     spec.Hint,
 			Required: append([]string(nil), spec.Required...),

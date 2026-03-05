@@ -81,7 +81,7 @@ func TestToolModeSpecs_ObserveErrorsFiltered(t *testing.T) {
 	}
 
 	allParams := append(append([]string{}, spec.Required...), spec.Optional...)
-	excluded := []string{"format", "quality", "full_page", "selector", "wait_for_stable", "database", "store", "body_key", "body_path"}
+	excluded := []string{"format", "quality", "full_page", "selector", "wait_for_stable", "database", "store", "body_path"}
 	for _, param := range excluded {
 		if containsString(allParams, param) {
 			t.Errorf("observe/errors should not include %q", param)
@@ -187,6 +187,9 @@ func TestInteractModeSpecs_DerivedFromSchemaRegistry(t *testing.T) {
 	}
 
 	for _, spec := range actionSpecs {
+		if spec.IsAlias {
+			continue // aliases are excluded from mode specs and schema enum
+		}
 		modeSpec, ok := interactModeSpecs[spec.Name]
 		if !ok {
 			t.Fatalf("interact mode spec missing action %q", spec.Name)

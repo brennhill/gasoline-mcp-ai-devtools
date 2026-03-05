@@ -17,7 +17,6 @@ type NetworkBodiesHintFilters struct {
 	Method    string
 	StatusMin int
 	StatusMax int
-	BodyKey   string
 	BodyPath  string
 }
 
@@ -67,9 +66,6 @@ func formatNetworkBodiesFilterSummary(filters NetworkBodiesHintFilters) string {
 		parts = append(parts, fmt.Sprintf("status>=%d", filters.StatusMin))
 	} else if filters.StatusMax > 0 {
 		parts = append(parts, fmt.Sprintf("status<=%d", filters.StatusMax))
-	}
-	if filters.BodyKey != "" {
-		parts = append(parts, fmt.Sprintf("body_key=%s", filters.BodyKey))
 	}
 	if filters.BodyPath != "" {
 		parts = append(parts, fmt.Sprintf("body_path=%s", filters.BodyPath))

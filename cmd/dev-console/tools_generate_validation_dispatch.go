@@ -13,7 +13,7 @@ import (
 // generateValidParams defines the allowed parameter names per generate format.
 // The "format" and "telemetry_mode" params are always allowed.
 var generateValidParams = map[string]map[string]bool{
-	"reproduction":      {"error_message": true, "last_n": true, "base_url": true, "include_screenshots": true, "generate_fixtures": true, "visual_assertions": true, "save_to": true},
+	"reproduction":      {"error_message": true, "last_n": true, "base_url": true, "include_screenshots": true, "generate_fixtures": true, "visual_assertions": true, "save_to": true, "output_format": true},
 	"test":              {"test_name": true, "last_n": true, "base_url": true, "assert_network": true, "assert_no_errors": true, "assert_response_shape": true, "save_to": true},
 	"pr_summary":        {"save_to": true},
 	"har":               {"url": true, "method": true, "status_min": true, "status_max": true, "save_to": true},

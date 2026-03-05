@@ -217,7 +217,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	server.entries = append(server.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
 	server.mu.Unlock()
 
-	// Filter by level=warn
+	// "level" is a quiet alias for "min_level" (threshold): warn returns warn+error.
 	th := handler.toolHandler.(*ToolHandler)
 	resp := observe.GetBrowserLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
 
@@ -229,8 +229,8 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
 
 	logs := data["logs"].([]any)
-	if len(logs) != 1 {
-		t.Errorf("Expected 1 warning log, got %d", len(logs))
+	if len(logs) != 2 {
+		t.Errorf("Expected 2 logs (warn+error via min_level threshold), got %d", len(logs))
 	}
 
 	t.Logf("✅ observe logs level filter returned %d entries", len(logs))

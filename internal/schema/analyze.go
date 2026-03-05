@@ -14,8 +14,9 @@ func AnalyzeToolSchema() mcp.MCPTool {
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
-					"type": "string",
-					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
+					"type":        "string",
+					"description": "Analysis mode to run against the page",
+					"enum":        []string{"dom", "performance", "accessibility", "error_clusters", "navigation_patterns", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -30,17 +31,9 @@ func AnalyzeToolSchema() mcp.MCPTool {
 					"description": "Target iframe: CSS selector, 0-based index, or \"all\" (dom, accessibility)",
 					"type":        "string",
 				},
-				"sync": map[string]any{
-					"type":        "boolean",
-					"description": "Wait for result (default: true).",
-				},
-				"wait": map[string]any{
-					"type":        "boolean",
-					"description": "Wait for result (default: true). For annotations with wait=true, blocks up to timeout_ms before falling back to correlation polling.",
-				},
 				"background": map[string]any{
 					"type":        "boolean",
-					"description": "Run in background and return a correlation_id immediately.",
+					"description": "Return immediately with correlation_id instead of waiting for result (default: false). For annotations, wait blocks up to timeout_ms before falling back to correlation polling.",
 				},
 				"operation": map[string]any{
 					"type":        "string",
@@ -71,7 +64,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"timeout_ms": map[string]any{
 					"type":        "number",
-					"description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 15000 (15s), max 600000 (10 min).",
+					"description": "Timeout ms (link_health, page_summary, annotations). For annotations with background:false (default): default 15000 (15s), max 600000 (10 min).",
 				},
 				"world": map[string]any{
 					"type":        "string",

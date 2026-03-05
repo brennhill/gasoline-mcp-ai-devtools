@@ -36,7 +36,7 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"error_clusters": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.AnalyzeErrors(h, req, args)
 	},
-	"history": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	"navigation_patterns": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.AnalyzeHistory(h, req, args)
 	},
 	"security_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -116,7 +116,8 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 
 // analyzeAliases maps shorthand names to their canonical analyze mode names.
 var analyzeAliases = map[string]string{
-	"a11y": "accessibility",
+	"a11y":    "accessibility",
+	"history": "navigation_patterns",
 }
 
 // analyzeAliasParams defines the deprecated alias parameters for the analyze tool.
@@ -142,7 +143,7 @@ func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSON
 	handler, ok := analyzeHandlers[what]
 	if !ok {
 		validModes := getValidAnalyzeModes()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes), describeCapabilitiesRecovery("analyze"))}
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 

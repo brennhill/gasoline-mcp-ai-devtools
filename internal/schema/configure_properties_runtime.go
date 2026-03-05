@@ -5,20 +5,22 @@ package schema
 func configureRuntimeProperties() map[string]any {
 	return map[string]any{
 		"buffer": map[string]any{
-			"type": "string",
-			"enum": []string{"network", "websocket", "actions", "logs", "all"},
+			"type":        "string",
+			"description": "Buffer to clear (clear). Use 'all' to reset everything",
+			"enum":        []string{"network", "websocket", "actions", "logs", "all"},
 		},
 		"tab_id": map[string]any{
 			"type":        "number",
 			"description": "Target tab ID",
 		},
 		"verif_session_action": map[string]any{
-			"type": "string",
-			"enum": []string{"capture", "compare", "list", "delete"},
+			"type":        "string",
+			"description": "Session verification operation (diff_sessions)",
+			"enum":        []string{"capture", "compare", "list", "delete"},
 		},
 		"name": map[string]any{
 			"type":        "string",
-			"description": "Snapshot name, or sequence name for save_sequence/get_sequence/delete_sequence/replay_sequence",
+			"description": "Name for recording, snapshot, or sequence (event_recording_start, diff_sessions, save/get/delete/replay_sequence)",
 		},
 		"compare_a": map[string]any{
 			"type":        "string",
@@ -46,7 +48,7 @@ func configureRuntimeProperties() map[string]any {
 		},
 		"operation": map[string]any{
 			"type":        "string",
-			"description": "Action-specific operation key",
+			"description": "Sub-operation: audit_log (analyze/report/clear), network_recording (start/stop/status), report_issue (list_templates/preview/submit)",
 			"enum":        []string{"analyze", "report", "clear", "start", "stop", "status", "list_templates", "preview", "submit"},
 		},
 		"template": map[string]any{
@@ -78,8 +80,9 @@ func configureRuntimeProperties() map[string]any {
 			"description": "Max entries to return (default 100, max 1000)",
 		},
 		"streaming_action": map[string]any{
-			"type": "string",
-			"enum": []string{"enable", "disable", "status"},
+			"type":        "string",
+			"description": "Push notification operation (streaming). Default: status",
+			"enum":        []string{"enable", "disable", "status"},
 		},
 		"events": map[string]any{
 			"type": "array",
@@ -96,8 +99,9 @@ func configureRuntimeProperties() map[string]any {
 			"description": "Min seconds between notifications",
 		},
 		"severity_min": map[string]any{
-			"type": "string",
-			"enum": []string{"info", "warning", "error"},
+			"type":        "string",
+			"description": "Min event severity for streaming notifications (streaming)",
+			"enum":        []string{"info", "warning", "error"},
 		},
 		"test_id": map[string]any{
 			"type":        "string",

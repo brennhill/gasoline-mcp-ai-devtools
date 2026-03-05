@@ -4,7 +4,7 @@ package configure
 
 var analyzeModeSpecs = map[string]modeParamSpec{
 	"dom": {
-		Hint:     "Query DOM structure and element properties",
+		Hint:     "Query DOM elements matching a CSS selector. Omit selector to dump all elements",
 		Optional: []string{"selector", "frame", "tab_id"},
 	},
 	"performance": {
@@ -17,8 +17,8 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 	"error_clusters": {
 		Hint: "Group errors by pattern to identify systemic issues",
 	},
-	"history": {
-		Hint: "Analyze navigation history patterns",
+	"navigation_patterns": {
+		Hint: "Analyze navigation history patterns and detect repeated loops or dead ends",
 	},
 	"security_audit": {
 		Hint:     "Check for credential leaks, CSP, cookie, and header risks. summary=true returns counts + top issues",
@@ -34,19 +34,19 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 	},
 	"link_validation": {
 		Hint:     "Validate specific URLs for reachability",
-		Optional: []string{"urls"},
+		Required: []string{"urls"},
 	},
 	"page_summary": {
-		Hint:     "AI-generated summary of page content and structure",
+		Hint:     "AI-generated summary of page content and structure (for metadata only use observe/page)",
 		Optional: []string{"world", "tab_id", "timeout_ms"},
 	},
 	"annotations": {
-		Hint:     "List annotations from a draw/annotation session",
-		Optional: []string{"annot_session", "wait", "timeout_ms", "url", "url_pattern"},
+		Hint:     "List annotations from a draw/annotation session. Set background:false (default) to block until annotations arrive (up to timeout_ms)",
+		Optional: []string{"annot_session", "background", "timeout_ms", "url", "url_pattern"},
 	},
 	"annotation_detail": {
 		Hint:     "Full DOM/style details for a specific annotation",
-		Optional: []string{"correlation_id"},
+		Required: []string{"correlation_id"},
 	},
 	"api_validation": {
 		Hint:     "Validate API responses against contract/schema",
@@ -57,14 +57,14 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 	},
 	"draw_session": {
 		Hint:     "Load all annotations from a saved draw session file",
-		Optional: []string{"file"},
+		Required: []string{"file"},
 	},
 	"computed_styles": {
 		Hint:     "CSS computed styles for an element",
 		Optional: []string{"selector", "frame"},
 	},
 	"forms": {
-		Hint:     "Analyze form structure, fields, and validation state",
+		Hint:     "Form structure: field names, types, and attributes",
 		Optional: []string{"selector", "frame"},
 	},
 	"form_state": {
@@ -81,11 +81,12 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 	},
 	"visual_baseline": {
 		Hint:     "Capture a baseline screenshot for visual regression",
-		Optional: []string{"name"},
+		Required: []string{"name"},
 	},
 	"visual_diff": {
 		Hint:     "Compare current page against a visual baseline",
-		Optional: []string{"baseline", "name", "threshold"},
+		Required: []string{"baseline"},
+		Optional: []string{"name", "threshold"},
 	},
 	"visual_baselines": {
 		Hint: "List all stored visual regression baselines",
@@ -95,7 +96,7 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"tab_id"},
 	},
 	"page_structure": {
-		Hint:     "Detect frameworks, routing, scroll containers, modals, shadow DOM, and meta tags",
+		Hint:     "Detect frameworks, routing, scroll containers, modals, shadow DOM, and meta tags (structural metadata; for content use page_summary)",
 		Optional: []string{"tab_id"},
 	},
 	"audit": {
