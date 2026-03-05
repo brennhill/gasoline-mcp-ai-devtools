@@ -9,11 +9,44 @@ const https = require('https')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const { spawnSync, spawn } = require('child_process')
 
 const VERSION = require('../package.json').version
 const GITHUB_REPO = 'brennhill/gasoline-agentic-browser-devtools-mcp'
 const BINARY_NAME = 'gasoline'
+
+function printPanel(title, lines = []) {
+  const border = '+----------------------------------------------------------+'
+  console.log(border)
+  const safeTitle = title.padEnd(56, ' ').slice(0, 56)
+  console.log(`| ${safeTitle} |`)
+  console.log(border)
+  for (const line of lines) {
+    const safeLine = String(line).padEnd(58, ' ').slice(0, 58)
+    console.log(`| ${safeLine} |`)
+  }
+  console.log(border)
+}
+
+function printBanner() {
+  console.log('')
+  console.log('   ____                 _ _            ')
+  console.log('  / ___| __ _ ___  ___ | (_)_ __   ___ ')
+  console.log(" | |  _ / _` / __|/ _ \\| | | '_ \\ / _ \\")
+  console.log(' | |_| | (_| \\__ \\ (_) | | | | | |  __/')
+  console.log('  \\____|\\__,_|___/\\___/|_|_|_| |_|\\___|')
+  console.log('')
+  printPanel('GASOLINE INSTALLER', [
+    'Polished setup for binary + background server + extension guidance.',
+    '',
+    'Install flow:',
+    '  1) Clean up old processes',
+    '  2) Download + verify binary',
+    '  3) Start local server',
+    '  4) Show manual extension checklist'
+  ])
+}
 
 /**
  * Kill all running gasoline processes to ensure clean upgrade
@@ -249,6 +282,8 @@ function download(url, dest) {
 }
 
 async function main() {
+  printBanner()
+
   const binDir = path.join(__dirname, '..', 'bin')
   const binaryName = getBinaryName()
   const binaryPath = path.join(binDir, binaryName)
@@ -324,6 +359,16 @@ async function main() {
   await autoStartServer(binaryPath)
 
   console.log('gasoline installed successfully!')
+  const extensionDir = path.join(os.homedir(), '.gasoline', 'extension')
+  printPanel('MANUAL BROWSER CHECKLIST', [
+    'The installer cannot click browser UI controls for you.',
+    '',
+    '1) Open chrome://extensions (or brave://extensions)',
+    '2) Enable Developer mode',
+    `3) Click Load unpacked and select: ${extensionDir}`,
+    '4) Pin Gasoline in the toolbar (recommended)',
+    '5) Open popup and click Track This Tab'
+  ])
   return
 }
 

@@ -10,21 +10,21 @@ import subprocess
 from . import config
 
 
-def generate_default_config():
+def generate_default_config(binary_path="gasoline-agentic-browser"):
     """Generate default MCP config for gasoline."""
     return {
         "mcpServers": {
             config.MCP_SERVER_NAME: {
-                "command": "gasoline-agentic-browser",
+                "command": binary_path,
                 "args": [],
             },
         },
     }
 
 
-def build_mcp_entry(env_vars=None):
+def build_mcp_entry(env_vars=None, binary_path="gasoline-agentic-browser"):
     """Build the MCP entry JSON string for CLI-based install."""
-    entry = {"command": "gasoline-agentic-browser", "args": []}
+    entry = {"command": binary_path, "args": []}
     if env_vars:
         entry["env"] = dict(env_vars)
     return json.dumps(entry)
@@ -34,7 +34,8 @@ def _install_via_cli(definition, options):
     """Install to a CLI-type client (e.g. Claude Code)."""
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
-    entry_json = build_mcp_entry(env_vars)
+    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
+    entry_json = build_mcp_entry(env_vars, binary_path=binary_path)
     cmd = definition["detectCommand"]
     args = list(definition["installArgs"])
 
@@ -84,6 +85,7 @@ def _install_via_file(definition, options):
     """Install to a file-type client (config file write)."""
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
+    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
     cfg_path = config.get_client_config_path(definition)
 
     if not cfg_path:
@@ -95,14 +97,14 @@ def _install_via_file(definition, options):
             "message": "No config path for this platform",
         }
 
-    gasoline_entry = {"command": "gasoline-agentic-browser", "args": []}
+    gasoline_entry = {"command": binary_path, "args": []}
 
     read_result = config.read_config_file(cfg_path)
     if read_result["valid"]:
         config_data = read_result["data"]
         is_new = False
     else:
-        config_data = generate_default_config()
+        config_data = generate_default_config(binary_path=binary_path)
         is_new = True
 
     merged = config.merge_gasoline_config(config_data, gasoline_entry, env_vars)
@@ -139,6 +141,7 @@ def execute_install(options=None):
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
     verbose = options.get("verbose", False)
+    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
 
     clients = (
         options["_clientOverrides"]
@@ -155,7 +158,11 @@ def execute_install(options=None):
 
     for definition in clients:
         try:
-            install_result = install_to_client(definition, {"dryRun": dry_run, "envVars": env_vars})
+            install_result = install_to_client(definition, {
+                "dryRun": dry_run,
+                "envVars": env_vars,
+                "binaryPath": binary_path,
+            })
 
             if install_result["success"]:
                 result["installed"].append(install_result)

@@ -19,17 +19,19 @@ const {
   readConfigFile,
   writeConfigFile,
   mergeGassolineConfig,
+  resolveManagedBinaryPath,
 } = require('./config');
 
 /**
  * Generate default MCP config for gasoline
  * @returns {Object} Default gasoline MCP config
  */
-function generateDefaultConfig() {
+function generateDefaultConfig(options = {}) {
+  const { binaryCommand = resolveManagedBinaryPath() } = options;
   return {
     mcpServers: {
       [MCP_SERVER_NAME]: {
-        command: 'gasoline-agentic-browser',
+        command: binaryCommand,
         args: [],
       },
     },
@@ -41,8 +43,9 @@ function generateDefaultConfig() {
  * @param {Object} [envVars] Optional env vars
  * @returns {string} JSON string of the gasoline MCP entry
  */
-function buildMcpEntry(envVars = {}) {
-  const entry = { command: 'gasoline-agentic-browser', args: [] };
+function buildMcpEntry(envVars = {}, options = {}) {
+  const { binaryCommand = resolveManagedBinaryPath() } = options;
+  const entry = { command: binaryCommand, args: [] };
   if (envVars && Object.keys(envVars).length > 0) {
     entry.env = envVars;
   }
@@ -56,8 +59,8 @@ function buildMcpEntry(envVars = {}) {
  * @returns {Object} {success, name, method, message}
  */
 function installViaCli(def, options) {
-  const { dryRun = false, envVars = {} } = options;
-  const entryJson = buildMcpEntry(envVars);
+  const { dryRun = false, envVars = {}, binaryCommand = resolveManagedBinaryPath() } = options;
+  const entryJson = buildMcpEntry(envVars, { binaryCommand });
   const cmd = def.detectCommand;
   const args = [...def.installArgs];
 
@@ -109,7 +112,7 @@ function installViaCli(def, options) {
  * @returns {Object} {success, name, method, path, isNew, message}
  */
 function installViaFile(def, options) {
-  const { dryRun = false, envVars = {} } = options;
+  const { dryRun = false, envVars = {}, binaryCommand = resolveManagedBinaryPath() } = options;
   const cfgPath = getClientConfigPath(def);
 
   if (!cfgPath) {
@@ -127,9 +130,9 @@ function installViaFile(def, options) {
   // Build entry in the right format for this client
   let gasolineEntry;
   if (def.buildEntry) {
-    gasolineEntry = def.buildEntry(envVars);
+    gasolineEntry = def.buildEntry(envVars, binaryCommand);
   } else {
-    gasolineEntry = { command: 'gasoline-agentic-browser', args: [] };
+    gasolineEntry = { command: binaryCommand, args: [] };
     if (envVars && Object.keys(envVars).length > 0) {
       gasolineEntry.env = envVars;
     }
@@ -188,7 +191,13 @@ function installToClient(def, options) {
  * @returns {Object} {success, installed, errors, total}
  */
 function executeInstall(options = {}) {
-  const { dryRun = false, envVars = {}, verbose = false, targetTool } = options;
+  const {
+    dryRun = false,
+    envVars = {},
+    verbose = false,
+    targetTool,
+    binaryCommand = resolveManagedBinaryPath(),
+  } = options;
 
   // Targeted install: filter to a single client by alias
   let clients;
@@ -219,7 +228,7 @@ function executeInstall(options = {}) {
 
   for (const def of clients) {
     try {
-      const installResult = installToClient(def, { dryRun, envVars });
+      const installResult = installToClient(def, { dryRun, envVars, binaryCommand });
 
       if (installResult.success) {
         result.installed.push(installResult);

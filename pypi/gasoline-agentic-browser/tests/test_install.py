@@ -25,6 +25,10 @@ class TestGenerateDefaultConfig(unittest.TestCase):
         self.assertIn(MCP_SERVER_NAME, cfg["mcpServers"])
         self.assertEqual(cfg["mcpServers"][MCP_SERVER_NAME]["command"], "gasoline-agentic-browser")
 
+    def test_honors_binary_path_override(self):
+        cfg = generate_default_config(binary_path="/tmp/gasoline-bin")
+        self.assertEqual(cfg["mcpServers"][MCP_SERVER_NAME]["command"], "/tmp/gasoline-bin")
+
 
 class TestBuildMcpEntry(unittest.TestCase):
     def test_returns_json_string(self):
@@ -37,6 +41,11 @@ class TestBuildMcpEntry(unittest.TestCase):
         parsed = json.loads(entry)
         self.assertEqual(parsed["env"]["DEBUG"], "1")
 
+    def test_honors_binary_path_override(self):
+        entry = build_mcp_entry(binary_path="/tmp/gasoline-bin")
+        parsed = json.loads(entry)
+        self.assertEqual(parsed["command"], "/tmp/gasoline-bin")
+
 
 class TestInstallToClient(unittest.TestCase):
     def test_creates_new_file_config(self):
@@ -48,13 +57,14 @@ class TestInstallToClient(unittest.TestCase):
                 "configPath": {"all": cfg_path},
                 "detectDir": {"all": tmp},
             }
-            result = install_to_client(d, {"dryRun": False, "envVars": {}})
+            result = install_to_client(d, {"dryRun": False, "envVars": {}, "binaryPath": "/tmp/gasoline-bin"})
             self.assertTrue(result["success"])
             self.assertTrue(result["isNew"])
 
             with open(cfg_path) as f:
                 written = json.load(f)
             self.assertIn(MCP_SERVER_NAME, written["mcpServers"])
+            self.assertEqual(written["mcpServers"][MCP_SERVER_NAME]["command"], "/tmp/gasoline-bin")
         finally:
             shutil.rmtree(tmp)
 
