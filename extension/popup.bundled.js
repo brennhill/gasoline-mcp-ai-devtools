@@ -24,6 +24,7 @@
   }
 
   // extension/lib/constants.js
+  var DEFAULT_SERVER_URL = "http://localhost:7890";
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
@@ -251,6 +252,12 @@
   var START_LABEL = "Record screen";
   var STOP_LABEL = "Stop recording";
   var HIGHLIGHT_LABEL = "\u25CF \xAB Click here to record";
+  var AUDIO_LABELS = {
+    "": "Video only",
+    tab: "Video + tab audio",
+    mic: "Video + microphone",
+    both: "Video + tab + mic"
+  };
   function applyRecordHighlight(els) {
     const section = els.row.closest(".section");
     if (section)
@@ -294,6 +301,43 @@
       clearInterval(state.timerInterval);
       state.timerInterval = null;
     }
+  }
+  function describePendingRecording(pending) {
+    const parts = [];
+    if (pending.name)
+      parts.push(`Name: ${pending.name}`);
+    if (typeof pending.fps === "number")
+      parts.push(`FPS: ${pending.fps}`);
+    const audioLabel = AUDIO_LABELS[pending.audio ?? ""] ?? AUDIO_LABELS[""];
+    parts.push(`Mode: ${audioLabel}`);
+    return parts.join(" \xB7 ");
+  }
+  function setApprovalPendingState(els, approvalEls, state, pending) {
+    const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording);
+    if (approvalPending) {
+      if (approvalEls.detail && pending)
+        approvalEls.detail.textContent = describePendingRecording(pending);
+      if (approvalEls.card)
+        approvalEls.card.style.display = "block";
+      els.row.classList.add("is-disabled");
+      els.row.setAttribute("aria-disabled", "true");
+      if (els.optionsEl)
+        els.optionsEl.style.display = "none";
+      return;
+    }
+    if (approvalEls.detail)
+      approvalEls.detail.textContent = "";
+    if (approvalEls.card)
+      approvalEls.card.style.display = "none";
+    els.row.classList.remove("is-disabled");
+    els.row.removeAttribute("aria-disabled");
+    if (!state.isRecording && els.optionsEl)
+      els.optionsEl.style.display = "block";
+  }
+  function sendRecordingGestureDecision(type) {
+    chrome.runtime.sendMessage({ type }, () => {
+      void chrome.runtime.lastError;
+    });
   }
   function showSavedLink(saveInfoEl, displayName, filePath) {
     saveInfoEl.textContent = "Saved: ";
@@ -439,7 +483,33 @@
       optionsEl: document.getElementById("record-options"),
       saveInfoEl: document.getElementById("record-save-info")
     };
+    const approvalEls = {
+      card: document.getElementById("record-approval-card"),
+      detail: document.getElementById("record-approval-detail"),
+      approveBtn: document.getElementById("record-approve-btn"),
+      denyBtn: document.getElementById("record-deny-btn")
+    };
     const state = { isRecording: false, timerInterval: null };
+    let pendingRecordingIntent = null;
+    const updatePendingRecording = (pendingValue) => {
+      const pending = pendingValue;
+      if (pending?.highlight && !state.isRecording) {
+        applyRecordHighlight(els);
+        pendingRecordingIntent = null;
+        setApprovalPendingState(els, approvalEls, state, null);
+        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+        return;
+      }
+      pendingRecordingIntent = pending && !pending.highlight ? pending : null;
+      if (!pendingRecordingIntent && !state.isRecording)
+        removeRecordHighlight(els);
+      setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+    };
+    const clearPendingRecordingIntent = () => {
+      pendingRecordingIntent = null;
+      setApprovalPendingState(els, approvalEls, state, null);
+      chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+    };
     row.style.visibility = "hidden";
     chrome.storage.local.get(StorageKey.RECORDING, (result) => {
       const rec = result[StorageKey.RECORDING];
@@ -451,11 +521,7 @@
       row.style.visibility = "visible";
       chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
         void chrome.runtime.lastError;
-        const pending = pendingResult[StorageKey.PENDING_RECORDING];
-        if (pending?.highlight && !state.isRecording) {
-          applyRecordHighlight(els);
-          chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
-        }
+        updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING]);
       });
     });
     chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -467,7 +533,22 @@
         } else {
           showIdle(els, state);
         }
+        setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+        return;
       }
+      if (areaName === "local" && changes[StorageKey.PENDING_RECORDING]) {
+        updatePendingRecording(changes[StorageKey.PENDING_RECORDING].newValue);
+      }
+    });
+    approvalEls.approveBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
+      sendRecordingGestureDecision("RECORDING_GESTURE_GRANTED");
+      clearPendingRecordingIntent();
+    });
+    approvalEls.denyBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
+      sendRecordingGestureDecision("RECORDING_GESTURE_DENIED");
+      clearPendingRecordingIntent();
     });
     chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
       const intent = result[StorageKey.PENDING_MIC_RECORDING];
@@ -502,6 +583,10 @@
     });
     row.addEventListener("click", () => {
       console.log("[Gasoline REC] Popup: record row clicked, isRecording:", state.isRecording);
+      if (pendingRecordingIntent && !state.isRecording) {
+        console.log("[Gasoline REC] Popup: record row click ignored while approval is pending");
+        return;
+      }
       removeRecordHighlight(els);
       if (state.isRecording) {
         handleStopClick(els, state);
@@ -558,6 +643,40 @@
     });
   }
 
+  // extension/lib/daemon-http.js
+  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  function buildDaemonHeaders(options = {}) {
+    const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
+    const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
+    const headers = {
+      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+    };
+    if (contentType !== null) {
+      headers["Content-Type"] = contentType;
+    }
+    if (normalizedVersion) {
+      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+    }
+    return {
+      ...headers,
+      ...additionalHeaders
+    };
+  }
+  function buildDaemonJSONRequestInit(payload, options = {}) {
+    const { method = "POST", signal, ...headerOptions } = options;
+    return {
+      method,
+      headers: buildDaemonHeaders(headerOptions),
+      body: JSON.stringify(payload),
+      ...signal ? { signal } : {}
+    };
+  }
+  async function postDaemonJSON(url, payload, options = {}) {
+    const { timeoutMs, signal, ...requestOptions } = options;
+    const effectiveSignal = signal || (typeof timeoutMs === "number" && timeoutMs > 0 && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : void 0);
+    return fetch(url, buildDaemonJSONRequestInit(payload, { ...requestOptions, signal: effectiveSignal }));
+  }
+
   // extension/popup/action-recording.js
   var START_LABEL2 = "Record action workflow";
   var STOP_LABEL2 = "Stop recording";
@@ -600,44 +719,49 @@
     return new Promise((resolve) => {
       chrome.storage.local.get(StorageKey.SERVER_URL, (result) => {
         void chrome.runtime.lastError;
-        resolve(result[StorageKey.SERVER_URL] || "http://localhost:7890");
+        resolve(result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL);
       });
     });
+  }
+  function getConfigureError(data) {
+    const message = data.error?.message;
+    return typeof message === "string" && message.length > 0 ? message : null;
+  }
+  function extractRecordingID(data) {
+    const text = data.result?.content?.[0]?.text ?? "";
+    const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/);
+    return idMatch?.[1] ?? null;
+  }
+  async function callConfigureFromPopup(argumentsPayload) {
+    const serverUrl = await getServerUrl();
+    const resp = await postDaemonJSON(`${serverUrl}/mcp`, {
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method: "tools/call",
+      params: {
+        name: "configure",
+        arguments: argumentsPayload
+      }
+    });
+    if (!resp.ok) {
+      throw new Error(`Server error: HTTP ${resp.status}`);
+    }
+    return await resp.json();
   }
   async function startActionRecording(els, state) {
     els.label.textContent = "Starting...";
     try {
-      const serverUrl = await getServerUrl();
-      const resp = await fetch(`${serverUrl}/mcp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Gasoline-Client": "gasoline-extension"
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: Date.now(),
-          method: "tools/call",
-          params: {
-            name: "configure",
-            arguments: { what: "event_recording_start", name: `workflow-${Date.now()}` }
-          }
-        })
+      const data = await callConfigureFromPopup({
+        what: "event_recording_start",
+        name: `workflow-${Date.now()}`
       });
-      if (!resp.ok) {
+      const configureError = getConfigureError(data);
+      if (configureError) {
         showIdle2(els, state);
-        showError(els, `Server error: HTTP ${resp.status}`);
+        showError(els, configureError);
         return;
       }
-      const data = await resp.json();
-      if (data.error) {
-        showIdle2(els, state);
-        showError(els, data.error.message ?? "Unknown error");
-        return;
-      }
-      const text = data.result?.content?.[0]?.text ?? "";
-      const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/);
-      state.recordingId = idMatch?.[1] ?? null;
+      state.recordingId = extractRecordingID(data);
       state.startTime = Date.now();
       chrome.storage.local.set({
         gasoline_action_recording: {
@@ -657,31 +781,13 @@
   async function stopActionRecording(els, state) {
     els.label.textContent = "Stopping...";
     try {
-      const serverUrl = await getServerUrl();
-      const resp = await fetch(`${serverUrl}/mcp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Gasoline-Client": "gasoline-extension"
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: Date.now(),
-          method: "tools/call",
-          params: {
-            name: "configure",
-            arguments: { what: "event_recording_stop", recording_id: state.recordingId ?? "" }
-          }
-        })
+      const data = await callConfigureFromPopup({
+        what: "event_recording_stop",
+        recording_id: state.recordingId ?? ""
       });
-      if (!resp.ok) {
-        showIdle2(els, state);
-        showError(els, `Server error: HTTP ${resp.status}`);
-        return;
-      }
-      const data = await resp.json();
-      if (data.error) {
-        showError(els, data.error.message ?? "Unknown error");
+      const configureError = getConfigureError(data);
+      if (configureError) {
+        showError(els, configureError);
       }
       chrome.storage.local.remove("gasoline_action_recording", () => {
         void chrome.runtime.lastError;

@@ -310,6 +310,67 @@
         margin-bottom: 16px;
       }
 
+      .record-approval-card {
+        margin-top: 8px;
+        padding: 10px;
+        border: 1px solid rgba(210, 153, 34, 0.55);
+        border-radius: 6px;
+        background: rgba(210, 153, 34, 0.1);
+      }
+
+      .record-approval-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #f2cc60;
+      }
+
+      .record-approval-detail {
+        margin-top: 4px;
+        font-size: 11px;
+        color: #c9d1d9;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+
+      .record-approval-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .record-approval-actions button {
+        width: auto;
+        flex: 1;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+
+      .record-approve-btn {
+        color: #3fb950;
+        border-color: rgba(63, 185, 80, 0.55);
+        background: rgba(63, 185, 80, 0.08);
+      }
+
+      .record-approve-btn:hover {
+        background: rgba(63, 185, 80, 0.16);
+      }
+
+      .record-deny-btn {
+        color: #f85149;
+        border-color: rgba(248, 81, 73, 0.55);
+        background: rgba(248, 81, 73, 0.08);
+      }
+
+      .record-deny-btn:hover {
+        background: rgba(248, 81, 73, 0.16);
+      }
+
+      .record-row.is-disabled {
+        opacity: 0.58;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
       .health-error {
         background: rgba(248, 81, 73, 0.1);
         color: #f85149;

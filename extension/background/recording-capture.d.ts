@@ -11,7 +11,7 @@ export declare function ensureOffscreenDocument(): Promise<void>;
 export declare function getStreamIdWithRecovery(tabId: number): Promise<string>;
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to click the Gasoline icon.
+ * Shows a toast prompting the user to open the Gasoline popup and approve.
  */
 export declare function requestRecordingGesture(tab: chrome.tabs.Tab, name: string, fps: number, audio: string, mediaType: string): Promise<{
     status: string;

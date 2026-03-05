@@ -26,9 +26,31 @@ interface RecordingState {
   timerInterval: ReturnType<typeof setInterval> | null
 }
 
+interface PendingRecordingIntent {
+  highlight?: boolean
+  name?: string
+  fps?: number
+  audio?: string
+  tabId?: number
+  url?: string
+}
+
+interface ApprovalElements {
+  card: HTMLElement | null
+  detail: HTMLElement | null
+  approveBtn: HTMLButtonElement | null
+  denyBtn: HTMLButtonElement | null
+}
+
 const START_LABEL = 'Record screen'
 const STOP_LABEL = 'Stop recording'
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record'
+const AUDIO_LABELS: Record<string, string> = {
+  '': 'Video only',
+  tab: 'Video + tab audio',
+  mic: 'Video + microphone',
+  both: 'Video + tab + mic'
+}
 
 function applyRecordHighlight(els: RecordingElements): void {
   const section = els.row.closest('.section')
@@ -73,6 +95,43 @@ function showIdle(els: RecordingElements, state: RecordingState): void {
     clearInterval(state.timerInterval)
     state.timerInterval = null
   }
+}
+
+function describePendingRecording(pending: PendingRecordingIntent): string {
+  const parts: string[] = []
+  if (pending.name) parts.push(`Name: ${pending.name}`)
+  if (typeof pending.fps === 'number') parts.push(`FPS: ${pending.fps}`)
+  const audioLabel = AUDIO_LABELS[pending.audio ?? ''] ?? AUDIO_LABELS['']
+  parts.push(`Mode: ${audioLabel}`)
+  return parts.join(' \u00b7 ')
+}
+
+function setApprovalPendingState(
+  els: RecordingElements,
+  approvalEls: ApprovalElements,
+  state: RecordingState,
+  pending: PendingRecordingIntent | null
+): void {
+  const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording)
+  if (approvalPending) {
+    if (approvalEls.detail && pending) approvalEls.detail.textContent = describePendingRecording(pending)
+    if (approvalEls.card) approvalEls.card.style.display = 'block'
+    els.row.classList.add('is-disabled')
+    els.row.setAttribute('aria-disabled', 'true')
+    if (els.optionsEl) els.optionsEl.style.display = 'none'
+    return
+  }
+  if (approvalEls.detail) approvalEls.detail.textContent = ''
+  if (approvalEls.card) approvalEls.card.style.display = 'none'
+  els.row.classList.remove('is-disabled')
+  els.row.removeAttribute('aria-disabled')
+  if (!state.isRecording && els.optionsEl) els.optionsEl.style.display = 'block'
+}
+
+function sendRecordingGestureDecision(type: 'RECORDING_GESTURE_GRANTED' | 'RECORDING_GESTURE_DENIED'): void {
+  chrome.runtime.sendMessage({ type }, () => {
+    void chrome.runtime.lastError
+  })
 }
 
 function showSavedLink(saveInfoEl: HTMLElement, displayName: string, filePath: string): void {
@@ -236,8 +295,35 @@ export function setupRecordingUI(): void {
     optionsEl: document.getElementById('record-options'),
     saveInfoEl: document.getElementById('record-save-info')
   }
+  const approvalEls: ApprovalElements = {
+    card: document.getElementById('record-approval-card'),
+    detail: document.getElementById('record-approval-detail'),
+    approveBtn: document.getElementById('record-approve-btn') as HTMLButtonElement | null,
+    denyBtn: document.getElementById('record-deny-btn') as HTMLButtonElement | null
+  }
 
   const state: RecordingState = { isRecording: false, timerInterval: null }
+  let pendingRecordingIntent: PendingRecordingIntent | null = null
+
+  const updatePendingRecording = (pendingValue: unknown): void => {
+    const pending = pendingValue as PendingRecordingIntent | undefined
+    if (pending?.highlight && !state.isRecording) {
+      applyRecordHighlight(els)
+      pendingRecordingIntent = null
+      setApprovalPendingState(els, approvalEls, state, null)
+      chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
+      return
+    }
+    pendingRecordingIntent = pending && !pending.highlight ? pending : null
+    if (!pendingRecordingIntent && !state.isRecording) removeRecordHighlight(els)
+    setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent)
+  }
+
+  const clearPendingRecordingIntent = (): void => {
+    pendingRecordingIntent = null
+    setApprovalPendingState(els, approvalEls, state, null)
+    chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
+  }
 
   row.style.visibility = 'hidden'
 
@@ -255,11 +341,7 @@ export function setupRecordingUI(): void {
       // Check for highlight request from hover launcher
       chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult: Record<string, unknown>) => {
         void chrome.runtime.lastError
-        const pending = pendingResult[StorageKey.PENDING_RECORDING] as { highlight?: boolean } | undefined
-        if (pending?.highlight && !state.isRecording) {
-          applyRecordHighlight(els)
-          chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
-        }
+        updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING])
       })
     }
   )
@@ -275,7 +357,24 @@ export function setupRecordingUI(): void {
       } else {
         showIdle(els, state)
       }
+      setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent)
+      return
     }
+    if (areaName === 'local' && changes[StorageKey.PENDING_RECORDING]) {
+      updatePendingRecording(changes[StorageKey.PENDING_RECORDING]!.newValue)
+    }
+  })
+
+  approvalEls.approveBtn?.addEventListener('click', (event) => {
+    event.preventDefault()
+    sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED')
+    clearPendingRecordingIntent()
+  })
+
+  approvalEls.denyBtn?.addEventListener('click', (event) => {
+    event.preventDefault()
+    sendRecordingGestureDecision('RECORDING_GESTURE_DENIED')
+    clearPendingRecordingIntent()
   })
 
   chrome.storage.local.get(
@@ -317,6 +416,10 @@ export function setupRecordingUI(): void {
 
   row.addEventListener('click', () => {
     console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording)
+    if (pendingRecordingIntent && !state.isRecording) {
+      console.log('[Gasoline REC] Popup: record row click ignored while approval is pending')
+      return
+    }
     removeRecordHighlight(els)
     if (state.isRecording) {
       handleStopClick(els, state)

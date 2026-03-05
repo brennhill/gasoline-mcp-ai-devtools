@@ -13,6 +13,12 @@ import { errorMessage } from '../lib/error-utils.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
+const AUDIO_LABELS = {
+    '': 'Video only',
+    tab: 'Video + tab audio',
+    mic: 'Video + microphone',
+    both: 'Video + tab + mic'
+};
 function applyRecordHighlight(els) {
     const section = els.row.closest('.section');
     if (section)
@@ -57,6 +63,43 @@ function showIdle(els, state) {
         clearInterval(state.timerInterval);
         state.timerInterval = null;
     }
+}
+function describePendingRecording(pending) {
+    const parts = [];
+    if (pending.name)
+        parts.push(`Name: ${pending.name}`);
+    if (typeof pending.fps === 'number')
+        parts.push(`FPS: ${pending.fps}`);
+    const audioLabel = AUDIO_LABELS[pending.audio ?? ''] ?? AUDIO_LABELS[''];
+    parts.push(`Mode: ${audioLabel}`);
+    return parts.join(' \u00b7 ');
+}
+function setApprovalPendingState(els, approvalEls, state, pending) {
+    const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording);
+    if (approvalPending) {
+        if (approvalEls.detail && pending)
+            approvalEls.detail.textContent = describePendingRecording(pending);
+        if (approvalEls.card)
+            approvalEls.card.style.display = 'block';
+        els.row.classList.add('is-disabled');
+        els.row.setAttribute('aria-disabled', 'true');
+        if (els.optionsEl)
+            els.optionsEl.style.display = 'none';
+        return;
+    }
+    if (approvalEls.detail)
+        approvalEls.detail.textContent = '';
+    if (approvalEls.card)
+        approvalEls.card.style.display = 'none';
+    els.row.classList.remove('is-disabled');
+    els.row.removeAttribute('aria-disabled');
+    if (!state.isRecording && els.optionsEl)
+        els.optionsEl.style.display = 'block';
+}
+function sendRecordingGestureDecision(type) {
+    chrome.runtime.sendMessage({ type }, () => {
+        void chrome.runtime.lastError;
+    });
 }
 function showSavedLink(saveInfoEl, displayName, filePath) {
     saveInfoEl.textContent = 'Saved: ';
@@ -210,7 +253,33 @@ export function setupRecordingUI() {
         optionsEl: document.getElementById('record-options'),
         saveInfoEl: document.getElementById('record-save-info')
     };
+    const approvalEls = {
+        card: document.getElementById('record-approval-card'),
+        detail: document.getElementById('record-approval-detail'),
+        approveBtn: document.getElementById('record-approve-btn'),
+        denyBtn: document.getElementById('record-deny-btn')
+    };
     const state = { isRecording: false, timerInterval: null };
+    let pendingRecordingIntent = null;
+    const updatePendingRecording = (pendingValue) => {
+        const pending = pendingValue;
+        if (pending?.highlight && !state.isRecording) {
+            applyRecordHighlight(els);
+            pendingRecordingIntent = null;
+            setApprovalPendingState(els, approvalEls, state, null);
+            chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+            return;
+        }
+        pendingRecordingIntent = pending && !pending.highlight ? pending : null;
+        if (!pendingRecordingIntent && !state.isRecording)
+            removeRecordHighlight(els);
+        setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+    };
+    const clearPendingRecordingIntent = () => {
+        pendingRecordingIntent = null;
+        setApprovalPendingState(els, approvalEls, state, null);
+        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+    };
     row.style.visibility = 'hidden';
     chrome.storage.local.get(StorageKey.RECORDING, (result) => {
         const rec = result[StorageKey.RECORDING];
@@ -223,11 +292,7 @@ export function setupRecordingUI() {
         // Check for highlight request from hover launcher
         chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
             void chrome.runtime.lastError;
-            const pending = pendingResult[StorageKey.PENDING_RECORDING];
-            if (pending?.highlight && !state.isRecording) {
-                applyRecordHighlight(els);
-                chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
-            }
+            updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING]);
         });
     });
     chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -240,7 +305,22 @@ export function setupRecordingUI() {
             else {
                 showIdle(els, state);
             }
+            setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+            return;
         }
+        if (areaName === 'local' && changes[StorageKey.PENDING_RECORDING]) {
+            updatePendingRecording(changes[StorageKey.PENDING_RECORDING].newValue);
+        }
+    });
+    approvalEls.approveBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED');
+        clearPendingRecordingIntent();
+    });
+    approvalEls.denyBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        sendRecordingGestureDecision('RECORDING_GESTURE_DENIED');
+        clearPendingRecordingIntent();
     });
     chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
         const intent = result[StorageKey.PENDING_MIC_RECORDING];
@@ -276,6 +356,10 @@ export function setupRecordingUI() {
     });
     row.addEventListener('click', () => {
         console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording);
+        if (pendingRecordingIntent && !state.isRecording) {
+            console.log('[Gasoline REC] Popup: record row click ignored while approval is pending');
+            return;
+        }
         removeRecordHighlight(els);
         if (state.isRecording) {
             handleStopClick(els, state);

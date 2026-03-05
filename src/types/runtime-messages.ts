@@ -231,6 +231,8 @@ export type BackgroundMessage =
   | PushChatMessage
   | ScreenRecordingStartMessage
   | ScreenRecordingStopMessage
+  | RecordingGestureGrantedMessage
+  | RecordingGestureDeniedMessage
   | OpenPopupForRecordingMessage
 
 /**
@@ -276,6 +278,20 @@ interface ScreenRecordingStartMessage {
  */
 interface ScreenRecordingStopMessage {
   readonly type: 'screen_recording_stop'
+}
+
+/**
+ * Popup approval for MCP-initiated screen recording request.
+ */
+interface RecordingGestureGrantedMessage {
+  readonly type: 'RECORDING_GESTURE_GRANTED'
+}
+
+/**
+ * Popup denial for MCP-initiated screen recording request.
+ */
+interface RecordingGestureDeniedMessage {
+  readonly type: 'RECORDING_GESTURE_DENIED'
 }
 
 /**

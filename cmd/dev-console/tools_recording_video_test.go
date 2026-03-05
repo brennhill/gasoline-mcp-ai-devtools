@@ -543,8 +543,8 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 		t.Fatalf("screen_recording_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
 	}
 	userPrompt, _ := startData["user_prompt"].(string)
-	if !strings.Contains(strings.ToLower(userPrompt), "click the gasoline icon") {
-		t.Fatalf("screen_recording_start user_prompt = %q, want guidance to click the Gasoline icon", userPrompt)
+	if !strings.Contains(strings.ToLower(userPrompt), "open the gasoline popup") {
+		t.Fatalf("screen_recording_start user_prompt = %q, want guidance to open popup and approve", userPrompt)
 	}
 	if int(startData["fps"].(float64)) != 60 {
 		t.Fatalf("screen_recording_start fps = %v, want clamped 60", startData["fps"])
