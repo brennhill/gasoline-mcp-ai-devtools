@@ -9,6 +9,21 @@ begin_category "29" "Framework Selector Resilience" "4"
 
 FRAMEWORK_FIXTURE_BUILD_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/build-framework-fixtures.mjs"
 FRAMEWORK_FIXTURES_READY=false
+FRAMEWORK_RESILIENCE_FULL_REPEATS="${FRAMEWORK_RESILIENCE_FULL_REPEATS:-1}"
+FRAMEWORK_SELECTOR_REFRESH_CYCLES="${FRAMEWORK_SELECTOR_REFRESH_CYCLES:-3}"
+
+normalize_positive_int() {
+    local raw="$1"
+    local fallback="$2"
+    if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -ge 1 ]; then
+        echo "$raw"
+        return 0
+    fi
+    echo "$fallback"
+}
+
+FRAMEWORK_RESILIENCE_FULL_REPEATS="$(normalize_positive_int "$FRAMEWORK_RESILIENCE_FULL_REPEATS" "1")"
+FRAMEWORK_SELECTOR_REFRESH_CYCLES="$(normalize_positive_int "$FRAMEWORK_SELECTOR_REFRESH_CYCLES" "3")"
 
 ensure_framework_fixtures() {
     if [ "$FRAMEWORK_FIXTURES_READY" = "true" ]; then
@@ -132,8 +147,7 @@ wait_for_text_contains() {
     local poll_sleep="${4:-0.5}"
     local context="${5:-state check}"
 
-    local poll
-    for poll in $(seq 1 "$max_polls"); do
+    for _ in $(seq 1 "$max_polls"); do
         interact_and_wait "get_text" "{\"action\":\"get_text\",\"selector\":\"${selector}\",\"reason\":\"${context}\"}" 12
         if ! interact_failed "$INTERACT_RESULT" && echo "$INTERACT_RESULT" | grep -q "$expected_text"; then
             return 0
@@ -336,67 +350,72 @@ exercise_submit_roundtrip() {
 run_framework_resilience_test() {
     local framework_key="$1"
     local expected_framework_name="$2"
+    local full_repeat
     local page_url
     page_url="$(framework_url "$framework_key")"
-    local previous_token=""
 
-    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"${page_url}\",\"reason\":\"Framework smoke: open ${framework_key} fixture\"}" 30
-    if interact_failed "$INTERACT_RESULT"; then
-        fail "Navigate to ${framework_key} fixture failed. Result: $(truncate "$INTERACT_RESULT" 240)"
-        return
-    fi
+    for full_repeat in $(seq 1 "$FRAMEWORK_RESILIENCE_FULL_REPEATS"); do
+        local previous_token=""
+        interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"${page_url}\",\"reason\":\"Framework smoke: open ${framework_key} fixture (run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS})\"}" 30
+        if interact_failed "$INTERACT_RESULT"; then
+            fail "Navigate to ${framework_key} fixture failed on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Result: $(truncate "$INTERACT_RESULT" 240)"
+            return
+        fi
 
-    local analyze_response analyze_text
-    analyze_response=$(call_tool "analyze" '{"what":"page_structure"}')
-    analyze_text=$(extract_content_text "$analyze_response")
-    if [ -z "$analyze_text" ]; then
-        fail "analyze(page_structure) returned empty content for ${framework_key}."
-        return
-    fi
-    if ! echo "$analyze_text" | grep -q "\"name\":\"${expected_framework_name}\""; then
-        fail "Framework detection mismatch for ${framework_key}. Expected '${expected_framework_name}'. Result: $(truncate "$analyze_text" 240)"
-        return
-    fi
-
-    ensure_hydrated_ready "$framework_key" || return
-    dismiss_overlay_if_present "$framework_key" || return
-    exercise_async_content_flow "$framework_key" || return
-    exercise_virtualized_content_flow "$framework_key" || return
-    exercise_stale_handle_recovery "$framework_key" || return
-
-    for iteration in 1 2 3; do
-        if [ "$iteration" -gt 1 ]; then
-            interact_and_wait "refresh" "{\"action\":\"refresh\",\"reason\":\"Framework smoke: refresh ${framework_key} iteration ${iteration}\"}" 30
-            if interact_failed "$INTERACT_RESULT"; then
-                fail "Refresh failed for ${framework_key} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
-                return
-            fi
+        local analyze_response analyze_text
+        analyze_response=$(call_tool "analyze" '{"what":"page_structure"}')
+        analyze_text=$(extract_content_text "$analyze_response")
+        if [ -z "$analyze_text" ]; then
+            fail "analyze(page_structure) returned empty content for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}."
+            return
+        fi
+        if ! echo "$analyze_text" | grep -q "\"name\":\"${expected_framework_name}\""; then
+            fail "Framework detection mismatch for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Expected '${expected_framework_name}'. Result: $(truncate "$analyze_text" 240)"
+            return
         fi
 
         ensure_hydrated_ready "$framework_key" || return
         dismiss_overlay_if_present "$framework_key" || return
+        exercise_async_content_flow "$framework_key" || return
+        exercise_virtualized_content_flow "$framework_key" || return
+        exercise_stale_handle_recovery "$framework_key" || return
 
-        interact_and_wait "get_text" '{"action":"get_text","selector":"#selector-token","reason":"Read selector churn token"}'
-        if interact_failed "$INTERACT_RESULT"; then
-            fail "Token read failed for ${framework_key} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
-            return
-        fi
-        local token
-        token="$(extract_token_text "$INTERACT_RESULT")"
-        if [ -z "$token" ]; then
-            fail "Missing selector token on ${framework_key} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
-            return
-        fi
-        if [ "$iteration" -gt 1 ] && [ "$token" = "$previous_token" ]; then
-            fail "Selector token did not change after refresh for ${framework_key}. token=${token}"
-            return
-        fi
-        previous_token="$token"
+        local iteration
+        for iteration in $(seq 1 "$FRAMEWORK_SELECTOR_REFRESH_CYCLES"); do
+            if [ "$iteration" -gt 1 ]; then
+                interact_and_wait "refresh" "{\"action\":\"refresh\",\"reason\":\"Framework smoke: refresh ${framework_key} run ${full_repeat} iteration ${iteration}\"}" 30
+                if interact_failed "$INTERACT_RESULT"; then
+                    fail "Refresh failed for ${framework_key} run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
+                    return
+                fi
+            fi
 
-        exercise_submit_roundtrip "$framework_key" "$iteration" || return
+            ensure_hydrated_ready "$framework_key" || return
+            dismiss_overlay_if_present "$framework_key" || return
+
+            interact_and_wait "get_text" '{"action":"get_text","selector":"#selector-token","reason":"Read selector churn token"}'
+            if interact_failed "$INTERACT_RESULT"; then
+                fail "Token read failed for ${framework_key} run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
+                return
+            fi
+
+            local token
+            token="$(extract_token_text "$INTERACT_RESULT")"
+            if [ -z "$token" ]; then
+                fail "Missing selector token on ${framework_key} run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS} iteration ${iteration}. Result: $(truncate "$INTERACT_RESULT" 240)"
+                return
+            fi
+            if [ "$iteration" -gt 1 ] && [ "$token" = "$previous_token" ]; then
+                fail "Selector token did not change after refresh for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. token=${token}"
+                return
+            fi
+            previous_token="$token"
+
+            exercise_submit_roundtrip "$framework_key" "run${full_repeat}-iter${iteration}" || return
+        done
     done
 
-    pass "${framework_key}: hydration/overlay/remount/async/virtualized + selector-resilience checks passed."
+    pass "${framework_key}: hydration/overlay/remount/async/virtualized + selector-resilience checks passed (${FRAMEWORK_RESILIENCE_FULL_REPEATS} full run(s), ${FRAMEWORK_SELECTOR_REFRESH_CYCLES} refresh cycle(s) each)."
 }
 
 # ── Test 29.1: React selector resilience ─────────────────────

@@ -1118,6 +1118,11 @@ function buildElementDetail(el) {
     a11y_flags: runA11yChecks(el, computed)
   }
 
+  const selectorCandidates = collectSelectorCandidates(el)
+  if (selectorCandidates.length > 0) {
+    detail.selector_candidates = selectorCandidates
+  }
+
   if (parentContext) {
     detail.parent_context = parentContext
   }
@@ -1142,6 +1147,9 @@ function buildElementDetail(el) {
   // Framework component detection
   const componentInfo = detectComponentSource(el)
   if (componentInfo) {
+    if (componentInfo.framework) {
+      detail.js_framework = componentInfo.framework
+    }
     detail.component = componentInfo
   }
 
@@ -1357,6 +1365,102 @@ function buildCSSSelector(el) {
   const classes = Array.from(el.classList).slice(0, 3)
   if (classes.length > 0) return `${tag}.${classes.map((c) => CSS.escape(c)).join('.')}`
   return tag
+}
+
+const MAX_SELECTOR_CANDIDATES = 8
+
+function collectSelectorCandidates(el) {
+  const candidates = []
+  if (!el || !el.tagName) {
+    return candidates
+  }
+
+  const safeAdd = (candidate) => {
+    if (!candidate || typeof candidate !== 'string') return
+    const normalized = candidate.trim()
+    if (!normalized || candidates.includes(normalized)) return
+    if (candidates.length >= MAX_SELECTOR_CANDIDATES) return
+    candidates.push(normalized)
+  }
+  const getAttribute = (name) => (typeof el.getAttribute === 'function' ? el.getAttribute(name) : null)
+  const normalizeText = (value, max) =>
+    String(value || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\|/g, '/')
+      .trim()
+      .slice(0, max)
+  const escapeAttr = (value) => {
+    const raw = String(value || '')
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(raw)
+    return raw.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  }
+  const tag = el.tagName.toLowerCase()
+  const text = normalizeText(el.textContent || '', 80)
+
+  if (el.id) {
+    safeAdd(`css=#${escapeAttr(el.id)}`)
+  }
+
+  const testID = getAttribute('data-testid') || getAttribute('data-test-id') || getAttribute('data-cy')
+  if (testID) {
+    safeAdd(`testid=${normalizeText(testID, 120)}`)
+  }
+
+  const ariaLabel = getAttribute('aria-label')
+  if (ariaLabel) {
+    safeAdd(`label=${normalizeText(ariaLabel, 120)}`)
+  }
+
+  const placeholder = getAttribute('placeholder')
+  if (placeholder) {
+    safeAdd(`placeholder=${normalizeText(placeholder, 120)}`)
+  }
+
+  const explicitRole = getAttribute('role')
+  const implicitRole = inferImplicitRole(el)
+  const role = explicitRole || implicitRole
+  if (role && text) {
+    safeAdd(`role=${normalizeText(role, 60)}|${text}`)
+  } else if (role) {
+    safeAdd(`role=${normalizeText(role, 60)}`)
+  }
+
+  if (text) {
+    safeAdd(`text=${text}`)
+  }
+
+  const nameAttr = getAttribute('name')
+  if (nameAttr) {
+    safeAdd(`css=${tag}[name="${escapeAttr(nameAttr)}"]`)
+  }
+
+  safeAdd(`css=${buildCSSSelector(el)}`)
+  return candidates
+}
+
+function inferImplicitRole(el) {
+  if (!el || !el.tagName) return ''
+  const tag = el.tagName.toLowerCase()
+  if (tag === 'button') return 'button'
+  if (tag === 'a' && typeof el.getAttribute === 'function' && el.getAttribute('href')) return 'link'
+  if (tag === 'select') return 'combobox'
+  if (tag === 'textarea') return 'textbox'
+  if (tag === 'input') {
+    const inputType = (typeof el.getAttribute === 'function' ? el.getAttribute('type') : '') || 'text'
+    switch (inputType.toLowerCase()) {
+      case 'button':
+      case 'submit':
+      case 'reset':
+        return 'button'
+      case 'checkbox':
+        return 'checkbox'
+      case 'radio':
+        return 'radio'
+      default:
+        return 'textbox'
+    }
+  }
+  return ''
 }
 
 /**

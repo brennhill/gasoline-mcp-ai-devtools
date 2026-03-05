@@ -33,24 +33,27 @@ type Annotation struct {
 
 // Detail contains full DOM/style detail for lazy retrieval.
 type Detail struct {
-	CorrelationID  string            `json:"correlation_id"`
-	Selector       string            `json:"selector"`
-	Tag            string            `json:"tag"`
-	TextContent    string            `json:"text_content"`
-	OuterHTML      string            `json:"outer_html,omitempty"`
-	Classes        []string          `json:"classes"`
-	ID             string            `json:"id"`
-	ComputedStyles map[string]string `json:"computed_styles"`
-	ParentSelector string            `json:"parent_selector"`
-	BoundingRect   Rect              `json:"bounding_rect"`
-	A11yFlags      []string          `json:"a11y_flags,omitempty"`
-	ShadowDOM      json.RawMessage   `json:"shadow_dom,omitempty"`
-	AllElements    json.RawMessage   `json:"all_elements,omitempty"`
-	ElementCount   int               `json:"element_count,omitempty"`
-	IframeContent  json.RawMessage   `json:"iframe_content,omitempty"`
-	ParentContext  json.RawMessage   `json:"parent_context,omitempty"`
-	Siblings       json.RawMessage   `json:"siblings,omitempty"`
-	CSSFramework   string            `json:"css_framework,omitempty"`
+	CorrelationID      string            `json:"correlation_id"`
+	Selector           string            `json:"selector"`
+	SelectorCandidates []string          `json:"selector_candidates,omitempty"`
+	Tag                string            `json:"tag"`
+	TextContent        string            `json:"text_content"`
+	OuterHTML          string            `json:"outer_html,omitempty"`
+	Classes            []string          `json:"classes"`
+	ID                 string            `json:"id"`
+	ComputedStyles     map[string]string `json:"computed_styles"`
+	ParentSelector     string            `json:"parent_selector"`
+	BoundingRect       Rect              `json:"bounding_rect"`
+	A11yFlags          []string          `json:"a11y_flags,omitempty"`
+	ShadowDOM          json.RawMessage   `json:"shadow_dom,omitempty"`
+	AllElements        json.RawMessage   `json:"all_elements,omitempty"`
+	ElementCount       int               `json:"element_count,omitempty"`
+	IframeContent      json.RawMessage   `json:"iframe_content,omitempty"`
+	ParentContext      json.RawMessage   `json:"parent_context,omitempty"`
+	Siblings           json.RawMessage   `json:"siblings,omitempty"`
+	CSSFramework       string            `json:"css_framework,omitempty"`
+	JSFramework        string            `json:"js_framework,omitempty"`
+	Component          json.RawMessage   `json:"component,omitempty"`
 }
 
 // Session represents a completed draw mode session.

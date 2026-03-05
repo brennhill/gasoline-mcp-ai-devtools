@@ -26,6 +26,8 @@ while [ $# -gt 0 ]; do
             echo "  Env overrides:"
             echo "    SMOKE_HARNESS_PORT   Local page harness port (default: 8787)"
             echo "    SMOKE_HARNESS_ROOT   Local page harness root directory"
+            echo "    FRAMEWORK_RESILIENCE_FULL_REPEATS  Full run repeats for module 29 (default: 1)"
+            echo "    FRAMEWORK_SELECTOR_REFRESH_CYCLES  Refresh cycles per run for module 29 (default: 3)"
             echo "  --start-from   Skip modules until MODULE matches (substring)"
             echo "  --only         Run only the matching module, then stop"
             echo "                 Examples: --only 15, --only upload"
@@ -38,7 +40,7 @@ while [ $# -gt 0 ]; do
             echo "  21-macro-recording, 22-log-aggregation, 23-doctor-preflight,"
             echo "  24-retryable-errors, 25-action-enrichment, 26-default-upload-dir,"
             echo "  27-extension-refactor, 28-proof-first, 29-framework-selector-resilience,"
-            echo "  30-stability-shutdown"
+            echo "  31-annotation-parity, 30-stability-shutdown"
             exit 0
             ;;
         --start-from)
@@ -120,6 +122,7 @@ MODULES=(
     "27-extension-refactor.sh"
     "28-proof-first.sh"
     "29-framework-selector-resilience.sh"
+    "31-annotation-parity.sh"
     "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 

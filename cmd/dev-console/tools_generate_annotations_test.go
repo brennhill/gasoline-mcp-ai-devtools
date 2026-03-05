@@ -110,8 +110,47 @@ func TestGenerate_VisualTest_GeneratesPlaywright(t *testing.T) {
 	if !strings.Contains(text, "page.goto") {
 		t.Errorf("expected page.goto() call, got %q", text)
 	}
+	if !strings.Contains(text, "resolveAnnotationLocator") {
+		t.Errorf("expected resilient locator helper in generated test, got %q", text)
+	}
 	if !strings.Contains(text, "example.com/checkout") {
 		t.Errorf("expected page URL in test, got %q", text)
+	}
+}
+
+func TestGenerate_VisualTest_UsesSelectorCandidates(t *testing.T) {
+	h := createTestToolHandler(t)
+	seedAnnotationSession(t, h)
+
+	h.annotationStore.StoreDetail("detail_1", AnnotationDetail{
+		CorrelationID:      "detail_1",
+		Selector:           "button.btn-primary",
+		Tag:                "button",
+		TextContent:        "Submit",
+		Classes:            []string{"btn-primary"},
+		ID:                 "submit-btn",
+		ComputedStyles:     map[string]string{"background-color": "rgb(59, 130, 246)"},
+		SelectorCandidates: []string{"testid=checkout-submit", "role=button|Submit", "css=button.btn-primary"},
+		JSFramework:        "react",
+		ParentSelector:     "form.checkout-form > div.actions",
+		BoundingRect:       AnnotationRect{X: 100, Y: 200, Width: 150, Height: 50},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGenerateVisualTest(req, nil)
+	text := unmarshalMCPText(t, resp.Result)
+
+	if !strings.Contains(text, "testid=checkout-submit") {
+		t.Errorf("expected testid candidate in generated test, got %q", text)
+	}
+	if !strings.Contains(text, "role=button|Submit") {
+		t.Errorf("expected role candidate in generated test, got %q", text)
+	}
+	if !strings.Contains(text, "getByTestId") {
+		t.Errorf("expected testid strategy support in helper, got %q", text)
+	}
+	if !strings.Contains(text, "getByRole") {
+		t.Errorf("expected role strategy support in helper, got %q", text)
 	}
 }
 
