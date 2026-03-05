@@ -9,10 +9,6 @@ import "sync"
 type interactActionHandler struct {
 	parent *ToolHandler
 
-	// Cached interact dispatch map (initialized once).
-	once     sync.Once
-	handlers map[string]interactHandler
-
 	// Action jitter: randomized micro-delays before interact actions.
 	// Relocated from ToolHandler — exclusively owned by interactActionHandler.
 	jitterMu          sync.RWMutex

@@ -67,7 +67,7 @@ export function activateDrawMode(source = 'user', session = '', correlationId = 
  * @returns {{ annotations: Array, elementDetails: Object }}
  */
 export function deactivateDrawMode() {
-  if (!active || isDeactivating) {
+  if (!active) {
     return { annotations: [], elementDetails: {} }
   }
   cancelTextInput()
@@ -289,6 +289,9 @@ function destroyOverlay() {
     overlay.remove()
     overlay = null
   }
+  // Safety: remove any orphaned overlay left by a failed deactivation cycle
+  const orphan = document.getElementById('gasoline-draw-overlay')
+  if (orphan) orphan.remove()
   document.removeEventListener('keydown', onKeyDown)
   document.removeEventListener('click', onActionClick, true)
   document.removeEventListener('input', onActionInput, true)
@@ -1739,8 +1742,8 @@ export function deactivateAndSendResults() {
 
     // Delay teardown to let fade complete
     setTimeout(() => {
-      const result = deactivateDrawMode()
       isDeactivating = false
+      const result = deactivateDrawMode()
       // Clear persisted annotations from storage after successful deactivation
       clearPersistedAnnotations()
       try {

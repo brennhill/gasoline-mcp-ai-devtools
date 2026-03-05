@@ -106,13 +106,10 @@ func sortedInteractRuntimeActions(h *ToolHandler) []string {
 	}
 
 	actions := make(map[string]bool)
-	for action := range h.interactAction().interactDispatch() {
+	for action := range h.interactAction().buildInteractHandlers() {
 		if !aliasSet[action] {
 			actions[action] = true
 		}
-	}
-	for action := range domPrimitiveActions {
-		actions[action] = true
 	}
 	keys := make([]string, 0, len(actions))
 	for action := range actions {

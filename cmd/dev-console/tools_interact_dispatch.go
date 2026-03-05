@@ -206,64 +206,6 @@ func (h *interactActionHandler) buildInteractHandlers() map[string]ModeHandler {
 	return handlers
 }
 
-// interactHandler is the function signature for interact action handlers.
-// Deprecated: retained for backward compatibility during the registry migration.
-// New handlers should use ModeHandler directly.
-type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
-
-// interactDispatch returns the dispatch map for interact actions.
-// Initialized once via sync.Once; safe for concurrent use.
-func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
-	h.once.Do(func() {
-		h.handlers = map[string]interactHandler{
-			"highlight":                 h.handleHighlightImpl,
-			"save_state":                h.parent.stateInteract().handleStateSave,
-			"state_save":                h.parent.stateInteract().handleStateSave, // backward-compatible alias
-			"load_state":                h.parent.stateInteract().handleStateLoad,
-			"state_load":                h.parent.stateInteract().handleStateLoad, // backward-compatible alias
-			"list_states":               h.parent.stateInteract().handleStateList,
-			"state_list":                h.parent.stateInteract().handleStateList, // backward-compatible alias
-			"delete_state":              h.parent.stateInteract().handleStateDelete,
-			"state_delete":              h.parent.stateInteract().handleStateDelete, // backward-compatible alias
-			"set_storage":               h.handleSetStorage,
-			"delete_storage":            h.handleDeleteStorage,
-			"clear_storage":             h.handleClearStorage,
-			"set_cookie":                h.handleSetCookie,
-			"delete_cookie":             h.handleDeleteCookie,
-			"execute_js":                h.handleExecuteJSImpl,
-			"navigate":                  h.handleBrowserActionNavigateImpl,
-			"refresh":                   h.handleBrowserActionRefreshImpl,
-			"back":                      h.handleBrowserActionBackImpl,
-			"forward":                   h.handleBrowserActionForwardImpl,
-			"new_tab":                   h.handleBrowserActionNewTabImpl,
-			"switch_tab":                h.handleBrowserActionSwitchTabImpl,
-			"close_tab":                 h.handleBrowserActionCloseTabImpl,
-			"screenshot":                h.handleScreenshotAliasImpl,
-			"subtitle":                  h.handleSubtitleImpl,
-			"list_interactive":          h.handleListInteractive,
-			"screen_recording_start":    h.parent.recordingInteractHandler.handleRecordStart,
-			"screen_recording_stop":     h.parent.recordingInteractHandler.handleRecordStop,
-			"upload":                    h.parent.uploadInteractHandler.handleUpload,
-			"draw_mode_start":           h.handleDrawModeStart,
-			"hardware_click":            h.handleHardwareClick,
-			"activate_tab":              h.handleActivateTabImpl,
-			"get_readable":              h.handleGetReadable,
-			"get_markdown":              h.handleGetMarkdown,
-			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
-			"navigate_and_document":     h.handleNavigateAndDocument,
-			"fill_form_and_submit":      h.handleFillFormAndSubmit,
-			"fill_form":                 h.handleFillForm,
-			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
-			"explore_page":              h.handleExplorePage,
-			"wait_for_stable":           h.handleWaitForStable,
-			"auto_dismiss_overlays":     h.handleAutoDismissOverlays,
-			"batch":                     h.handleBatch,
-			"clipboard_read":            h.handleClipboardRead,
-			"clipboard_write":           h.handleClipboardWrite,
-		}
-	})
-	return h.handlers
-}
 
 // getValidInteractActions returns a sorted, comma-separated list of valid interact actions.
 func (h *interactActionHandler) getValidInteractActions() string {
@@ -319,16 +261,3 @@ func (h *interactActionHandler) applyJitter(action string) int {
 	return jitterMs
 }
 
-// dispatchInteractAction routes an action to the correct named or DOM-primitive handler.
-// Deprecated: retained for backward compatibility with direct callers (e.g. batch).
-// The primary dispatch path now goes through toolInteract → dispatchTool.
-func (h *interactActionHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
-	h.applyJitter(action)
-	if handler, ok := h.interactDispatch()[action]; ok {
-		return handler(req, args)
-	}
-	if domPrimitiveActions[action] {
-		return h.handleDOMPrimitive(req, args, action)
-	}
-	return fail(req, ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"), describeCapabilitiesRecovery("interact"))
-}
