@@ -11,3 +11,6 @@ Canonical flow map:
 
 - [Installer Binary Path and Manual Extension Handoff](../../../architecture/flow-maps/installer-binary-path-and-manual-extension-handoff.md)
 
+Notable coverage:
+
+- Extension staging integrity checks and source-zip fallback for incomplete release extension artifacts.

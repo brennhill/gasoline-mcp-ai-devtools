@@ -69,6 +69,29 @@ function Write-StepNote([string]$Message) {
     Write-Host "   -> $Message" -ForegroundColor DarkGray
 }
 
+function Reset-ExtensionDir {
+    if (Test-Path $EXT_DIR) {
+        Remove-Item -Path (Join-Path $EXT_DIR '*') -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -Path $EXT_DIR -ItemType Directory -Force | Out-Null
+    }
+}
+
+function Test-ExtensionStage {
+    $required = @(
+        (Join-Path $EXT_DIR "manifest.json"),
+        (Join-Path $EXT_DIR "background\init.js"),
+        (Join-Path $EXT_DIR "content\script-injection.js"),
+        (Join-Path $EXT_DIR "inject\index.js")
+    )
+    foreach ($path in $required) {
+        if (-not (Test-Path $path)) {
+            return $false
+        }
+    }
+    return $true
+}
+
 Write-Banner
 
 # 1. Fetch Version: Get the latest stable version tag from GitHub.
@@ -79,7 +102,7 @@ Write-StepOk "Version: v$VERSION (win32-x64)"
 # 2. Directory Setup: Ensure the target installation folders exist on the filesystem.
 Write-Step 2 "Preparing install directories"
 if (-not (Test-Path $BIN_DIR)) { New-Item -Path $BIN_DIR -ItemType Directory -Force }
-if (-not (Test-Path $EXT_DIR)) { New-Item -Path $EXT_DIR -ItemType Directory -Force }
+Reset-ExtensionDir
 Write-StepOk "Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
@@ -126,24 +149,33 @@ $TEMP_ZIP = Join-Path $env:TEMP "gasoline-ext.zip"
 
 try {
     Invoke-WebRequest -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
-    # Native extraction to the local staging directory.
+    Reset-ExtensionDir
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $EXT_DIR -Force
+    if (-not (Test-ExtensionStage)) {
+        throw "Release extension zip missing required module files"
+    }
+    Write-StepOk "Staged extension directory: $EXT_DIR"
 } catch {
-    # Fallback logic for older releases that only have source zips.
-    Write-Host "📦 Falling back to source zip (this may take a moment)..." -ForegroundColor Yellow
+    # Fallback logic for older releases or bad extension zip assets.
+    Write-StepNote "Falling back to source zip due to missing/incomplete extension zip"
     $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
     Invoke-WebRequest -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
     $TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src"
+    if (Test-Path $TEMP_EXTRACT) { Remove-Item -Path $TEMP_EXTRACT -Recurse -Force }
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $TEMP_EXTRACT -Force
     # Find the extracted folder (named repo-version) and copy the extension subdirectory.
     $extractRoot = Get-ChildItem -Path $TEMP_EXTRACT | Select-Object -First 1
+    Reset-ExtensionDir
     Copy-Item -Path (Join-Path $extractRoot.FullName "extension\*") -Destination $EXT_DIR -Recurse -Force
+    if (-not (Test-ExtensionStage)) {
+        throw "Extension staging failed: required module files are missing."
+    }
+    Write-StepOk "Staged extension directory: $EXT_DIR"
     # Clean up the deep source extraction.
     Remove-Item -Path $TEMP_EXTRACT -Recurse -Force
 }
 # Cleanup the temporary zip file.
 Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
-Write-StepOk "Staged extension directory: $EXT_DIR"
 
 # 6. Native Configuration: Execute the Go binary to handle complex client configuration.
 # The binary's --install flag will:

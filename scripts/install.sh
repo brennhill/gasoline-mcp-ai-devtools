@@ -99,6 +99,18 @@ step_note() {
     echo -e "${DIM}   -> $message${NC}"
 }
 
+reset_extension_dir() {
+    rm -rf "$EXT_DIR"
+    mkdir -p "$EXT_DIR"
+}
+
+validate_extension_stage() {
+    [ -f "$EXT_DIR/manifest.json" ] &&
+    [ -f "$EXT_DIR/background/init.js" ] &&
+    [ -f "$EXT_DIR/content/script-injection.js" ] &&
+    [ -f "$EXT_DIR/inject/index.js" ]
+}
+
 print_banner
 
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
@@ -141,7 +153,7 @@ step_ok "Version: v$VERSION ($PLATFORM-$E_ARCH)"
 # 3. Directory Setup: Ensure the installation folders exist.
 step 3 "Preparing install directories"
 mkdir -p "$BIN_DIR"
-mkdir -p "$EXT_DIR"
+reset_extension_dir
 step_ok "Install root: $INSTALL_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
@@ -189,21 +201,52 @@ EXT_ZIP_URL="https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 TEMP_ZIP="$TEMP_ROOT/extension.zip"
 
 if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
-    # Dedicated extension zip exists (faster)
-    unzip -q -o "$TEMP_ZIP" -d "$EXT_DIR"
+    # Dedicated extension zip exists (faster); validate required module files after extract.
+    reset_extension_dir
+    if unzip -q -o "$TEMP_ZIP" -d "$EXT_DIR" && validate_extension_stage; then
+        step_ok "Staged extension directory: $EXT_DIR"
+    else
+        step_note "Release extension zip missing required modules; falling back to source zip"
+        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+        TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
+        mkdir -p "$TEMP_EXTRACT"
+        if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
+            reset_extension_dir
+            unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
+            # The source zip root folder is typically 'repo-version'.
+            EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/* | head -n 1)
+            cp -r "$EXTRACT_ROOT/extension/"* "$EXT_DIR/"
+            if ! validate_extension_stage; then
+                echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
+                exit 1
+            fi
+            step_ok "Staged extension directory: $EXT_DIR"
+        else
+            echo -e "${RED}❌ Failed to download extension source archive.${NC}"
+            exit 1
+        fi
+    fi
 else
-    # Fallback to source zip extraction (covers older releases)
+    # Fallback to source zip extraction (covers older releases and bad extension zip assets)
     SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
     TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
     mkdir -p "$TEMP_EXTRACT"
     if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
+        reset_extension_dir
         unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
         # The source zip root folder is typically 'repo-version'.
-        EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/*)
+        EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/* | head -n 1)
         cp -r "$EXTRACT_ROOT/extension/"* "$EXT_DIR/"
+        if ! validate_extension_stage; then
+            echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
+            exit 1
+        fi
+        step_ok "Staged extension directory: $EXT_DIR"
+    else
+        echo -e "${RED}❌ Failed to download extension source archive.${NC}"
+        exit 1
     fi
 fi
-step_ok "Staged extension directory: $EXT_DIR"
 
 # 7. Native Configuration: Hand off the complex logic to the Go binary.
 # The binary's --install flag handles:
