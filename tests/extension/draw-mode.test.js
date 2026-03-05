@@ -90,8 +90,16 @@ function createMockCanvasContext() {
     fillText: mock.fn(),
     measureText: mock.fn(() => ({ width: 50 })),
     beginPath: mock.fn(),
+    moveTo: mock.fn(),
+    lineTo: mock.fn(),
+    arcTo: mock.fn(),
+    quadraticCurveTo: mock.fn(),
+    closePath: mock.fn(),
     arc: mock.fn(),
     fill: mock.fn(),
+    stroke: mock.fn(),
+    save: mock.fn(),
+    restore: mock.fn(),
     setLineDash: mock.fn(),
     drawImage: mock.fn(),
     fillStyle: '',
@@ -1272,6 +1280,7 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     assert.ok(detail, 'should have detail')
     // Mock element has btn-primary which doesn't match any framework threshold
     assert.strictEqual(detail.css_framework, undefined, 'css_framework should be absent when no framework detected')
+    assert.strictEqual(detail.js_framework, undefined, 'js_framework should be absent when runtime framework not detected')
   })
 
   test('css_framework detects Tailwind classes', () => {
@@ -1455,5 +1464,55 @@ describe('Draw Mode — Element Detail Enrichment', () => {
     const detail = drawAndGetDetail()
     assert.ok(detail, 'should have detail')
     assert.strictEqual(detail.css_framework, undefined, 'generic CSS classes should not trigger Tailwind detection')
+  })
+
+  test('selector_candidates include semantic locator fallbacks', () => {
+    const candidateEl = createMockElement('button')
+    candidateEl.id = 'submit-btn'
+    candidateEl.classList._items = ['btn-primary']
+    candidateEl.textContent = 'Submit order'
+    candidateEl.parentElement = createMockElement('div')
+    candidateEl.parentElement.parentElement = null
+    candidateEl.getAttribute = (attr) => {
+      if (attr === 'data-testid') return 'checkout-submit'
+      if (attr === 'role') return 'button'
+      if (attr === 'aria-label') return 'Submit order'
+      return null
+    }
+    globalThis.document.elementsFromPoint = mock.fn(() => [candidateEl])
+
+    const detail = drawAndGetDetail()
+    assert.ok(detail, 'should have detail')
+    assert.ok(Array.isArray(detail.selector_candidates), 'selector_candidates should be an array')
+    assert.ok(detail.selector_candidates.includes('css=#submit-btn'), 'should include id-based css selector')
+    assert.ok(detail.selector_candidates.includes('testid=checkout-submit'), 'should include test id candidate')
+    assert.ok(detail.selector_candidates.includes('role=button|Submit order'), 'should include role+name candidate')
+    assert.ok(detail.selector_candidates.includes('label=Submit order'), 'should include label candidate')
+
+    const unique = new Set(detail.selector_candidates)
+    assert.strictEqual(unique.size, detail.selector_candidates.length, 'selector_candidates should be deduplicated')
+  })
+
+  test('js_framework and component are captured from runtime metadata', () => {
+    const reactEl = createMockElement('button')
+    reactEl.classList._items = ['btn']
+    reactEl.textContent = 'Save'
+    reactEl.parentElement = createMockElement('div')
+    reactEl.parentElement.parentElement = null
+    reactEl.getAttribute = (_attr) => null
+    reactEl.__reactFiber$test = {
+      type: { name: 'SaveButton' },
+      _debugSource: { fileName: '/src/components/SaveButton.tsx', lineNumber: 18 },
+      return: null
+    }
+    globalThis.document.elementsFromPoint = mock.fn(() => [reactEl])
+
+    const detail = drawAndGetDetail()
+    assert.ok(detail, 'should have detail')
+    assert.strictEqual(detail.js_framework, 'react', 'should include top-level js_framework')
+    assert.ok(detail.component, 'should include component detail object')
+    assert.strictEqual(detail.component.framework, 'react')
+    assert.strictEqual(detail.component.component, 'SaveButton')
+    assert.strictEqual(detail.component.source_file, '/src/components/SaveButton.tsx')
   })
 })

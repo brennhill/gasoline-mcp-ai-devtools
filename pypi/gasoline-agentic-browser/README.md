@@ -1,6 +1,6 @@
 # Gasoline Agentic Browser Devtool MCP
 
-Browser observability for AI coding agents - autonomously debug and fix issues in real time.
+Agentic Browser Devtools - rapid e2e web development.
 
 Streams console logs, network errors, WebSocket events, and exceptions to Claude Code, Cursor, Windsurf, Claude Desktop, Zed, or any MCP-compatible assistant.
 

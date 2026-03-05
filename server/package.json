@@ -1,7 +1,7 @@
 {
   "name": "gasoline-agentic-browser",
   "version": "0.7.12",
-  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
+  "description": "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",
     "logs",

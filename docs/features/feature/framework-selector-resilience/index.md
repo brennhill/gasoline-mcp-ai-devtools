@@ -4,17 +4,21 @@ feature_id: feature-framework-selector-resilience
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - scripts/smoke-tests/29-framework-selector-resilience.sh
   - scripts/smoke-tests/build-framework-fixtures.mjs
+  - scripts/smoke-test.sh
+  - package.json
   - scripts/smoke-tests/framework-fixtures/react-entry.jsx
   - scripts/smoke-tests/framework-fixtures/vue-entry.js
   - scripts/smoke-tests/framework-fixtures/SmokeSvelteApp.svelte
   - scripts/smoke-tests/framework-fixtures/next-app/pages/index.jsx
-  - scripts/smoke-test.sh
+  - scripts/smoke-tests/framework-fixtures/README.md
 test_paths:
   - scripts/smoke-tests/29-framework-selector-resilience.sh
+  - scripts/smoke-test.sh --only 29
+  - npm run smoke:framework-parity
 ---
 
 # Framework Selector Resilience
@@ -31,4 +35,8 @@ test_paths:
 - Flow Map: `flow-map.md`
 
 ## Canonical Note
-This feature makes the fixture coverage itself a first-class capability: Gasoline now validates automation resilience against real React, Vue, Svelte, and Next.js pages that model hydration races, overlays, remount churn, async delayed UI, and virtualized content.
+This feature makes fixture coverage a first-class capability: Gasoline validates automation resilience against real React, Vue, Svelte, and Next.js pages that model hydration races, overlays, remount churn, async delayed UI, and virtualized content.
+
+The parity gate supports explicit repeat budgets:
+- `FRAMEWORK_RESILIENCE_FULL_REPEATS` (full scenario repeats per framework)
+- `FRAMEWORK_SELECTOR_REFRESH_CYCLES` (refresh loops per scenario)

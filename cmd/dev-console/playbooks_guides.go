@@ -6,7 +6,7 @@ package main
 // guideContent is the full usage guide resource.
 var guideContent = `# Gasoline MCP Tools
 
-Browser observability for AI coding agents. 5 tools for real-time browser telemetry.
+Agentic Browser Devtools - rapid e2e web development. 5 tools for real-time browser telemetry.
 
 ## Quick Reference
 

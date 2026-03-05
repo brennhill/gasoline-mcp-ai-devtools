@@ -1087,15 +1087,18 @@ func TestToolGetAnnotationDetail_NewEnrichmentFields(t *testing.T) {
 	h := createTestToolHandler(t)
 
 	detail := AnnotationDetail{
-		CorrelationID:  "detail_enriched",
-		Selector:       "button#submit-btn",
-		Tag:            "button",
-		TextContent:    "Submit",
-		Classes:        []string{"btn-primary"},
-		ComputedStyles: map[string]string{"color": "rgb(255,255,255)"},
-		ParentContext:  json.RawMessage(`{"parent":{"tag":"div","classes":["actions"],"id":"","role":"group"},"grandparent":{"tag":"form","classes":["checkout"],"id":"checkout","role":""}}`),
-		Siblings:       json.RawMessage(`[{"tag":"button","classes":["btn-secondary"],"text":"Cancel","position":"before"},{"tag":"a","classes":["help-link"],"text":"Help","position":"after"}]`),
-		CSSFramework:   "tailwind",
+		CorrelationID:      "detail_enriched",
+		Selector:           "button#submit-btn",
+		Tag:                "button",
+		TextContent:        "Submit",
+		Classes:            []string{"btn-primary"},
+		ComputedStyles:     map[string]string{"color": "rgb(255,255,255)"},
+		ParentContext:      json.RawMessage(`{"parent":{"tag":"div","classes":["actions"],"id":"","role":"group"},"grandparent":{"tag":"form","classes":["checkout"],"id":"checkout","role":""}}`),
+		Siblings:           json.RawMessage(`[{"tag":"button","classes":["btn-secondary"],"text":"Cancel","position":"before"},{"tag":"a","classes":["help-link"],"text":"Help","position":"after"}]`),
+		CSSFramework:       "tailwind",
+		JSFramework:        "react",
+		SelectorCandidates: []string{"testid=checkout-submit", "role=button|Submit", "css=button#submit-btn"},
+		Component:          json.RawMessage(`{"framework":"react","component":"SubmitButton","source_file":"/src/components/SubmitButton.tsx","source_line":42}`),
 	}
 	h.annotationStore.StoreDetail("detail_enriched", detail)
 
@@ -1136,6 +1139,20 @@ func TestToolGetAnnotationDetail_NewEnrichmentFields(t *testing.T) {
 	// Verify css_framework present
 	if data["css_framework"] != "tailwind" {
 		t.Errorf("expected css_framework 'tailwind', got %v", data["css_framework"])
+	}
+	if data["js_framework"] != "react" {
+		t.Errorf("expected js_framework 'react', got %v", data["js_framework"])
+	}
+	candidates, ok := data["selector_candidates"].([]any)
+	if !ok || len(candidates) != 3 {
+		t.Fatalf("expected selector_candidates array with 3 entries, got %v", data["selector_candidates"])
+	}
+	component, ok := data["component"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected component object, got %T", data["component"])
+	}
+	if component["framework"] != "react" {
+		t.Errorf("expected component.framework='react', got %v", component["framework"])
 	}
 }
 
@@ -1387,6 +1404,15 @@ func TestToolGetAnnotationDetail_NewFieldsAbsentWhenEmpty(t *testing.T) {
 	}
 	if _, exists := data["css_framework"]; exists {
 		t.Error("expected css_framework to be absent when empty")
+	}
+	if _, exists := data["js_framework"]; exists {
+		t.Error("expected js_framework to be absent when empty")
+	}
+	if _, exists := data["selector_candidates"]; exists {
+		t.Error("expected selector_candidates to be absent when empty")
+	}
+	if _, exists := data["component"]; exists {
+		t.Error("expected component to be absent when empty")
 	}
 }
 
@@ -1714,6 +1740,41 @@ func TestToolGetAnnotationDetail_Hints_BootstrapFramework(t *testing.T) {
 	}
 	if !strings.Contains(ds, "Bootstrap") {
 		t.Errorf("expected Bootstrap hint, got %q", ds)
+	}
+}
+
+func TestToolGetAnnotationDetail_Hints_RuntimeFramework(t *testing.T) {
+	h := createTestToolHandler(t)
+
+	detail := AnnotationDetail{
+		CorrelationID:  "detail_runtime",
+		Selector:       "button.save",
+		Tag:            "button",
+		Classes:        []string{"save"},
+		ComputedStyles: map[string]string{},
+		JSFramework:    "react",
+	}
+	h.annotationStore.StoreDetail("detail_runtime", detail)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_runtime"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+	hintsRaw, ok := data["hints"].(map[string]any)
+	if !ok {
+		t.Fatal("expected hints object in annotation detail response")
+	}
+	runtimeHint, ok := hintsRaw["runtime_framework"].(string)
+	if !ok {
+		t.Fatal("expected runtime_framework string in hints")
+	}
+	if !strings.Contains(strings.ToLower(runtimeHint), "react") {
+		t.Fatalf("expected runtime framework hint to mention react, got %q", runtimeHint)
 	}
 }
 

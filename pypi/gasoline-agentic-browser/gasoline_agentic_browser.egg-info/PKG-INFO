@@ -29,7 +29,7 @@ Requires-Dist: gasoline-agentic-browser-win32-x64==0.7.2; sys_platform == "win32
 
 # Gasoline Agentic Browser
 
-Browser observability for AI coding agents - autonomously debug and fix issues in real time.
+Agentic Browser Devtools - rapid e2e web development.
 
 Streams console logs, network errors, WebSocket events, and exceptions to Claude Code, Cursor, Windsurf, Claude Desktop, Zed, or any MCP-compatible assistant.
 
