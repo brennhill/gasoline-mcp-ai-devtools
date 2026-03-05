@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+func (vm *VerificationManager) getActiveSessionLocked(sessionID string) (*VerificationSession, error) {
+	session, exists := vm.sessions[sessionID]
+	if !exists {
+		return nil, fmt.Errorf("session %q not found", sessionID)
+	}
+	if time.Since(session.CreatedAt) > vm.ttl {
+		delete(vm.sessions, sessionID)
+		vm.removeFromOrder(sessionID)
+		return nil, fmt.Errorf("session %q has expired", sessionID)
+	}
+	return session, nil
+}
+
 // ============================================
 // Start Action
 // ============================================
@@ -65,16 +78,9 @@ func (vm *VerificationManager) Watch(sessionID string) (*WatchResult, error) {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	session, exists := vm.sessions[sessionID]
-	if !exists {
-		return nil, fmt.Errorf("session %q not found", sessionID)
-	}
-
-	// Check if expired.
-	if time.Since(session.CreatedAt) > vm.ttl {
-		delete(vm.sessions, sessionID)
-		vm.removeFromOrder(sessionID)
-		return nil, fmt.Errorf("session %q has expired", sessionID)
+	session, err := vm.getActiveSessionLocked(sessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Check status.
@@ -103,16 +109,9 @@ func (vm *VerificationManager) Compare(sessionID string) (*CompareResult, error)
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	session, exists := vm.sessions[sessionID]
-	if !exists {
-		return nil, fmt.Errorf("session %q not found", sessionID)
-	}
-
-	// Check if expired.
-	if time.Since(session.CreatedAt) > vm.ttl {
-		delete(vm.sessions, sessionID)
-		vm.removeFromOrder(sessionID)
-		return nil, fmt.Errorf("session %q has expired", sessionID)
+	session, err := vm.getActiveSessionLocked(sessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Must have called watch first.

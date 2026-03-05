@@ -5,8 +5,23 @@ package schema
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
+func testFailureSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
+			"error":       map[string]any{"type": "string", "description": "Error message"},
+			"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
+			"trace":       map[string]any{"type": "string", "description": "Stack trace"},
+			"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
+		},
+		"required": []string{"error"},
+	}
+}
+
 // GenerateToolSchema returns the MCP tool definition for the generate tool.
 func GenerateToolSchema() mcp.MCPTool {
+	failureSchema := testFailureSchema()
 	return mcp.MCPTool{
 		Name:        "generate",
 		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.\n\nPrerequisites: Most modes require captured data first — use observe to verify data exists before generating. reproduction needs captured actions (observe what='actions'). har needs network bodies (observe what='network_bodies'). Use save_to param to write output directly to a file path.",
@@ -152,29 +167,13 @@ func GenerateToolSchema() mcp.MCPTool {
 				"failure": map[string]any{
 					"type":        "object",
 					"description": "Single test failure (test_classify failure)",
-					"properties": map[string]any{
-						"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
-						"error":       map[string]any{"type": "string", "description": "Error message"},
-						"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
-						"trace":       map[string]any{"type": "string", "description": "Stack trace"},
-						"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
-					},
-					"required": []string{"error"},
+					"properties":  failureSchema["properties"],
+					"required":    failureSchema["required"],
 				},
 				"failures": map[string]any{
 					"type":        "array",
 					"description": "Multiple test failures (test_classify batch)",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
-							"error":       map[string]any{"type": "string", "description": "Error message"},
-							"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
-							"trace":       map[string]any{"type": "string", "description": "Stack trace"},
-							"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
-						},
-						"required": []string{"error"},
-					},
+					"items":       failureSchema,
 				},
 				"error_id": map[string]any{
 					"type":        "string",

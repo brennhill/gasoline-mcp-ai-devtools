@@ -46,22 +46,7 @@ func GetExtensionLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allLogs := deps.GetCapture().GetExtensionLogs()
-
-	matched := buffers.ReverseFilterLimit(allLogs, func(entry capture.ExtensionLog) bool {
-		return params.Level == "" || entry.Level == params.Level
-	}, params.Limit)
-
-	logs := make([]map[string]any, len(matched))
-	for i, entry := range matched {
-		logs[i] = map[string]any{
-			"level":     entry.Level,
-			"message":   entry.Message,
-			"source":    entry.Source,
-			"category":  entry.Category,
-			"data":      entry.Data,
-			"timestamp": entry.Timestamp,
-		}
-	}
+	logs := buildExtensionLogEntries(allLogs, params.Limit, params.Level, "")
 
 	var newestTS time.Time
 	if len(allLogs) > 0 {
