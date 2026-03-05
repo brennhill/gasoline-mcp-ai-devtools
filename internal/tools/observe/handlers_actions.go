@@ -71,16 +71,14 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	}
 	mcp.LenientUnmarshal(args, &params)
 
+	var paramHint string
 	validClassifications := map[string]bool{
 		"alert": true, "toast": true, "snackbar": true, "notification": true,
 		"tooltip": true, "banner": true, "flash": true,
 	}
 	if params.Classification != "" && !validClassifications[params.Classification] {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
-			mcp.ErrInvalidParam, "Invalid classification: "+params.Classification,
-			"Use one of: alert, toast, snackbar, notification, tooltip, banner, flash",
-			mcp.WithParam("classification"), mcp.WithHint("Valid values: alert, toast, snackbar, notification, tooltip, banner, flash"),
-		)}
+		paramHint = "Unknown classification " + params.Classification + " ignored (using default=all). Valid values: alert, toast, snackbar, notification, tooltip, banner, flash."
+		params.Classification = ""
 	}
 
 	// Lower default than other handlers (50 vs 100): transients are less frequent than logs/actions.
@@ -108,13 +106,20 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", buildTransientsSummary(filtered, responseMeta))}
+		summaryResp := buildTransientsSummary(filtered, responseMeta)
+		if paramHint != "" {
+			summaryResp["param_hint"] = paramHint
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", summaryResp)}
 	}
 
 	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
 	}
 	if len(filtered) == 0 {
 		response["hint"] = transientsEmptyHint(params.Classification)

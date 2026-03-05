@@ -114,12 +114,10 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	}
 	mcp.LenientUnmarshal(args, &params)
 
+	var paramHint string
 	if params.Direction != "" && params.Direction != "incoming" && params.Direction != "outgoing" {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
-			mcp.ErrInvalidParam, "Invalid direction: "+params.Direction,
-			"Use 'incoming' or 'outgoing'",
-			mcp.WithParam("direction"), mcp.WithHint("Valid values: incoming, outgoing"),
-		)}
+		paramHint = "Unknown direction " + params.Direction + " ignored (using default=all). Valid values: incoming, outgoing."
+		params.Direction = ""
 	}
 
 	params.Limit = clampLimit(params.Limit, 100)
@@ -145,6 +143,9 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
 		summary := buildWSEventsSummary(filtered, responseMeta)
+		if paramHint != "" {
+			summary["param_hint"] = paramHint
+		}
 		if len(filtered) == 0 {
 			summary["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
 		}
@@ -155,6 +156,9 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
 	}
 
 	if len(filtered) == 0 {

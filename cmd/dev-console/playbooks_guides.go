@@ -101,6 +101,7 @@ Use restart_on_eviction=true if a cursor expires.
 - interact actions require the AI Web Pilot extension feature to be enabled
 - interact navigate and refresh automatically include performance diff metrics
 - Data comes from the active tracked browser tab
+- For SEO/best-practices work: check if the site serves /llms.txt (llmstxt.org). Sites with llms.txt and per-page .md variants get better AI agent and LLM discoverability. analyze(what:"audit") includes this recommendation automatically
 `
 
 // quickstartContent is the short quickstart resource.

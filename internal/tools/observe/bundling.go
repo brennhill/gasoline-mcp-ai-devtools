@@ -40,8 +40,10 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}
+	var paramHint string
 	if params.Scope != "current_page" && params.Scope != "all" {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", mcp.WithParam("scope"))}
+		paramHint = "Unknown scope " + params.Scope + " ignored (using default=current_page). Valid values: current_page, all."
+		params.Scope = "current_page"
 	}
 	if params.Limit <= 0 {
 		params.Limit = 5
@@ -77,13 +79,20 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	}
 
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", buildErrorBundlesSummary(bundles, newestEntry, BuildResponseMetadata(cap, newestEntry)))}
+		summaryResp := buildErrorBundlesSummary(bundles, newestEntry, BuildResponseMetadata(cap, newestEntry))
+		if paramHint != "" {
+			summaryResp["param_hint"] = paramHint
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", summaryResp)}
 	}
 
 	response := map[string]any{
 		"bundles":  bundles,
 		"count":    len(bundles),
 		"metadata": BuildResponseMetadata(cap, newestEntry),
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
 	}
 	if len(bundles) == 0 {
 		response["hint"] = errorBundlesEmptyHint()

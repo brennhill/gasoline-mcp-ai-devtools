@@ -126,11 +126,30 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	responseData := map[string]any{
-		"categories":    catOutput,
-		"overall_score": overallScore,
-		"url":           trackedURL,
-		"timestamp":     time.Now().UTC().Format(time.RFC3339),
+		"categories":      catOutput,
+		"overall_score":   overallScore,
+		"url":             trackedURL,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		"recommendations": auditRecommendations(),
 	}
 
 	return succeed(req, "Combined audit report", responseData)
+}
+
+// auditRecommendations returns best-practice recommendations surfaced with every audit.
+func auditRecommendations() []map[string]any {
+	return []map[string]any{
+		{
+			"id":       "llms-txt",
+			"category": "best_practices",
+			"title":    "Serve /llms.txt for LLM and agent discoverability",
+			"description": "The llms.txt specification (llmstxt.org) proposes serving a markdown file at /llms.txt " +
+				"that gives LLMs and AI agents concise, structured context about your site. " +
+				"Sites that serve /llms.txt and per-page .md variants get better results from AI-powered " +
+				"search, coding assistants, and autonomous agents. " +
+				"Check whether this site serves /llms.txt — if not, consider adding one.",
+			"severity": "info",
+			"reference": "https://llmstxt.org",
+		},
+	}
 }
