@@ -4,9 +4,13 @@ feature_id: feature-enhanced-cli-config
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-23
+last_reviewed: 2026-03-05
 code_paths:
   - Makefile
+  - scripts/build-crx.js
+  - extension/popup.html
+  - extension/options.html
+  - extension/theme-bootstrap.js
   - scripts/install.sh
   - scripts/install.ps1
   - npm/gasoline-mcp/lib/cli.js
@@ -19,6 +23,9 @@ test_paths:
   - pypi/gasoline-mcp/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_skills.py
   - tests/extension/release-extension-zip.test.js
+  - tests/extension/release-extension-crx-fallback.test.js
+  - tests/extension/manifest-startup-integrity.test.js
+  - tests/extension/install-script-extension-source.test.js
   - tests/cli/cli-integration.test.cjs
 ---
 
@@ -36,6 +43,7 @@ test_paths:
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map Pointer: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
