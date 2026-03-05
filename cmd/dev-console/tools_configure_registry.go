@@ -8,100 +8,54 @@ import (
 	"encoding/json"
 )
 
-// ConfigureHandler is the function signature for configure action handlers.
-type ConfigureHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
-
 const defaultStoreNamespace = "session"
 
 // configureHandlers maps configure action names to their handler functions.
-var configureHandlers = map[string]ConfigureHandler{
+var configureHandlers = map[string]ModeHandler{
+	// Sub-handler delegates (require closures — configureSession() accessor)
 	"store": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.configureSession().toolConfigureStore(req, args)
 	},
 	"load": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.configureSession().toolLoadSessionContext(req, args)
 	},
-	"noise_rule": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureNoiseRule(req, args)
-	},
-	"clear": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureClearImpl(req, args)
-	},
 	"diff_sessions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.configureSession().toolDiffSessionsWrapper(req, args)
 	},
-	"audit_log": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetAuditLog(req, args)
-	},
-	"health": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Args-less handlers (require closures — different receiver signature)
+	"health": func(h *ToolHandler, req JSONRPCRequest, _ json.RawMessage) JSONRPCResponse {
 		return h.toolGetHealth(req)
 	},
-	"streaming": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureStreamingWrapperImpl(req, args)
+	"restart": func(h *ToolHandler, req JSONRPCRequest, _ json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureRestart(req)
 	},
-	"test_boundary_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureTestBoundaryStartImpl(req, args)
-	},
-	"test_boundary_end": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureTestBoundaryEndImpl(req, args)
-	},
-	"event_recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureEventRecordingStart(req, args)
-	},
-	"event_recording_stop": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureEventRecordingStop(req, args)
-	},
-	"playback": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigurePlayback(req, args)
-	},
-	"log_diff": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureLogDiff(req, args)
-	},
-	"telemetry": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureTelemetryImpl(req, args)
-	},
-	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureDescribeCapabilitiesImpl(req, args)
-	},
-	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureRestartImpl(req)
-	},
-	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	"doctor": func(h *ToolHandler, req JSONRPCRequest, _ json.RawMessage) JSONRPCResponse {
 		return h.toolDoctor(req)
 	},
-	"tutorial": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTutorial(req, args)
-	},
-	"examples": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTutorial(req, args)
-	},
-	"save_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureSaveSequence(req, args)
-	},
-	"get_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureGetSequence(req, args)
-	},
-	"list_sequences": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureListSequences(req, args)
-	},
-	"delete_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureDeleteSequence(req, args)
-	},
-	"replay_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureReplaySequence(req, args)
-	},
-	"security_mode": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.configureSecurityModeImpl(req, args)
-	},
-	"network_recording": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureNetworkRecording(req, args)
-	},
-	"action_jitter": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureActionJitter(req, args)
-	},
-	"report_issue": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureReportIssue(req, args)
-	},
+	// Direct method delegates
+	"noise_rule":            method((*ToolHandler).toolConfigureNoiseRule),
+	"clear":                 method((*ToolHandler).toolConfigureClear),
+	"audit_log":             method((*ToolHandler).toolGetAuditLog),
+	"streaming":             method((*ToolHandler).toolConfigureStreaming),
+	"test_boundary_start":   method((*ToolHandler).toolConfigureTestBoundaryStart),
+	"test_boundary_end":     method((*ToolHandler).toolConfigureTestBoundaryEnd),
+	"event_recording_start": method((*ToolHandler).toolConfigureEventRecordingStart),
+	"event_recording_stop":  method((*ToolHandler).toolConfigureEventRecordingStop),
+	"playback":              method((*ToolHandler).toolConfigurePlayback),
+	"log_diff":              method((*ToolHandler).toolConfigureLogDiff),
+	"telemetry":             method((*ToolHandler).toolConfigureTelemetry),
+	"describe_capabilities": method((*ToolHandler).toolConfigureDescribeCapabilities),
+	"tutorial":              method((*ToolHandler).toolConfigureTutorial),
+	"examples":              method((*ToolHandler).toolConfigureTutorial),
+	"save_sequence":         method((*ToolHandler).toolConfigureSaveSequence),
+	"get_sequence":          method((*ToolHandler).toolConfigureGetSequence),
+	"list_sequences":        method((*ToolHandler).toolConfigureListSequences),
+	"delete_sequence":       method((*ToolHandler).toolConfigureDeleteSequence),
+	"replay_sequence":       method((*ToolHandler).toolConfigureReplaySequence),
+	"security_mode":         method((*ToolHandler).toolConfigureSecurityMode),
+	"network_recording":     method((*ToolHandler).toolConfigureNetworkRecording),
+	"action_jitter":         method((*ToolHandler).toolConfigureActionJitter),
+	"report_issue":          method((*ToolHandler).toolConfigureReportIssue),
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.

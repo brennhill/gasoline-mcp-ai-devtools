@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	// composableSideEffectDelay is the pause before screenshot capture when composable
+	// side effects (auto_dismiss, wait_for_stable, action_diff) are in flight.
+	composableSideEffectDelay = 300 * time.Millisecond
+)
+
 // toolInteract dispatches interact requests based on the 'what' parameter.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -88,7 +94,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	// queries that the extension processes asynchronously. When a screenshot is also requested,
 	// we need a brief delay to let the extension finish processing before capture.
 	if hasComposableSideEffects && composableParams.IncludeScreenshot {
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(composableSideEffectDelay)
 	}
 	if composableParams.IncludeScreenshot && !isErrorResponse(resp) {
 		resp = h.interactAction().appendScreenshotToResponse(resp, req)

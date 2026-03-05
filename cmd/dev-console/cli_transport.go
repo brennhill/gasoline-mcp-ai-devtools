@@ -38,7 +38,7 @@ func buildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) 
 	}
 
 	rpcReq := JSONRPCRequest{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      "cli-1",
 		Method:  "tools/call",
 		Params:  paramsJSON,

@@ -19,10 +19,7 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		lenientUnmarshal(args, &params)
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {

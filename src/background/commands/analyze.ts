@@ -9,6 +9,7 @@
 
 import { registerCommand } from './registry.js'
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
+import { normalizeFrameTarget } from '../../lib/frame-utils.js'
 
 // =============================================================================
 // FRAME ROUTING TYPES
@@ -25,27 +26,6 @@ interface FrameQueryResult<T = unknown> {
   frame_id: number
   result?: T
   error?: string
-}
-
-// =============================================================================
-// FRAME ROUTING HELPERS
-// =============================================================================
-
-function normalizeAnalyzeFrameTarget(frame: unknown): AnalyzeFrameTarget | null {
-  if (frame === undefined || frame === null) return undefined
-
-  if (typeof frame === 'number') {
-    if (!Number.isInteger(frame) || frame < 0) return null
-    return frame
-  }
-
-  if (typeof frame === 'string') {
-    const trimmed = frame.trim()
-    if (trimmed.length === 0) return null
-    return trimmed
-  }
-
-  return null
 }
 
 /**
@@ -97,7 +77,7 @@ function analyzeFrameProbe(frameTarget: AnalyzeFrameTarget): { matches: boolean 
 }
 
 async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Promise<AnalyzeFrameSelection> {
-  const normalized = normalizeAnalyzeFrameTarget(frame)
+  const normalized = normalizeFrameTarget(frame)
   if (normalized === null) {
     throw new Error(
       'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value'

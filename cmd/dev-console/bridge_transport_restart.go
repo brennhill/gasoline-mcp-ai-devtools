@@ -10,6 +10,12 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
+const (
+	// restartGracePeriod is the maximum time to wait for the daemon to become ready
+	// after a bridge-initiated restart before reporting a timeout.
+	restartGracePeriod = 6 * time.Second
+)
+
 // extractToolAction delegates to internal/bridge for tool action extraction.
 func extractToolAction(req JSONRPCRequest) (toolName, action string) {
 	return bridge.ExtractToolAction(req.Method, req.Params)
@@ -79,7 +85,7 @@ func handleBridgeRestart(req JSONRPCRequest, state *daemonState, port int, frami
 		status = "error"
 		message = "Daemon restart failed: " + errMsg
 		stderrf("[gasoline] daemon restart failed: %s\n", errMsg)
-	case <-time.After(6 * time.Second):
+	case <-time.After(restartGracePeriod):
 		status = "error"
 		message = "Daemon restart timed out after 6s"
 		stderrf("[gasoline] daemon restart timed out\n")

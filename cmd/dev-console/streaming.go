@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
 )
 
@@ -44,7 +45,13 @@ var (
 // ============================================
 
 // toolConfigureStreaming handles the configure_streaming MCP tool call.
+// Accepts both action and streaming_action (legacy alias rewritten for backward compatibility).
 func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	rewritten, err := cfg.RewriteStreamingArgs(args)
+	if err != nil {
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
+	}
+
 	var params struct {
 		Action          string   `json:"action"`
 		Events          []string `json:"events"`
@@ -52,7 +59,7 @@ func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMe
 		URLFilter       string   `json:"url"`
 		SeverityMin     string   `json:"severity_min"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, rewritten, &params); stop {
 		return resp
 	}
 

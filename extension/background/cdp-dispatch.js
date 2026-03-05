@@ -4,7 +4,7 @@
  *      CDP Input.dispatch* commands produce true hardware events indistinguishable from real user input.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-const CDP_VERSION = '1.3';
+import { CDP_VERSION } from '../lib/constants.js';
 // Key code mappings for CDP Input.dispatchKeyEvent
 const KEY_CODES = {
     Enter: { code: 'Enter', keyCode: 13 },

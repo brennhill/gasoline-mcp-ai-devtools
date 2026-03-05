@@ -11,7 +11,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
 )
 
-func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		URL       string `json:"url"`
 		Method    string `json:"method"`

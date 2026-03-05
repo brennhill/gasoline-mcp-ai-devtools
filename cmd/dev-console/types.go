@@ -7,6 +7,9 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
+// JSONRPCVersion is the JSON-RPC protocol version string re-exported from internal/mcp.
+const JSONRPCVersion = mcp.JSONRPCVersion
+
 // Core wire types
 type JSONRPCRequest = mcp.JSONRPCRequest
 type JSONRPCResponse = mcp.JSONRPCResponse

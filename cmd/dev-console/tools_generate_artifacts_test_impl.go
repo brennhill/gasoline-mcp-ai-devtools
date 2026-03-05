@@ -11,7 +11,7 @@ import (
 	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
-func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params gen.TestGenParams
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp

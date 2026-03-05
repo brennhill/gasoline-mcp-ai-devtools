@@ -27,8 +27,8 @@ var (
 	describeElement   = reproduction.DescribeElement
 )
 
-// toolGetReproductionScriptImpl generates a reproduction script from captured actions.
-func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolGetReproductionScript generates a reproduction script from captured actions.
+func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	params := reproduction.ParseParams(args)
 
 	if err := reproduction.ValidateOutputFormat(params.OutputFormat); err != "" {

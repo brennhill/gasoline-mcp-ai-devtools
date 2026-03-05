@@ -7,25 +7,7 @@
 // Includes frame routing helpers used by dom and a11y.
 import { registerCommand } from './registry.js';
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js';
-// =============================================================================
-// FRAME ROUTING HELPERS
-// =============================================================================
-function normalizeAnalyzeFrameTarget(frame) {
-    if (frame === undefined || frame === null)
-        return undefined;
-    if (typeof frame === 'number') {
-        if (!Number.isInteger(frame) || frame < 0)
-            return null;
-        return frame;
-    }
-    if (typeof frame === 'string') {
-        const trimmed = frame.trim();
-        if (trimmed.length === 0)
-            return null;
-        return trimmed;
-    }
-    return null;
-}
+import { normalizeFrameTarget } from '../../lib/frame-utils.js';
 /**
  * Frame selection probe executed in page context.
  * Must be self-contained for chrome.scripting.executeScript({ func }).
@@ -73,7 +55,7 @@ function analyzeFrameProbe(frameTarget) {
     }
 }
 async function resolveAnalyzeFrameSelection(tabId, frame) {
-    const normalized = normalizeAnalyzeFrameTarget(frame);
+    const normalized = normalizeFrameTarget(frame);
     if (normalized === null) {
         throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value');
     }

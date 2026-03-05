@@ -31,10 +31,7 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		return fail(req, ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -83,10 +80,7 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {

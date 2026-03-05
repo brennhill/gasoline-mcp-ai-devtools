@@ -10,7 +10,7 @@ import (
 	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
-func (h *ToolHandler) generateCSPImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Mode string `json:"mode"`
 	}
@@ -50,8 +50,8 @@ func (h *ToolHandler) generateCSPImpl(req JSONRPCRequest, args json.RawMessage) 
 	})
 }
 
-// generateSRIImpl generates Subresource Integrity hashes for third-party scripts/styles.
-func (h *ToolHandler) generateSRIImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
+func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	networkBodies := h.capture.GetNetworkBodies()
 	if len(networkBodies) == 0 {
 		return succeed(req, "SRI unavailable", map[string]any{

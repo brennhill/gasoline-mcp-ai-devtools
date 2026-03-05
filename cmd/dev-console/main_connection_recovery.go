@@ -12,9 +12,26 @@ import (
 	"time"
 )
 
+const (
+	// recoveryFastPortWait is the initial wait for port release after HTTP shutdown.
+	recoveryFastPortWait = 500 * time.Millisecond
+
+	// recoverySlowPortWait is the extended wait for port release after SIGTERM/SIGKILL escalation.
+	recoverySlowPortWait = 1500 * time.Millisecond
+
+	// recoveryShutdownHTTPTimeout is the HTTP client timeout for the one-shot shutdown probe.
+	recoveryShutdownHTTPTimeout = 500 * time.Millisecond
+
+	// recoveryPortPollInterval is the polling interval when waiting for a port to be released.
+	recoveryPortPollInterval = 50 * time.Millisecond
+
+	// recoveryTermGracePeriod is the pause after SIGTERM before escalating to SIGKILL.
+	recoveryTermGracePeriod = 200 * time.Millisecond
+)
+
 func stopServerForUpgrade(port int) bool {
 	_ = tryShutdownViaHTTP(port)
-	if waitForPortRelease(port, 500*time.Millisecond) {
+	if waitForPortRelease(port, recoveryFastPortWait) {
 		removePIDFile(port)
 		return true
 	}
@@ -34,7 +51,7 @@ func stopServerForUpgrade(port int) bool {
 		}
 	}
 
-	if waitForPortRelease(port, 1500*time.Millisecond) {
+	if waitForPortRelease(port, recoverySlowPortWait) {
 		removePIDFile(port)
 		return true
 	}
@@ -49,7 +66,7 @@ func stopServerForUpgrade(port int) bool {
 		}
 	}
 
-	released := waitForPortRelease(port, 1500*time.Millisecond)
+	released := waitForPortRelease(port, recoverySlowPortWait)
 	if released {
 		removePIDFile(port)
 	}
@@ -58,7 +75,7 @@ func stopServerForUpgrade(port int) bool {
 
 func tryShutdownViaHTTP(port int) bool {
 	shutdownURL := fmt.Sprintf("http://127.0.0.1:%d/shutdown", port)
-	client := &http.Client{Timeout: 500 * time.Millisecond}
+	client := &http.Client{Timeout: recoveryShutdownHTTPTimeout}
 	req, _ := http.NewRequest(http.MethodPost, shutdownURL, nil)
 	resp, err := client.Do(req) // #nosec G704 -- shutdownURL is localhost-only from trusted port
 	if err != nil {
@@ -74,7 +91,7 @@ func waitForPortRelease(port int, timeout time.Duration) bool {
 		if !isServerRunning(port) {
 			return true
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(recoveryPortPollInterval)
 	}
 	return !isServerRunning(port)
 }
@@ -95,7 +112,7 @@ func terminatePIDQuiet(pid int, force bool) {
 	}
 
 	_ = process.Signal(syscall.SIGTERM)
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(recoveryTermGracePeriod)
 	if isProcessAlive(pid) {
 		_ = process.Kill()
 	}

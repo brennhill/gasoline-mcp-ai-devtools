@@ -19,7 +19,11 @@ const annotationWaitCommandTTL = 10 * time.Minute
 // If annotations arrive in this window, return them directly without requiring polling.
 const annotationBlockingWaitDefault = 15 * time.Second
 
-// annotationBlockingWaitMax caps caller-provided timeout_ms for blocking annotation calls.
+// annotationErrorCorrelationWindow is the time window around an annotation's timestamp
+// in which console errors are considered correlated.
+const annotationErrorCorrelationWindow = 5 * time.Second
+
+// annotationBlockingWaitMax caps caller-provided timeout_ms for wait=true annotation calls.
 const annotationBlockingWaitMax = 10 * time.Minute
 
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
@@ -420,7 +424,7 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	// Error correlation: find console errors near the annotation's timestamp
 	hasCorrelatedErrors := false
 	if annotTS := h.annotationStore.FindAnnotationTimestamp(params.CorrelationID); annotTS > 0 {
-		correlatedErrors := h.findErrorsNearTimestamp(annotTS, 5*time.Second)
+		correlatedErrors := h.findErrorsNearTimestamp(annotTS, annotationErrorCorrelationWindow)
 		if len(correlatedErrors) > 0 {
 			result["correlated_errors"] = correlatedErrors
 			result["error_correlation_window_seconds"] = 5

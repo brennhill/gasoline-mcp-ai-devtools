@@ -163,10 +163,7 @@ func (h *interactActionHandler) queueExecuteScript(
 	tabID, timeoutMs int,
 	world, script, reason, queuedMsg string,
 ) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {

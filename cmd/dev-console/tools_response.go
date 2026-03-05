@@ -24,27 +24,27 @@ func mcpTextResponse(text string) json.RawMessage {
 
 // succeed builds a success JSONRPCResponse with a JSON summary + data payload.
 func succeed(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 // succeedText builds a success JSONRPCResponse with a plain text payload.
 func succeedText(req JSONRPCRequest, text string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(text)}
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpTextResponse(text)}
 }
 
 // succeedRaw builds a success JSONRPCResponse with a pre-built Result payload.
 func succeedRaw(req JSONRPCRequest, result json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: result}
 }
 
 // fail builds an error JSONRPCResponse with a structured error payload (isError=true).
 func fail(req JSONRPCRequest, code, message, retry string, opts ...func(*StructuredError)) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(code, message, retry, opts...)}
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpStructuredError(code, message, retry, opts...)}
 }
 
 // failJSON builds an error JSONRPCResponse with a JSON data payload (isError=true).
 func failJSON(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, data)}
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpJSONErrorResponse(summary, data)}
 }
 
 // parseArgs unmarshals JSON args into v. Returns (resp, true) if parsing failed.

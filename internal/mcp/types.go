@@ -5,6 +5,10 @@ package mcp
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
+// JSONRPCVersion is the JSON-RPC protocol version string. Use this constant
+// instead of the magic string "2.0" when constructing JSON-RPC responses.
+const JSONRPCVersion = "2.0"
+
 // MCPContentBlock represents a single content block in an MCP tool result.
 // Supports both text (type="text") and image (type="image") content types.
 // For text: Type + Text are used. For image: Type + Data + MimeType are used.

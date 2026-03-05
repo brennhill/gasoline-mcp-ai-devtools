@@ -10,6 +10,24 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
+// guardCheck is a precondition that returns (response, true) to short-circuit the caller.
+type guardCheck func(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
+
+// checkGuards runs each guard in order, returning the first blocking response.
+// Eliminates the repeated 6-line requirePilot+requireExtension boilerplate:
+//
+//	Before: if resp, blocked := h.requirePilot(req); blocked { return resp }
+//	        if resp, blocked := h.requireExtension(req); blocked { return resp }
+//	After:  if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked { return resp }
+func checkGuards(req JSONRPCRequest, guards ...guardCheck) (JSONRPCResponse, bool) {
+	for _, g := range guards {
+		if resp, blocked := g(req); blocked {
+			return resp, true
+		}
+	}
+	return JSONRPCResponse{}, false
+}
+
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
 func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {

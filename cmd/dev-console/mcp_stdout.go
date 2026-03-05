@@ -38,7 +38,7 @@ func normalizeMCPPayload(payload []byte) []byte {
 
 	stderrf("[gasoline-bridge] ERROR: stdout invariant violation: invalid JSON payload (len=%d)\n", len(payload))
 	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      nil,
 		Error: &JSONRPCError{
 			Code:    -32603,
@@ -54,7 +54,7 @@ func normalizeMCPPayload(payload []byte) []byte {
 // This ensures the parent process (IDE) receives a proper error instead of empty response.
 func sendStartupError(message string) {
 	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      "startup",
 		Error: &JSONRPCError{
 			Code:    -32603,

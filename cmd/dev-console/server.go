@@ -208,7 +208,7 @@ func (s *Server) SetActiveCodebase(path string) {
 
 // Close gracefully shuts down the server, draining the async log writer.
 func (s *Server) Close() {
-	s.shutdownAsyncLogger(2 * time.Second)
+	s.shutdownAsyncLogger(asyncLoggerDrainTimeout)
 	s.closeAnnotationStore()
 }
 

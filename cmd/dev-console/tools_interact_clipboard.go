@@ -12,10 +12,7 @@ import (
 
 // handleClipboardRead reads text from the clipboard via navigator.clipboard.readText().
 func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -66,10 +63,7 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 			withParam("text"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {

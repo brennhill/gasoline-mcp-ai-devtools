@@ -15,7 +15,13 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
-func (h *ToolHandler) configureTelemetryImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+const (
+	// restartSelfSignalDelay is the pause before sending SIGTERM to self during a
+	// daemon restart, giving the JSON-RPC response time to flush to the client.
+	restartSelfSignalDelay = 100 * time.Millisecond
+)
+
+func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.server == nil {
 		return fail(req, ErrNotInitialized, "Server not initialized", "Internal error — do not retry")
 	}
@@ -47,7 +53,7 @@ func (h *ToolHandler) configureTelemetryImpl(req JSONRPCRequest, args json.RawMe
 	})
 }
 
-func (h *ToolHandler) configureSecurityModeImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureSecurityMode(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.capture == nil {
 		return fail(req, ErrNotInitialized,
 			"Capture subsystem not initialized",
@@ -105,10 +111,10 @@ func (h *ToolHandler) configureSecurityModeImpl(req JSONRPCRequest, args json.Ra
 	}
 }
 
-// configureRestartImpl handles restart requests that reach the daemon.
+// toolConfigureRestart handles restart requests that reach the daemon.
 // Sends self-SIGTERM so the bridge auto-respawns a fresh daemon.
 // This covers the case where the daemon is responsive but needs a clean restart.
-func (h *ToolHandler) configureRestartImpl(req JSONRPCRequest) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureRestart(req JSONRPCRequest) JSONRPCResponse {
 	resp := succeed(req, "Daemon restarting", map[string]any{
 		"status":    "ok",
 		"restarted": true,
@@ -117,7 +123,7 @@ func (h *ToolHandler) configureRestartImpl(req JSONRPCRequest) JSONRPCResponse {
 
 	// Send SIGTERM to self after a brief delay so the response is sent first.
 	util.SafeGo(func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(restartSelfSignalDelay)
 		p, _ := os.FindProcess(os.Getpid())
 		_ = p.Signal(syscall.SIGTERM)
 	})
@@ -125,16 +131,8 @@ func (h *ToolHandler) configureRestartImpl(req JSONRPCRequest) JSONRPCResponse {
 	return resp
 }
 
-// configureStreamingWrapperImpl repackages streaming_action -> action for toolConfigureStreaming.
-func (h *ToolHandler) configureStreamingWrapperImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	rewritten, err := cfg.RewriteStreamingArgs(args)
-	if err != nil {
-		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
-	}
-	return h.toolConfigureStreaming(req, rewritten)
-}
 
-func (h *ToolHandler) configureTestBoundaryStartImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, errResp := cfg.ParseTestBoundaryStart(req.ID, args)
 	if errResp != nil {
 		return *errResp
@@ -151,7 +149,7 @@ func (h *ToolHandler) configureTestBoundaryStartImpl(req JSONRPCRequest, args js
 	return cfg.BuildTestBoundaryStartResponse(req.ID, result)
 }
 
-func (h *ToolHandler) configureTestBoundaryEndImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, errResp := cfg.ParseTestBoundaryEnd(req.ID, args)
 	if errResp != nil {
 		return *errResp

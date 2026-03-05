@@ -5,6 +5,8 @@
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
 import { scaleTimeout } from './timeouts.js';
+// Chrome DevTools Protocol version used for debugger.attach calls
+export const CDP_VERSION = '1.3';
 // Server defaults
 export const DEFAULT_SERVER_URL = 'http://localhost:7890';
 // Terminal server runs on a dedicated port (main port + offset) for isolation.

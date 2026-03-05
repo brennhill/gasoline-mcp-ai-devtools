@@ -16,6 +16,12 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
+const (
+	// insecureProxyTimeout is the HTTP client timeout for outbound requests
+	// made through the insecure proxy endpoint.
+	insecureProxyTimeout = 20 * time.Second
+)
+
 // ssrfCheckEnabled controls whether the SSRF denylist is enforced.
 // Disabled in tests that need to reach localhost mock servers.
 var ssrfCheckEnabled = true
@@ -28,7 +34,7 @@ var (
 func getInsecureProxyClient() *http.Client {
 	insecureProxyClientOnce.Do(func() {
 		insecureProxyClient = &http.Client{
-			Timeout:   20 * time.Second,
+			Timeout:   insecureProxyTimeout,
 			Transport: upload.NewSSRFSafeTransport(func() bool { return !ssrfCheckEnabled }),
 		}
 	})

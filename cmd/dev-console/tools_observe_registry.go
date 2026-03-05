@@ -10,107 +10,48 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
-// ObserveHandler is the function signature for observe tool handlers.
-type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
+// obs wraps an observe.Deps-accepting function as a ModeHandler.
+// *ToolHandler satisfies observe.Deps, but Go requires explicit adaptation.
+func obs(fn func(observe.Deps, JSONRPCRequest, json.RawMessage) JSONRPCResponse) ModeHandler {
+	return func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return fn(h, req, args)
+	}
+}
 
 // observeHandlers maps observe mode names to their handler functions.
-// Modes handled by internal/tools/observe delegate to the extracted package.
-// Modes that depend on async/recording subsystems remain local.
-var observeHandlers = map[string]ObserveHandler{
+var observeHandlers = map[string]ModeHandler{
 	// Delegated to internal/tools/observe
-	"errors": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetBrowserErrors(h, req, args)
-	},
-	"logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetBrowserLogs(h, req, args)
-	},
-	"extension_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetExtensionLogs(h, req, args)
-	},
-	"network_waterfall": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetNetworkWaterfall(h, req, args)
-	},
-	"network_bodies": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetNetworkBodies(h, req, args)
-	},
-	"websocket_events": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetWSEvents(h, req, args)
-	},
-	"websocket_status": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetWSStatus(h, req, args)
-	},
-	"actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetEnhancedActions(h, req, args)
-	},
-	"vitals": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetWebVitals(h, req, args)
-	},
-	"page": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetPageInfo(h, req, args)
-	},
-	"tabs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetTabs(h, req, args)
-	},
-	"history": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.AnalyzeHistory(h, req, args)
-	},
-	"pilot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.ObservePilot(h, req, args)
-	},
-	"timeline": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetSessionTimeline(h, req, args)
-	},
-	"error_bundles": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetErrorBundles(h, req, args)
-	},
-	"screenshot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetScreenshot(h, req, args)
-	},
-	"storage": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetStorage(h, req, args)
-	},
-	"indexeddb": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetIndexedDB(h, req, args)
-	},
-	"summarized_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetSummarizedLogs(h, req, args)
-	},
-	"transients": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return observe.GetTransients(h, req, args)
-	},
-	// Composite: page inventory (#318)
-	"page_inventory": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObservePageInventory(req, args)
-	},
-	// Push inbox handler
-	"inbox": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObserveInbox(req, args)
-	},
-	// Local handlers — depend on async/recording subsystems
-	"command_result": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObserveCommandResult(req, args)
-	},
-	"pending_commands": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObservePendingCommands(req, args)
-	},
-	"failed_commands": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObserveFailedCommands(req, args)
-	},
-	"saved_videos": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObserveSavedVideos(req, args)
-	},
-	"recordings": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetRecordings(req, args)
-	},
-	"recording_actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetRecordingActions(req, args)
-	},
-	"playback_results": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetPlaybackResults(req, args)
-	},
-	"log_diff_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetLogDiffReport(req, args)
-	},
+	"errors":            obs(observe.GetBrowserErrors),
+	"logs":              obs(observe.GetBrowserLogs),
+	"extension_logs":    obs(observe.GetExtensionLogs),
+	"network_waterfall": obs(observe.GetNetworkWaterfall),
+	"network_bodies":    obs(observe.GetNetworkBodies),
+	"websocket_events":  obs(observe.GetWSEvents),
+	"websocket_status":  obs(observe.GetWSStatus),
+	"actions":           obs(observe.GetEnhancedActions),
+	"vitals":            obs(observe.GetWebVitals),
+	"page":              obs(observe.GetPageInfo),
+	"tabs":              obs(observe.GetTabs),
+	"history":           obs(observe.AnalyzeHistory),
+	"pilot":             obs(observe.ObservePilot),
+	"timeline":          obs(observe.GetSessionTimeline),
+	"error_bundles":     obs(observe.GetErrorBundles),
+	"screenshot":        obs(observe.GetScreenshot),
+	"storage":           obs(observe.GetStorage),
+	"indexeddb":         obs(observe.GetIndexedDB),
+	"summarized_logs":   obs(observe.GetSummarizedLogs),
+	"transients":        obs(observe.GetTransients),
+	// Local handlers
+	"page_inventory":    method((*ToolHandler).toolObservePageInventory),
+	"inbox":             method((*ToolHandler).toolObserveInbox),
+	"command_result":    method((*ToolHandler).toolObserveCommandResult),
+	"pending_commands":  method((*ToolHandler).toolObservePendingCommands),
+	"failed_commands":   method((*ToolHandler).toolObserveFailedCommands),
+	"saved_videos":      method((*ToolHandler).toolObserveSavedVideos),
+	"recordings":        method((*ToolHandler).toolGetRecordings),
+	"recording_actions": method((*ToolHandler).toolGetRecordingActions),
+	"playback_results":  method((*ToolHandler).toolGetPlaybackResults),
+	"log_diff_report":   method((*ToolHandler).toolGetLogDiffReport),
 }
 
 // observeAliases maps shorthand names to their canonical observe mode names.

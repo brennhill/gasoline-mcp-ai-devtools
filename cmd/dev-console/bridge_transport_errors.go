@@ -50,7 +50,7 @@ func handleDaemonNotReady(req JSONRPCRequest, status string, signal func(), fram
 // sendBridgeParseError sends a JSON-RPC parse error (id must be null per spec).
 func sendBridgeParseError(_ []byte, err error, framing bridge.StdioFraming) {
 	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      nil, // JSON-RPC: parse errors must have null id
 		Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
 	}
@@ -62,7 +62,7 @@ func sendBridgeParseError(_ []byte, err error, framing bridge.StdioFraming) {
 // sendBridgeError sends a JSON-RPC error response to stdout.
 func sendBridgeError(id any, code int, message string, framing bridge.StdioFraming) {
 	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      id,
 		Error: &JSONRPCError{
 			Code:    code,
@@ -114,7 +114,7 @@ func sendToolErrorWithOptions(id any, message string, framing bridge.StdioFramin
 	// Error impossible: map contains only primitive types and nested maps
 	resultJSON, _ := json.Marshal(result)
 	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      id,
 		Result:  resultJSON,
 	}

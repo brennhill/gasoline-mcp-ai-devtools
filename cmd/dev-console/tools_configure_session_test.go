@@ -113,7 +113,7 @@ func TestToolConfigureTestBoundaryEnd_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.configureTestBoundaryEndImpl(req, args)
+	resp := env.handler.toolConfigureTestBoundaryEnd(req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {
