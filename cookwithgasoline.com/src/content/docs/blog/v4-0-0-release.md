@@ -52,4 +52,4 @@ Gasoline v4.0.0 is the refinement phase. The core architecture from v3 works wel
 
 Next: Production-grade recording system, broader browser support research, performance benchmarking.
 
-See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.
+See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.

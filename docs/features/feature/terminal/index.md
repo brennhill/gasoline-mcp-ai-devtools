@@ -9,11 +9,13 @@ code_paths:
   - cmd/dev-console/terminal_handlers.go
   - cmd/dev-console/terminal_server.go
   - cmd/dev-console/terminal_assets/terminal.html
+  - extension/content/ui/terminal-widget.js
   - src/content/ui/terminal-widget.ts
   - src/content/ui/tracked-hover-launcher.ts
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
+  - tests/extension/terminal-widget.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
 ---
@@ -26,8 +28,12 @@ test_paths:
 - Runs on a **dedicated HTTP server** at `main_port + 1` (e.g., 7891) for isolation
 - Singleton session shared across all tabs via `chrome.storage.session`
 - Three UI states: **open**, **minimized**, **closed** — all persisted across page refreshes
+- Header redraw control (`↻`) resets widget geometry and reloads iframe graphics without killing the PTY session
+- Annotation auto-send now uses a typing-aware write queue: if the user is active in terminal, writes wait until ~1.5s idle
+- Queued submit is reconnect-safe: if WS drops before Enter, submit waits until connection is back
 - Scrollback buffer capped at 256 KB for memory safety
 - Canonical flow map: [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
+- Feature flow-map pointer: [flow-map.md](./flow-map.md)
 
 ---
 
@@ -252,12 +258,28 @@ The content script communicates with the terminal iframe via `postMessage`:
 |-----------|---------|---------|
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'focus'}` | Focus the xterm.js instance |
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'resize'}` | Refit terminal after widget resize |
+| Parent → Iframe | `{target: 'gasoline-terminal', command: 'redraw'}` | Soft redraw xterm canvas without iframe/session reload |
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'write', text: '...'}` | Write text to PTY stdin |
 | Iframe → Parent | `{source: 'gasoline-terminal', event: 'connected'}` | WebSocket connected |
 | Iframe → Parent | `{source: 'gasoline-terminal', event: 'disconnected'}` | WebSocket disconnected |
 | Iframe → Parent | `{source: 'gasoline-terminal', event: 'exited'}` | PTY process exited |
+| Iframe → Parent | `{source: 'gasoline-terminal', event: 'focus', data: { focused }}` | xterm focus/blur state updates |
+| Iframe → Parent | `{source: 'gasoline-terminal', event: 'typing', data: { at }}` | Throttled typing heartbeat timestamp |
 
 Origin validation: parent only accepts messages from the terminal server origin. Iframe sends to `*` (since it doesn't know the parent's origin in advance).
+
+### Queued Write Guard
+
+When `writeToTerminal()` is called (for example from annotation auto-send), the widget now queues writes and applies a focus guard:
+
+1. If terminal is connected and user is idle, write is sent immediately.
+2. If terminal has focus and recent typing (< 1.5s), write is deferred.
+3. A warning toast is shown (`waiting for user to stop typing`) at a throttled interval.
+4. After idle clears, widget soft-redraws terminal, writes text, then sends `\r`.
+5. If WebSocket disconnects before submit, queued Enter waits until reconnect, then continues.
+6. Focus is returned to xterm after submit.
+
+If the user re-focuses and types again during the auto-submit window, Enter is deferred again until idle.
 
 ---
 

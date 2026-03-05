@@ -121,8 +121,11 @@ This verifies port availability, binary version, client configuration, and print
 **Cause**: The extension and server have different major versions.
 
 **To fix**:
-1. Update the server: `npm install -g gasoline-agentic-browser`
-2. Update the extension: download the latest from [Downloads](/downloads/) and reload in chrome://extensions
+1. Update: re-run the installer to get the latest version of both:
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+   ```
+2. Reload the extension: go to `chrome://extensions`, remove the old version, click **Load unpacked**, select `~/.gasoline/extension`
 3. Both should show the same major version
 
 Minor/patch version differences are fine and won't trigger the warning.
@@ -149,7 +152,7 @@ The debug buffer holds 200 entries (circular — oldest are dropped). Logs are s
 
 ## Reporting Issues
 
-[Open an issue](https://github.com/nicepkg/gasoline/issues/new) with:
+[Open an issue](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/new) with:
 
 1. **Environment**: OS, Chrome version, Gasoline version
 2. **Steps to reproduce**

@@ -72,7 +72,7 @@ All telemetry is stored in generic ring buffers — fixed-size circular arrays t
 | Network bodies | 100 | 8 MB |
 | Network waterfall | 1,000 (configurable) | 500 KB |
 | WebSocket connections | 20 active + 10 closed | 2 MB |
-| Pending queries | 5 | 1 KB |
+| Pending queries | 15 | 1 KB |
 
 ### Cursor-Based Pagination
 
@@ -105,7 +105,7 @@ Each MCP client spawns its own stdio process. The first process starts the HTTP 
 This means:
 - All clients see the same telemetry
 - No port conflicts — everyone connects to the same server
-- The server persists across client disconnects (with `--persist` flag)
+- The server persists across client disconnects (daemon mode is the default)
 - Zero configuration — the bridge detection is automatic
 
 <!-- Diagram: Multi-client bridge pattern showing 3 AI tools connecting through stdio wrappers to a single HTTP server -->
@@ -128,8 +128,9 @@ Every MCP client connection follows a 6-step lifecycle:
 | Cold start | < 600ms | 300-410ms |
 | Console intercept overhead | < 0.1ms | < 0.1ms |
 | HTTP endpoint latency | < 0.5ms | < 0.5ms |
-| Concurrent clients | 100+ | Tested at 500 |
-| Rate limit | 500 calls/min | Enforced server-side |
+| Concurrent clients | 100+ | Tested at 100 |
+| Event rate limit | 1,000 events/sec | Circuit breaker (HTTP 429) |
+| Tool call rate limit | 500 calls/min | MCP-level limiter |
 
 ## Security Boundaries
 
@@ -164,11 +165,11 @@ Everything Gasoline does is exposed through exactly five MCP tools:
 
 | Tool | Purpose | Modes |
 |---|---|---|
-| **observe** | Read browser state | 23 modes (errors, network, WebSocket, vitals, recordings, etc.) |
-| **analyze** | Active analysis | 15 modes (DOM queries, accessibility, security, link health, annotations, etc.) |
+| **observe** | Read browser state | 30 modes (errors, network, WebSocket, vitals, recordings, screenshots, storage, etc.) |
+| **analyze** | Active analysis | 27 modes (DOM queries, accessibility, security, link health, annotations, forms, visual diff, etc.) |
 | **generate** | Create artifacts | 13 formats (tests, reproductions, HAR, SARIF, CSP, SRI, test healing, etc.) |
-| **configure** | Manage the session | 16 actions (noise rules, storage, recording, streaming, health, etc.) |
-| **interact** | Control the browser | 35 actions (navigate, click, type, upload, draw mode, recording, etc.) |
+| **configure** | Manage the session | 29 actions (noise rules, storage, recording, streaming, health, sequences, etc.) |
+| **interact** | Control the browser | 58 actions (navigate, click, type, upload, draw mode, recording, batch, explore, etc.) |
 
 Five tools. Not fifty. The AI doesn't need to choose from a sprawling API — it picks the right tool and the right mode. This constraint keeps the interface learnable and the implementation maintainable.
 
@@ -178,14 +179,14 @@ For a detailed understanding of how all the pieces fit together, check out our c
 
 ### System Architecture (C4 Model)
 
-- **[C2: Container Architecture](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
-- **[C3: Component Architecture](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
+- **[C2: Container Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
+- **[C3: Component Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
 
 ### Request-Response Flows
 
-- **[Request-Response Cycle](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
-- **[Extension Message Protocol](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
+- **[Request-Response Cycle](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
+- **[Extension Message Protocol](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
 
 ### Data Flow
 
-- **[Data Capture Pipeline](https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy
+- **[Data Capture Pipeline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy

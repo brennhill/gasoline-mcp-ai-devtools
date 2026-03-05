@@ -18,10 +18,14 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
 )
 
-// terminalWSIdleTimeout is the idle timeout for terminal WebSocket connections.
-// Set high — terminal users may step away for extended periods. On timeout the
-// connection closes cleanly and the browser auto-reconnects with scrollback replay.
-const terminalWSIdleTimeout = 2 * time.Hour
+// terminalPingInterval is how often the server sends WebSocket ping frames.
+// Browser WebSocket API auto-replies with pong — no client code needed.
+const terminalPingInterval = 30 * time.Second
+
+// terminalPongTimeout is the max time allowed without receiving any frame (data or pong).
+// If exceeded, the connection is considered dead and closed. The PTY session survives
+// so the browser can reconnect with scrollback replay.
+const terminalPongTimeout = 60 * time.Second
 
 // terminalReadBufSize is the buffer size for PTY reads relayed to the browser.
 const terminalReadBufSize = 4096
@@ -148,13 +152,16 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		}
 	}
 
-	terminalWSLoop(conn, bufrw, sess, mgr)
+	terminalWSLoop(conn, bufrw, sess)
 }
 
 // terminalWSLoop relays data between a WebSocket connection and a PTY session.
 // Downstream (PTY → browser): binary WebSocket frames with raw terminal output.
 // Upstream (browser → PTY): binary frames as keystrokes, text frames as JSON control messages.
-func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr *pty.Manager) {
+// Server sends ping frames every terminalPingInterval; if no frame (data or pong) arrives
+// within terminalPongTimeout the connection is considered dead and closed. The PTY session
+// survives so the browser can reconnect with scrollback replay.
+func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
 	done := make(chan struct{})
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, defer close(done) handles teardown
@@ -176,6 +183,19 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr 
 		}
 	}()
 
+	// Server-initiated ping keepalive — detects dead connections (browser crash,
+	// laptop sleep) without ever timing out idle users.
+	pingTicker := time.NewTicker(terminalPingInterval)
+	defer pingTicker.Stop()
+	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, stops when conn closes
+		for range pingTicker.C {
+			if err := wsWriteFrame(rw, 0x9, nil); err != nil {
+				conn.Close()
+				return
+			}
+		}
+	}()
+
 	// WebSocket → PTY (upstream): read frames and dispatch.
 	// NOTE: Do NOT call sess.Close() on WebSocket disconnect — the session
 	// must survive page refreshes so the browser can reconnect with scrollback replay.
@@ -183,17 +203,14 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr 
 	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn
 		defer conn.Close() // Close conn on exit so downstream detects it and browser auto-reconnects
 		for {
-			_ = conn.SetReadDeadline(time.Now().Add(terminalWSIdleTimeout))
+			// Refresh read deadline on every iteration — any received frame
+			// (data, pong, ping) proves the connection is alive.
+			_ = conn.SetReadDeadline(time.Now().Add(terminalPongTimeout))
 
 			fin, opcode, payload, err := wsReadFrame(rw)
 			if err != nil {
-				// If idle timeout, notify the user and kill the session.
-				// Page refresh starts a fresh session handshake.
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					msg := []byte(`{"type":"idle_timeout"}`)
-					_ = wsWriteFrame(rw, 0x1, msg)
-					_ = mgr.Stop(sess.ID)
-				}
+				// Read deadline expired or connection error — close silently.
+				// PTY stays alive for reconnection.
 				return
 			}
 			_ = fin // Terminal messages are not fragmented in practice.
@@ -204,6 +221,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, mgr 
 				return // WebSocket closed — stop relaying but keep PTY alive
 			case opcode == 0x9: // Ping → Pong
 				_ = wsWriteFrame(rw, 0xA, payload)
+			case opcode == 0xA: // Pong — no-op, deadline already refreshed above
 			case opcode == 0x2: // Binary — raw keystrokes → PTY stdin
 				if _, err := sess.Write(payload); err != nil {
 					return

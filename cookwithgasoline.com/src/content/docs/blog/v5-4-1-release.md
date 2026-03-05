@@ -25,4 +25,4 @@ npm install -g gasoline-mcp@5.4.1
 
 ## Full Changelog
 
-[v5.4.1 Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.4.1)
+[v5.4.1 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.1)

@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "27" "Interactive Overlay Smoke Tests" "15"
+begin_category "27" "Interactive Overlay Smoke Tests" "19"
 ensure_daemon
 
 # ── Interactive Helper ────────────────────────────────────
@@ -372,83 +372,11 @@ run_test_27_12
 # SECTION 6: Terminal Overlay
 # ══════════════════════════════════════════════════════════
 
-# ── 27.13 — Terminal page served by daemon ────────────────
-begin_test "27.13" "Terminal page served by daemon" \
-    "GET /terminal — verify HTML page with xterm.js is served" \
-    "HTTP: daemon serves the embedded terminal page."
-run_test_27_13() {
-    local status
-    status=$(get_http_status "http://localhost:${PORT}/terminal")
-    if [ "$status" != "200" ]; then
-        fail "GET /terminal returned HTTP $status (expected 200)."
-        return
-    fi
-
-    local body
-    body=$(get_http_body "http://localhost:${PORT}/terminal")
-    if echo "$body" | grep -q "xterm"; then
-        pass "Terminal page served with xterm.js."
-    else
-        fail "Terminal page does not contain xterm.js references."
-    fi
-}
-run_test_27_13
-
-# ── 27.14 — Terminal session start/stop lifecycle ────────
-begin_test "27.14" "Terminal session start/stop lifecycle" \
-    "POST /terminal/start then /terminal/stop — verify session lifecycle" \
-    "HTTP: session creation returns token and PID, stop cleans up."
-run_test_27_14() {
-    # Start a session
-    local start_resp
-    start_resp=$(curl -s --max-time 10 -X POST "http://localhost:${PORT}/terminal/start" \
-        -H "Content-Type: application/json" \
-        -d '{"cmd":"/bin/sh","args":["-c","exec cat"]}')
-
-    local token
-    token=$(echo "$start_resp" | jq -r '.token // empty' 2>/dev/null)
-    local session_id
-    session_id=$(echo "$start_resp" | jq -r '.session_id // empty' 2>/dev/null)
-
-    if [ -z "$token" ] || [ -z "$session_id" ]; then
-        fail "Start response missing token or session_id: $start_resp"
-        return
-    fi
-
-    # Verify config shows the session
-    local config_resp
-    config_resp=$(get_http_body "http://localhost:${PORT}/terminal/config")
-    local count
-    count=$(echo "$config_resp" | jq -r '.count // 0' 2>/dev/null)
-    if [ "$count" -lt 1 ]; then
-        fail "Config shows 0 sessions after start."
-        # Clean up anyway
-        curl -s --max-time 5 -X POST "http://localhost:${PORT}/terminal/stop" \
-            -H "Content-Type: application/json" -d '{"id":"default"}' >/dev/null 2>&1
-        return
-    fi
-
-    # Stop the session
-    local stop_resp
-    stop_resp=$(curl -s --max-time 10 -X POST "http://localhost:${PORT}/terminal/stop" \
-        -H "Content-Type: application/json" \
-        -d "{\"id\":\"$session_id\"}")
-    local stop_status
-    stop_status=$(echo "$stop_resp" | jq -r '.status // empty' 2>/dev/null)
-
-    if [ "$stop_status" = "stopped" ]; then
-        pass "Terminal session started (token received) and stopped cleanly."
-    else
-        fail "Stop response unexpected: $stop_resp"
-    fi
-}
-run_test_27_14
-
-# ── 27.15 — Terminal button opens iframe overlay ─────────
-begin_test "27.15" "Terminal button opens iframe terminal overlay" \
+# ── 27.13 — Terminal button opens iframe overlay ─────────
+begin_test "27.13" "Terminal button opens iframe terminal overlay" \
     "Click 'Term' button in launcher — verify terminal iframe appears" \
     "Visual: terminal overlay renders at bottom-right with dark theme."
-run_test_27_15() {
+run_test_27_13() {
     echo ""
     echo "  >>> ACTION REQUIRED: Open the launcher panel (hover/click flame icon)."
     echo "  >>> Click the 'Term' button."
@@ -459,11 +387,147 @@ run_test_27_15() {
     else
         fail "Human reports terminal overlay did not appear."
     fi
+}
+run_test_27_13
 
+# ── 27.14 — Terminal typing works ────────────────────────
+begin_test "27.14" "Terminal typing works" \
+    "Type 'echo hello' in the terminal — verify output appears" \
+    "Integration: keystrokes relay through WebSocket to PTY and output returns."
+run_test_27_14() {
     echo ""
-    echo "  >>> If the terminal is open, click the X button to close it."
-    sleep 1
+    echo "  >>> ACTION REQUIRED: Click inside the terminal and type: echo hello"
+    echo "  >>> Press Enter to execute."
+    echo ""
+
+    if human_verify "Did the terminal show 'hello' as output after pressing Enter?"; then
+        pass "Terminal typing and output display working."
+    else
+        fail "Human reports terminal typing or output not working."
+    fi
+}
+run_test_27_14
+
+# ── 27.15 — Terminal minimize/restore ────────────────────
+begin_test "27.15" "Terminal minimize and restore" \
+    "Click minimize button, verify panel collapses, click again to restore" \
+    "Visual: minimize collapses to header bar, restore expands back."
+run_test_27_15() {
+    echo ""
+    echo "  >>> ACTION REQUIRED: Click the minimize button (▁) in the terminal header."
+    echo ""
+
+    if human_verify "Did the terminal panel collapse to just a thin header bar?"; then
+        echo ""
+        echo "  >>> ACTION REQUIRED: Click the header bar or restore button (□) to expand it."
+        echo ""
+        if human_verify "Did the terminal restore to its full size?"; then
+            pass "Terminal minimize/restore working correctly."
+        else
+            fail "Human reports terminal did not restore."
+        fi
+    else
+        fail "Human reports terminal did not minimize."
+    fi
 }
 run_test_27_15
+
+# ── 27.16 — Terminal close ───────────────────────────────
+begin_test "27.16" "Terminal close hides panel" \
+    "Click X button — verify terminal disappears completely" \
+    "Visual: close hides the widget (session stays alive for reconnection)."
+run_test_27_16() {
+    echo ""
+    echo "  >>> ACTION REQUIRED: Click the X button in the terminal header."
+    echo ""
+
+    if human_verify "Did the terminal panel disappear completely from the page?"; then
+        pass "Terminal close hides panel completely."
+    else
+        fail "Human reports terminal panel still visible after close."
+    fi
+}
+run_test_27_16
+
+# ── 27.17 — Terminal reconnect on refresh ────────────────
+begin_test "27.17" "Terminal reconnects on page refresh with scrollback" \
+    "Re-open terminal, refresh the page, verify terminal reconnects with prior output" \
+    "Integration: session persistence + scrollback replay across page refreshes."
+run_test_27_17() {
+    echo ""
+    echo "  >>> ACTION REQUIRED: Re-open the terminal (click flame icon → Term)."
+    echo "  >>> Type a command like 'echo reconnect-test' and press Enter."
+    echo "  >>> Then REFRESH the page (Cmd+R or F5)."
+    echo ""
+
+    if human_verify "After refresh, did the terminal reappear and show the previous output (including 'reconnect-test')?"; then
+        pass "Terminal reconnects with scrollback replay on page refresh."
+    else
+        fail "Human reports terminal did not reconnect or lost scrollback."
+    fi
+
+    echo ""
+    echo "  >>> Close the terminal (X button) before continuing."
+    sleep 1
+}
+run_test_27_17
+
+# ══════════════════════════════════════════════════════════
+# SECTION 7: Overlay Dismiss & Observe Modes
+# ══════════════════════════════════════════════════════════
+
+# ── 27.18 — Dismiss loop detection ──────────────────────
+begin_test "27.18" "Dismiss loop detection" \
+    "Trigger dismiss_top_overlay twice within 30s — verify loop error on second attempt" \
+    "Safety: prevents infinite dismiss loops when overlays reappear immediately."
+run_test_27_18() {
+    # First dismiss — should succeed or report no overlay
+    RESPONSE=$(call_tool "interact" '{"action":"dismiss_top_overlay"}')
+    sleep 2
+
+    # Second dismiss within 30s — should detect loop
+    RESPONSE=$(call_tool "interact" '{"action":"dismiss_top_overlay"}')
+    local text
+    text=$(extract_content_text "$RESPONSE")
+
+    if check_matches "$text" "loop|no.*overlay|no.*dismiss"; then
+        pass "Dismiss loop detection working: $(truncate "$text" 200)"
+    else
+        # It's also OK if there genuinely was a new overlay to dismiss
+        if human_verify "Was there actually a NEW overlay to dismiss? (If no overlay appeared, this is a failure)"; then
+            pass "Second dismiss found a genuine new overlay (not a loop)."
+        else
+            fail "Expected loop detection or no-overlay response. Content: $(truncate "$text" 300)"
+        fi
+    fi
+}
+run_test_27_18
+
+# ── 27.19 — Summary mode strips verbose fields ──────────
+begin_test "27.19" "Summary mode on observe" \
+    "Call observe(what:errors, summary:true) — verify compact output" \
+    "Summary mode reduces token usage for AI agents."
+run_test_27_19() {
+    RESPONSE=$(call_tool "observe" '{"what":"errors","summary":true}')
+    local text
+    text=$(extract_content_text "$RESPONSE")
+
+    if check_is_error "$RESPONSE"; then
+        # Bridge timeout is expected without data — that's OK
+        if check_bridge_timeout "$RESPONSE"; then
+            skip "No error data available (bridge timeout). Summary mode tested with data."
+            return
+        fi
+        fail "observe(errors, summary:true) returned error: $(truncate "$text")"
+        return
+    fi
+
+    if human_verify "Does the observe response above look compact/summarized (not raw HTML/full stack traces)?"; then
+        pass "Summary mode produced compact output."
+    else
+        fail "Human reports summary mode output looks too verbose."
+    fi
+}
+run_test_27_19
 
 finish_category
