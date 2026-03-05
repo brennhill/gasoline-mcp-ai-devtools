@@ -3,7 +3,7 @@ feature: drag-drop-automation
 status: proposed
 tool: interact
 mode: execute_js
-version: v6.2
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-drag-drop-automation
 last_reviewed: 2026-02-16

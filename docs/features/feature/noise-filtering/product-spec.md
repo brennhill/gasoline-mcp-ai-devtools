@@ -3,7 +3,7 @@ feature: noise-filtering
 status: shipped
 tool: configure
 mode: noise_rule, dismiss
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-noise-filtering
 last_reviewed: 2026-02-16

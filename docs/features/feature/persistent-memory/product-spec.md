@@ -3,7 +3,7 @@ feature: persistent-memory
 status: shipped
 tool: configure
 mode: store, load, record_event
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-persistent-memory
 last_reviewed: 2026-02-16

@@ -3,7 +3,7 @@ feature: noise-filtering
 status: active
 tool: configure
 mode: noise_rule
-version: v5.8.1+
+version: 0.7.12
 last-updated: 2026-02-09
 last_reviewed: 2026-02-16
 ---

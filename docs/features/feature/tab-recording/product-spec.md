@@ -3,7 +3,7 @@ feature: Tab Recording
 status: proposed
 tool: interact, observe
 mode: screen_recording_start, screen_recording_stop, saved_videos
-version: v6.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-tab-recording
 last_reviewed: 2026-02-16

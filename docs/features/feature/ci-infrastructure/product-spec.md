@@ -3,7 +3,7 @@ feature: Gasoline CI Infrastructure
 status: proposed
 tool: observe, configure, interact
 mode: ci-cd, autonomous-repair, snapshots
-version: v6.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-ci-infrastructure
 last_reviewed: 2026-02-16

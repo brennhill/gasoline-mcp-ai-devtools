@@ -3,7 +3,7 @@ feature: security-hardening
 status: shipped
 tool: configure
 mode: security config
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-security-hardening
 last_reviewed: 2026-02-16

@@ -3,7 +3,7 @@ feature: ttl-retention
 status: shipped
 tool: configure
 mode: data TTL
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-ttl-retention
 last_reviewed: 2026-02-16

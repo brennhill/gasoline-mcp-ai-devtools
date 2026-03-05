@@ -3,7 +3,7 @@ feature: api-key-auth
 status: shipped
 tool: configure
 mode: request validation
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-api-key-auth
 last_reviewed: 2026-02-16

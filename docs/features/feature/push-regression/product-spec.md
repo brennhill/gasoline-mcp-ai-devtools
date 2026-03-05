@@ -3,7 +3,7 @@ feature: push-regression
 status: shipped
 tool: observe
 mode: performance
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-push-regression
 last_reviewed: 2026-02-16

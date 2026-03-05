@@ -3,7 +3,7 @@ feature: test-generation
 status: proposed
 tool: generate
 mode: [test_from_context, test_heal, test_classify]
-version: v1.0
+version: 0.7.12
 last-updated: 2026-02-09
 last_reviewed: 2026-02-16
 ---

@@ -1,7 +1,7 @@
 ---
 feature: analyze-tool
 status: shipped
-version: v7.1
+version: 0.7.12
 doc_type: tech-spec
 feature_id: feature-analyze-tool
 last_reviewed: 2026-03-02

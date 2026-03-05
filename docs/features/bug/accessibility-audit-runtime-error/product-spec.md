@@ -3,7 +3,7 @@ feature: accessibility-audit-runtime-error
 status: in-progress
 tool: generate
 mode: accessibility
-version: 5.2.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: bug-accessibility-audit-runtime-error
 last_reviewed: 2026-02-16

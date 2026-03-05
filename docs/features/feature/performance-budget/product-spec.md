@@ -3,7 +3,7 @@ feature: performance-budget
 status: shipped
 tool: configure, observe
 mode: health, performance
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-performance-budget
 last_reviewed: 2026-02-16

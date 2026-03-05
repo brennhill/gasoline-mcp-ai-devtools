@@ -3,7 +3,7 @@ feature: test-generation
 status: approved
 tool: generate
 mode: [test_from_context, test_heal, test_classify]
-version: v1.1
+version: 0.7.12
 review: review.md
 doc_type: tech-spec
 feature_id: feature-test-generation
