@@ -26,6 +26,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color (Reset)
 
@@ -37,8 +38,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo -e "${BLUE}${BOLD}🔥 Gasoline Installer${NC}"
+echo -e "${ORANGE}${BOLD}"
+cat <<'EOF'
+   ____                 _ _            
+  / ___| __ _ ___  ___ | (_)_ __   ___ 
+ | |  _ / _` / __|/ _ \| | | '_ \ / _ \
+ | |_| | (_| \__ \ (_) | | | | | |  __/
+  \____|\__,_|___/\___/|_|_|_| |_|\___|
+EOF
+echo -e "${NC}"
+echo -e "${ORANGE}${BOLD}🔥 Gasoline Installer${NC}"
 echo -e "${BLUE}--------------------------------------------------${NC}"
+reset_extension_dir() {
+    rm -rf "$EXT_DIR"
+    mkdir -p "$EXT_DIR"
+}
+
+validate_extension_stage() {
+    [ -f "$EXT_DIR/manifest.json" ] &&
+    [ -f "$EXT_DIR/background/init.js" ] &&
+    [ -f "$EXT_DIR/content/script-injection.js" ] &&
+    [ -f "$EXT_DIR/inject/index.js" ]
+}
 
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -77,7 +98,8 @@ echo -e "✨ Version: v$VERSION ($PLATFORM-$E_ARCH)"
 
 # 3. Directory Setup: Ensure the installation folders exist.
 mkdir -p "$BIN_DIR"
-mkdir -p "$EXT_DIR"
+reset_extension_dir
+echo -e "📁 Install root: $INSTALL_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
 GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
@@ -121,18 +143,50 @@ EXT_ZIP_URL="https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 TEMP_ZIP="$TEMP_ROOT/extension.zip"
 
 if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
-    # Dedicated extension zip exists (faster)
-    unzip -q -o "$TEMP_ZIP" -d "$EXT_DIR"
+    # Dedicated extension zip exists (faster); validate required module files after extract.
+    reset_extension_dir
+    if unzip -q -o "$TEMP_ZIP" -d "$EXT_DIR" && validate_extension_stage; then
+        echo -e "✅ Staged extension directory: $EXT_DIR"
+    else
+        echo -e "${YELLOW}⚠️  Release extension zip missing required modules; falling back to source zip...${NC}"
+        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+        TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
+        mkdir -p "$TEMP_EXTRACT"
+        if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
+            reset_extension_dir
+            unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
+            # The source zip root folder is typically 'repo-version'.
+            EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/* | head -n 1)
+            cp -r "$EXTRACT_ROOT/extension/"* "$EXT_DIR/"
+            if ! validate_extension_stage; then
+                echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
+                exit 1
+            fi
+            echo -e "✅ Staged extension directory: $EXT_DIR"
+        else
+            echo -e "${RED}❌ Failed to download extension source archive.${NC}"
+            exit 1
+        fi
+    fi
 else
-    # Fallback to source zip extraction (covers older releases)
+    # Fallback to source zip extraction (covers older releases and bad extension zip assets)
     SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
     TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
     mkdir -p "$TEMP_EXTRACT"
     if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
+        reset_extension_dir
         unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
         # The source zip root folder is typically 'repo-version'.
-        EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/*)
+        EXTRACT_ROOT=$(ls -d "$TEMP_EXTRACT"/* | head -n 1)
         cp -r "$EXTRACT_ROOT/extension/"* "$EXT_DIR/"
+        if ! validate_extension_stage; then
+            echo -e "${RED}❌ Extension staging failed: required module files are missing.${NC}"
+            exit 1
+        fi
+        echo -e "✅ Staged extension directory: $EXT_DIR"
+    else
+        echo -e "${RED}❌ Failed to download extension source archive.${NC}"
+        exit 1
     fi
 fi
 
