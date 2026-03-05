@@ -66,7 +66,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"url": map[string]any{
 					"type":        "string",
-					"description": "Filter by URL substring",
+					"description": "Filter by URL substring (errors, logs, network_waterfall, network_bodies, websocket_events, actions, transients, error_bundles)",
 				},
 				"database": map[string]any{
 					"type":        "string",
@@ -87,15 +87,15 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"method": map[string]any{
 					"type":        "string",
-					"description": "HTTP method filter",
+					"description": "HTTP method filter (network_bodies)",
 				},
 				"status_min": map[string]any{
 					"type":        "number",
-					"description": "Min HTTP status code",
+					"description": "Min HTTP status code (network_bodies)",
 				},
 				"status_max": map[string]any{
 					"type":        "number",
-					"description": "Max HTTP status code",
+					"description": "Max HTTP status code (network_bodies)",
 				},
 				"body_path": map[string]any{
 					"type":        "string",
@@ -103,7 +103,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"connection_id": map[string]any{
 					"type":        "string",
-					"description": "WebSocket connection ID filter",
+					"description": "WebSocket connection ID filter (websocket_events, websocket_status)",
 				},
 				"direction": map[string]any{
 					"type":        "string",
@@ -112,7 +112,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"last_n": map[string]any{
 					"type":        "number",
-					"description": "Return last N items only",
+					"description": "Return last N items only (actions)",
 				},
 				"include": map[string]any{
 					"type":        "array",
@@ -121,7 +121,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"correlation_id": map[string]any{
 					"type":        "string",
-					"description": "Async command correlation ID",
+					"description": "Async command correlation ID (command_result)",
 				},
 				"recording_id": map[string]any{
 					"type":        "string",
@@ -129,7 +129,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"scope": map[string]any{
 					"type":        "string",
-					"description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs)",
+					"description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs, error_bundles)",
 					"enum":        []string{"current_page", "all"},
 				},
 				"window_seconds": map[string]any{
@@ -151,7 +151,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"quality": map[string]any{
 					"type":        "number",
-					"description": "Screenshot JPEG quality 1-100 (screenshot)",
+					"description": "Screenshot JPEG quality 1-100, default 80 (screenshot). Only applies when format is jpeg.",
 				},
 				"full_page": map[string]any{
 					"type":        "boolean",

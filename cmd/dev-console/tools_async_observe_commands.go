@@ -90,7 +90,6 @@ func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.Ra
 	failed := h.capture.GetFailedCommands()
 
 	responseData := map[string]any{
-		"status":   "ok",
 		"commands": failed,
 		"count":    len(failed),
 	}

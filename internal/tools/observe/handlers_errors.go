@@ -23,8 +23,10 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}
+	var paramHint string
 	if params.Scope != "current_page" && params.Scope != "all" {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", mcp.WithParam("scope"))}
+		paramHint = "Unknown scope " + params.Scope + " ignored (using default=current_page). Valid values: current_page, all."
+		params.Scope = "current_page"
 	}
 
 	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
@@ -83,13 +85,24 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	responseMeta.NoiseSuppressed = noiseSuppressed
 
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", buildErrorsSummary(errors, noiseSuppressed, responseMeta))}
+		summaryResp := buildErrorsSummary(errors, noiseSuppressed, responseMeta)
+		if paramHint != "" {
+			summaryResp["param_hint"] = paramHint
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", summaryResp)}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", map[string]any{
+	response := map[string]any{
 		"errors":   errors,
 		"count":    len(errors),
 		"metadata": responseMeta,
 		"scope":    params.Scope,
-	})}
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
+	}
+	if len(errors) == 0 {
+		response["hint"] = errorsEmptyHint(params.Scope)
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", response)}
 }

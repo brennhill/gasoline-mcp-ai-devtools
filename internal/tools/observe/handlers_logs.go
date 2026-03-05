@@ -37,11 +37,23 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		params.Level = ""
 	}
 
+	var paramHint string
+	if params.MinLevel != "" && LogLevelRank(params.MinLevel) < 0 {
+		paramHint = "Unknown min_level " + params.MinLevel + " ignored (using default=all). Valid values: debug, log, info, warn, error."
+		params.MinLevel = ""
+	}
+
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}
 	if params.Scope != "current_page" && params.Scope != "all" {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", mcp.WithParam("scope"))}
+		hint := "Unknown scope " + params.Scope + " ignored (using default=current_page). Valid values: current_page, all."
+		if paramHint != "" {
+			paramHint += " " + hint
+		} else {
+			paramHint = hint
+		}
+		params.Scope = "current_page"
 	}
 
 	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
@@ -149,13 +161,23 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 	}
 
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", buildLogsSummary(logs, meta))}
+		summaryResp := buildLogsSummary(logs, meta)
+		if paramHint != "" {
+			summaryResp["param_hint"] = paramHint
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", summaryResp)}
 	}
 
 	response := map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
 		"metadata": meta,
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
+	}
+	if len(logs) == 0 {
+		response["hint"] = logsEmptyHint(params.Scope, params.MinLevel)
 	}
 
 	if params.IncludeExtension {

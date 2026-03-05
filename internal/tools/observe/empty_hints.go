@@ -96,3 +96,73 @@ func wsStatusEmptyHint() string {
 		"If the page was loaded before tracking started, existing connections are not visible. " +
 		"Navigate to the page again (or refresh) while tracking is active to detect WebSocket connections."
 }
+
+// errorsEmptyHint returns a diagnostic hint when GetBrowserErrors returns 0 entries.
+func errorsEmptyHint(scope string) string {
+	if scope == "current_page" {
+		return "No errors on the current page. If you expected errors, try observe({what: \"errors\", scope: \"all\"}) " +
+			"to check all tabs, or observe({what: \"logs\", min_level: \"warn\"}) for warnings. " +
+			"Errors are captured in real-time — trigger the action that causes the error and re-check."
+	}
+	return "No errors captured in any tab. Errors are captured in real-time as they occur. " +
+		"Trigger the action that causes the error, then call observe({what: \"errors\"}) again. " +
+		"Check observe({what: \"pilot\"}) to verify the extension is connected and tracking."
+}
+
+// logsEmptyHint returns a diagnostic hint when GetBrowserLogs returns 0 entries.
+func logsEmptyHint(scope, minLevel string) string {
+	if minLevel != "" {
+		return fmt.Sprintf("No logs at level '%s' or above. Try a lower threshold: "+
+			"observe({what: \"logs\", min_level: \"debug\"}) to see all logs, "+
+			"or remove min_level to get all levels.", minLevel)
+	}
+	if scope == "current_page" {
+		return "No console logs on the current page. Try observe({what: \"logs\", scope: \"all\"}) " +
+			"to check all tabs. Logs are captured in real-time — interact with the page to generate output."
+	}
+	return "No console logs captured. Logs are captured in real-time as console.log/warn/error are called. " +
+		"Interact with the page to generate logs. Check observe({what: \"pilot\"}) for extension status."
+}
+
+// actionsEmptyHint returns a diagnostic hint when GetEnhancedActions returns 0 entries.
+func actionsEmptyHint() string {
+	return "No user actions captured yet. Actions (clicks, inputs, navigations, form submissions) are recorded " +
+		"in real-time as the user interacts with the page. Interact with the page, then re-check. " +
+		"Check observe({what: \"pilot\"}) to verify the extension is connected and tracking."
+}
+
+// timelineEmptyHint returns a diagnostic hint when GetSessionTimeline returns 0 entries.
+func timelineEmptyHint() string {
+	return "No timeline events captured. The timeline merges errors, actions, network requests, and WebSocket events. " +
+		"Interact with the page to generate activity, then call observe({what: \"timeline\"}) again. " +
+		"Check observe({what: \"pilot\"}) for extension status."
+}
+
+// errorBundlesEmptyHint returns a diagnostic hint when GetErrorBundles returns 0 bundles.
+func errorBundlesEmptyHint() string {
+	return "No error bundles — no errors captured in the current window. Error bundles are assembled around each " +
+		"console error with surrounding network/action context. Trigger the error scenario, then re-check. " +
+		"Try observe({what: \"errors\"}) to see if individual errors exist without bundle context."
+}
+
+// transientsEmptyHint returns a diagnostic hint when GetTransients returns 0 entries.
+func transientsEmptyHint(classification string) string {
+	if classification != "" {
+		return fmt.Sprintf("No transient elements with classification '%s'. "+
+			"Try observe({what: \"transients\"}) without a classification filter to see all types, "+
+			"or interact with the page to trigger toast/alert/snackbar elements.", classification)
+	}
+	return "No transient UI elements captured. Transients (toasts, alerts, snackbars, notifications) are detected " +
+		"in real-time as they appear in the DOM. Interact with the page to trigger transient UI, then re-check."
+}
+
+// networkWaterfallEmptyHint returns a diagnostic hint when GetNetworkWaterfall returns 0 entries.
+func networkWaterfallEmptyHint(urlFilter string) string {
+	if urlFilter != "" {
+		return fmt.Sprintf("No network requests matched URL filter %q. "+
+			"Try observe({what: \"network_waterfall\"}) without a url filter to see all requests.", urlFilter)
+	}
+	return "No network requests captured. The waterfall is populated from the browser's Performance API " +
+		"and live request interception. Navigate to a page or trigger requests, then re-check. " +
+		"Check observe({what: \"pilot\"}) for extension status."
+}

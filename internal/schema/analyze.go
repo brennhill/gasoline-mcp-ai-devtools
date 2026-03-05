@@ -9,7 +9,7 @@ import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 func AnalyzeToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "analyze",
-		Description: "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
+		Description: "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id, then poll with observe(what='command_result', correlation_id=...).\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.\n\nUse summary:true on supported modes for compact token-efficient responses.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -64,7 +64,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"timeout_ms": map[string]any{
 					"type":        "number",
-					"description": "Timeout ms (link_health, page_summary, annotations). For annotations with background:false (default): default 15000 (15s), max 600000 (10 min).",
+					"description": "Timeout in milliseconds. Applies to: link_health (default 10000), page_summary (default 5000), annotations (default 15000, max 600000).",
 				},
 				"world": map[string]any{
 					"type":        "string",
