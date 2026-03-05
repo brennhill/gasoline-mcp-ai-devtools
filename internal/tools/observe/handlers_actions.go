@@ -49,11 +49,15 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", buildActionsSummary(filtered, responseMeta))}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+	if len(filtered) == 0 {
+		response["hint"] = actionsEmptyHint()
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", response)}
 }
 
 // GetTransients returns captured transient UI elements (toasts, alerts, snackbars).
@@ -66,6 +70,17 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		Summary        bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
+
+	var paramHint string
+	validClassifications := map[string]bool{
+		"alert": true, "toast": true, "snackbar": true, "notification": true,
+		"tooltip": true, "banner": true, "flash": true,
+	}
+	if params.Classification != "" && !validClassifications[params.Classification] {
+		paramHint = "Unknown classification " + params.Classification + " ignored (using default=all). Valid values: alert, toast, snackbar, notification, tooltip, banner, flash."
+		params.Classification = ""
+	}
+
 	// Lower default than other handlers (50 vs 100): transients are less frequent than logs/actions.
 	// MVP: duration_ms is always 0 — removal tracking is not yet implemented.
 	params.Limit = clampLimit(params.Limit, 50)
@@ -91,14 +106,25 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", buildTransientsSummary(filtered, responseMeta))}
+		summaryResp := buildTransientsSummary(filtered, responseMeta)
+		if paramHint != "" {
+			summaryResp["param_hint"] = paramHint
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", summaryResp)}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+	if paramHint != "" {
+		response["param_hint"] = paramHint
+	}
+	if len(filtered) == 0 {
+		response["hint"] = transientsEmptyHint(params.Classification)
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", response)}
 }
 
 // buildTransientsSummary returns {total, by_classification, metadata}.

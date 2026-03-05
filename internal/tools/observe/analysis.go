@@ -42,11 +42,15 @@ func GetNetworkWaterfall(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage
 	}
 
 	entries := filterWaterfallEntries(allEntries, params.URLFilter, params.Limit)
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", map[string]any{
+	response := map[string]any{
 		"entries":  entries,
 		"count":    len(entries),
 		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
-	})}
+	}
+	if len(entries) == 0 {
+		response["hint"] = networkWaterfallEmptyHint(params.URLFilter)
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", response)}
 }
 
 func refreshWaterfallIfStale(deps Deps) []capture.NetworkWaterfallEntry {

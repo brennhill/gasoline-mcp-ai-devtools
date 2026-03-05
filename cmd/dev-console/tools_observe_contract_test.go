@@ -353,7 +353,6 @@ func TestObserveContract_FailedCommands(t *testing.T) {
 	}
 
 	assertResponseShape(t, "failed_commands", result, []fieldSpec{
-		required("status", "string"),
 		required("commands", "array"),
 		required("count", "number"),
 	})

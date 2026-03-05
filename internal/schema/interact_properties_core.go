@@ -22,7 +22,7 @@ func interactCoreActionProperties() map[string]any {
 		},
 		"timeout_ms": map[string]any{
 			"type":        "number",
-			"description": "Timeout ms (default 5000)",
+			"description": "Timeout in milliseconds (default 5000, max 60000). Applies to: click, type, execute_js, wait_for, navigate, auto_dismiss_overlays, wait_for_stable, draw_mode_start.",
 		},
 		"text": map[string]any{
 			"type":        "string",
