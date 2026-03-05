@@ -8,7 +8,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline Agentic Browser Devtool MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.9-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-0.7.10-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -35,7 +35,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.9** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.7.10** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 **macOS / Linux:**
 ```bash
@@ -130,7 +130,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.9)
+Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.10)
 
 ## Known Issues
 
