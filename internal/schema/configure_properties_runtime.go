@@ -7,7 +7,7 @@ func configureRuntimeProperties() map[string]any {
 		"buffer": map[string]any{
 			"type":        "string",
 			"description": "Buffer to clear (clear). Use 'all' to reset everything",
-			"enum":        []string{"network", "websocket", "actions", "logs", "all"},
+			"enum":        []string{"network", "websocket", "actions", "logs", "inbox", "all"},
 		},
 		"tab_id": map[string]any{
 			"type":        "number",

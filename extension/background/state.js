@@ -4,8 +4,8 @@
  */
 /**
  * @fileoverview Mutable module-level state for the background service worker.
- * Owns all `let` variables and their setter functions so that state ownership
- * is explicit and separated from business logic in index.ts.
+ * Owns getter/setter functions so that state ownership is explicit and
+ * separated from business logic in index.ts.
  */
 import { DEFAULT_SERVER_URL } from '../lib/constants.js';
 // =============================================================================
@@ -36,35 +36,6 @@ const state = {
     pilotInitCallback: null,
     extensionLogQueue: []
 };
-/**
- * Compatibility mirrors for legacy imports.
- * New code should prefer getters/setters below.
- */
-export let serverUrl = state.serverUrl;
-export let debugMode = state.debugMode;
-export let connectionStatus = state.connectionStatus;
-export let currentLogLevel = state.currentLogLevel;
-export let screenshotOnError = state.screenshotOnError;
-let _captureOverrides = state.captureOverrides;
-export let aiControlled = state.aiControlled;
-let _connectionCheckRunning = state.connectionCheckRunning;
-let __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache;
-let __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized;
-let __pilotInitCallback = state.pilotInitCallback;
-export const extensionLogQueue = state.extensionLogQueue;
-function syncLegacyExports() {
-    serverUrl = state.serverUrl;
-    debugMode = state.debugMode;
-    connectionStatus = state.connectionStatus;
-    currentLogLevel = state.currentLogLevel;
-    screenshotOnError = state.screenshotOnError;
-    _captureOverrides = state.captureOverrides;
-    aiControlled = state.aiControlled;
-    _connectionCheckRunning = state.connectionCheckRunning;
-    __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache;
-    __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized;
-    __pilotInitCallback = state.pilotInitCallback;
-}
 export function getServerUrl() {
     return state.serverUrl;
 }
@@ -138,40 +109,31 @@ export function markInitComplete() {
 // =============================================================================
 export function setServerUrl(url) {
     state.serverUrl = url;
-    syncLegacyExports();
 }
 /** Low-level flag setter. Use index.setDebugMode for the version that also logs. */
 export function _setDebugModeRaw(enabled) {
     state.debugMode = enabled;
-    syncLegacyExports();
 }
 export function setCurrentLogLevel(level) {
     state.currentLogLevel = level;
-    syncLegacyExports();
 }
 export function setScreenshotOnError(enabled) {
     state.screenshotOnError = enabled;
-    syncLegacyExports();
 }
 export function setConnectionStatus(patch) {
     state.connectionStatus = { ...state.connectionStatus, ...patch };
-    syncLegacyExports();
 }
 export function setConnectionCheckRunning(running) {
     state.connectionCheckRunning = running;
-    syncLegacyExports();
 }
 export function setAiWebPilotEnabledCache(enabled) {
     state.aiWebPilotEnabledCache = enabled;
-    syncLegacyExports();
 }
 export function setAiWebPilotCacheInitialized(initialized) {
     state.aiWebPilotCacheInitialized = initialized;
-    syncLegacyExports();
 }
 export function setPilotInitCallback(callback) {
     state.pilotInitCallback = callback;
-    syncLegacyExports();
 }
 export function applyCaptureOverrides(overrides) {
     state.captureOverrides = overrides;
@@ -195,14 +157,12 @@ export function applyCaptureOverrides(overrides) {
         productionParity,
         insecureRewritesApplied: rewrites
     };
-    syncLegacyExports();
 }
 /**
  * Reset pilot cache for testing
  */
 function _resetPilotCacheForTesting(value) {
     state.aiWebPilotEnabledCache = value !== undefined ? value : false;
-    syncLegacyExports();
 }
 /**
  * Check if AI Web Pilot is enabled
@@ -223,6 +183,5 @@ function resetStateForTesting() {
     state.aiWebPilotCacheInitialized = false;
     state.pilotInitCallback = null;
     state.extensionLogQueue.length = 0;
-    syncLegacyExports();
 }
 //# sourceMappingURL=state.js.map

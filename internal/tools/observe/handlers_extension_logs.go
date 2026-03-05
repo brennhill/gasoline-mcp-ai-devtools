@@ -11,9 +11,15 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
-func buildExtensionLogEntries(allLogs []capture.ExtensionLog, limit int, level string) []map[string]any {
+func buildExtensionLogEntries(allLogs []capture.ExtensionLog, limit int, level string, minLevel string) []map[string]any {
 	matched := buffers.ReverseFilterLimit(allLogs, func(entry capture.ExtensionLog) bool {
-		return level == "" || entry.Level == level
+		if level != "" && entry.Level != level {
+			return false
+		}
+		if minLevel != "" && LogLevelRank(entry.Level) < LogLevelRank(minLevel) {
+			return false
+		}
+		return true
 	}, limit)
 
 	logs := make([]map[string]any, len(matched))

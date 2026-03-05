@@ -66,6 +66,12 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		return h.appendWorkflowTraceToResponse(clickResp, "navigate_and_document", trace, workflowStart, "failed")
 	}
 
+	// Non-final click response (async correlation pending): return early with
+	// correlation metadata so the caller can poll instead of continuing the workflow.
+	if isNonFinalResponse(clickResp) {
+		return h.appendWorkflowTraceToResponse(clickResp, "navigate_and_document", trace, workflowStart, "pending")
+	}
+
 	if waitForURLChange && beforeURL != "" {
 		waitURLStart := time.Now()
 		timeoutMs := params.TimeoutMs

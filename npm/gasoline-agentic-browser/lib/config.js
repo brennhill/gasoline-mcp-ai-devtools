@@ -48,12 +48,16 @@ function resolveManagedBinaryPath() {
   const pkgName = `@brennhill/gasoline-agentic-browser-${platformKey}`;
   const packageRoot = path.resolve(__dirname, '..');
 
+  const localDistCandidate = path.resolve(packageRoot, 'dist', `gasoline-${platformKey}${ext}`);
   const candidates = [
     path.join(packageRoot, 'node_modules', pkgName, 'bin', binaryName),
     path.join(packageRoot, '..', pkgName, 'bin', binaryName),
     path.join(packageRoot, '..', '..', pkgName, 'bin', binaryName),
-    path.resolve(packageRoot, '..', '..', '..', 'dist', `gasoline-${platformKey}${ext}`),
   ];
+  // Only include the local dist fallback if it resolves within the package boundary
+  if (path.resolve(localDistCandidate).startsWith(packageRoot + path.sep)) {
+    candidates.push(localDistCandidate);
+  }
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {

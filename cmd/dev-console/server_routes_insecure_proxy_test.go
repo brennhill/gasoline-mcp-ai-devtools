@@ -20,7 +20,7 @@ func TestInsecureProxyEndpoint_SSRFDenylist(t *testing.T) {
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
 	cap.SetSecurityMode("insecure_proxy", []string{"csp_headers"})
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// Test various private/internal IP ranges.
 	tests := []struct {
@@ -67,7 +67,7 @@ func TestInsecureProxyEndpoint_StripsCSPHeaders(t *testing.T) {
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
 	cap.SetSecurityMode("insecure_proxy", []string{"csp_headers"})
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	req := localRequest(http.MethodGet, "/insecure-proxy?target="+url.QueryEscape(upstream.URL), nil)
 	rr := httptest.NewRecorder()
@@ -96,7 +96,7 @@ func TestInsecureProxyEndpoint_RequiresInsecureMode(t *testing.T) {
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
 	cap.SetSecurityMode("normal", nil)
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	req := localRequest(http.MethodGet, "/insecure-proxy?target="+url.QueryEscape("https://example.com"), nil)
 	rr := httptest.NewRecorder()

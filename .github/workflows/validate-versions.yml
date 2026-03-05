@@ -2,9 +2,9 @@ name: Validate Versions
 
 on:
   push:
-    branches: [main, next]
+    branches: [main, UNSTABLE]
   pull_request:
-    branches: [main, next]
+    branches: [main, UNSTABLE]
   workflow_call: # Allow other workflows to call this
 
 permissions:

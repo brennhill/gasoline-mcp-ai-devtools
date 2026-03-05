@@ -19,7 +19,7 @@ import (
 func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOptions) error {
 	server.setListenPort(port)
 	cap := initCapture(server, port)
-	mux := setupHTTPRoutes(server, cap)
+	mux, mcpHandler := setupHTTPRoutes(server, cap)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -78,6 +78,6 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	})
 	server.logLifecycle("mcp_transport_ready", port, nil)
 
-	awaitShutdownSignal(server, srv, port, httpDone, termSrv, termDone)
+	awaitShutdownSignal(server, srv, port, httpDone, termSrv, termDone, mcpHandler)
 	return nil
 }

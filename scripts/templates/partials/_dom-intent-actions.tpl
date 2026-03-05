@@ -252,6 +252,32 @@
 
     if (action === 'auto_dismiss_overlays') {
       // Auto-dismiss cookie consent banners and overlays (#342)
+
+      // #453: Dismiss loop detection must run BEFORE consent-selector short-circuit
+      // to prevent infinite loops when a consent banner cannot be dismissed.
+      const overlayElement = findTopmostOverlay()
+      if (overlayElement) {
+        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+        if (priorAutoStamp) {
+          const elapsed = Date.now() - Number(priorAutoStamp)
+          if (elapsed < dismissStampTTL) {
+            const info = describeOverlay(overlayElement)
+            const loopError = domError(
+              'dismiss_loop_detected',
+              `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
+              'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
+              'navigate away, or ignore it if it does not block interaction.'
+            )
+            loopError.overlay_type = info.overlay_type
+            loopError.overlay_selector = info.overlay_selector
+            loopError.overlay_text_preview = info.overlay_text_preview
+            loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
+            return { error: loopError }
+          }
+          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+        }
+      }
+
       // Strategy 1: Try known consent framework selectors (most specific)
       const consentSelectors = [
         // CookieBot
@@ -289,28 +315,7 @@
       }
 
       // Strategy 2: Fall back to dismiss_top_overlay multi-strategy approach
-      const overlayElement = findTopmostOverlay()
       if (overlayElement) {
-        // #444: Dismiss loop detection — same check as dismiss_top_overlay
-        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
-        if (priorAutoStamp) {
-          const elapsed = Date.now() - Number(priorAutoStamp)
-          if (elapsed < dismissStampTTL) {
-            const info = describeOverlay(overlayElement)
-            const loopError = domError(
-              'dismiss_loop_detected',
-              `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
-              'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
-              'navigate away, or ignore it if it does not block interaction.'
-            )
-            loopError.overlay_type = info.overlay_type
-            loopError.overlay_selector = info.overlay_selector
-            loopError.overlay_text_preview = info.overlay_text_preview
-            loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
-            return { error: loopError }
-          }
-          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
-        }
         // Reuse the dismiss_top_overlay strategy chain
         const closeButtonSelectors = [
           'button.close', '.btn-close',

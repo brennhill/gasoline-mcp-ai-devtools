@@ -27,17 +27,6 @@ export interface ExtensionLogQueueEntry {
     category: string;
     data?: unknown;
 }
-/**
- * Compatibility mirrors for legacy imports.
- * New code should prefer getters/setters below.
- */
-export declare let serverUrl: string;
-export declare let debugMode: boolean;
-export declare let connectionStatus: MutableConnectionStatus;
-export declare let currentLogLevel: string;
-export declare let screenshotOnError: boolean;
-export declare let aiControlled: boolean;
-export declare const extensionLogQueue: ExtensionLogQueueEntry[];
 export declare function getServerUrl(): string;
 export declare function isDebugMode(): boolean;
 export declare function getConnectionStatus(): MutableConnectionStatus;

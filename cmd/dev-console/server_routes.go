@@ -11,7 +11,8 @@ import (
 )
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse).
-func setupHTTPRoutes(server *Server, cap *capture.Store) *http.ServeMux {
+// Returns both the mux and the MCPHandler so the caller can wire shutdown.
+func setupHTTPRoutes(server *Server, cap *capture.Store) (*http.ServeMux, *MCPHandler) {
 	mux := http.NewServeMux()
 
 	if cap != nil {
@@ -19,9 +20,9 @@ func setupHTTPRoutes(server *Server, cap *capture.Store) *http.ServeMux {
 	}
 
 	registerUploadRoutes(mux, server)
-	registerCoreRoutes(mux, server, cap)
+	mcpHandler := registerCoreRoutes(mux, server, cap)
 
-	return mux
+	return mux, mcpHandler
 }
 
 // registerCaptureRoutes adds capture-dependent routes to the mux.
@@ -91,7 +92,8 @@ func registerUploadRoutes(mux *http.ServeMux, server *Server) {
 }
 
 // registerCoreRoutes adds non-capture-dependent routes to the mux.
-func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) {
+// Returns the MCPHandler so the caller can wire lifecycle (shutdown, etc.).
+func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) *MCPHandler {
 	// NOT MCP — OpenAPI spec for HTTP API documentation
 	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
@@ -193,4 +195,6 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDashboard(w, r)
 	}))
+
+	return mcp
 }

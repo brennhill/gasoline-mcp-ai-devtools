@@ -39,7 +39,7 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// JSON clients get the discovery response via content negotiation
 	rootReq := localRequest(http.MethodGet, "/", nil)
@@ -207,7 +207,7 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// Create a server with a channel of size 1 and NO async worker,
 	// so the channel stays full when we manually fill it.
@@ -219,7 +219,7 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 		logDone:    make(chan struct{}),
 	}
 
-	tinyMux := setupHTTPRoutes(tinyLogSrv, cap)
+	tinyMux, _ := setupHTTPRoutes(tinyLogSrv, cap)
 
 	// Fill channel (no worker draining it), then trigger a drop
 	tinyLogSrv.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
@@ -265,7 +265,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	t.Parallel()
 
 	srv := newTestServerForHandlers(t)
-	mux := setupHTTPRoutes(srv, nil)
+	mux, _ := setupHTTPRoutes(srv, nil)
 
 	// GET /logs returns 405 (reads go through /telemetry?type=logs)
 	getReq := localRequest(http.MethodGet, "/logs", nil)
@@ -326,7 +326,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// Reset global rate limiter map for deterministic tests.
 	screenshotRateMu.Lock()

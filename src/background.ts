@@ -48,12 +48,12 @@ export { RATE_LIMIT_CONFIG } from './background/communication.js'
 
 export {
   EXTENSION_SESSION_ID,
-  serverUrl,
-  debugMode,
-  connectionStatus,
-  currentLogLevel,
-  screenshotOnError,
-  extensionLogQueue
+  getServerUrl,
+  isDebugMode,
+  getConnectionStatus,
+  getCurrentLogLevel,
+  isScreenshotOnError,
+  getExtensionLogQueue
 } from './background/state.js'
 
 export { DebugCategory } from './background/index.js'

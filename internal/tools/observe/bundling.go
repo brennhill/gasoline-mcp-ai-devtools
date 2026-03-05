@@ -54,6 +54,9 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	if params.WindowSeconds > 10 {
 		params.WindowSeconds = 10
 	}
+	if params.Scope == "" {
+		params.Scope = "current_page"
+	}
 
 	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
 	if params.URL == "" && params.Scope == "current_page" && trackedTabURL != "" {
@@ -63,10 +66,24 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	errors, logs := collectErrorsAndLogs(deps, params.Limit, params.URL, params.Scope, trackedTabID)
 
 	cap := deps.GetCapture()
+	_, trackedTabID, _ := cap.GetTrackingStatus()
+
+	networkBodies := cap.GetNetworkBodies()
+	waterfallEntries := cap.GetNetworkWaterfallEntries()
+	actions := cap.GetAllEnhancedActions()
+
+	// Apply scope filtering to context buffers so bundles only include
+	// network/action entries from the tracked tab, not global state.
+	if params.Scope == "current_page" && trackedTabID != 0 {
+		networkBodies = filterNetworkBodiesByTab(networkBodies, trackedTabID)
+		waterfallEntries = filterWaterfallByTab(waterfallEntries, trackedTabID, cap)
+		actions = filterActionsByTab(actions, trackedTabID)
+	}
+
 	ctx := bundleContext{
-		networkBodies:    cap.GetNetworkBodies(),
-		waterfallEntries: cap.GetNetworkWaterfallEntries(),
-		actions:          cap.GetAllEnhancedActions(),
+		networkBodies:    networkBodies,
+		waterfallEntries: waterfallEntries,
+		actions:          actions,
 		logs:             logs,
 		windowSeconds:    params.WindowSeconds,
 	}
@@ -247,4 +264,43 @@ func matchLogs(logs []timedEntry, start, end time.Time) []map[string]any {
 // parseTimestampString delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
 func parseTimestampString(s string) time.Time {
 	return util.ParseTimestamp(s)
+}
+
+// filterNetworkBodiesByTab returns only network bodies from the specified tab.
+func filterNetworkBodiesByTab(bodies []capture.NetworkBody, tabID int) []capture.NetworkBody {
+	filtered := make([]capture.NetworkBody, 0, len(bodies))
+	for _, nb := range bodies {
+		if nb.TabID == tabID {
+			filtered = append(filtered, nb)
+		}
+	}
+	return filtered
+}
+
+// filterWaterfallByTab returns only waterfall entries from the tracked page.
+// NetworkWaterfallEntry lacks a TabID, so we match on the tracked tab's URL via capture.
+func filterWaterfallByTab(entries []capture.NetworkWaterfallEntry, tabID int, cap *capture.Capture) []capture.NetworkWaterfallEntry {
+	_, _, trackedURL := cap.GetTrackingStatus()
+	if trackedURL == "" {
+		return entries
+	}
+	filtered := make([]capture.NetworkWaterfallEntry, 0, len(entries))
+	for _, w := range entries {
+		if w.PageURL != "" && !ContainsIgnoreCase(w.PageURL, trackedURL) {
+			continue
+		}
+		filtered = append(filtered, w)
+	}
+	return filtered
+}
+
+// filterActionsByTab returns only actions from the specified tab.
+func filterActionsByTab(actions []capture.EnhancedAction, tabID int) []capture.EnhancedAction {
+	filtered := make([]capture.EnhancedAction, 0, len(actions))
+	for _, a := range actions {
+		if a.TabID == tabID {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
 }

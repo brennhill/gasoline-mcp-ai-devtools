@@ -15,22 +15,34 @@ export function getRequestHeaders(additionalHeaders = {}) {
     };
 }
 /**
- * Send log entries to the server
+ * Generic telemetry batch sender. All telemetry POST endpoints follow the same
+ * pattern: log count, POST JSON, check response.ok, log acceptance.
+ * Includes AbortSignal.timeout(10000) to prevent hanging requests.
  */
-export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
+async function sendTelemetryBatch(serverUrl, endpoint, payloadKey, items, label, debugLogFn) {
     if (debugLogFn)
-        debugLogFn('connection', `Sending ${entries.length} entries to server`);
-    const response = await fetch(`${serverUrl}/logs`, {
+        debugLogFn('connection', `Sending ${items.length} ${label} to server`);
+    const response = await fetch(`${serverUrl}${endpoint}`, {
         method: 'POST',
         headers: getRequestHeaders(),
-        body: JSON.stringify({ entries })
+        body: JSON.stringify({ [payloadKey]: items }),
+        signal: AbortSignal.timeout(10000)
     });
     if (!response.ok) {
-        const error = `Server error: ${response.status} ${response.statusText}`;
+        const error = `Server error (${label}): ${response.status} ${response.statusText}`;
         if (debugLogFn)
             debugLogFn('error', error);
         throw new Error(error);
     }
+    if (debugLogFn)
+        debugLogFn('connection', `Server accepted ${items.length} ${label}`);
+    return response;
+}
+/**
+ * Send log entries to the server
+ */
+export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
+    const response = await sendTelemetryBatch(serverUrl, '/logs', 'entries', entries, 'entries', debugLogFn);
     const result = (await response.json());
     if (debugLogFn)
         debugLogFn('connection', `Server accepted entries, total: ${result.entries}`);
@@ -40,81 +52,25 @@ export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
  * Send WebSocket events to the server
  */
 export async function sendWSEventsToServer(serverUrl, events, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${events.length} WS events to server`);
-    const response = await fetch(`${serverUrl}/websocket-events`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ events })
-    });
-    if (!response.ok) {
-        const error = `Server error (WS): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${events.length} WS events`);
+    await sendTelemetryBatch(serverUrl, '/websocket-events', 'events', events, 'WS events', debugLogFn);
 }
 /**
  * Send network bodies to the server
  */
 export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
-    const response = await fetch(`${serverUrl}/network-bodies`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ bodies })
-    });
-    if (!response.ok) {
-        const error = `Server error (network bodies): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${bodies.length} network bodies`);
+    await sendTelemetryBatch(serverUrl, '/network-bodies', 'bodies', bodies, 'network bodies', debugLogFn);
 }
 /**
  * Send enhanced actions to server
  */
 export async function sendEnhancedActionsToServer(serverUrl, actions, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${actions.length} enhanced actions to server`);
-    const response = await fetch(`${serverUrl}/enhanced-actions`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ actions })
-    });
-    if (!response.ok) {
-        const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${actions.length} enhanced actions`);
+    await sendTelemetryBatch(serverUrl, '/enhanced-actions', 'actions', actions, 'enhanced actions', debugLogFn);
 }
 /**
  * Send performance snapshots to server
  */
 export async function sendPerformanceSnapshotsToServer(serverUrl, snapshots, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${snapshots.length} performance snapshots to server`);
-    const response = await fetch(`${serverUrl}/performance-snapshots`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ snapshots })
-    });
-    if (!response.ok) {
-        const error = `Server error (performance snapshots): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${snapshots.length} performance snapshots`);
+    await sendTelemetryBatch(serverUrl, '/performance-snapshots', 'snapshots', snapshots, 'performance snapshots', debugLogFn);
 }
 /**
  * Check server health

@@ -14,10 +14,16 @@
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          // #443: If no interactive ancestor, check for an interactive child element
-          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
-            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
-            : null
+          // #449: Filter interactive child candidates with visibility/actionability checks
+          // and exclude hidden inputs to avoid selecting non-actionable elements.
+          let interactiveChild: Element | null = null
+          if (!interactive && typeof parent.querySelectorAll === 'function') {
+            const childCandidates = parent.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]')
+            for (let ci = 0; ci < childCandidates.length; ci++) {
+              const child = childCandidates[ci]!
+              if (isActionableVisible(child)) { interactiveChild = child; break }
+            }
+          }
           const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target) || !isVisible(target)) continue
           if (!seen.has(target)) {
@@ -90,10 +96,16 @@
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          // #443: If no interactive ancestor, check for an interactive child element
-          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
-            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
-            : null
+          // #449: Filter interactive child candidates with visibility/actionability checks
+          // and exclude hidden inputs to avoid selecting non-actionable elements.
+          let interactiveChild: Element | null = null
+          if (!interactive && typeof parent.querySelectorAll === 'function') {
+            const childCandidates = parent.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]')
+            for (let ci = 0; ci < childCandidates.length; ci++) {
+              const child = childCandidates[ci]!
+              if (isActionableVisible(child)) { interactiveChild = child; break }
+            }
+          }
           const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target)) continue
           if (!fallback) fallback = target
