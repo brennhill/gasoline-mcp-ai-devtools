@@ -24,7 +24,7 @@ type stdioNotifier struct{}
 
 func (n *stdioNotifier) SendNotification(method string, params map[string]any) {
 	notif := map[string]any{
-		"jsonrpc": "2.0",
+		"jsonrpc": JSONRPCVersion,
 		"method":  method,
 		"params":  params,
 	}

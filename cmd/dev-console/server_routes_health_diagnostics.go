@@ -13,6 +13,12 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
+const (
+	// shutdownSignalDelay is the pause after sending the HTTP response before
+	// sending SIGTERM, giving the response time to flush to the client.
+	shutdownSignalDelay = 100 * time.Millisecond
+)
+
 // handleHealth serves the /health endpoint with server status and version info.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != "GET" {
@@ -100,7 +106,7 @@ func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.SafeGo(func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(shutdownSignalDelay)
 		p, _ := os.FindProcess(os.Getpid())
 		_ = p.Signal(syscall.SIGTERM)
 	})

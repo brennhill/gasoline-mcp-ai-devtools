@@ -136,7 +136,7 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 // writeJSONRPCError writes a JSON-RPC error response to the HTTP response writer.
 func (h *MCPHandler) writeJSONRPCError(w http.ResponseWriter, id any, code int, message string) {
 	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      id,
 		Error:   &JSONRPCError{Code: code, Message: message},
 	}

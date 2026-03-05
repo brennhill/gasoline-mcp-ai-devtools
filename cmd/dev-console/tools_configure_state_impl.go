@@ -109,7 +109,7 @@ func (h *configureSessionHandler) toolLoadSessionContext(req JSONRPCRequest, arg
 	return fail(req, ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")
 }
 
-func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Buffer string `json:"buffer"`
 	}

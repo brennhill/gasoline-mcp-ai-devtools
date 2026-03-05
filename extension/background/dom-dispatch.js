@@ -7,6 +7,8 @@ import { domPrimitive } from './dom-primitives.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 import { domPrimitiveQuery } from './dom-primitives-query.js';
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
+import { normalizeFrameTarget } from '../lib/frame-utils.js';
+import { isReadOnlyAction, isMutatingAction } from './action-metadata.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -14,21 +16,6 @@ function parseDOMParams(query) {
     catch {
         return null;
     }
-}
-function isReadOnlyAction(action) {
-    return action === 'list_interactive' || action === 'query' || action.startsWith('get_');
-}
-function isMutatingAction(action) {
-    return (action === 'click' ||
-        action === 'type' ||
-        action === 'select' ||
-        action === 'check' ||
-        action === 'set_attribute' ||
-        action === 'paste' ||
-        action === 'key_press' ||
-        action === 'focus' ||
-        action === 'scroll_to' ||
-        action === 'hover');
 }
 function hasMatchedTargetEvidence(result) {
     const matched = result.matched;
@@ -40,22 +27,6 @@ function hasMatchedTargetEvidence(result) {
         typeof matched.aria_label === 'string' ||
         typeof matched.role === 'string' ||
         typeof matched.text_preview === 'string');
-}
-function normalizeFrameTarget(frame) {
-    if (frame === undefined || frame === null)
-        return undefined;
-    if (typeof frame === 'number') {
-        if (!Number.isInteger(frame) || frame < 0)
-            return null;
-        return frame;
-    }
-    if (typeof frame === 'string') {
-        const trimmed = frame.trim();
-        if (trimmed.length === 0)
-            return null;
-        return trimmed;
-    }
-    return null;
 }
 async function resolveExecutionTarget(tabId, frame) {
     const normalized = normalizeFrameTarget(frame);

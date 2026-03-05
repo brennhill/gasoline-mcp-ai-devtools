@@ -12,6 +12,18 @@ import (
 	"time"
 )
 
+const (
+	// terminalShutdownTimeout is the deadline for the terminal server graceful shutdown.
+	terminalShutdownTimeout = 2 * time.Second
+
+	// httpShutdownTimeout is the deadline for the main HTTP server graceful shutdown.
+	httpShutdownTimeout = 3 * time.Second
+
+	// asyncLoggerDrainTimeout is the time allowed for the async logger to flush
+	// remaining entries during shutdown.
+	asyncLoggerDrainTimeout = 2 * time.Second
+)
+
 // awaitShutdownSignal blocks until a termination signal is received or the
 // HTTP listener dies unexpectedly, then performs graceful cleanup.
 // The httpDone channel closes if srv.Serve() exits for any reason other than
@@ -51,20 +63,20 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 
 	// Shut down terminal server first (if running) — non-blocking, best-effort.
 	if termSrv != nil {
-		termCtx, termCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		termCtx, termCancel := context.WithTimeout(context.Background(), terminalShutdownTimeout)
 		if err := termSrv.Shutdown(termCtx); err != nil {
 			server.logLifecycle("terminal_shutdown_error", port, map[string]any{"error": err.Error()})
 		}
 		termCancel()
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), httpShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		server.logLifecycle("http_shutdown_error", port, map[string]any{"error": err.Error()})
 	}
 
-	server.shutdownAsyncLogger(2 * time.Second)
+	server.shutdownAsyncLogger(asyncLoggerDrainTimeout)
 	server.closeAnnotationStore()
 	if server.ptyManager != nil {
 		server.ptyManager.StopAll()

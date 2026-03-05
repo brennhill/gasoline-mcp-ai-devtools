@@ -19,25 +19,21 @@ var configureAliasParams = []modeAlias{
 	}},
 }
 
+// configureRegistry is the tool registry for configure dispatch.
+var configureRegistry = toolRegistry{
+	Handlers:  configureHandlers,
+	AliasDefs: configureAliasParams,
+	Resolution: modeResolution{
+		ToolName:   "configure",
+		ValidModes: "", // populated lazily
+	},
+}
+
 // toolConfigure dispatches configure requests based on the 'what' parameter.
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	what, usedAliasParam, errResp := resolveToolMode(req, args, configureAliasParams, modeResolution{
-		ToolName:   "configure",
-		ValidModes: getValidConfigureActions(),
-	})
-	if errResp != nil {
-		return *errResp
-	}
-
-	handler, ok := configureHandlers[what]
-	if !ok {
-		validActions := getValidConfigureActions()
-		resp := fail(req, ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions), describeCapabilitiesRecovery("configure"))
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
-	}
-
-	resp := handler(h, req, args)
-	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+	reg := configureRegistry
+	reg.Resolution.ValidModes = getValidConfigureActions()
+	return h.dispatchTool(req, args, reg)
 }
 
 func isStoreAction(action string) bool {

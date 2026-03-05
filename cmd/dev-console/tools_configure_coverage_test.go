@@ -120,7 +120,7 @@ func TestToolConfigureClear_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.configureClearImpl(req, args)
+	resp := env.handler.toolConfigureClear(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

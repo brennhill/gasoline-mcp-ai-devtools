@@ -19,7 +19,7 @@ var fastPathResponses = map[string]string{
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.
 func sendFastResponse(id any, result json.RawMessage, framing bridge.StdioFraming) {
-	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
+	resp := JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: id, Result: result}
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
 	writeMCPPayload(respJSON, framing)
@@ -27,7 +27,7 @@ func sendFastResponse(id any, result json.RawMessage, framing bridge.StdioFramin
 
 func sendFastError(id any, code int, message string, framing bridge.StdioFraming) {
 	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      id,
 		Error:   &JSONRPCError{Code: code, Message: message},
 	}

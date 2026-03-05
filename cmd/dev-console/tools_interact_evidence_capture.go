@@ -11,6 +11,15 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
+const (
+	// evidenceScreenshotTimeout is the timeout for creating and waiting for
+	// screenshot evidence capture queries.
+	evidenceScreenshotTimeout = 12 * time.Second
+
+	// evidenceRetryDelay is the pause between evidence capture retry attempts.
+	evidenceRetryDelay = 150 * time.Millisecond
+)
+
 func defaultEvidenceCapture(h *ToolHandler, clientID string) evidenceShot {
 	if h == nil || h.capture == nil {
 		return evidenceShot{Error: "capture_not_initialized"}
@@ -25,14 +34,14 @@ func defaultEvidenceCapture(h *ToolHandler, clientID string) evidenceShot {
 			Type:   "screenshot",
 			Params: json.RawMessage(`{}`),
 		},
-		12*time.Second,
+		evidenceScreenshotTimeout,
 		clientID,
 	)
 	if qerr != nil {
 		return evidenceShot{Error: "queue_full: " + qerr.Error()}
 	}
 
-	raw, err := h.capture.WaitForResult(queryID, 12*time.Second)
+	raw, err := h.capture.WaitForResult(queryID, evidenceScreenshotTimeout)
 	if err != nil {
 		return evidenceShot{Error: "screenshot_timeout: " + err.Error()}
 	}
@@ -79,7 +88,7 @@ func (h *interactActionHandler) captureEvidenceWithRetry(clientID string) eviden
 		}
 		last = shot
 		if i < attempts-1 {
-			time.Sleep(150 * time.Millisecond)
+			time.Sleep(evidenceRetryDelay)
 		}
 	}
 

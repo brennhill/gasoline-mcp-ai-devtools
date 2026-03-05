@@ -11,6 +11,12 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
+const (
+	// a11yQueryTimeout is the timeout for creating and waiting for accessibility
+	// audit queries sent to the extension.
+	a11yQueryTimeout = 30 * time.Second
+)
+
 // buildA11yQueryParams constructs query params for an accessibility audit.
 // Used by observe (toolA11yAudit) and generate (SARIF export).
 func buildA11yQueryParams(scope string, tags []string, frame any, forceRefresh bool) map[string]any {
@@ -42,11 +48,11 @@ func (h *ToolHandler) ExecuteA11yQuery(scope string, tags []string, frame any, f
 			Type:   "a11y",
 			Params: paramsJSON,
 		},
-		30*time.Second,
+		a11yQueryTimeout,
 		"",
 	)
 	if qerr != nil {
 		return nil, qerr
 	}
-	return h.capture.WaitForResult(queryID, 30*time.Second)
+	return h.capture.WaitForResult(queryID, a11yQueryTimeout)
 }

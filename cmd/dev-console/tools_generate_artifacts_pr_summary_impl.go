@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func (h *ToolHandler) generatePRSummaryImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	actions := h.capture.GetAllEnhancedActions()
 	completedCmds := h.capture.GetCompletedCommands()
 	failedCmds := h.capture.GetFailedCommands()

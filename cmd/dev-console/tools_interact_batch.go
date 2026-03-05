@@ -14,10 +14,7 @@ import (
 func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Fail fast if pilot/extension are not available — avoids acquiring replayMu
 	// and iterating steps that would all fail individually (#9.R3.9).
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 

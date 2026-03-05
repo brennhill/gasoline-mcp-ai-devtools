@@ -12,6 +12,12 @@ import (
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
+const (
+	// stateCaptureTimeout is the time to wait for the extension to execute
+	// the state capture script and return form/scroll/storage data.
+	stateCaptureTimeout = 5 * time.Second
+)
+
 // stateCaptureResult — type alias delegated to internal/tools/interact package.
 type stateCaptureResult = act.StateCaptureResult
 
@@ -42,7 +48,7 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 
-	cmd, found := h.parent.capture.WaitForCommand(correlationID, 5*time.Second)
+	cmd, found := h.parent.capture.WaitForCommand(correlationID, stateCaptureTimeout)
 	if !found || cmd.Status == "pending" {
 		return stateCaptureResult{Status: act.StateCaptureStatusTimeout}
 	}

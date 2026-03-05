@@ -14,6 +14,12 @@ import (
 	"time"
 )
 
+const (
+	// terminateSignalSettleDelay is the pause after SIGTERM before checking if the
+	// process exited, allowing it time to shut down gracefully.
+	terminateSignalSettleDelay = 100 * time.Millisecond
+)
+
 // killUnixGasolineProcesses finds and kills gasoline processes on Unix systems
 // using lsof and pkill. Returns (killed, failedToKill) counts.
 func killUnixGasolineProcesses() (int, int) {
@@ -54,7 +60,7 @@ func terminateProcess(pid int) (int, int) {
 	}
 	if err := process.Signal(syscall.SIGTERM); err == nil {
 		fmt.Printf("  Sent SIGTERM to PID %d\n", pid)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(terminateSignalSettleDelay)
 		if !isProcessAlive(pid) {
 			return 1, 0
 		}

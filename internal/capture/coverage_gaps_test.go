@@ -32,10 +32,10 @@ func TestSetLifecycleCallback(t *testing.T) {
 		receivedData = data
 	})
 
-	c.emitLifecycleEvent("test_event", map[string]any{"key": "value"})
+	c.emitLifecycleEvent("circuit_opened", map[string]any{"key": "value"})
 
-	if received != "test_event" {
-		t.Errorf("callback event = %q, want test_event", received)
+	if received != "circuit_opened" {
+		t.Errorf("callback event = %q, want circuit_opened", received)
 	}
 	if receivedData["key"] != "value" {
 		t.Errorf("callback data = %v, want key=value", receivedData)

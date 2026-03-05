@@ -85,7 +85,7 @@ func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args 
 func validateTestFromContextParams(reqID any, params TestFromContextRequest) (JSONRPCResponse, bool) {
 	if params.Context == "" {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -99,7 +99,7 @@ func validateTestFromContextParams(reqID any, params TestFromContextRequest) (JS
 
 	if _, ok := testGenContextDispatch[params.Context]; !ok {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrInvalidParam,
@@ -119,14 +119,14 @@ func testGenErrorToResponse(reqID any, err error) JSONRPCResponse {
 	for _, m := range testGenErrorMappings {
 		if strings.Contains(errStr, m.code) {
 			return JSONRPCResponse{
-				JSONRPC: "2.0",
+				JSONRPC: JSONRPCVersion,
 				ID:      reqID,
 				Result:  mcpStructuredError(m.code, m.message, m.retry, withHint(m.hint)),
 			}
 		}
 	}
 	return JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      reqID,
 		Result:  mcpStructuredError(ErrInternal, "Failed to generate test: "+err.Error(), "Check the input parameters and ensure captured data is available, then retry"),
 	}

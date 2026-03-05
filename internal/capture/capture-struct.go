@@ -103,8 +103,8 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycleCallback  func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
-	navigationCallback func()                                  // Optional callback fired after a navigation action is ingested (called outside lock)
+	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu.
+	navigationCallback func()             // Optional callback fired after a navigation action is ingested (called outside lock)
 
 	// ============================================
 	// Version Information
@@ -158,9 +158,10 @@ func NewCapture() *Capture {
 		recordingManager: NewRecordingManager(),
 
 		logRedactor: redaction.NewRedactionEngine(""),
+		lifecycle:   NewLifecycleObserver(),
 	}
 	c.queryDispatcher = NewQueryDispatcher()
-	c.circuit = NewCircuitBreaker(c.emitLifecycleEvent)
+	c.circuit = NewCircuitBreaker(c.lifecycle.EmitFunc())
 
 	// Note: clientRegistry is initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)

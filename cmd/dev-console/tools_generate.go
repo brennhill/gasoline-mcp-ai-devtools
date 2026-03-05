@@ -9,32 +9,20 @@ import (
 	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
-// GenerateHandler is the function signature for generate format handlers.
-type GenerateHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
-
 // generateHandlers maps generate format names to their handler functions.
-var generateHandlers = map[string]GenerateHandler{
-	"reproduction": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetReproductionScript(req, args)
-	},
-	"test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateTest(req, args)
-	},
-	"pr_summary": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGeneratePRSummary(req, args)
-	},
-	"sarif": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolExportSARIF(req, args)
-	},
-	"har": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolExportHAR(req, args)
-	},
-	"csp": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateCSP(req, args)
-	},
-	"sri": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateSRI(req, args)
-	},
+var generateHandlers = map[string]ModeHandler{
+	// Direct method delegates
+	"reproduction":      method((*ToolHandler).toolGetReproductionScript),
+	"test":              method((*ToolHandler).toolGenerateTest),
+	"pr_summary":        method((*ToolHandler).toolGeneratePRSummary),
+	"sarif":             method((*ToolHandler).toolExportSARIF),
+	"har":               method((*ToolHandler).toolExportHAR),
+	"csp":               method((*ToolHandler).toolGenerateCSP),
+	"sri":               method((*ToolHandler).toolGenerateSRI),
+	"visual_test":       method((*ToolHandler).toolGenerateVisualTest),
+	"annotation_report": method((*ToolHandler).toolGenerateAnnotationReport),
+	"annotation_issues": method((*ToolHandler).toolGenerateAnnotationIssues),
+	// Sub-handler delegates (require closures — testGen() accessor)
 	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.testGen().handleGenerateTestFromContext(req, args)
 	},
@@ -43,15 +31,6 @@ var generateHandlers = map[string]GenerateHandler{
 	},
 	"test_classify": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.testGen().handleGenerateTestClassify(req, args)
-	},
-	"visual_test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateVisualTest(req, args)
-	},
-	"annotation_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateAnnotationReport(req, args)
-	},
-	"annotation_issues": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGenerateAnnotationIssues(req, args)
 	},
 }
 
@@ -73,64 +52,25 @@ var generateAliasParams = []modeAlias{
 // getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.
 func getValidGenerateFormats() string { return sortedMapKeys(generateHandlers) }
 
-// toolGenerate dispatches generate requests based on the 'what' parameter.
-func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	what, usedAliasParam, errResp := resolveToolMode(req, args, generateAliasParams, modeResolution{
+// generateRegistry is the tool registry for generate dispatch.
+var generateRegistry = toolRegistry{
+	Handlers:  generateHandlers,
+	AliasDefs: generateAliasParams,
+	Resolution: modeResolution{
 		ToolName:   "generate",
-		ValidModes: getValidGenerateFormats(),
-	})
-	if errResp != nil {
-		return *errResp
-	}
-
-	handler, ok := generateHandlers[what]
-	if !ok {
-		validFormats := getValidGenerateFormats()
-		resp := fail(req, ErrUnknownMode, "Unknown generate format: "+what, "Use a valid format from the 'what' enum", withParam("what"), withHint("Valid values: "+validFormats), describeCapabilitiesRecovery("generate"))
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
-	}
-
-	// Strict parameter validation: reject unknown params for the given format
-	if errResp := validateGenerateParams(req, what, args); errResp != nil {
-		return appendCanonicalWhatAliasWarning(*errResp, usedAliasParam, what)
-	}
-
-	resp := handler(h, req, args)
-	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+		ValidModes: "", // populated lazily
+	},
+	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, what string) (json.RawMessage, *JSONRPCResponse) {
+		return args, validateGenerateParams(req, what, args)
+	},
 }
 
-// ============================================
-// Generate sub-handlers
-// ============================================
-
-func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.toolGetReproductionScriptImpl(req, args)
+// toolGenerate dispatches generate requests based on the 'what' parameter.
+func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	reg := generateRegistry
+	reg.Resolution.ValidModes = getValidGenerateFormats()
+	return h.dispatchTool(req, args, reg)
 }
 
 // TestGenParams delegates to internal/tools/generate.
 type TestGenParams = gen.TestGenParams
-
-func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.generateTestImpl(req, args)
-}
-
-func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.generatePRSummaryImpl(req, args)
-}
-
-func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.exportSARIFImpl(req, args)
-}
-
-func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.exportHARImpl(req, args)
-}
-
-func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.generateCSPImpl(req, args)
-}
-
-// toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
-func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.generateSRIImpl(req, args)
-}

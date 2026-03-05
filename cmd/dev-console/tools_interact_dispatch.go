@@ -95,6 +95,8 @@ func (h *interactActionHandler) getValidInteractActions() string {
 }
 
 // readOnlyInteractActions lists actions that should not have jitter applied.
+// SYNC: The TS source of truth is src/background/action-metadata.ts (ACTION_METADATA map).
+// When adding or reclassifying actions, update both this map and the TS metadata.
 var readOnlyInteractActions = map[string]bool{
 	"list_interactive":          true,
 	"get_text":                  true,

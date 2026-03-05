@@ -34,10 +34,7 @@ func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMe
 		return *errResp
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.requireTabTracking(req); blocked {

@@ -1,10 +1,68 @@
-// tool_dispatch_helpers.go — Shared alias-resolution and mode-list helpers for tool dispatch.
+// tool_dispatch_helpers.go — Shared alias-resolution, mode-list helpers, and generic dispatch for tool routing.
 
 package main
 
 import (
 	"encoding/json"
 )
+
+// ModeHandler is the unified function signature for all tool mode handlers.
+// All five tools (observe, analyze, configure, generate, interact) use this signature.
+type ModeHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
+
+// toolRegistry bundles the handler map, alias definitions, and metadata for a tool.
+type toolRegistry struct {
+	Handlers   map[string]ModeHandler
+	AliasDefs  []modeAlias
+	Resolution modeResolution
+	// PreDispatch is called after mode resolution but before handler dispatch.
+	// Returns modified args and optional response (non-nil short-circuits dispatch).
+	PreDispatch func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, what string) (json.RawMessage, *JSONRPCResponse)
+	// PostDispatch is called after the handler returns, before alias warning.
+	PostDispatch func(h *ToolHandler, req JSONRPCRequest, resp JSONRPCResponse, what string) JSONRPCResponse
+}
+
+// dispatchTool resolves the mode, looks up the handler, and dispatches.
+// Handles the resolve→lookup→not-found→call→alias-warning pattern shared by all 4 registry tools.
+func (h *ToolHandler) dispatchTool(req JSONRPCRequest, args json.RawMessage, reg toolRegistry) JSONRPCResponse {
+	what, usedAliasParam, errResp := resolveToolMode(req, args, reg.AliasDefs, reg.Resolution)
+	if errResp != nil {
+		return *errResp
+	}
+
+	handler, ok := reg.Handlers[what]
+	if !ok {
+		validModes := reg.Resolution.ValidModes
+		resp := fail(req, ErrUnknownMode, "Unknown "+reg.Resolution.ToolName+" mode: "+what,
+			"Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes), describeCapabilitiesRecovery(reg.Resolution.ToolName))
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+	}
+
+	if reg.PreDispatch != nil {
+		var preResp *JSONRPCResponse
+		args, preResp = reg.PreDispatch(h, req, args, what)
+		if preResp != nil {
+			return appendCanonicalWhatAliasWarning(*preResp, usedAliasParam, what)
+		}
+	}
+
+	resp := handler(h, req, args)
+
+	if reg.PostDispatch != nil {
+		resp = reg.PostDispatch(h, req, resp, what)
+	}
+
+	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
+}
+
+// method adapts a ToolHandler method (that takes req, args) into a ModeHandler.
+// This eliminates the one-line closure boilerplate in registries:
+//
+//	Before: "dom": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolQueryDOM(req, args) },
+//	After:  "dom": method((*ToolHandler).toolQueryDOM),
+func method(fn func(*ToolHandler, JSONRPCRequest, json.RawMessage) JSONRPCResponse) ModeHandler {
+	return fn
+}
 
 // modeAlias defines a deprecated parameter that can substitute for the canonical 'what' param.
 //

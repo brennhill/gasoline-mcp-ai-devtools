@@ -55,7 +55,7 @@ var validClassifyActions = map[string]bool{"failure": true, "batch": true}
 func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCResponse, bool) {
 	if params.Action == "" {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -68,7 +68,7 @@ func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCRespo
 	}
 	if !validClassifyActions[params.Action] {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrInvalidParam,
@@ -85,7 +85,7 @@ func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCRespo
 func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if params.Failure == nil {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -100,7 +100,7 @@ func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyReq
 
 	if classification.Confidence < 0.5 {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrClassificationUncertain,
@@ -126,7 +126,7 @@ func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyReq
 func (h *testGenHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if len(params.Failures) == 0 {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -139,7 +139,7 @@ func (h *testGenHandler) classifyBatchFailures(reqID any, params TestClassifyReq
 
 	if len(params.Failures) > maxFailuresPerBatch {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrBatchTooLarge,

@@ -9,7 +9,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
 )
 
-func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Scope         string `json:"scope"`
 		IncludePasses bool   `json:"include_passes"`

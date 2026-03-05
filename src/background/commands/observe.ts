@@ -12,12 +12,11 @@ import { DebugCategory } from '../debug.js'
 import { recordScreenshot } from '../state-manager.js'
 import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
 import { registerCommand } from './registry.js'
+import { CDP_VERSION } from '../../lib/constants.js'
 
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
-
-const CDP_VERSION = '1.3'
 const MAX_CAPTURE_HEIGHT = 16384 // Chrome max texture size
 const MAX_CAPTURE_WIDTH = 16384 // Chrome max texture size
 const DEFAULT_CAPTURE_WIDTH = 1280
