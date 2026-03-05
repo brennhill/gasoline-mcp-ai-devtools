@@ -124,9 +124,9 @@ func (h *interactActionHandler) applyJitter(action string) int {
 	if readOnlyInteractActions[action] {
 		return 0
 	}
-	h.parent.jitterMu.RLock()
-	maxMs := h.parent.actionJitterMaxMs
-	h.parent.jitterMu.RUnlock()
+	h.jitterMu.RLock()
+	maxMs := h.actionJitterMaxMs
+	h.jitterMu.RUnlock()
 	if maxMs <= 0 {
 		return 0
 	}

@@ -43,7 +43,7 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 	}
 
 	// Ensure session store is initialized.
-	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+	if resp, blocked := h.deps.requireSessionStore(req); blocked {
 		return resp
 	}
 
@@ -55,21 +55,21 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 		Data:      data,
 	}
 
-	result, err := h.parent.sessionStoreImpl.HandleSessionStore(storeArgs)
+	result, err := h.sessionStoreImpl.HandleSessionStore(storeArgs)
 	if err != nil {
 		return fail(req, ErrInvalidParam, err.Error(), "Fix the request parameters and try again")
 	}
 
 	// Invalidate summary preference cache when response_mode is written.
 	if namespace == "session" && compositeArgs.Key == "response_mode" {
-		h.parent.invalidateSummaryPref()
+		h.deps.invalidateSummaryPref()
 	}
 
 	// Sync active_codebase to server-level field for terminal CWD fallback.
-	if compositeArgs.Key == "active_codebase" && action == "save" && h.parent.server != nil {
+	if compositeArgs.Key == "active_codebase" && action == "save" && h.server != nil {
 		var path string
 		if err := json.Unmarshal(data, &path); err == nil {
-			h.parent.server.SetActiveCodebase(path)
+			h.server.SetActiveCodebase(path)
 		}
 	}
 
@@ -84,8 +84,8 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 
 func (h *configureSessionHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// If session store is initialized, use it.
-	if h.parent.sessionStoreImpl != nil {
-		ctx := h.parent.sessionStoreImpl.LoadSessionContext()
+	if h.sessionStoreImpl != nil {
+		ctx := h.sessionStoreImpl.LoadSessionContext()
 		responseData := map[string]any{
 			"status":        "ok",
 			"project_id":    ctx.ProjectID,

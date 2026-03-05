@@ -24,7 +24,6 @@ type uploadParams struct {
 // handleUpload dispatches the "upload" interact action.
 // Validates parameters and queues the upload operation.
 func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	h := u.parent
 	var params uploadParams
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
@@ -34,10 +33,13 @@ func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMe
 		return *errResp
 	}
 
-	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
+	if resp, blocked := u.deps.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := u.deps.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := u.deps.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -92,7 +94,6 @@ func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPC
 
 // queueUpload builds the upload payload and queues it for the extension.
 func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
-	h := u.parent
 	if params.EscalationTimeoutMs <= 0 {
 		params.EscalationTimeoutMs = defaultEscalationTimeoutMs
 	}
@@ -102,7 +103,7 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
 	correlationID := newCorrelationID("upload")
-	h.interactAction().armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
+	u.deps.armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
 
 	uploadPayload := map[string]any{
 		"action": "upload", "selector": params.Selector,
@@ -118,11 +119,11 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	// Error impossible: map contains only primitive types from input
 	payloadJSON, _ := json.Marshal(uploadPayload)
 	query := queries.PendingQuery{Type: "upload", Params: payloadJSON, CorrelationID: correlationID}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, 10*time.Minute); blocked {
+	if enqueueResp, blocked := u.deps.enqueuePendingQuery(req, query, 10*time.Minute); blocked {
 		return enqueueResp
 	}
 
-	h.recordAIAction("upload", "", map[string]any{
+	u.deps.recordAIAction("upload", "", map[string]any{
 		"file_path": params.FilePath, "file_name": fileName,
 		"file_size": fileSize, "selector": params.Selector,
 		"progress_tier": string(progressTier),

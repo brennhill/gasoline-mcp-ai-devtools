@@ -86,9 +86,6 @@ type ToolHandler struct {
 	// Dedicated interact action routing/jitter sub-handler.
 	interactActionHandler *interactActionHandler
 
-	// Scoped element index registry used by list_interactive/index follow-up actions.
-	elementIndexRegistry *elementIndexRegistry
-
 	// Active test boundaries: test_id → start time.
 	// Used to detect out-of-order test_boundary_end calls.
 	activeBoundariesMu sync.Mutex
@@ -98,30 +95,14 @@ type ToolHandler struct {
 	playbackMu       sync.RWMutex
 	playbackSessions map[string]*capture.PlaybackSession
 
-	// Interact recording state gate (record_start/record_stop sequencing).
-	recordInteractMu         sync.Mutex
-	recordInteract           interactRecordingState
 	recordingInteractHandler *recordingInteractHandler
 	uploadInteractHandler    *uploadInteractHandler
 	testGenHandler           *testGenHandler
 	stateInteractHandler     *stateInteractHandler
 	configureSessionHandler  *configureSessionHandler
 
-	// Optional evidence capture state keyed by correlation_id.
-	// Tracks before/after screenshots for interact actions when evidence mode is enabled.
-	evidenceMu        sync.Mutex
-	evidenceByCommand map[string]*commandEvidenceState
-
-	// Deterministic retry contract metadata keyed by correlation_id.
-	retryContractMu sync.Mutex
-	retryByCommand  map[string]*commandRetryState
-
 	// Passive network traffic recording state (start/stop capture).
 	networkRecording *networkRecordingState
-
-	// Action jitter: randomized micro-delays before interact actions.
-	jitterMu          sync.RWMutex
-	actionJitterMaxMs int // max jitter before each interact action (0 = disabled)
 
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModulesOnce sync.Once

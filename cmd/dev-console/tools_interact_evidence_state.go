@@ -4,25 +4,25 @@
 package main
 
 func (h *interactActionHandler) clearEvidenceState(correlationID string) {
-	h.parent.evidenceMu.Lock()
-	defer h.parent.evidenceMu.Unlock()
-	delete(h.parent.evidenceByCommand, correlationID)
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+	delete(h.evidenceByCommand, correlationID)
 }
 
 func (h *interactActionHandler) storeEvidenceState(correlationID string, state *commandEvidenceState) {
-	h.parent.evidenceMu.Lock()
-	defer h.parent.evidenceMu.Unlock()
-	if h.parent.evidenceByCommand == nil {
-		h.parent.evidenceByCommand = make(map[string]*commandEvidenceState)
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+	if h.evidenceByCommand == nil {
+		h.evidenceByCommand = make(map[string]*commandEvidenceState)
 	}
-	h.parent.evidenceByCommand[correlationID] = state
+	h.evidenceByCommand[correlationID] = state
 }
 
 func (h *interactActionHandler) loadEvidenceAttachContext(correlationID string) (cached map[string]any, needsAfter bool, clientID string, done bool) {
-	h.parent.evidenceMu.Lock()
-	defer h.parent.evidenceMu.Unlock()
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
 
-	state, ok := h.parent.evidenceByCommand[correlationID]
+	state, ok := h.evidenceByCommand[correlationID]
 	if !ok {
 		return nil, false, "", true
 	}
@@ -34,10 +34,10 @@ func (h *interactActionHandler) loadEvidenceAttachContext(correlationID string) 
 }
 
 func (h *interactActionHandler) finalizeEvidencePayload(correlationID string, needsAfter bool, after evidenceShot) (map[string]any, bool) {
-	h.parent.evidenceMu.Lock()
-	defer h.parent.evidenceMu.Unlock()
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
 
-	state, ok := h.parent.evidenceByCommand[correlationID]
+	state, ok := h.evidenceByCommand[correlationID]
 	if !ok {
 		return nil, false
 	}

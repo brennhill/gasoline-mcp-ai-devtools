@@ -20,11 +20,11 @@ func (h *configureSessionHandler) toolDiffSessionsWrapper(req JSONRPCRequest, ar
 }
 
 func (h *configureSessionHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if h.parent.sessionManager == nil {
+	if h.sessionManager == nil {
 		return fail(req, ErrNotInitialized, "Session manager not initialized", "Internal error — do not retry")
 	}
 
-	result, err := h.parent.sessionManager.HandleTool(args)
+	result, err := h.sessionManager.HandleTool(args)
 	if err != nil {
 		return fail(req, ErrInvalidParam, err.Error(), "Fix request parameters and retry")
 	}

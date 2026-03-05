@@ -13,7 +13,6 @@ import (
 
 // queueRecordStart creates the pending query and returns the response for a screen_recording_start action.
 func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
-	h := r.parent
 	correlationID := newCorrelationID("rec")
 
 	extParams := map[string]any{"action": "screen_recording_start", "name": fullName, "fps": fps, "audio": audio}
@@ -26,12 +25,12 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
+	if enqueueResp, blocked := r.deps.enqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
 		return enqueueResp
 	}
 	r.setInteractRecordingStart(correlationID)
 
-	h.recordAIAction("screen_recording_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
+	r.deps.recordAIAction("screen_recording_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return succeed(req, "Recording queued", map[string]any{
 		"status":                "queued",
@@ -51,7 +50,6 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 // Generates the filename, forwards to extension via PendingQuery.
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	h := r.parent
 	var params struct {
 		Name  string `json:"name"`
 		FPS   int    `json:"fps,omitempty"`
@@ -62,7 +60,10 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
+	if resp, blocked := r.deps.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := r.deps.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -89,7 +90,6 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 // handleRecordStop processes interact({action: "screen_recording_stop"}).
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	h := r.parent
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
@@ -97,7 +97,10 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
+	if resp, blocked := r.deps.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := r.deps.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -114,7 +117,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		if recordingState.StartCorrelationID == "" {
 			msg = "Cannot stop recording: no active interact(screen_recording_start) session found"
 		}
-		return fail(req, ErrNoData, msg, retry, h.diagnosticHint())
+		return fail(req, ErrNoData, msg, retry, r.deps.diagnosticHint())
 	}
 
 	correlationID := newCorrelationID("recstop")
@@ -131,12 +134,12 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
+	if enqueueResp, blocked := r.deps.enqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
 		return enqueueResp
 	}
 	r.setInteractRecordingStopping(correlationID)
 
-	h.recordAIAction("screen_recording_stop", "", nil)
+	r.deps.recordAIAction("screen_recording_stop", "", nil)
 
 	return succeed(req, "Recording stop queued", map[string]any{
 		"status":          "queued",

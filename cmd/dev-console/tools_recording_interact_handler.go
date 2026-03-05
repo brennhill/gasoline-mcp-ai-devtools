@@ -4,10 +4,32 @@
 
 package main
 
-type recordingInteractHandler struct {
-	parent *ToolHandler
+import (
+	"sync"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+)
+
+// recordingDeps defines the narrow interface that recordingInteractHandler needs from its parent.
+type recordingDeps interface {
+	enqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
+	requirePilot(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
+	requireExtension(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
+	recordAIAction(action, url string, extra map[string]any)
+	diagnosticHint() func(*StructuredError)
+	getCommandResult(correlationID string) (*queries.CommandResult, bool)
 }
 
-func newRecordingInteractHandler(parent *ToolHandler) *recordingInteractHandler {
-	return &recordingInteractHandler{parent: parent}
+type recordingInteractHandler struct {
+	deps recordingDeps
+
+	// Interact recording state gate (record_start/record_stop sequencing).
+	// Relocated from ToolHandler — exclusively owned by recordingInteractHandler.
+	recordInteractMu sync.Mutex
+	recordInteract   interactRecordingState
+}
+
+func newRecordingInteractHandler(deps recordingDeps) *recordingInteractHandler {
+	return &recordingInteractHandler{deps: deps}
 }

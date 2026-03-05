@@ -43,9 +43,7 @@ func TestApplyJitter_ReadOnlyActions_ReturnZero(t *testing.T) {
 			h, _, _ := makeToolHandler(t)
 
 			// Set a high jitter so we can confirm it is still skipped.
-			h.jitterMu.Lock()
-			h.actionJitterMaxMs = 5000
-			h.jitterMu.Unlock()
+			h.interactAction().SetJitter(5000)
 
 			got := h.interactAction().applyJitter(action)
 			if got != 0 {
@@ -96,9 +94,7 @@ func TestApplyJitter_PositiveMaxMs_ReturnsValueInRange(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	maxMs := 50
-	h.jitterMu.Lock()
-	h.actionJitterMaxMs = maxMs
-	h.jitterMu.Unlock()
+	h.interactAction().SetJitter(maxMs)
 
 	// Run multiple iterations to gain confidence the value stays in range.
 	for i := 0; i < 100; i++ {

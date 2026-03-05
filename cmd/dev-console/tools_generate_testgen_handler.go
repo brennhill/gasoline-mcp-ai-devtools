@@ -4,12 +4,22 @@
 
 package main
 
-type testGenHandler struct {
-	parent *ToolHandler
+import (
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+)
+
+// testGenHandlerDeps defines the narrow interface that testGenHandler needs from its parent.
+type testGenHandlerDeps interface {
+	mcp.LogBufferReader
+	mcp.CaptureProvider
 }
 
-func newTestGenHandler(parent *ToolHandler) *testGenHandler {
-	return &testGenHandler{parent: parent}
+type testGenHandler struct {
+	deps testGenHandlerDeps
+}
+
+func newTestGenHandler(deps testGenHandlerDeps) *testGenHandler {
+	return &testGenHandler{deps: deps}
 }
 
 func (h *ToolHandler) testGen() *testGenHandler {

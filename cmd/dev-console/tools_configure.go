@@ -16,7 +16,7 @@ var configureAliasParams = []modeAlias{
 	{JSONField: "action", ConflictFn: func(v string) bool {
 		_, ok := configureHandlers[v]
 		return ok
-	}},
+	}, DeprecatedIn: "0.7.0", RemoveIn: "0.9.0"},
 }
 
 // configureRegistry is the tool registry for configure dispatch.

@@ -50,11 +50,8 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 		shutdownCancel:            shutdownCancel,
 		coldStartTimeout:          defaultColdStartTimeout,
 		extensionReadinessTimeout: defaultExtensionReadinessTimeout(),
-		playbackSessions:          newPlaybackSessionsMap(),
-		evidenceByCommand:         make(map[string]*commandEvidenceState),
-		retryByCommand:            make(map[string]*commandRetryState),
-		elementIndexRegistry:      newElementIndexRegistry(),
-		networkRecording:          &networkRecordingState{},
+		playbackSessions: newPlaybackSessionsMap(),
+		networkRecording: &networkRecordingState{},
 	}
 
 	// Initialize health metrics.
@@ -106,12 +103,12 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 
 	// Initialize upload security config from package-level var set by CLI.
 	handler.uploadSecurity = uploadSecurityConfig
-	handler.recordingInteractHandler = newRecordingInteractHandler(handler)
-	handler.uploadInteractHandler = newUploadInteractHandler(handler)
-	handler.testGenHandler = newTestGenHandler(handler)
-	handler.stateInteractHandler = newStateInteractHandler(handler)
+	handler.recordingInteractHandler = newRecordingInteractHandler(handler) // *ToolHandler satisfies recordingDeps
+	handler.uploadInteractHandler = newUploadInteractHandler(handler) // *ToolHandler satisfies uploadDeps
+	handler.testGenHandler = newTestGenHandler(handler) // *ToolHandler satisfies testGenHandlerDeps
+	handler.stateInteractHandler = newStateInteractHandler(handler, handler.sessionStoreImpl)
 	handler.interactActionHandler = newInteractActionHandler(handler)
-	handler.configureSessionHandler = newConfigureSessionHandler(handler)
+	handler.configureSessionHandler = newConfigureSessionHandler(handler, handler.sessionStoreImpl, handler.sessionManager, handler.MCPHandler.server)
 
 	// Initialize dispatch modules and tool schemas once at startup.
 	handler.ensureToolModules()

@@ -27,26 +27,25 @@ func extractRecordingLifecycleStatus(result json.RawMessage) string {
 
 // resolveInteractRecordingState refreshes state using latest command results.
 func (r *recordingInteractHandler) resolveInteractRecordingState() interactRecordingState {
-	h := r.parent
-	h.recordInteractMu.Lock()
-	defer h.recordInteractMu.Unlock()
+	r.recordInteractMu.Lock()
+	defer r.recordInteractMu.Unlock()
 
-	state := h.recordInteract
+	state := r.recordInteract
 	if state.State == "" {
 		state.State = recordingStateIdle
 	}
 
 	if state.StopCorrelationID != "" {
-		if stopCmd, found := h.capture.GetCommandResult(state.StopCorrelationID); found {
+		if stopCmd, found := r.deps.getCommandResult(state.StopCorrelationID); found {
 			if stopCmd.Status == "pending" {
 				state.State = recordingStateStopping
 				state.UpdatedAt = time.Now()
-				h.recordInteract = state
+				r.recordInteract = state
 				return state
 			}
 			// Any terminal stop result returns the state machine to idle.
 			state = interactRecordingState{State: recordingStateIdle, UpdatedAt: time.Now()}
-			h.recordInteract = state
+			r.recordInteract = state
 			return state
 		}
 	}
@@ -54,18 +53,18 @@ func (r *recordingInteractHandler) resolveInteractRecordingState() interactRecor
 	if state.StartCorrelationID == "" {
 		state.State = recordingStateIdle
 		state.UpdatedAt = time.Now()
-		h.recordInteract = state
+		r.recordInteract = state
 		return state
 	}
 
-	startCmd, found := h.capture.GetCommandResult(state.StartCorrelationID)
+	startCmd, found := r.deps.getCommandResult(state.StartCorrelationID)
 	if !found {
 		// Keep queued state until command result appears.
 		if state.State == "" {
 			state.State = recordingStateAwaitingGesture
 		}
 		state.UpdatedAt = time.Now()
-		h.recordInteract = state
+		r.recordInteract = state
 		return state
 	}
 
@@ -87,15 +86,14 @@ func (r *recordingInteractHandler) resolveInteractRecordingState() interactRecor
 	}
 
 	state.UpdatedAt = time.Now()
-	h.recordInteract = state
+	r.recordInteract = state
 	return state
 }
 
 func (r *recordingInteractHandler) setInteractRecordingStart(correlationID string) {
-	h := r.parent
-	h.recordInteractMu.Lock()
-	defer h.recordInteractMu.Unlock()
-	h.recordInteract = interactRecordingState{
+	r.recordInteractMu.Lock()
+	defer r.recordInteractMu.Unlock()
+	r.recordInteract = interactRecordingState{
 		State:              recordingStateAwaitingGesture,
 		StartCorrelationID: correlationID,
 		UpdatedAt:          time.Now(),
@@ -103,15 +101,14 @@ func (r *recordingInteractHandler) setInteractRecordingStart(correlationID strin
 }
 
 func (r *recordingInteractHandler) setInteractRecordingStopping(correlationID string) {
-	h := r.parent
-	h.recordInteractMu.Lock()
-	defer h.recordInteractMu.Unlock()
-	state := h.recordInteract
+	r.recordInteractMu.Lock()
+	defer r.recordInteractMu.Unlock()
+	state := r.recordInteract
 	if state.State == "" {
 		state.State = recordingStateIdle
 	}
 	state.State = recordingStateStopping
 	state.StopCorrelationID = correlationID
 	state.UpdatedAt = time.Now()
-	h.recordInteract = state
+	r.recordInteract = state
 }
