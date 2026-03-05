@@ -27,6 +27,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
+ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m' # No Color (Reset)
@@ -52,7 +53,7 @@ print_panel() {
     echo -e "${CYAN}+----------------------------------------------------------+${NC}"
 }
 print_banner() {
-    echo -e "${BLUE}${BOLD}"
+    echo -e "${ORANGE}${BOLD}"
     cat <<'EOF'
    ____                 _ _            
   / ___| __ _ ___  ___ | (_)_ __   ___ 
