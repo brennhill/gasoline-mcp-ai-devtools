@@ -29,6 +29,7 @@
  */
 
 import type { StructuredCommand, StructuredValue, StructuredStep, ParseResult } from './csp-safe-types.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // Patterns that we reject outright before attempting to parse
 const REJECTED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
@@ -97,7 +98,7 @@ export function parseExpression(input: string): ParseResult {
 
     return { ok: true, command: { expr } }
   } catch (e) {
-    return { ok: false, reason: (e as Error).message }
+    return { ok: false, reason: errorMessage(e) }
   }
 }
 

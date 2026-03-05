@@ -4,6 +4,7 @@
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
 import { pushChatMessage } from './push-handler.js';
+import { errorMessage } from '../lib/error-utils.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -203,7 +204,7 @@ async function handleClearLogsAsync(sendResponse, deps) {
     }
     catch (err) {
         console.error('[Gasoline] Failed to clear logs:', err);
-        sendResponse({ error: err.message });
+        sendResponse({ error: errorMessage(err) });
     }
 }
 function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
@@ -319,8 +320,8 @@ function handleCaptureScreenshot(sendResponse, deps) {
                 sendResponse(result);
             }
             catch (err) {
-                deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: err.message });
-                sendResponse({ success: false, error: err.message });
+                deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: errorMessage(err) });
+                sendResponse({ success: false, error: errorMessage(err) });
             }
         }
         else {
@@ -350,7 +351,7 @@ async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
         sendResponse({ dataUrl });
     }
     catch (err) {
-        console.error('[Gasoline] Draw mode screenshot capture failed:', err.message);
+        console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err));
         sendResponse({ dataUrl: '' });
     }
 }
@@ -389,7 +390,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
         }
     }
     catch (err) {
-        deps.debugLog('error', `Draw mode completion error: ${err.message}. Server may be unreachable.`);
+        deps.debugLog('error', `Draw mode completion error: ${errorMessage(err)}. Server may be unreachable.`);
     }
 }
 /**
@@ -408,7 +409,7 @@ async function handlePushChatAsync(message, sender, sendResponse) {
         }
     }
     catch (err) {
-        sendResponse({ success: false, error: err.message });
+        sendResponse({ success: false, error: errorMessage(err) });
     }
 }
 function handleSetServerUrl(url, sendResponse, deps) {

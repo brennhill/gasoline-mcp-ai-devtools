@@ -113,7 +113,7 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	}
 
 	// Build text response with file path info (backward compatible)
-	resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
+	resp := mcp.Succeed(req, "Screenshot captured", screenshotResult)
 
 	// Append inline image content block if data_url was present
 	if dataURL != "" {

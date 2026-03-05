@@ -6,9 +6,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // checkScreenshotRateLimit enforces per-client screenshot rate limiting.
@@ -44,25 +43,6 @@ func checkScreenshotRateLimit(clientID string) (int, string) {
 	}
 	screenshotRateLimiter[clientID] = time.Now()
 	return 0, ""
-}
-
-// buildScreenshotFilename constructs a sanitized filename from URL hostname,
-// timestamp, and optional correlation ID.
-func buildScreenshotFilename(pageURL, correlationID string) string {
-	hostname := "unknown"
-	if pageURL != "" {
-		if u, err := url.Parse(pageURL); err == nil && u.Host != "" {
-			hostname = u.Host
-		}
-	}
-	timestamp := time.Now().Format("20060102-150405")
-	if correlationID != "" {
-		return fmt.Sprintf("%s-%s-%s.jpg",
-			sanitizeForFilename(hostname),
-			timestamp,
-			sanitizeForFilename(correlationID))
-	}
-	return fmt.Sprintf("%s-%s.jpg", sanitizeForFilename(hostname), timestamp)
 }
 
 // saveImageToScreenshotsDir writes image data to the screenshots directory.
@@ -108,13 +88,13 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 		return
 	}
 
-	imageData, errMsg := decodeDataURL(body.DataURL)
-	if errMsg != "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": errMsg})
+	imageData, err := util.DecodeDataURL(body.DataURL)
+	if err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
-	filename := buildScreenshotFilename(body.URL, body.CorrelationID)
+	filename := util.BuildScreenshotFilename(body.URL, body.CorrelationID)
 	savePath, status, saveErr := saveImageToScreenshotsDir(filename, imageData)
 	if status != 0 {
 		jsonResponse(w, status, map[string]string{"error": saveErr})

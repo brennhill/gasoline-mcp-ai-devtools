@@ -7,6 +7,8 @@ package analysis
 import (
 	"sort"
 	"strings"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // ============================================
@@ -21,7 +23,7 @@ func (s *SchemaStore) BuildOpenAPIStub(filter SchemaFilter) string {
 	b.WriteString("openapi: \"3.0.0\"\ninfo:\n  title: \"Inferred API\"\n  version: \"1.0.0\"\n  description: \"Auto-inferred from observed network traffic\"\npaths:\n")
 
 	pathMethods := groupEndpointsByPath(schema.Endpoints)
-	paths := sortedKeys(pathMethods)
+	paths := util.SortedMapKeys(pathMethods)
 
 	for _, path := range paths {
 		b.WriteString("  " + path + ":\n")
@@ -42,16 +44,6 @@ func groupEndpointsByPath(endpoints []EndpointSchema) map[string][]EndpointSchem
 		pathMethods[ep.PathPattern] = append(pathMethods[ep.PathPattern], *ep)
 	}
 	return pathMethods
-}
-
-// sortedKeys returns sorted keys from a map.
-func sortedKeys(m map[string][]EndpointSchema) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // writeEndpointYAML writes a single endpoint's YAML to the builder.

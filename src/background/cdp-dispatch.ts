@@ -13,6 +13,7 @@ import type { SyncClient } from './sync-client.js'
 import type { DOMActionParams, DOMResult } from './dom-types.js'
 import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
 import { CDP_VERSION } from '../lib/constants.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 interface CDPActionParams {
   action: string
@@ -286,7 +287,7 @@ function parseCDPParams(query: PendingQuery): CDPActionParams | null {
 }
 
 function mapCDPError(err: unknown): string {
-  const msg = (err as Error)?.message || 'unknown_error'
+  const msg = errorMessage(err, 'unknown_error')
   if (msg.includes('Cannot attach to this target')) {
     return 'cdp_attach_failed: Cannot attach debugger to this tab. It may be an internal browser page.'
   }

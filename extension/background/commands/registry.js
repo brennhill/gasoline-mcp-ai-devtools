@@ -4,6 +4,7 @@
  */
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
+import { errorMessage } from '../../lib/error-utils.js';
 import { debugLog, sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
 // =============================================================================
 // REGISTRY
@@ -133,7 +134,7 @@ export async function dispatch(query, syncClient) {
             target = resolved.target;
         }
         catch (err) {
-            const targetErr = err.message || 'target_resolution_failed';
+            const targetErr = errorMessage(err, 'target_resolution_failed');
             lifecycle.sendError({
                 success: false,
                 error: 'target_resolution_failed',
@@ -185,7 +186,7 @@ export async function dispatch(query, syncClient) {
         }
     }
     catch (err) {
-        const errMsg = err.message || 'Unexpected error handling query';
+        const errMsg = errorMessage(err, 'Unexpected error handling query');
         debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
             type: query.type,
             id: query.id,

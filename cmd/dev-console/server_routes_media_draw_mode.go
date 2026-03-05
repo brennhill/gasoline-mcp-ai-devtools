@@ -13,19 +13,20 @@ import (
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // saveDrawScreenshot decodes a data URL and writes the screenshot to disk.
 // Returns the saved path (empty string on any failure, with a non-nil error
 // only for directory resolution failures that should abort the request).
 func saveDrawScreenshot(dataURL string, tabID int) (string, error) {
-	imageData, errMsg := decodeDataURL(dataURL)
-	if errMsg != "" {
+	imageData, err := util.DecodeDataURL(dataURL)
+	if err != nil {
 		return "", nil
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
-	filename := fmt.Sprintf("draw_%s_tab%d_%d.png", sanitizeForFilename(timestamp), tabID, randomInt63()%10000)
+	filename := fmt.Sprintf("draw_%s_tab%d_%d.png", util.SanitizeForFilename(timestamp), tabID, randomInt63()%10000)
 
 	dir, dirErr := screenshotsDir()
 	if dirErr != nil {

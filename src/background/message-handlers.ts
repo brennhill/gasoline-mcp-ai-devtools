@@ -25,6 +25,7 @@ import type {
 } from '../types/index.js'
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js'
 import { pushChatMessage } from './push-handler.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -330,7 +331,7 @@ async function handleClearLogsAsync(sendResponse: SendResponse, deps: MessageHan
     sendResponse(result)
   } catch (err) {
     console.error('[Gasoline] Failed to clear logs:', err)
-    sendResponse({ error: (err as Error).message })
+    sendResponse({ error: errorMessage(err) })
   }
 }
 
@@ -463,8 +464,8 @@ function handleCaptureScreenshot(sendResponse: SendResponse, deps: MessageHandle
         }
         sendResponse(result)
       } catch (err) {
-        deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: (err as Error).message })
-        sendResponse({ success: false, error: (err as Error).message })
+        deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: errorMessage(err) })
+        sendResponse({ success: false, error: errorMessage(err) })
       }
     } else {
       deps.debugLog('capture', 'handleCaptureScreenshot: no active tab')
@@ -498,7 +499,7 @@ async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, send
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' })
     sendResponse({ dataUrl })
   } catch (err) {
-    console.error('[Gasoline] Draw mode screenshot capture failed:', (err as Error).message)
+    console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err))
     sendResponse({ dataUrl: '' })
   }
 }
@@ -539,7 +540,7 @@ async function handleDrawModeCompletedAsync(
       deps.debugLog('draw', `Draw mode results delivered (${message.annotations?.length || 0} annotations)`)
     }
   } catch (err) {
-    deps.debugLog('error', `Draw mode completion error: ${(err as Error).message}. Server may be unreachable.`)
+    deps.debugLog('error', `Draw mode completion error: ${errorMessage(err)}. Server may be unreachable.`)
   }
 }
 
@@ -561,7 +562,7 @@ async function handlePushChatAsync(
       sendResponse({ success: false, error: 'Failed to push message' })
     }
   } catch (err) {
-    sendResponse({ success: false, error: (err as Error).message })
+    sendResponse({ success: false, error: errorMessage(err) })
   }
 }
 

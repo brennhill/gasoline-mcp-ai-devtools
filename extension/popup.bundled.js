@@ -238,6 +238,15 @@
     }
   }
 
+  // extension/lib/error-utils.js
+  function errorMessage(err, fallback = "Unknown error") {
+    if (err instanceof Error && err.message)
+      return err.message;
+    if (typeof err === "string" && err)
+      return err;
+    return fallback;
+  }
+
   // extension/popup/recording.js
   var START_LABEL = "Record screen";
   var STOP_LABEL = "Stop recording";
@@ -381,7 +390,7 @@
       chrome.storage.local.set({ [StorageKey.MIC_GRANTED]: true });
       sendRecordStart(els, state, audioMode);
     }).catch((err) => {
-      console.log("[Gasoline REC] Popup: getUserMedia FAILED:", err.name, err.message);
+      console.log("[Gasoline REC] Popup: getUserMedia FAILED:", err.name, errorMessage(err));
       chrome.storage.local.remove(StorageKey.MIC_GRANTED);
       showIdle(els, state);
       if (els.saveInfoEl)

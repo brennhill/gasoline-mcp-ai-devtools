@@ -2,8 +2,6 @@
 
 package observe
 
-import "time"
-
 func isInternalLogType(entryType string) bool {
 	return entryType == "lifecycle" || entryType == "tracking" || entryType == "extension"
 }
@@ -16,17 +14,6 @@ func logEntryTimestamp(entry map[string]any) string {
 		return ts
 	}
 	return ""
-}
-
-func parseRFC3339Flexible(ts string) time.Time {
-	if ts == "" {
-		return time.Time{}
-	}
-	if parsed, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-		return parsed
-	}
-	parsed, _ := time.Parse(time.RFC3339, ts)
-	return parsed
 }
 
 func normalizeBrowserLogEntry(entry map[string]any) map[string]any {

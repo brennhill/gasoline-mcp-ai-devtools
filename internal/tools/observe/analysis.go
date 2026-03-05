@@ -34,11 +34,11 @@ func GetNetworkWaterfall(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage
 
 	if params.Summary {
 		entries := filterWaterfallSummaryEntries(allEntries, params.URLFilter, params.Limit)
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", map[string]any{
+		return mcp.Succeed(req, "Network waterfall", map[string]any{
 			"entries":  entries,
 			"count":    len(entries),
 			"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
-		})}
+		})
 	}
 
 	entries := filterWaterfallEntries(allEntries, params.URLFilter, params.Limit)
@@ -50,7 +50,7 @@ func GetNetworkWaterfall(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage
 	if len(entries) == 0 {
 		response["hint"] = networkWaterfallEmptyHint(params.URLFilter)
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", response)}
+	return mcp.Succeed(req, "Network waterfall", response)
 }
 
 func refreshWaterfallIfStale(deps Deps) []capture.NetworkWaterfallEntry {
@@ -159,7 +159,7 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		if len(status.Connections) == 0 && len(status.Closed) == 0 {
 			response["hint"] = wsStatusEmptyHint()
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
+		return mcp.Succeed(req, "WebSocket status", response)
 	}
 
 	response := map[string]any{
@@ -174,7 +174,7 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		response["hint"] = wsStatusEmptyHint()
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
+	return mcp.Succeed(req, "WebSocket status", response)
 }
 
 func buildWSStatusSummary(status capture.WebSocketStatusResponse, metadata ResponseMetadata) map[string]any {
@@ -229,10 +229,10 @@ func buildWSStatusSummary(status capture.WebSocketStatusResponse, metadata Respo
 func GetWebVitals(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
 	snapshots := deps.GetCapture().GetPerformanceSnapshots()
 	vitals := buildVitalsMap(snapshots)
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Web vitals", map[string]any{
+	return mcp.Succeed(req, "Web vitals", map[string]any{
 		"metrics":  vitals,
 		"metadata": BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
+	})
 }
 
 func buildVitalsMap(snapshots []capture.PerformanceSnapshot) map[string]any {
@@ -274,9 +274,9 @@ func GetTabs(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCRe
 		})
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Tabs", map[string]any{
+	return mcp.Succeed(req, "Tabs", map[string]any{
 		"tabs":            tabs,
 		"tracking_active": enabled,
 		"metadata":        BuildResponseMetadata(cap, time.Now()),
-	})}
+	})
 }

@@ -9,6 +9,7 @@ import { setWebSocketCaptureEnabled, setWebSocketCaptureMode, installWebSocketCa
 import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js';
 import { setDeferralEnabled } from './observers.js';
 import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Valid setting names from content script — imported from canonical constants.
  */
@@ -94,7 +95,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
         }
     }
     catch (err) {
-        result = { error: err.message };
+        result = { error: errorMessage(err) };
     }
     // Send response back to content script
     window.postMessage({

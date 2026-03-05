@@ -78,5 +78,5 @@ func GetIndexedDB(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 		response["object_stores"] = v
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("IndexedDB entries", response)}
+	return mcp.Succeed(req, "IndexedDB entries", response)
 }

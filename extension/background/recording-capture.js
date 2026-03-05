@@ -6,6 +6,8 @@
 // Extracted from recording.ts to separate media plumbing from recording lifecycle.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
 const LOG = '[Gasoline REC]';
 /** Ensure the offscreen document exists for recording. */
 export async function ensureOffscreenDocument() {
@@ -30,7 +32,7 @@ export async function getStreamIdWithRecovery(tabId) {
         return await getStreamId(tabId);
     }
     catch (err) {
-        if (err.message?.includes('active stream')) {
+        if (errorMessage(err)?.includes('active stream')) {
             console.warn(LOG, 'Active stream detected — closing offscreen document to release leaked streams');
             try {
                 await chrome.offscreen.closeDocument();
@@ -39,7 +41,7 @@ export async function getStreamIdWithRecovery(tabId) {
                 /* might not exist */
             }
             // Brief pause to let Chrome release the capture
-            await new Promise((r) => setTimeout(r, scaleTimeout(200)));
+            await delay(scaleTimeout(200));
             console.log(LOG, 'Retrying getMediaStreamId after cleanup');
             return await getStreamId(tabId);
         }

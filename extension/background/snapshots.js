@@ -8,6 +8,8 @@
  * VLQ decoding, and stack trace resolution for better error messages.
  */
 import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled } from './cache-limits.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { fetchWithTimeout } from '../lib/timeout-utils.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -234,17 +236,6 @@ function cacheNullAndReturn(scriptUrl) {
     setSourceMapCacheEntry(scriptUrl, null);
     return null;
 }
-async function fetchWithTimeout(url) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SOURCE_MAP_FETCH_TIMEOUT);
-    try {
-        const response = await fetch(url, { signal: controller.signal });
-        return response;
-    }
-    finally {
-        clearTimeout(timeoutId);
-    }
-}
 function parseInlineSourceMap(dataUrl, scriptUrl, debugLogFn) {
     const base64Match = dataUrl.match(/^data:application\/json;base64,(.+)$/);
     if (!base64Match || !base64Match[1])
@@ -277,7 +268,7 @@ async function fetchExternalSourceMap(sourceMapUrl, scriptUrl, debugLogFn) {
         const base = scriptUrl.substring(0, scriptUrl.lastIndexOf('/') + 1);
         resolvedUrl = new URL(resolvedUrl, base).href;
     }
-    const mapResponse = await fetchWithTimeout(resolvedUrl);
+    const mapResponse = await fetchWithTimeout(resolvedUrl, {}, SOURCE_MAP_FETCH_TIMEOUT);
     if (!mapResponse.ok)
         return cacheNullAndReturn(scriptUrl);
     let sourceMap;
@@ -298,7 +289,7 @@ export async function fetchSourceMap(scriptUrl, debugLogFn) {
         return getSourceMapCacheEntry(scriptUrl) || null;
     }
     try {
-        const scriptResponse = await fetchWithTimeout(scriptUrl);
+        const scriptResponse = await fetchWithTimeout(scriptUrl, {}, SOURCE_MAP_FETCH_TIMEOUT);
         if (!scriptResponse.ok)
             return cacheNullAndReturn(scriptUrl);
         const scriptContent = await scriptResponse.text();
@@ -314,7 +305,7 @@ export async function fetchSourceMap(scriptUrl, debugLogFn) {
         if (debugLogFn) {
             debugLogFn('sourcemap', 'Source map fetch failed', {
                 scriptUrl,
-                error: err.message
+                error: errorMessage(err)
             });
         }
         return cacheNullAndReturn(scriptUrl);

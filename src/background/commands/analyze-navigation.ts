@@ -3,6 +3,7 @@
 
 import { domPrimitiveNavDiscovery } from '../dom-primitives-nav-discovery.js'
 import { registerCommand } from './registry.js'
+import { errorMessage } from '../../lib/error-utils.js'
 
 // =============================================================================
 // NAVIGATION / SPA ROUTE DISCOVERY (#335)
@@ -29,7 +30,7 @@ registerCommand('navigation', async (ctx) => {
 
     ctx.sendResult(payload)
   } catch (err) {
-    const message = (err as Error).message || 'Navigation discovery failed'
+    const message = errorMessage(err, 'Navigation discovery failed')
     ctx.sendResult({
       error: 'navigation_discovery_failed',
       message

@@ -4,6 +4,7 @@
  */
 
 import { scaleTimeout } from '../lib/timeouts.js'
+import { delay } from '../lib/timeout-utils.js'
 import { StorageKey } from '../lib/constants.js'
 
 // =============================================================================
@@ -42,9 +43,7 @@ export async function waitForTabLoad(tabId: number, timeoutMs = scaleTimeout(500
     } catch {
       return false
     }
-    await new Promise((r) => {
-      setTimeout(r, scaleTimeout(100))
-    })
+    await delay(scaleTimeout(100))
   }
   return false
 }
@@ -233,4 +232,49 @@ export async function getAllConfigSettings(): Promise<Record<string, boolean | s
   ])) as Record<string, boolean | string | undefined>
 
   return result
+}
+
+// =============================================================================
+// ACTIVE TAB LOOKUP
+// =============================================================================
+
+/**
+ * Query for the currently active tab in the current window.
+ * Returns null if no active tab or no tab id.
+ */
+export async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+  const tab = activeTabs[0]
+  if (!tab?.id) {
+    return null
+  }
+  return tab
+}
+
+// =============================================================================
+// TAB TOAST
+// =============================================================================
+
+/**
+ * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Silently ignores errors (content script may not be loaded).
+ */
+export function sendTabToast(
+  tabId: number,
+  text: string,
+  detail = '',
+  state: 'trying' | 'success' | 'warning' | 'error' | 'audio' = 'success',
+  duration_ms = 3000
+): void {
+  chrome.tabs
+    .sendMessage(tabId, {
+      type: 'GASOLINE_ACTION_TOAST' as const,
+      text,
+      detail,
+      state,
+      duration_ms
+    })
+    .catch(() => {
+      /* content script may not be loaded */
+    })
 }

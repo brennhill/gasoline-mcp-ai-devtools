@@ -422,7 +422,7 @@ function actionToPlaywrightStep(action, baseUrl) {
   return generator ? generator(action, locator, baseUrl) : null;
 }
 function generatePlaywrightScript(actions, opts = {}) {
-  const { errorMessage, baseUrl, lastNActions } = opts;
+  const { errorMessage: errorMessage2, baseUrl, lastNActions } = opts;
   let filteredActions = actions;
   if (lastNActions && lastNActions > 0 && actions.length > lastNActions) {
     filteredActions = actions.slice(-lastNActions);
@@ -442,7 +442,7 @@ function generatePlaywrightScript(actions, opts = {}) {
       startUrl = baseUrl;
     }
   }
-  const testName = errorMessage ? `reproduction: ${errorMessage.slice(0, 80)}` : "reproduction: captured user actions";
+  const testName = errorMessage2 ? `reproduction: ${errorMessage2.slice(0, 80)}` : "reproduction: captured user actions";
   const steps = [];
   let prevTimestamp = null;
   for (const action of filteredActions) {
@@ -468,9 +468,9 @@ function generatePlaywrightScript(actions, opts = {}) {
   script += steps.join("\n");
   if (steps.length > 0)
     script += "\n";
-  if (errorMessage) {
+  if (errorMessage2) {
     script += `
-  // Error occurred here: ${errorMessage}
+  // Error occurred here: ${errorMessage2}
 `;
   }
   script += `});
@@ -1710,7 +1710,7 @@ function buildRelevantSlice(state, errorWords) {
   }
   return relevantSlice;
 }
-function captureStateSnapshot(errorMessage) {
+function captureStateSnapshot(errorMessage2) {
   if (typeof window === "undefined")
     return null;
   try {
@@ -1724,7 +1724,7 @@ function captureStateSnapshot(errorMessage) {
     for (const [key, value] of Object.entries(state)) {
       keys[key] = { type: classifyValueType(value) };
     }
-    const errorWords = (errorMessage || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+    const errorWords = (errorMessage2 || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
     const relevantSlice = buildRelevantSlice(state, errorWords);
     return { source: "redux", keys, relevantSlice };
   } catch {
@@ -2491,7 +2491,7 @@ async function runAxeAudit(params) {
   const results = await window.axe.run(context, config);
   return formatAxeResults(results);
 }
-function emptyPartialResult(errorMessage) {
+function emptyPartialResult(errorMessage2) {
   return {
     violations: [],
     passes: [],
@@ -2499,7 +2499,7 @@ function emptyPartialResult(errorMessage) {
     inapplicable: [],
     summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
     partial: true,
-    error: errorMessage
+    error: errorMessage2
   };
 }
 async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
@@ -2931,6 +2931,15 @@ function uninstallTransientCapture() {
   dedupMap.clear();
 }
 
+// extension/lib/error-utils.js
+function errorMessage(err, fallback = "Unknown error") {
+  if (err instanceof Error && err.message)
+    return err.message;
+  if (typeof err === "string" && err)
+    return err;
+  return fallback;
+}
+
 // extension/inject/observers.js
 var originalFetch = null;
 var deferralEnabled = true;
@@ -2999,7 +3008,7 @@ function wrapFetch(originalFetchFn) {
         type: "network",
         method: method.toUpperCase(),
         url,
-        error: error.message,
+        error: errorMessage(error),
         duration,
         ...Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}
       };
@@ -3904,7 +3913,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
       result = { error: `Unknown action: ${action}` };
     }
   } catch (err) {
-    result = { error: err.message };
+    result = { error: errorMessage(err) };
   }
   window.postMessage({
     type: "GASOLINE_STATE_RESPONSE",
@@ -3932,7 +3941,7 @@ async function handleLinkHealthQuery(data) {
   } catch (err) {
     return {
       error: "link_health_error",
-      message: err.message || "Failed to check link health"
+      message: errorMessage(err, "Failed to check link health")
     };
   }
 }
@@ -4003,7 +4012,7 @@ function handleComputedStylesMessage(data) {
     postResponse({
       type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
       requestId: data.requestId,
-      result: { error: "computed_styles_error", message: err.message || "Failed to query computed styles" }
+      result: { error: "computed_styles_error", message: errorMessage(err, "Failed to query computed styles") }
     });
   }
 }
@@ -4023,7 +4032,7 @@ function handleFormDiscoveryMessage(data) {
     postResponse({
       type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
       requestId: data.requestId,
-      result: { error: "form_discovery_error", message: err.message || "Failed to discover forms" }
+      result: { error: "form_discovery_error", message: errorMessage(err, "Failed to discover forms") }
     });
   }
 }
@@ -4043,7 +4052,7 @@ function handleFormStateMessage(data) {
     postResponse({
       type: "GASOLINE_FORM_STATE_RESPONSE",
       requestId: data.requestId,
-      result: { error: "form_state_error", message: err.message || "Failed to extract form state" }
+      result: { error: "form_state_error", message: errorMessage(err, "Failed to extract form state") }
     });
   }
 }
@@ -4064,7 +4073,7 @@ function handleDataTableMessage(data) {
     postResponse({
       type: "GASOLINE_DATA_TABLE_RESPONSE",
       requestId: data.requestId,
-      result: { error: "data_table_error", message: err.message || "Failed to extract table data" }
+      result: { error: "data_table_error", message: errorMessage(err, "Failed to extract table data") }
     });
   }
 }
@@ -4130,7 +4139,7 @@ function handleA11yQuery(data) {
     postResponse({
       type: "GASOLINE_A11Y_QUERY_RESPONSE",
       requestId,
-      result: { error: err.message || "Failed to run accessibility audit" }
+      result: { error: errorMessage(err, "Failed to run accessibility audit") }
     });
   }
 }
@@ -4166,7 +4175,7 @@ function handleDomQuery(data) {
     postResponse({
       type: "GASOLINE_DOM_QUERY_RESPONSE",
       requestId,
-      result: { error: err.message || "Failed to run DOM query" }
+      result: { error: errorMessage(err, "Failed to run DOM query") }
     });
   }
 }

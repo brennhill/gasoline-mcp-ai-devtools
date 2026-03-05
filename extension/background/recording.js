@@ -11,6 +11,8 @@ import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js';
 import { installRecordingListeners } from './recording-listeners.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
 const defaultState = {
     active: false,
     name: '',
@@ -141,7 +143,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             }
             // Add extra delay to ensure extension is fully initialized for tabCapture
             console.log(LOG, 'Waiting for extension to fully initialize...');
-            await new Promise((r) => setTimeout(r, scaleTimeout(1000)));
+            await delay(scaleTimeout(1000));
         }
         else {
             console.log(LOG, 'Skipping content script ping (fromPopup=true)');
@@ -259,11 +261,11 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
     }
     catch (err) {
         recordingState.active = false; // eslint-disable-line require-atomic-updates
-        console.error(LOG, 'START EXCEPTION:', err.message, err.stack);
+        console.error(LOG, 'START EXCEPTION:', errorMessage(err), err.stack);
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${err.message || 'Failed to start recording.'}`
+            error: `RECORD_START: ${errorMessage(err, 'Failed to start recording.')}`
         };
     }
 }
@@ -350,12 +352,12 @@ export async function stopRecording(truncated = false) {
         };
     }
     catch (err) {
-        console.error(LOG, 'STOP EXCEPTION:', err.message, err.stack);
+        console.error(LOG, 'STOP EXCEPTION:', errorMessage(err), err.stack);
         await clearRecordingState();
         return {
             status: 'error',
             name: recordingState.name || '',
-            error: `RECORD_STOP: ${err.message || 'Failed to stop recording.'}`
+            error: `RECORD_STOP: ${errorMessage(err, 'Failed to stop recording.')}`
         };
     }
 }

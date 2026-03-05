@@ -4,6 +4,7 @@
 // Falls back to chrome.scripting.executeScript when content script is not loaded (#364).
 import { registerCommand } from './registry.js';
 import { isContentScriptUnreachableError } from './helpers.js';
+import { errorMessage } from '../../lib/error-utils.js';
 /**
  * Inline readable extractor for chrome.scripting.executeScript fallback.
  * Self-contained — no external references. Mirrors src/content/extractors/readable.ts logic.
@@ -330,7 +331,7 @@ function contentExtractorCommand(messageType, errorCode) {
             }
             ctx.sendResult({
                 error: errorCode,
-                message: err.message || `${errorCode}`
+                message: errorMessage(err) || `${errorCode}`
             });
         }
     };

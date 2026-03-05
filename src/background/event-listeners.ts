@@ -33,7 +33,9 @@ export {
   saveSetting,
   getTrackedTabInfo,
   clearTrackedTab,
-  getAllConfigSettings
+  getAllConfigSettings,
+  getActiveTab,
+  sendTabToast
 } from './tab-state.js'
 export type { SavedSettings, TrackedTabInfo } from './tab-state.js'
 

@@ -229,5 +229,5 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSO
 		}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser storage", response)}
+	return mcp.Succeed(req, "Browser storage", response)
 }

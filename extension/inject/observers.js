@@ -16,6 +16,7 @@ import { installActionCapture, uninstallActionCapture, installNavigationCapture,
 import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js';
 import { postLog } from '../lib/bridge.js';
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
 // Store original fetch for restoration
 let originalFetch = null;
 // Interception deferral state (Phase 1/Phase 2 split)
@@ -95,7 +96,7 @@ export function wrapFetch(originalFetchFn) {
                 type: 'network',
                 method: method.toUpperCase(),
                 url,
-                error: error.message,
+                error: errorMessage(error),
                 duration,
                 ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
             };

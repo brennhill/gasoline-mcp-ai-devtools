@@ -63,6 +63,7 @@ import {
 } from './pending-queries.js'
 import { updateVersionFromHealth } from './version-check.js'
 import { createBatcherInstances } from './batcher-instances.js'
+import { errorMessage } from '../lib/error-utils.js'
 import {
   startSyncClient as startSyncClientImpl,
   resetSyncClientConnection as resetSyncClientConnectionImpl
@@ -234,7 +235,7 @@ async function tryResolveSourceMap(entry: LogEntry): Promise<LogEntry> {
       _enrichments: enrichments
     } as LogEntry
   } catch (err) {
-    debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: (err as Error).message })
+    debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: errorMessage(err) })
     return entry
   }
 }
@@ -312,7 +313,7 @@ export async function handleClearLogs(): Promise<{ success: boolean; error?: str
     updateBadge(getConnectionStatus())
     return { success: true }
   } catch (error) {
-    return { success: false, error: (error as Error).message }
+    return { success: false, error: errorMessage(error) }
   }
 }
 
@@ -332,7 +333,7 @@ function updateVersionFromHealthSafe(health: { version?: string; availableVersio
   try {
     updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog)
   } catch (err) {
-    debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
+    debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: errorMessage(err) })
   }
 }
 

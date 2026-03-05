@@ -1,9 +1,11 @@
 /**
  * Purpose: Shared infrastructure for command dispatch -- result helpers, target tab resolution, action toast, and type aliases.
  */
-import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
+import { getTrackedTabInfo, clearTrackedTab, getActiveTab } from '../event-listeners.js';
 import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
+import { errorMessage } from '../../lib/error-utils.js';
+import { delay } from '../../lib/timeout-utils.js';
 export function debugLog(category, message, data = null) {
     const globalLogger = globalThis
         .__GASOLINE_DEBUG_LOG__;
@@ -222,7 +224,7 @@ async function getTabWithRetry(tabId, retry = false) {
         if (!retry) {
             return null;
         }
-        await new Promise((r) => setTimeout(r, 300));
+        await delay(300);
         try {
             return await chrome.tabs.get(tabId);
         }
@@ -230,14 +232,6 @@ async function getTabWithRetry(tabId, retry = false) {
             return null;
         }
     }
-}
-async function getActiveTab() {
-    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const tab = activeTabs[0];
-    if (!tab?.id) {
-        return null;
-    }
-    return tab;
 }
 function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
     const message = "No target tab resolved. Provide 'tab_id', enable tab tracking, or set 'use_active_tab=true' explicitly.";
@@ -356,7 +350,7 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
         attempts.push({
             step: 'switch_to_non_internal_tab',
             status: 'failed',
-            detail: `Failed to enumerate/switch tabs: ${err.message}`
+            detail: `Failed to enumerate/switch tabs: ${errorMessage(err)}`
         });
     }
     try {
@@ -393,7 +387,7 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
         attempts.push({
             step: 'open_new_tab_and_track',
             status: 'failed',
-            detail: `Failed to open tab: ${err.message}`
+            detail: `Failed to open tab: ${errorMessage(err)}`
         });
     }
     return {
@@ -557,7 +551,7 @@ export function isRestrictedUrl(url) {
 // =============================================================================
 /** Check if an error indicates the content script is not loaded on the target page. */
 export function isContentScriptUnreachableError(err) {
-    const message = err?.message || '';
+    const message = errorMessage(err, '');
     return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
 }
 /**

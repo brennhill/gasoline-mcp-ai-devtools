@@ -11,6 +11,8 @@ import { recordScreenshot } from '../state-manager.js';
 import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js';
 import { registerCommand } from './registry.js';
 import { CDP_VERSION } from '../../lib/constants.js';
+import { errorMessage } from '../../lib/error-utils.js';
+import { delay } from '../../lib/timeout-utils.js';
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
@@ -150,7 +152,7 @@ registerCommand('screenshot', async (ctx) => {
     catch (err) {
         ctx.sendResult({
             error: 'screenshot_failed',
-            message: err.message || 'Failed to capture screenshot'
+            message: errorMessage(err, 'Failed to capture screenshot')
         });
     }
 });
@@ -170,7 +172,7 @@ async function captureFullPage(ctx, tab, format, quality) {
     catch (err) {
         // Best effort only: continue with CDP dimensions if expansion script cannot run.
         debugLog(DebugCategory.CAPTURE, 'Full-page expansion script failed; using CDP layout metrics only', {
-            error: err.message
+            error: errorMessage(err)
         });
     }
     try {
@@ -195,7 +197,7 @@ async function captureFullPage(ctx, tab, format, quality) {
             let metricsOverrideSet = true;
             try {
                 // Brief pause for layout reflow after viewport resize
-                await new Promise((r) => setTimeout(r, 150));
+                await delay(150);
                 // Step 5: Capture full-page screenshot via CDP
                 const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
                     format,
@@ -237,7 +239,7 @@ async function captureFullPage(ctx, tab, format, quality) {
     catch (err) {
         // CDP unavailable — fall back to regular captureVisibleTab with warning
         debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
-            error: err.message
+            error: errorMessage(err)
         });
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
             format: format,
@@ -286,11 +288,11 @@ registerCommand('waterfall', async (ctx) => {
     catch (err) {
         debugLog(DebugCategory.CAPTURE, 'Waterfall query error', {
             queryId: ctx.query.id,
-            error: err.message
+            error: errorMessage(err)
         });
         ctx.sendResult({
             error: 'waterfall_query_failed',
-            message: err.message || 'Failed to fetch network waterfall',
+            message: errorMessage(err, 'Failed to fetch network waterfall'),
             entries: []
         });
     }
@@ -315,7 +317,7 @@ registerCommand('page_info', async (ctx) => {
     catch (err) {
         ctx.sendResult({
             error: 'page_info_failed',
-            message: err.message || `Failed to get tab ${ctx.tabId}`
+            message: errorMessage(err) || `Failed to get tab ${ctx.tabId}`
         });
     }
 });
@@ -338,7 +340,7 @@ registerCommand('tabs', async (ctx) => {
     catch (err) {
         ctx.sendResult({
             error: 'tabs_query_failed',
-            message: err.message || 'Failed to query tabs'
+            message: errorMessage(err, 'Failed to query tabs')
         });
     }
 });
@@ -403,7 +405,7 @@ registerCommand('page_inventory', async (ctx) => {
         ctx.sendResult(payload);
     }
     catch (err) {
-        const message = err.message || 'Page inventory failed';
+        const message = errorMessage(err, 'Page inventory failed');
         ctx.sendResult({
             error: 'page_inventory_failed',
             message

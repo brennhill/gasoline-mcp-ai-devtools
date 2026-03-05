@@ -46,7 +46,7 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", buildActionsSummary(filtered, responseMeta))}
+		return mcp.Succeed(req, "Enhanced actions", buildActionsSummary(filtered, responseMeta))
 	}
 
 	response := map[string]any{
@@ -57,7 +57,7 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 	if len(filtered) == 0 {
 		response["hint"] = actionsEmptyHint()
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", response)}
+	return mcp.Succeed(req, "Enhanced actions", response)
 }
 
 // GetTransients returns captured transient UI elements (toasts, alerts, snackbars).
@@ -110,7 +110,7 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		if paramHint != "" {
 			summaryResp["param_hint"] = paramHint
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", summaryResp)}
+		return mcp.Succeed(req, "Transient elements", summaryResp)
 	}
 
 	response := map[string]any{
@@ -124,7 +124,7 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	if len(filtered) == 0 {
 		response["hint"] = transientsEmptyHint(params.Classification)
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", response)}
+	return mcp.Succeed(req, "Transient elements", response)
 }
 
 // buildTransientsSummary returns {total, by_classification, metadata}.
@@ -151,14 +151,14 @@ func ObservePilot(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSON
 	if statusMap, ok := status.(map[string]any); ok {
 		statusMap["metadata"] = BuildResponseMetadata(deps.GetCapture(), time.Now())
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Pilot status", status)}
+	return mcp.Succeed(req, "Pilot status", status)
 }
 
 // CheckPerformance returns performance snapshots from the capture buffer.
 func CheckPerformance(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
 	snapshots := deps.GetCapture().GetPerformanceSnapshots()
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Performance", map[string]any{
+	return mcp.Succeed(req, "Performance", map[string]any{
 		"snapshots": snapshots,
 		"count":     len(snapshots),
-	})}
+	})
 }

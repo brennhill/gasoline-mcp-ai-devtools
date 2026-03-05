@@ -5,17 +5,12 @@
 package server
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
-// jsonResponse is a JSON response helper.
+// jsonResponse delegates to util.JSONResponse for consistent JSON HTTP responses.
 func jsonResponse(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
-	}
+	util.JSONResponse(w, status, data)
 }

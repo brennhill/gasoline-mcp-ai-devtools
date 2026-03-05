@@ -100,7 +100,7 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 		if paramHint != "" {
 			summaryResp["param_hint"] = paramHint
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", summaryResp)}
+		return mcp.Succeed(req, "Error bundles", summaryResp)
 	}
 
 	response := map[string]any{
@@ -114,7 +114,7 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	if len(bundles) == 0 {
 		response["hint"] = errorBundlesEmptyHint()
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", response)}
+	return mcp.Succeed(req, "Error bundles", response)
 }
 
 // collectErrorsAndLogs extracts errors and logs from the log buffer snapshot.
@@ -197,7 +197,7 @@ func errorEntryToMap(data map[string]any) map[string]any {
 func matchNetworkBodies(bodies []capture.NetworkBody, start, end time.Time) []map[string]any {
 	matched := make([]map[string]any, 0)
 	for _, nb := range bodies {
-		nbTs := parseTimestampString(nb.Timestamp)
+		nbTs := util.ParseTimestamp(nb.Timestamp)
 		if nbTs.IsZero() || !nbTs.After(start) || nbTs.After(end) {
 			continue
 		}
@@ -259,11 +259,6 @@ func matchLogs(logs []timedEntry, start, end time.Time) []map[string]any {
 		})
 	}
 	return matched
-}
-
-// parseTimestampString delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
-func parseTimestampString(s string) time.Time {
-	return util.ParseTimestamp(s)
 }
 
 // filterNetworkBodiesByTab returns only network bodies from the specified tab.

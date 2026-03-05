@@ -14,6 +14,7 @@ export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } 
 // Re-export server communication functions
 export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, sendStatusPing } from './server.js';
 import { getRequestHeaders } from './server.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Truncate a single argument if too large
  */
@@ -122,9 +123,9 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
     }
     catch (error) {
         if (debugLogFn) {
-            debugLogFn('error', 'Screenshot capture failed', { error: error.message });
+            debugLogFn('error', 'Screenshot capture failed', { error: errorMessage(error) });
         }
-        return { success: false, error: error.message };
+        return { success: false, error: errorMessage(error) };
     }
 }
 //# sourceMappingURL=communication.js.map

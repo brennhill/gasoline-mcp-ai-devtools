@@ -89,7 +89,7 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		if paramHint != "" {
 			summaryResp["param_hint"] = paramHint
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", summaryResp)}
+		return mcp.Succeed(req, "Browser errors", summaryResp)
 	}
 
 	response := map[string]any{
@@ -104,5 +104,5 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	if len(errors) == 0 {
 		response["hint"] = errorsEmptyHint(params.Scope)
 	}
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", response)}
+	return mcp.Succeed(req, "Browser errors", response)
 }

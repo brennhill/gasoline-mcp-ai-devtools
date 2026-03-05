@@ -10,6 +10,8 @@ import { broadcastTrackingState } from './message-handlers.js';
 import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
 import { persistTrackedTab } from './commands/helpers.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================
@@ -53,7 +55,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'trying', 10000);
     await chrome.tabs.update(tabId, { url });
     await waitForTabLoad(tabId);
-    await new Promise((r) => setTimeout(r, 500));
+    await delay(500);
     const tab = await chrome.tabs.get(tabId);
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
@@ -82,7 +84,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
     await chrome.tabs.reload(tabId);
     await waitForTabLoad(tabId);
-    await new Promise((r) => setTimeout(r, 1000));
+    await delay(1000);
     const reloadedTab = await chrome.tabs.get(tabId);
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
@@ -267,7 +269,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
         }
     }
     catch (err) {
-        return { success: false, error: 'browser_action_failed', message: err.message };
+        return { success: false, error: 'browser_action_failed', message: errorMessage(err) };
     }
 }
 // =============================================================================

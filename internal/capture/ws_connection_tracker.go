@@ -2,6 +2,8 @@
 // Why: Separates event-driven state transitions from connection storage and query logic.
 package capture
 
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+
 // trackEvent applies one event to per-connection lifecycle state.
 //
 // Failure semantics:
@@ -79,7 +81,7 @@ func (t *WSConnectionTracker) trackConnMessage(event WebSocketEvent) {
 	if conn == nil {
 		return
 	}
-	msgTime := parseTimestamp(event.Timestamp)
+	msgTime := util.ParseTimestamp(event.Timestamp)
 	switch event.Direction {
 	case "incoming":
 		updateDirectionStats(&conn.incoming, event, msgTime)

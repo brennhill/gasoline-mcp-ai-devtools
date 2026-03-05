@@ -32,14 +32,14 @@ func AnalyzeHistory(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), time.Now())
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("History", buildHistorySummary(entries, responseMeta))}
+		return mcp.Succeed(req, "History", buildHistorySummary(entries, responseMeta))
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("History", map[string]any{
+	return mcp.Succeed(req, "History", map[string]any{
 		"entries":  entries,
 		"count":    len(entries),
 		"metadata": responseMeta,
-	})}
+	})
 }
 
 func buildHistoryEntries(actions []capture.EnhancedAction) []historyEntry {

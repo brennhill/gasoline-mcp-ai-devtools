@@ -7,6 +7,8 @@
 // RECORDING SHORTCUT TYPES & HELPERS
 // =============================================================================
 
+import { errorMessage } from '../lib/error-utils.js'
+import { getActiveTab, sendTabToast } from './event-listeners.js'
 export interface RecordingShortcutHandlers {
   isRecording: () => boolean
   startRecording: (
@@ -30,24 +32,6 @@ export function buildActionSequenceRecordingName(now: Date = new Date()): string
   return `action-sequence--${yyyy}-${mm}-${dd}-${hh}${min}${ss}`
 }
 
-async function sendRecordingShortcutToast(
-  tabId: number,
-  text: string,
-  detail: string,
-  state: 'error' | 'warning' | 'success' = 'warning'
-): Promise<void> {
-  try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST',
-      text,
-      detail,
-      state,
-      duration_ms: 3500
-    })
-  } catch {
-    // Tab may not have content script yet.
-  }
-}
 
 // =============================================================================
 // SCREEN RECORDING TYPES & HELPERS
@@ -140,8 +124,7 @@ export function installDrawModeCommandListener(logFn?: (message: string) => void
     if (command !== 'toggle_draw_mode') return
 
     try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const tab = tabs[0]
+      const tab = await getActiveTab()
       if (!tab?.id) return
 
       try {
@@ -180,7 +163,7 @@ export function installDrawModeCommandListener(logFn?: (message: string) => void
         }
       }
     } catch (err) {
-      if (logFn) logFn(`Draw mode keyboard shortcut error: ${(err as Error).message}`)
+      if (logFn) logFn(`Draw mode keyboard shortcut error: ${errorMessage(err)}`)
     }
   })
 }
@@ -203,18 +186,18 @@ export function installRecordingShortcutCommandListener(
     if (command !== 'toggle_action_sequence_recording') return
 
     try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const tab = tabs[0]
+      const tab = await getActiveTab()
       if (!tab?.id) return
 
       if (handlers.isRecording()) {
         const stopResult = await handlers.stopRecording(false)
         if (stopResult.status !== 'saved' && stopResult.status !== 'stopped') {
-          await sendRecordingShortcutToast(
+          sendTabToast(
             tab.id,
             'Stop recording failed',
             stopResult.error || 'Could not stop action sequence recording',
-            'error'
+            'error',
+            3500
           )
         }
         return
@@ -223,15 +206,16 @@ export function installRecordingShortcutCommandListener(
       const name = buildActionSequenceRecordingName()
       const startResult = await handlers.startRecording(name, 15, '', '', true, tab.id)
       if (startResult.status !== 'recording') {
-        await sendRecordingShortcutToast(
+        sendTabToast(
           tab.id,
           'Start recording failed',
           startResult.error || 'Open the extension popup and try Record action sequence',
-          'error'
+          'error',
+          3500
         )
       }
     } catch (err) {
-      if (logFn) logFn(`Recording shortcut error: ${(err as Error).message}`)
+      if (logFn) logFn(`Recording shortcut error: ${errorMessage(err)}`)
     }
   })
 }
@@ -253,12 +237,11 @@ export function installScreenRecordingCommandListener(
     if (command !== 'toggle_screen_recording') return
 
     try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const tab = tabs[0]
+      const tab = await getActiveTab()
       if (!tab?.id) return
       await toggleScreenRecording(handlers, tab, logFn)
     } catch (err) {
-      if (logFn) logFn(`Screen recording shortcut error: ${(err as Error).message}`)
+      if (logFn) logFn(`Screen recording shortcut error: ${errorMessage(err)}`)
     }
   })
 }

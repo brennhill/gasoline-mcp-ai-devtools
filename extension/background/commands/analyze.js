@@ -8,6 +8,7 @@
 import { registerCommand } from './registry.js';
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js';
 import { normalizeFrameTarget } from '../../lib/frame-utils.js';
+import { errorMessage } from '../../lib/error-utils.js';
 /**
  * Frame selection probe executed in page context.
  * Must be self-contained for chrome.scripting.executeScript({ func }).
@@ -96,7 +97,7 @@ async function sendFrameQueries(tabId, frameIds, message) {
         catch (err) {
             return {
                 frame_id: frameId,
-                error: err.message || 'frame_query_failed'
+                error: errorMessage(err, 'frame_query_failed')
             };
         }
     }));
@@ -360,7 +361,7 @@ registerCommand('dom', async (ctx) => {
         ctx.sendResult(result);
     }
     catch (err) {
-        const message = err.message || 'Failed to execute DOM query';
+        const message = errorMessage(err, 'Failed to execute DOM query');
         console.error('[Gasoline][DOM] Command failed:', message, err.stack || err);
         const isFrameNotFound = message.startsWith('frame_not_found');
         const isInvalidFrame = message.startsWith('invalid_frame');
@@ -409,7 +410,7 @@ registerCommand('a11y', async (ctx) => {
         ctx.sendResult(result);
     }
     catch (err) {
-        const message = err.message || 'Failed to execute accessibility audit';
+        const message = errorMessage(err, 'Failed to execute accessibility audit');
         console.error('[Gasoline][A11Y] Command failed:', message, err.stack || err);
         const isFrameNotFound = message.startsWith('frame_not_found');
         const isInvalidFrame = message.startsWith('invalid_frame');
@@ -435,7 +436,7 @@ function registerPassthrough(command, messageType, fallbackMessage) {
         catch (err) {
             ctx.sendResult({
                 error: `${command}_failed`,
-                message: err.message || fallbackMessage
+                message: errorMessage(err, fallbackMessage)
             });
         }
     });
@@ -469,8 +470,7 @@ registerCommand('draw_mode', async (ctx) => {
         catch (err) {
             ctx.sendResult({
                 error: 'draw_mode_failed',
-                message: err.message ||
-                    'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
+                message: errorMessage(err, 'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).')
             });
         }
     }

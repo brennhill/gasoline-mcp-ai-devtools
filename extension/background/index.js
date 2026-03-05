@@ -13,6 +13,7 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';
 import { updateVersionFromHealth } from './version-check.js';
 import { createBatcherInstances } from './batcher-instances.js';
+import { errorMessage } from '../lib/error-utils.js';
 import { startSyncClient as startSyncClientImpl, resetSyncClientConnection as resetSyncClientConnectionImpl } from './sync-manager.js';
 // Re-export for consumers that already import from here
 export { DEFAULT_SERVER_URL } from '../lib/constants.js';
@@ -156,7 +157,7 @@ async function tryResolveSourceMap(entry) {
         };
     }
     catch (err) {
-        debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: err.message });
+        debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: errorMessage(err) });
         return entry;
     }
 }
@@ -217,7 +218,7 @@ export async function handleClearLogs() {
         return { success: true };
     }
     catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: errorMessage(error) };
     }
 }
 // =============================================================================
@@ -235,7 +236,7 @@ function updateVersionFromHealthSafe(health) {
         updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog);
     }
     catch (err) {
-        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
+        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: errorMessage(err) });
     }
 }
 function applyHealthLogs(health) {

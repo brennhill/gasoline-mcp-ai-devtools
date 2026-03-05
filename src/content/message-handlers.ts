@@ -39,6 +39,7 @@ import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from
 import { extractReadable as extractReadableContent } from './extractors/readable.js'
 import { extractMarkdown as extractMarkdownContent } from './extractors/markdown.js'
 import { extractPageSummary as extractPageSummaryContent } from './extractors/page-summary.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1
@@ -493,7 +494,7 @@ export function handleGetReadable(sendResponse: (result: unknown) => void): bool
   try {
     sendResponse(extractReadableContent())
   } catch (err) {
-    sendResponse({ error: 'get_readable_failed', message: (err as Error).message || 'Readable extraction failed' })
+    sendResponse({ error: 'get_readable_failed', message: errorMessage(err, 'Readable extraction failed') })
   }
   // Synchronous — sendResponse called inline, no async channel needed.
   return false
@@ -506,7 +507,7 @@ export function handleGetMarkdown(sendResponse: (result: unknown) => void): bool
   try {
     sendResponse(extractMarkdownContent())
   } catch (err) {
-    sendResponse({ error: 'get_markdown_failed', message: (err as Error).message || 'Markdown extraction failed' })
+    sendResponse({ error: 'get_markdown_failed', message: errorMessage(err, 'Markdown extraction failed') })
   }
   // Synchronous — sendResponse called inline, no async channel needed.
   return false
@@ -519,7 +520,7 @@ export function handlePageSummary(sendResponse: (result: unknown) => void): bool
   try {
     sendResponse(extractPageSummaryContent())
   } catch (err) {
-    sendResponse({ error: 'page_summary_failed', message: (err as Error).message || 'Page summary extraction failed' })
+    sendResponse({ error: 'page_summary_failed', message: errorMessage(err, 'Page summary extraction failed') })
   }
   // Synchronous — sendResponse called inline, no async channel needed.
   return false

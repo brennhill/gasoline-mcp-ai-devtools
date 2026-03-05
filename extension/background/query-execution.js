@@ -9,6 +9,7 @@ import { DebugCategory } from './debug.js';
 import { scaleTimeout } from '../lib/timeouts.js';
 import { parseExpression } from './csp-safe-parser.js';
 import { cspSafeExecutor } from './csp-safe-executor.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Probe whether a tab's CSP blocks dynamic script execution (new Function).
  * Returns one of three levels:
@@ -196,7 +197,7 @@ export async function executeViaScriptingAPI(tabId, script, timeoutMs, world = '
         return { success: false, error: 'no_result', message: 'chrome.scripting.executeScript produced no result' };
     }
     catch (err) {
-        const msg = err.message || '';
+        const msg = errorMessage(err) || '';
         if (msg.includes('timeout')) {
             return { success: false, error: 'execution_timeout', message: msg };
         }
@@ -248,7 +249,7 @@ async function executeViaStructuredCommand(tabId, script, timeoutMs, world = 'MA
         };
     }
     catch (err) {
-        const msg = err.message || '';
+        const msg = errorMessage(err) || '';
         if (msg.includes('timeout')) {
             return { success: false, error: 'execution_timeout', message: msg, execution_mode: modeTag };
         }
@@ -301,7 +302,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
         return result;
     }
     catch (err) {
-        let message = err.message || 'Tab communication failed';
+        let message = errorMessage(err, 'Tab communication failed');
         // Auto-fallback: content script not reachable — try scripting API MAIN, then structured
         if (world === 'auto' && message.includes('Receiving end does not exist')) {
             debugLog(DebugCategory.CONNECTION, 'Auto-fallback (content script unreachable)', { tabId });

@@ -23,6 +23,7 @@ import {
 import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js'
 import { setDeferralEnabled } from './observers.js'
 import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /**
  * Valid setting names from content script — imported from canonical constants.
@@ -143,7 +144,7 @@ export function handleStateCommand(
       result = { error: `Unknown action: ${action}` }
     }
   } catch (err) {
-    result = { error: (err as Error).message }
+    result = { error: errorMessage(err) }
   }
 
   // Send response back to content script

@@ -26,11 +26,11 @@ func AnalyzeErrors(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSO
 	clusters := buildErrorClusters(entries)
 	result := clustersToResponse(clusters)
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error clusters", map[string]any{
+	return mcp.Succeed(req, "Error clusters", map[string]any{
 		"clusters":    result,
 		"total_count": len(result),
 		"metadata":    BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
+	})
 }
 
 func buildErrorClusters(entries []map[string]any) map[string]*errorCluster {

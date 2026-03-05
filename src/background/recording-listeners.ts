@@ -11,6 +11,7 @@
 import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 const LOG = '[Gasoline REC]'
 
@@ -212,12 +213,12 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
                     duration_ms: scaleTimeout(8000)
                   })
                   .catch((err) => {
-                    console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', (err as Error).message)
+                    console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', errorMessage(err))
                   })
               }, scaleTimeout(300))
             })
             .catch((err) => {
-              console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', (err as Error).message)
+              console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', errorMessage(err))
             })
         } else {
           console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast')
@@ -251,7 +252,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
           return r.json()
         })
         .then((result) => sendResponse(result))
-        .catch((err) => sendResponse({ error: (err as Error).message }))
+        .catch((err) => sendResponse({ error: errorMessage(err) }))
 
       return true // async response
     }
