@@ -4,7 +4,11 @@
 
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+)
 
 // SnapshotError represents a console error or warning in a snapshot.
 type SnapshotError struct {
@@ -40,4 +44,5 @@ type NamedSnapshot struct {
 	ConsoleWarnings      []SnapshotError          `json:"console_warnings"`
 	NetworkRequests      []SnapshotNetworkRequest `json:"network_requests"`
 	WebSocketConnections []SnapshotWSConnection   `json:"websocket_connections"`
+	Performance          *performance.Snapshot    `json:"performance,omitempty"`
 }

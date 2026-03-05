@@ -5,38 +5,47 @@ package configure
 
 import "encoding/json"
 
+func parseRawArgsMap(args json.RawMessage) (map[string]any, error) {
+	var raw map[string]any
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return nil, err
+		}
+	}
+	if raw == nil {
+		raw = make(map[string]any)
+	}
+	return raw, nil
+}
+
+func marshalRawArgsMap(raw map[string]any) json.RawMessage {
+	// Error impossible: map contains primitive/json-compatible values from decoded input.
+	rewritten, _ := json.Marshal(raw)
+	return rewritten
+}
+
+func applyActionAlias(raw map[string]any, aliasField string, allowEmpty bool) {
+	if sa, ok := raw[aliasField].(string); ok && (allowEmpty || sa != "") {
+		raw["action"] = sa
+	}
+}
+
 // RewriteNoiseRuleArgs rewrites noise_action to action in the raw argument map.
 // If noise_action is empty or missing, it defaults to "list".
 // Returns the rewritten JSON bytes, or an error if the input is invalid JSON.
 func RewriteNoiseRuleArgs(args json.RawMessage) (json.RawMessage, error) {
-	var compositeArgs struct {
-		NoiseAction string `json:"noise_action"`
+	rawMap, err := parseRawArgsMap(args)
+	if err != nil {
+		return nil, err
 	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &compositeArgs); err != nil {
-			return nil, err
-		}
-	}
-
-	var rawMap map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &rawMap); err != nil {
-			return nil, err
-		}
-	}
-	if rawMap == nil {
-		rawMap = make(map[string]any)
-	}
-	rawMap["action"] = compositeArgs.NoiseAction
+	rawMap["action"] = stringOrEmpty(rawMap["noise_action"])
 	if rawMap["action"] == "" {
 		rawMap["action"] = "list"
 	}
 	if action, _ := rawMap["action"].(string); action == "add" {
 		maybeFlattenSingleNoiseRule(rawMap)
 	}
-	// Error impossible: rawMap contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(rawMap)
-	return rewritten, nil
+	return marshalRawArgsMap(rawMap), nil
 }
 
 func maybeFlattenSingleNoiseRule(rawMap map[string]any) {
@@ -113,46 +122,28 @@ func stringOrEmpty(v any) string {
 // RewriteStreamingArgs rewrites streaming_action to action in the raw argument map.
 // Returns the rewritten JSON bytes, or an error if the input is invalid JSON.
 func RewriteStreamingArgs(args json.RawMessage) (json.RawMessage, error) {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return nil, err
-		}
+	raw, err := parseRawArgsMap(args)
+	if err != nil {
+		return nil, err
 	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["streaming_action"].(string); ok {
-		raw["action"] = sa
-	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
-	return rewritten, nil
+	applyActionAlias(raw, "streaming_action", true)
+	return marshalRawArgsMap(raw), nil
 }
 
 // RewriteDiffSessionsArgs rewrites verif_session_action to action in the raw argument map.
 // If the resulting action is empty or "diff_sessions", it defaults to "list".
 // Returns the rewritten JSON bytes, or an error if the input is invalid JSON.
 func RewriteDiffSessionsArgs(args json.RawMessage) (json.RawMessage, error) {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return nil, err
-		}
+	raw, err := parseRawArgsMap(args)
+	if err != nil {
+		return nil, err
 	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["verif_session_action"].(string); ok && sa != "" {
-		raw["action"] = sa
-	}
+	applyActionAlias(raw, "verif_session_action", false)
 
 	// configure(action:"diff_sessions") is the tool entrypoint; default to list
 	// unless a specific verif_session_action is provided.
 	if action, _ := raw["action"].(string); action == "" || action == "diff_sessions" {
 		raw["action"] = "list"
 	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
-	return rewritten, nil
+	return marshalRawArgsMap(raw), nil
 }

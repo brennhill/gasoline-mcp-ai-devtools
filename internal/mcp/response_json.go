@@ -52,47 +52,40 @@ func ErrorResponse(text string) json.RawMessage {
 	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
 }
 
-// JSONErrorResponse constructs an MCP tool error result with a summary line
-// followed by compact JSON. Sets IsError: true so LLMs recognize the failure.
-func JSONErrorResponse(summary string, data any) json.RawMessage {
+func marshalSummaryData(summary string, data any) (string, error) {
 	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	if summary == "" {
+		return string(dataJSON), nil
+	}
+	return summary + "\n" + string(dataJSON), nil
+}
+
+func jsonResultWithSummary(summary string, data any, isError bool) json.RawMessage {
+	text, err := marshalSummaryData(summary, data)
 	if err != nil {
 		return ErrorResponse("Failed to serialize response: " + err.Error())
 	}
-
-	var text string
-	if summary != "" {
-		text = summary + "\n" + string(dataJSON)
-	} else {
-		text = string(dataJSON)
-	}
-
 	result := MCPToolResult{
 		Content: []MCPContentBlock{{Type: "text", Text: text}},
-		IsError: true,
+		IsError: isError,
 	}
-	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
+	if isError {
+		return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
+	}
+	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}]}`)
+}
+
+// JSONErrorResponse constructs an MCP tool error result with a summary line
+// followed by compact JSON. Sets IsError: true so LLMs recognize the failure.
+func JSONErrorResponse(summary string, data any) json.RawMessage {
+	return jsonResultWithSummary(summary, data, true)
 }
 
 // JSONResponse constructs an MCP tool result with a summary line prefix
 // followed by compact JSON. Use for nested, irregular, or highly variable data.
 func JSONResponse(summary string, data any) json.RawMessage {
-	dataJSON, err := json.Marshal(data)
-	if err != nil {
-		return ErrorResponse("Failed to serialize response: " + err.Error())
-	}
-
-	var text string
-	if summary != "" {
-		text = summary + "\n" + string(dataJSON)
-	} else {
-		text = string(dataJSON)
-	}
-
-	result := MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: text}},
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	resultJSON, _ := json.Marshal(result)
-	return json.RawMessage(resultJSON)
+	return jsonResultWithSummary(summary, data, false)
 }
