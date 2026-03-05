@@ -144,5 +144,5 @@ func (h *interactActionHandler) dispatchInteractAction(req JSONRPCRequest, args 
 	if domPrimitiveActions[action] {
 		return h.handleDOMPrimitive(req, args, action)
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"), describeCapabilitiesRecovery("interact"))}
+	return fail(req, ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"), describeCapabilitiesRecovery("interact"))
 }

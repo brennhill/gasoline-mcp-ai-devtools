@@ -17,12 +17,8 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 		Method    string `json:"method"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			)}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -30,11 +26,9 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 	case "start":
 		startedAt, ok := h.networkRecording.tryStart(params.Domain, params.Method)
 		if !ok {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidParam,
+			return fail(req, ErrInvalidParam,
 				"Network recording already active",
-				"Stop the current recording first with operation='stop'.",
-			)}
+				"Stop the current recording first with operation='stop'.")
 		}
 		result := map[string]any{
 			"status":     "recording",
@@ -46,16 +40,14 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 		if params.Method != "" {
 			result["method_filter"] = params.Method
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network recording started", result)}
+		return succeed(req, "Network recording started", result)
 
 	case "stop":
 		snap, wasActive := h.networkRecording.stop()
 		if !wasActive {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidParam,
+			return fail(req, ErrInvalidParam,
 				"No active network recording",
-				"Start a recording first with operation='start'.",
-			)}
+				"Start a recording first with operation='start'.")
 		}
 
 		// Collect network bodies captured since start time.
@@ -68,7 +60,7 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 			"requests":    recorded,
 			"count":       len(recorded),
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network recording stopped", result)}
+		return succeed(req, "Network recording stopped", result)
 
 	case "status", "":
 		snap := h.networkRecording.info()
@@ -85,13 +77,11 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 				result["method_filter"] = snap.Method
 			}
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network recording status", result)}
+		return succeed(req, "Network recording status", result)
 
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Unknown operation: "+params.Operation,
-			"Use 'start', 'stop', or 'status'.",
-		)}
+			"Use 'start', 'stop', or 'status'.")
 	}
 }

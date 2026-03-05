@@ -49,7 +49,7 @@ func (h *ToolHandler) generatePRSummaryImpl(req JSONRPCRequest, args json.RawMes
 	if totalActivity == 0 {
 		sb.WriteString("No activity captured during this session.\n\n")
 		sb.WriteString("Navigate to a page or interact with the browser to generate activity.\n")
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary generated", map[string]any{
+		return succeed(req, "PR summary generated", map[string]any{
 			"summary": sb.String(),
 			"reason":  "no_activity_captured",
 			"hint":    "Navigate to a page or interact with the browser first, then call generate(pr_summary) again.",
@@ -57,7 +57,7 @@ func (h *ToolHandler) generatePRSummaryImpl(req JSONRPCRequest, args json.RawMes
 				"actions": 0, "commands_completed": 0, "commands_failed": 0,
 				"console_errors": 0, "network_errors": 0, "network_captured": 0,
 			},
-		})}
+		})
 	}
 
 	if tabURL != "" {
@@ -83,7 +83,7 @@ func (h *ToolHandler) generatePRSummaryImpl(req JSONRPCRequest, args json.RawMes
 	sb.WriteString(fmt.Sprintf("- **Network Requests Captured:** %d\n", len(networkBodies)))
 
 	summary := sb.String()
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary generated", map[string]any{
+	return succeed(req, "PR summary generated", map[string]any{
 		"summary": summary,
 		"stats": map[string]any{
 			"actions":            len(actions),
@@ -93,5 +93,5 @@ func (h *ToolHandler) generatePRSummaryImpl(req JSONRPCRequest, args json.RawMes
 			"network_errors":     networkErrors,
 			"network_captured":   len(networkBodies),
 		},
-	})}
+	})
 }

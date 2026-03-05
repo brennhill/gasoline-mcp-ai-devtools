@@ -27,16 +27,16 @@ func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMes
 		ContinueOnErr *bool             `json:"continue_on_error"`
 		StopAfterStep int               `json:"stop_after_step"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	// Validate steps
 	if len(params.Steps) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))}
+		return fail(req, ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))
 	}
 	if len(params.Steps) > maxSequenceSteps {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller batches", withParam("steps"))}
+		return fail(req, ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller batches", withParam("steps"))
 	}
 
 	// Validate each step has a what (or action) field
@@ -46,7 +46,7 @@ func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMes
 			Action string `json:"action"`
 		}
 		if err := json.Unmarshal(step, &s); err != nil || (s.What == "" && s.Action == "") {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))}
+			return fail(req, ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))
 		}
 	}
 
@@ -62,7 +62,7 @@ func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMes
 
 	// Acquire replay mutex (prevent concurrent batch/replay)
 	if !replayMu.TryLock() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Another batch or sequence is currently executing", "Wait for it to complete")}
+		return fail(req, ErrInvalidParam, "Another batch or sequence is currently executing", "Wait for it to complete")
 	}
 	defer replayMu.Unlock()
 
@@ -199,7 +199,7 @@ func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMes
 		"message":        message,
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Batch execution", responseData)}
+	return succeed(req, "Batch execution", responseData)
 }
 
 // stripComposableScreenshotFromStep removes include_screenshot from batch step args

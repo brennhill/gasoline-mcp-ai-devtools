@@ -25,7 +25,7 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolConfigureNoiseRule(req, args)
 	},
 	"clear": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureClear(req, args)
+		return h.configureClearImpl(req, args)
 	},
 	"diff_sessions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.configureSession().toolDiffSessionsWrapper(req, args)
@@ -37,13 +37,13 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolGetHealth(req)
 	},
 	"streaming": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureStreamingWrapper(req, args)
+		return h.configureStreamingWrapperImpl(req, args)
 	},
 	"test_boundary_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTestBoundaryStart(req, args)
+		return h.configureTestBoundaryStartImpl(req, args)
 	},
 	"test_boundary_end": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTestBoundaryEnd(req, args)
+		return h.configureTestBoundaryEndImpl(req, args)
 	},
 	"event_recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureEventRecordingStart(req, args)
@@ -58,13 +58,13 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolConfigureLogDiff(req, args)
 	},
 	"telemetry": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTelemetry(req, args)
+		return h.configureTelemetryImpl(req, args)
 	},
 	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureDescribeCapabilities(req, args)
+		return h.configureDescribeCapabilitiesImpl(req, args)
 	},
 	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRestart(req)
+		return h.configureRestartImpl(req)
 	},
 	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolDoctor(req)
@@ -91,7 +91,7 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolConfigureReplaySequence(req, args)
 	},
 	"security_mode": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureSecurityMode(req, args)
+		return h.configureSecurityModeImpl(req, args)
 	},
 	"network_recording": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureNetworkRecording(req, args)

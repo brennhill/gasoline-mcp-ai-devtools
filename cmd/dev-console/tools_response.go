@@ -22,13 +22,38 @@ func mcpTextResponse(text string) json.RawMessage {
 	return mcp.TextResponse(text)
 }
 
-// ResponseFormat tags each response for documentation and testing.
-type ResponseFormat string
+// succeed builds a success JSONRPCResponse with a JSON summary + data payload.
+func succeed(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
+}
 
-const (
-	FormatMarkdown ResponseFormat = "markdown"
-	FormatJSON     ResponseFormat = "json"
-)
+// succeedText builds a success JSONRPCResponse with a plain text payload.
+func succeedText(req JSONRPCRequest, text string) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(text)}
+}
+
+// succeedRaw builds a success JSONRPCResponse with a pre-built Result payload.
+func succeedRaw(req JSONRPCRequest, result json.RawMessage) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
+}
+
+// fail builds an error JSONRPCResponse with a structured error payload (isError=true).
+func fail(req JSONRPCRequest, code, message, retry string, opts ...func(*StructuredError)) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(code, message, retry, opts...)}
+}
+
+// failJSON builds an error JSONRPCResponse with a JSON data payload (isError=true).
+func failJSON(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, data)}
+}
+
+// parseArgs unmarshals JSON args into v. Returns (resp, true) if parsing failed.
+func parseArgs(req JSONRPCRequest, args json.RawMessage, v any) (JSONRPCResponse, bool) {
+	if err := json.Unmarshal(args, v); err != nil {
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"), true
+	}
+	return JSONRPCResponse{}, false
+}
 
 func mcpJSONErrorResponse(summary string, data any) json.RawMessage {
 	return mcp.JSONErrorResponse(summary, data)

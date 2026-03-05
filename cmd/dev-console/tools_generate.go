@@ -86,7 +86,7 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	handler, ok := generateHandlers[what]
 	if !ok {
 		validFormats := getValidGenerateFormats()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+what, "Use a valid format from the 'what' enum", withParam("what"), withHint("Valid values: "+validFormats), describeCapabilitiesRecovery("generate"))}
+		resp := fail(req, ErrUnknownMode, "Unknown generate format: "+what, "Use a valid format from the 'what' enum", withParam("what"), withHint("Valid values: "+validFormats), describeCapabilitiesRecovery("generate"))
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 

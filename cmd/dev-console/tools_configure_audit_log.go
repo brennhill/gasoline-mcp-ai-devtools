@@ -30,8 +30,8 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		Since          string `json:"since"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -53,11 +53,11 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 			defer h.auditMu.Unlock()
 			h.auditSessionMap = make(map[string]string)
 		}()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log cleared", map[string]any{
+		return succeed(req, "Audit log cleared", map[string]any{
 			"status":    "ok",
 			"operation": "clear",
 			"cleared":   cleared,
-		})}
+		})
 	}
 
 	filter := audit.Filter{
@@ -79,17 +79,17 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 
 	entries := h.auditTrail.Query(filter)
 	if operation == "analyze" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log analysis", map[string]any{
+		return succeed(req, "Audit log analysis", map[string]any{
 			"status":    "ok",
 			"operation": "analyze",
 			"summary":   cfg.SummarizeAuditEntries(entries),
-		})}
+		})
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", map[string]any{
+	return succeed(req, "Audit log entries", map[string]any{
 		"status":    "ok",
 		"operation": "report",
 		"entries":   entries,
 		"count":     len(entries),
-	})}
+	})
 }

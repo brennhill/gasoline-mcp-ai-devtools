@@ -19,8 +19,8 @@ func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JS
 		StatusMax int    `json:"status_max"`
 		SaveTo    string `json:"save_to"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	bodies := h.capture.GetNetworkBodies()
@@ -35,16 +35,12 @@ func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JS
 	if params.SaveTo != "" {
 		result, err := export.ExportHARMergedToFile(bodies, waterfall, filter, version, params.SaveTo)
 		if err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrExportFailed, "HAR file export failed: "+err.Error(), "Check the save_to path and try again",
-			)}
+			return fail(req, ErrExportFailed, "HAR file export failed: "+err.Error(), "Check the save_to path and try again")
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
-			fmt.Sprintf("HAR exported to %s (%d entries)", result.SavedTo, result.EntriesCount), result,
-		)}
+		return succeed(req, fmt.Sprintf("HAR exported to %s (%d entries)", result.SavedTo, result.EntriesCount), result)
 	}
 
 	harLog := export.ExportHARMerged(bodies, waterfall, filter, version)
 	summary := fmt.Sprintf("HAR export (%d entries)", len(harLog.Log.Entries))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, harLog)}
+	return succeed(req, summary, harLog)
 }

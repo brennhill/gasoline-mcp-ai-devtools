@@ -39,7 +39,7 @@ TESTS=(
     "cat-14-extension-startup"
     "cat-15-pilot-success-path"
     "cat-16-api-contract"
-    "cat-17-reproduction"
+    "cat-29-reproduction"
     "cat-18-recording"
     "cat-19-link-health"
     "cat-20-noise-persistence"

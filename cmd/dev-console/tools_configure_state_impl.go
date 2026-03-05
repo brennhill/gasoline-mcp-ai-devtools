@@ -19,8 +19,8 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 		Value       json.RawMessage `json:"value"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &compositeArgs); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &compositeArgs); stop {
+			return resp
 		}
 	}
 
@@ -43,8 +43,8 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 	}
 
 	// Ensure session store is initialized.
-	if h.parent.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	// Convert to SessionStoreArgs.
@@ -57,7 +57,7 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 
 	result, err := h.parent.sessionStoreImpl.HandleSessionStore(storeArgs)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Fix the request parameters and try again")}
+		return fail(req, ErrInvalidParam, err.Error(), "Fix the request parameters and try again")
 	}
 
 	// Invalidate summary preference cache when response_mode is written.
@@ -79,7 +79,7 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 		responseData = map[string]any{"raw": string(result)}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Store operation complete", responseData)}
+	return succeed(req, "Store operation complete", responseData)
 }
 
 func (h *configureSessionHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -102,11 +102,11 @@ func (h *configureSessionHandler) toolLoadSessionContext(req JSONRPCRequest, arg
 		if ctx.Performance != nil {
 			responseData["performance"] = ctx.Performance
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session context loaded", responseData)}
+		return succeed(req, "Session context loaded", responseData)
 	}
 
 	// Session store not initialized — return error, matching store behavior.
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	return fail(req, ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")
 }
 
 func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -114,8 +114,8 @@ func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessag
 		Buffer string `json:"buffer"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -126,11 +126,11 @@ func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessag
 
 	cleared, ok := h.clearConfiguredBuffer(buffer)
 	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Unknown buffer: "+buffer, "Use a valid buffer value", withParam("buffer"), withHint("all, network, websocket, actions, logs, inbox"))}
+		return fail(req, ErrInvalidParam, "Unknown buffer: "+buffer, "Use a valid buffer value", withParam("buffer"), withHint("all, network, websocket, actions, logs, inbox"))
 	}
 
 	responseData := map[string]any{"status": "ok", "buffer": buffer, "cleared": cleared}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Buffer cleared", responseData)}
+	return succeed(req, "Buffer cleared", responseData)
 }
 
 // clearConfiguredBuffer performs the actual buffer clearing and returns what was cleared.

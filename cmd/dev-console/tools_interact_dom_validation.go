@@ -149,7 +149,7 @@ func validateDOMActionParams(req JSONRPCRequest, action, text, value, name strin
 		paramValue = name
 	}
 	if paramValue == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, rule.Message, rule.Retry, withParam(rule.Field))}, true
+		return fail(req, ErrMissingParam, rule.Message, rule.Retry, withParam(rule.Field)), true
 	}
 	return JSONRPCResponse{}, false
 }

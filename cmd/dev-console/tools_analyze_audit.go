@@ -58,8 +58,8 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 		Summary    bool     `json:"summary"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -70,12 +70,10 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 	}
 	for _, cat := range requestedCategories {
 		if !validAuditCategories[cat] {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidParam,
+			return fail(req, ErrInvalidParam,
 				"Unknown audit category: "+cat,
 				"Use valid categories: performance, accessibility, security, best_practices",
-				withParam("categories"),
-			)}
+				withParam("categories"))
 		}
 	}
 
@@ -134,5 +132,5 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 		"timestamp":     time.Now().UTC().Format(time.RFC3339),
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Combined audit report", responseData)}
+	return succeed(req, "Combined audit report", responseData)
 }

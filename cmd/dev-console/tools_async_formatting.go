@@ -52,7 +52,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 	default:
 		responseData["final"] = false
 		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+		return succeed(req, summary, responseData)
 	}
 }
 
@@ -77,7 +77,7 @@ func (h *ToolHandler) formatErrorCommandResult(req JSONRPCRequest, cmd queries.C
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	return failJSON(req, summary, responseData)
 }
 
 func (h *ToolHandler) formatExpiredCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
@@ -89,7 +89,7 @@ func (h *ToolHandler) formatExpiredCommandResult(req JSONRPCRequest, cmd queries
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	return failJSON(req, summary, responseData)
 }
 
 func (h *ToolHandler) formatTimeoutCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
@@ -105,7 +105,7 @@ func (h *ToolHandler) formatTimeoutCommandResult(req JSONRPCRequest, cmd queries
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	return failJSON(req, summary, responseData)
 }
 
 func (h *ToolHandler) formatCancelledCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
@@ -118,7 +118,7 @@ func (h *ToolHandler) formatCancelledCommandResult(req JSONRPCRequest, cmd queri
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	summary := fmt.Sprintf("FAILED — Command %s cancelled", corrID)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	return failJSON(req, summary, responseData)
 }
 
 func attachTraceSummary(responseData map[string]any, cmd queries.CommandResult) {
@@ -165,7 +165,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 		annotateInteractFailureRecovery(responseData, cmd.Error, normalizedResult)
 		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+		return failJSON(req, summary, responseData)
 	}
 
 	h.finalizeResponseEnrichment(corrID, responseData, cmd)
@@ -176,7 +176,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 		stripSummaryModeFields(responseData)
 	}
 	summary := fmt.Sprintf("Command %s: complete", corrID)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }
 
 func (h *ToolHandler) attachPerfDiffIfAvailable(corrID string, responseData map[string]any) {

@@ -14,7 +14,7 @@ import (
 func (h *configureSessionHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	rewritten, err := cfg.RewriteDiffSessionsArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 	return h.toolDiffSessions(req, rewritten)
 }
@@ -46,5 +46,5 @@ func (h *configureSessionHandler) toolDiffSessions(req JSONRPCRequest, args json
 		responseData["result"] = result
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session diff", responseData)}
+	return succeed(req, "Session diff", responseData)
 }

@@ -55,9 +55,9 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 	// Record AI action
 	h.parent.recordAIAction("draw_mode_start", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw mode activated", map[string]any{
+	return succeed(req, "Draw mode activated", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"message":        "Draw mode activation queued. The user can now draw annotations on the page. Use analyze({what: 'annotations', wait: true}) to block until the user finishes drawing.",
-	})}
+	})
 }

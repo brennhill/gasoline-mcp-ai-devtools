@@ -21,14 +21,14 @@ func (h *interactActionHandler) handleFillFormAndSubmit(req JSONRPCRequest, args
 		TabID          int         `json:"tab_id,omitempty"`
 		TimeoutMs      int         `json:"timeout_ms,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if len(params.Fields) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))}
+		return fail(req, ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))
 	}
 	if params.SubmitSelector == "" && params.SubmitIndex == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'submit_selector' or 'submit_index' is missing", "Add the selector or index of the submit button", withParam("submit_selector"))}
+		return fail(req, ErrMissingParam, "Required parameter 'submit_selector' or 'submit_index' is missing", "Add the selector or index of the submit button", withParam("submit_selector"))
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000
@@ -73,11 +73,11 @@ func (h *interactActionHandler) handleFillForm(req JSONRPCRequest, args json.Raw
 		TabID     int         `json:"tab_id,omitempty"`
 		TimeoutMs int         `json:"timeout_ms,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if len(params.Fields) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))}
+		return fail(req, ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000
@@ -91,10 +91,10 @@ func (h *interactActionHandler) handleFillForm(req JSONRPCRequest, args json.Raw
 		return *errResp
 	}
 
-	lastResp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Form filled", map[string]any{
+	lastResp := succeed(req, "Form filled", map[string]any{
 		"status":       "filled",
 		"fields_count": len(params.Fields),
-	})}
+	})
 	return workflowResult(req, "fill_form", trace, lastResp, workflowStart)
 }
 
@@ -107,12 +107,10 @@ func (h *interactActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowN
 				Status: "error",
 				Detail: "Missing selector and index",
 			})
-			resp := workflowResult(req, workflowName, trace, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrMissingParam,
+			resp := workflowResult(req, workflowName, trace, fail(req, ErrMissingParam,
 				fmt.Sprintf("Field %d missing 'selector' or 'index'", i),
 				"Each field needs a 'selector' or 'index'",
-				withParam("fields"),
-			)}, workflowStart)
+				withParam("fields")), workflowStart)
 			return trace, &resp
 		}
 

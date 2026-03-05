@@ -11,24 +11,24 @@ import (
 // toolObserveInbox drains the push inbox and returns pending events.
 func (h *ToolHandler) toolObserveInbox(req JSONRPCRequest, _ json.RawMessage) JSONRPCResponse {
 	if h.server.pushInbox == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Push inbox empty", map[string]any{
+		return succeed(req, "Push inbox empty", map[string]any{
 			"events": []any{},
 			"count":  0,
-		})}
+		})
 	}
 
 	events := h.server.pushInbox.DrainAll()
 	if events == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Push inbox empty", map[string]any{
+		return succeed(req, "Push inbox empty", map[string]any{
 			"events": []any{},
 			"count":  0,
-		})}
+		})
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Push inbox drained", map[string]any{
+	return succeed(req, "Push inbox drained", map[string]any{
 		"events": events,
 		"count":  len(events),
-	})}
+	})
 }
 
 // appendPushPiggyback drains the push inbox and inlines events into any tool response.

@@ -21,27 +21,27 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 		Tags        []string          `json:"tags"`
 		Steps       []json.RawMessage `json:"steps"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	// Validate name
 	if params.Name == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
 	}
 	if len(params.Name) > maxSequenceNameLen {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Name exceeds maximum length of %d characters", maxSequenceNameLen), "Use a shorter name", withParam("name"))}
+		return fail(req, ErrInvalidParam, fmt.Sprintf("Name exceeds maximum length of %d characters", maxSequenceNameLen), "Use a shorter name", withParam("name"))
 	}
 	if !sequenceNamePattern.MatchString(params.Name) {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Name must match ^[a-zA-Z0-9_-]+$", "Use only alphanumeric characters, hyphens, and underscores", withParam("name"))}
+		return fail(req, ErrInvalidParam, "Name must match ^[a-zA-Z0-9_-]+$", "Use only alphanumeric characters, hyphens, and underscores", withParam("name"))
 	}
 
 	// Validate steps
 	if len(params.Steps) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))}
+		return fail(req, ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))
 	}
 	if len(params.Steps) > maxSequenceSteps {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller sequences", withParam("steps"))}
+		return fail(req, ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller sequences", withParam("steps"))
 	}
 
 	// Validate each step has a what (or action) field
@@ -51,7 +51,7 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 			Action string `json:"action"`
 		}
 		if err := json.Unmarshal(step, &s); err != nil || (s.What == "" && s.Action == "") {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))}
+			return fail(req, ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))
 		}
 	}
 
@@ -67,24 +67,24 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 
 	data, err := json.Marshal(seq)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Failed to serialize sequence: "+err.Error(), "Check step format")}
+		return fail(req, ErrInvalidJSON, "Failed to serialize sequence: "+err.Error(), "Check step format")
 	}
 
-	if h.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	if err := h.sessionStoreImpl.Save(sequenceNamespace, params.Name, data); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Failed to save sequence: "+err.Error(), "Check disk space")}
+		return fail(req, ErrInvalidParam, "Failed to save sequence: "+err.Error(), "Check disk space")
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence saved", map[string]any{
+	return succeed(req, "Sequence saved", map[string]any{
 		"status":     "saved",
 		"name":       seq.Name,
 		"step_count": seq.StepCount,
 		"saved_at":   seq.SavedAt,
 		"message":    fmt.Sprintf("Sequence saved: %s (%d steps)", seq.Name, seq.StepCount),
-	})}
+	})
 }
 
 // ============================================
@@ -98,7 +98,7 @@ func (h *ToolHandler) toolConfigureGetSequence(req JSONRPCRequest, args json.Raw
 	lenientUnmarshal(args, &params)
 
 	if params.Name == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
 	}
 
 	seq, errResp := h.loadSequence(req, params.Name)
@@ -106,7 +106,7 @@ func (h *ToolHandler) toolConfigureGetSequence(req JSONRPCRequest, args json.Raw
 		return *errResp
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence details", map[string]any{
+	return succeed(req, "Sequence details", map[string]any{
 		"status":      "ok",
 		"name":        seq.Name,
 		"description": seq.Description,
@@ -114,7 +114,7 @@ func (h *ToolHandler) toolConfigureGetSequence(req JSONRPCRequest, args json.Raw
 		"saved_at":    seq.SavedAt,
 		"step_count":  seq.StepCount,
 		"steps":       seq.Steps,
-	})}
+	})
 }
 
 // ============================================
@@ -127,17 +127,17 @@ func (h *ToolHandler) toolConfigureListSequences(req JSONRPCRequest, args json.R
 	}
 	lenientUnmarshal(args, &params)
 
-	if h.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	keys, err := h.sessionStoreImpl.List(sequenceNamespace)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequences", map[string]any{
+		return succeed(req, "Sequences", map[string]any{
 			"status":    "ok",
 			"sequences": []any{},
 			"count":     0,
-		})}
+		})
 	}
 
 	summaries := make([]SequenceSummary, 0, len(keys))
@@ -165,11 +165,11 @@ func (h *ToolHandler) toolConfigureListSequences(req JSONRPCRequest, args json.R
 		})
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequences", map[string]any{
+	return succeed(req, "Sequences", map[string]any{
 		"status":    "ok",
 		"sequences": summaries,
 		"count":     len(summaries),
-	})}
+	})
 }
 
 // ============================================
@@ -183,25 +183,25 @@ func (h *ToolHandler) toolConfigureDeleteSequence(req JSONRPCRequest, args json.
 	lenientUnmarshal(args, &params)
 
 	if params.Name == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
 	}
 
-	if h.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	// Check existence first for better error message
 	if _, err := h.sessionStoreImpl.Load(sequenceNamespace, params.Name); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Sequence not found: "+params.Name, "Use list_sequences to see available sequences")}
+		return fail(req, ErrNoData, "Sequence not found: "+params.Name, "Use list_sequences to see available sequences")
 	}
 
 	if err := h.sessionStoreImpl.Delete(sequenceNamespace, params.Name); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Failed to delete sequence: "+err.Error(), "Try again")}
+		return fail(req, ErrInvalidParam, "Failed to delete sequence: "+err.Error(), "Try again")
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence deleted", map[string]any{
+	return succeed(req, "Sequence deleted", map[string]any{
 		"status":  "deleted",
 		"name":    params.Name,
 		"message": "Sequence deleted: " + params.Name,
-	})}
+	})
 }

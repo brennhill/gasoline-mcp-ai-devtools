@@ -56,20 +56,14 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 	var params struct {
 		Text string `json:"text"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidJSON,
-			"Invalid JSON arguments: "+err.Error(),
-			"Fix JSON syntax and call again",
-		)}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.Text == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"Required parameter 'text' is missing",
 			"Add the 'text' parameter with the content to write to clipboard",
-			withParam("text"),
-		)}
+			withParam("text"))
 	}
 
 	if resp, blocked := h.parent.requirePilot(req); blocked {

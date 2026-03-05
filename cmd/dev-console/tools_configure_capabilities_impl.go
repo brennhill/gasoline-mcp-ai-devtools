@@ -26,12 +26,10 @@ func (h *ToolHandler) configureDescribeCapabilitiesImpl(req JSONRPCRequest, args
 
 	// mode without tool is an error.
 	if params.Mode != "" && params.Tool == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"'mode' requires 'tool' to be set",
 			"Add the 'tool' parameter to filter by mode",
-			withParam("tool"),
-		)}
+			withParam("tool"))
 	}
 
 	// Filter by tool + mode.
@@ -43,13 +41,11 @@ func (h *ToolHandler) configureDescribeCapabilitiesImpl(req JSONRPCRequest, args
 				validNames = append(validNames, t.Name)
 			}
 			sort.Strings(validNames)
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidParam,
+			return fail(req, ErrInvalidParam,
 				"Unknown tool: "+params.Tool,
 				"Use a valid tool name",
 				withParam("tool"),
-				withHint("Valid tools: "+strings.Join(validNames, ", ")),
-			)}
+				withHint("Valid tools: "+strings.Join(validNames, ", ")))
 		}
 
 		if params.Mode != "" {
@@ -65,22 +61,20 @@ func (h *ToolHandler) configureDescribeCapabilitiesImpl(req JSONRPCRequest, args
 						}
 					}
 				}
-				return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-					ErrInvalidParam,
+				return fail(req, ErrInvalidParam,
 					"Unknown mode '"+params.Mode+"' for tool '"+params.Tool+"'",
 					"Use a valid mode for this tool",
 					withParam("mode"),
-					withHint("Valid modes: "+strings.Join(modes, ", ")),
-				)}
+					withHint("Valid modes: "+strings.Join(modes, ", ")))
 			}
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", modeCap)}
+			return succeed(req, "Capabilities", modeCap)
 		}
 
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
+		return succeed(req, "Capabilities", map[string]any{
 			"version":          version,
 			"protocol_version": "2024-11-05",
 			"tools":            map[string]any{params.Tool: toolCap},
-		})}
+		})
 	}
 
 	// Full or summary response (no filters).
@@ -91,10 +85,10 @@ func (h *ToolHandler) configureDescribeCapabilitiesImpl(req JSONRPCRequest, args
 		toolsMap = cfg.BuildCapabilitiesMap(tools)
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
+	return succeed(req, "Capabilities", map[string]any{
 		"version":          version,
 		"protocol_version": "2024-11-05",
 		"tools":            toolsMap,
 		"deprecated":       []string{},
-	})}
+	})
 }
