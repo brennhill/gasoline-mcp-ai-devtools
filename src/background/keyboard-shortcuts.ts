@@ -9,6 +9,8 @@
 
 import { errorMessage } from '../lib/error-utils.js'
 import { getActiveTab, sendTabToast } from './event-listeners.js'
+import { toggleDrawModeForTab } from './draw-mode-toggle.js'
+import { buildScreenRecordingSlug } from './recording-utils.js'
 export interface RecordingShortcutHandlers {
   isRecording: () => boolean
   startRecording: (
@@ -31,7 +33,6 @@ export function buildActionSequenceRecordingName(now: Date = new Date()): string
   const ss = String(now.getSeconds()).padStart(2, '0')
   return `action-sequence--${yyyy}-${mm}-${dd}-${hh}${min}${ss}`
 }
-
 
 // =============================================================================
 // SCREEN RECORDING TYPES & HELPERS
@@ -58,20 +59,6 @@ export interface ScreenRecordingHandlers {
   }>
 }
 
-function buildScreenRecordingSlug(url: string | undefined): string {
-  try {
-    const hostname = new URL(url ?? '').hostname.replace(/^www\./, '')
-    return (
-      hostname
-        .replace(/[^a-z0-9]/gi, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || 'recording'
-    )
-  } catch {
-    return 'recording'
-  }
-}
-
 export async function toggleScreenRecording(
   handlers: ScreenRecordingHandlers,
   tab: chrome.tabs.Tab,
@@ -80,15 +67,7 @@ export async function toggleScreenRecording(
   if (handlers.isRecording()) {
     const result = await handlers.stopRecording()
     if (result.status === 'saved') {
-      try {
-        await chrome.tabs.sendMessage(tab.id!, {
-          type: 'GASOLINE_ACTION_TOAST',
-          text: 'Recording saved',
-          detail: result.name || '',
-          state: 'success',
-          duration_ms: 3000
-        })
-      } catch { /* content script may not be loaded */ }
+      sendTabToast(tab.id!, 'Recording saved', result.name || '', 'success', 3000)
     }
     return
   }
@@ -96,15 +75,7 @@ export async function toggleScreenRecording(
   const slug = buildScreenRecordingSlug(tab.url)
   const result = await handlers.startRecording(slug, 15, '', '', true, tab.id)
   if (result.status !== 'recording' && tab.id) {
-    try {
-      await chrome.tabs.sendMessage(tab.id, {
-        type: 'GASOLINE_ACTION_TOAST',
-        text: 'Recording failed',
-        detail: result.error || 'Could not start screen recording',
-        state: 'error',
-        duration_ms: 4000
-      })
-    } catch { /* content script may not be loaded */ }
+    sendTabToast(tab.id, 'Recording failed', result.error || 'Could not start screen recording', 'error', 4000)
     if (logFn) logFn(`Screen recording start failed: ${result.error}`)
   }
 }
@@ -128,39 +99,10 @@ export function installDrawModeCommandListener(logFn?: (message: string) => void
       if (!tab?.id) return
 
       try {
-        const result = (await chrome.tabs.sendMessage(tab.id, {
-          type: 'GASOLINE_GET_ANNOTATIONS'
-        })) as { draw_mode_active?: boolean }
-
-        if (result?.draw_mode_active) {
-          await chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' })
-        } else {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
-            started_by: 'user'
-          })
-        }
+        await toggleDrawModeForTab(tab.id)
       } catch {
-        // Content script not loaded -- try activating anyway
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
-            started_by: 'user'
-          })
-        } catch {
-          if (logFn) logFn('Cannot reach content script for draw mode toggle')
-          try {
-            await chrome.tabs.sendMessage(tab.id, {
-              type: 'GASOLINE_ACTION_TOAST',
-              text: 'Draw mode unavailable',
-              detail: 'Refresh the page and try again',
-              state: 'error',
-              duration_ms: 3000
-            })
-          } catch {
-            // Tab truly unreachable
-          }
-        }
+        if (logFn) logFn('Cannot reach content script for draw mode toggle')
+        sendTabToast(tab.id, 'Draw mode unavailable', 'Refresh the page and try again', 'error', 3000)
       }
     } catch (err) {
       if (logFn) logFn(`Draw mode keyboard shortcut error: ${errorMessage(err)}`)

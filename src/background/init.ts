@@ -74,6 +74,8 @@ import {
   installContextMenus,
   saveSetting,
   forwardToAllContentScripts,
+  getActiveTab,
+  sendTabToast,
   handleTrackedTabClosed,
   handleTrackedTabUrlChange
 } from './event-listeners.js'
@@ -177,19 +179,10 @@ async function initializeExtensionAsync(): Promise<void> {
         } else if (oldTabId !== null) {
           // Tracking was lost — notify user on active tab
           console.log('[Gasoline] Tracking lost for tab', oldTabId)
-          chrome.tabs
-            .query({ active: true, currentWindow: true })
-            .then((tabs) => {
-              if (tabs[0]?.id) {
-                chrome.tabs
-                  .sendMessage(tabs[0].id, {
-                    type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Tab tracking lost',
-                    detail: 'Re-enable in Gasoline popup',
-                    state: 'warning',
-                    duration_ms: 5000
-                  })
-                  .catch(() => {})
+          getActiveTab()
+            .then((tab) => {
+              if (tab?.id) {
+                sendTabToast(tab.id, 'Tab tracking lost', 'Re-enable in Gasoline popup', 'warning', 5000)
               }
             })
             .catch(() => {})
