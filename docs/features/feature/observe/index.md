@@ -19,6 +19,7 @@ code_paths:
   - internal/tools/observe/handlers_extension_logs.go
   - internal/tools/observe/handlers_logs.go
   - src/background/commands/observe.ts
+  - src/lib/daemon-http.ts
   - src/inject/observers.ts
   - src/lib/network.ts
   - internal/capture/queries.go

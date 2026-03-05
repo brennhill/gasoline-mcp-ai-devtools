@@ -11,6 +11,8 @@ code_paths:
   - src/background/event-listeners.ts
   - src/background/init.ts
   - src/background/recording.ts
+  - src/offscreen/recording-worker.ts
+  - src/lib/daemon-http.ts
   - src/popup/recording.ts
   - extension/manifest.json
   - extension/popup.html

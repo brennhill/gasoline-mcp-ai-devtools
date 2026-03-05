@@ -12,6 +12,7 @@
 
 import type { OffscreenStartRecordingMessage, OffscreenStopRecordingMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { buildDaemonHeaders } from '../lib/daemon-http.js'
 
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024
@@ -318,7 +319,10 @@ function handleStopRecording(truncated: boolean = false): void {
       console.log(LOG, 'POSTing to', `${serverUrl}/recordings/save`, { size: blob.size, hasAudio })
       const response = await fetch(`${serverUrl}/recordings/save`, {
         method: 'POST',
-        headers: { 'X-Gasoline-Client': 'gasoline-extension-offscreen' },
+        headers: buildDaemonHeaders({
+          clientName: 'gasoline-extension-offscreen',
+          contentType: null
+        }),
         body: formData
       })
       console.log(LOG, 'Server response:', response.status)

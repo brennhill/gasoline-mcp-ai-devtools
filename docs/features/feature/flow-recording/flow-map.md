@@ -15,4 +15,4 @@ Canonical flow map:
 - [Recording Control and Playback](../../../architecture/flow-maps/recording-control-and-playback.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): screen-recording slug generation is centralized for shortcut and popup/runtime listener entrypoints.
+Latest sync update (2026-03-05): popup action-recording start/stop now use one shared configure RPC helper; daemon JSON request/header construction is shared across recording listeners and popup flows.

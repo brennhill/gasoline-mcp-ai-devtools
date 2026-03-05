@@ -4,63 +4,88 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 
-export function readableFallbackScript(): Record<string, unknown> {
-  const MAIN_SELECTORS = [
-    'main',
-    'article',
-    '[role="main"]',
-    '#main',
-    '.main',
-    '.post-content',
-    '.entry-content',
-    '.article-body',
-    '.article-content',
-    '.story-body',
-    '.article',
-    '.post',
-    '#content',
-    '.content',
-    '.results'
-  ]
-  const REMOVE_SELECTORS = [
-    'nav',
-    'header',
-    'footer',
-    'aside',
-    'script',
-    'style',
-    'noscript',
-    'svg',
-    '[role="navigation"]',
-    '[role="banner"]',
-    '[role="contentinfo"]',
-    '[aria-hidden="true"]',
-    '.ad',
-    '.ads',
-    '.advertisement',
-    '.social-share',
-    '.comments',
-    '.sidebar',
-    '.related-posts',
-    '.newsletter'
-  ]
+const READABLE_MAIN_SELECTORS = [
+  'main',
+  'article',
+  '[role="main"]',
+  '#main',
+  '.main',
+  '.post-content',
+  '.entry-content',
+  '.article-body',
+  '.article-content',
+  '.story-body',
+  '.article',
+  '.post',
+  '#content',
+  '.content',
+  '.results'
+]
 
-  let mainEl: Element = document.body || document.documentElement
-  for (const sel of MAIN_SELECTORS) {
-    const el = document.querySelector(sel)
+const MARKDOWN_MAIN_SELECTORS = [
+  'main',
+  'article',
+  '[role="main"]',
+  '#main',
+  '.main',
+  '.post-content',
+  '.entry-content',
+  '.article-body',
+  '.article-content'
+]
+
+const PAGE_SUMMARY_MAIN_SELECTORS = ['main', 'article', '[role="main"]', '#main', '.main', '.post-content', '.entry-content']
+
+const COMMON_REMOVE_SELECTORS = [
+  'nav',
+  'header',
+  'footer',
+  'aside',
+  'script',
+  'style',
+  'noscript',
+  'svg',
+  '[role="navigation"]',
+  '[role="banner"]',
+  '[role="contentinfo"]',
+  '[aria-hidden="true"]'
+]
+
+const READABLE_EXTRA_REMOVE_SELECTORS = [
+  '.ad',
+  '.ads',
+  '.advertisement',
+  '.social-share',
+  '.comments',
+  '.sidebar',
+  '.related-posts',
+  '.newsletter'
+]
+
+function pickMainElement(mainSelectors: string[], minTextLength: number): Element {
+  const fallback = document.body || document.documentElement
+  for (const selector of mainSelectors) {
+    const el = document.querySelector(selector)
     if (!el) continue
     const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 100) {
-      mainEl = el
-      break
+    if (text.length > minTextLength) {
+      return el
     }
   }
+  return fallback
+}
 
+function extractCleanMainText(mainEl: Element, removeSelectors: string[]): string {
   const clone = mainEl.cloneNode(true) as Element
-  for (const sel of REMOVE_SELECTORS) {
+  for (const sel of removeSelectors) {
     for (const child of Array.from(clone.querySelectorAll(sel))) child.remove()
   }
-  const content = ((clone as HTMLElement).innerText || clone.textContent || '').replace(/\s+/g, ' ').trim()
+  return ((clone as HTMLElement).innerText || clone.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
+export function readableFallbackScript(): Record<string, unknown> {
+  const mainEl = pickMainElement(READABLE_MAIN_SELECTORS, 100)
+  const content = extractCleanMainText(mainEl, [...COMMON_REMOVE_SELECTORS, ...READABLE_EXTRA_REMOVE_SELECTORS])
 
   let byline = ''
   for (const sel of ['.author', '[rel="author"]', '.byline', '.post-author', 'meta[name="author"]']) {
@@ -87,49 +112,8 @@ export function readableFallbackScript(): Record<string, unknown> {
 
 export function markdownFallbackScript(): Record<string, unknown> {
   const MAX_OUTPUT = 200000
-  const MAIN_SELECTORS = [
-    'main',
-    'article',
-    '[role="main"]',
-    '#main',
-    '.main',
-    '.post-content',
-    '.entry-content',
-    '.article-body',
-    '.article-content'
-  ]
-  const REMOVE_SELECTORS = [
-    'nav',
-    'header',
-    'footer',
-    'aside',
-    'script',
-    'style',
-    'noscript',
-    'svg',
-    '[role="navigation"]',
-    '[role="banner"]',
-    '[role="contentinfo"]',
-    '[aria-hidden="true"]'
-  ]
-
-  let mainEl: Element = document.body || document.documentElement
-  for (const sel of MAIN_SELECTORS) {
-    const el = document.querySelector(sel)
-    if (!el) continue
-    const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 100) {
-      mainEl = el
-      break
-    }
-  }
-
-  const clone = mainEl.cloneNode(true) as Element
-  for (const sel of REMOVE_SELECTORS) {
-    for (const child of Array.from(clone.querySelectorAll(sel))) child.remove()
-  }
-
-  let markdown = ((clone as HTMLElement).innerText || clone.textContent || '').trim()
+  const mainEl = pickMainElement(MARKDOWN_MAIN_SELECTORS, 100)
+  let markdown = extractCleanMainText(mainEl, COMMON_REMOVE_SELECTORS)
   if (markdown.length > MAX_OUTPUT) {
     markdown = markdown.slice(0, MAX_OUTPUT)
   }
@@ -203,17 +187,7 @@ export function pageSummaryFallbackScript(): Record<string, unknown> {
     forms.push({ action, method: (form.getAttribute('method') || 'GET').toUpperCase(), fields })
   }
 
-  const MAIN_SELECTORS = ['main', 'article', '[role="main"]', '#main', '.main', '.post-content', '.entry-content']
-  let mainEl: Element = document.body || document.documentElement
-  for (const sel of MAIN_SELECTORS) {
-    const el = document.querySelector(sel)
-    if (!el) continue
-    const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 120) {
-      mainEl = el
-      break
-    }
-  }
+  const mainEl = pickMainElement(PAGE_SUMMARY_MAIN_SELECTORS, 120)
   const mainText = ((mainEl as HTMLElement).innerText || mainEl.textContent || '')
     .replace(/\s+/g, ' ')
     .trim()

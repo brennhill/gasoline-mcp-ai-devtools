@@ -50,11 +50,15 @@ code_paths:
   - internal/capture/types.go
   - internal/capture/websocket-types.go
   - internal/capture/websocket.go
+  - src/background/server.ts
+  - src/background/sync-client.ts
+  - src/lib/daemon-http.ts
   - src/lib/network.ts
   - src/lib/websocket.ts
 test_paths:
   - internal/capture/extension_log_store_test.go
   - internal/capture/buffer_clear_test.go
+  - tests/extension/sync-client.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

@@ -26,6 +26,7 @@ import type {
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js'
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { postDaemonJSON } from '../lib/daemon-http.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -528,11 +529,7 @@ async function handleDrawModeCompletedAsync(
     if (message.annot_session_name) {
       body.annot_session_name = message.annot_session_name
     }
-    const response = await fetch(`${serverUrl}/draw-mode/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-      body: JSON.stringify(body)
-    })
+    const response = await postDaemonJSON(`${serverUrl}/draw-mode/complete`, body)
     if (!response.ok) {
       const respBody = await response.text().catch(() => '')
       deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`)

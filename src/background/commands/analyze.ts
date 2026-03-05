@@ -7,7 +7,7 @@
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.
 
-import { registerCommand } from './registry.js'
+import { registerCommand, type CommandContext } from './registry.js'
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { domFrameProbe } from '../dom-frame-probe.js'
@@ -26,6 +26,13 @@ interface FrameQueryResult<T = unknown> {
   frame_id: number
   result?: T
   error?: string
+}
+
+interface FrameAwareAnalyzeConfig {
+  messageType: string
+  singleFrameErrorCode: string
+  aggregate: (results: FrameQueryResult<Record<string, unknown>>[]) => Record<string, unknown>
+  mainQuery?: (ctx: CommandContext) => Promise<Record<string, unknown>>
 }
 
 async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Promise<AnalyzeFrameSelection> {
@@ -67,6 +74,24 @@ async function sendFrameQueries<T>(
       }
     })
   )
+}
+
+function buildSingleFrameResult(
+  perFrame: FrameQueryResult<Record<string, unknown>>[],
+  errorCode: string
+): Record<string, unknown> {
+  const first = perFrame[0]
+  if (!first) {
+    return { error: errorCode, message: 'No frame response received' }
+  }
+  if (first.error) {
+    return { error: errorCode, message: first.error, frame_id: first.frame_id }
+  }
+  return { ...(first.result || {}), frame_id: first.frame_id }
+}
+
+function isFrameRoutingError(message: string): boolean {
+  return message.startsWith('frame_not_found') || message.startsWith('invalid_frame')
 }
 
 function toNonNegativeInt(value: unknown): number {
@@ -303,65 +328,72 @@ async function executeDOMQueryFallbackViaScripting(
   }
 }
 
+async function runMainDOMAnalyzeQuery(ctx: CommandContext): Promise<Record<string, unknown>> {
+  try {
+    return (await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'DOM_QUERY',
+      params: ctx.query.params
+    })) as Record<string, unknown>
+  } catch (err) {
+    const fallbackReason = isContentScriptUnreachableError(err)
+      ? 'content_script_unreachable'
+      : 'content_script_send_failed'
+    try {
+      return await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason)
+    } catch {
+      throw err
+    }
+  }
+}
+
+async function runFrameAwareAnalyzeQuery(
+  ctx: CommandContext,
+  config: FrameAwareAnalyzeConfig
+): Promise<Record<string, unknown>> {
+  const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
+
+  if (frameSelection.mode === 'main') {
+    if (config.mainQuery) {
+      return config.mainQuery(ctx)
+    }
+    return (await chrome.tabs.sendMessage(ctx.tabId, {
+      type: config.messageType,
+      params: ctx.query.params
+    })) as Record<string, unknown>
+  }
+
+  const frameParams = stripFrameParam(ctx.params)
+  const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
+    type: config.messageType,
+    params: frameParams
+  })
+
+  if (perFrame.length === 1) {
+    return buildSingleFrameResult(perFrame, config.singleFrameErrorCode)
+  }
+  return config.aggregate(perFrame)
+}
+
 // =============================================================================
 // DOM
 // =============================================================================
 
 registerCommand('dom', async (ctx) => {
   try {
-    const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
-
-    // Fast path: preserve legacy behavior when no frame is specified.
-    if (frameSelection.mode === 'main') {
-      let result: Record<string, unknown>
-      try {
-        result = (await chrome.tabs.sendMessage(ctx.tabId, {
-          type: 'DOM_QUERY',
-          params: ctx.query.params
-        })) as Record<string, unknown>
-      } catch (err) {
-        const fallbackReason = isContentScriptUnreachableError(err)
-          ? 'content_script_unreachable'
-          : 'content_script_send_failed'
-        try {
-          result = await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason)
-        } catch {
-          throw err
-        }
-      }
-      ctx.sendResult(result)
-      return
-    }
-
-    const frameParams = stripFrameParam(ctx.params)
-    const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
-      type: 'DOM_QUERY',
-      params: frameParams
+    const result = await runFrameAwareAnalyzeQuery(ctx, {
+      messageType: 'DOM_QUERY',
+      singleFrameErrorCode: 'dom_query_failed',
+      aggregate: aggregateDOMFrameResults,
+      mainQuery: runMainDOMAnalyzeQuery
     })
-
-    let result: Record<string, unknown>
-    if (perFrame.length === 1) {
-      const first = perFrame[0]
-      if (!first) {
-        result = { error: 'dom_query_failed', message: 'No frame response received' }
-      } else if (first.error) {
-        result = { error: 'dom_query_failed', message: first.error, frame_id: first.frame_id }
-      } else {
-        result = { ...(first.result || {}), frame_id: first.frame_id }
-      }
-    } else {
-      result = aggregateDOMFrameResults(perFrame)
-    }
-
     ctx.sendResult(result)
   } catch (err) {
     const message = errorMessage(err, 'Failed to execute DOM query')
     console.error('[Gasoline][DOM] Command failed:', message, (err as Error).stack || err)
-    const isFrameNotFound = message.startsWith('frame_not_found')
-    const isInvalidFrame = message.startsWith('invalid_frame')
+    const routingError = isFrameRoutingError(message)
     ctx.sendResult({
-      error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
-      message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
+      error: routingError ? message : 'dom_query_failed',
+      message: routingError ? message : `Failed to execute DOM query: ${message}`
     })
   }
 })
@@ -372,47 +404,19 @@ registerCommand('dom', async (ctx) => {
 
 registerCommand('a11y', async (ctx) => {
   try {
-    const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
-
-    // Fast path: preserve legacy behavior when no frame is specified.
-    if (frameSelection.mode === 'main') {
-      const result = await chrome.tabs.sendMessage(ctx.tabId, {
-        type: 'A11Y_QUERY',
-        params: ctx.query.params
-      })
-      ctx.sendResult(result)
-      return
-    }
-
-    const frameParams = stripFrameParam(ctx.params)
-    const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
-      type: 'A11Y_QUERY',
-      params: frameParams
+    const result = await runFrameAwareAnalyzeQuery(ctx, {
+      messageType: 'A11Y_QUERY',
+      singleFrameErrorCode: 'a11y_audit_failed',
+      aggregate: aggregateA11yFrameResults
     })
-
-    let result: Record<string, unknown>
-    if (perFrame.length === 1) {
-      const first = perFrame[0]
-      if (!first) {
-        result = { error: 'a11y_audit_failed', message: 'No frame response received' }
-      } else if (first.error) {
-        result = { error: 'a11y_audit_failed', message: first.error, frame_id: first.frame_id }
-      } else {
-        result = { ...(first.result || {}), frame_id: first.frame_id }
-      }
-    } else {
-      result = aggregateA11yFrameResults(perFrame)
-    }
-
     ctx.sendResult(result)
   } catch (err) {
     const message = errorMessage(err, 'Failed to execute accessibility audit')
     console.error('[Gasoline][A11Y] Command failed:', message, (err as Error).stack || err)
-    const isFrameNotFound = message.startsWith('frame_not_found')
-    const isInvalidFrame = message.startsWith('invalid_frame')
+    const routingError = isFrameRoutingError(message)
     ctx.sendResult({
-      error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
-      message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
+      error: routingError ? message : 'a11y_audit_failed',
+      message: routingError ? message : `Failed to execute accessibility audit: ${message}`
     })
   }
 })

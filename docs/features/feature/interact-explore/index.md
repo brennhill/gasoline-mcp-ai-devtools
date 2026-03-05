@@ -43,6 +43,8 @@ code_paths:
   - src/background/dom-dispatch.ts
   - src/background/frame-targeting.ts
   - src/background/content-fallback-scripts.ts
+  - src/background/upload-handler.ts
+  - src/lib/daemon-http.ts
   - src/background/draw-mode-toggle.ts
   - src/background/dom-types.ts
   - src/background/dom-primitives.ts

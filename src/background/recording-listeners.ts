@@ -12,6 +12,7 @@ import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { postDaemonJSON } from '../lib/daemon-http.js'
 import { buildScreenRecordingSlug } from './recording-utils.js'
 import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
 
@@ -217,11 +218,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       if (sender.id !== chrome.runtime.id) return false
       if (message.type !== 'REVEAL_FILE' || !message.path) return false
 
-      fetch(`${deps.getServerUrl()}/recordings/reveal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-        body: JSON.stringify({ path: message.path })
-      })
+      postDaemonJSON(`${deps.getServerUrl()}/recordings/reveal`, { path: message.path })
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
           return r.json()

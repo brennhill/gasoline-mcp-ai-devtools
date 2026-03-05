@@ -4,7 +4,8 @@
  * Docs: docs/features/feature/flow-recording/index.md
  */
 
-import { StorageKey } from '../lib/constants.js'
+import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
+import { postDaemonJSON } from '../lib/daemon-http.js'
 
 interface ActionRecordingElements {
   row: HTMLElement
@@ -17,6 +18,11 @@ interface ActionRecordingState {
   recordingId: string | null
   timerInterval: ReturnType<typeof setInterval> | null
   startTime: number | null
+}
+
+interface ConfigureCallResponse {
+  result?: { content?: Array<{ text?: string }> }
+  error?: { message?: string }
 }
 
 const START_LABEL = 'Record action workflow'
@@ -64,54 +70,56 @@ function getServerUrl(): Promise<string> {
   return new Promise((resolve) => {
     chrome.storage.local.get(StorageKey.SERVER_URL, (result: Record<string, unknown>) => {
       void chrome.runtime.lastError
-      resolve((result[StorageKey.SERVER_URL] as string) || 'http://localhost:7890')
+      resolve((result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL)
     })
   })
+}
+
+function getConfigureError(data: ConfigureCallResponse): string | null {
+  const message = data.error?.message
+  return typeof message === 'string' && message.length > 0 ? message : null
+}
+
+function extractRecordingID(data: ConfigureCallResponse): string | null {
+  const text = data.result?.content?.[0]?.text ?? ''
+  const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/)
+  return idMatch?.[1] ?? null
+}
+
+async function callConfigureFromPopup(argumentsPayload: Record<string, unknown>): Promise<ConfigureCallResponse> {
+  const serverUrl = await getServerUrl()
+  const resp = await postDaemonJSON(`${serverUrl}/mcp`, {
+    jsonrpc: '2.0',
+    id: Date.now(),
+    method: 'tools/call',
+    params: {
+      name: 'configure',
+      arguments: argumentsPayload
+    }
+  })
+  if (!resp.ok) {
+    throw new Error(`Server error: HTTP ${resp.status}`)
+  }
+  return (await resp.json()) as ConfigureCallResponse
 }
 
 async function startActionRecording(els: ActionRecordingElements, state: ActionRecordingState): Promise<void> {
   els.label.textContent = 'Starting...'
 
   try {
-    const serverUrl = await getServerUrl()
-    const resp = await fetch(`${serverUrl}/mcp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Gasoline-Client': 'gasoline-extension'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: 'configure',
-          arguments: { what: 'event_recording_start', name: `workflow-${Date.now()}` }
-        }
-      })
+    const data = await callConfigureFromPopup({
+      what: 'event_recording_start',
+      name: `workflow-${Date.now()}`
     })
 
-    if (!resp.ok) {
+    const configureError = getConfigureError(data)
+    if (configureError) {
       showIdle(els, state)
-      showError(els, `Server error: HTTP ${resp.status}`)
+      showError(els, configureError)
       return
     }
 
-    const data = await resp.json() as {
-      result?: { content?: Array<{ text?: string }> }
-      error?: { message?: string }
-    }
-
-    if (data.error) {
-      showIdle(els, state)
-      showError(els, data.error.message ?? 'Unknown error')
-      return
-    }
-
-    // Extract recording_id from response text
-    const text = data.result?.content?.[0]?.text ?? ''
-    const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/)
-    state.recordingId = idMatch?.[1] ?? null
+    state.recordingId = extractRecordingID(data)
     state.startTime = Date.now()
 
     // Persist state so reopening popup shows recording in progress
@@ -134,37 +142,14 @@ async function stopActionRecording(els: ActionRecordingElements, state: ActionRe
   els.label.textContent = 'Stopping...'
 
   try {
-    const serverUrl = await getServerUrl()
-    const resp = await fetch(`${serverUrl}/mcp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Gasoline-Client': 'gasoline-extension'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: 'configure',
-          arguments: { what: 'event_recording_stop', recording_id: state.recordingId ?? '' }
-        }
-      })
+    const data = await callConfigureFromPopup({
+      what: 'event_recording_stop',
+      recording_id: state.recordingId ?? ''
     })
 
-    if (!resp.ok) {
-      showIdle(els, state)
-      showError(els, `Server error: HTTP ${resp.status}`)
-      return
-    }
-
-    const data = await resp.json() as {
-      result?: { content?: Array<{ text?: string }> }
-      error?: { message?: string }
-    }
-
-    if (data.error) {
-      showError(els, data.error.message ?? 'Unknown error')
+    const configureError = getConfigureError(data)
+    if (configureError) {
+      showError(els, configureError)
     }
 
     chrome.storage.local.remove('gasoline_action_recording', () => {
