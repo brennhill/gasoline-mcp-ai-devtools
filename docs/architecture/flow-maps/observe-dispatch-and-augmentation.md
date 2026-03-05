@@ -7,9 +7,10 @@ owners:
   - Brenn
 entrypoints:
   - cmd/dev-console/tools_observe.go:toolObserve
-  - cmd/dev-console/tools_observe.go:resolveObserveMode
+  - cmd/dev-console/tool_dispatch_helpers.go:resolveToolMode
 code_paths:
   - cmd/dev-console/tools_observe.go
+  - cmd/dev-console/tool_dispatch_helpers.go
   - cmd/dev-console/tools_observe_registry.go
   - cmd/dev-console/tools_observe_response.go
   - cmd/dev-console/tools_observe_analysis.go
@@ -35,15 +36,15 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 
 ## Entrypoints
 
-- `toolObserve` parses mode params and routes requests.
-- `resolveObserveMode` normalizes `what` plus deprecated aliases (`mode`, `action`).
+- `toolObserve` delegates to `dispatchTool` with `observeRegistry`.
+- `resolveToolMode` (shared) normalizes `what` plus deprecated aliases (`mode`, `action`).
 
 ## Primary Flow
 
 1. MCP client sends `tools/call` with `name: "observe"`.
 2. `toolObserve` parses request args and validates selector params.
-3. `resolveObserveMode` canonicalizes mode and applies alias mapping.
-4. Dispatcher looks up canonical mode in `observeHandlers`.
+3. `resolveToolMode` canonicalizes mode and applies alias mapping.
+4. `dispatchTool` looks up canonical mode in `observeHandlers`.
 5. Handler executes:
 6. Most read modes delegate to `internal/tools/observe`.
 7. Async/recording-related modes stay in local handler methods.
@@ -71,6 +72,7 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 ## Code Paths
 
 - `cmd/dev-console/tools_observe.go`
+- `cmd/dev-console/tool_dispatch_helpers.go`
 - `cmd/dev-console/tools_observe_registry.go`
 - `cmd/dev-console/tools_observe_response.go`
 - `cmd/dev-console/tools_observe_analysis.go`

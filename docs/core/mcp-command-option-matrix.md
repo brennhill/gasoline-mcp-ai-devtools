@@ -202,8 +202,8 @@ All 5 tools use `what` as the primary dispatch parameter. `action`, `mode`, and 
 | `confirm_top_dialog` | `handleDOMPrimitive` (dom_action) | Accept/confirm the top-most dialog or modal |
 | `dismiss_top_overlay` | `handleDOMPrimitive` (dom_action) | Dismiss/close the top-most overlay or popover |
 | `hover` | `handleDOMPrimitive` (dom_action) | Trigger hover state on an element for tooltip discovery |
-| `auto_dismiss_overlays` | `handleDOMPrimitive` (dom_action) | Auto-dismiss cookie consent banners using known framework selectors |
-| `wait_for_stable` | `handleDOMPrimitive` (dom_action) | Wait for DOM stability (no mutations for stability_ms) |
+| `auto_dismiss_overlays` | `handleAutoDismissOverlays` (composable) | Auto-dismiss cookie consent banners using known framework selectors |
+| `wait_for_stable` | `handleWaitForStable` (composable) | Wait for DOM stability (no mutations for stability_ms) |
 | `query` | `handleDOMPrimitive` (dom_action) | Query DOM: check existence, count, read text or attributes |
 | `list_interactive` | `handleListInteractive` | List all clickable/typeable elements on the page |
 | `get_readable` | `handleGetReadable` | Extract readable text content from the page |
@@ -267,14 +267,14 @@ All 5 tools use `what` as the primary dispatch parameter. `action`, `mode`, and 
 
 - Dispatch key: `what`
 - Pagination keys: `limit`, `after_cursor`, `before_cursor`, `since_cursor`, `restart_on_eviction`
-- Filtering keys: `min_level`, `level`, `source`, `url`, `method`, `status_min`, `status_max`, `body_key`, `body_path`, `connection_id`, `direction`, `last_n`, `include`, `window_seconds`, `scope`
+- Filtering keys: `min_level`, `source`, `url`, `method`, `status_min`, `status_max`, `body_path`, `connection_id`, `direction`, `last_n`, `include`, `window_seconds`, `scope`
 - Log detail keys: `include_internal`, `include_extension_logs`, `extension_limit`, `min_group_size`
 - Screenshot keys: `format`, `quality`, `full_page`, `selector`, `wait_for_stable`, `save_to`
 - Storage keys: `storage_type`, `key`, `database`, `store`
 - Transients key: `classification`
 - Page inventory key: `visible_only`
 - Recording keys: `recording_id`, `correlation_id`, `original_id`, `replay_id`
-- Summary mode applies to: `errors`, `logs`, `network_waterfall`, `network_bodies`, `websocket_events`, `websocket_status`, `actions`, `error_bundles`, `timeline`, `history`, `transients`
+- Summary mode applies to: `errors`, `logs`, `network_waterfall`, `network_bodies`, `websocket_events`, `websocket_status`, `actions`, `error_bundles`, `timeline`, `history`, `transients`, `storage`
 - Cross-cutting key: `telemetry_mode`
 
 ### `analyze` options
