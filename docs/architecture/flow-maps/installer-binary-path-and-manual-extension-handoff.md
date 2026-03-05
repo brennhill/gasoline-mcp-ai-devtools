@@ -44,6 +44,8 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 3. Extension staging always includes required MV3 module files for service-worker registration.
 4. Installer output uses a consistent, polished step-and-checklist presentation across entrypoints.
 5. CRX fallback packaging must include the full `extension/` tree (no allowlist packaging).
+6. Extension refresh is atomic (stage + validate + promote) so failed upgrades do not destroy a previously working extension install.
+7. Installers support strict checksum enforcement (`GASOLINE_INSTALL_STRICT=1`) for fail-closed install workflows.
 
 ## Entrypoints
 
@@ -55,24 +57,29 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 
 1. Installer resolves platform and downloads/stages binary + extension artifacts.
 2. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
-3. Extension staging validates required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`).
-4. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
-5. Wrapper/native install writes MCP client configs.
-6. Config entries prefer resolved binary paths over transient launchers.
-7. Installer prints explicit manual extension checklist:
+3. Binary installers verify SHA-256 against release `checksums.txt` (or fail immediately in strict mode).
+4. Extension is extracted into a staging directory and validated for required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`, `theme-bootstrap.js`).
+5. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
+6. Only validated staging directories are promoted atomically to `~/.gasoline/extension`; prior extension state is restored on promotion failure.
+7. Wrapper/native install writes MCP client configs.
+8. Config entries prefer resolved binary paths over transient launchers.
+9. Installer prints explicit manual extension checklist:
    - open extensions page
    - enable developer mode
    - load unpacked extension folder
    - pin extension
    - click Track This Tab
-8. Installer surfaces a branded panel-style summary at completion with the resolved binary path.
+10. Installer surfaces a branded panel-style summary at completion with the resolved binary path.
 
 ## Error and Recovery Paths
 
 1. If platform binary cannot be resolved, wrappers fall back to command name for compatibility.
 2. If release extension zip is missing required module files, installer falls back to source zip and revalidates staged files.
-3. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
-4. Missing client config directories are skipped without aborting install.
+3. If extension promotion fails, installer restores the pre-existing extension directory instead of leaving a partial install.
+4. If strict checksum mode is enabled and checksums cannot be verified, installers fail closed.
+5. npm postinstall validates existing `/health` identity/version when port is already in use and refuses false-positive success for non-Gasoline services.
+6. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
+7. Missing client config directories are skipped without aborting install.
 
 ## State and Contracts
 
@@ -80,6 +87,8 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 2. File-based clients must receive deterministic command entries (`command` + `args`).
 3. Release extension artifacts must include the full extension tree so MV3 module imports resolve at runtime.
 4. Installer output must never imply that browser extension installation is fully automatic.
+5. In strict mode, checksum verification is mandatory for release binary downloads.
+6. Existing-daemon reuse on port checks requires service identity and version parity.
 
 ## Code Paths
 
@@ -103,6 +112,8 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `tests/extension/release-extension-zip.test.js`
 - `tests/extension/release-extension-crx-fallback.test.js`
 - `tests/extension/manifest-startup-integrity.test.js`
+- `tests/extension/install-script-extension-source.test.js`
+- `tests/cli/server-install-hardening.test.cjs`
 
 ## Edit Guardrails
 

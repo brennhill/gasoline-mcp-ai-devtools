@@ -20,6 +20,9 @@ Important:
 - The installer **cannot** click browser UI for you.
 - You must manually open `chrome://extensions` (or `brave://extensions`), enable **Developer mode**, then click **Load unpacked** and select `~/.gasoline/extension`.
 - After loading, pin the extension (recommended) and click **Track This Tab** in the popup.
+- For locked-down environments, enable strict checksum mode before install:
+  - `export GASOLINE_INSTALL_STRICT=1` (macOS/Linux)
+  - `$env:GASOLINE_INSTALL_STRICT="1"` (PowerShell)
 
 ## Per-Tool Reference
 
@@ -191,3 +194,7 @@ After installing, verify the setup:
 # Test the server is reachable
 curl http://localhost:7890/health
 ```
+
+Confirm these fields in the JSON response:
+- `service-name` (or `service_name`) is `gasoline-browser-devtools`
+- `version` matches the expected installed release

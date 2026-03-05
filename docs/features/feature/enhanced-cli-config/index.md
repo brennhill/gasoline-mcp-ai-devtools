@@ -24,9 +24,11 @@ test_paths:
   - pypi/gasoline-agentic-browser/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_skills.py
+  - tests/extension/install-script-extension-source.test.js
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
+  - tests/cli/server-install-hardening.test.cjs
   - tests/cli/cli-integration.test.cjs
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
