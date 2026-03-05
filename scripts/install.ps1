@@ -33,11 +33,11 @@ function Write-Panel([string]$Title, [string[]]$Lines) {
 }
 function Write-Banner() {
     Write-Host ""
-    Write-Host '   ____                 _ _            ' -ForegroundColor Cyan
-    Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor Cyan
-    Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor Cyan
-    Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor Cyan
-    Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor Cyan
+    Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
+    Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
+    Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
+    Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
+    Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
     Write-Host ""
     Write-Panel -Title "GASOLINE INSTALLER" -Lines @(
         "Polished one-shot setup for binary + extension + MCP config.",
