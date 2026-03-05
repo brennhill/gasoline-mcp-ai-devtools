@@ -21,6 +21,8 @@ test_paths:
   - cmd/dev-console/tools_interact_navigate_document_test.go
   - cmd/dev-console/tools_pending_query_enqueue_test.go
   - cmd/dev-console/tools_interact_screenshot_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interact Navigate and Document

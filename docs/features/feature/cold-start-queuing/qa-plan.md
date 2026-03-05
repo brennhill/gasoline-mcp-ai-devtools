@@ -2,7 +2,9 @@
 doc_type: qa-plan
 feature_id: feature-cold-start-queuing
 status: implemented
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Cold-Start Queuing QA Plan

@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: daemon-stop-and-force-cleanup
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -17,6 +17,8 @@ test_paths:
   - cmd/dev-console/main_connection_coverage_test.go
   - cmd/dev-console/main_connection_pid_contract_test.go
   - cmd/dev-console/test_daemon_cleanup_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Daemon Stop and Force Cleanup

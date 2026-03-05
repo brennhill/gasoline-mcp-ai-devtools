@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: interact-overlay-selector-improvements
 status: active
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -26,6 +26,8 @@ test_paths:
   - extension/background/dom-primitives-overlay.test.js
   - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_async_enrich_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interact Overlay & Selector Improvements

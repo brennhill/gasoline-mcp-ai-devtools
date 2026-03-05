@@ -4,7 +4,7 @@ feature_id: feature-deployment-watchdog
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/main_connection_mcp_upgrade.go
   - cmd/dev-console/binary_watcher.go
@@ -15,6 +15,8 @@ code_paths:
   - cmd/dev-console/handler_tools_call_postprocess.go
 test_paths:
   - cmd/dev-console/binary_watcher_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Deployment Watchdog

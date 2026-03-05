@@ -1,6 +1,9 @@
 ---
 title: "WebSocket Debugging"
 description: "Debug WebSocket connections with Gasoline. Monitor connection lifecycle, inspect messages by direction and connection, track message rates, and diagnose real-time application issues."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['guides', 'websocket', 'debugging']
 ---
 
 Gasoline gives your AI full visibility into WebSocket traffic — connection lifecycle, message payloads, per-connection rates, and schema detection. This is critical for debugging real-time applications: chat systems, live dashboards, collaborative editors, trading platforms, and notification streams.

@@ -76,12 +76,23 @@ export default defineConfig({
             { label: 'generate()', slug: 'reference/generate' },
             { label: 'configure()', slug: 'reference/configure' },
             { label: 'interact()', slug: 'reference/interact' },
+            { label: 'Observe Examples', slug: 'reference/examples/observe-examples' },
+            { label: 'Analyze Examples', slug: 'reference/examples/analyze-examples' },
+            { label: 'Generate Examples', slug: 'reference/examples/generate-examples' },
+            { label: 'Configure Examples', slug: 'reference/examples/configure-examples' },
+            { label: 'Interact Examples', slug: 'reference/examples/interact-examples' },
             { label: 'Script Execution', slug: 'execute-scripts' }
           ]
         },
         {
           label: 'Guides',
           items: [
+            { label: 'Start Here by Role', slug: 'guides/start-here-by-role' },
+            { label: 'Engineering Track', slug: 'guides/tracks/engineering' },
+            { label: 'QA Track', slug: 'guides/tracks/qa' },
+            { label: 'Product Track', slug: 'guides/tracks/product' },
+            { label: 'Support Track', slug: 'guides/tracks/support' },
+            { label: 'Security Track', slug: 'guides/tracks/security' },
             { label: 'SEO Analysis', slug: 'guides/seo-analysis' },
             { label: 'Annotation + Skills + Terminal', slug: 'guides/annotation-skill-terminal-workflow' },
             { label: 'Product Demos', slug: 'guides/product-demos' },
@@ -95,7 +106,8 @@ export default defineConfig({
             { label: 'Noise Filtering', slug: 'guides/noise-filtering' },
             { label: 'Resilient UAT Scripts', slug: 'guides/resilient-uat' },
             { label: 'Replace Selenium', slug: 'guides/replace-selenium' },
-            { label: 'Automate & Notify', slug: 'guides/automate-and-notify' }
+            { label: 'Automate & Notify', slug: 'guides/automate-and-notify' },
+            { label: 'Visual Evidence Standards', slug: 'guides/visual-evidence-standards' }
           ]
         },
         {

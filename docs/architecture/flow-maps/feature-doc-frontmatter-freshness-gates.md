@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: feature-doc-frontmatter-freshness-gates
 status: active
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -16,6 +16,8 @@ code_paths:
   - scripts/lint-documentation.py
 test_paths:
   - scripts/docs/check-feature-bundles.test.mjs
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Feature Doc Frontmatter and Freshness Gates

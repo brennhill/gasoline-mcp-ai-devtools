@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: interact-batch-sequences
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -20,6 +20,8 @@ code_paths:
 test_paths:
   - cmd/dev-console/tools_interact_batch_test.go
   - cmd/dev-console/tools_configure_sequence_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interact Batch Sequences

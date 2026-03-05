@@ -5,7 +5,10 @@ ai-priority: high
 tags: [features, navigation, index, lookup]
 relates-to: [FEATURE-INDEX.md, README.md]
 canonical: true
-last-verified: 2026-03-02
+last-verified: 2026-03-05
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Feature Navigation Index

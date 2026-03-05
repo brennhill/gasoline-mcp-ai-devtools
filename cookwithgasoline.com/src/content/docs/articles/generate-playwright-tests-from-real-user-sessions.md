@@ -4,6 +4,9 @@ description: "Learn how to convert real browser sessions into reusable Playwrigh
 date: 2026-03-03
 authors: [brenn]
 tags: [playwright, testing, automation, qa]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['playwright', 'testing', 'automation', 'qa', 'articles', 'generate', 'tests', 'real', 'user', 'sessions']
 ---
 
 You already have the real user flow. Why write the same test from scratch?

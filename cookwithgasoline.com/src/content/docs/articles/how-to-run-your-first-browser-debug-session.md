@@ -4,6 +4,9 @@ description: "A beginner-friendly walkthrough for your first complete browser de
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, debugging, workflow]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['beginner', 'debugging', 'workflow', 'articles', 'run', 'first', 'browser', 'session']
 ---
 
 This is the simplest full debug loop you can run with **Gasoline Agentic Devtools**.

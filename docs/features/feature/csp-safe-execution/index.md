@@ -4,7 +4,7 @@ feature_id: feature-csp-safe-execution
 status: implemented
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - src/background/csp-safe-types.ts
   - src/background/csp-safe-parser.ts
@@ -14,6 +14,8 @@ code_paths:
 test_paths:
   - extension/background/__tests__/query-execution-serialization.test.js
   - tests/extension/execute-js.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # CSP-Safe JavaScript Execution

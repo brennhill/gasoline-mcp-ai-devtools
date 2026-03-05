@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: tracked-tab-hover-quick-actions
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -20,6 +20,8 @@ test_paths:
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/content.test.js
   - tests/extension/popup-status.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tracked Tab Hover Quick Actions

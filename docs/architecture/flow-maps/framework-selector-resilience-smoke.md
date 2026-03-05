@@ -4,6 +4,8 @@ feature_id: feature-framework-selector-resilience
 status: shipped
 owners: []
 last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Framework Selector Resilience Smoke Flow

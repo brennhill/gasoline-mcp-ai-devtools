@@ -1,9 +1,14 @@
 ---
 title: "Configure — Customize the Session"
 description: "Complete reference for the configure tool. 29 modes for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, macro sequences, audit log, diagnostics, issue reporting, and more."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'configure']
 ---
 
 The `configure` tool manages your Gasoline session — filter noise, store data, manage recordings, compare error states, diff sessions, control streaming, and view audit logs.
+
+Need one runnable call + response shape + failure fix for every mode? See [Configure Executable Examples](/reference/examples/configure-examples/).
 
 ## Quick Reference
 

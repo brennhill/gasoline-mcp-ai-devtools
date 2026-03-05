@@ -2,9 +2,11 @@
 doc_type: flow_map
 flow_id: dom-selector-resolution-and-disambiguation
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # DOM Selector Resolution and Disambiguation

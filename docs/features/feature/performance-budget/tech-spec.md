@@ -4,10 +4,12 @@ scope: feature/performance-budget/implementation
 ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: tech-spec
 feature_id: feature-performance-budget
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Technical Spec: Performance Budget

@@ -4,6 +4,9 @@ description: "WebSocket inspection and improved performance"
 date: 2026-01-13T19:34:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.3.0

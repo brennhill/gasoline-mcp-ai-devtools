@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: issue-reporting-submission
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 feature_ids:
@@ -21,6 +21,8 @@ test_paths:
   - internal/issuereport/templates_test.go
   - internal/issuereport/sanitize_test.go
   - internal/issuereport/submit_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Issue Reporting Submission Flow

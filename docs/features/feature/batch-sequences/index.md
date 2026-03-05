@@ -4,7 +4,7 @@ feature_id: feature-batch-sequences
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_interact_batch.go
   - cmd/dev-console/tools_interact_dispatch.go
@@ -18,6 +18,8 @@ code_paths:
 test_paths:
   - cmd/dev-console/tools_interact_batch_test.go
   - cmd/dev-console/tools_configure_sequence_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Batch Sequences

@@ -6,7 +6,9 @@ mode: scraping
 version: 0.7.12
 doc_type: product-spec
 feature_id: feature-local-web-scraping
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Product Spec: Local Web Scraping

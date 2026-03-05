@@ -3,12 +3,14 @@ doc_type: tech-spec
 feature_id: feature-observe
 status: shipped
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
   qa: ./qa-plan.md
   feature_index: ./index.md
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Observe Tech Spec (TARGET)

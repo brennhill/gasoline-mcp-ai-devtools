@@ -4,6 +4,9 @@ description: "A first-timer guide to using the Model Context Protocol for debugg
 date: 2026-03-03
 authors: [brenn]
 tags: [mcp, debugging, browser, ai-development]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['mcp', 'debugging', 'browser', 'ai-development', 'articles', 'use', 'aware']
 ---
 
 If your assistant can only read source code, it misses runtime truth.

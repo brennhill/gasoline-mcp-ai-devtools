@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: tab-recording-and-media-ingest
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -36,6 +36,8 @@ test_paths:
   - cmd/dev-console/tools_draw_mode_http_test.go
   - cmd/dev-console/annotation_store_test.go
   - tests/extension/recording-shortcut-command.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tab Recording and Media Ingest

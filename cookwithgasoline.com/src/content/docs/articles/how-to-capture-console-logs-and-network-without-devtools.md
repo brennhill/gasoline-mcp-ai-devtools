@@ -4,6 +4,9 @@ description: "Beginner guide to collect browser logs and network failures with G
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, debugging, logs, network]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['beginner', 'debugging', 'logs', 'network', 'articles', 'capture', 'console', 'without', 'devtools']
 ---
 
 You do not need to manually dig through Chrome DevTools for every bug.

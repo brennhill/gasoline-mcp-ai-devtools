@@ -4,7 +4,7 @@ feature_id: feature-idl-migration
 status: draft
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - scripts/generate-wire-types.js
   - scripts/check-wire-drift.js
@@ -13,6 +13,8 @@ code_paths:
   - internal/schema/interact.go
 test_paths:
   - internal/schema/invariants_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # IDL Migration
