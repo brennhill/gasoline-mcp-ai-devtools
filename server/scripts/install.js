@@ -10,11 +10,13 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const crypto = require('crypto')
 const { spawnSync, spawn } = require('child_process')
 
 const VERSION = require('../package.json').version
 const GITHUB_REPO = 'brennhill/gasoline-agentic-browser-devtools-mcp'
 const BINARY_NAME = 'gasoline'
+const EXPECTED_SERVICE_NAME = 'gasoline-browser-devtools'
 
 function printPanel(title, lines = []) {
   const border = '+----------------------------------------------------------+'
@@ -130,6 +132,143 @@ function verifyVersion(binaryPath) {
   return false
 }
 
+function normalizeVersion(raw) {
+  return String(raw || '').trim().replace(/^v/i, '')
+}
+
+function resolveServiceName(health) {
+  if (!health || typeof health !== 'object') return ''
+  const dashed = typeof health['service-name'] === 'string' ? health['service-name'].trim() : ''
+  if (dashed) return dashed
+  return typeof health.service_name === 'string' ? health.service_name.trim() : ''
+}
+
+function readHealth(port, timeoutMs = 1000) {
+  return new Promise((resolve) => {
+    const req = http.request({ // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request, problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only install-time health probe
+      hostname: '127.0.0.1',
+      port,
+      path: '/health',
+      method: 'GET',
+      timeout: timeoutMs
+    }, (res) => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', (chunk) => {
+        body += chunk
+      })
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          resolve(null)
+          return
+        }
+        try {
+          resolve(JSON.parse(body))
+        } catch {
+          resolve(null)
+        }
+      })
+    })
+
+    req.on('error', () => resolve(null))
+    req.on('timeout', () => {
+      req.destroy()
+      resolve(null)
+    })
+    req.end()
+  })
+}
+
+async function checkServerIdentity(port, expectedVersion) {
+  const health = await readHealth(port, 800)
+  if (!health) return false
+
+  const serviceName = resolveServiceName(health).toLowerCase()
+  if (serviceName !== EXPECTED_SERVICE_NAME) return false
+
+  const runningVersion = normalizeVersion(health.version)
+  return runningVersion === normalizeVersion(expectedVersion)
+}
+
+function downloadText(url) {
+  return new Promise((resolve, reject) => {
+    const request = (currentUrl) => {
+      https
+        .get(currentUrl, (response) => {
+          if (response.statusCode === 301 || response.statusCode === 302) {
+            request(response.headers.location)
+            return
+          }
+          if (response.statusCode !== 200) {
+            reject(new Error(`failed to download text (${response.statusCode})`))
+            return
+          }
+
+          let data = ''
+          response.setEncoding('utf8')
+          response.on('data', (chunk) => {
+            data += chunk
+          })
+          response.on('end', () => resolve(data))
+        })
+        .on('error', reject)
+    }
+
+    request(url)
+  })
+}
+
+function extractExpectedChecksum(checksumManifest, binaryName) {
+  const lines = String(checksumManifest || '').split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const parts = trimmed.split(/\s+/)
+    if (parts.length < 2) continue
+    const fileName = parts[parts.length - 1]
+    if (fileName === binaryName) {
+      return parts[0].toLowerCase()
+    }
+  }
+  return ''
+}
+
+function sha256File(filePath) {
+  const hash = crypto.createHash('sha256')
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+  hash.update(fs.readFileSync(filePath))
+  return hash.digest('hex').toLowerCase()
+}
+
+async function verifyDownloadedBinary(binaryPath, binaryName) {
+  const checksumUrl = `https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/checksums.txt`
+  const manifest = await downloadText(checksumUrl)
+  const expected = extractExpectedChecksum(manifest, binaryName)
+  if (!expected) {
+    throw new Error(`checksums.txt missing entry for ${binaryName}`)
+  }
+  const actual = sha256File(binaryPath)
+  if (expected !== actual) {
+    throw new Error(`checksum mismatch for ${binaryName}`)
+  }
+  console.log(`✓ Checksum verified for ${binaryName}`)
+}
+
+function installStagedBinary(stagedPath, livePath) {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+  fs.rmSync(livePath, { force: true })
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+    fs.renameSync(stagedPath, livePath)
+  } catch {
+    // Cross-device fallback.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+    fs.copyFileSync(stagedPath, livePath)
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+    fs.rmSync(stagedPath, { force: true })
+  }
+}
+
 /**
  * Start the gasoline server in the background
  * Returns true if server started successfully
@@ -142,8 +281,17 @@ function autoStartServer(binaryPath, port = 7890) {
     const testServer = http.createServer() // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only health check, no sensitive data
     testServer.once('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${port} already in use - server may already be running`)
-        resolve(true) // Consider this success - something is already there
+        checkServerIdentity(port, VERSION)
+          .then((ok) => {
+            if (ok) {
+              console.log(`Port ${port} already in use by Gasoline ${VERSION}`)
+              resolve(true)
+              return
+            }
+            console.warn(`Port ${port} is in use by a non-matching service/version`)
+            resolve(false)
+          })
+          .catch(() => resolve(false))
       } else {
         console.warn(`Port check failed: ${err.message}`)
         resolve(false)
@@ -167,36 +315,18 @@ function autoStartServer(binaryPath, port = 7890) {
           // Wait for server to be ready
           let attempts = 0
           const maxAttempts = 30 // 3 seconds
-          const checkHealth = () => {
+          const checkHealth = async () => {
             attempts++
-            const req = http.request({ // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request, problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only binary download during install
-              hostname: '127.0.0.1',
-              port: port,
-              path: '/health',
-              method: 'GET',
-              timeout: 200
-            }, (res) => {
-              if (res.statusCode === 200) {
-                console.log(`✓ Server started on http://127.0.0.1:${port}`)
-                resolve(true)
-              } else if (attempts < maxAttempts) {
-                setTimeout(checkHealth, 100)
-              } else {
-                console.warn('Server started but health check failed')
-                resolve(false)
-              }
-            })
-
-            req.on('error', () => {
-              if (attempts < maxAttempts) {
-                setTimeout(checkHealth, 100)
-              } else {
-                console.warn('Server failed to respond within 3 seconds')
-                resolve(false)
-              }
-            })
-
-            req.end()
+            const ok = await checkServerIdentity(port, VERSION)
+            if (ok) {
+              console.log(`✓ Server started on http://127.0.0.1:${port}`)
+              resolve(true)
+            } else if (attempts < maxAttempts) {
+              setTimeout(checkHealth, 100)
+            } else {
+              console.warn('Server failed identity/version validation within startup window')
+              resolve(false)
+            }
           }
 
           // Start health checking after a brief delay
@@ -287,6 +417,7 @@ async function main() {
   const binDir = path.join(__dirname, '..', 'bin')
   const binaryName = getBinaryName()
   const binaryPath = path.join(binDir, binaryName)
+  const stagedBinaryPath = path.join(binDir, `${binaryName}.tmp-${Date.now()}`)
 
   // Clean up any old gasoline processes before installing new version
   console.log('Cleaning up old gasoline processes...')
@@ -303,9 +434,14 @@ async function main() {
   console.log(`Downloading gasoline binary for ${process.platform}-${process.arch}...`)
   console.log(`URL: ${downloadUrl}`)
 
+  let usedLocalBinary = false
   try {
-    await download(downloadUrl, binaryPath)
+    await download(downloadUrl, stagedBinaryPath)
+    await verifyDownloadedBinary(stagedBinaryPath, binaryName)
   } catch (err) {
+    if (/checksum/i.test(err.message || '')) {
+      throw err
+    }
     // If download fails, check if we're in development (binary might be local)
     console.warn(`Download failed: ${err.message}`)
     console.warn('Checking for local binary...')
@@ -315,7 +451,8 @@ async function main() {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
     if (fs.existsSync(localBinary)) {
       console.log('Using local binary from dist/')
-      fs.copyFileSync(localBinary, binaryPath)
+      fs.copyFileSync(localBinary, stagedBinaryPath)
+      usedLocalBinary = true
     } else {
       console.error('')
       console.error('╔════════════════════════════════════════════════════════════════╗')
@@ -342,6 +479,13 @@ async function main() {
       process.exit(1)
     }
   }
+
+  if (usedLocalBinary) {
+    console.warn('⚠️  Skipping checksum verification for local dist binary fallback.')
+  }
+  installStagedBinary(stagedBinaryPath, binaryPath)
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer temp file path is controlled by script
+  fs.rmSync(stagedBinaryPath, { force: true })
 
   // Make binary executable (Unix only)
   if (process.platform !== 'win32') {
