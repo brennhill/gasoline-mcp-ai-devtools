@@ -49,8 +49,7 @@ func resolveToolMode(
 	if len(args) > 0 {
 		var raw map[string]json.RawMessage
 		if err := json.Unmarshal(args, &raw); err != nil {
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+			resp := fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 			return "", "", &resp
 		}
 		for _, key := range append([]string{"what"}, aliasFieldNames(aliasDefs)...) {
@@ -96,13 +95,11 @@ func resolveToolMode(
 
 	// Missing mode.
 	if what == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		resp := fail(req, ErrMissingParam,
 			"Required parameter 'what' is missing",
 			"Add the 'what' parameter and call again",
 			withParam("what"),
-			withHint("Valid values: "+res.ValidModes),
-		)}
+			withHint("Valid values: "+res.ValidModes))
 		return "", usedAliasParam, &resp
 	}
 

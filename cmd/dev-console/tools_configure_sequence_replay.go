@@ -76,7 +76,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 		"message":        message,
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence replay", responseData)}
+	return succeed(req, "Sequence replay", responseData)
 }
 
 func parseReplaySequenceParams(req JSONRPCRequest, args json.RawMessage) (sequenceReplayParams, *JSONRPCResponse) {

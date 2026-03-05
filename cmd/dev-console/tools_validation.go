@@ -18,14 +18,3 @@ func validateParamsAgainstSchema(data json.RawMessage, schema map[string]any) []
 	return mcp.ValidateParamsAgainstSchema(data, schema)
 }
 
-// ============================================
-// Log Quality Checking (observe-specific)
-// ============================================
-
-// logFieldCounts tracks missing field counts for log quality checking.
-type logFieldCounts struct {
-	missingTS     int
-	missingMsg    int
-	missingSource int
-	badEntries    int
-}

@@ -33,7 +33,7 @@ import {
   hasDomRequest,
   deleteDomRequest
 } from './request-tracking.js'
-import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js'
+import { createDeferredPromise, promiseRaceWithCleanup } from '../lib/timeout-utils.js'
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js'
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js'
 import { extractReadable as extractReadableContent } from './extractors/readable.js'

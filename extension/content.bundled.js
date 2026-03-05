@@ -485,15 +485,7 @@
     });
   }
 
-  // extension/content/timeout-utils.js
-  var TimeoutError = class extends Error {
-    fallback;
-    constructor(message, fallback) {
-      super(message);
-      this.fallback = fallback;
-      this.name = "TimeoutError";
-    }
-  };
+  // extension/lib/timeout-utils.js
   function createDeferredPromise() {
     let resolve;
     let reject;
@@ -503,18 +495,28 @@
     });
     return { promise, resolve, reject };
   }
+  var TimeoutError = class extends Error {
+    fallback;
+    constructor(message, fallback) {
+      super(message);
+      this.fallback = fallback;
+      this.name = "TimeoutError";
+    }
+  };
   async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback, cleanup) {
     try {
       return await Promise.race([
         promise,
-        new Promise((_, reject) => setTimeout(() => {
-          cleanup?.();
-          if (timeoutFallback !== void 0) {
-            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
-          } else {
-            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-          }
-        }, timeoutMs))
+        new Promise((_, reject) => {
+          setTimeout(() => {
+            cleanup?.();
+            if (timeoutFallback !== void 0) {
+              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+            } else {
+              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+            }
+          }, timeoutMs);
+        })
       ]);
     } catch (err) {
       if (err instanceof TimeoutError && err.fallback !== void 0) {
@@ -936,7 +938,7 @@
     });
   }
   async function handleStateCommand(params) {
-    const { action, name, state, include_url } = params || {};
+    const { action, name, state: state2, include_url } = params || {};
     const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
@@ -953,7 +955,7 @@
       messageId,
       action,
       name,
-      state,
+      state: state2,
       include_url
     });
     return promiseRaceWithCleanup(deferred.promise, 5e3, { error: "State command timeout" }, () => window.removeEventListener("message", responseHandler));
@@ -1183,13 +1185,13 @@
       return text;
     return text.slice(0, maxLen - 1) + "\u2026";
   }
-  function showActionToast(text, detail, state = "trying", durationMs = 3e3) {
+  function showActionToast(text, detail, state2 = "trying", durationMs = 3e3) {
     const existing = document.getElementById("gasoline-action-toast");
     if (existing)
       existing.remove();
     injectToastAnimationStyles();
-    const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
-    const isAudioPrompt = state === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
+    const theme = TOAST_THEMES[state2] ?? TOAST_THEMES.trying;
+    const isAudioPrompt = state2 === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
     const arrowChar = "\u2191";
     const toast = document.createElement("div");
     toast.id = "gasoline-action-toast";
@@ -1402,9 +1404,9 @@
       clearSubtitle();
     }, SUBTITLE_AUTO_TIMEOUT_MS);
   }
-  function toggleRecordingWatermark(visible2) {
+  function toggleRecordingWatermark(visible) {
     const ELEMENT_ID = "gasoline-recording-watermark";
-    if (!visible2) {
+    if (!visible) {
       const existing = document.getElementById(ELEMENT_ID);
       if (existing) {
         existing.style.opacity = "0";
@@ -1856,11 +1858,11 @@
       }
     });
   }
-  function updateFavicon(state) {
-    if (!state.isTracked) {
+  function updateFavicon(state2) {
+    if (!state2.isTracked) {
       restoreOriginalFavicon();
       stopFlicker();
-    } else if (state.aiPilotEnabled) {
+    } else if (state2.aiPilotEnabled) {
       replaceFaviconWithFlame(true);
       startFlicker();
     } else {
@@ -1934,7 +1936,7 @@
     }
   }
 
-  // extension/content/ui/terminal-widget.js
+  // extension/content/ui/terminal-widget-types.js
   var WIDGET_ID2 = "gasoline-terminal-widget";
   var IFRAME_ID = "gasoline-terminal-iframe";
   var HEADER_ID = "gasoline-terminal-header";
@@ -1953,184 +1955,40 @@
   var TERMINAL_TYPING_IDLE_MS = 1500;
   var TERMINAL_GUARD_POLL_MS = 200;
   var TERMINAL_GUARD_TOAST_INTERVAL_MS = 3e3;
-  var widgetEl = null;
-  var iframeEl = null;
-  var resizeHandleEl = null;
-  var sessionState = null;
-  var visible = false;
-  var minimized = false;
-  var savedHeight = "";
-  var serverUrl = DEFAULT_SERVER_URL;
-  var terminalFocused = false;
-  var lastTypingAt = 0;
-  var queuedWrites = [];
-  var queuedWriteFlushTimer = null;
-  var queuedSubmitTimer = null;
-  var queuedWriteInFlight = false;
-  var lastGuardToastAt = 0;
-  var terminalConnected = false;
+  var state = {
+    widgetEl: null,
+    iframeEl: null,
+    resizeHandleEl: null,
+    sessionState: null,
+    visible: false,
+    minimized: false,
+    savedHeight: "",
+    serverUrl: DEFAULT_SERVER_URL,
+    terminalFocused: false,
+    lastTypingAt: 0,
+    queuedWrites: [],
+    queuedWriteFlushTimer: null,
+    queuedSubmitTimer: null,
+    queuedWriteInFlight: false,
+    lastGuardToastAt: 0,
+    terminalConnected: false
+  };
   function getTerminalServerUrl(baseUrl) {
     const url = new URL(baseUrl);
     url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
     return url.origin;
   }
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve(DEFAULT_SERVER_URL);
-            return;
-          }
-          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
-          serverUrl = url;
-          resolve(url);
-        });
-      } catch {
-        resolve(DEFAULT_SERVER_URL);
-      }
-    });
-  }
-  function getTerminalConfig() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({});
-            return;
-          }
-          const config = result[StorageKey.TERMINAL_CONFIG] || {};
-          resolve(config);
-        });
-      } catch {
-        resolve({});
-      }
-    });
-  }
-  function getTerminalAICommand() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("claude");
-            return;
-          }
-          const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || "claude";
-          resolve(cmd);
-        });
-      } catch {
-        resolve("claude");
-      }
-    });
-  }
-  function getTerminalDevRoot() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("");
-            return;
-          }
-          resolve(result[StorageKey.TERMINAL_DEV_ROOT] || "");
-        });
-      } catch {
-        resolve("");
-      }
-    });
-  }
-  function persistSession(state) {
-    try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: state }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function clearPersistedSession() {
-    try {
-      chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function persistUIState(uiState) {
-    try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function loadPersistedSession() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: "closed" });
-            return;
-          }
-          const session = result[StorageKey.TERMINAL_SESSION];
-          const uiState = result[StorageKey.TERMINAL_UI_STATE] || "closed";
-          resolve({ session: session || null, uiState });
-        });
-      } catch {
-        resolve({ session: null, uiState: "closed" });
-      }
-    });
-  }
-  async function validateSession(token) {
-    try {
-      const base = await getServerUrl();
-      const termUrl = getTerminalServerUrl(base);
-      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
-      if (!resp.ok)
-        return false;
-      const data = await resp.json();
-      return data.valid === true;
-    } catch {
-      return false;
-    }
-  }
-  async function startSession(config) {
-    const base = await getServerUrl();
-    const termUrl = getTerminalServerUrl(base);
-    const aiCommand = await getTerminalAICommand();
-    const devRoot = await getTerminalDevRoot();
-    try {
-      const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
-      const resp = await fetch(`${termUrl}/terminal/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cmd: config.cmd || "",
-          args: config.args || [],
-          dir: config.dir || devRoot || "",
-          init_command: initCommand
-        })
-      });
-      if (!resp.ok) {
-        const body = await resp.json();
-        if (resp.status === 503 && body.error === "sandbox_restricted") {
-          showSandboxError(body.message ?? "", body.instruction ?? "", body.command ?? "");
-          return null;
-        }
-        if (resp.status === 409 && body.token) {
-          const state2 = { sessionId: body.session_id ?? "default", token: body.token };
-          persistSession(state2);
-          return state2;
-        }
-        console.warn("[Gasoline] Terminal session rejected (HTTP " + resp.status + "): " + (body.error ?? "unknown") + ". Check the daemon logs for details.");
-        return null;
-      }
-      const data = await resp.json();
-      const state = { sessionId: data.session_id, token: data.token };
-      persistSession(state);
-      return state;
-    } catch (err) {
-      console.warn("[Gasoline] Terminal session start failed: " + (err instanceof Error ? err.message : String(err)) + ". Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser");
-      return null;
-    }
+
+  // extension/content/ui/terminal-widget-ui.js
+  var _hideTerminalCb = null;
+  var _exitTerminalSessionCb = null;
+  var _resetWriteGuardStateCb = null;
+  var _scheduleQueuedWriteFlushCb = null;
+  function registerUICallbacks(cbs) {
+    _hideTerminalCb = cbs.hideTerminal;
+    _exitTerminalSessionCb = cbs.exitTerminalSession;
+    _resetWriteGuardStateCb = cbs.resetWriteGuardState;
+    _scheduleQueuedWriteFlushCb = cbs.scheduleQueuedWriteFlush;
   }
   function showSandboxError(message, instruction, command) {
     const existing = document.getElementById(WIDGET_ID2);
@@ -2231,22 +2089,22 @@
     });
     closeBtn.addEventListener("click", () => {
       overlay.remove();
-      widgetEl = null;
-      visible = false;
+      state.widgetEl = null;
+      state.visible = false;
     });
     overlay.appendChild(title);
     overlay.appendChild(msg);
     overlay.appendChild(inst);
     overlay.appendChild(cmdBox);
     overlay.appendChild(closeBtn);
-    widgetEl = overlay;
-    visible = true;
+    state.widgetEl = overlay;
+    state.visible = true;
     const target = document.body || document.documentElement;
     if (target)
       target.appendChild(overlay);
   }
   function createWidget(token) {
-    terminalConnected = false;
+    state.terminalConnected = false;
     const widget = document.createElement("div");
     widget.id = WIDGET_ID2;
     Object.assign(widget.style, {
@@ -2280,7 +2138,7 @@
       zIndex: "10"
     });
     setupResize(resizeHandle, widget);
-    resizeHandleEl = resizeHandle;
+    state.resizeHandleEl = resizeHandle;
     widget.appendChild(resizeHandle);
     const header = document.createElement("div");
     header.id = HEADER_ID;
@@ -2382,7 +2240,8 @@
     disconnectTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      void exitTerminalSession();
+      if (_exitTerminalSessionCb)
+        void _exitTerminalSessionCb();
     });
     const spacer = document.createElement("div");
     spacer.style.flex = "1";
@@ -2448,10 +2307,11 @@
     closeTerminalButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      hideTerminal();
+      if (_hideTerminalCb)
+        _hideTerminalCb();
     });
     header.addEventListener("click", () => {
-      if (!minimized)
+      if (!state.minimized)
         return;
       toggleMinimize(widget, minimizeTerminalButton, header);
     });
@@ -2464,7 +2324,7 @@
     header.appendChild(closeTerminalButton);
     const iframe = document.createElement("iframe");
     iframe.id = IFRAME_ID;
-    iframe.src = `${getTerminalServerUrl(serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
+    iframe.src = `${getTerminalServerUrl(state.serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
     Object.assign(iframe.style, {
       flex: "1",
       width: "100%",
@@ -2474,15 +2334,15 @@
     iframe.setAttribute("allow", "clipboard-write");
     widget.appendChild(header);
     widget.appendChild(iframe);
-    iframeEl = iframe;
+    state.iframeEl = iframe;
     window.addEventListener("message", handleIframeMessage);
     return widget;
   }
-  function updateStatusDot(state) {
-    const dot = widgetEl?.querySelector(".gasoline-terminal-status-dot");
+  function updateStatusDot(dotState) {
+    const dot = state.widgetEl?.querySelector(".gasoline-terminal-status-dot");
     if (!dot)
       return;
-    switch (state) {
+    switch (dotState) {
       case "connected":
         dot.style.background = "#9ece6a";
         break;
@@ -2498,7 +2358,7 @@
     if (!event.data || event.data.source !== "gasoline-terminal")
       return;
     try {
-      const termOrigin = getTerminalServerUrl(serverUrl);
+      const termOrigin = getTerminalServerUrl(state.serverUrl);
       if (event.origin !== termOrigin)
         return;
     } catch {
@@ -2507,35 +2367,38 @@
     switch (event.data.event) {
       case "connected":
         updateStatusDot("connected");
-        terminalConnected = true;
-        if (queuedWrites.length > 0 && !queuedWriteInFlight) {
-          scheduleQueuedWriteFlush(0);
+        state.terminalConnected = true;
+        if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
+          if (_scheduleQueuedWriteFlushCb)
+            _scheduleQueuedWriteFlushCb(0);
         }
         break;
       case "disconnected":
         updateStatusDot("disconnected");
-        terminalConnected = false;
-        terminalFocused = false;
+        state.terminalConnected = false;
+        state.terminalFocused = false;
         break;
       case "exited":
         updateStatusDot("exited");
-        terminalConnected = false;
-        terminalFocused = false;
-        resetWriteGuardState();
+        state.terminalConnected = false;
+        state.terminalFocused = false;
+        if (_resetWriteGuardStateCb)
+          _resetWriteGuardStateCb();
         break;
       case "focus":
-        terminalFocused = Boolean(event.data.data?.focused);
-        if (terminalFocused) {
-          lastTypingAt = Date.now();
-        } else if (queuedWrites.length > 0 && !queuedWriteInFlight) {
-          scheduleQueuedWriteFlush(0);
+        state.terminalFocused = Boolean(event.data.data?.focused);
+        if (state.terminalFocused) {
+          state.lastTypingAt = Date.now();
+        } else if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
+          if (_scheduleQueuedWriteFlushCb)
+            _scheduleQueuedWriteFlushCb(0);
         }
         break;
       case "typing": {
         const rawAt = event.data.data?.at;
         const parsedAt = typeof rawAt === "number" && Number.isFinite(rawAt) ? rawAt : Date.now();
-        terminalFocused = true;
-        lastTypingAt = parsedAt;
+        state.terminalFocused = true;
+        state.lastTypingAt = parsedAt;
         break;
       }
     }
@@ -2553,8 +2416,8 @@
       startHeight = widget.offsetHeight;
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
-      if (iframeEl)
-        iframeEl.style.pointerEvents = "none";
+      if (state.iframeEl)
+        state.iframeEl.style.pointerEvents = "none";
     }
     function onMouseMove(e) {
       const newWidth = startWidth - (e.clientX - startX);
@@ -2565,17 +2428,17 @@
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
-      if (iframeEl)
-        iframeEl.style.pointerEvents = "auto";
+      if (state.iframeEl)
+        state.iframeEl.style.pointerEvents = "auto";
       notifyIframe("resize");
     }
     handle.addEventListener("mousedown", onMouseDown);
   }
   function redrawTerminal(widget, header, minimizeButton) {
-    if (minimized) {
+    if (state.minimized) {
       toggleMinimize(widget, minimizeButton, header);
     }
-    savedHeight = DEFAULT_WIDGET_HEIGHT;
+    state.savedHeight = DEFAULT_WIDGET_HEIGHT;
     widget.style.bottom = "0";
     widget.style.right = "0";
     widget.style.width = DEFAULT_WIDGET_WIDTH;
@@ -2587,18 +2450,18 @@
     widget.style.opacity = "1";
     widget.style.transform = "translateY(0) scale(1)";
     widget.style.pointerEvents = "auto";
-    if (iframeEl) {
-      iframeEl.style.display = "block";
+    if (state.iframeEl) {
+      state.iframeEl.style.display = "block";
       updateStatusDot("disconnected");
-      iframeEl.src = iframeEl.src;
+      state.iframeEl.src = state.iframeEl.src;
     }
-    if (resizeHandleEl)
-      resizeHandleEl.style.display = "block";
+    if (state.resizeHandleEl)
+      state.resizeHandleEl.style.display = "block";
     minimizeButton.textContent = "\u2581";
     minimizeButton.title = "Minimize terminal";
     header.style.cursor = "default";
     header.style.borderBottom = "1px solid #292e42";
-    visible = true;
+    state.visible = true;
     requestAnimationFrame(() => {
       notifyIframe("resize");
       notifyIframe("focus");
@@ -2606,14 +2469,14 @@
     persistUIState("open");
   }
   function toggleMinimize(widget, btn, header) {
-    if (minimized) {
-      minimized = false;
-      widget.style.height = savedHeight || DEFAULT_WIDGET_HEIGHT;
+    if (state.minimized) {
+      state.minimized = false;
+      widget.style.height = state.savedHeight || DEFAULT_WIDGET_HEIGHT;
       widget.style.minHeight = MIN_WIDGET_HEIGHT;
-      if (iframeEl)
-        iframeEl.style.display = "block";
-      if (resizeHandleEl)
-        resizeHandleEl.style.display = "block";
+      if (state.iframeEl)
+        state.iframeEl.style.display = "block";
+      if (state.resizeHandleEl)
+        state.resizeHandleEl.style.display = "block";
       btn.textContent = "\u2581";
       btn.title = "Minimize terminal";
       header.style.cursor = "default";
@@ -2621,14 +2484,14 @@
       notifyIframe("resize");
       persistUIState("open");
     } else {
-      minimized = true;
-      savedHeight = widget.style.height || DEFAULT_WIDGET_HEIGHT;
+      state.minimized = true;
+      state.savedHeight = widget.style.height || DEFAULT_WIDGET_HEIGHT;
       widget.style.height = MINIMIZED_WIDGET_HEIGHT;
       widget.style.minHeight = MINIMIZED_WIDGET_HEIGHT;
-      if (iframeEl)
-        iframeEl.style.display = "none";
-      if (resizeHandleEl)
-        resizeHandleEl.style.display = "none";
+      if (state.iframeEl)
+        state.iframeEl.style.display = "none";
+      if (state.resizeHandleEl)
+        state.resizeHandleEl.style.display = "none";
       btn.textContent = "\u25A1";
       btn.title = "Restore terminal";
       header.style.cursor = "pointer";
@@ -2637,63 +2500,225 @@
     }
   }
   function notifyIframe(command, data) {
-    if (!iframeEl?.contentWindow)
+    if (!state.iframeEl?.contentWindow)
       return;
     let origin = "*";
     try {
-      origin = getTerminalServerUrl(serverUrl);
+      origin = getTerminalServerUrl(state.serverUrl);
     } catch {
     }
-    iframeEl.contentWindow.postMessage({
+    state.iframeEl.contentWindow.postMessage({
       target: "gasoline-terminal",
       command,
       ...data
     }, origin);
   }
-  function resetWriteGuardState() {
-    queuedWrites = [];
-    terminalFocused = false;
-    lastTypingAt = 0;
-    queuedWriteInFlight = false;
-    lastGuardToastAt = 0;
-    if (queuedWriteFlushTimer !== null) {
-      clearTimeout(queuedWriteFlushTimer);
-      queuedWriteFlushTimer = null;
+
+  // extension/content/ui/terminal-widget-session.js
+  function getServerUrl() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve(DEFAULT_SERVER_URL);
+            return;
+          }
+          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+          state.serverUrl = url;
+          resolve(url);
+        });
+      } catch {
+        resolve(DEFAULT_SERVER_URL);
+      }
+    });
+  }
+  function getTerminalConfig() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve({});
+            return;
+          }
+          const config = result[StorageKey.TERMINAL_CONFIG] || {};
+          resolve(config);
+        });
+      } catch {
+        resolve({});
+      }
+    });
+  }
+  function getTerminalAICommand() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve("claude");
+            return;
+          }
+          const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || "claude";
+          resolve(cmd);
+        });
+      } catch {
+        resolve("claude");
+      }
+    });
+  }
+  function getTerminalDevRoot() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve("");
+            return;
+          }
+          resolve(result[StorageKey.TERMINAL_DEV_ROOT] || "");
+        });
+      } catch {
+        resolve("");
+      }
+    });
+  }
+  function persistSession(ss) {
+    try {
+      chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch {
     }
-    if (queuedSubmitTimer !== null) {
-      clearTimeout(queuedSubmitTimer);
-      queuedSubmitTimer = null;
+  }
+  function clearPersistedSession() {
+    try {
+      chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
+        void chrome.runtime.lastError;
+      });
+    } catch {
+    }
+  }
+  function persistUIState(uiState) {
+    try {
+      chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch {
+    }
+  }
+  function loadPersistedSession() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve({ session: null, uiState: "closed" });
+            return;
+          }
+          const session = result[StorageKey.TERMINAL_SESSION];
+          const uiState = result[StorageKey.TERMINAL_UI_STATE] || "closed";
+          resolve({ session: session || null, uiState });
+        });
+      } catch {
+        resolve({ session: null, uiState: "closed" });
+      }
+    });
+  }
+  async function validateSession(token) {
+    try {
+      const base = await getServerUrl();
+      const termUrl = getTerminalServerUrl(base);
+      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
+      if (!resp.ok)
+        return false;
+      const data = await resp.json();
+      return data.valid === true;
+    } catch {
+      return false;
+    }
+  }
+  async function startSession(config) {
+    const base = await getServerUrl();
+    const termUrl = getTerminalServerUrl(base);
+    const aiCommand = await getTerminalAICommand();
+    const devRoot = await getTerminalDevRoot();
+    try {
+      const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
+      const resp = await fetch(`${termUrl}/terminal/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cmd: config.cmd || "",
+          args: config.args || [],
+          dir: config.dir || devRoot || "",
+          init_command: initCommand
+        })
+      });
+      if (!resp.ok) {
+        const body = await resp.json();
+        if (resp.status === 503 && body.error === "sandbox_restricted") {
+          showSandboxError(body.message ?? "", body.instruction ?? "", body.command ?? "");
+          return null;
+        }
+        if (resp.status === 409 && body.token) {
+          const ss2 = { sessionId: body.session_id ?? "default", token: body.token };
+          persistSession(ss2);
+          return ss2;
+        }
+        console.warn("[Gasoline] Terminal session rejected (HTTP " + resp.status + "): " + (body.error ?? "unknown") + ". Check the daemon logs for details.");
+        return null;
+      }
+      const data = await resp.json();
+      const ss = { sessionId: data.session_id, token: data.token };
+      persistSession(ss);
+      return ss;
+    } catch (err) {
+      console.warn("[Gasoline] Terminal session start failed: " + (err instanceof Error ? err.message : String(err)) + ". Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser");
+      return null;
+    }
+  }
+
+  // extension/content/ui/terminal-widget.js
+  function resetWriteGuardState() {
+    state.queuedWrites = [];
+    state.terminalFocused = false;
+    state.lastTypingAt = 0;
+    state.queuedWriteInFlight = false;
+    state.lastGuardToastAt = 0;
+    if (state.queuedWriteFlushTimer !== null) {
+      clearTimeout(state.queuedWriteFlushTimer);
+      state.queuedWriteFlushTimer = null;
+    }
+    if (state.queuedSubmitTimer !== null) {
+      clearTimeout(state.queuedSubmitTimer);
+      state.queuedSubmitTimer = null;
     }
   }
   function shouldDeferQueuedWrite(nowMs = Date.now()) {
-    if (!terminalFocused)
+    if (!state.terminalFocused)
       return false;
-    return nowMs - lastTypingAt < TERMINAL_TYPING_IDLE_MS;
+    return nowMs - state.lastTypingAt < TERMINAL_TYPING_IDLE_MS;
   }
   function maybeShowQueuedWriteToast(nowMs = Date.now()) {
-    if (nowMs - lastGuardToastAt < TERMINAL_GUARD_TOAST_INTERVAL_MS)
+    if (nowMs - state.lastGuardToastAt < TERMINAL_GUARD_TOAST_INTERVAL_MS)
       return;
-    lastGuardToastAt = nowMs;
+    state.lastGuardToastAt = nowMs;
     showActionToast("waiting for user to stop typing", "Queued terminal action", "warning", 1800);
   }
   function scheduleQueuedWriteFlush(delayMs = 0) {
-    if (queuedWriteFlushTimer !== null)
-      clearTimeout(queuedWriteFlushTimer);
-    queuedWriteFlushTimer = setTimeout(() => {
-      queuedWriteFlushTimer = null;
+    if (state.queuedWriteFlushTimer !== null)
+      clearTimeout(state.queuedWriteFlushTimer);
+    state.queuedWriteFlushTimer = setTimeout(() => {
+      state.queuedWriteFlushTimer = null;
       flushQueuedWrites();
     }, delayMs);
   }
   function scheduleQueuedSubmit(delayMs) {
-    if (queuedSubmitTimer !== null)
-      clearTimeout(queuedSubmitTimer);
-    queuedSubmitTimer = setTimeout(() => {
-      queuedSubmitTimer = null;
-      if (!visible || !iframeEl) {
+    if (state.queuedSubmitTimer !== null)
+      clearTimeout(state.queuedSubmitTimer);
+    state.queuedSubmitTimer = setTimeout(() => {
+      state.queuedSubmitTimer = null;
+      if (!state.visible || !state.iframeEl) {
         resetWriteGuardState();
         return;
       }
-      if (!terminalConnected) {
+      if (!state.terminalConnected) {
         scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
         return;
       }
@@ -2704,25 +2729,25 @@
       }
       notifyIframe("write", { text: "\r" });
       notifyIframe("focus");
-      queuedWriteInFlight = false;
-      if (queuedWrites.length > 0) {
+      state.queuedWriteInFlight = false;
+      if (state.queuedWrites.length > 0) {
         scheduleQueuedWriteFlush(0);
       }
     }, delayMs);
   }
   function flushQueuedWrites() {
-    if (!visible || !iframeEl) {
+    if (!state.visible || !state.iframeEl) {
       resetWriteGuardState();
       return;
     }
-    if (!terminalConnected) {
+    if (!state.terminalConnected) {
       scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
       return;
     }
-    if (queuedWriteInFlight)
+    if (state.queuedWriteInFlight)
       return;
-    if (queuedWrites.length === 0) {
-      lastGuardToastAt = 0;
+    if (state.queuedWrites.length === 0) {
+      state.lastGuardToastAt = 0;
       return;
     }
     if (shouldDeferQueuedWrite()) {
@@ -2730,33 +2755,33 @@
       scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
       return;
     }
-    const nextWrite = queuedWrites.shift();
+    const nextWrite = state.queuedWrites.shift();
     if (!nextWrite)
       return;
-    lastGuardToastAt = 0;
-    queuedWriteInFlight = true;
+    state.lastGuardToastAt = 0;
+    state.queuedWriteInFlight = true;
     notifyIframe("redraw");
     notifyIframe("write", { text: nextWrite });
     scheduleQueuedSubmit(TERMINAL_WRITE_SUBMIT_DELAY_MS);
   }
   function hideTerminal() {
-    if (!widgetEl)
+    if (!state.widgetEl)
       return;
-    visible = false;
-    widgetEl.style.opacity = "0";
-    widgetEl.style.transform = "translateY(20px) scale(0.98)";
-    widgetEl.style.pointerEvents = "none";
+    state.visible = false;
+    state.widgetEl.style.opacity = "0";
+    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
+    state.widgetEl.style.pointerEvents = "none";
     resetWriteGuardState();
     persistUIState("closed");
   }
   async function exitTerminalSession() {
-    if (sessionState) {
+    if (state.sessionState) {
       try {
-        const termUrl = getTerminalServerUrl(serverUrl);
+        const termUrl = getTerminalServerUrl(state.serverUrl);
         await fetch(`${termUrl}/terminal/stop`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: sessionState.sessionId }),
+          body: JSON.stringify({ id: state.sessionState.sessionId }),
           signal: AbortSignal.timeout(3e3)
         });
       } catch {
@@ -2766,24 +2791,24 @@
     unmountTerminal();
   }
   function showTerminal() {
-    if (!widgetEl)
+    if (!state.widgetEl)
       return;
-    visible = true;
-    widgetEl.style.opacity = "1";
-    widgetEl.style.transform = "translateY(0) scale(1)";
-    widgetEl.style.pointerEvents = "auto";
+    state.visible = true;
+    state.widgetEl.style.opacity = "1";
+    state.widgetEl.style.transform = "translateY(0) scale(1)";
+    state.widgetEl.style.pointerEvents = "auto";
     notifyIframe("focus");
-    persistUIState(minimized ? "minimized" : "open");
+    persistUIState(state.minimized ? "minimized" : "open");
   }
   function isTerminalVisible() {
-    return visible;
+    return state.visible;
   }
   async function toggleTerminal() {
-    if (visible && widgetEl) {
+    if (state.visible && state.widgetEl) {
       hideTerminal();
       return;
     }
-    if (widgetEl && sessionState) {
+    if (state.widgetEl && state.sessionState) {
       showTerminal();
       return;
     }
@@ -2792,18 +2817,18 @@
     if (persisted.session) {
       const alive = await validateSession(persisted.session.token);
       if (alive) {
-        sessionState = persisted.session;
+        state.sessionState = persisted.session;
         mountWidget(persisted.session.token, persisted.uiState === "minimized");
         return;
       }
       clearPersistedSession();
     }
     const config = await getTerminalConfig();
-    const state = await startSession(config);
-    if (!state)
+    const ss = await startSession(config);
+    if (!ss)
       return;
-    sessionState = state;
-    mountWidget(state.token, false);
+    state.sessionState = ss;
+    mountWidget(ss.token, false);
   }
   async function restoreTerminalIfNeeded() {
     const persisted = await loadPersistedSession();
@@ -2814,35 +2839,44 @@
     if (!alive) {
       clearPersistedSession();
       const config = await getTerminalConfig();
-      const state = await startSession(config);
-      if (!state)
+      const ss = await startSession(config);
+      if (!ss)
         return;
-      sessionState = state;
-      mountWidget(state.token, persisted.uiState === "minimized");
+      state.sessionState = ss;
+      mountWidget(ss.token, persisted.uiState === "minimized");
       return;
     }
-    sessionState = persisted.session;
+    state.sessionState = persisted.session;
     mountWidget(persisted.session.token, persisted.uiState === "minimized");
   }
+  function writeToTerminal(text) {
+    if (!state.visible || !state.iframeEl)
+      return;
+    const trimmed = text.replace(/[\r\n\s]+$/, "");
+    if (!trimmed)
+      return;
+    state.queuedWrites.push(trimmed);
+    scheduleQueuedWriteFlush(0);
+  }
   function mountWidget(token, startMinimized) {
-    if (widgetEl) {
-      widgetEl.remove();
-      widgetEl = null;
+    if (state.widgetEl) {
+      state.widgetEl.remove();
+      state.widgetEl = null;
     }
-    widgetEl = createWidget(token);
+    state.widgetEl = createWidget(token);
     const target = document.body || document.documentElement;
     if (!target)
       return;
-    target.appendChild(widgetEl);
-    widgetEl.style.opacity = "0";
-    widgetEl.style.transform = "translateY(20px) scale(0.98)";
+    target.appendChild(state.widgetEl);
+    state.widgetEl.style.opacity = "0";
+    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
     requestAnimationFrame(() => {
       showTerminal();
       if (startMinimized) {
-        const header = widgetEl?.querySelector("#" + HEADER_ID);
+        const header = state.widgetEl?.querySelector("#" + HEADER_ID);
         const minimizeTerminalButton = header?.querySelector("#" + MINIMIZE_TERMINAL_BUTTON_ID);
-        if (widgetEl && header && minimizeTerminalButton) {
-          toggleMinimize(widgetEl, minimizeTerminalButton, header);
+        if (state.widgetEl && header && minimizeTerminalButton) {
+          toggleMinimize(state.widgetEl, minimizeTerminalButton, header);
         }
       }
     });
@@ -2850,27 +2884,24 @@
   function unmountTerminal() {
     window.removeEventListener("message", handleIframeMessage);
     resetWriteGuardState();
-    terminalConnected = false;
-    if (widgetEl) {
-      widgetEl.remove();
-      widgetEl = null;
+    state.terminalConnected = false;
+    if (state.widgetEl) {
+      state.widgetEl.remove();
+      state.widgetEl = null;
     }
-    iframeEl = null;
-    resizeHandleEl = null;
-    sessionState = null;
-    visible = false;
-    minimized = false;
-    savedHeight = "";
+    state.iframeEl = null;
+    state.resizeHandleEl = null;
+    state.sessionState = null;
+    state.visible = false;
+    state.minimized = false;
+    state.savedHeight = "";
   }
-  function writeToTerminal(text) {
-    if (!visible || !iframeEl)
-      return;
-    const trimmed = text.replace(/[\r\n\s]+$/, "");
-    if (!trimmed)
-      return;
-    queuedWrites.push(trimmed);
-    scheduleQueuedWriteFlush(0);
-  }
+  registerUICallbacks({
+    hideTerminal,
+    exitTerminalSession,
+    resetWriteGuardState,
+    scheduleQueuedWriteFlush
+  });
 
   // extension/content/ui/tracked-hover-launcher.js
   var ROOT_ID = "gasoline-tracked-hover-launcher";

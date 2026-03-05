@@ -105,12 +105,10 @@ func validateGenerateParams(req JSONRPCRequest, format string, args json.RawMess
 		validList = append(validList, k)
 	}
 	sort.Strings(validList)
-	resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrInvalidParam,
+	resp := fail(req, ErrInvalidParam,
 		fmt.Sprintf("Unknown parameter(s) for format '%s': %s", format, strings.Join(unknown, ", ")),
 		"Remove unknown parameters and call again",
 		withParam(unknown[0]),
-		withHint(fmt.Sprintf("Valid params for '%s': %s", format, strings.Join(validList, ", "))),
-	)}
+		withHint(fmt.Sprintf("Valid params for '%s': %s", format, strings.Join(validList, ", "))))
 	return &resp
 }

@@ -8,6 +8,7 @@ import assert from 'node:assert'
 import { StorageKey } from '../../extension/lib/constants.js'
 
 let importCounter = 0
+let currentModule = null
 let localStorageData = {}
 let sessionStorageData = {}
 let fetchCalls = []
@@ -232,6 +233,9 @@ function findButton(root, predicate) {
 
 describe('terminal widget header controls', () => {
   beforeEach(() => {
+    // Reset shared state from previous test (sub-modules are cached by Node ESM)
+    if (currentModule?._resetForTesting) currentModule._resetForTesting()
+    currentModule = null
     mock.reset()
     localStorageData = { [StorageKey.SERVER_URL]: 'http://localhost:7890' }
     sessionStorageData = {}
@@ -252,6 +256,7 @@ describe('terminal widget header controls', () => {
     }
 
     const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
+    currentModule = module
     await module.restoreTerminalIfNeeded()
 
     const header = getElementById('gasoline-terminal-header')
@@ -293,6 +298,7 @@ describe('terminal widget header controls', () => {
     }
 
     const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
+    currentModule = module
 
     await module.toggleTerminal()
     assert.strictEqual(startCount, 1, 'first toggle should start one CLI session')
@@ -331,6 +337,7 @@ describe('terminal widget header controls', () => {
     }
 
     const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
+    currentModule = module
     await module.toggleTerminal()
 
     const widget = getElementById('gasoline-terminal-widget')
@@ -378,6 +385,7 @@ describe('terminal widget header controls', () => {
     }
 
     const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
+    currentModule = module
     await module.toggleTerminal()
 
     const iframe = getElementById('gasoline-terminal-iframe')
@@ -437,6 +445,7 @@ describe('terminal widget header controls', () => {
     }
 
     const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
+    currentModule = module
     await module.toggleTerminal()
 
     const iframe = getElementById('gasoline-terminal-iframe')

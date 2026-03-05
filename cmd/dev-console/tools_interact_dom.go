@@ -74,7 +74,7 @@ func toFloat64(v any) (float64, bool) {
 func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	params, err := parseDOMPrimitiveParams(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	// If x/y coordinates provided on a click action, escalate to CDP for hardware-level click

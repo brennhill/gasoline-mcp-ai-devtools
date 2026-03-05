@@ -59,16 +59,16 @@ TIER3_TESTS=(
     "cat-17-generation-logic" # 6 tests (new)
     "cat-17-healing-logic"   # 7 tests (new)
     "cat-17-performance"     # 6 tests (new)
-    "cat-17-reproduction"    # 6 tests
+    "cat-29-reproduction"    # 6 tests
     "cat-18-recording-logic" # 6 tests (new)
-    "cat-18-recording-automation" # 7 tests (new)
+    "cat-30-recording-automation" # 7 tests (new)
     "cat-18-playback-logic"  # 7 tests (new)
     "cat-18-recording"       # 7 tests
     "cat-19-extended"        # 10 tests (new)
-    "cat-19-link-crawling"   # 6 tests (new)
+    "cat-31-link-crawling"   # 6 tests (new)
     "cat-19-link-health"     # 19 tests
     "cat-20-filtering-logic" # 5 tests (new)
-    "cat-20-auto-detect"     # 8 tests (new)
+    "cat-32-auto-detect"     # 8 tests (new)
     "cat-20-noise-persistence" # 10 tests
     "cat-21-stress"          # 5 tests (new)
     "cat-22-advanced"        # 5 tests (new)

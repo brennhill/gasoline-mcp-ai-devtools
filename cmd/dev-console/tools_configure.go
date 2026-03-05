@@ -32,7 +32,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	handler, ok := configureHandlers[what]
 	if !ok {
 		validActions := getValidConfigureActions()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions), describeCapabilitiesRecovery("configure"))}
+		resp := fail(req, ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions), describeCapabilitiesRecovery("configure"))
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
@@ -49,44 +49,3 @@ func isStoreAction(action string) bool {
 	}
 }
 
-func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureTelemetryImpl(req, args)
-}
-
-func (h *ToolHandler) toolConfigureSecurityMode(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureSecurityModeImpl(req, args)
-}
-
-// toolConfigureRestart handles restart requests that reach the daemon.
-// Sends self-SIGTERM so the bridge auto-respawns a fresh daemon.
-// This covers the case where the daemon is responsive but needs a clean restart.
-func (h *ToolHandler) toolConfigureRestart(req JSONRPCRequest) JSONRPCResponse {
-	return h.configureRestartImpl(req)
-}
-
-// toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
-// Supported buffer values: "all", "network", "websocket", "actions", "logs"
-func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureClearImpl(req, args)
-}
-
-
-// toolConfigureStreamingWrapper repackages streaming_action -> action for toolConfigureStreaming.
-func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureStreamingWrapperImpl(req, args)
-}
-
-func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureTestBoundaryStartImpl(req, args)
-}
-
-func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureTestBoundaryEndImpl(req, args)
-}
-
-// toolConfigureDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
-// Supports filtering by tool name and mode to reduce payload size.
-// When summary=true, returns only tool name -> { description, dispatch_param, modes }.
-func (h *ToolHandler) toolConfigureDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.configureDescribeCapabilitiesImpl(req, args)
-}

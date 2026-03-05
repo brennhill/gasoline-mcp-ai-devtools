@@ -24,19 +24,19 @@ func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.R
 		TimeoutMs   int     `json:"timeout_ms,omitempty"`
 		World       string  `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	storageExpr, ok := validStorageTypes[params.StorageType]
 	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))}
+		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
 	}
 	if params.Key == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'key' is missing for set_storage action", "Add the 'key' parameter and call again", withParam("key"))}
+		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for set_storage action", "Add the 'key' parameter and call again", withParam("key"))
 	}
 	if params.Value == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'value' is missing for set_storage action", "Add the 'value' parameter and call again", withParam("value"))}
+		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_storage action", "Add the 'value' parameter and call again", withParam("value"))
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.setItem(%s, %s); return { ok: true, action: "set_storage", storage_type: %s, key: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,
@@ -52,16 +52,16 @@ func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args jso
 		TimeoutMs   int    `json:"timeout_ms,omitempty"`
 		World       string `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	storageExpr, ok := validStorageTypes[params.StorageType]
 	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))}
+		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
 	}
 	if params.Key == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'key' is missing for delete_storage action", "Add the 'key' parameter and call again", withParam("key"))}
+		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for delete_storage action", "Add the 'key' parameter and call again", withParam("key"))
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.removeItem(%s); return { ok: true, action: "delete_storage", storage_type: %s, key: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,
@@ -76,13 +76,13 @@ func (h *interactActionHandler) handleClearStorage(req JSONRPCRequest, args json
 		TimeoutMs   int    `json:"timeout_ms,omitempty"`
 		World       string `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	storageExpr, ok := validStorageTypes[params.StorageType]
 	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))}
+		return fail(req, ErrInvalidParam, "Invalid 'storage_type' value: "+params.StorageType, "Use 'localStorage' or 'sessionStorage'", withParam("storage_type"))
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.clear(); return { ok: true, action: "clear_storage", storage_type: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,
@@ -100,14 +100,14 @@ func (h *interactActionHandler) handleSetCookie(req JSONRPCRequest, args json.Ra
 		TimeoutMs int     `json:"timeout_ms,omitempty"`
 		World     string  `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.Name == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing for set_cookie action", "Add the 'name' parameter and call again", withParam("name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for set_cookie action", "Add the 'name' parameter and call again", withParam("name"))
 	}
 	if params.Value == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'value' is missing for set_cookie action", "Add the 'value' parameter and call again", withParam("value"))}
+		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_cookie action", "Add the 'value' parameter and call again", withParam("value"))
 	}
 
 	cookie := params.Name + "=" + *params.Value
@@ -134,11 +134,11 @@ func (h *interactActionHandler) handleDeleteCookie(req JSONRPCRequest, args json
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
 		World     string `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.Name == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing for delete_cookie action", "Add the 'name' parameter and call again", withParam("name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for delete_cookie action", "Add the 'name' parameter and call again", withParam("name"))
 	}
 
 	cookie := params.Name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT"
@@ -184,7 +184,7 @@ func (h *interactActionHandler) queueExecuteScript(
 		timeoutMs = 5000
 	}
 	if !validWorldValues[world] {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+world, "Use 'auto' (default), 'main', or 'isolated'", withParam("world"))}
+		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+world, "Use 'auto' (default), 'main', or 'isolated'", withParam("world"))
 	}
 
 	correlationID := newCorrelationID(correlationPrefix)

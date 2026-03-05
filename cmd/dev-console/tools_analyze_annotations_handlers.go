@@ -91,30 +91,30 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, wai
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, "", urlFilter)
 
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+		return succeed(req, "Waiting for annotations", map[string]any{
 			"status":         "waiting_for_user",
 			"correlation_id": corrID,
 			"annotations":    []any{},
 			"count":          0,
 			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
-		})}
+		})
 	}
 
 	session := h.annotationStore.GetLatestSession()
 	if session == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+		return succeed(req, "No annotations", map[string]any{
 			"annotations":    []any{},
 			"count":          0,
 			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
-		})}
+		})
 	}
 	return h.formatAnnotationSession(req, session, urlFilter)
 }
 
 func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession, urlFilter string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildAnnotationSessionResult(session, urlFilter))}
+	return succeed(req, "Annotations retrieved", buildAnnotationSessionResult(session, urlFilter))
 }
 
 // #lizard forgives
@@ -132,7 +132,7 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, sessionName, urlFilter)
 
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+		return succeed(req, "Waiting for annotations", map[string]any{
 			"status":             "waiting_for_user",
 			"correlation_id":     corrID,
 			"annot_session_name": sessionName,
@@ -141,26 +141,26 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"total_count":        0,
 			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
-		})}
+		})
 	}
 
 	ns := h.annotationStore.GetNamedSession(sessionName)
 	if ns == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+		return succeed(req, "No annotations", map[string]any{
 			"annot_session_name": sessionName,
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
 			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
-		})}
+		})
 	}
 
 	return h.formatNamedAnnotationSession(req, ns, urlFilter)
 }
 
 func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession, urlFilter string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildNamedAnnotationSessionResult(ns, urlFilter))}
+	return succeed(req, "Annotations retrieved", buildNamedAnnotationSessionResult(ns, urlFilter))
 }
 
 func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) map[string]any {
@@ -284,20 +284,16 @@ func filterAnnotationPages(pages []*AnnotationSession, urlFilter string) []*Anno
 func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID string, fallbackURLFilter string) JSONRPCResponse {
 	correlationID = strings.TrimSpace(correlationID)
 	if correlationID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"Required parameter 'correlation_id' is missing for operation='flush'",
 			"Pass the correlation_id returned by analyze({what:'annotations',wait:true}).",
-			withParam("correlation_id"),
-		)}
+			withParam("correlation_id"))
 	}
 	if !strings.HasPrefix(correlationID, "ann_") {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Invalid annotation correlation_id: "+correlationID,
 			"Use an annotation correlation_id (prefix ann_) from analyze({what:'annotations',wait:true}).",
-			withParam("correlation_id"),
-		)}
+			withParam("correlation_id"))
 	}
 
 	// Remove waiter first so later session writes cannot re-complete the same flush target.
@@ -329,7 +325,7 @@ func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID str
 	data["final"] = true
 	data["correlation_id"] = correlationID
 	data["lifecycle_status"] = "complete"
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation flush completed", data)}
+	return succeed(req, "Annotation flush completed", data)
 }
 
 func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter string) json.RawMessage {
@@ -380,18 +376,18 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		CorrelationID string `json:"correlation_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.CorrelationID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))
 	}
 
 	detail, found := h.annotationStore.GetDetail(params.CorrelationID)
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Annotation detail not found or expired for correlation_id: "+params.CorrelationID, "Detail data expires after 10 minutes. Re-run draw mode to capture fresh data.")}
+		return fail(req, ErrNoData, "Annotation detail not found or expired for correlation_id: "+params.CorrelationID, "Detail data expires after 10 minutes. Re-run draw mode to capture fresh data.")
 	}
 
 	result := map[string]any{
@@ -447,5 +443,5 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		result["hints"] = detailHints
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation detail", result)}
+	return succeed(req, "Annotation detail", result)
 }

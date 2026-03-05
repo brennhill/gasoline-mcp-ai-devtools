@@ -36,10 +36,10 @@ func (h *ToolHandler) toolDoctor(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Doctor: "+overallStatus, map[string]any{
+	return succeed(req, "Doctor: "+overallStatus, map[string]any{
 		"status":                overallStatus,
 		"ready_for_interaction": readyForInteraction,
 		"checks":                checks,
 		"hint":                  h.DiagnosticHintString(),
-	})}
+	})
 }

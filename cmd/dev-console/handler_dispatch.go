@@ -74,7 +74,7 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	if staticResult, ok := mcpStaticResponses[req.Method]; ok {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(staticResult)}
+		resp := succeedRaw(req, json.RawMessage(staticResult))
 		return &resp
 	}
 
@@ -104,14 +104,14 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 
 	// Error impossible: MCPInitResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPResourcesListResult{Resources: mcpResources()}
 	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
@@ -146,14 +146,14 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
@@ -165,5 +165,5 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPToolsListResult{Tools: tools}
 	// Error impossible: MCPToolsListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }

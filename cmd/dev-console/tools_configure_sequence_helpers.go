@@ -6,20 +6,19 @@ import "encoding/json"
 
 // loadSequence loads a sequence from the session store and returns it.
 func (h *ToolHandler) loadSequence(req JSONRPCRequest, name string) (*Sequence, *JSONRPCResponse) {
-	if h.sessionStoreImpl == nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.requireSessionStore(req); blocked {
 		return nil, &resp
 	}
 
 	data, err := h.sessionStoreImpl.Load(sequenceNamespace, name)
 	if err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Sequence not found: "+name, "Use list_sequences to see available sequences")}
+		resp := fail(req, ErrNoData, "Sequence not found: "+name, "Use list_sequences to see available sequences")
 		return nil, &resp
 	}
 
 	var seq Sequence
 	if err := json.Unmarshal(data, &seq); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Corrupted sequence data: "+err.Error(), "Delete and re-save the sequence")}
+		resp := fail(req, ErrInvalidJSON, "Corrupted sequence data: "+err.Error(), "Delete and re-save the sequence")
 		return nil, &resp
 	}
 

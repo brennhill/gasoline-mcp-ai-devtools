@@ -22,23 +22,21 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.RecordingID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide a recording_id from a previous recording", withParam("recording_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide a recording_id from a previous recording", withParam("recording_id"))
 	}
 
 	// Execute playback
 	session, err := h.capture.ExecutePlayback(params.RecordingID)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to execute playback: %v", err),
-			"Ensure the recording_id is valid",
-		)}
+			"Ensure the recording_id is valid")
 	}
 
 	// Store session for later retrieval via observe(what:"playback_results")
@@ -74,13 +72,13 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+				if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.RecordingID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from playback", withParam("recording_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from playback", withParam("recording_id"))
 	}
 
 	// Look up stored playback session
@@ -89,11 +87,9 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 	h.playbackMu.RUnlock()
 
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrNoData,
+		return fail(req, ErrNoData,
 			fmt.Sprintf("No playback results for recording_id %s", params.RecordingID),
-			"Run configure(action:'playback', recording_id:'...') first",
-		)}
+			"Run configure(action:'playback', recording_id:'...') first")
 	}
 
 	// Build per-action results
@@ -127,5 +123,5 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 	}
 
 	summary := fmt.Sprintf("Playback results: %d/%d actions executed", session.ActionsExecuted, total)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }

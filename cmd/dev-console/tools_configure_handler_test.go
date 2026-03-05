@@ -404,7 +404,7 @@ func TestToolsConfigureClear_InvalidJSON(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.toolConfigureClear(req, json.RawMessage(`{bad}`))
+	resp := h.configureClearImpl(req, json.RawMessage(`{bad}`))
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("invalid JSON should return isError:true")

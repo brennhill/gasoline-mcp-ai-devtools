@@ -33,7 +33,7 @@ func queueAnalyzeInspectAction(h *ToolHandler, req JSONRPCRequest, correlationPr
 func toolComputedStyles(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseComputedStylesArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, err.Error(), "Add the 'selector' parameter with a CSS selector", withParam("selector"))}
+		return fail(req, ErrMissingParam, err.Error(), "Add the 'selector' parameter with a CSS selector", withParam("selector"))
 	}
 
 	return queueAnalyzeInspectAction(h, req, "computed_styles", "computed_styles", args, parsed.TabID, "Computed styles query queued")
@@ -46,7 +46,7 @@ func toolComputedStyles(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 func toolFormDiscovery(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseFormsArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	return queueAnalyzeInspectAction(h, req, "form_discovery", "form_discovery", args, parsed.TabID, "Form discovery queued")
@@ -55,7 +55,7 @@ func toolFormDiscovery(h *ToolHandler, req JSONRPCRequest, args json.RawMessage)
 func toolFormState(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseFormsArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	return queueAnalyzeInspectAction(h, req, "form_state", "form_state", args, parsed.TabID, "Form state extraction queued")
@@ -64,7 +64,7 @@ func toolFormState(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSO
 func toolDataTable(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseDataTableArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	return queueAnalyzeInspectAction(h, req, "data_table", "data_table", args, parsed.TabID, "Data table extraction queued")
@@ -73,7 +73,7 @@ func toolDataTable(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSO
 func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseFormValidationArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	var summaryParams struct {

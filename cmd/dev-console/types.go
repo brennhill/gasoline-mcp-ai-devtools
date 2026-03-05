@@ -1,4 +1,4 @@
-// Purpose: Re-exports core MCP wire types (JSONRPCRequest, JSONRPCResponse, MCPTool) as package-level aliases.
+// Purpose: Re-exports core MCP wire types as package-level aliases.
 // Why: Allows cmd/dev-console code to reference MCP types by short names without direct internal/mcp imports.
 
 package main
@@ -7,8 +7,23 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
-// Type aliases — all callers in package main continue to use these names unchanged.
+// Core wire types
 type JSONRPCRequest = mcp.JSONRPCRequest
 type JSONRPCResponse = mcp.JSONRPCResponse
 type JSONRPCError = mcp.JSONRPCError
 type MCPTool = mcp.MCPTool
+
+// MCP result types
+type MCPContentBlock = mcp.MCPContentBlock
+type MCPToolResult = mcp.MCPToolResult
+type MCPInitializeResult = mcp.MCPInitializeResult
+type MCPServerInfo = mcp.MCPServerInfo
+type MCPCapabilities = mcp.MCPCapabilities
+type MCPToolsCapability = mcp.MCPToolsCapability
+type MCPResourcesCapability = mcp.MCPResourcesCapability
+type MCPResource = mcp.MCPResource
+type MCPResourcesListResult = mcp.MCPResourcesListResult
+type MCPResourceContent = mcp.MCPResourceContent
+type MCPResourcesReadResult = mcp.MCPResourcesReadResult
+type MCPToolsListResult = mcp.MCPToolsListResult
+type MCPResourceTemplatesListResult = mcp.MCPResourceTemplatesListResult

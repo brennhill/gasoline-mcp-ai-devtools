@@ -18,8 +18,8 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 		VisibleOnly bool `json:"visible_only,omitempty"`
 		Limit       int  `json:"limit,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	if resp, blocked := h.parent.requirePilot(req); blocked {
