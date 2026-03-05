@@ -1,6 +1,7 @@
 import type { APIRoute, GetStaticPaths } from 'astro'
 import { getCollection } from 'astro:content'
 import { resolveDocSlug } from '../../utils/contentSlugs'
+import { siteReleaseChannel, siteVersionLabel } from '../../utils/siteVersion'
 
 export const prerender = true
 
@@ -21,7 +22,7 @@ function renderFrontmatter(entry: any) {
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
 }
 
 export const GET: APIRoute = async ({ params }) => {

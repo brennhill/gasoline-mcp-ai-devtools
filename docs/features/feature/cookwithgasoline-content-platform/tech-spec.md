@@ -19,6 +19,9 @@ owners:
 - `cookwithgasoline.com/src/content/docs/reference/*.md`
 - `cookwithgasoline.com/src/pages/[...slug].md.ts`
 - `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
+- `cookwithgasoline.com/src/pages/llms.txt.ts`
+- `cookwithgasoline.com/src/pages/llms-full.txt.ts`
+- `cookwithgasoline.com/src/utils/siteVersion.ts`
 
 ## Contracts and Validation
 
@@ -27,6 +30,7 @@ owners:
 - Vale style gate: `scripts/docs/run-vale-on-changed.mjs` + `.vale/styles/Gasoline/*`
 - Reference schema sync contract: `scripts/docs/check-reference-schema-sync.mjs`
 - Feature bundle contract: `scripts/docs/check-feature-bundles.js`
+- Version surface contract: `check-cookwithgasoline-content-contract.mjs` enforces global docs version references in footer + markdown/LLM outputs.
 
 ## Data/Content Sources
 
@@ -42,6 +46,7 @@ owners:
 - Missing required headings (`Quick Reference`, `Common Parameters`) in reference docs.
 - Missing mode/action sections after schema changes.
 - Missing required feature bundle docs for this feature directory.
+- Version label drift between docs pages and repo `VERSION`.
 
 ## Linked Architecture
 

@@ -138,3 +138,7 @@ Iframe support in `terminal.html`:
 ## Feature Docs
 
 - [Terminal feature index](../../features/feature/terminal/index.md)
+- [Terminal product spec](../../features/feature/terminal/product-spec.md)
+- [Terminal tech spec](../../features/feature/terminal/tech-spec.md)
+- [Terminal QA plan](../../features/feature/terminal/qa-plan.md)
+- [Terminal flow-map pointer](../../features/feature/terminal/flow-map.md)

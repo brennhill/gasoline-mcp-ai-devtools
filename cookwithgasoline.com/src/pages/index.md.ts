@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro'
 import { getCollection } from 'astro:content'
 import { resolveDocSlug } from '../utils/contentSlugs'
+import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion'
 
 export const prerender = true
 
@@ -17,7 +18,7 @@ function toYamlString(value: unknown) {
 function renderFrontmatter(entry: any) {
   const title = entry.data?.title ?? 'Gasoline MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com/\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com/\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
 }
 
 export const GET: APIRoute = async () => {

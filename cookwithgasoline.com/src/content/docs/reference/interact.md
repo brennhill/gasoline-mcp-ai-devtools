@@ -655,13 +655,13 @@ interact({what: "draw_mode_start", annot_session: "checkout-review", wait: true,
 
 ## Recording
 
-### record_start
+### screen_recording_start
 
 Start video recording of the current tab.
 
 ```js
-interact({what: "record_start"})
-interact({what: "record_start", name: "checkout-flow", audio: "tab", fps: 30})
+interact({what: "screen_recording_start"})
+interact({what: "screen_recording_start", name: "checkout-flow", audio: "tab", fps: 30})
 ```
 
 | Parameter | Type | Default | Description |
@@ -670,13 +670,13 @@ interact({what: "record_start", name: "checkout-flow", audio: "tab", fps: 30})
 | `audio` | string | — | Audio source: `tab`, `mic`, or `both`. Omit for video-only. |
 | `fps` | number | 15 | Frames per second (5-60) |
 
-### record_stop
+### screen_recording_stop
 
 Stop the active video recording.
 
 ```js
-interact({what: "record_stop"})
-interact({what: "record_stop", name: "checkout-flow"})
+interact({what: "screen_recording_stop"})
+interact({what: "screen_recording_stop", name: "checkout-flow"})
 ```
 
 | Parameter | Type | Description |
