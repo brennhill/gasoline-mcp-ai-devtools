@@ -493,91 +493,32 @@ registerCommand('a11y', async (ctx) => {
 })
 
 // =============================================================================
-// LINK HEALTH
+// CONTENT SCRIPT PASS-THROUGH COMMANDS
 // =============================================================================
 
-registerCommand('link_health', async (ctx) => {
-  try {
-    const result = await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'LINK_HEALTH_QUERY',
-      params: ctx.query.params
-    })
-    ctx.sendResult(result)
-  } catch (err) {
-    ctx.sendResult({
-      error: 'link_health_failed',
-      message: (err as Error).message || 'Link health check failed'
-    })
-  }
-})
+/** Register an analyze command that forwards params to a content script message type. */
+function registerPassthrough(command: string, messageType: string, fallbackMessage: string): void {
+  registerCommand(command, async (ctx) => {
+    try {
+      const result = await chrome.tabs.sendMessage(ctx.tabId, {
+        type: messageType,
+        params: ctx.query.params
+      })
+      ctx.sendResult(result)
+    } catch (err) {
+      ctx.sendResult({
+        error: `${command}_failed`,
+        message: (err as Error).message || fallbackMessage
+      })
+    }
+  })
+}
 
-// =============================================================================
-// COMPUTED STYLES
-// =============================================================================
-
-registerCommand('computed_styles', async (ctx) => {
-  try {
-    const result = await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'COMPUTED_STYLES_QUERY',
-      params: ctx.query.params
-    })
-    ctx.sendResult(result)
-  } catch (err) {
-    ctx.sendResult({
-      error: 'computed_styles_failed',
-      message: (err as Error).message || 'Computed styles query failed'
-    })
-  }
-})
-
-// =============================================================================
-// FORM DISCOVERY
-// =============================================================================
-
-registerCommand('form_discovery', async (ctx) => {
-  try {
-    const result = await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'FORM_DISCOVERY_QUERY',
-      params: ctx.query.params
-    })
-    ctx.sendResult(result)
-  } catch (err) {
-    ctx.sendResult({
-      error: 'form_discovery_failed',
-      message: (err as Error).message || 'Form discovery failed'
-    })
-  }
-})
-
-registerCommand('form_state', async (ctx) => {
-  try {
-    const result = await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'FORM_STATE_QUERY',
-      params: ctx.query.params
-    })
-    ctx.sendResult(result)
-  } catch (err) {
-    ctx.sendResult({
-      error: 'form_state_failed',
-      message: (err as Error).message || 'Form state extraction failed'
-    })
-  }
-})
-
-registerCommand('data_table', async (ctx) => {
-  try {
-    const result = await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'DATA_TABLE_QUERY',
-      params: ctx.query.params
-    })
-    ctx.sendResult(result)
-  } catch (err) {
-    ctx.sendResult({
-      error: 'data_table_failed',
-      message: (err as Error).message || 'Data table extraction failed'
-    })
-  }
-})
+registerPassthrough('link_health', 'LINK_HEALTH_QUERY', 'Link health check failed')
+registerPassthrough('computed_styles', 'COMPUTED_STYLES_QUERY', 'Computed styles query failed')
+registerPassthrough('form_discovery', 'FORM_DISCOVERY_QUERY', 'Form discovery failed')
+registerPassthrough('form_state', 'FORM_STATE_QUERY', 'Form state extraction failed')
+registerPassthrough('data_table', 'DATA_TABLE_QUERY', 'Data table extraction failed')
 
 // =============================================================================
 // DRAW MODE
