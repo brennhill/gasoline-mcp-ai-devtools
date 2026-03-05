@@ -5,18 +5,17 @@ package schema
 func configureCoreProperties() map[string]any {
 	return map[string]any{
 		"what": map[string]any{
-			"type": "string",
-			"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "event_recording_start", "event_recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
+			"type":        "string",
+			"description": "Setting or utility to configure",
+			"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "event_recording_start", "event_recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
 		},
 		"action": map[string]any{
 			"type":        "string",
-			"description": "Deprecated alias for 'what'",
-			"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "event_recording_start", "event_recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter", "report_issue"},
+			"description": "Deprecated alias for 'what'. Prefer 'what'.",
 		},
 		"mode": map[string]any{
 			"type":        "string",
-			"description": "Security mode target for configure(what='security_mode'). Omit to read current mode.",
-			"enum":        []string{"normal", "insecure_proxy"},
+			"description": "For security_mode: 'normal' or 'insecure_proxy'. For describe_capabilities: tool mode name to filter (e.g. 'errors', 'click').",
 		},
 		"tool": map[string]any{
 			"type":        "string",
@@ -83,7 +82,7 @@ func configureCoreProperties() map[string]any {
 		},
 		"method": map[string]any{
 			"type":        "string",
-			"description": "Single-rule flattening helper for noise_action=add",
+			"description": "HTTP method filter (noise_action=add, network_recording)",
 		},
 		"domain": map[string]any{
 			"type":        "string",

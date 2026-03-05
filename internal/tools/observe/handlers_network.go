@@ -20,20 +20,10 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		Method    string `json:"method"`
 		StatusMin int    `json:"status_min"`
 		StatusMax int    `json:"status_max"`
-		BodyKey   string `json:"body_key"`
 		BodyPath  string `json:"body_path"`
 		Summary   bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
-	if params.BodyKey != "" && params.BodyPath != "" {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
-			mcp.ErrInvalidParam,
-			"Only one body filter can be used at a time",
-			"Use either 'body_key' or 'body_path', not both",
-			mcp.WithParam("body_key"),
-			mcp.WithParam("body_path"),
-		)}
-	}
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allBodies := deps.GetCapture().GetNetworkBodies()
@@ -54,7 +44,7 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		if params.StatusMax > 0 && b.Status > params.StatusMax {
 			return false
 		}
-		_, include, err := ApplyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
+		_, include, err := ApplyNetworkBodyFilter(b, params.BodyPath)
 		if err != nil {
 			bodyFilterErr = err
 			return false
@@ -71,10 +61,10 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		)}
 	}
 
-	// Re-apply body filter to transform matched entries (extract body_key/body_path).
-	if params.BodyKey != "" || params.BodyPath != "" {
+	// Re-apply body filter to transform matched entries (extract body_path).
+	if params.BodyPath != "" {
 		for i, b := range filtered {
-			filteredBody, _, _ := ApplyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
+			filteredBody, _, _ := ApplyNetworkBodyFilter(b, params.BodyPath)
 			filtered[i] = filteredBody
 		}
 	}
@@ -90,7 +80,6 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		Method:    params.Method,
 		StatusMin: params.StatusMin,
 		StatusMax: params.StatusMax,
-		BodyKey:   params.BodyKey,
 		BodyPath:  params.BodyPath,
 	}
 	if params.Summary {

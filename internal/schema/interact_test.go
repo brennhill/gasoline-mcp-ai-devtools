@@ -21,21 +21,16 @@ func TestInteractToolSchema_RequiresWhat_ActionIsRuntimeAlias(t *testing.T) {
 	}
 
 	whatEnum := toSchemaStringSlice(t, whatProp["enum"])
-	actionEnum := toSchemaStringSlice(t, actionProp["enum"])
-	if len(whatEnum) == 0 || len(actionEnum) == 0 {
-		t.Fatal("interact dispatch enums must be non-empty")
-	}
-	if len(whatEnum) != len(actionEnum) {
-		t.Fatalf("enum length mismatch: what=%d action=%d", len(whatEnum), len(actionEnum))
-	}
-	for i := range whatEnum {
-		if whatEnum[i] != actionEnum[i] {
-			t.Fatalf("enum mismatch at %d: what=%q action=%q", i, whatEnum[i], actionEnum[i])
-		}
+	if len(whatEnum) == 0 {
+		t.Fatal("interact 'what' enum must be non-empty")
 	}
 
-	// Spot-check that well-known actions are present in the canonical enum.
-	// Since both 'what' and 'action' reference the same slice, we only check whatEnum.
+	// 'action' is a quiet alias — it must NOT have an enum (avoids duplicating the full list).
+	if _, hasEnum := actionProp["enum"]; hasEnum {
+		t.Fatal("interact 'action' alias should not have an enum (quiet alias)")
+	}
+
+	// Spot-check that well-known actions are present in the canonical 'what' enum.
 	mustContain := []string{"navigate", "click", "screenshot", "type", "execute_js", "upload", "auto_dismiss_overlays", "wait_for_stable"}
 	whatSet := make(map[string]bool, len(whatEnum))
 	for _, v := range whatEnum {
@@ -98,11 +93,20 @@ func TestInteractActionSpecs_EnumParity(t *testing.T) {
 	if len(specs) == 0 {
 		t.Fatal("InteractActionSpecs should be non-empty")
 	}
-	if len(interactActions) != len(specs) {
-		t.Fatalf("interactActions/spec count mismatch: actions=%d specs=%d", len(interactActions), len(specs))
+
+	// interactActions excludes IsAlias specs; build the non-alias subset for comparison.
+	nonAlias := make([]InteractActionSpec, 0, len(specs))
+	for _, s := range specs {
+		if !s.IsAlias {
+			nonAlias = append(nonAlias, s)
+		}
 	}
 
-	for i, spec := range specs {
+	if len(interactActions) != len(nonAlias) {
+		t.Fatalf("interactActions/non-alias spec count mismatch: actions=%d specs=%d", len(interactActions), len(nonAlias))
+	}
+
+	for i, spec := range nonAlias {
 		if interactActions[i] != spec.Name {
 			t.Fatalf("interact action order mismatch at %d: enum=%q spec=%q", i, interactActions[i], spec.Name)
 		}
@@ -123,6 +127,112 @@ func TestInteractActionSpecs_NoDuplicateNamesOrEmptyHints(t *testing.T) {
 		seen[spec.Name] = true
 		if spec.Hint == "" {
 			t.Fatalf("interact action %q missing capability hint", spec.Name)
+		}
+	}
+}
+
+func TestInteractActionSpecs_RequiredMatchesRuntimeValidation(t *testing.T) {
+	t.Parallel()
+
+	// Expected required params per action, derived from DOMActionRequiredParams
+	// and handler validation in the codebase.
+	expected := map[string][]string{
+		"type":                    {"text"},
+		"paste":                   {"text"},
+		"select":                  {"value"},
+		"get_attribute":           {"name"},
+		"set_attribute":           {"name"},
+		"navigate":                {"url"},
+		"navigate_and_wait_for":   {"url", "wait_for"},
+		"execute_js":              {"script"},
+		"set_storage":             {"key"},
+		"delete_storage":          {"key"},
+		"set_cookie":              {"name"},
+		"delete_cookie":           {"name"},
+	}
+
+	specs := InteractActionSpecs()
+	specMap := make(map[string]InteractActionSpec, len(specs))
+	for _, s := range specs {
+		specMap[s.Name] = s
+	}
+
+	for action, wantRequired := range expected {
+		spec, ok := specMap[action]
+		if !ok {
+			t.Errorf("missing spec for action %q", action)
+			continue
+		}
+		if len(spec.Required) != len(wantRequired) {
+			t.Errorf("%s: Required=%v, want %v", action, spec.Required, wantRequired)
+			continue
+		}
+		for i, r := range wantRequired {
+			if i >= len(spec.Required) || spec.Required[i] != r {
+				t.Errorf("%s: Required[%d]=%q, want %q", action, i, spec.Required[i], r)
+			}
+		}
+		// Verify required params are NOT in Optional
+		optSet := make(map[string]bool, len(spec.Optional))
+		for _, o := range spec.Optional {
+			optSet[o] = true
+		}
+		for _, r := range wantRequired {
+			if optSet[r] {
+				t.Errorf("%s: %q appears in both Required and Optional", action, r)
+			}
+		}
+	}
+}
+
+func TestInteractEnum_ExcludesAliases(t *testing.T) {
+	t.Parallel()
+
+	tool := InteractToolSchema()
+	props, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("interact schema missing properties")
+	}
+	whatProp, ok := props["what"].(map[string]any)
+	if !ok {
+		t.Fatal("interact schema missing 'what' property")
+	}
+	whatEnum := toSchemaStringSlice(t, whatProp["enum"])
+	enumSet := make(map[string]bool, len(whatEnum))
+	for _, v := range whatEnum {
+		enumSet[v] = true
+	}
+
+	aliases := []string{"state_save", "state_load", "state_list", "state_delete"}
+	for _, alias := range aliases {
+		if enumSet[alias] {
+			t.Errorf("alias %q should be excluded from interact enum", alias)
+		}
+	}
+
+	// Canonical forms must still be present
+	canonicals := []string{"save_state", "load_state", "list_states", "delete_state"}
+	for _, c := range canonicals {
+		if !enumSet[c] {
+			t.Errorf("canonical action %q should be in interact enum", c)
+		}
+	}
+}
+
+func TestInteractDispatch_AliasStillWorks(t *testing.T) {
+	t.Parallel()
+
+	// Verify alias specs are still in the full registry (used by dispatch)
+	specs := InteractActionSpecs()
+	specNames := make(map[string]bool, len(specs))
+	for _, s := range specs {
+		specNames[s.Name] = true
+	}
+
+	aliases := []string{"state_save", "state_load", "state_list", "state_delete"}
+	for _, alias := range aliases {
+		if !specNames[alias] {
+			t.Errorf("alias %q should still be in InteractActionSpecs for dispatch", alias)
 		}
 	}
 }

@@ -5,30 +5,22 @@ package schema
 func interactDispatchProperties() map[string]any {
 	return map[string]any{
 		"what": map[string]any{
-			"type": "string",
-			"enum": interactActions,
+			"type":        "string",
+			"description": "Browser action to perform",
+			"enum":        interactActions,
 		},
 		"action": map[string]any{
 			"type":        "string",
 			"description": "Deprecated alias for 'what'. Prefer 'what'.",
-			"enum":        interactActions,
 		},
 		"telemetry_mode": map[string]any{
 			"type":        "string",
 			"description": "Telemetry metadata mode for this call: off, auto, full",
 			"enum":        []string{"off", "auto", "full"},
 		},
-		"sync": map[string]any{
-			"type":        "boolean",
-			"description": "Wait for result (default: true).",
-		},
-		"wait": map[string]any{
-			"type":        "boolean",
-			"description": "Alias for sync (default: true).",
-		},
 		"background": map[string]any{
 			"type":        "boolean",
-			"description": "Run in background and return a correlation_id immediately.",
+			"description": "Return immediately with correlation_id instead of waiting for result (default: false).",
 		},
 		"reason": map[string]any{
 			"type":        "string",

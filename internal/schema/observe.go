@@ -9,13 +9,14 @@ import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 func ObserveToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "observe",
-		Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_key/body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
+		Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
-					"type": "string",
-					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients", "inbox"},
+					"type":        "string",
+					"description": "Data mode to read from extension buffers",
+					"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients", "inbox"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -28,11 +29,11 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"after_cursor": map[string]any{
 					"type":        "string",
-					"description": "Backward pagination cursor from response metadata",
+					"description": "Cursor for older entries (from response metadata)",
 				},
 				"before_cursor": map[string]any{
 					"type":        "string",
-					"description": "Forward pagination cursor",
+					"description": "Cursor for newer entries (from response metadata)",
 				},
 				"since_cursor": map[string]any{
 					"type":        "string",
@@ -45,11 +46,6 @@ func ObserveToolSchema() mcp.MCPTool {
 				"min_level": map[string]any{
 					"type":        "string",
 					"description": "Min log level (logs)",
-					"enum":        []string{"debug", "log", "info", "warn", "error"},
-				},
-				"level": map[string]any{
-					"type":        "string",
-					"description": "Exact log level filter (logs)",
 					"enum":        []string{"debug", "log", "info", "warn", "error"},
 				},
 				"source": map[string]any{
@@ -101,10 +97,6 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Max HTTP status code",
 				},
-				"body_key": map[string]any{
-					"type":        "string",
-					"description": "Extract values for a JSON key from response_body (network_bodies)",
-				},
 				"body_path": map[string]any{
 					"type":        "string",
 					"description": "Extract JSON value from response_body using path, e.g. data.items[0].id (network_bodies)",
@@ -114,8 +106,9 @@ func ObserveToolSchema() mcp.MCPTool {
 					"description": "WebSocket connection ID filter",
 				},
 				"direction": map[string]any{
-					"type": "string",
-					"enum": []string{"incoming", "outgoing"},
+					"type":        "string",
+					"description": "WebSocket message direction filter (websocket_events)",
+					"enum":        []string{"incoming", "outgoing"},
 				},
 				"last_n": map[string]any{
 					"type":        "number",

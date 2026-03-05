@@ -54,7 +54,7 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 		withRetryAfterMs(3000),
 		withRecoveryToolCall(map[string]any{
 			"tool":      "observe",
-			"arguments": map[string]any{"what": "status"},
+			"arguments": map[string]any{"what": "pilot"},
 		}),
 	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
@@ -107,10 +107,6 @@ func (h *ToolHandler) requireTabTracking(req JSONRPCRequest, extraOpts ...func(*
 		h.diagnosticHint(),
 		withRetryable(true),
 		withRetryAfterMs(2000),
-		withRecoveryToolCall(map[string]any{
-			"tool":      "interact",
-			"arguments": map[string]any{"what": "navigate"},
-		}),
 	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrNoData, "No tab is being tracked. Navigate to a page first.",

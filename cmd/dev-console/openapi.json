@@ -1464,6 +1464,98 @@
         }
       }
     },
+    "/config/active-codebase": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Get active codebase path",
+        "description": "Returns the active codebase directory path used as the default terminal CWD. Extension-only endpoint.",
+        "operationId": "getActiveCodebase",
+        "responses": {
+          "200": {
+            "description": "Current active codebase path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active_codebase": {
+                      "type": "string",
+                      "description": "Filesystem path to the active codebase directory"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Set active codebase path",
+        "description": "Sets the active codebase directory path used as the default terminal CWD. Extension-only endpoint. Also accepts POST.",
+        "operationId": "setActiveCodebase",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "Filesystem path to set as the active codebase directory"
+                  }
+                },
+                "required": [
+                  "path"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Active codebase updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Operation result status"
+                    },
+                    "active_codebase": {
+                      "type": "string",
+                      "description": "Filesystem path to the active codebase directory after update"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tests/": {
       "get": {
         "tags": [

@@ -344,7 +344,7 @@ func (e *gateTestEnv) simulateTabTracking(t *testing.T) {
 	e.capture.SetTrackingStatusForTest(42, "https://example.com")
 }
 
-func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
+func TestRequireTabTracking_NoRecoveryToolCall(t *testing.T) {
 	t.Parallel()
 	env := newGateTestEnv(t)
 	// No tab tracking set
@@ -355,22 +355,14 @@ func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
 		t.Fatal("expected requireTabTracking to block")
 	}
 	se := extractStructuredError(t, resp)
-	if se.RecoveryToolCall == nil {
-		t.Fatal("expected recovery_tool_call in tab tracking error")
+	// recovery_tool_call is intentionally absent: navigate requires url which the
+	// server can't know, so providing a recovery_tool_call would guarantee a second
+	// failure. The recovery text in the error message guides the LLM instead.
+	if se.RecoveryToolCall != nil {
+		t.Fatal("requireTabTracking should NOT include recovery_tool_call (navigate requires url)")
 	}
-	if se.RecoveryToolCall["tool"] != "interact" {
-		t.Fatalf("expected recovery tool 'interact', got %v", se.RecoveryToolCall["tool"])
-	}
-	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
-	if !ok {
-		t.Fatal("expected recovery_tool_call to have 'arguments' map")
-	}
-	if args["what"] != "navigate" {
-		t.Fatalf("expected arguments.what='navigate', got %v", args["what"])
-	}
-	// url is intentionally omitted so the LLM fills in the actual target URL.
-	if _, hasURL := args["url"]; hasURL {
-		t.Fatalf("expected no 'url' key in recovery arguments (LLM should fill it), got %v", args["url"])
+	if se.RecoveryPlaybook == "" {
+		t.Fatal("recovery text should guide the LLM to call navigate with a URL")
 	}
 }
 
