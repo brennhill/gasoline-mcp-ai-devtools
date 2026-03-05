@@ -58,4 +58,7 @@ Structured extraction modes:
 - `analyze({what:"form_state"})` returns current form values and field metadata.
 - `analyze({what:"data_table"})` returns parsed table headers/rows without `execute_js` string parsing.
 
+Aliases:
+- `history` → `navigation_patterns` (quiet alias, dispatches correctly but hidden from schema enum).
+
 Queue saturation for extension-dispatched analyze actions now fails fast with a structured `queue_full` response (via shared enqueue helper), instead of entering async wait/poll flow.
