@@ -19,8 +19,37 @@ $EXT_DIR = Join-Path $INSTALL_DIR "extension"
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
 
-Write-Host "🔥 Gasoline Installer" -ForegroundColor Cyan
-Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+Write-Host ""
+Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
+Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
+Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
+Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
+Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
+Write-Host ""
+Write-Host "🔥 Gasoline Installer" -ForegroundColor DarkYellow
+Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
+function Reset-ExtensionDir {
+    if (Test-Path $EXT_DIR) {
+        Remove-Item -Path (Join-Path $EXT_DIR '*') -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -Path $EXT_DIR -ItemType Directory -Force | Out-Null
+    }
+}
+
+function Test-ExtensionStage {
+    $required = @(
+        (Join-Path $EXT_DIR "manifest.json"),
+        (Join-Path $EXT_DIR "background\init.js"),
+        (Join-Path $EXT_DIR "content\script-injection.js"),
+        (Join-Path $EXT_DIR "inject\index.js")
+    )
+    foreach ($path in $required) {
+        if (-not (Test-Path $path)) {
+            return $false
+        }
+    }
+    return $true
+}
 
 # 1. Fetch Version: Get the latest stable version tag from GitHub.
 Write-Host "🔍 Checking for updates..."
@@ -29,7 +58,8 @@ Write-Host "✨ Version: v$VERSION (win32-x64)"
 
 # 2. Directory Setup: Ensure the target installation folders exist on the filesystem.
 if (-not (Test-Path $BIN_DIR)) { New-Item -Path $BIN_DIR -ItemType Directory -Force }
-if (-not (Test-Path $EXT_DIR)) { New-Item -Path $EXT_DIR -ItemType Directory -Force }
+Reset-ExtensionDir
+Write-Host "📁 Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
 $GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
@@ -72,18 +102,28 @@ $TEMP_ZIP = Join-Path $env:TEMP "gasoline-ext.zip"
 
 try {
     Invoke-WebRequest -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
-    # Native extraction to the local staging directory.
+    Reset-ExtensionDir
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $EXT_DIR -Force
+    if (-not (Test-ExtensionStage)) {
+        throw "Release extension zip missing required module files"
+    }
+    Write-Host "✅ Staged extension directory: $EXT_DIR"
 } catch {
-    # Fallback logic for older releases that only have source zips.
-    Write-Host "📦 Falling back to source zip (this may take a moment)..." -ForegroundColor Yellow
+    # Fallback logic for older releases or bad extension zip assets.
+    Write-Host "⚠️  Falling back to source zip due to missing/incomplete extension zip" -ForegroundColor Yellow
     $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
     Invoke-WebRequest -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
     $TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src"
+    if (Test-Path $TEMP_EXTRACT) { Remove-Item -Path $TEMP_EXTRACT -Recurse -Force }
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $TEMP_EXTRACT -Force
     # Find the extracted folder (named repo-version) and copy the extension subdirectory.
     $extractRoot = Get-ChildItem -Path $TEMP_EXTRACT | Select-Object -First 1
+    Reset-ExtensionDir
     Copy-Item -Path (Join-Path $extractRoot.FullName "extension\*") -Destination $EXT_DIR -Recurse -Force
+    if (-not (Test-ExtensionStage)) {
+        throw "Extension staging failed: required module files are missing."
+    }
+    Write-Host "✅ Staged extension directory: $EXT_DIR"
     # Clean up the deep source extraction.
     Remove-Item -Path $TEMP_EXTRACT -Recurse -Force
 }
