@@ -4,18 +4,22 @@ feature_id: feature-enhanced-cli-config
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-23
+last_reviewed: 2026-03-05
 code_paths:
-  - npm/gasoline-mcp/lib/cli.js
-  - npm/gasoline-mcp/lib/skills.js
-  - npm/gasoline-mcp/lib/postinstall-skills.js
-  - pypi/gasoline-mcp/gasoline_mcp/platform.py
-  - pypi/gasoline-mcp/gasoline_mcp/skills.py
-  - scripts/install-bundled-skills.sh
+  - cmd/dev-console/native_install.go
+  - scripts/install.sh
+  - scripts/install.ps1
+  - server/scripts/install.js
+  - npm/gasoline-agentic-browser/lib/config.js
+  - npm/gasoline-agentic-browser/lib/install.js
+  - npm/gasoline-agentic-browser/lib/cli.js
+  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
+  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
+  - docs/mcp-install-guide.md
 test_paths:
-  - pypi/gasoline-mcp/tests/test_install.py
-  - pypi/gasoline-mcp/tests/test_skills.py
-  - tests/cli/cli-integration.test.cjs
+  - cmd/dev-console/native_install_test.go
+  - npm/gasoline-agentic-browser/lib/install.test.js
+  - pypi/gasoline-agentic-browser/tests/test_install.py
 ---
 
 # Enhanced Cli Config
@@ -32,6 +36,7 @@ test_paths:
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map Pointer: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 

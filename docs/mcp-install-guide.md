@@ -13,7 +13,13 @@ curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-d
 This script:
 1.  **Downloads** the latest stable binary.
 2.  **Installs** the browser extension files to `~/.gasoline/extension`.
-3.  **Auto-configures** all detected MCP clients listed below.
+3.  **Auto-configures** all detected MCP clients listed below to run the binary directly (no `npx`).
+4.  **Displays** a polished, step-by-step install UI with progress and a final checklist card.
+
+Important:
+- The installer **cannot** click browser UI for you.
+- You must manually open `chrome://extensions` (or `brave://extensions`), enable **Developer mode**, then click **Load unpacked** and select `~/.gasoline/extension`.
+- After loading, pin the extension (recommended) and click **Track This Tab** in the popup.
 
 ## Per-Tool Reference
 

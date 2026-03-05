@@ -103,7 +103,12 @@ def show_config():
     from . import config as cfg_mod  # pylint: disable=import-outside-toplevel
     import json  # pylint: disable=import-outside-toplevel
 
-    mcp = install.generate_default_config()
+    try:
+        binary_path = get_binary_path()
+    except RuntimeError:
+        binary_path = "gasoline-agentic-browser"
+
+    mcp = install.generate_default_config(binary_path=binary_path)
 
     print("📋 Gasoline Agentic Browser Configuration\n")
     print("Add this to your AI assistant settings:\n")
@@ -173,10 +178,16 @@ def run_install(args):
     """Run install command."""
     from . import install  # pylint: disable=import-outside-toplevel
 
+    try:
+        binary_path = get_binary_path()
+    except RuntimeError:
+        binary_path = "gasoline-agentic-browser"
+
     options = {
         "dryRun": "--dry-run" in args,
         "envVars": _parse_env_args(args),
         "verbose": "--verbose" in args,
+        "binaryPath": binary_path,
     }
 
     try:
