@@ -12,6 +12,8 @@ import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { buildScreenRecordingSlug } from './recording-utils.js'
+import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
 
 const LOG = '[Gasoline REC]'
 
@@ -46,24 +48,7 @@ function stopBadgeTimer(): void {
 }
 
 /** Dependencies injected by recording.ts to avoid circular imports. */
-export interface RecordingListenerDeps {
-  startRecording: (
-    name: string,
-    fps: number,
-    queryId: string,
-    audio: string,
-    fromPopup: boolean,
-    targetTabId?: number
-  ) => Promise<{ status: string; name: string; startTime?: number; error?: string }>
-  stopRecording: (truncated?: boolean) => Promise<{
-    status: string
-    name: string
-    duration_seconds?: number
-    size_bytes?: number
-    truncated?: boolean
-    path?: string
-    error?: string
-  }>
+export interface RecordingListenerDeps extends Omit<ScreenRecordingHandlers, 'isRecording'> {
   isActive: () => boolean
   getTabId: () => number
   setInactive: () => void
@@ -112,17 +97,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       if (message.type === 'screen_recording_start') {
         console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio })
         chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-          let slug = 'recording'
-          try {
-            const hostname = new URL(tabs[0]?.url ?? '').hostname.replace(/^www\./, '')
-            slug =
-              hostname
-                .replace(/[^a-z0-9]/gi, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '') || 'recording'
-          } catch {
-            /* use default */
-          }
+          const slug = buildScreenRecordingSlug(tabs[0]?.url)
           const audio = message.audio ?? ''
           console.log(LOG, 'Popup screen_recording_start \u2192 startRecording', {
             slug,

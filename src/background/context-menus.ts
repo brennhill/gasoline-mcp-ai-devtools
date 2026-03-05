@@ -7,6 +7,7 @@ import { StorageKey } from '../lib/constants.js'
 import type { ScreenRecordingHandlers, RecordingShortcutHandlers } from './keyboard-shortcuts.js'
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { toggleDrawModeForTab } from './draw-mode-toggle.js'
 
 // =============================================================================
 // CONTEXT MENU IDS
@@ -81,27 +82,9 @@ export function installContextMenus(
       }
     } else if (info.menuItemId === MENU_ID_ANNOTATE) {
       try {
-        const result = (await chrome.tabs.sendMessage(tab.id, {
-          type: 'GASOLINE_GET_ANNOTATIONS'
-        })) as { draw_mode_active?: boolean }
-
-        if (result?.draw_mode_active) {
-          await chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' })
-        } else {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
-            started_by: 'user'
-          })
-        }
+        await toggleDrawModeForTab(tab.id)
       } catch {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
-            started_by: 'user'
-          })
-        } catch {
-          if (logFn) logFn('Cannot reach content script for annotation via context menu')
-        }
+        if (logFn) logFn('Cannot reach content script for annotation via context menu')
       }
     }
   })

@@ -4,93 +4,9 @@
 
 import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
 import { domPrimitiveNavDiscovery } from '../dom-primitives-nav-discovery.js'
+import { readableFallbackScript } from '../content-fallback-scripts.js'
 import { registerCommand } from './registry.js'
 import { errorMessage } from '../../lib/error-utils.js'
-
-// =============================================================================
-// READABLE CONTENT EXTRACTION (self-contained for chrome.scripting.executeScript)
-// =============================================================================
-
-/**
- * Self-contained script that extracts readable text content from the page.
- * Mirrors the logic of getReadableScript in tools_interact_content.go but
- * as a function reference suitable for chrome.scripting.executeScript.
- */
-function readableContentScript(): Record<string, unknown> {
-  function cleanText(el: Element): string {
-    if (!el) return ''
-    const clone = el.cloneNode(true) as Element
-    const removeTags = [
-      'nav',
-      'header',
-      'footer',
-      'aside',
-      'script',
-      'style',
-      'noscript',
-      'svg',
-      '[role="navigation"]',
-      '[role="banner"]',
-      '[role="contentinfo"]',
-      '[aria-hidden="true"]',
-      '.ad,.ads,.advertisement,.social-share,.comments,.sidebar,.related-posts,.newsletter'
-    ]
-    for (const sel of removeTags) {
-      const els = clone.querySelectorAll(sel)
-      for (const child of Array.from(els)) child.remove()
-    }
-    return ((clone as HTMLElement).innerText || clone.textContent || '').replace(/\s+/g, ' ').trim()
-  }
-
-  function findMainContent(): { el: Element; text: string } {
-    const candidates = [
-      'article',
-      'main',
-      '[role="main"]',
-      '.post-content',
-      '.entry-content',
-      '.article-body',
-      '.article-content',
-      '.story-body',
-      '#content',
-      '.content'
-    ]
-    for (const sel of candidates) {
-      const el = document.querySelector(sel)
-      if (el) {
-        const text = cleanText(el)
-        if (text.length > 100) return { el, text }
-      }
-    }
-    return { el: document.body, text: cleanText(document.body) }
-  }
-
-  function getByline(): string {
-    const selectors = ['.author', '[rel="author"]', '.byline', '.post-author', 'meta[name="author"]']
-    for (const sel of selectors) {
-      const el = document.querySelector(sel)
-      if (el) {
-        const text = (el.getAttribute('content') || (el as HTMLElement).innerText || '').trim()
-        if (text.length > 0 && text.length < 200) return text
-      }
-    }
-    return ''
-  }
-
-  const found = findMainContent()
-  const content = found.text
-  const excerpt = content.slice(0, 300)
-  const words = content.split(/\s+/).filter(Boolean)
-
-  return {
-    title: document.title || '',
-    content,
-    excerpt,
-    byline: getByline(),
-    word_count: words.length,
-    url: window.location.href
-  }
-}
 
 // =============================================================================
 // EXPLORE_PAGE COMMAND (#338)
@@ -150,7 +66,7 @@ registerCommand('explore_page', async (ctx) => {
         .executeScript({
           target: { tabId: ctx.tabId },
           world: 'ISOLATED',
-          func: readableContentScript
+          func: readableFallbackScript
         })
         .catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
 

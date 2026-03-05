@@ -9,14 +9,13 @@
 
 import { registerCommand } from './registry.js'
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
-import { normalizeFrameTarget } from '../../lib/frame-utils.js'
 import { errorMessage } from '../../lib/error-utils.js'
+import { domFrameProbe } from '../dom-frame-probe.js'
+import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js'
 
 // =============================================================================
 // FRAME ROUTING TYPES
 // =============================================================================
-
-type AnalyzeFrameTarget = string | number | undefined
 
 interface AnalyzeFrameSelection {
   frameIds: number[]
@@ -29,89 +28,14 @@ interface FrameQueryResult<T = unknown> {
   error?: string
 }
 
-/**
- * Frame selection probe executed in page context.
- * Must be self-contained for chrome.scripting.executeScript({ func }).
- */
-function analyzeFrameProbe(frameTarget: AnalyzeFrameTarget): { matches: boolean } {
-  const isTop = window === window.top
-
-  const getParentFrameIndex = (): number => {
-    if (isTop) return -1
-    try {
-      const parentFrames = window.parent?.frames
-      if (!parentFrames) return -1
-      for (let i = 0; i < parentFrames.length; i++) {
-        if (parentFrames[i] === window) return i
-      }
-    } catch {
-      return -1
-    }
-    return -1
-  }
-
-  if (frameTarget === undefined) {
-    return { matches: isTop }
-  }
-
-  if (frameTarget === 'all') {
-    return { matches: true }
-  }
-
-  if (typeof frameTarget === 'number') {
-    return { matches: getParentFrameIndex() === frameTarget }
-  }
-
-  if (isTop) {
-    return { matches: false }
-  }
-
-  try {
-    const frameEl = window.frameElement
-    if (!frameEl || typeof frameEl.matches !== 'function') {
-      return { matches: false }
-    }
-    return { matches: frameEl.matches(frameTarget) }
-  } catch {
-    return { matches: false }
-  }
-}
-
 async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Promise<AnalyzeFrameSelection> {
-  const normalized = normalizeFrameTarget(frame)
-  if (normalized === null) {
-    throw new Error(
-      'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value'
-    )
-  }
+  const normalized = normalizeFrameArg(frame)
 
   // No frame targeting requested — skip the probe entirely and target the main frame.
   if (normalized === undefined) {
     return { frameIds: [0], mode: 'main' }
   }
-
-  // Pass null instead of undefined to satisfy chrome.scripting.executeScript serialization.
-  const probeResults = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    world: 'MAIN',
-    func: analyzeFrameProbe,
-    args: [normalized]
-  })
-
-  const frameIds = Array.from(
-    new Set(
-      probeResults
-        .filter((r) => !!(r.result as { matches?: boolean } | undefined)?.matches)
-        .map((r) => r.frameId)
-        .filter((id): id is number => typeof id === 'number')
-    )
-  )
-
-  if (frameIds.length === 0) {
-    throw new Error(
-      'frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page'
-    )
-  }
+  const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe)
 
   if (normalized === 'all') {
     return { frameIds, mode: 'all' }
@@ -545,8 +469,10 @@ registerCommand('draw_mode', async (ctx) => {
     } catch (err) {
       ctx.sendResult({
         error: 'draw_mode_failed',
-        message:
-          errorMessage(err, 'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).')
+        message: errorMessage(
+          err,
+          'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
+        )
       })
     }
   } else {
