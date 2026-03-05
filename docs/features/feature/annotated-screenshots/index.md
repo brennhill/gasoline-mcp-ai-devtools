@@ -74,5 +74,6 @@ test_paths:
 - `internal/annotation/store_test.go` — `TestStore_SessionTTL_Is2Hours`
 - `cmd/dev-console/tools_analyze_annotations_test.go` — enrichment fields (`selector_candidates`, `js_framework`, `component`), error correlation, hints tests
 - `cmd/dev-console/tools_generate_annotations_test.go` — resilient locator fallback generation tests
-- `scripts/smoke-tests/31-annotation-parity.sh` — deterministic end-to-end ingest/retrieval/generation gate
+- `scripts/smoke-tests/31-annotation-parity.sh` — deterministic end-to-end ingest/retrieval/generation gate with bounded retries for transient startup/no_data windows
 - `scripts/smoke-tests/annotation-parity-benchmark.sh` — repeated pass-rate benchmark with threshold enforcement
+- `scripts/smoke-test.sh` — resume-mode daemon version parity guard prevents stale-daemon false negatives in `--only/--start-from` runs
