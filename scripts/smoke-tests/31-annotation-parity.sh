@@ -91,20 +91,39 @@ post_parity_annotation() {
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null
 }
 
-call_generate_with_startup_retry() {
-    local args="$1"
-    local max_attempts="${2:-5}"
+should_retry_annotation_response() {
+    local response="$1"
+    local text="$2"
+
+    if echo "$text" | grep -qiE "Server is starting up|retry this tool call in [0-9]+ seconds"; then
+        return 0
+    fi
+
+    if check_is_error "$response" && echo "$text" | grep -qiE "no_data|annotation.*not found|annot_session.*not found|no annotations"; then
+        return 0
+    fi
+
+    return 1
+}
+
+call_tool_with_annotation_retry() {
+    local tool_name="$1"
+    local args="$2"
+    local max_attempts="${3:-6}"
+    local sleep_seconds="${4:-1}"
     local response text
-    for _ in $(seq 1 "$max_attempts"); do
-        response=$(call_tool "generate" "$args")
+
+    for attempt in $(seq 1 "$max_attempts"); do
+        response=$(call_tool "$tool_name" "$args")
         text=$(extract_content_text "$response")
-        if echo "$text" | grep -qi "Server is starting up"; then
-            sleep 2
+        if should_retry_annotation_response "$response" "$text" && [ "$attempt" -lt "$max_attempts" ]; then
+            sleep "$sleep_seconds"
             continue
         fi
         echo "$response"
         return 0
     done
+
     echo "$response"
     return 0
 }
@@ -263,7 +282,7 @@ begin_test "31.5" "[DAEMON ONLY] annotation_detail returns selector/tag/framewor
 
 run_test_31_5() {
     local response text verdict
-    response=$(call_tool "analyze" "{\"what\":\"annotation_detail\",\"correlation_id\":\"${PARITY_CORR_A}\"}")
+    response=$(call_tool_with_annotation_retry "analyze" "{\"what\":\"annotation_detail\",\"correlation_id\":\"${PARITY_CORR_A}\"}" 6 1)
     text=$(extract_content_text "$response")
 
     if check_is_error "$response"; then
@@ -311,7 +330,7 @@ begin_test "31.6" "[DAEMON ONLY] generate(visual_test) works from named session"
 
 run_test_31_6() {
     local response text
-    response=$(call_generate_with_startup_retry "{\"format\":\"visual_test\",\"annot_session\":\"${PARITY_SESSION_NAME}\",\"test_name\":\"annotation parity smoke\"}" 5)
+    response=$(call_tool_with_annotation_retry "generate" "{\"format\":\"visual_test\",\"annot_session\":\"${PARITY_SESSION_NAME}\",\"test_name\":\"annotation parity smoke\"}" 6 1)
     text=$(extract_content_text "$response")
 
     if check_matches "$text" "test\\(|page\\.goto\\(" ; then
@@ -329,7 +348,7 @@ begin_test "31.7" "[DAEMON ONLY] generate(annotation_report) returns markdown re
 
 run_test_31_7() {
     local response text
-    response=$(call_generate_with_startup_retry "{\"format\":\"annotation_report\",\"annot_session\":\"${PARITY_SESSION_NAME}\"}" 5)
+    response=$(call_tool_with_annotation_retry "generate" "{\"format\":\"annotation_report\",\"annot_session\":\"${PARITY_SESSION_NAME}\"}" 6 1)
     text=$(extract_content_text "$response")
 
     if check_matches "$text" "^# Annotation Report|## Page"; then
@@ -347,7 +366,7 @@ begin_test "31.8" "[DAEMON ONLY] generate(annotation_issues) returns structured 
 
 run_test_31_8() {
     local response text verdict
-    response=$(call_generate_with_startup_retry "{\"format\":\"annotation_issues\",\"annot_session\":\"${PARITY_SESSION_NAME}\"}" 5)
+    response=$(call_tool_with_annotation_retry "generate" "{\"format\":\"annotation_issues\",\"annot_session\":\"${PARITY_SESSION_NAME}\"}" 6 1)
     text=$(extract_content_text "$response")
 
     verdict=$(
