@@ -36,6 +36,7 @@ last_verified_date: 2026-03-05
 - Queued submit is reconnect-safe: if WS drops before Enter, submit waits until connection is back
 - WebSocket frame writes are serialized per-connection to prevent concurrent writer frame interleaving
 - Scrollback buffer capped at 256 KB for memory safety
+- PTY session tests share a bounded `readUntilContains` helper to keep echo/size assertions consistent
 - Canonical flow map: [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
 - Feature flow-map pointer: [flow-map.md](./flow-map.md)
 

@@ -9,6 +9,22 @@ import (
 	"testing"
 )
 
+func assertNetworkDiffEmpty(t *testing.T, diff SessionNetworkDiff) {
+	t.Helper()
+	if len(diff.NewEndpoints) != 0 {
+		t.Errorf("Expected 0 new endpoints, got %d", len(diff.NewEndpoints))
+	}
+	if len(diff.MissingEndpoints) != 0 {
+		t.Errorf("Expected 0 missing endpoints, got %d", len(diff.MissingEndpoints))
+	}
+	if len(diff.StatusChanges) != 0 {
+		t.Errorf("Expected 0 status changes, got %d", len(diff.StatusChanges))
+	}
+	if len(diff.NewErrors) != 0 {
+		t.Errorf("Expected 0 new errors, got %d", len(diff.NewErrors))
+	}
+}
+
 // ============================================
 // buildEndpointMap
 // ============================================
@@ -361,19 +377,7 @@ func TestDiffNetwork_NoChanges(t *testing.T) {
 	snapB := &NamedSnapshot{NetworkRequests: requests}
 
 	diff := sm.diffNetwork(snapA, snapB)
-
-	if len(diff.NewEndpoints) != 0 {
-		t.Errorf("Expected 0 new endpoints, got %d", len(diff.NewEndpoints))
-	}
-	if len(diff.MissingEndpoints) != 0 {
-		t.Errorf("Expected 0 missing endpoints, got %d", len(diff.MissingEndpoints))
-	}
-	if len(diff.StatusChanges) != 0 {
-		t.Errorf("Expected 0 status changes, got %d", len(diff.StatusChanges))
-	}
-	if len(diff.NewErrors) != 0 {
-		t.Errorf("Expected 0 new errors, got %d", len(diff.NewErrors))
-	}
+	assertNetworkDiffEmpty(t, diff)
 }
 
 // ============================================
@@ -389,19 +393,7 @@ func TestDiffNetwork_BothEmpty(t *testing.T) {
 	snapB := &NamedSnapshot{NetworkRequests: []SnapshotNetworkRequest{}}
 
 	diff := sm.diffNetwork(snapA, snapB)
-
-	if len(diff.NewEndpoints) != 0 {
-		t.Errorf("Expected 0 new endpoints, got %d", len(diff.NewEndpoints))
-	}
-	if len(diff.MissingEndpoints) != 0 {
-		t.Errorf("Expected 0 missing endpoints, got %d", len(diff.MissingEndpoints))
-	}
-	if len(diff.StatusChanges) != 0 {
-		t.Errorf("Expected 0 status changes, got %d", len(diff.StatusChanges))
-	}
-	if len(diff.NewErrors) != 0 {
-		t.Errorf("Expected 0 new errors, got %d", len(diff.NewErrors))
-	}
+	assertNetworkDiffEmpty(t, diff)
 }
 
 func TestDiffNetwork_NilNetworkRequests(t *testing.T) {

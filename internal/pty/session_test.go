@@ -10,6 +10,27 @@ import (
 	"time"
 )
 
+func readUntilContains(t *testing.T, sess *Session, needle string, timeout time.Duration) string {
+	t.Helper()
+	buf := make([]byte, 4096)
+	deadline := time.Now().Add(timeout)
+	var collected string
+	for time.Now().Before(deadline) {
+		n, err := sess.Read(buf)
+		if n > 0 {
+			collected += string(buf[:n])
+			if strings.Contains(collected, needle) {
+				return collected
+			}
+		}
+		if err != nil {
+			t.Fatalf("read before %q: %v (output so far: %q)", needle, err, collected)
+		}
+	}
+	t.Fatalf("timeout waiting for %q, got: %q", needle, collected)
+	return ""
+}
+
 func TestSpawn_RequiresCmd(t *testing.T) {
 	_, err := Spawn(SpawnConfig{})
 	if err == nil {
@@ -38,24 +59,7 @@ func TestSpawn_EchoRoundtrip(t *testing.T) {
 	defer sess.Close()
 
 	// Read output — should contain "HELLO_PTY".
-	buf := make([]byte, 4096)
-	deadline := time.After(3 * time.Second)
-	var collected string
-	for {
-		select {
-		case <-deadline:
-			t.Fatalf("timeout waiting for echo output, got: %q", collected)
-		default:
-		}
-		n, err := sess.Read(buf)
-		if err != nil {
-			t.Fatalf("read: %v", err)
-		}
-		collected += string(buf[:n])
-		if strings.Contains(collected, "HELLO_PTY") {
-			break
-		}
-	}
+	readUntilContains(t, sess, "HELLO_PTY", 3*time.Second)
 
 	// Write to stdin (cat echoes back).
 	input := "test_input\n"
@@ -64,28 +68,12 @@ func TestSpawn_EchoRoundtrip(t *testing.T) {
 	}
 
 	// Read the echo back.
-	deadline = time.After(3 * time.Second)
-	collected = ""
-	for {
-		select {
-		case <-deadline:
-			t.Fatalf("timeout waiting for echo back, got: %q", collected)
-		default:
-		}
-		n, err := sess.Read(buf)
-		if err != nil {
-			t.Fatalf("read: %v", err)
-		}
-		collected += string(buf[:n])
-		if strings.Contains(collected, "test_input") {
-			break
-		}
-	}
+	readUntilContains(t, sess, "test_input", 3*time.Second)
 }
 
 func TestSpawn_DefaultSize(t *testing.T) {
 	sess, err := Spawn(SpawnConfig{
-		Cmd: "/bin/sh",
+		Cmd:  "/bin/sh",
 		Args: []string{"-c", "stty size; exit 0"},
 	})
 	if err != nil {
@@ -93,23 +81,7 @@ func TestSpawn_DefaultSize(t *testing.T) {
 	}
 	defer sess.Close()
 
-	buf := make([]byte, 4096)
-	deadline := time.After(3 * time.Second)
-	var collected string
-	for {
-		select {
-		case <-deadline:
-			t.Fatalf("timeout, got: %q", collected)
-		default:
-		}
-		n, err := sess.Read(buf)
-		if n > 0 {
-			collected += string(buf[:n])
-		}
-		if err != nil || strings.Contains(collected, "24 80") {
-			break
-		}
-	}
+	collected := readUntilContains(t, sess, "24 80", 3*time.Second)
 	if !strings.Contains(collected, "24 80") {
 		t.Fatalf("expected '24 80' in output, got: %q", collected)
 	}
@@ -127,23 +99,7 @@ func TestSpawn_CustomSize(t *testing.T) {
 	}
 	defer sess.Close()
 
-	buf := make([]byte, 4096)
-	deadline := time.After(3 * time.Second)
-	var collected string
-	for {
-		select {
-		case <-deadline:
-			t.Fatalf("timeout, got: %q", collected)
-		default:
-		}
-		n, err := sess.Read(buf)
-		if n > 0 {
-			collected += string(buf[:n])
-		}
-		if err != nil || strings.Contains(collected, "40 120") {
-			break
-		}
-	}
+	collected := readUntilContains(t, sess, "40 120", 3*time.Second)
 	if !strings.Contains(collected, "40 120") {
 		t.Fatalf("expected '40 120' in output, got: %q", collected)
 	}

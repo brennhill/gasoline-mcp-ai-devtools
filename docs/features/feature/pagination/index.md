@@ -6,20 +6,15 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - internal/session/actions-diff.go
-  - internal/session/client_registry.go
-  - internal/session/comparison.go
-  - internal/session/constants.go
-  - internal/session/diff-types.go
-  - internal/session/helpers.go
-  - internal/session/network-diff.go
-  - internal/session/performance-diff.go
-  - internal/session/snapshot-manager.go
-  - internal/session/tool-handler.go
-  - internal/session/types.go
-  - internal/session/verify_compute.go
-  - internal/session/verify.go
-test_paths: []
+  - internal/pagination/pagination.go
+  - internal/pagination/pagination_actions.go
+  - internal/pagination/pagination_websocket.go
+  - internal/pagination/cursor.go
+test_paths:
+  - internal/pagination/pagination_test.go
+  - internal/pagination/pagination_actions_test.go
+  - internal/pagination/pagination_websocket_test.go
+  - internal/pagination/test_helpers_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -38,6 +33,7 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -47,4 +43,7 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- `internal/pagination/test_helpers_test.go` centralizes cursor test scenario runners shared by action and websocket pagination suites.
+- `internal/pagination/pagination_actions_test.go` validates action cursor slicing, before/after cursors, and eviction restart behavior.
+- `internal/pagination/pagination_websocket_test.go` validates websocket cursor slicing and eviction restart behavior using the shared runner.
+- `internal/pagination/pagination_test.go` now reuses shared before/after cursor runners and common log-entry fixture builders.

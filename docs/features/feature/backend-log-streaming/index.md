@@ -56,6 +56,11 @@ code_paths:
   - src/lib/network.ts
   - src/lib/websocket.ts
 test_paths:
+  - internal/capture/sync_test.go
+  - internal/capture/sync_test_helpers_test.go
+  - internal/capture/settings_path_test.go
+  - internal/capture/coverage_gaps_part2_test.go
+  - internal/capture/api_contract_test.go
   - internal/capture/extension_log_store_test.go
   - internal/capture/buffer_clear_test.go
   - tests/extension/sync-client.test.js
@@ -87,4 +92,6 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- `internal/capture/sync_test_helpers_test.go` centralizes `/sync` request marshaling, transport dispatch, and response decoding helpers.
+- `internal/capture/sync_test.go` now reuses those helpers across heartbeat, adaptive polling, and command lifecycle tests.
+- Additional capture contract tests (`settings_path_test`, `coverage_gaps_part2_test`, `api_contract_test`) now reuse shared helper assertions to keep endpoint/status checks consistent.

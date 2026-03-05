@@ -14,5 +14,6 @@ Canonical flow maps:
 
 - [Capture Buffer Store Extraction](../../../architecture/flow-maps/capture-buffer-store.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
+- [DRY Test Helpers and Daemon Header Consolidation](../../../architecture/flow-maps/dry-test-helper-and-daemon-header-consolidation.md)
 
-Latest sync update (2026-03-05): sync heartbeat and daemon-bound POST requests now reuse shared request/header builders.
+Latest sync update (2026-03-05): `/sync` tests now reuse shared request/decode helpers (`sync_test_helpers_test.go`) to keep command lifecycle assertions consistent.
