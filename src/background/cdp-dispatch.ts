@@ -12,6 +12,7 @@ import type { PendingQuery } from '../types/queries.js'
 import type { SyncClient } from './sync-client.js'
 import type { DOMActionParams, DOMResult } from './dom-types.js'
 import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
+import { CDP_VERSION } from '../lib/constants.js'
 
 interface CDPActionParams {
   action: string
@@ -22,8 +23,6 @@ interface CDPActionParams {
   key?: string
   modifiers?: number
 }
-
-const CDP_VERSION = '1.3'
 
 // Key code mappings for CDP Input.dispatchKeyEvent
 const KEY_CODES: Record<string, { code: string; keyCode: number }> = {

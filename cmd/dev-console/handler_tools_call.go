@@ -22,14 +22,14 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return JSONRPCResponse{
-			JSONRPC: "2.0", ID: req.ID,
+			JSONRPC: JSONRPCVersion, ID: req.ID,
 			Error: &JSONRPCError{Code: -32602, Message: "Invalid params: " + err.Error()},
 		}
 	}
 
 	if h.toolHandler == nil {
 		return JSONRPCResponse{
-			JSONRPC: "2.0", ID: req.ID,
+			JSONRPC: JSONRPCVersion, ID: req.ID,
 			Error: &JSONRPCError{Code: -32601, Message: "Unknown tool: " + params.Name},
 		}
 	}
@@ -37,13 +37,13 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	h.warnUnknownToolArguments(params.Name, params.Arguments)
 
 	if err := h.checkToolRateLimit(); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Error: err}
+		return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Error: err}
 	}
 
 	resp, handled := h.toolHandler.HandleToolCall(req, params.Name, params.Arguments)
 	if !handled {
 		return JSONRPCResponse{
-			JSONRPC: "2.0", ID: req.ID,
+			JSONRPC: JSONRPCVersion, ID: req.ID,
 			Error: &JSONRPCError{Code: -32601, Message: "Unknown tool: " + params.Name},
 		}
 	}

@@ -21,12 +21,8 @@ func (h *ToolHandler) toolConfigureReportIssue(req JSONRPCRequest, args json.Raw
 		UserContext string `json:"user_context"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			)}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -38,12 +34,10 @@ func (h *ToolHandler) toolConfigureReportIssue(req JSONRPCRequest, args json.Raw
 	case "preview", "":
 		return h.reportIssuePreview(req, params.Template, params.UserContext)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Unknown operation: "+params.Operation,
 			"Use list_templates, preview, or submit",
-			withParam("operation"),
-		)}
+			withParam("operation"))
 	}
 }
 
@@ -59,10 +53,8 @@ func (h *ToolHandler) reportIssueListTemplates(req JSONRPCRequest) JSONRPCRespon
 			"description": tmpl.Description,
 		})
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
-		"Available issue templates",
-		map[string]any{"templates": templates, "count": len(templates)},
-	)}
+	return succeed(req, "Available issue templates",
+		map[string]any{"templates": templates, "count": len(templates)})
 }
 
 // reportIssuePreview collects diagnostics, sanitizes, and returns the payload without submitting.
@@ -71,50 +63,42 @@ func (h *ToolHandler) reportIssuePreview(req JSONRPCRequest, template, userConte
 		template = "bug"
 	}
 	if issuereport.GetTemplate(template) == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Unknown template: "+template,
 			"Use list_templates to see available templates",
-			withParam("template"),
-		)}
+			withParam("template"))
 	}
 
 	report := h.collectIssueReport(template, "Preview: "+template, userContext)
 	sanitized := h.sanitizeIssueReport(report)
 	body := issuereport.FormatIssueBody(sanitized)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
-		"Issue preview (nothing sent)",
+	return succeed(req, "Issue preview (nothing sent)",
 		map[string]any{
 			"operation":      "preview",
 			"template":       template,
 			"report":         sanitized,
 			"formatted_body": body,
 			"hint":           "Review the payload above. Call with operation=\"submit\" and a title to file the issue.",
-		},
-	)}
+		})
 }
 
 // reportIssueSubmit validates, sanitizes, and submits an issue.
 func (h *ToolHandler) reportIssueSubmit(req JSONRPCRequest, template, title, userContext string) JSONRPCResponse {
 	if title == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"title is required for submit",
 			"Provide a title describing the issue",
-			withParam("title"),
-		)}
+			withParam("title"))
 	}
 	if template == "" {
 		template = "bug"
 	}
 	if issuereport.GetTemplate(template) == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Unknown template: "+template,
 			"Use list_templates to see available templates",
-			withParam("template"),
-		)}
+			withParam("template"))
 	}
 
 	report := h.collectIssueReport(template, title, userContext)
@@ -124,10 +108,8 @@ func (h *ToolHandler) reportIssueSubmit(req JSONRPCRequest, template, title, use
 	// issueCommandRunner is nil in production (uses real exec); tests inject a fake.
 	result := issuereport.SubmitViaGH(h.shutdownCtx, sanitized, h.issueCommandRunner)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
-		"Issue submission result",
-		result,
-	)}
+	return succeed(req, "Issue submission result",
+		result)
 }
 
 // collectIssueReport gathers diagnostics from the handler's runtime state.

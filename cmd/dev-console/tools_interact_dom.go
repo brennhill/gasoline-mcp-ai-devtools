@@ -74,7 +74,7 @@ func toFloat64(v any) (float64, bool) {
 func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	params, err := parseDOMPrimitiveParams(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	// If x/y coordinates provided on a click action, escalate to CDP for hardware-level click
@@ -123,7 +123,9 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
 

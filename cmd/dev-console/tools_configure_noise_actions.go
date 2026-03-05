@@ -14,7 +14,7 @@ import (
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	rewrittenArgs, err := cfg.RewriteNoiseRuleArgs(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	return h.toolConfigureNoise(req, rewrittenArgs)
@@ -42,13 +42,13 @@ type noiseRuleArgs struct {
 func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments noiseRuleArgs
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &arguments); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &arguments); stop {
+			return resp
 		}
 	}
 
 	if h.noiseConfig == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Noise configuration not initialized", "Internal error — do not retry")}
+		return fail(req, ErrNotInitialized, "Noise configuration not initialized", "Internal error — do not retry")
 	}
 
 	responseData, errResp := h.dispatchNoiseAction(req, arguments)
@@ -56,7 +56,7 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 		return *errResp
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise configuration updated", responseData)}
+	return succeed(req, "Noise configuration updated", responseData)
 }
 
 func (h *ToolHandler) dispatchNoiseAction(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
@@ -72,7 +72,7 @@ func (h *ToolHandler) dispatchNoiseAction(req JSONRPCRequest, args noiseRuleArgs
 	case "auto_detect":
 		return h.noiseActionAutoDetect(), nil
 	default:
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown noise action: "+args.Action, "Use a valid action: add, remove, list, reset, auto_detect", withParam("noise_action"))}
+		resp := fail(req, ErrUnknownMode, "Unknown noise action: "+args.Action, "Use a valid action: add, remove, list, reset, auto_detect", withParam("noise_action"))
 		return nil, &resp
 	}
 }
@@ -95,7 +95,7 @@ func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (an
 		}
 	}
 	if err := h.noiseConfig.AddRules(rules); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Fix the rule pattern and try again")}
+		resp := fail(req, ErrInvalidParam, err.Error(), "Fix the rule pattern and try again")
 		return nil, &resp
 	}
 	return map[string]any{
@@ -107,11 +107,11 @@ func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (an
 
 func (h *ToolHandler) noiseActionRemove(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
 	if args.RuleID == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'rule_id' is missing", "Add the 'rule_id' parameter", withParam("rule_id"))}
+		resp := fail(req, ErrMissingParam, "Required parameter 'rule_id' is missing", "Add the 'rule_id' parameter", withParam("rule_id"))
 		return nil, &resp
 	}
 	if err := h.noiseConfig.RemoveRule(args.RuleID); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Use a valid rule ID from list action")}
+		resp := fail(req, ErrInvalidParam, err.Error(), "Use a valid rule ID from list action")
 		return nil, &resp
 	}
 	return map[string]any{"status": "ok", "removed": args.RuleID}, nil

@@ -18,8 +18,8 @@ func (h *interactActionHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, 
 		SaveTo string `json:"save_to,omitempty"`
 		TabID  int    `json:"tab_id,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	trace := make([]WorkflowStep, 0, 2)

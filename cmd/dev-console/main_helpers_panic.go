@@ -56,4 +56,3 @@ func handlePanicRecovery(r any) {
 	}
 	os.Exit(1)
 }
-

@@ -26,12 +26,14 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
+		return enqueueResp
+	}
 	r.setInteractRecordingStart(correlationID)
 
 	h.recordAIAction("screen_recording_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
+	return succeed(req, "Recording queued", map[string]any{
 		"status":                "queued",
 		"recording_state":       recordingStateAwaitingGesture,
 		"correlation_id":        correlationID,
@@ -42,7 +44,7 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		"requires_user_gesture": true,
 		"user_prompt":           "Prompt the user to click the Gasoline icon to grant recording permission for the target tab.",
 		"message":               "Recording start queued. Prompt user to click the Gasoline icon to enable recording, then use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
-	})}
+	})
 }
 
 // handleRecordStart processes interact({action: "screen_recording_start"}).
@@ -56,21 +58,18 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 		TabID int    `json:"tab_id,omitempty"`
 		Audio string `json:"audio,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
 		return resp
 	}
 
 	fps := clampFPS(params.FPS)
 
 	if !validAudioModes[params.Audio] {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid audio mode: must be 'tab', 'mic', 'both', or omitted", "Use audio: 'tab', 'mic', 'both', or omit for no audio")}
+		return fail(req, ErrInvalidJSON, "Invalid audio mode: must be 'tab', 'mic', 'both', or omitted", "Use audio: 'tab', 'mic', 'both', or omit for no audio")
 	}
 
 	name := params.Name
@@ -80,7 +79,7 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 
 	dir, err := recordingsDir()
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Check disk permissions")}
+		return fail(req, ErrInternal, err.Error(), "Check disk permissions")
 	}
 
 	fullName, videoPath := resolveRecordingPath(dir, name)
@@ -94,14 +93,11 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
 		return resp
 	}
 
@@ -118,11 +114,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		if recordingState.StartCorrelationID == "" {
 			msg = "Cannot stop recording: no active interact(screen_recording_start) session found"
 		}
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrNoData, msg, retry, h.diagnosticHint()),
-		}
+		return fail(req, ErrNoData, msg, retry, h.diagnosticHint())
 	}
 
 	correlationID := newCorrelationID("recstop")
@@ -139,15 +131,17 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
+		return enqueueResp
+	}
 	r.setInteractRecordingStopping(correlationID)
 
 	h.recordAIAction("screen_recording_stop", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stop queued", map[string]any{
+	return succeed(req, "Recording stop queued", map[string]any{
 		"status":          "queued",
 		"recording_state": recordingStateStopping,
 		"correlation_id":  correlationID,
 		"message":         "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
-	})}
+	})
 }

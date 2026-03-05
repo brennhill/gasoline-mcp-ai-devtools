@@ -737,4 +737,3 @@ func TestFlushStdoutNoPanic(t *testing.T) {
 
 	flushStdout()
 }
-

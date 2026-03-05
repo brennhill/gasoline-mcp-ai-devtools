@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking.js';
-import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js';
+import { createDeferredPromise, promiseRaceWithCleanup } from '../lib/timeout-utils.js';
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
 import { extractReadable as extractReadableContent } from './extractors/readable.js';

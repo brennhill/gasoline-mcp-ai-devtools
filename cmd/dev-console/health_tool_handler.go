@@ -8,9 +8,9 @@ package main
 // It returns comprehensive server health metrics.
 func (h *ToolHandler) toolGetHealth(req JSONRPCRequest) JSONRPCResponse {
 	if h.healthMetrics == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Health metrics not initialized", "Internal server error — do not retry")}
+		return fail(req, ErrInternal, "Health metrics not initialized", "Internal server error — do not retry")
 	}
 
 	response := h.healthMetrics.GetHealth(h.capture, h.server, version)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Server health", response)}
+	return succeed(req, "Server health", response)
 }

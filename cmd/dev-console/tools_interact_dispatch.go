@@ -95,6 +95,8 @@ func (h *interactActionHandler) getValidInteractActions() string {
 }
 
 // readOnlyInteractActions lists actions that should not have jitter applied.
+// SYNC: The TS source of truth is src/background/action-metadata.ts (ACTION_METADATA map).
+// When adding or reclassifying actions, update both this map and the TS metadata.
 var readOnlyInteractActions = map[string]bool{
 	"list_interactive":          true,
 	"get_text":                  true,
@@ -144,5 +146,5 @@ func (h *interactActionHandler) dispatchInteractAction(req JSONRPCRequest, args 
 	if domPrimitiveActions[action] {
 		return h.handleDOMPrimitive(req, args, action)
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"), describeCapabilitiesRecovery("interact"))}
+	return fail(req, ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"), describeCapabilitiesRecovery("interact"))
 }

@@ -14,6 +14,13 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
+const (
+	// navigatePageSummaryWait is the time to wait for the page summary content
+	// extraction after navigation. The extension-side query uses a 4s timeout,
+	// so this must be slightly longer to allow for round-trip overhead.
+	navigatePageSummaryWait = 5 * time.Second
+)
+
 // handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.
 // All three use the same pattern: gate checks, timeout validation, create a pending query with
 // the dedicated query type, and wait for the content script to respond.
@@ -24,10 +31,7 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 	}
 	lenientUnmarshal(args, &params)
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -55,7 +59,9 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.parent.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
 }
@@ -97,12 +103,14 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 		TabID:         tabID,
 		CorrelationID: summaryCorrelationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(summaryQuery, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, summaryQuery, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Wait for page summary (5s — page should already be loaded).
 	// Best-effort enrichment: if extraction fails, navigate still succeeds with empty content.
 	var textContent string
-	cmd, found := h.capture.WaitForCommand(summaryCorrelationID, 5*time.Second)
+	cmd, found := h.capture.WaitForCommand(summaryCorrelationID, navigatePageSummaryWait)
 	if found && cmd.Status != "pending" && cmd.Result != nil {
 		var summaryResult map[string]any
 		if json.Unmarshal(cmd.Result, &summaryResult) == nil {

@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"net/url"
-	"sort"
 	"strings"
 	"time"
 
@@ -21,7 +19,11 @@ const annotationWaitCommandTTL = 10 * time.Minute
 // If annotations arrive in this window, return them directly without requiring polling.
 const annotationBlockingWaitDefault = 15 * time.Second
 
-// annotationBlockingWaitMax caps caller-provided timeout_ms for blocking annotation calls.
+// annotationErrorCorrelationWindow is the time window around an annotation's timestamp
+// in which console errors are considered correlated.
+const annotationErrorCorrelationWindow = 5 * time.Second
+
+// annotationBlockingWaitMax caps caller-provided timeout_ms for wait=true annotation calls.
 const annotationBlockingWaitMax = 10 * time.Minute
 
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
@@ -52,11 +54,7 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 	operation := strings.ToLower(strings.TrimSpace(params.Operation))
 	if operation != "" {
 		if operation != "flush" {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result:  mcpStructuredError(ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush")),
-			}
+			return fail(req, ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush"))
 		}
 		return h.toolFlushAnnotations(req, params.Correlation, urlFilter)
 	}
@@ -93,30 +91,30 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, wai
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, "", urlFilter)
 
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+		return succeed(req, "Waiting for annotations", map[string]any{
 			"status":         "waiting_for_user",
 			"correlation_id": corrID,
 			"annotations":    []any{},
 			"count":          0,
 			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
-		})}
+		})
 	}
 
 	session := h.annotationStore.GetLatestSession()
 	if session == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+		return succeed(req, "No annotations", map[string]any{
 			"annotations":    []any{},
 			"count":          0,
 			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
-		})}
+		})
 	}
 	return h.formatAnnotationSession(req, session, urlFilter)
 }
 
 func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession, urlFilter string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildAnnotationSessionResult(session, urlFilter))}
+	return succeed(req, "Annotations retrieved", buildAnnotationSessionResult(session, urlFilter))
 }
 
 // #lizard forgives
@@ -134,7 +132,7 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, sessionName, urlFilter)
 
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+		return succeed(req, "Waiting for annotations", map[string]any{
 			"status":             "waiting_for_user",
 			"correlation_id":     corrID,
 			"annot_session_name": sessionName,
@@ -143,30 +141,30 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"total_count":        0,
 			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
-		})}
+		})
 	}
 
 	ns := h.annotationStore.GetNamedSession(sessionName)
 	if ns == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+		return succeed(req, "No annotations", map[string]any{
 			"annot_session_name": sessionName,
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
 			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
-		})}
+		})
 	}
 
 	return h.formatNamedAnnotationSession(req, ns, urlFilter)
 }
 
 func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession, urlFilter string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildNamedAnnotationSessionResult(ns, urlFilter))}
+	return succeed(req, "Annotations retrieved", buildNamedAnnotationSessionResult(ns, urlFilter))
 }
 
 func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) map[string]any {
-	matched := annotation.URLMatches(urlFilter,session.PageURL)
+	matched := annotation.URLMatches(urlFilter, session.PageURL)
 	annotations := session.Annotations
 	if !matched {
 		annotations = []Annotation{}
@@ -250,17 +248,11 @@ func resolveAnnotationURLFilter(req JSONRPCRequest, urlValue, urlPatternValue st
 	urlValue = strings.TrimSpace(urlValue)
 	urlPatternValue = strings.TrimSpace(urlPatternValue)
 	if urlValue != "" && urlPatternValue != "" && urlValue != urlPatternValue {
-		return "", JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Conflicting annotation scope filters: 'url' and 'url_pattern' differ",
-				"Provide only one annotation scope filter, or set both to the same value.",
-				withParam("url"),
-				withParam("url_pattern"),
-			),
-		}, true
+		return "", fail(req, ErrInvalidParam,
+			"Conflicting annotation scope filters: 'url' and 'url_pattern' differ",
+			"Provide only one annotation scope filter, or set both to the same value.",
+			withParam("url"), withParam("url_pattern"),
+		), true
 	}
 	if urlPatternValue != "" {
 		return urlPatternValue, JSONRPCResponse{}, false
@@ -281,111 +273,21 @@ func filterAnnotationPages(pages []*AnnotationSession, urlFilter string) []*Anno
 	return filtered
 }
 
-func buildProjectSummaries(pages []*AnnotationSession) []map[string]any {
-	type projectAggregate struct {
-		pageSet         map[string]struct{}
-		annotationCount int
-	}
-	projects := make(map[string]*projectAggregate)
-	for _, page := range pages {
-		baseURL := annotationProjectBaseURL(page.PageURL)
-		if strings.TrimSpace(baseURL) == "" {
-			continue
-		}
-		agg, ok := projects[baseURL]
-		if !ok {
-			agg = &projectAggregate{
-				pageSet: make(map[string]struct{}),
-			}
-			projects[baseURL] = agg
-		}
-		agg.annotationCount += len(page.Annotations)
-		if strings.TrimSpace(page.PageURL) != "" {
-			agg.pageSet[page.PageURL] = struct{}{}
-		}
-	}
-
-	if len(projects) == 0 {
-		return nil
-	}
-	baseURLs := make([]string, 0, len(projects))
-	for baseURL := range projects {
-		baseURLs = append(baseURLs, baseURL)
-	}
-	sort.Strings(baseURLs)
-
-	summaries := make([]map[string]any, 0, len(baseURLs))
-	for _, baseURL := range baseURLs {
-		agg := projects[baseURL]
-		pageURLs := make([]string, 0, len(agg.pageSet))
-		for pageURL := range agg.pageSet {
-			pageURLs = append(pageURLs, pageURL)
-		}
-		sort.Strings(pageURLs)
-		summary := map[string]any{
-			"base_url":           baseURL,
-			"annotation_count":   agg.annotationCount,
-			"page_count":         len(pageURLs),
-			"recommended_filter": baseURL + "/*",
-		}
-		if len(pageURLs) > 0 {
-			summary["page_urls"] = pageURLs
-		}
-		summaries = append(summaries, summary)
-	}
-	return summaries
-}
-
-func buildScopeWarning(projects []map[string]any) map[string]any {
-	suggestedFilters := make([]string, 0, len(projects))
-	projectBaseURLs := make([]string, 0, len(projects))
-	for _, project := range projects {
-		if filter, ok := project["recommended_filter"].(string); ok && filter != "" {
-			suggestedFilters = append(suggestedFilters, filter)
-		}
-		if baseURL, ok := project["base_url"].(string); ok && baseURL != "" {
-			projectBaseURLs = append(projectBaseURLs, baseURL)
-		}
-	}
-	return map[string]any{
-		"warning":           "MULTI-PROJECT ANNOTATION SESSION DETECTED: annotations span multiple projects.",
-		"recommendation":    "Re-run analyze({what:'annotations'}) with 'url' or 'url_pattern' scoped to the active project before implementing changes.",
-		"suggested_filters": suggestedFilters,
-		"projects_detected": projectBaseURLs,
-	}
-}
-
-func annotationProjectBaseURL(rawURL string) string {
-	rawURL = strings.TrimSpace(rawURL)
-	if rawURL == "" {
-		return ""
-	}
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return rawURL
-	}
-	return parsed.Scheme + "://" + parsed.Host
-}
-
 // toolFlushAnnotations forces completion of a pending annotation waiter.
 // This is a recovery path for stuck waiters that would otherwise remain pending.
 func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID string, fallbackURLFilter string) JSONRPCResponse {
 	correlationID = strings.TrimSpace(correlationID)
 	if correlationID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"Required parameter 'correlation_id' is missing for operation='flush'",
 			"Pass the correlation_id returned by analyze({what:'annotations',wait:true}).",
-			withParam("correlation_id"),
-		)}
+			withParam("correlation_id"))
 	}
 	if !strings.HasPrefix(correlationID, "ann_") {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"Invalid annotation correlation_id: "+correlationID,
 			"Use an annotation correlation_id (prefix ann_) from analyze({what:'annotations',wait:true}).",
-			withParam("correlation_id"),
-		)}
+			withParam("correlation_id"))
 	}
 
 	// Remove waiter first so later session writes cannot re-complete the same flush target.
@@ -417,7 +319,7 @@ func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID str
 	data["final"] = true
 	data["correlation_id"] = correlationID
 	data["lifecycle_status"] = "complete"
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation flush completed", data)}
+	return succeed(req, "Annotation flush completed", data)
 }
 
 func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter string) json.RawMessage {
@@ -468,18 +370,18 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		CorrelationID string `json:"correlation_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.CorrelationID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))
 	}
 
 	detail, found := h.annotationStore.GetDetail(params.CorrelationID)
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Annotation detail not found or expired for correlation_id: "+params.CorrelationID, "Detail data expires after 10 minutes. Re-run draw mode to capture fresh data.")}
+		return fail(req, ErrNoData, "Annotation detail not found or expired for correlation_id: "+params.CorrelationID, "Detail data expires after 10 minutes. Re-run draw mode to capture fresh data.")
 	}
 
 	result := map[string]any{
@@ -522,7 +424,7 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	// Error correlation: find console errors near the annotation's timestamp
 	hasCorrelatedErrors := false
 	if annotTS := h.annotationStore.FindAnnotationTimestamp(params.CorrelationID); annotTS > 0 {
-		correlatedErrors := h.findErrorsNearTimestamp(annotTS, 5*time.Second)
+		correlatedErrors := h.findErrorsNearTimestamp(annotTS, annotationErrorCorrelationWindow)
 		if len(correlatedErrors) > 0 {
 			result["correlated_errors"] = correlatedErrors
 			result["error_correlation_window_seconds"] = 5
@@ -535,91 +437,5 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		result["hints"] = detailHints
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation detail", result)}
-}
-
-// findErrorsNearTimestamp returns up to 5 error-level log entries within ±window of the
-// given timestamp (millis). Returns a slice of maps with message and ts fields.
-func (h *ToolHandler) findErrorsNearTimestamp(tsMillis int64, window time.Duration) []map[string]string {
-	entries, _ := h.GetLogEntries()
-	annotTime := time.UnixMilli(tsMillis)
-	windowStart := annotTime.Add(-window)
-	windowEnd := annotTime.Add(window)
-
-	var matched []map[string]string
-	for i := len(entries) - 1; i >= 0 && len(matched) < 5; i-- {
-		entry := entries[i]
-		level, _ := entry["level"].(string)
-		if level != "error" {
-			continue
-		}
-		tsStr, _ := entry["ts"].(string)
-		if tsStr == "" {
-			continue
-		}
-		entryTime, err := time.Parse(time.RFC3339, tsStr)
-		if err != nil {
-			continue
-		}
-		if entryTime.Before(windowStart) || entryTime.After(windowEnd) {
-			continue
-		}
-		msg, _ := entry["message"].(string)
-		matched = append(matched, map[string]string{
-			"message": msg,
-			"ts":      tsStr,
-		})
-	}
-	return matched
-}
-
-// buildSessionHints returns LLM guidance hints for annotation session responses.
-func buildSessionHints(screenshotPath string) map[string]any {
-	hints := map[string]any{
-		"checklist": []string{
-			"Present annotations as a numbered checklist with suggested priority.",
-			"For each annotation, call analyze({what:'annotation_detail', correlation_id:'...'}) for DOM/style context.",
-			"If css_framework is detected, use framework-idiomatic code in fixes.",
-			"Check correlated_errors — errors near the annotation timestamp may explain visual issues.",
-			"After fixes, screenshot each page to compare against the baseline screenshot.",
-		},
-	}
-	if screenshotPath != "" {
-		hints["screenshot_baseline"] = "A pre-alteration screenshot was captured at " + screenshotPath + ". Compare after changes."
-	}
-	return hints
-}
-
-// buildDetailHints returns context-aware LLM hints for annotation detail responses.
-// Returns nil if no hints apply (no framework, no a11y flags, no correlated errors).
-func buildDetailHints(cssFramework string, a11yFlags []string, hasCorrelatedErrors bool) map[string]any {
-	hints := make(map[string]any)
-
-	if cssFramework != "" {
-		switch cssFramework {
-		case "tailwind":
-			hints["design_system"] = "This element uses Tailwind CSS. Prefer utility classes (e.g., bg-blue-500, p-4, text-sm) over custom CSS."
-		case "bootstrap":
-			hints["design_system"] = "This element uses Bootstrap. Use Bootstrap component classes (e.g., btn-primary, form-control) and grid system."
-		case "css-modules":
-			hints["design_system"] = "This element uses CSS Modules. Styles are scoped — modify the corresponding .module.css file."
-		case "styled-components":
-			hints["design_system"] = "This element uses styled-components/Emotion. Modify the component's styled template literal."
-		default:
-			hints["design_system"] = "CSS framework detected: " + cssFramework + ". Use framework-idiomatic patterns."
-		}
-	}
-
-	if len(a11yFlags) > 0 {
-		hints["accessibility"] = "Accessibility issues detected. Address a11y_flags before visual changes — screen reader compatibility and contrast ratios affect all users."
-	}
-
-	if hasCorrelatedErrors {
-		hints["error_context"] = "Console errors occurred near this annotation's timestamp. The visual issue may be caused by a JavaScript error — check correlated_errors first."
-	}
-
-	if len(hints) == 0 {
-		return nil
-	}
-	return hints
+	return succeed(req, "Annotation detail", result)
 }

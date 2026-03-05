@@ -29,7 +29,7 @@ func (h *ToolHandler) toolGenerateVisualTest(req JSONRPCRequest, args json.RawMe
 	}
 
 	script := generatePlaywrightFromAnnotations(testName, pages, h.annotationStore)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
+	return succeedText(req, script)
 }
 
 // toolGenerateAnnotationReport generates a Markdown report from annotation session data.
@@ -47,7 +47,7 @@ func (h *ToolHandler) toolGenerateAnnotationReport(req JSONRPCRequest, args json
 	}
 
 	report := generateMarkdownReport(pages, h.annotationStore)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(report)}
+	return succeedText(req, report)
 }
 
 // toolGenerateAnnotationIssues generates a structured JSON issue list from annotations.
@@ -72,7 +72,7 @@ func (h *ToolHandler) toolGenerateAnnotationIssues(req JSONRPCRequest, args json
 	}
 
 	summary := fmt.Sprintf("Annotation issues (%d issues across %d pages)", len(issues), len(pages))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+	return succeed(req, summary, result)
 }
 
 func (h *ToolHandler) resolveAnnotationPages(req JSONRPCRequest, sessionName string) ([]*AnnotationSession, JSONRPCResponse, bool) {
@@ -80,10 +80,10 @@ func (h *ToolHandler) resolveAnnotationPages(req JSONRPCRequest, sessionName str
 	if err == "" {
 		return pages, JSONRPCResponse{}, false
 	}
-	return nil, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+	return nil, succeed(req, "No annotations", map[string]any{
 		"status":  "no_data",
 		"message": err,
-	})}, true
+	}), true
 }
 
 // collectAnnotationPages gathers annotation pages from either a named or anonymous session.

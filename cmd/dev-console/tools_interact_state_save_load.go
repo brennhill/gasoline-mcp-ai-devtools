@@ -16,17 +16,17 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
 	if snapshotName == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
 	}
 
-	if h.parent.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	_, tabID, tabURL := h.parent.capture.GetTrackingStatus()
@@ -56,16 +56,16 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 
 	data, err := json.Marshal(stateData)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}
+		return fail(req, ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")
 	}
 
 	if err := h.parent.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")}
+		return fail(req, ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")
 	}
 
 	h.parent.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State saved", map[string]any{
+	return succeed(req, "State saved", map[string]any{
 		"status":        "saved",
 		"snapshot_name": snapshotName,
 		"state_capture": capture.Status,
@@ -73,7 +73,7 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 			"url":   tabURL,
 			"title": tabTitle,
 		},
-	})}
+	})
 }
 
 func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -82,27 +82,27 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 		Name         string `json:"name"` // backward-compatible alias
 		IncludeURL   bool   `json:"include_url,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
 	if snapshotName == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
+		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
 	}
 
-	if h.parent.sessionStoreImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	if resp, blocked := h.parent.requireSessionStore(req); blocked {
+		return resp
 	}
 
 	data, err := h.parent.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.parent.diagnosticHint())}
+		return fail(req, ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.parent.diagnosticHint())
 	}
 
 	var stateData map[string]any
 	if err := json.Unmarshal(data, &stateData); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")}
+		return fail(req, ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")
 	}
 
 	if params.IncludeURL {
@@ -137,5 +137,5 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 
 	h.parent.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State loaded", responseData)}
+	return succeed(req, "State loaded", responseData)
 }

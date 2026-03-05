@@ -11,8 +11,8 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 		What string `json:"what"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -22,7 +22,7 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 	}
 
 	context := h.tutorialContext()
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Tutorial", map[string]any{
+	return succeed(req, "Tutorial", map[string]any{
 		"status":                     "ok",
 		"mode":                       mode,
 		"message":                    "Quickstart snippets and context-aware guidance",
@@ -39,7 +39,7 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 			"When debugging, capture correlation_id from interact/analyze and inspect with observe command_result",
 			"Use scope + list_interactive + post-action verification to avoid wrong-target clicks",
 		},
-	})}
+	})
 }
 
 func (h *ToolHandler) tutorialContext() map[string]any {

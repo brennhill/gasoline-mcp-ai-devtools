@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	// composableSideEffectDelay is the pause before screenshot capture when composable
+	// side effects (auto_dismiss, wait_for_stable, action_diff) are in flight.
+	composableSideEffectDelay = 300 * time.Millisecond
+)
+
 // toolInteract dispatches interact requests based on the 'what' parameter.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -16,8 +22,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		Action string `json:"action"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -35,22 +41,18 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	if what == "" {
 		validActions := h.interactAction().getValidInteractActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"Required dispatch parameter is missing: provide 'what' (or deprecated alias 'action')",
 			"Add 'what' (preferred) or 'action' and call again",
 			withParam("what"),
-			withHint("Valid values: "+validActions),
-		)}
+			withHint("Valid values: "+validActions))
 	}
 
 	if _, err := parseEvidenceMode(args); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		resp := fail(req, ErrInvalidParam,
 			"Invalid 'evidence' value",
 			"Use evidence='off' (default), 'on_mutation', or 'always'",
-			withParam("evidence"),
-		)}
+			withParam("evidence"))
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
@@ -92,7 +94,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	// queries that the extension processes asynchronously. When a screenshot is also requested,
 	// we need a brief delay to let the extension finish processing before capture.
 	if hasComposableSideEffects && composableParams.IncludeScreenshot {
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(composableSideEffectDelay)
 	}
 	if composableParams.IncludeScreenshot && !isErrorResponse(resp) {
 		resp = h.interactAction().appendScreenshotToResponse(resp, req)

@@ -23,18 +23,15 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		DurationMs int    `json:"duration_ms,omitempty"`
 		TabID      int    `json:"tab_id,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	if params.Selector == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))}
+		return fail(req, ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -51,7 +48,9 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Record AI action.
 	h.parent.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
@@ -66,25 +65,22 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		TabID     int    `json:"tab_id,omitempty"`
 		World     string `json:"world,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	if params.Script == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'script' is missing", "Add the 'script' parameter and call again", withParam("script"))}
+		return fail(req, ErrMissingParam, "Required parameter 'script' is missing", "Add the 'script' parameter and call again", withParam("script"))
 	}
 
 	if params.World == "" {
 		params.World = "auto"
 	}
 	if !validWorldValues[params.World] {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))}
+		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -103,7 +99,9 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 

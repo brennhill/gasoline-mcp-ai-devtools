@@ -88,7 +88,7 @@ func relayPushEvent(ev push.PushEvent, framing bridge.StdioFraming) {
 // Used as fallback when sampling is not available.
 func buildPushNotification(ev push.PushEvent) []byte {
 	notif := map[string]any{
-		"jsonrpc": "2.0",
+		"jsonrpc": JSONRPCVersion,
 		"method":  "notifications/message",
 		"params": map[string]any{
 			"level":  "info",

@@ -24,6 +24,7 @@ const (
 	ErrCursorExpired        = mcp.ErrCursorExpired
 	ErrExtTimeout           = mcp.ErrExtTimeout
 	ErrExtError             = mcp.ErrExtError
+	ErrQueueFull            = mcp.ErrQueueFull
 	ErrInternal             = mcp.ErrInternal
 	ErrMarshalFailed        = mcp.ErrMarshalFailed
 	ErrExportFailed         = mcp.ErrExportFailed

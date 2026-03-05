@@ -20,14 +20,14 @@ func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, arg
 		TimeoutMs      int    `json:"timeout_ms,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.URL == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'url' is missing", "Add 'url' to navigate to", withParam("url"))}
+		return fail(req, ErrMissingParam, "Required parameter 'url' is missing", "Add 'url' to navigate to", withParam("url"))
 	}
 	if params.WaitFor == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'wait_for' is missing", "Add a CSS selector to wait for after navigation", withParam("wait_for"))}
+		return fail(req, ErrMissingParam, "Required parameter 'wait_for' is missing", "Add a CSS selector to wait for after navigation", withParam("wait_for"))
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000

@@ -27,14 +27,12 @@ var (
 	describeElement   = reproduction.DescribeElement
 )
 
-// toolGetReproductionScriptImpl generates a reproduction script from captured actions.
-func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolGetReproductionScript generates a reproduction script from captured actions.
+func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	params := reproduction.ParseParams(args)
 
 	if err := reproduction.ValidateOutputFormat(params.OutputFormat); err != "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"),
-		)}
+		return fail(req, ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"))
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()
@@ -44,5 +42,5 @@ func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args jso
 	result := reproduction.BuildResult(script, params, actions, allActions)
 
 	summary := fmt.Sprintf("Reproduction script (%s, %d actions)", params.OutputFormat, len(actions))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+	return succeed(req, summary, result)
 }

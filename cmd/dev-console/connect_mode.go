@@ -14,6 +14,20 @@ import (
 	"time"
 )
 
+const (
+	// connectModeHealthTimeout is the deadline for the initial health check when
+	// connecting to an existing daemon.
+	connectModeHealthTimeout = 5 * time.Second
+
+	// connectModeRegisterTimeout is the deadline for client registration and
+	// unregistration requests in connect mode.
+	connectModeRegisterTimeout = 5 * time.Second
+
+	// connectModeForwardTimeout is the deadline for forwarding individual JSON-RPC
+	// requests from the connect-mode client to the daemon.
+	connectModeForwardTimeout = 30 * time.Second
+)
+
 // runConnectMode connects to an existing Gasoline server as an MCP client.
 // This enables multiple Claude Code sessions to share a single server.
 // The client ID is sent via X-Gasoline-Client header for state isolation.
@@ -34,7 +48,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 
 // connectCheckHealth verifies the server is running. Exits on failure.
 func connectCheckHealth(serverURL string, port int) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), connectModeHealthTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/health", nil)
@@ -62,7 +76,7 @@ func connectRegisterClient(serverURL, clientID, cwd string) {
 	// Error impossible: map contains only string values
 	regBody, _ := json.Marshal(map[string]string{"cwd": cwd})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), connectModeRegisterTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", serverURL+"/clients", strings.NewReader(string(regBody)))
@@ -99,7 +113,7 @@ func connectForwardLoop(mcpURL, clientID string) {
 
 // connectForwardRequest forwards a single JSON-RPC request to the server.
 func connectForwardRequest(mcpURL, clientID, line string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), connectModeForwardTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", mcpURL, strings.NewReader(line)) // #nosec G601 -- URL from localhost-only serverURL
@@ -150,7 +164,7 @@ func connectUnregisterClient(serverURL, clientID string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), connectModeRegisterTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "DELETE", serverURL+"/clients/"+clientID, nil)
@@ -167,7 +181,7 @@ func connectUnregisterClient(serverURL, clientID string) {
 // sendMCPError sends a JSON-RPC error response to stdout (used in connect mode)
 func sendMCPError(id any, code int, message string) {
 	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      id,
 		Error: &JSONRPCError{
 			Code:    code,

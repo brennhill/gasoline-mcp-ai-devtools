@@ -32,7 +32,7 @@ func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string
 		"selector_failures": session.SelectorFailures,
 	}
 	message := fmt.Sprintf("Playback complete: %d/%d actions executed", session.ActionsExecuted, total)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(message, responseData)}
+	return succeed(req, message, responseData)
 }
 
 // appendServerLog appends one entry to bounded in-memory daemon logs.

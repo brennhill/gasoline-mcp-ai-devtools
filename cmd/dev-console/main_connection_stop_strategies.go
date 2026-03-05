@@ -11,6 +11,19 @@ import (
 	"time"
 )
 
+const (
+	// stopPollInterval is the interval between process-alive checks when waiting
+	// for a server to exit after SIGTERM.
+	stopPollInterval = 100 * time.Millisecond
+
+	// stopHTTPShutdownTimeout is the HTTP client timeout for the /shutdown endpoint.
+	stopHTTPShutdownTimeout = 3 * time.Second
+
+	// stopProcessLookupSettleDelay is the pause after sending termination signals
+	// via process lookup before checking whether the server actually stopped.
+	stopProcessLookupSettleDelay = 500 * time.Millisecond
+)
+
 // stopViaPIDFile attempts to stop the server using the PID file (fast path).
 // Returns true if the server was stopped successfully.
 func stopViaPIDFile(port int) bool {
@@ -31,7 +44,7 @@ func stopViaPIDFile(port int) bool {
 	fmt.Printf("Sent SIGTERM to PID %d\n", pid)
 
 	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(stopPollInterval)
 		if !isProcessAlive(pid) {
 			fmt.Println("Server stopped successfully")
 			removePIDFile(port)
@@ -50,7 +63,7 @@ func stopViaPIDFile(port int) bool {
 // Returns true if the server acknowledged the shutdown.
 func stopViaHTTP(port int) bool {
 	shutdownURL := fmt.Sprintf("http://127.0.0.1:%d/shutdown", port)
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: stopHTTPShutdownTimeout}
 	req, _ := http.NewRequest("POST", shutdownURL, nil)
 	resp, err := client.Do(req) // #nosec G704 -- shutdownURL is localhost-only from trusted port
 	if err == nil && resp.StatusCode == http.StatusOK {
@@ -80,7 +93,7 @@ func stopViaProcessLookup(port int) {
 		_ = killProcessByPID(pidNum)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(stopProcessLookupSettleDelay)
 	if !isServerRunning(port) {
 		fmt.Println("Server stopped successfully")
 		removePIDFile(port)

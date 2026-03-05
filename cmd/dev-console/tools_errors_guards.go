@@ -10,6 +10,24 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
+// guardCheck is a precondition that returns (response, true) to short-circuit the caller.
+type guardCheck func(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
+
+// checkGuards runs each guard in order, returning the first blocking response.
+// Eliminates the repeated 6-line requirePilot+requireExtension boilerplate:
+//
+//	Before: if resp, blocked := h.requirePilot(req); blocked { return resp }
+//	        if resp, blocked := h.requireExtension(req); blocked { return resp }
+//	After:  if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked { return resp }
+func checkGuards(req JSONRPCRequest, guards ...guardCheck) (JSONRPCResponse, bool) {
+	for _, g := range guards {
+		if resp, blocked := g(req); blocked {
+			return resp, true
+		}
+	}
+	return JSONRPCResponse{}, false
+}
+
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
 func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
@@ -23,10 +41,9 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*Struct
 			"arguments": map[string]any{"what": "pilot"},
 		}),
 	}, extraOpts...)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
+	return fail(req, ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
 		"Enable AI Web Pilot in the extension popup", opts...,
-	)}, true
+	), true
 }
 
 // requireExtension returns (resp, true) if the browser extension is not connected,
@@ -57,11 +74,10 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 			"arguments": map[string]any{"what": "pilot"},
 		}),
 	}, extraOpts...)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
+	return fail(req, ErrNoData, "Extension not connected. Commands cannot be dispatched.",
 		"Check that the Gasoline browser extension is installed and the page is open.",
 		opts...,
-	)}, true
+	), true
 }
 
 // requireCSPClear returns (resp, true) if the page's CSP blocks script execution
@@ -82,8 +98,7 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 	}
 	// Recovery template: LLM should re-send its original call with world='auto'.
 	// The 'script' param is intentionally omitted — the LLM fills it from its original call.
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrExtError,
+	return fail(req, ErrExtError,
 		fmt.Sprintf("Page CSP blocks MAIN world script execution (level: %s). Use world='auto' or world='isolated' to bypass.", level),
 		"Retry with world='auto' (falls back to isolated/structured), world='isolated' (DOM access, no page JS), or use DOM primitives (click, type).",
 		h.diagnosticHint(),
@@ -91,7 +106,16 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 			"tool":      "interact",
 			"arguments": map[string]any{"what": "execute_js", "world": "auto"},
 		}),
-	)}, true
+	), true
+}
+
+// requireSessionStore returns (resp, true) if the session store is not initialized.
+// Usage: if resp, blocked := h.requireSessionStore(req); blocked { return resp }
+func (h *ToolHandler) requireSessionStore(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	if h.sessionStoreImpl != nil {
+		return JSONRPCResponse{}, false
+	}
+	return fail(req, ErrNotInitialized, "Session store not initialized", "Internal error — do not retry"), true
 }
 
 // requireTabTracking returns (resp, true) if no tab is being tracked,
@@ -108,9 +132,8 @@ func (h *ToolHandler) requireTabTracking(req JSONRPCRequest, extraOpts ...func(*
 		withRetryable(true),
 		withRetryAfterMs(2000),
 	}, extraOpts...)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrNoData, "No tab is being tracked. Navigate to a page first.",
+	return fail(req, ErrNoData, "No tab is being tracked. Navigate to a page first.",
 		"Open a page in the browser, or call interact(what='navigate', url='...').",
 		opts...,
-	)}, true
+	), true
 }

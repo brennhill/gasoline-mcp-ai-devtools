@@ -13,6 +13,16 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
+const (
+	// bridgeShutdownResponseDrain is the maximum time to wait for the last response
+	// to be sent before closing the bridge stdio connection.
+	bridgeShutdownResponseDrain = 5 * time.Second
+
+	// bridgeShutdownFlushDelay is the pause after flushing stdout to let the
+	// parent process read the final bytes before the bridge process exits.
+	bridgeShutdownFlushDelay = 100 * time.Millisecond
+)
+
 type bridgeSessionStats struct {
 	requests             int
 	parseErrors          int
@@ -40,12 +50,12 @@ func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, s
 
 	select {
 	case <-responseSent:
-	case <-time.After(5 * time.Second):
+	case <-time.After(bridgeShutdownResponseDrain):
 	}
 	close(responseSent)
 
 	flushStdout()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(bridgeShutdownFlushDelay)
 
 	if stats != nil {
 		reason := "stdin_eof"

@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: interact-navigate-and-document
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -11,6 +11,7 @@ code_paths:
   - cmd/dev-console/tools_interact_workflow_navigate_document.go
   - cmd/dev-console/tools_interact_response_helpers.go
   - cmd/dev-console/tools_interact_dispatch.go
+  - cmd/dev-console/tools_pending_query_enqueue.go
   - internal/tools/interact/workflow.go
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_output_batch.go
@@ -18,6 +19,7 @@ code_paths:
   - internal/tools/configure/mode_specs_interact.go
 test_paths:
   - cmd/dev-console/tools_interact_navigate_document_test.go
+  - cmd/dev-console/tools_pending_query_enqueue_test.go
   - cmd/dev-console/tools_interact_screenshot_test.go
 ---
 
@@ -49,6 +51,7 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 - Explicit `tab_id` without active tracking returns `ErrInvalidParam`; the workflow requires tracked-tab context for deterministic waits.
 - `tab_id` mismatch (different from tracked tab) returns `ErrInvalidParam`; workflow waits/context are tracked-tab scoped.
 - URL-change timeout returns `ErrExtTimeout` with guidance to increase timeout or disable URL-change waiting.
+- Queue saturation returns fail-fast `queue_full` structured errors before waiting, via shared enqueue helper.
 - Stability wait failure propagates the structured `wait_for_stable` error.
 - Failed paths still return `metadata.workflow_trace` so callers can identify the exact failing stage.
 
@@ -57,6 +60,7 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 - URL-change detection reads tracked tab URL from capture state, falling back to observe page context when needed.
 - If `tab_id` is provided, an active tracked tab is required and it must match the tracked tab for deterministic workflow postconditions.
 - If `timeout_ms` is provided, wait stages consume a shared remaining-budget window (not independent full timeouts per stage).
+- All extension-dispatched sub-actions use shared enqueue semantics (`enqueuePendingQuery`) so queue saturation is surfaced consistently.
 - Workflow defaults are conservative for navigation use-cases: URL-change wait enabled, stability wait enabled.
 - Response enrichment is additive: base action result is preserved and page context text block is appended for backward compatibility.
 - Machine-readable context contract: `metadata.page_context`.

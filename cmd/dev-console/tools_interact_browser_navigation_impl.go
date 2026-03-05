@@ -16,27 +16,22 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		TabID          int    `json:"tab_id,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	if params.URL == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))}
+		return fail(req, ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))
 	}
 	resolvedURL, err := h.resolveNavigateURLImpl(params.URL)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			err.Error(),
 			"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
-			withParam("url"),
-		)}
+			withParam("url"))
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 
@@ -58,7 +53,9 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("navigate", resolvedURL, map[string]any{
 		"target_url":    resolvedURL,
@@ -83,14 +80,11 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.parent.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -108,7 +102,9 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("refresh", "", nil)
 
@@ -116,10 +112,7 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 }
 
 func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -134,7 +127,9 @@ func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, 
 		Params:        json.RawMessage(`{"action":"back"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("back", "", nil)
 
@@ -142,10 +137,7 @@ func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, 
 }
 
 func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -160,7 +152,9 @@ func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCReques
 		Params:        json.RawMessage(`{"action":"forward"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("forward", "", nil)
 

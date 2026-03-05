@@ -14,26 +14,21 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	var params struct {
 		URL string `json:"url"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.parent.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	resolvedURL := params.URL
 	if params.URL != "" {
 		rewriteURL, err := h.resolveNavigateURLImpl(params.URL)
 		if err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidParam,
+			return fail(req, ErrInvalidParam,
 				err.Error(),
 				"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
-				withParam("url"),
-			)}
+				withParam("url"))
 		}
 		resolvedURL = rewriteURL
 	}
@@ -54,7 +49,9 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 		Params:        actionPayload,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("new_tab", resolvedURL, map[string]any{
 		"target_url":    resolvedURL,
@@ -70,34 +67,27 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 		TabIndex   *int  `json:"tab_index,omitempty"`
 		SetTracked *bool `json:"set_tracked,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.TabID <= 0 && params.TabIndex == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
+		return fail(req, ErrMissingParam,
 			"switch_tab requires tab_id or tab_index",
 			"Provide tab_id from observe(what='tabs') or tab_index from your tab list ordering.",
 			withParam("tab_id"),
-			withHint("Alternative: provide tab_index"),
-		)}
+			withHint("Alternative: provide tab_index"))
 	}
 	if params.TabIndex != nil && *params.TabIndex < 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			"tab_index must be >= 0",
 			"Provide a non-negative tab_index (0-based).",
-			withParam("tab_index"),
-		)}
+			withParam("tab_index"))
 	}
 
 	// Default set_tracked to true so subsequent commands target the new tab.
 	setTracked := params.SetTracked == nil || *params.SetTracked
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	// No requireTabTracking gate: switch_tab IS how you establish tracking
@@ -117,7 +107,9 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("switch_tab", "", map[string]any{
 		"tab_id":    params.TabID,
@@ -140,10 +132,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 }
 
 func (h *interactActionHandler) handleActivateTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -158,7 +147,9 @@ func (h *interactActionHandler) handleActivateTabImpl(req JSONRPCRequest, args j
 		Params:        json.RawMessage(`{"action":"activate_tab"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("activate_tab", "", nil)
 
@@ -169,14 +160,11 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.parent.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	// NOTE: close_tab is gated even with explicit tab_id.
@@ -199,7 +187,9 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("close_tab", "", map[string]any{
 		"tab_id": params.TabID,

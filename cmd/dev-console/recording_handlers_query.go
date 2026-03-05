@@ -15,8 +15,8 @@ func (h *ToolHandler) toolGetRecordings(req JSONRPCRequest, args json.RawMessage
 		Limit int `json:"limit"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -27,11 +27,9 @@ func (h *ToolHandler) toolGetRecordings(req JSONRPCRequest, args json.RawMessage
 	// Load recordings from disk
 	recordings, err := h.capture.ListRecordings(params.Limit)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to list recordings: %v", err),
-			"Check that recordings directory exists",
-		)}
+			"Check that recordings directory exists")
 	}
 
 	responseData := map[string]any{
@@ -41,7 +39,7 @@ func (h *ToolHandler) toolGetRecordings(req JSONRPCRequest, args json.RawMessage
 	}
 
 	summary := fmt.Sprintf("%d recording(s) found", len(recordings))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }
 
 // toolGetRecordingActions handles observe(what: "recording_actions", recording_id: "...")
@@ -50,23 +48,21 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.RecordingID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from a previous event_recording_start call", withParam("recording_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from a previous event_recording_start call", withParam("recording_id"))
 	}
 
 	// Load recording
 	recording, err := h.capture.GetRecording(params.RecordingID)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to load recording: %v", err),
-			"Ensure the recording_id is correct",
-		)}
+			"Ensure the recording_id is correct")
 	}
 
 	responseData := map[string]any{
@@ -80,5 +76,5 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 	}
 
 	summary := fmt.Sprintf("%d action(s) from recording %s", len(recording.Actions), params.RecordingID)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }

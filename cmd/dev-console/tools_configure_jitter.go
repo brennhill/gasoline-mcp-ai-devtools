@@ -14,12 +14,8 @@ func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.Ra
 		ActionJitterMs *int `json:"action_jitter_ms"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			)}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -40,5 +36,5 @@ func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.Ra
 	result := map[string]any{
 		"action_jitter_ms": actionMs,
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action jitter configured", result)}
+	return succeed(req, "Action jitter configured", result)
 }

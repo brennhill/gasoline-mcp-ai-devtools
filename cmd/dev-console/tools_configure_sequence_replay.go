@@ -49,11 +49,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 	}
 
 	if !replayMu.TryLock() {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidParam, "Another sequence is currently replaying", "Wait for it to complete"),
-		}
+		return fail(req, ErrInvalidParam, "Another sequence is currently replaying", "Wait for it to complete")
 	}
 	defer replayMu.Unlock()
 
@@ -76,18 +72,14 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 		"message":        message,
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence replay", responseData)}
+	return succeed(req, "Sequence replay", responseData)
 }
 
 func parseReplaySequenceParams(req JSONRPCRequest, args json.RawMessage) (sequenceReplayParams, *JSONRPCResponse) {
 	var params sequenceReplayParams
 	lenientUnmarshal(args, &params)
 	if params.Name == "" {
-		resp := JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name")),
-		}
+		resp := fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
 		return params, &resp
 	}
 	return params, nil
@@ -95,16 +87,11 @@ func parseReplaySequenceParams(req JSONRPCRequest, args json.RawMessage) (sequen
 
 func buildReplayContext(req JSONRPCRequest, seq *Sequence, params sequenceReplayParams) (sequenceReplayContext, *JSONRPCResponse) {
 	if params.OverrideSteps != nil && len(params.OverrideSteps) != seq.StepCount {
-		resp := JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				fmt.Sprintf("override_steps length (%d) does not match sequence step count (%d)", len(params.OverrideSteps), seq.StepCount),
-				"Fix array length to match step count",
-				withParam("override_steps"),
-			),
-		}
+		resp := fail(req, ErrInvalidParam,
+			fmt.Sprintf("override_steps length (%d) does not match sequence step count (%d)", len(params.OverrideSteps), seq.StepCount),
+			"Fix array length to match step count",
+			withParam("override_steps"),
+		)
 		return sequenceReplayContext{}, &resp
 	}
 

@@ -4,7 +4,7 @@ feature_id: feature-terminal
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/terminal_handlers.go
   - cmd/dev-console/terminal_server.go
@@ -15,6 +15,7 @@ code_paths:
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
+  - cmd/dev-console/terminal_handlers_test.go
   - tests/extension/terminal-widget.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
@@ -31,6 +32,7 @@ test_paths:
 - Header redraw control (`↻`) resets widget geometry and reloads iframe graphics without killing the PTY session
 - Annotation auto-send now uses a typing-aware write queue: if the user is active in terminal, writes wait until ~1.5s idle
 - Queued submit is reconnect-safe: if WS drops before Enter, submit waits until connection is back
+- WebSocket frame writes are serialized per-connection to prevent concurrent writer frame interleaving
 - Scrollback buffer capped at 256 KB for memory safety
 - Canonical flow map: [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
 - Feature flow-map pointer: [flow-map.md](./flow-map.md)

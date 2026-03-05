@@ -20,8 +20,8 @@ func (h *ToolHandler) toolObservePageInventory(req JSONRPCRequest, args json.Raw
 		Limit       int  `json:"limit"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -33,7 +33,9 @@ func (h *ToolHandler) toolObservePageInventory(req JSONRPCRequest, args json.Raw
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.MaybeWaitForCommand(req, correlationID, args, "Page inventory queued")
 }

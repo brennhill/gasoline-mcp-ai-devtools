@@ -12,10 +12,7 @@ import (
 
 // handleClipboardRead reads text from the clipboard via navigator.clipboard.readText().
 func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -42,7 +39,9 @@ func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args jso
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("clipboard_read", "", nil)
 
@@ -54,26 +53,17 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 	var params struct {
 		Text string `json:"text"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidJSON,
-			"Invalid JSON arguments: "+err.Error(),
-			"Fix JSON syntax and call again",
-		)}
-	}
-	if params.Text == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrMissingParam,
-			"Required parameter 'text' is missing",
-			"Add the 'text' parameter with the content to write to clipboard",
-			withParam("text"),
-		)}
-	}
-
-	if resp, blocked := h.parent.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if params.Text == "" {
+		return fail(req, ErrMissingParam,
+			"Required parameter 'text' is missing",
+			"Add the 'text' parameter with the content to write to clipboard",
+			withParam("text"))
+	}
+
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -103,7 +93,9 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
 

@@ -12,6 +12,12 @@ import (
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
+const (
+	// stateCaptureTimeout is the time to wait for the extension to execute
+	// the state capture script and return form/scroll/storage data.
+	stateCaptureTimeout = 5 * time.Second
+)
+
 // stateCaptureResult — type alias delegated to internal/tools/interact package.
 type stateCaptureResult = act.StateCaptureResult
 
@@ -38,9 +44,11 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return stateCaptureResult{Status: act.StateCaptureStatusError}
+	}
 
-	cmd, found := h.parent.capture.WaitForCommand(correlationID, 5*time.Second)
+	cmd, found := h.parent.capture.WaitForCommand(correlationID, stateCaptureTimeout)
 	if !found || cmd.Status == "pending" {
 		return stateCaptureResult{Status: act.StateCaptureStatusTimeout}
 	}
@@ -76,7 +84,9 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return ""
+	}
 
 	return correlationID
 }
@@ -96,7 +106,9 @@ func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateDat
 		Params:        navArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 	stateData["navigation_queued"] = true
 	stateData["correlation_id"] = correlationID
 }

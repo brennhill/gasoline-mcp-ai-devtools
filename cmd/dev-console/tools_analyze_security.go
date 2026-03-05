@@ -23,14 +23,14 @@ func (h *ToolHandler) toolAnalyzeSecurityAudit(req JSONRPCRequest, args json.Raw
 		Summary     bool     `json:"summary"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	// Ensure security scanner is initialized
 	if h.securityScannerImpl == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Security scanner not initialized", "Internal error — do not retry")}
+		return fail(req, ErrNotInitialized, "Security scanner not initialized", "Internal error — do not retry")
 	}
 
 	// Gather data from capture buffers
@@ -55,16 +55,16 @@ func (h *ToolHandler) toolAnalyzeSecurityAudit(req JSONRPCRequest, args json.Raw
 	// Run the security scan
 	result, err := h.securityScannerImpl.HandleSecurityAudit(args, networkBodies, consoleEntries, pageURLs, waterfallEntries)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal error — do not retry")}
+		return fail(req, ErrInternal, err.Error(), "Internal error — do not retry")
 	}
 
 	if params.Summary {
 		if scanResult, ok := result.(security.ScanResult); ok {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security audit summary", buildSecurityAuditSummary(scanResult))}
+			return succeed(req, "Security audit summary", buildSecurityAuditSummary(scanResult))
 		}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security audit complete", result)}
+	return succeed(req, "Security audit complete", result)
 }
 
 func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -88,16 +88,16 @@ func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMes
 	// Use the package-level handler function
 	result, err := analysis.HandleAuditThirdParties(args, networkBodies, pageURLs)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, err.Error(), "Fix JSON arguments and try again")}
+		return fail(req, ErrInvalidJSON, err.Error(), "Fix JSON arguments and try again")
 	}
 
 	if params.Summary {
 		if tpResult, ok := result.(analysis.ThirdPartyResult); ok {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Third-party audit summary", buildThirdPartySummary(tpResult))}
+			return succeed(req, "Third-party audit summary", buildThirdPartySummary(tpResult))
 		}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Third-party audit complete", result)}
+	return succeed(req, "Third-party audit complete", result)
 }
 
 // ============================================

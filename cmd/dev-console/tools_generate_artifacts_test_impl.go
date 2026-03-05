@@ -11,10 +11,10 @@ import (
 	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
-func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params gen.TestGenParams
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 	if params.TestName == "" {
 		params.TestName = "generated test"
@@ -43,5 +43,5 @@ func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+	return succeed(req, summary, result)
 }

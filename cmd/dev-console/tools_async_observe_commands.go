@@ -24,11 +24,11 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 		CorrelationID string `json:"correlation_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	if params.CorrelationID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' parameter and call again", withParam("correlation_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' parameter and call again", withParam("correlation_id"))
 	}
 
 	corrID := params.CorrelationID
@@ -39,26 +39,22 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 	if strings.HasPrefix(corrID, "ann_") {
 		cmd, found := h.capture.WaitForCommand(corrID, annotationCommandWaitTimeout)
 		if !found {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				ErrNoData,
+			return fail(req, ErrNoData,
 				"Annotation command not found: "+corrID,
 				"The command may have expired (10 min TTL). Start a new draw mode session.",
 				withFinal(true),
-				h.diagnosticHint(),
-			)}
+				h.diagnosticHint())
 		}
 		return h.formatCommandResult(req, *cmd, corrID)
 	}
 
 	cmd, found := h.capture.GetCommandResult(corrID)
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrNoData,
+		return fail(req, ErrNoData,
 			"Command not found: "+corrID,
 			"The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid. Use observe with what='pending_commands' to see active commands.",
 			withFinal(true),
-			h.diagnosticHint(),
-		)}
+			h.diagnosticHint())
 	}
 
 	return h.formatCommandResult(req, *cmd, corrID)
@@ -86,7 +82,7 @@ func (h *ToolHandler) toolObservePendingCommands(req JSONRPCRequest, args json.R
 		len(failed),
 		len(inProgress),
 	)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }
 
 // toolObserveFailedCommands lists recent failed/expired async commands.
@@ -100,9 +96,9 @@ func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.Ra
 	}
 
 	if len(failed) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No failed commands found", responseData)}
+		return succeed(req, "No failed commands found", responseData)
 	}
 
 	summary := fmt.Sprintf("Found %d failed/expired commands", len(failed))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	return succeed(req, summary, responseData)
 }

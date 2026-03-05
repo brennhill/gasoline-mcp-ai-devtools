@@ -20,7 +20,9 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 		Params:        args,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.MaybeWaitForCommand(req, correlationID, args, "Link health check initiated")
 }
@@ -29,13 +31,13 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 func (h *ToolHandler) toolValidateLinks(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params az.LinkValidationParams
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if len(params.URLs) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'urls' is missing or empty", "Provide an array of URLs to validate")}
+		return fail(req, ErrMissingParam, "Required parameter 'urls' is missing or empty", "Provide an array of URLs to validate")
 	}
 
 	timeoutMS := az.ClampInt(params.TimeoutMS, 15000, 1000, 60000)
@@ -43,21 +45,19 @@ func (h *ToolHandler) toolValidateLinks(req JSONRPCRequest, args json.RawMessage
 
 	validURLs := az.FilterHTTPURLs(params.URLs)
 	if len(validURLs) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "No valid HTTP/HTTPS URLs provided", "URLs must start with http:// or https://", withParam("urls"))}
+		return fail(req, ErrInvalidParam, "No valid HTTP/HTTPS URLs provided", "URLs must start with http:// or https://", withParam("urls"))
 	}
 	if len(validURLs) > az.MaxLinkValidationURLs {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
+		return fail(req, ErrInvalidParam,
 			fmt.Sprintf("Too many URLs: got %d, max %d", len(validURLs), az.MaxLinkValidationURLs),
 			fmt.Sprintf("Reduce URLs to %d or fewer and retry", az.MaxLinkValidationURLs),
-			withParam("urls"),
-		)}
+			withParam("urls"))
 	}
 
 	results := az.ValidateLinksServerSide(validURLs, timeoutMS, maxWorkers, version)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Server-side link validation completed", map[string]any{
+	return succeed(req, "Server-side link validation completed", map[string]any{
 		"status":  "completed",
 		"total":   len(results),
 		"results": results,
-	})}
+	})
 }

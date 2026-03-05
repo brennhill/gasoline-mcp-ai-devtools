@@ -4,11 +4,12 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_interact_action_handler.go
   - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
+  - cmd/dev-console/tools_pending_query_enqueue.go
   - cmd/dev-console/tools_interact_browser_navigation_impl.go
   - cmd/dev-console/tools_interact_browser_script_impl.go
   - cmd/dev-console/tools_interact_browser_tabs.go
@@ -53,6 +54,7 @@ code_paths:
   - cmd/dev-console/tools_summary_pref.go
 test_paths:
   - cmd/dev-console/tools_interact_handler_test.go
+  - cmd/dev-console/tools_pending_query_enqueue_test.go
   - cmd/dev-console/tools_interact_rich_test.go
   - cmd/dev-console/tools_interact_upload_test.go
   - cmd/dev-console/tools_interact_navigate_document_test.go
@@ -99,3 +101,5 @@ This feature documents the shipped `interact` action surface (not a batched `int
 3. Explicit `tab_id` now requires an actively tracked tab and must match tracked context before click dispatch.
 
 Interact action metadata now has a single canonical registry in `internal/schema/interact_actions.go`, consumed by both schema enum generation and `describe_capabilities` mode specs.
+
+Extension-dispatched interact actions now use shared enqueue fail-fast handling: when queue capacity is saturated, responses return structured `queue_full` immediately rather than entering async wait mode.

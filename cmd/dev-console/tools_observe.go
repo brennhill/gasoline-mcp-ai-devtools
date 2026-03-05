@@ -14,39 +14,34 @@ var observeAliasParams = []modeAlias{
 	{JSONField: "action"},
 }
 
+// observeRegistry is the tool registry for observe dispatch.
+var observeRegistry = toolRegistry{
+	Handlers:  observeHandlers,
+	AliasDefs: observeAliasParams,
+	Resolution: modeResolution{
+		ToolName:   "observe",
+		ValidModes: "", // populated lazily
+		Aliases:    observeAliases,
+	},
+	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, _ string) (json.RawMessage, *JSONRPCResponse) {
+		return h.maybeInjectSummary(args), nil
+	},
+	PostDispatch: func(h *ToolHandler, req JSONRPCRequest, resp JSONRPCResponse, what string) JSONRPCResponse {
+		// Warn when extension is disconnected (except for server-side modes that don't need it)
+		if !h.capture.IsExtensionConnected() && !serverSideObserveModes[what] {
+			resp = h.prependDisconnectWarning(resp)
+		}
+		// Piggyback alerts: append as second content block if any pending
+		if alerts := h.drainAlerts(); len(alerts) > 0 {
+			resp = h.appendAlertsToResponse(resp, alerts)
+		}
+		return resp
+	},
+}
+
 // toolObserve dispatches observe requests based on the 'what' parameter.
 func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	what, usedAliasParam, errResp := resolveToolMode(req, args, observeAliasParams, modeResolution{
-		ToolName:   "observe",
-		ValidModes: getValidObserveModes(),
-		Aliases:    observeAliases,
-	})
-	if errResp != nil {
-		return *errResp
-	}
-
-	handler, ok := observeHandlers[what]
-	if !ok {
-		validModes := getValidObserveModes()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes), describeCapabilitiesRecovery("observe"))}
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
-	}
-
-	args = h.maybeInjectSummary(args)
-
-	resp := handler(h, req, args)
-
-	// Warn when extension is disconnected (except for server-side modes that don't need it)
-	if !h.capture.IsExtensionConnected() && !serverSideObserveModes[what] {
-		resp = h.prependDisconnectWarning(resp)
-	}
-
-	// Piggyback alerts: append as second content block if any pending
-	alerts := h.drainAlerts()
-	if len(alerts) > 0 {
-		resp = h.appendAlertsToResponse(resp, alerts)
-	}
-
-	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
-	return resp
+	reg := observeRegistry
+	reg.Resolution.ValidModes = getValidObserveModes()
+	return h.dispatchTool(req, args, reg)
 }

@@ -43,13 +43,11 @@ func (h *ToolHandler) finalizePendingDisconnect(req JSONRPCRequest, correlationI
 	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil {
 		return h.formatCommandResult(req, *cmd, correlationID)
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrNoData,
+	return fail(req, ErrNoData,
 		"Extension disconnected while command was pending",
 		"Ensure the extension is connected, then retry the action.",
 		h.diagnosticHint(),
-		withFinal(true),
-	)}
+		withFinal(true))
 }
 
 // ============================================
@@ -85,14 +83,14 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	}
 
 	if !isSync {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
+		return succeed(req, queuedSummary, map[string]any{
 			"status":           "queued",
 			"lifecycle_status": "queued",
 			"correlation_id":   correlationID,
 			"trace_id":         correlationID,
 			"queued":           true,
 			"final":            false,
-		})}
+		})
 	}
 
 	// Extension connection check: requireExtension already waited for the cold-start
@@ -100,7 +98,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	// Here we only do an instant check to catch disconnections that occurred after
 	// requireExtension passed but before we reached this point.
 	if !h.capture.IsExtensionConnected() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
+		return fail(req, ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())
 	}
 
 	// Determine wait budget from timeout_ms or defaults.
@@ -130,7 +128,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	cmd, found, disconnected, waitedMs := h.waitForCommandWithConnectivity(correlationID, initialWait)
 	totalWaitMs += waitedMs
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
+		return fail(req, ErrInternal, "Command not found after queuing", "Internal error — do not retry")
 	}
 	if disconnected {
 		return h.finalizePendingDisconnect(req, correlationID)
@@ -143,7 +141,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		cmd, found, disconnected, waitedMs = h.waitForCommandWithConnectivity(correlationID, retryWait)
 		totalWaitMs += waitedMs
 		if !found {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}
+			return fail(req, ErrInternal, "Command not found after retry", "Internal error — do not retry")
 		}
 		if disconnected {
 			return h.finalizePendingDisconnect(req, correlationID)
@@ -175,7 +173,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		if pos := h.capture.QueuePosition(correlationID); pos >= 0 {
 			stillProcessing["queue_position"] = pos
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", stillProcessing)}
+		return succeed(req, "Action still processing", stillProcessing)
 	}
 
 	// Result received — format using standard command result formatter

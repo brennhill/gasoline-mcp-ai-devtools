@@ -16,6 +16,7 @@ Make requirements and implementation context easy to discover for humans and LLM
 - Required files per feature: `product-spec.md`, `tech-spec.md`, `qa-plan.md`, `index.md`
 - Shared components: `docs/components/<component>.md`
 - Cross-feature mapping: `docs/traceability/feature-map.md`
+- Content writing standard: [content-style-voice-guide.md](./content-style-voice-guide.md)
 
 ## Required Frontmatter Fields
 

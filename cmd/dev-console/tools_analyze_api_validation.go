@@ -17,8 +17,8 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 		IgnoreEndpoints []string `json:"ignore_endpoints"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -48,7 +48,7 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 		if result.Hint != "" {
 			responseData["hint"] = result.Hint
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation analyze", responseData)}
+		return succeed(req, "API validation analyze", responseData)
 
 	case "report":
 		h.processAPIValidationBodies()
@@ -65,7 +65,7 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 		if result.AppliedFilter != nil {
 			responseData["applied_filter"] = result.AppliedFilter
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation report", responseData)}
+		return succeed(req, "API validation report", responseData)
 
 	case "clear":
 		h.clearAPIValidationState()
@@ -74,10 +74,10 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 			"status":    "ok",
 			"operation": "clear",
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation cleared", clearResult)}
+		return succeed(req, "API validation cleared", clearResult)
 
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "operation parameter must be 'analyze', 'report', or 'clear'", "Use a valid value for 'operation'", withParam("operation"), withHint("analyze, report, or clear"))}
+		return fail(req, ErrInvalidParam, "operation parameter must be 'analyze', 'report', or 'clear'", "Use a valid value for 'operation'", withParam("operation"), withHint("analyze, report, or clear"))
 	}
 }
 

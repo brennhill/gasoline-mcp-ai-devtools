@@ -9,7 +9,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
 )
 
-func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Scope         string `json:"scope"`
 		IncludePasses bool   `json:"include_passes"`
@@ -18,8 +18,8 @@ func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) 
 		A11yResult json.RawMessage `json:"a11y_result"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &arguments); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &arguments); stop {
+			return resp
 		}
 	}
 
@@ -44,18 +44,18 @@ func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) 
 		SaveTo:        arguments.SaveTo,
 	})
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF export failed: "+err.Error(), "Check a11y audit results and try again.")}
+		return fail(req, ErrNoData, "SARIF export failed: "+err.Error(), "Check a11y audit results and try again.")
 	}
 
 	// Marshal SARIFLog to a generic map for the MCP response.
 	sarifJSON, err := json.Marshal(sarifLog)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF marshal failed: "+err.Error(), "Report this bug.")}
+		return fail(req, ErrNoData, "SARIF marshal failed: "+err.Error(), "Report this bug.")
 	}
 	var sarifMap map[string]any
 	if err := json.Unmarshal(sarifJSON, &sarifMap); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF unmarshal failed: "+err.Error(), "Report this bug.")}
+		return fail(req, ErrNoData, "SARIF unmarshal failed: "+err.Error(), "Report this bug.")
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SARIF export complete", sarifMap)}
+	return succeed(req, "SARIF export complete", sarifMap)
 }

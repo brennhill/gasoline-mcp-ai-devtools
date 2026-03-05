@@ -77,6 +77,22 @@ func TestBuildFormValidationSummary_ErrorResponse(t *testing.T) {
 	}
 }
 
+func TestBuildFormValidationSummary_EmptyTextBlock_NoPanic(t *testing.T) {
+	t.Parallel()
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: ""}},
+	}
+	resultJSON, _ := json.Marshal(result)
+	resp := JSONRPCResponse{JSONRPC: "2.0", Result: resultJSON}
+
+	// Regression guard: empty text blocks must be ignored safely.
+	summarized := buildFormValidationSummary(resp)
+	if string(summarized.Result) != string(resp.Result) {
+		t.Error("expected unchanged response for empty text block")
+	}
+}
+
 func TestExtractFormsList_Direct(t *testing.T) {
 	t.Parallel()
 	data := map[string]any{

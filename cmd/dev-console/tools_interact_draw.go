@@ -19,10 +19,7 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		lenientUnmarshal(args, &params)
 	}
 
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -44,7 +41,9 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Mark draw started AFTER the query is queued, so WaitForSession's timestamp
 	// baseline is never set before the command that triggers the session exists.
@@ -53,9 +52,9 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 	// Record AI action
 	h.parent.recordAIAction("draw_mode_start", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw mode activated", map[string]any{
+	return succeed(req, "Draw mode activated", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"message":        "Draw mode activation queued. The user can now draw annotations on the page. Use analyze({what: 'annotations', wait: true}) to block until the user finishes drawing.",
-	})}
+	})
 }

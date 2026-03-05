@@ -3,7 +3,7 @@
 **Status:** shipped
 **Tool:** configure
 **Mode:** describe_capabilities
-**Since:** v0.7.11
+**Since:** v0.7.12
 
 ## Problem
 

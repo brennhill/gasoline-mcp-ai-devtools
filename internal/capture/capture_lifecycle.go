@@ -23,47 +23,46 @@ func (c *Capture) SetNavigationCallback(cb func()) {
 	c.navigationCallback = cb
 }
 
-// SetLifecycleCallback sets a callback function for lifecycle events.
-// The callback receives an event name and data map with event-specific fields.
-// Events: "circuit_opened", "circuit_closed", "extension_connected", "extension_disconnected",
-// "buffer_eviction", "rate_limit_triggered"
+// SubscribeLifecycle registers a typed lifecycle event listener and returns a
+// subscription ID for later removal via UnsubscribeLifecycle.
+// Thread-safe; the observer has its own lock independent of Capture.mu.
+func (c *Capture) SubscribeLifecycle(fn LifecycleListener) int {
+	return c.lifecycle.Subscribe(fn)
+}
+
+// UnsubscribeLifecycle removes a lifecycle listener by its subscription ID.
+// No-op if the ID is not found.
+func (c *Capture) UnsubscribeLifecycle(id int) {
+	c.lifecycle.Unsubscribe(id)
+}
+
+// SetLifecycleCallback registers a string-based lifecycle callback.
+// Backward-compatible: wraps the callback as a LifecycleListener on the observer.
+// Note: does NOT clear previous listeners. Callers that need exclusive ownership
+// should use SubscribeLifecycle/UnsubscribeLifecycle directly.
 func (c *Capture) SetLifecycleCallback(cb func(event string, data map[string]any)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.lifecycleCallback = cb
+	c.lifecycle.Subscribe(func(event LifecycleEvent, data map[string]any) {
+		cb(event.String(), data)
+	})
 }
 
-// AddLifecycleCallback appends a callback to the lifecycle event chain.
-// Unlike SetLifecycleCallback, this preserves any previously registered callback
-// and calls both in order. Thread-safe.
+// AddLifecycleCallback appends a string-based lifecycle callback.
+// Backward-compatible: wraps the callback as a LifecycleListener on the observer.
+// Deprecated: prefer SubscribeLifecycle for new code.
 func (c *Capture) AddLifecycleCallback(cb func(event string, data map[string]any)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	existing := c.lifecycleCallback
-	if existing == nil {
-		c.lifecycleCallback = cb
-		return
-	}
-	c.lifecycleCallback = func(event string, data map[string]any) {
-		existing(event, data)
-		cb(event, data)
-	}
+	c.lifecycle.Subscribe(func(event LifecycleEvent, data map[string]any) {
+		cb(event.String(), data)
+	})
 }
 
-// emitLifecycleEvent dispatches lifecycle callbacks outside lock-heavy paths.
-//
-// Invariants:
-// - Callback pointer is captured under c.mu and invoked after unlock.
+// emitLifecycleEvent dispatches a lifecycle event via the observer.
+// Backward-compatible bridge: converts string event name to typed event.
 //
 // Failure semantics:
-// - Missing callback is a silent no-op.
+// - No listeners is a silent no-op.
+// - Individual listener panics are recovered (error isolation).
 func (c *Capture) emitLifecycleEvent(event string, data map[string]any) {
-	c.mu.RLock()
-	cb := c.lifecycleCallback
-	c.mu.RUnlock()
-	if cb != nil {
-		cb(event, data)
-	}
+	c.lifecycle.EmitString(event, data)
 }
 
 // SetServerVersion sets server version for compatibility checking.

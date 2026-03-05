@@ -82,22 +82,22 @@ func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMe
 		URL   string `json:"url"`
 		LastN int    `json:"last_n,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	dirs := recordingsReadDirs()
 	if len(dirs) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Could not resolve recordings directory", "Check disk permissions")}
+		return fail(req, ErrInternal, "Could not resolve recordings directory", "Check disk permissions")
 	}
 
 	matches := collectRecordingMetadata(dirs)
 	if len(matches) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No saved videos", map[string]any{
+		return succeed(req, "No saved videos", map[string]any{
 			"recordings":         []any{},
 			"total":              0,
 			"storage_used_bytes": int64(0),
-		})}
+		})
 	}
 
 	recordings, totalSize := loadAndFilterRecordings(matches, params.URL)
@@ -106,9 +106,9 @@ func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMe
 		recordings = recordings[:params.LastN]
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(fmt.Sprintf("%d saved videos", len(recordings)), map[string]any{
+	return succeed(req, fmt.Sprintf("%d saved videos", len(recordings)), map[string]any{
 		"recordings":         recordings,
 		"total":              len(recordings),
 		"storage_used_bytes": totalSize,
-	})}
+	})
 }

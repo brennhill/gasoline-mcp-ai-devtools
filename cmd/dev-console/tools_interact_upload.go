@@ -26,18 +26,15 @@ type uploadParams struct {
 func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	h := u.parent
 	var params uploadParams
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if resp, stop := parseArgs(req, args, &params); stop {
+		return resp
 	}
 
 	if errResp := validateUploadParams(req, params); errResp != nil {
 		return *errResp
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.requireTabTracking(req); blocked {
@@ -55,15 +52,15 @@ func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMe
 // validateUploadParams checks required parameters for the upload action.
 func validateUploadParams(req JSONRPCRequest, params uploadParams) *JSONRPCResponse {
 	if params.FilePath == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'file_path' is missing", "Add the 'file_path' parameter with an absolute path to the file", withParam("file_path"))}
+		resp := fail(req, ErrMissingParam, "Required parameter 'file_path' is missing", "Add the 'file_path' parameter with an absolute path to the file", withParam("file_path"))
 		return &resp
 	}
 	if params.Selector == "" && params.APIEndpoint == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", withParam("selector"))}
+		resp := fail(req, ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", withParam("selector"))
 		return &resp
 	}
 	if !filepath.IsAbs(params.FilePath) {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrPathNotAllowed, "file_path must be an absolute path. Relative paths are not allowed for security.", "Use an absolute path like '/Users/user/Videos/video.mp4'", withParam("file_path"))}
+		resp := fail(req, ErrPathNotAllowed, "file_path must be an absolute path. Relative paths are not allowed for security.", "Use an absolute path like '/Users/user/Videos/video.mp4'", withParam("file_path"))
 		return &resp
 	}
 	return nil
@@ -77,7 +74,7 @@ func validateUploadFile(req JSONRPCRequest, filePath string) (os.FileInfo, *JSON
 		return nil, &resp
 	}
 	if info.IsDir() {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Path is a directory, not a file: "+filePath, "Provide a path to a file, not a directory", withParam("file_path"))}
+		resp := fail(req, ErrInvalidParam, "Path is a directory, not a file: "+filePath, "Provide a path to a file, not a directory", withParam("file_path"))
 		return nil, &resp
 	}
 	return info, nil
@@ -85,12 +82,12 @@ func validateUploadFile(req JSONRPCRequest, filePath string) (os.FileInfo, *JSON
 
 func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPCResponse {
 	if os.IsNotExist(err) {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "File not found: "+filePath+". Verify the file path is correct.", "Check the file path and try again", withParam("file_path"))}
+		return fail(req, ErrInvalidParam, "File not found: "+filePath+". Verify the file path is correct.", "Check the file path and try again", withParam("file_path"))
 	}
 	if os.IsPermission(err) {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrPathNotAllowed, "Permission denied reading file: "+filePath+". Check file permissions.", "Fix file permissions with: chmod +r "+filePath, withParam("file_path"))}
+		return fail(req, ErrPathNotAllowed, "Permission denied reading file: "+filePath+". Check file permissions.", "Fix file permissions with: chmod +r "+filePath, withParam("file_path"))
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to access file: "+err.Error(), "Check the file path and permissions")}
+	return fail(req, ErrInternal, "Failed to access file: "+err.Error(), "Check the file path and permissions")
 }
 
 // queueUpload builds the upload payload and queues it for the extension.
@@ -121,7 +118,9 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	// Error impossible: map contains only primitive types from input
 	payloadJSON, _ := json.Marshal(uploadPayload)
 	query := queries.PendingQuery{Type: "upload", Params: payloadJSON, CorrelationID: correlationID}
-	h.capture.CreatePendingQueryWithTimeout(query, 10*time.Minute, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, 10*time.Minute); blocked {
+		return enqueueResp
+	}
 
 	h.recordAIAction("upload", "", map[string]any{
 		"file_path": params.FilePath, "file_name": fileName,
@@ -129,10 +128,10 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 		"progress_tier": string(progressTier),
 	})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Upload queued", map[string]any{
+	return succeed(req, "Upload queued", map[string]any{
 		"status": "queued", "correlation_id": correlationID,
 		"file_name": fileName, "file_size": fileSize,
 		"mime_type": mimeType, "progress_tier": string(progressTier),
 		"message": "Upload queued for execution. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
-	})}
+	})
 }

@@ -1,7 +1,12 @@
 /**
- * Purpose: Installs Chrome extension event listeners (alarms, tab lifecycle, storage changes, keyboard shortcuts) and provides settings persistence.
+ * Purpose: Installs Chrome extension event listeners (alarms, tab lifecycle, storage changes, runtime startup) and re-exports keyboard shortcuts, context menus, and tab-state accessors.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
+export { installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener } from './keyboard-shortcuts.js';
+export type { RecordingShortcutHandlers, ScreenRecordingHandlers } from './keyboard-shortcuts.js';
+export { installContextMenus } from './context-menus.js';
+export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, clearTrackedTab, getAllConfigSettings } from './tab-state.js';
+export type { SavedSettings, TrackedTabInfo } from './tab-state.js';
 export declare const ALARM_NAMES: {
     readonly RECONNECT: "reconnect";
     readonly ERROR_GROUP_FLUSH: "errorGroupFlush";
@@ -24,7 +29,7 @@ export type AlarmName = (typeof ALARM_NAMES)[keyof typeof ALARM_NAMES];
 export declare function setupChromeAlarms(): void;
 /**
  * Install Chrome alarm listener.
- * Handlers may be async — the listener awaits them to keep the SW alive
+ * Handlers may be async -- the listener awaits them to keep the SW alive
  * until the work completes (prevents badge updates from being lost).
  */
 export declare function installAlarmListener(handlers: {
@@ -63,112 +68,4 @@ export declare function installStorageChangeListener(handlers: {
  * Install browser startup listener (clears tracking state)
  */
 export declare function installStartupListener(logFn?: (message: string) => void): void;
-/**
- * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
- * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
- */
-export declare function installDrawModeCommandListener(logFn?: (message: string) => void): void;
-export interface RecordingShortcutHandlers {
-    isRecording: () => boolean;
-    startRecording: (name: string, fps?: number, queryId?: string, audio?: string, fromPopup?: boolean, targetTabId?: number) => Promise<{
-        status: string;
-        error?: string;
-    }>;
-    stopRecording: (truncated?: boolean) => Promise<{
-        status: string;
-        error?: string;
-    }>;
-}
-/**
- * Install keyboard shortcut listener for action-sequence recording toggle.
- * Shortcut is defined in manifest as `toggle_action_sequence_recording`.
- */
-export declare function installRecordingShortcutCommandListener(handlers: RecordingShortcutHandlers, logFn?: (message: string) => void): void;
-export interface ScreenRecordingHandlers {
-    isRecording: () => boolean;
-    startRecording: (name: string, fps?: number, queryId?: string, audio?: string, fromPopup?: boolean, targetTabId?: number) => Promise<{
-        status: string;
-        name: string;
-        startTime?: number;
-        error?: string;
-    }>;
-    stopRecording: (truncated?: boolean) => Promise<{
-        status: string;
-        name: string;
-        duration_seconds?: number;
-        size_bytes?: number;
-        truncated?: boolean;
-        path?: string;
-        error?: string;
-    }>;
-}
-/**
- * Install keyboard shortcut listener for screen recording toggle (Alt+Shift+R).
- * Also handles context menu clicks for recording and annotation.
- */
-export declare function installScreenRecordingCommandListener(handlers: ScreenRecordingHandlers, logFn?: (message: string) => void): void;
-/**
- * Create context menu items for Gasoline actions.
- * Chrome auto-groups multiple items under a parent with the extension icon.
- */
-export declare function installContextMenus(recordingHandlers: ScreenRecordingHandlers, actionRecordingHandlers: RecordingShortcutHandlers, logFn?: (message: string) => void): void;
-/**
- * Ping content script to check if it's loaded
- */
-export declare function pingContentScript(tabId: number, timeoutMs?: number): Promise<boolean>;
-/**
- * Wait for tab to finish loading
- */
-export declare function waitForTabLoad(tabId: number, timeoutMs?: number): Promise<boolean>;
-/**
- * Forward a message to all content scripts
- */
-export declare function forwardToAllContentScripts(message: {
-    type: string;
-    [key: string]: unknown;
-}, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/** Settings returned by loadSavedSettings */
-export interface SavedSettings {
-    serverUrl?: string;
-    logLevel?: string;
-    screenshotOnError?: boolean;
-    sourceMapEnabled?: boolean;
-    debugMode?: boolean;
-}
-/**
- * Load saved settings from chrome.storage.local
- */
-export declare function loadSavedSettings(): Promise<SavedSettings>;
-/**
- * Load AI Web Pilot enabled state from storage
- */
-export declare function loadAiWebPilotState(logFn?: (message: string) => void): Promise<boolean>;
-/**
- * Load debug mode state from storage
- */
-export declare function loadDebugModeState(): Promise<boolean>;
-/**
- * Save setting to chrome.storage.local
- */
-export declare function saveSetting(key: string, value: unknown): void;
-/** Tracked tab info type */
-export interface TrackedTabInfo {
-    trackedTabId: number | null;
-    trackedTabUrl: string | null;
-    trackedTabTitle: string | null;
-    tabStatus: 'loading' | 'complete' | null;
-    trackedTabActive: boolean | null;
-}
-/**
- * Get tracked tab information, including Chrome tab status.
- */
-export declare function getTrackedTabInfo(): Promise<TrackedTabInfo>;
-/**
- * Clear tracked tab state
- */
-export declare function clearTrackedTab(): void;
-/**
- * Get all extension config settings.
- */
-export declare function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
 //# sourceMappingURL=event-listeners.d.ts.map

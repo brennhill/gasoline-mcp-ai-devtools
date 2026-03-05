@@ -9,23 +9,10 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
-
 func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 	return mcp.UnmarshalWithWarnings(data, v)
 }
 
 func validateParamsAgainstSchema(data json.RawMessage, schema map[string]any) []string {
 	return mcp.ValidateParamsAgainstSchema(data, schema)
-}
-
-// ============================================
-// Log Quality Checking (observe-specific)
-// ============================================
-
-// logFieldCounts tracks missing field counts for log quality checking.
-type logFieldCounts struct {
-	missingTS     int
-	missingMsg    int
-	missingSource int
-	badEntries    int
 }

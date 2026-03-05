@@ -17,10 +17,7 @@ import (
 // If url is provided, the extension navigates first before collecting data.
 // Screenshot is appended server-side after the extension returns.
 func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -34,8 +31,8 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 		Limit       int    `json:"limit,omitempty"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -43,10 +40,10 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 	if params.URL != "" {
 		parsed, err := url.Parse(params.URL)
 		if err != nil || parsed.Scheme == "" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid URL: "+params.URL, "Provide a valid http or https URL", withParam("url"))}
+			return fail(req, ErrInvalidParam, "Invalid URL: "+params.URL, "Provide a valid http or https URL", withParam("url"))
 		}
 		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Only http and https URLs are allowed, got: "+parsed.Scheme, "Use an http or https URL", withParam("url"))}
+			return fail(req, ErrInvalidParam, "Only http and https URLs are allowed, got: "+parsed.Scheme, "Use an http or https URL", withParam("url"))
 		}
 	}
 
@@ -58,7 +55,9 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("explore_page", params.URL, nil)
 

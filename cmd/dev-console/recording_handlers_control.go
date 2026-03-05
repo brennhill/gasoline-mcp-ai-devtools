@@ -18,8 +18,8 @@ func (h *ToolHandler) toolConfigureEventRecordingStart(req JSONRPCRequest, args 
 		SensitiveDataEnabled bool   `json:"sensitive_data_enabled"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
@@ -31,11 +31,9 @@ func (h *ToolHandler) toolConfigureEventRecordingStart(req JSONRPCRequest, args 
 	// Call capture to start recording
 	recordingID, err := h.capture.StartRecording(params.Name, params.URL, params.SensitiveDataEnabled)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to start recording: %v", err),
-			"Check storage quota and try again",
-		)}
+			"Check storage quota and try again")
 	}
 
 	h.appendServerLog(LogEntry{
@@ -55,7 +53,7 @@ func (h *ToolHandler) toolConfigureEventRecordingStart(req JSONRPCRequest, args 
 		"message":      fmt.Sprintf("Recording started: %s", recordingID),
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording started", responseData)}
+	return succeed(req, "Recording started", responseData)
 }
 
 // toolConfigureEventRecordingStop handles configure(action: "event_recording_stop", recording_id: "...")
@@ -64,23 +62,21 @@ func (h *ToolHandler) toolConfigureEventRecordingStop(req JSONRPCRequest, args j
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.RecordingID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from event_recording_start", withParam("recording_id"))}
+		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from event_recording_start", withParam("recording_id"))
 	}
 
 	// Call capture to stop recording
 	actionCount, duration, err := h.capture.StopRecording(params.RecordingID)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to stop recording: %v", err),
-			"No active recording with this ID. Start one first: configure({what: 'event_recording_start', name: 'my-recording'})",
-		)}
+			"No active recording with this ID. Start one first: configure({what: 'event_recording_start', name: 'my-recording'})")
 	}
 
 	h.appendServerLog(LogEntry{
@@ -101,5 +97,5 @@ func (h *ToolHandler) toolConfigureEventRecordingStop(req JSONRPCRequest, args j
 		"message":      fmt.Sprintf("Recording stopped: %d actions captured in %dms", actionCount, duration),
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stopped", responseData)}
+	return succeed(req, "Recording stopped", responseData)
 }

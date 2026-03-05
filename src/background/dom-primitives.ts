@@ -1,5 +1,9 @@
 // AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl, _dom-ranking.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/
+//   _dom-selectors.tpl, _dom-semantic-resolvers.tpl, _dom-overlay-helpers.tpl,
+//   _dom-intent.tpl, _dom-intent-actions.tpl, _dom-ranking.tpl,
+//   _dom-action-helpers.tpl, _dom-action-handlers-core.tpl,
+//   _dom-action-handlers-input.tpl, _dom-action-handlers-overlay.tpl
 // Generator: scripts/generate-dom-primitives.js
 
 // eslint-disable max-lines - Auto-generated from template + partials; must be a single self-contained function for chrome.scripting.executeScript.
@@ -36,6 +40,9 @@ export function domPrimitive(
   message?: string
 } {
   // --- PARTIAL: DOM Selector Resolution ---
+  // Purpose: Shadow DOM traversal, element ownership, visibility, scoping, and element handle store.
+  // Why: Core selector infrastructure used by all other DOM primitives.
+
   // — Shadow DOM: deep traversal utilities —
 
   function getShadowRoot(el: Element): ShadowRoot | null {
@@ -282,6 +289,10 @@ export function domPrimitive(
     store.selectorByID.delete(elementID)
     return null
   }
+
+  // --- PARTIAL: Semantic Selector Resolution ---
+  // Purpose: Text, label, aria-label, and CSS selector resolution with nth-match support.
+  // Why: Separated from _dom-selectors.tpl to keep each partial under 500 LOC.
 
   function resolveByTextAll(searchText: string, scope: ParentNode = document): Element[] {
     const results: Element[] = []
@@ -610,6 +621,105 @@ export function domPrimitive(
     return best
   }
 
+  // --- PARTIAL: Overlay Detection Helpers ---
+  // Purpose: Find topmost overlay, describe overlays, detect extension-injected overlays.
+  // Why: Separated from _dom-intent.tpl to keep each partial under 500 LOC.
+
+  // --- Helper: Find topmost visible overlay using z-index analysis + role detection (#334) ---
+  function findTopmostOverlay(): Element | null {
+    // Collect all dialog/modal candidates
+    const dialogSelectors = [
+      '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]', 'dialog[open]',
+      '.modal.show', '.modal.in', '.modal.is-active', '.modal[style*="display: block"]',
+      '.overlay', '.popup', '.lightbox',
+      '[data-modal]', '[data-overlay]', '[data-dialog]',
+    ]
+    const candidates: Element[] = []
+    for (const dialogSelector of dialogSelectors) {
+      candidates.push(...querySelectorAllDeep(dialogSelector))
+    }
+
+    // Also check for high z-index elements that look like overlays
+    const allElements = document.querySelectorAll('*')
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]!
+      if (!(el instanceof HTMLElement)) continue
+      const style = getComputedStyle(el)
+      const zIndex = Number.parseInt(style.zIndex || '', 10)
+      if (Number.isNaN(zIndex) || zIndex < 1000) continue
+      const position = style.position || ''
+      if (position !== 'fixed' && position !== 'absolute') continue
+      const rect = el.getBoundingClientRect()
+      // Must be reasonably sized (not a tiny tooltip)
+      if (rect.width < 100 || rect.height < 100) continue
+      // Must be visible
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue
+      candidates.push(el)
+    }
+
+    const unique = uniqueElements(candidates).filter(isActionableVisible)
+    if (unique.length === 0) return null
+
+    // Score and pick the topmost
+    const ranked = unique.map((candidate, index) => ({
+      element: candidate,
+      score: elementZIndexScore(candidate) * 1000 + areaScore(candidate, 200) + index
+    }))
+    ranked.sort((a, b) => b.score - a.score)
+    return ranked[0]?.element || null
+  }
+
+  function describeOverlay(el: Element): { overlay_type: string; overlay_selector: string; overlay_text_preview: string } {
+    const tag = el.tagName.toLowerCase()
+    const role = el.getAttribute('role') || ''
+    const ariaModal = el.getAttribute('aria-modal') || ''
+    let overlayType = 'unknown'
+    if (tag === 'dialog') overlayType = 'dialog'
+    else if (role === 'dialog' || role === 'alertdialog') overlayType = role
+    else if (ariaModal === 'true') overlayType = 'modal'
+    else overlayType = 'overlay'
+    const overlaySelector = (() => {
+      if (el.id) return `#${el.id}`
+      if (role) return `${tag}[role="${role}"]`
+      const className = (el as HTMLElement).className
+      if (typeof className === 'string' && className.trim()) return `${tag}.${className.trim().split(/\s+/)[0]}`
+      return tag
+    })()
+    const textPreview = ((el as HTMLElement).textContent || '').trim().slice(0, 120)
+    return { overlay_type: overlayType, overlay_selector: overlaySelector, overlay_text_preview: textPreview }
+  }
+
+  // #445: Detect if an overlay was injected by a browser extension
+  function detectExtensionOverlay(el: Element): boolean {
+    // Check for chrome-extension:// URLs in iframes or resource links within the overlay
+    const iframes = el instanceof HTMLElement ? el.querySelectorAll('iframe, img, script, link') : []
+    for (let i = 0; i < iframes.length; i++) {
+      const child = iframes[i]!
+      const src = child.getAttribute('src') || child.getAttribute('href') || ''
+      if (src.startsWith('chrome-extension://') || src.startsWith('moz-extension://')) return true
+    }
+    // Check if the element is inside a shadow DOM hosted by a custom element
+    // (extensions often inject shadow DOMs for style isolation).
+    // Walk up through shadow boundaries by jumping to the host element.
+    let node: Node | null = el
+    while (node) {
+      const root: Node | null = typeof node.getRootNode === 'function' ? node.getRootNode() : null
+      if (root && root !== document && root instanceof ShadowRoot) {
+        const host: Element | undefined = (root as ShadowRoot & { host?: Element }).host
+        if (host) {
+          const hostTag = host.tagName?.toLowerCase() || ''
+          // Extension-injected elements typically use custom element names
+          if (hostTag.includes('-') && !hostTag.startsWith('slot')) return true
+          // Cross the shadow boundary to continue walking up the tree
+          node = host
+          continue
+        }
+      }
+      node = (node as Element).parentElement || null
+    }
+    return false
+  }
+
   // --- PARTIAL: Intent Resolution & List Interactive ---
   function listInteractiveCompatibility(): {
     success: boolean
@@ -928,6 +1038,10 @@ export function domPrimitive(
       .sort((a, b) => b.score - a.score)
     return ranked[0]?.element || null
   }
+
+  // --- PARTIAL: Intent Action Resolution ---
+  // Purpose: resolveIntentTarget for composer, dialog, overlay, dismiss, and auto-dismiss actions.
+  // Why: Separated from _dom-intent.tpl to keep each partial under 500 LOC.
 
   function resolveIntentTarget(
     requestedScope: string,
@@ -1301,101 +1415,6 @@ export function domPrimitive(
     return { error: domError('unknown_action', `Unknown DOM action: ${action}`) }
   }
 
-  // --- Helper: Find topmost visible overlay using z-index analysis + role detection (#334) ---
-  function findTopmostOverlay(): Element | null {
-    // Collect all dialog/modal candidates
-    const dialogSelectors = [
-      '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]', 'dialog[open]',
-      '.modal.show', '.modal.in', '.modal.is-active', '.modal[style*="display: block"]',
-      '.overlay', '.popup', '.lightbox',
-      '[data-modal]', '[data-overlay]', '[data-dialog]',
-    ]
-    const candidates: Element[] = []
-    for (const dialogSelector of dialogSelectors) {
-      candidates.push(...querySelectorAllDeep(dialogSelector))
-    }
-
-    // Also check for high z-index elements that look like overlays
-    const allElements = document.querySelectorAll('*')
-    for (let i = 0; i < allElements.length; i++) {
-      const el = allElements[i]!
-      if (!(el instanceof HTMLElement)) continue
-      const style = getComputedStyle(el)
-      const zIndex = Number.parseInt(style.zIndex || '', 10)
-      if (Number.isNaN(zIndex) || zIndex < 1000) continue
-      const position = style.position || ''
-      if (position !== 'fixed' && position !== 'absolute') continue
-      const rect = el.getBoundingClientRect()
-      // Must be reasonably sized (not a tiny tooltip)
-      if (rect.width < 100 || rect.height < 100) continue
-      // Must be visible
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue
-      candidates.push(el)
-    }
-
-    const unique = uniqueElements(candidates).filter(isActionableVisible)
-    if (unique.length === 0) return null
-
-    // Score and pick the topmost
-    const ranked = unique.map((candidate, index) => ({
-      element: candidate,
-      score: elementZIndexScore(candidate) * 1000 + areaScore(candidate, 200) + index
-    }))
-    ranked.sort((a, b) => b.score - a.score)
-    return ranked[0]?.element || null
-  }
-
-  function describeOverlay(el: Element): { overlay_type: string; overlay_selector: string; overlay_text_preview: string } {
-    const tag = el.tagName.toLowerCase()
-    const role = el.getAttribute('role') || ''
-    const ariaModal = el.getAttribute('aria-modal') || ''
-    let overlayType = 'unknown'
-    if (tag === 'dialog') overlayType = 'dialog'
-    else if (role === 'dialog' || role === 'alertdialog') overlayType = role
-    else if (ariaModal === 'true') overlayType = 'modal'
-    else overlayType = 'overlay'
-    const overlaySelector = (() => {
-      if (el.id) return `#${el.id}`
-      if (role) return `${tag}[role="${role}"]`
-      const className = (el as HTMLElement).className
-      if (typeof className === 'string' && className.trim()) return `${tag}.${className.trim().split(/\s+/)[0]}`
-      return tag
-    })()
-    const textPreview = ((el as HTMLElement).textContent || '').trim().slice(0, 120)
-    return { overlay_type: overlayType, overlay_selector: overlaySelector, overlay_text_preview: textPreview }
-  }
-
-  // #445: Detect if an overlay was injected by a browser extension
-  function detectExtensionOverlay(el: Element): boolean {
-    // Check for chrome-extension:// URLs in iframes or resource links within the overlay
-    const iframes = el instanceof HTMLElement ? el.querySelectorAll('iframe, img, script, link') : []
-    for (let i = 0; i < iframes.length; i++) {
-      const child = iframes[i]!
-      const src = child.getAttribute('src') || child.getAttribute('href') || ''
-      if (src.startsWith('chrome-extension://') || src.startsWith('moz-extension://')) return true
-    }
-    // Check if the element is inside a shadow DOM hosted by a custom element
-    // (extensions often inject shadow DOMs for style isolation).
-    // Walk up through shadow boundaries by jumping to the host element.
-    let node: Node | null = el
-    while (node) {
-      const root: Node | null = typeof node.getRootNode === 'function' ? node.getRootNode() : null
-      if (root && root !== document && root instanceof ShadowRoot) {
-        const host: Element | undefined = (root as ShadowRoot & { host?: Element }).host
-        if (host) {
-          const hostTag = host.tagName?.toLowerCase() || ''
-          // Extension-injected elements typically use custom element names
-          if (hostTag.includes('-') && !hostTag.startsWith('slot')) return true
-          // Cross the shadow boundary to continue walking up the tree
-          node = host
-          continue
-        }
-      }
-      node = (node as Element).parentElement || null
-    }
-    return false
-  }
-
   // --- PARTIAL: Ambiguous Target Ranking ---
 
   function rankAmbiguousCandidates(
@@ -1725,6 +1744,11 @@ export function domPrimitive(
   const resolvedScopeSelector = resolved.scope_selector_used
   const resolvedRankedCandidates = resolved.ranked_candidates
   const resolvedAmbiguousMatches = resolved.ambiguous_matches
+
+  // --- PARTIAL: Action Helper Functions ---
+  // Purpose: Viewport capture, mutation tracking, rich editor detection, keyboard simulation,
+  //          auto-scroll, interactive ancestor detection, and overlay blocking detection.
+  // Why: Separated from main template to keep each partial under 500 LOC.
 
   /** Capture current viewport/scroll position for action responses. */
   function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
@@ -2065,6 +2089,10 @@ export function domPrimitive(
       `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`
     )
   }
+
+  // --- PARTIAL: Core Action Handlers ---
+  // Purpose: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for.
+  // Why: Separated from main template to keep each partial under 500 LOC.
 
   function buildActionHandlers(node: Element): Record<string, ActionHandler> {
     return {
@@ -2447,6 +2475,10 @@ export function domPrimitive(
         return { success: false, action, selector, error: 'element_still_present' } as DOMResult
       },
 
+  // --- PARTIAL: Input & Interaction Action Handlers ---
+  // Purpose: paste, key_press, open_composer, submit_active_composer, confirm_top_dialog, hover.
+  // Why: Separated from main template to keep each partial under 500 LOC.
+
       paste: () =>
         withMutationTracking(() => {
           const overlayErr = blockedByOverlayError(node)
@@ -2572,6 +2604,7 @@ export function domPrimitive(
           return mutatingSuccess(node)
         }),
 
+  // --- PARTIAL: Overlay & Stability Action Handlers (dismiss, wait_for_stable, action_diff) ---
       dismiss_top_overlay: () =>
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
@@ -2691,8 +2724,7 @@ export function domPrimitive(
           })
         }),
 
-      wait_for_stable: (): Promise<DOMResult> => {
-        // Smart DOM stability wait (#344)
+      wait_for_stable: (): Promise<DOMResult> => { // Smart DOM stability wait (#344)
         const stabilityMs = typeof options.stability_ms === 'number' && options.stability_ms > 0
           ? options.stability_ms : 500
         const maxTimeout = typeof options.timeout_ms === 'number' && options.timeout_ms > 0
@@ -3040,7 +3072,6 @@ export function domPrimitive(
             if (role === 'status') return 'status'
             return 'info'
           }
-
 
           // Helper: generate a compact selector description for an element
           function describeSelector(el: Element): string {

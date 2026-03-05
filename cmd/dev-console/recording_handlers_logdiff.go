@@ -20,23 +20,21 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 		ReplayID   string `json:"replay_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.OriginalID == "" || params.ReplayID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))}
+		return fail(req, ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))
 	}
 
 	// Compare recordings
 	result, err := h.capture.DiffRecordings(params.OriginalID, params.ReplayID)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to diff recordings: %v", err),
-			"Ensure both recording IDs are valid",
-		)}
+			"Ensure both recording IDs are valid")
 	}
 
 	h.appendServerLog(LogEntry{
@@ -60,7 +58,7 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 		"action_stats":   result.ActionStats,
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(result.Summary, responseData)}
+	return succeed(req, result.Summary, responseData)
 }
 
 // toolGetLogDiffReport returns human-readable regression report text for two recordings.
@@ -73,23 +71,21 @@ func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMess
 		ReplayID   string `json:"replay_id"`
 	}
 	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		if resp, stop := parseArgs(req, args, &params); stop {
+			return resp
 		}
 	}
 
 	if params.OriginalID == "" || params.ReplayID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))}
+		return fail(req, ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))
 	}
 
 	// Compare recordings
 	result, err := h.capture.DiffRecordings(params.OriginalID, params.ReplayID)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInternal,
+		return fail(req, ErrInternal,
 			fmt.Sprintf("Failed to generate report: %v", err),
-			"Ensure both recording IDs are valid",
-		)}
+			"Ensure both recording IDs are valid")
 	}
 
 	// Generate report text
@@ -102,5 +98,5 @@ func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMess
 		"stats":   result.ActionStats,
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Log diff report", responseData)}
+	return succeed(req, "Log diff report", responseData)
 }

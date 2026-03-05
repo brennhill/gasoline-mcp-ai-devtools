@@ -41,7 +41,7 @@ var mcpStaticResponses = map[string]string{
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	if req.HasInvalidID() {
 		resp := JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      nil,
 			Error: &JSONRPCError{
 				Code:    -32600,
@@ -57,9 +57,9 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	// JSON-RPC 2.0: All requests must include "jsonrpc": "2.0"
-	if req.JSONRPC != "2.0" {
+	if req.JSONRPC != JSONRPCVersion {
 		return &JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      req.ID,
 			Error:   &JSONRPCError{Code: -32600, Message: `Invalid Request: jsonrpc must be "2.0"`},
 		}
@@ -74,12 +74,12 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	if staticResult, ok := mcpStaticResponses[req.Method]; ok {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(staticResult)}
+		resp := succeedRaw(req, json.RawMessage(staticResult))
 		return &resp
 	}
 
 	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
+		JSONRPC: JSONRPCVersion,
 		ID:      req.ID,
 		Error:   &JSONRPCError{Code: -32601, Message: "Method not found: " + req.Method},
 	}
@@ -104,14 +104,14 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 
 	// Error impossible: MCPInitResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPResourcesListResult{Resources: mcpResources()}
 	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
@@ -120,7 +120,7 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      req.ID,
 			Error: &JSONRPCError{
 				Code:    -32602,
@@ -132,7 +132,7 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 	canonicalURI, text, ok := resolveResourceContent(params.URI)
 	if !ok {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      req.ID,
 			Error: &JSONRPCError{
 				Code:    -32002,
@@ -146,14 +146,14 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }
 
 func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
@@ -165,5 +165,5 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPToolsListResult{Tools: tools}
 	// Error impossible: MCPToolsListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return succeedRaw(req, resultJSON)
 }

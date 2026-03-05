@@ -18,14 +18,11 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 		VisibleOnly bool `json:"visible_only,omitempty"`
 		Limit       int  `json:"limit,omitempty"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if resp, blocked := h.parent.requirePilot(req); blocked {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := h.parent.requireExtension(req); blocked {
+
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
 		return resp
 	}
 	if resp, blocked := h.parent.requireTabTracking(req); blocked {
@@ -43,7 +40,9 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("dom_list_interactive", "", nil)
 

@@ -74,9 +74,37 @@ function findElementByTitle(element, title) {
 
 function findLinkByText(element, text) {
   if (!element) return null
-  if (element.tag === 'a' && element.textContent === text) return element
+  if (element.tag === 'a' && hasChildWithText(element, text)) return element
   for (const child of element.children || []) {
     const found = findLinkByText(child, text)
+    if (found) return found
+  }
+  return null
+}
+
+function hasChildWithText(element, text) {
+  if (element.textContent === text) return true
+  for (const child of element.children || []) {
+    if (child.textContent === text) return true
+  }
+  return false
+}
+
+function findElementByTitlePrefix(element, prefix) {
+  if (!element) return null
+  if (element.title && element.title.startsWith(prefix)) return element
+  for (const child of element.children || []) {
+    const found = findElementByTitlePrefix(child, prefix)
+    if (found) return found
+  }
+  return null
+}
+
+function findElementWithChildText(element, text) {
+  if (!element) return null
+  if (hasChildWithText(element, text)) return element
+  for (const child of element.children || []) {
+    const found = findElementWithChildText(child, text)
     if (found) return found
   }
   return null
@@ -161,6 +189,7 @@ function resetGlobals() {
   globalThis.document = {
     getElementById: mock.fn((id) => elementsById[id] || null),
     createElement: mock.fn((tag) => createMockElement(tag)),
+    readyState: 'complete',
     body: {
       appendChild: mock.fn((el) => {
         registerElement(el)
@@ -173,6 +202,11 @@ function resetGlobals() {
         return el
       })
     }
+  }
+
+  globalThis.window = {
+    addEventListener: mock.fn(),
+    removeEventListener: mock.fn()
   }
 }
 
@@ -201,7 +235,7 @@ describe('tracked hover launcher', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const screenshotButton = findElementByTitle(root, 'Capture screenshot')
+    const screenshotButton = findElementByTitlePrefix(root, 'Screenshot')
     assert.ok(screenshotButton, 'expected screenshot button')
 
     screenshotButton.dispatch('click')
@@ -210,29 +244,25 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('captureScreenshot'))
   })
 
-  test('record action toggles between record_start and record_stop', () => {
+  test('stop recording button sends screen_recording_stop and is hidden by default', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const recordButton = findElementByTitle(root, 'Start recording')
-    assert.ok(recordButton, 'expected record button')
+    const stopButton = findElementByTitle(root, 'Stop recording')
+    assert.ok(stopButton, 'expected stop recording button')
+    assert.strictEqual(stopButton.style.display, 'none', 'stop button should be hidden when not recording')
 
-    recordButton.dispatch('click')
-    assert.strictEqual(recordButton.textContent, 'Stop', 'record button should switch to Stop after start')
-
-    recordButton.dispatch('click')
-    assert.strictEqual(recordButton.textContent, 'Rec', 'record button should switch back to Rec after stop')
+    stopButton.dispatch('click')
 
     const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
-    assert.ok(sentTypes.includes('record_start'))
-    assert.ok(sentTypes.includes('record_stop'))
+    assert.ok(sentTypes.includes('screen_recording_stop'))
   })
 
   test('settings menu exposes docs and github links', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const settingsButton = findElementByTitle(root, 'Launcher settings')
+    const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton, 'expected settings button')
     settingsButton.dispatch('click')
 
@@ -249,11 +279,11 @@ describe('tracked hover launcher', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const settingsButton = findElementByTitle(root, 'Launcher settings')
+    const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton)
     settingsButton.dispatch('click')
 
-    const hideButton = findElementByTitle(root, 'Hide launcher until popup is opened again')
+    const hideButton = findElementWithChildText(root, 'Hide Gasoline Devtool')
     assert.ok(hideButton, 'expected hide button')
     hideButton.dispatch('click')
 

@@ -46,7 +46,7 @@ func isResponseQueued(resp JSONRPCResponse) bool {
 
 // appendScreenshotToResponse captures a screenshot and appends it as an inline image block.
 func (h *interactActionHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
-	screenshotReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID}
+	screenshotReq := JSONRPCRequest{JSONRPC: JSONRPCVersion, ID: req.ID}
 	screenshotResp := observe.GetScreenshot(h.parent, screenshotReq, nil)
 
 	var screenshotResult MCPToolResult
@@ -76,7 +76,7 @@ func (h *interactActionHandler) appendScreenshotToResponse(resp JSONRPCResponse,
 
 // appendInteractiveToResponse appends list_interactive text to the response.
 func (h *interactActionHandler) appendInteractiveToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
-	listReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID, ClientID: req.ClientID}
+	listReq := JSONRPCRequest{JSONRPC: JSONRPCVersion, ID: req.ID, ClientID: req.ClientID}
 	listArgs, _ := json.Marshal(map[string]any{"what": "list_interactive", "visible_only": true})
 	listResp := h.handleListInteractive(listReq, listArgs)
 
@@ -109,7 +109,7 @@ func (h *interactActionHandler) appendInteractiveToResponse(resp JSONRPCResponse
 
 // readPageContext returns a compact page context payload (url/title/tab_id) from observe(what="page").
 func (h *interactActionHandler) readPageContext(req JSONRPCRequest) (map[string]any, bool) {
-	pageReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID}
+	pageReq := JSONRPCRequest{JSONRPC: JSONRPCVersion, ID: req.ID}
 	pageResp := observe.GetPageInfo(h.parent, pageReq, nil)
 
 	var pageResult MCPToolResult
