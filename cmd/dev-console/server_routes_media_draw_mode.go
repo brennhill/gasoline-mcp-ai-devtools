@@ -176,8 +176,11 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, 
 
 	parsedAnnotations, parseWarnings := parseAnnotations(body.Annotations)
 	store := s.getAnnotationStore()
-	storeAnnotationSessionInStore(store, &body, screenshotPath, parsedAnnotations)
+	// T6 fix: store element details BEFORE the session. StoreSession triggers
+	// waiter completion which signals the AI agent; if the agent immediately
+	// calls annotation_detail the details must already be present.
 	storeElementDetails(store, body.ElementDetails)
+	storeAnnotationSessionInStore(store, &body, screenshotPath, parsedAnnotations)
 
 	// Persist full session to disk so the LLM can compare/contrast across restarts
 	persistDrawSession(&body, screenshotPath, parsedAnnotations)

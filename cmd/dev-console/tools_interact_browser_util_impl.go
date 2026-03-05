@@ -65,6 +65,59 @@ func (h *interactActionHandler) resolveNavigateURLImpl(rawURL string) (string, e
 	return fmt.Sprintf("http://127.0.0.1:%d/insecure-proxy?target=%s", port, url.QueryEscape(target)), nil
 }
 
+// browserActionOpts configures the queueBrowserAction helper.
+type browserActionOpts struct {
+	action         string         // Action name (e.g. "back", "forward", "activate_tab")
+	correlationPfx string         // Correlation ID prefix (e.g. "back", "forward")
+	params         json.RawMessage // Serialized action params; nil uses `{"action":"<action>"}`
+	tabID          int            // Tab ID for the pending query (0 = default)
+	skipTabGuard   bool           // If true, skip requireTabTracking guard
+	queuedMsg      string         // Queued message for MaybeWaitForCommand
+	recordAction   string         // Action type for recordAIAction (defaults to action)
+	recordURL      string         // URL for recordAIAction
+	recordExtra    map[string]any // Extra details for recordAIAction
+}
+
+// queueBrowserAction is the shared helper for simple browser actions that follow
+// the guard → correlate → arm evidence → enqueue → record → wait pattern.
+// Eliminates the repeated 15+ line boilerplate in back, forward, refresh, activate_tab, close_tab, etc.
+func (h *interactActionHandler) queueBrowserAction(req JSONRPCRequest, args json.RawMessage, opts browserActionOpts) JSONRPCResponse {
+	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
+		return resp
+	}
+	if !opts.skipTabGuard {
+		if resp, blocked := h.parent.requireTabTracking(req); blocked {
+			return resp
+		}
+	}
+
+	correlationID := newCorrelationID(opts.correlationPfx)
+	h.armEvidenceForCommand(correlationID, opts.action, args, req.ClientID)
+
+	actionParams := opts.params
+	if actionParams == nil {
+		actionParams, _ = json.Marshal(map[string]string{"action": opts.action})
+	}
+
+	query := queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        actionParams,
+		TabID:         opts.tabID,
+		CorrelationID: correlationID,
+	}
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
+
+	recordAction := opts.recordAction
+	if recordAction == "" {
+		recordAction = opts.action
+	}
+	h.parent.recordAIAction(recordAction, opts.recordURL, opts.recordExtra)
+
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, opts.queuedMsg)
+}
+
 // handleScreenshotAliasImpl provides backward compatibility for clients that call
 // interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
 func (h *interactActionHandler) handleScreenshotAliasImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

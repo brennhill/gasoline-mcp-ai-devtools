@@ -32,6 +32,14 @@ const terminalPongTimeout = 60 * time.Second
 // terminalReadBufSize is the buffer size for PTY reads relayed to the browser.
 const terminalReadBufSize = 4096
 
+// terminalInitTimeout is the max time to wait for a shell prompt before
+// writing init_command. Replaces the old hardcoded 500ms sleep with an
+// adaptive readiness check that looks for prompt characters.
+const terminalInitTimeout = 2 * time.Second
+
+// terminalPromptChars contains characters that indicate a shell prompt is ready.
+const terminalPromptChars = "$#>%"
+
 // registerTerminalRoutes adds terminal-related routes to the mux.
 // NOT MCP — These are daemon-served endpoints for the in-browser terminal.
 func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager, cap *capture.Store) {
@@ -125,7 +133,8 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	defer func() { _ = conn.Close() }()
+	// NOTE: After a successful handshake, conn.Close() is handled by closeConn
+	// inside terminalWSLoop via sync.Once. We only close here on handshake failure.
 
 	// Send 101 handshake.
 	accept := wsAcceptKey(key)
@@ -134,9 +143,11 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		"Connection: Upgrade\r\n" +
 		"Sec-WebSocket-Accept: " + accept + "\r\n\r\n"
 	if _, err := bufrw.WriteString(handshake); err != nil {
+		_ = conn.Close()
 		return
 	}
 	if err := bufrw.Flush(); err != nil {
+		_ = conn.Close()
 		return
 	}
 
@@ -149,6 +160,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 				end = len(history)
 			}
 			if err := wsWriteFrame(bufrw, 0x2, history[off:end]); err != nil {
+				_ = conn.Close()
 				return
 			}
 		}
@@ -158,33 +170,58 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 }
 
 // terminalWSLoop relays data between a WebSocket connection and a PTY session.
-// Downstream (PTY → browser): binary WebSocket frames with raw terminal output.
-// Upstream (browser → PTY): binary frames as keystrokes, text frames as JSON control messages.
+// Downstream (PTY -> browser): binary WebSocket frames with raw terminal output.
+// Upstream (browser -> PTY): binary frames as keystrokes, text frames as JSON control messages.
 // Server sends ping frames every terminalPingInterval; if no frame (data or pong) arrives
 // within terminalPongTimeout the connection is considered dead and closed. The PTY session
 // survives so the browser can reconnect with scrollback replay.
+//
+// Coordinated shutdown: all three goroutines share a connDone channel and a sync.Once-guarded
+// closeConn function. Any goroutine that detects a terminal condition calls closeConn(),
+// which closes connDone (unblocking the others) then closes the underlying TCP connection
+// exactly once. This prevents double-close races and goroutine leaks.
 func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
+	// Coordinated shutdown: connDone signals all goroutines to exit,
+	// closeConn ensures conn.Close() is called exactly once.
+	connDone := make(chan struct{})
+	var connDoneOnce sync.Once
+	closeConn := func() {
+		connDoneOnce.Do(func() {
+			close(connDone)
+			_ = conn.Close()
+		})
+	}
+
 	// Multiple goroutines emit frames (PTY downstream, keepalive ping, and upstream
 	// control responses). Serialize writes to avoid interleaved/corrupted frames.
 	writeFrame := newTerminalFrameWriter(rw)
 
-	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
-	done := make(chan struct{})
+	// PTY -> WebSocket (downstream): read PTY output and send as binary frames.
+	// Selects on connDone so it exits promptly when the WebSocket dies.
+	ptyDone := make(chan struct{})
 	util.SafeGo(func() {
-		defer close(done)
+		defer close(ptyDone)
 		buf := make([]byte, terminalReadBufSize)
 		for {
 			n, err := sess.Read(buf)
 			if err != nil {
-				// PTY closed or process exited — send close frame.
+				// PTY closed or process exited — send close frame and shut down.
 				_ = writeFrame(0x8, nil)
+				closeConn()
 				return
 			}
 			if n > 0 {
 				sess.AppendScrollback(buf[:n])
 				if err := writeFrame(0x2, buf[:n]); err != nil {
+					closeConn()
 					return
 				}
+			}
+			// Check if connection was closed by another goroutine.
+			select {
+			case <-connDone:
+				return
+			default:
 			}
 		}
 	})
@@ -192,22 +229,27 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 	// Server-initiated ping keepalive — detects dead connections (browser crash,
 	// laptop sleep) without ever timing out idle users.
 	pingTicker := time.NewTicker(terminalPingInterval)
-	defer pingTicker.Stop()
 	util.SafeGo(func() {
-		for range pingTicker.C {
-			if err := writeFrame(0x9, nil); err != nil {
-				_ = conn.Close()
+		defer pingTicker.Stop()
+		for {
+			select {
+			case <-connDone:
 				return
+			case <-pingTicker.C:
+				if err := writeFrame(0x9, nil); err != nil {
+					closeConn()
+					return
+				}
 			}
 		}
 	})
 
-	// WebSocket → PTY (upstream): read frames and dispatch.
+	// WebSocket -> PTY (upstream): read frames and dispatch.
 	// NOTE: Do NOT call sess.Close() on WebSocket disconnect — the session
 	// must survive page refreshes so the browser can reconnect with scrollback replay.
 	// Sessions are only killed explicitly via POST /terminal/stop (the Exit button).
 	util.SafeGo(func() {
-		defer func() { _ = conn.Close() }() // Close conn on exit so downstream detects it and browser auto-reconnects
+		defer closeConn() // Close conn on exit so downstream detects it and browser auto-reconnects
 		for {
 			// Refresh read deadline on every iteration — any received frame
 			// (data, pong, ping) proves the connection is alive.
@@ -219,16 +261,23 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 				// PTY stays alive for reconnection.
 				return
 			}
-			_ = fin // Terminal messages are not fragmented in practice.
+
+			// Reject fragmented frames (FIN=0). Terminal messages are always
+			// single-frame; accepting fragments would require reassembly state
+			// and risks incomplete data being written to the PTY.
+			if !fin {
+				_ = writeFrame(0x8, nil) // Send close frame per RFC 6455.
+				return
+			}
 
 			switch opcode {
 			case 0x8: // Close
 				_ = writeFrame(0x8, nil)
 				return // WebSocket closed — stop relaying but keep PTY alive
-			case 0x9: // Ping → Pong
+			case 0x9: // Ping -> Pong
 				_ = writeFrame(0xA, payload)
 			case 0xA: // Pong — no-op, deadline already refreshed above
-			case 0x2: // Binary — raw keystrokes → PTY stdin
+			case 0x2: // Binary — raw keystrokes -> PTY stdin
 				if _, err := sess.Write(payload); err != nil {
 					return
 				}
@@ -238,7 +287,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 		}
 	})
 
-	<-done
+	<-ptyDone
 }
 
 // newTerminalFrameWriter returns a thread-safe frame writer for one WebSocket
@@ -249,6 +298,35 @@ func newTerminalFrameWriter(rw *bufio.ReadWriter) func(opcode byte, payload []by
 		wsWriteMu.Lock()
 		defer wsWriteMu.Unlock()
 		return wsWriteFrame(rw, opcode, payload)
+	}
+}
+
+// waitForShellPrompt reads PTY output until a prompt character appears or
+// terminalInitTimeout expires. This is more robust than a fixed sleep because
+// shell startup time varies (e.g., .zshrc loading, slow NFS home dirs).
+// Output is appended to scrollback so reconnecting clients see it.
+func waitForShellPrompt(sess *pty.Session) {
+	deadline := time.NewTimer(terminalInitTimeout)
+	defer deadline.Stop()
+	buf := make([]byte, 256)
+	for {
+		select {
+		case <-deadline.C:
+			return // Timeout — write init_command anyway as a best-effort fallback.
+		default:
+		}
+		n, err := sess.Read(buf)
+		if err != nil {
+			return
+		}
+		if n > 0 {
+			sess.AppendScrollback(buf[:n])
+			for _, b := range buf[:n] {
+				if strings.ContainsRune(terminalPromptChars, rune(b)) {
+					return // Prompt detected — shell is ready.
+				}
+			}
+		}
 	}
 }
 
@@ -321,14 +399,16 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 		Cols: uint16(req.Cols),
 		Rows: uint16(req.Rows),
 	})
-	// Write init_command to PTY stdin after shell has time to initialize.
+	// Write init_command to PTY stdin after shell prompt appears.
+	// Instead of a fixed 500ms sleep, read PTY output until a prompt character
+	// ('$', '#', '>', '%') appears or a 2s timeout expires.
 	if err == nil && req.InitCommand != "" {
-		go func(sessionID, initCmd string) {
-			time.Sleep(500 * time.Millisecond)
+		go func(sessionID, initCmd string) { // lint:allow-bare-goroutine — one-shot init, bounded by timeout
 			sess, getErr := mgr.Get(sessionID)
 			if getErr != nil {
 				return
 			}
+			waitForShellPrompt(sess)
 			// Write the command followed by newline so the shell executes it.
 			cmd := initCmd + "\n"
 			_, _ = sess.Write([]byte(cmd))

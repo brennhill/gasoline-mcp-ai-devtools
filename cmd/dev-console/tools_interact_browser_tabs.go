@@ -132,28 +132,11 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 }
 
 func (h *interactActionHandler) handleActivateTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("activate")
-	h.armEvidenceForCommand(correlationID, "activate_tab", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"activate_tab"}`),
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("activate_tab", "", nil)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Activate tab queued")
+	return h.queueBrowserAction(req, args, browserActionOpts{
+		action:         "activate_tab",
+		correlationPfx: "activate",
+		queuedMsg:      "Activate tab queued",
+	})
 }
 
 func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -164,36 +147,19 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	// NOTE: close_tab is gated even with explicit tab_id.
-	// Future: allow bypass when tab_id is explicitly provided.
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("closetab")
-	h.armEvidenceForCommand(correlationID, "close_tab", args, req.ClientID)
-
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "close_tab"
 	actionPayload, _ := json.Marshal(actionParams)
 
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        actionPayload,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("close_tab", "", map[string]any{
-		"tab_id": params.TabID,
+	// NOTE: close_tab is gated even with explicit tab_id.
+	// Future: allow bypass when tab_id is explicitly provided.
+	return h.queueBrowserAction(req, args, browserActionOpts{
+		action:         "close_tab",
+		correlationPfx: "closetab",
+		params:         actionPayload,
+		tabID:          params.TabID,
+		queuedMsg:      "Close tab queued",
+		recordExtra:    map[string]any{"tab_id": params.TabID},
 	})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Close tab queued")
 }

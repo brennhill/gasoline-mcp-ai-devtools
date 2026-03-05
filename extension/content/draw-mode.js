@@ -67,7 +67,7 @@ export function activateDrawMode(source = 'user', session = '', correlationId = 
  * @returns {{ annotations: Array, elementDetails: Object }}
  */
 export function deactivateDrawMode() {
-  if (!active) {
+  if (!active || isDeactivating) {
     return { annotations: [], elementDetails: {} }
   }
   cancelTextInput()
@@ -1786,13 +1786,13 @@ export function deactivateAndSendResults() {
   if (typeof chrome !== 'undefined' && chrome.runtime) {
     let screenshotHandled = false
     // Timeout fallback: if screenshot callback never fires (extension context
-    // invalidated, background unresponsive), proceed without screenshot after 3s.
+    // invalidated, background unresponsive), proceed without screenshot after 1s.
     const fallbackTimer = setTimeout(() => {
       if (!screenshotHandled) {
         screenshotHandled = true
         finishDeactivation('')
       }
-    }, 3000)
+    }, 1000)
 
     try {
       chrome.runtime.sendMessage({ type: 'GASOLINE_CAPTURE_SCREENSHOT' }, (screenshotResponse) => {

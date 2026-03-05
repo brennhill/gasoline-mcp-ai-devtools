@@ -16,53 +16,10 @@ const (
 )
 
 // toolInteract dispatches interact requests based on the 'what' parameter.
+// Uses the unified toolRegistry/dispatchTool infrastructure for mode resolution
+// and alias handling, with composable side effects applied post-dispatch.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		What   string `json:"what"`
-		Action string `json:"action"`
-	}
-	if len(args) > 0 {
-		if resp, stop := parseArgs(req, args, &params); stop {
-			return resp
-		}
-	}
-
-	what := params.What
-	usedAliasParam := ""
-	if what != "" && params.Action != "" && params.Action != what {
-		return whatAliasConflictResponse(req, "action", what, params.Action, h.interactAction().getValidInteractActions())
-	}
-	if what == "" {
-		what = params.Action
-		if what != "" {
-			usedAliasParam = "action"
-		}
-	}
-
-	if what == "" {
-		validActions := h.interactAction().getValidInteractActions()
-		return fail(req, ErrMissingParam,
-			"Required dispatch parameter is missing: provide 'what' (or deprecated alias 'action')",
-			"Add 'what' (preferred) or 'action' and call again",
-			withParam("what"),
-			withHint("Valid values: "+validActions))
-	}
-
-	// Interact 'action' alias deprecation tracking.
-	const interactActionDeprecatedIn = "0.7.0"
-	const interactActionRemoveIn = "0.9.0"
-
-	if _, err := parseEvidenceMode(args); err != nil {
-		resp := fail(req, ErrInvalidParam,
-			"Invalid 'evidence' value",
-			"Use evidence='off' (default), 'on_mutation', or 'always'",
-			withParam("evidence"))
-		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, interactActionDeprecatedIn, interactActionRemoveIn)
-	}
-
-	// Quiet alias: async → background.
-	args = mergeAsyncAlias(args)
-
+	// Parse composable params before dispatch (PostDispatch doesn't receive args).
 	var composableParams struct {
 		Subtitle           *string `json:"subtitle"`
 		IncludeScreenshot  bool    `json:"include_screenshot"`
@@ -74,8 +31,29 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	lenientUnmarshal(args, &composableParams)
 
-	resp := h.interactAction().dispatchInteractAction(req, args, what)
+	// Build the registry with lazily-populated handlers and valid modes.
+	reg := interactRegistry
+	handlers := h.interactAction().buildInteractHandlers()
+	reg.Handlers = handlers
+	reg.Resolution.ValidModes = h.interactAction().getValidInteractActions()
 
+	// Wrap each handler to apply jitter before dispatch.
+	for action, handler := range reg.Handlers {
+		action, handler := action, handler // capture for closure
+		reg.Handlers[action] = func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+			th.interactAction().applyJitter(action)
+			return handler(th, req, args)
+		}
+	}
+
+	// Resolve mode early for composable side-effect checks.
+	// We need the resolved 'what' value but dispatchTool handles it internally.
+	// Parse it here for composable logic, then let dispatchTool handle the full dispatch.
+	what := resolveWhatForComposable(args, interactAliasParams)
+
+	resp := h.dispatchTool(req, args, reg)
+
+	// Apply composable side effects (these need the resolved 'what' and original args).
 	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
 		h.interactAction().queueComposableSubtitle(req, *composableParams.Subtitle)
 	}
@@ -107,8 +85,37 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.interactAction().appendInteractiveToResponse(resp, req)
 	}
 
-	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what, interactActionDeprecatedIn, interactActionRemoveIn)
 	return resp
+}
+
+// resolveWhatForComposable extracts the resolved 'what' value from args for composable
+// side-effect logic. This is a lightweight parse — the full resolution with conflict
+// detection happens inside dispatchTool.
+func resolveWhatForComposable(args json.RawMessage, aliasDefs []modeAlias) string {
+	if len(args) == 0 {
+		return ""
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return ""
+	}
+	// Try canonical 'what' first.
+	if v, ok := raw["what"]; ok {
+		var s string
+		if json.Unmarshal(v, &s) == nil && s != "" {
+			return s
+		}
+	}
+	// Fall back to alias params.
+	for _, ad := range aliasDefs {
+		if v, ok := raw[ad.JSONField]; ok {
+			var s string
+			if json.Unmarshal(v, &s) == nil && s != "" {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 // mergeAsyncAlias rewrites {"async":true} → {"background":true} in raw JSON args.

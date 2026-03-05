@@ -25,8 +25,9 @@ type Session struct {
 	cmd        *exec.Cmd
 	mu         sync.Mutex
 	closed     bool
-	scrollback []byte     // ring buffer of recent PTY output for reconnect replay
-	scrollMu   sync.Mutex // protects scrollback
+	done       chan struct{} // closed before ptmx.Close to signal in-flight I/O
+	scrollback []byte       // ring buffer of recent PTY output for reconnect replay
+	scrollMu   sync.Mutex   // protects scrollback
 }
 
 // winsize matches the C struct winsize for TIOCSWINSZ.
@@ -158,10 +159,14 @@ func Spawn(cfg SpawnConfig) (*Session, error) {
 		ID:   cfg.ID,
 		ptmx: ptmx,
 		cmd:  cmd,
+		done: make(chan struct{}),
 	}, nil
 }
 
 // Read reads from the PTY master (child's stdout/stderr).
+// After unlocking the mutex, Close() may close the fd before the syscall runs.
+// If the read fails, we check the done channel: if closed, the fd was recycled
+// and we return ErrSessionClosed instead of the raw OS error.
 func (s *Session) Read(buf []byte) (int, error) {
 	s.mu.Lock() // lint:manual-unlock — unlock before blocking I/O
 	if s.closed {
@@ -170,10 +175,22 @@ func (s *Session) Read(buf []byte) (int, error) {
 	}
 	ptmx := s.ptmx
 	s.mu.Unlock()
-	return ptmx.Read(buf)
+
+	n, err := ptmx.Read(buf)
+	if err != nil {
+		select {
+		case <-s.done:
+			return 0, ErrSessionClosed
+		default:
+		}
+	}
+	return n, err
 }
 
 // Write writes to the PTY master (child's stdin).
+// After unlocking the mutex, Close() may close the fd before the syscall runs.
+// If the write fails, we check the done channel: if closed, the fd was recycled
+// and we return ErrSessionClosed instead of the raw OS error.
 func (s *Session) Write(data []byte) (int, error) {
 	s.mu.Lock() // lint:manual-unlock — unlock before blocking I/O
 	if s.closed {
@@ -182,7 +199,16 @@ func (s *Session) Write(data []byte) (int, error) {
 	}
 	ptmx := s.ptmx
 	s.mu.Unlock()
-	return ptmx.Write(data)
+
+	n, err := ptmx.Write(data)
+	if err != nil {
+		select {
+		case <-s.done:
+			return 0, ErrSessionClosed
+		default:
+		}
+	}
+	return n, err
 }
 
 // Resize changes the terminal dimensions.
@@ -211,6 +237,11 @@ func (s *Session) Close() error {
 		return nil
 	}
 	s.closed = true
+
+	// Signal in-flight Read/Write calls that the fd is about to close.
+	// They check this channel on error to return ErrSessionClosed instead
+	// of a raw OS error from a potentially recycled fd number.
+	close(s.done)
 
 	// Signal the child to terminate.
 	if s.cmd.Process != nil {
@@ -251,8 +282,12 @@ func (s *Session) AppendScrollback(data []byte) {
 	s.scrollMu.Lock() // lint:manual-unlock — simple lock/unlock in same function
 	s.scrollback = append(s.scrollback, data...)
 	if len(s.scrollback) > maxScrollback {
-		// Trim to keep only the most recent maxScrollback bytes.
-		s.scrollback = s.scrollback[len(s.scrollback)-maxScrollback:]
+		// Allocate a new slice to release the old backing array.
+		// Sub-slicing (s.scrollback[len-max:]) retains a reference to the
+		// original backing array, causing unbounded memory growth.
+		trimmed := make([]byte, maxScrollback)
+		copy(trimmed, s.scrollback[len(s.scrollback)-maxScrollback:])
+		s.scrollback = trimmed
 	}
 	s.scrollMu.Unlock()
 }

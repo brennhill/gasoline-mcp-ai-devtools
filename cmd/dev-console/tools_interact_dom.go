@@ -102,13 +102,7 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 	}
 
 	contextOpts := domActionContextOptions(action, params.Selector)
-	if resp, blocked := h.parent.requirePilot(req, contextOpts...); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req, contextOpts...); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req, contextOpts...); blocked {
+	if resp, blocked := checkGuardsWithOpts(req, contextOpts, h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking); blocked {
 		return resp
 	}
 
