@@ -14,5 +14,6 @@ Canonical flow map:
 
 - [Analyze Structured Extraction](../../../architecture/flow-maps/analyze-structured-extraction.md)
 - [Analyze Annotation Waiter and Flush Recovery](../../../architecture/flow-maps/analyze-annotations-waiter-and-flush.md)
+- [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): shared enqueue fail-fast `queue_full` handling and empty-text guard for form validation summaries.
+Latest sync update (2026-03-05): analyze frame-target probing now shares normalization/probe helpers with interact dispatch paths.

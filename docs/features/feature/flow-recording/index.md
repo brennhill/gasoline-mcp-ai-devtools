@@ -6,7 +6,16 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-test_paths: []
+  - src/background/recording.ts
+  - src/background/recording-listeners.ts
+  - src/background/keyboard-shortcuts.ts
+  - src/background/context-menus.ts
+  - src/background/recording-utils.ts
+  - src/background/draw-mode-toggle.ts
+test_paths:
+  - tests/extension/recording.test.js
+  - tests/extension/recording-shortcut-command.test.js
+  - tests/extension/tracked-hover-launcher.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -35,4 +44,13 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- Core recording lifecycle and listener wiring:
+  - `src/background/recording.ts`
+  - `src/background/recording-listeners.ts`
+  - `src/background/keyboard-shortcuts.ts`
+  - `src/background/context-menus.ts`
+  - `src/background/recording-utils.ts`
+- Core tests:
+  - `tests/extension/recording.test.js`
+  - `tests/extension/recording-shortcut-command.test.js`
+  - `tests/extension/tracked-hover-launcher.test.js`

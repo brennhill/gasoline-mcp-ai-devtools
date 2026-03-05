@@ -11,9 +11,13 @@ code_paths:
   - cmd/dev-console/tools_configure_session_handler.go
   - cmd/dev-console/tools_configure_state_impl.go
   - cmd/dev-console/tools_configure_sessions.go
+  - internal/tools/configure/boundaries.go
+  - internal/tools/configure/rewrite.go
 test_paths:
   - cmd/dev-console/tools_configure_handler_test.go
   - cmd/dev-console/tools_configure_session_test.go
+  - internal/tools/configure/boundaries_test.go
+  - internal/tools/configure/rewrite_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -32,6 +36,7 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -48,6 +53,11 @@ last_verified_date: 2026-03-05
   - `cmd/dev-console/tools_configure_session_handler.go`
   - `cmd/dev-console/tools_configure_state_impl.go`
   - `cmd/dev-console/tools_configure_sessions.go`
+- Shared configure argument normalization/parsing:
+  - `internal/tools/configure/boundaries.go`
+  - `internal/tools/configure/rewrite.go`
 - Tests:
   - `cmd/dev-console/tools_configure_handler_test.go`
   - `cmd/dev-console/tools_configure_session_test.go`
+  - `internal/tools/configure/boundaries_test.go`
+  - `internal/tools/configure/rewrite_test.go`

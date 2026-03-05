@@ -13,3 +13,6 @@ last_verified_date: 2026-03-05
 Canonical flow map:
 
 - [Test Generation Dispatch](../../../architecture/flow-maps/test-generation-dispatch.md)
+- [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
+
+Latest sync update (2026-03-05): shared test-failure schema fragment now drives both single `failure` and array `failures` properties.
