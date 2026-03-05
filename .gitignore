@@ -24,7 +24,9 @@ Thumbs.db
 # IDE / AI agents
 .idea/
 .vscode/
-.codex/
+.codex/*
+!.codex/skills/
+!.codex/skills/**
 .gemini/
 *.swp
 *.swo
