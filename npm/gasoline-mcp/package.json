@@ -18,11 +18,11 @@
     "extension"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "0.7.9",
-    "@brennhill/gasoline-darwin-x64": "0.7.9",
-    "@brennhill/gasoline-linux-arm64": "0.7.9",
-    "@brennhill/gasoline-linux-x64": "0.7.9",
-    "@brennhill/gasoline-win32-x64": "0.7.9"
+    "@brennhill/gasoline-darwin-arm64": "0.7.10",
+    "@brennhill/gasoline-darwin-x64": "0.7.10",
+    "@brennhill/gasoline-linux-arm64": "0.7.10",
+    "@brennhill/gasoline-linux-x64": "0.7.10",
+    "@brennhill/gasoline-win32-x64": "0.7.10"
   },
   "keywords": [
     "mcp",
