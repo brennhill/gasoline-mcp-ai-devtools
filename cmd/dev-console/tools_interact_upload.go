@@ -121,7 +121,9 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	// Error impossible: map contains only primitive types from input
 	payloadJSON, _ := json.Marshal(uploadPayload)
 	query := queries.PendingQuery{Type: "upload", Params: payloadJSON, CorrelationID: correlationID}
-	h.capture.CreatePendingQueryWithTimeout(query, 10*time.Minute, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, 10*time.Minute); blocked {
+		return enqueueResp
+	}
 
 	h.recordAIAction("upload", "", map[string]any{
 		"file_path": params.FilePath, "file_name": fileName,

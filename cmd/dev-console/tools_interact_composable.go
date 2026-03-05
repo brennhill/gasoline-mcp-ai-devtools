@@ -59,7 +59,9 @@ func (h *interactActionHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 		Params:        dismissArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 }
 
 // queueComposableActionDiff queues an action_diff command as a side effect.
@@ -78,7 +80,9 @@ func (h *interactActionHandler) queueComposableActionDiff(req JSONRPCRequest) {
 		Params:        diffArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 }
 
 // queueComposableWaitForStable queues a wait_for_stable command as a side effect.
@@ -101,7 +105,9 @@ func (h *interactActionHandler) queueComposableWaitForStable(req JSONRPCRequest,
 		Params:        stableArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 }
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.
@@ -112,5 +118,7 @@ func (h *interactActionHandler) queueComposableSubtitle(req JSONRPCRequest, text
 		Params:        subtitleArgs,
 		CorrelationID: newCorrelationID("subtitle"),
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, subtitleQuery, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 }

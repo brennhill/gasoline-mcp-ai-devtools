@@ -20,7 +20,9 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 		Params:        args,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.MaybeWaitForCommand(req, correlationID, args, "Link health check initiated")
 }

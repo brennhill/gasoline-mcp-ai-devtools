@@ -44,7 +44,9 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Mark draw started AFTER the query is queued, so WaitForSession's timestamp
 	// baseline is never set before the command that triggers the session exists.

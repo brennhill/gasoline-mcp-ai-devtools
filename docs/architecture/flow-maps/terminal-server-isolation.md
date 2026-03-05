@@ -26,6 +26,16 @@ Server                          Browser
 - **On dead connection:** WebSocket closed, PTY stays alive for reconnection
 - **Idle users:** Never timed out — pong replies keep the connection alive indefinitely
 
+## Concurrent Frame Write Safety
+
+Terminal WebSocket traffic has three concurrent server-side writers:
+
+1. PTY downstream output frames.
+2. Keepalive ping frames.
+3. Upstream control replies (pong/close).
+
+As of 2026-03-05 these writers are funneled through a per-connection serialized writer (`newTerminalFrameWriter`) in `terminalWSLoop`, so frame bytes cannot interleave on the shared buffered socket writer.
+
 ## Startup Flow
 
 ```
@@ -115,6 +125,7 @@ Iframe support in `terminal.html`:
 |------|---------|
 | `cmd/dev-console/terminal_server.go` | `setupTerminalMux()`, `startTerminalServer()` |
 | `cmd/dev-console/terminal_handlers.go` | All terminal route handlers |
+| `cmd/dev-console/terminal_handlers_test.go` | Terminal handler + frame writer serialization tests |
 | `cmd/dev-console/main_connection_mcp.go` | Terminal server startup wiring |
 | `cmd/dev-console/main_connection_mcp_shutdown.go` | Terminal server graceful shutdown |
 | `cmd/dev-console/server_routes_health_diagnostics.go` | `terminal_port` in health response |

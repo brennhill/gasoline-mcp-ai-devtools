@@ -91,7 +91,9 @@ func (h *interactActionHandler) handleSubtitleImpl(req JSONRPCRequest, args json
 		Params:        args,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	queuedMsg := "Subtitle set"
 	if *params.Text == "" {

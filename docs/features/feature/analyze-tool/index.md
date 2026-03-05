@@ -4,12 +4,13 @@ feature_id: feature-analyze-tool
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_analyze_dispatch.go
   - cmd/dev-console/tools_analyze_annotations_handlers.go
   - cmd/dev-console/tools_analyze_api_validation.go
   - cmd/dev-console/tools_analyze_inspect_forms.go
+  - cmd/dev-console/tools_pending_query_enqueue.go
   - cmd/dev-console/tools_async_observe_commands.go
   - cmd/dev-console/tools_async_formatting.go
   - cmd/dev-console/tools_security_audit.go
@@ -27,8 +28,10 @@ code_paths:
   - src/types/runtime-messages.ts
 test_paths:
   - cmd/dev-console/tools_analyze_annotations_test.go
+  - cmd/dev-console/tools_analyze_inspect_test.go
   - cmd/dev-console/tools_analyze_structured_extraction_test.go
   - cmd/dev-console/tools_analyze_handler_test.go
+  - cmd/dev-console/tools_pending_query_enqueue_test.go
   - internal/annotation/store_test.go
   - internal/tools/analyze/forms_test.go
   - tests/extension/data-table.test.js
@@ -54,3 +57,5 @@ test_paths:
 Structured extraction modes:
 - `analyze({what:"form_state"})` returns current form values and field metadata.
 - `analyze({what:"data_table"})` returns parsed table headers/rows without `execute_js` string parsing.
+
+Queue saturation for extension-dispatched analyze actions now fails fast with a structured `queue_full` response (via shared enqueue helper), instead of entering async wait/poll flow.

@@ -54,7 +54,9 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 		Params:        actionPayload,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("new_tab", resolvedURL, map[string]any{
 		"target_url":    resolvedURL,
@@ -117,7 +119,9 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("switch_tab", "", map[string]any{
 		"tab_id":    params.TabID,
@@ -158,7 +162,9 @@ func (h *interactActionHandler) handleActivateTabImpl(req JSONRPCRequest, args j
 		Params:        json.RawMessage(`{"action":"activate_tab"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("activate_tab", "", nil)
 
@@ -199,7 +205,9 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("close_tab", "", map[string]any{
 		"tab_id": params.TabID,

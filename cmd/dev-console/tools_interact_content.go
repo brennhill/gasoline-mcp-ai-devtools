@@ -55,7 +55,9 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.parent.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
 }
@@ -97,7 +99,9 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 		TabID:         tabID,
 		CorrelationID: summaryCorrelationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(summaryQuery, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, summaryQuery, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Wait for page summary (5s — page should already be loaded).
 	// Best-effort enrichment: if extraction fails, navigate still succeeds with empty content.

@@ -58,7 +58,9 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("navigate", resolvedURL, map[string]any{
 		"target_url":    resolvedURL,
@@ -108,7 +110,9 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("refresh", "", nil)
 
@@ -134,7 +138,9 @@ func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, 
 		Params:        json.RawMessage(`{"action":"back"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("back", "", nil)
 
@@ -160,7 +166,9 @@ func (h *interactActionHandler) handleBrowserActionForwardImpl(req JSONRPCReques
 		Params:        json.RawMessage(`{"action":"forward"}`),
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("forward", "", nil)
 

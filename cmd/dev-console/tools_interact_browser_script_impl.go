@@ -51,7 +51,9 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	// Record AI action.
 	h.parent.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
@@ -103,7 +105,9 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 
