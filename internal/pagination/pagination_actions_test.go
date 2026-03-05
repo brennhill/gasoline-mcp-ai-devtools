@@ -64,21 +64,18 @@ func TestEnrichActionEntries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			enriched := EnrichActionEntries(tt.actions, tt.actionTotalAdded)
 
-			if len(enriched) != tt.expectedCount {
-				t.Errorf("EnrichActionEntries() count = %d, want %d", len(enriched), tt.expectedCount)
-			}
+			assertEnrichedEntryRange(
+				t,
+				enriched,
+				tt.expectedCount,
+				tt.expectedFirstSeq,
+				tt.expectedLastSeq,
+				func(entry ActionEntryWithSequence) int64 {
+					return entry.Sequence
+				},
+			)
 
 			if len(enriched) > 0 {
-				firstSeq := enriched[0].Sequence
-				if firstSeq != tt.expectedFirstSeq {
-					t.Errorf("First sequence = %d, want %d", firstSeq, tt.expectedFirstSeq)
-				}
-
-				lastSeq := enriched[len(enriched)-1].Sequence
-				if lastSeq != tt.expectedLastSeq {
-					t.Errorf("Last sequence = %d, want %d", lastSeq, tt.expectedLastSeq)
-				}
-
 				// Verify timestamps are normalized to RFC3339
 				for i, e := range enriched {
 					if e.Timestamp == "" {
@@ -106,59 +103,36 @@ func TestApplyActionCursorPagination_NoCursor(t *testing.T) {
 	}
 	enriched := EnrichActionEntries(actions, 100)
 
-	tests := []struct {
-		name          string
-		limit         int
-		expectedCount int
-	}{
-		{
-			name:          "no limit returns all",
-			limit:         0,
-			expectedCount: 100,
+	runNoCursorPaginationCases(
+		t,
+		100,
+		[]paginationNoCursorCase{
+			{
+				name:          "no limit returns all",
+				limit:         0,
+				expectedCount: 100,
+			},
+			{
+				name:          "limit 50 returns last 50",
+				limit:         50,
+				expectedCount: 50,
+			},
+			{
+				name:          "limit exceeds buffer size",
+				limit:         200,
+				expectedCount: 100,
+			},
 		},
-		{
-			name:          "limit 50 returns last 50",
-			limit:         50,
-			expectedCount: 50,
+		func(afterCursor, beforeCursor string, limit int, restartOnEviction bool) ([]ActionEntryWithSequence, *CursorPaginationMetadata, error) {
+			return ApplyActionCursorPagination(enriched, afterCursor, beforeCursor, "", limit, restartOnEviction)
 		},
-		{
-			name:          "limit exceeds buffer size",
-			limit:         200,
-			expectedCount: 100,
+		func(entry ActionEntryWithSequence) int64 {
+			return entry.Sequence
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, metadata, err := ApplyActionCursorPagination(enriched, "", "", "", tt.limit, false)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			assertPaginationCountAndTotal(t, len(result), tt.expectedCount, metadata, 100)
-
-			// When limit is applied (no cursor), should return LAST N entries
-			if tt.limit > 0 && tt.limit < 100 {
-				firstSeq := result[0].Sequence
-				expectedFirstSeq := int64(100 - tt.expectedCount + 1)
-				if firstSeq != expectedFirstSeq {
-					t.Errorf("First sequence = %d, want %d (should be last %d entries)", firstSeq, expectedFirstSeq, tt.expectedCount)
-				}
-			}
-
-			if len(result) > 0 {
-				assertPaginationCursorFields(
-					t,
-					metadata,
-					result[0].Timestamp,
-					result[len(result)-1].Timestamp,
-					result[len(result)-1].Sequence,
-				)
-			} else {
-				assertPaginationEmptyCursor(t, metadata)
-			}
-		})
-	}
+		func(entry ActionEntryWithSequence) string {
+			return entry.Timestamp
+		},
+	)
 }
 
 func TestApplyActionCursorPagination_AfterCursor(t *testing.T) {
@@ -173,94 +147,26 @@ func TestApplyActionCursorPagination_AfterCursor(t *testing.T) {
 	}
 	enriched := EnrichActionEntries(actions, 100)
 
-	// Build cursors from actual enriched data
-	cursor50 := BuildCursor(enriched[49].Timestamp, enriched[49].Sequence)  // Sequence 50
-	cursor1 := BuildCursor(enriched[0].Timestamp, enriched[0].Sequence)     // Sequence 1
-	cursor100 := BuildCursor(enriched[99].Timestamp, enriched[99].Sequence) // Sequence 100
+	cursors := buildPaginationCursorSet(
+		enriched,
+		func(entry ActionEntryWithSequence) string { return entry.Timestamp },
+		func(entry ActionEntryWithSequence) int64 { return entry.Sequence },
+	)
 
-	tests := []struct {
-		name             string
-		afterCursor      string
-		limit            int
-		expectedCount    int
-		expectedFirstSeq int64
-		expectedLastSeq  int64
-		expectedHasMore  bool
-	}{
-		{
-			name:             "after cursor gets older entries",
-			afterCursor:      cursor50, // Cursor at sequence 50
-			limit:            0,
-			expectedCount:    49, // Sequences 1-49
-			expectedFirstSeq: 1,
-			expectedLastSeq:  49,
-			expectedHasMore:  false,
+	runAfterCursorPaginationCases(
+		t,
+		len(enriched),
+		standardAfterCursorCases(cursors),
+		func(afterCursor, beforeCursor string, limit int, restartOnEviction bool) ([]ActionEntryWithSequence, *CursorPaginationMetadata, error) {
+			return ApplyActionCursorPagination(enriched, afterCursor, beforeCursor, "", limit, restartOnEviction)
 		},
-		{
-			name:             "after cursor with limit",
-			afterCursor:      cursor50, // Cursor at sequence 50
-			limit:            10,
-			expectedCount:    10, // Last 10 of sequences 1-49 = sequences 40-49
-			expectedFirstSeq: 40,
-			expectedLastSeq:  49,
-			expectedHasMore:  true,
+		func(entry ActionEntryWithSequence) int64 {
+			return entry.Sequence
 		},
-		{
-			name:             "after cursor at beginning",
-			afterCursor:      cursor1, // Cursor at sequence 1
-			limit:            0,
-			expectedCount:    0, // No entries older than sequence 1
-			expectedFirstSeq: 0,
-			expectedLastSeq:  0,
-			expectedHasMore:  false,
+		func(entry ActionEntryWithSequence) string {
+			return entry.Timestamp
 		},
-		{
-			name:             "after cursor at end",
-			afterCursor:      cursor100, // Cursor at sequence 100
-			limit:            0,
-			expectedCount:    99, // All entries except sequence 100
-			expectedFirstSeq: 1,
-			expectedLastSeq:  99,
-			expectedHasMore:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, metadata, err := ApplyActionCursorPagination(enriched, tt.afterCursor, "", "", tt.limit, false)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if len(result) != tt.expectedCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.expectedCount)
-			}
-
-			if tt.expectedCount > 0 {
-				firstSeq := result[0].Sequence
-				if firstSeq != tt.expectedFirstSeq {
-					t.Errorf("First sequence = %d, want %d", firstSeq, tt.expectedFirstSeq)
-				}
-
-				lastSeq := result[len(result)-1].Sequence
-				if lastSeq != tt.expectedLastSeq {
-					t.Errorf("Last sequence = %d, want %d", lastSeq, tt.expectedLastSeq)
-				}
-
-				assertPaginationCursorFields(
-					t,
-					metadata,
-					result[0].Timestamp,
-					result[len(result)-1].Timestamp,
-					result[len(result)-1].Sequence,
-				)
-			}
-
-			if metadata.HasMore != tt.expectedHasMore {
-				t.Errorf("HasMore = %v, want %v", metadata.HasMore, tt.expectedHasMore)
-			}
-		})
-	}
+	)
 }
 
 func TestApplyActionCursorPagination_BeforeCursor(t *testing.T) {
@@ -352,87 +258,48 @@ func TestApplyActionCursorPagination_CursorExpired(t *testing.T) {
 	// Use a timestamp that would correspond to an older action
 	expiredCursor := BuildCursor(NormalizeTimestamp(int64(1738238000000+50*1000)), 50)
 
-	tests := []struct {
-		name                  string
-		afterCursor           string
-		restartOnEviction     bool
-		expectError           bool
-		expectedCount         int
-		expectedFirstSeq      int64
-		expectedCursorRestart bool
-	}{
-		{
-			name:              "expired cursor without restart returns error",
-			afterCursor:       expiredCursor, // Cursor at evicted sequence 50
-			restartOnEviction: false,
-			expectError:       true,
+	runCursorExpiredPaginationCases(
+		t,
+		len(enriched),
+		[]paginationCursorExpiredCase{
+			{
+				name:              "expired cursor without restart returns error",
+				afterCursor:       expiredCursor, // Cursor at evicted sequence 50
+				limit:             0,
+				restartOnEviction: false,
+				expectError:       true,
+			},
+			{
+				name:                  "expired cursor with restart returns oldest available",
+				afterCursor:           expiredCursor, // Cursor at evicted sequence 50
+				limit:                 0,
+				restartOnEviction:     true,
+				expectError:           false,
+				expectedCount:         100, // All 100 available entries (no limit)
+				expectedFirstSeq:      101, // Oldest available is sequence 101
+				expectedCursorRestart: true,
+			},
+			{
+				name:                  "expired cursor with restart and limit",
+				afterCursor:           expiredCursor, // Cursor at evicted sequence 50
+				limit:                 10,            // Limit applied
+				restartOnEviction:     true,
+				expectError:           false,
+				expectedCount:         10,
+				expectedFirstSeq:      101, // After restart, take FIRST 10 entries from oldest
+				expectedCursorRestart: true,
+			},
 		},
-		{
-			name:                  "expired cursor with restart returns oldest available",
-			afterCursor:           expiredCursor, // Cursor at evicted sequence 50
-			restartOnEviction:     true,
-			expectError:           false,
-			expectedCount:         100, // All 100 available entries (no limit)
-			expectedFirstSeq:      101, // Oldest available is sequence 101
-			expectedCursorRestart: true,
+		func(afterCursor, beforeCursor string, limit int, restartOnEviction bool) ([]ActionEntryWithSequence, *CursorPaginationMetadata, error) {
+			return ApplyActionCursorPagination(enriched, afterCursor, beforeCursor, "", limit, restartOnEviction)
 		},
-		{
-			name:                  "expired cursor with restart and limit",
-			afterCursor:           expiredCursor, // Cursor at evicted sequence 50
-			restartOnEviction:     true,
-			expectError:           false,
-			expectedCount:         10,  // Limit applied
-			expectedFirstSeq:      101, // After restart, take FIRST 10 entries from oldest
-			expectedCursorRestart: true,
+		func(entry ActionEntryWithSequence) int64 {
+			return entry.Sequence
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			limit := 0
-			if tt.name == "expired cursor with restart and limit" {
-				limit = 10
-			}
-
-			result, metadata, err := ApplyActionCursorPagination(enriched, tt.afterCursor, "", "", limit, tt.restartOnEviction)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			assertPaginationCountAndTotal(t, len(result), tt.expectedCount, metadata, len(enriched))
-
-			if tt.expectedCount > 0 {
-				firstSeq := result[0].Sequence
-				if firstSeq != tt.expectedFirstSeq {
-					t.Errorf("First sequence = %d, want %d (oldest after restart)", firstSeq, tt.expectedFirstSeq)
-				}
-
-				assertPaginationCursorFields(
-					t,
-					metadata,
-					result[0].Timestamp,
-					result[len(result)-1].Timestamp,
-					result[len(result)-1].Sequence,
-				)
-			}
-
-			if metadata.CursorRestarted != tt.expectedCursorRestart {
-				t.Errorf("CursorRestarted = %v, want %v", metadata.CursorRestarted, tt.expectedCursorRestart)
-			}
-
-			if tt.expectedCursorRestart && metadata.Warning == "" {
-				t.Errorf("Expected warning when cursor restarted, got empty string")
-			}
-		})
-	}
+		func(entry ActionEntryWithSequence) string {
+			return entry.Timestamp
+		},
+	)
 }
 
 func TestSerializeActionEntryWithSequence(t *testing.T) {

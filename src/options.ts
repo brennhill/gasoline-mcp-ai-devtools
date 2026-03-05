@@ -15,6 +15,7 @@
  */
 
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js'
+import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-http.js'
 
 interface StorageResult {
   serverUrl?: string
@@ -39,16 +40,32 @@ interface ClearLogResponse {
 }
 
 /**
+ * Apply persisted theme as early as possible without inline HTML scripts.
+ * Keeps options page CSP-compliant (MV3 disallows inline scripts by default).
+ */
+function bootstrapTheme(): void {
+  if (typeof document === 'undefined' || typeof chrome === 'undefined' || !chrome.storage?.local) return
+  chrome.storage.local.get([StorageKey.THEME], (result: Record<string, unknown>) => {
+    if (result[StorageKey.THEME] === 'light') {
+      document.body?.classList.add('light-theme')
+    }
+  })
+}
+
+bootstrapTheme()
+
+/**
  * Sync the terminal dev root to the daemon's active_codebase config.
  * Best-effort — failure doesn't block the save flow.
  */
 function syncDevRootToDaemon(serverUrl: string, devRoot: string): void {
-  fetch(`${serverUrl}/config/active-codebase`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: devRoot }),
-    signal: AbortSignal.timeout(3000)
-  }).catch(() => {
+  fetch(
+    `${serverUrl}/config/active-codebase`,
+    buildDaemonJSONRequestInit(
+      { path: devRoot },
+      { method: 'PUT', signal: AbortSignal.timeout(3000) }
+    )
+  ).catch(() => {
     // Best-effort sync — daemon may be offline
   })
 }
@@ -59,7 +76,8 @@ function syncDevRootToDaemon(serverUrl: string, devRoot: string): void {
  */
 function loadActiveCodebaseFromDaemon(serverUrl: string): void {
   fetch(`${serverUrl}/config/active-codebase`, {
-    signal: AbortSignal.timeout(3000)
+    signal: AbortSignal.timeout(3000),
+    headers: buildDaemonHeaders({ contentType: null })
   }).then(resp => {
     if (!resp.ok) return
     return resp.json() as Promise<{ active_codebase?: string }>
@@ -278,7 +296,7 @@ export async function testConnection(): Promise<void> {
   try {
     const resp = await fetch(`${serverUrl}/health`, {
       signal: AbortSignal.timeout(3000),
-      headers: { 'X-Gasoline-Client': 'gasoline-extension' }
+      headers: buildDaemonHeaders({ contentType: null })
     })
     if (!resp.ok) {
       throw new Error(`Failed to check server health at ${serverUrl}: HTTP ${resp.status} ${resp.statusText}`)

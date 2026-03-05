@@ -16,6 +16,7 @@ code_paths:
   - internal/a11ysummary/summary.go
   - internal/tools/observe/analysis_a11y.go
   - internal/tools/observe/analysis_screenshot.go
+  - internal/tools/observe/storage.go
   - internal/tools/observe/handlers_extension_logs.go
   - internal/tools/observe/handlers_logs.go
   - src/background/commands/observe.ts
@@ -34,6 +35,7 @@ test_paths:
   - internal/a11ysummary/summary_test.go
   - internal/tools/observe/analysis_test.go
   - internal/tools/observe/analysis_save_test.go
+  - internal/tools/observe/storage_test.go
   - tests/extension/inject-console-network-exceptions.test.js
   - tests/extension/network-bodies.test.js
   - tests/extension/sync-client.test.js
@@ -62,3 +64,4 @@ Accessibility (`what:"accessibility"`) normalizes `summary` counts with canonica
 WebSocket status (`what:"websocket_status"`) supports `summary:true` with compact URL/connection-id previews while preserving the full default payload when `summary` is omitted.
 Network-bodies empty-result hints now echo all active filters (`url`, `method`, `status_*`, `body_path`) so retry guidance is specific to the current query.
 `level` is a quiet alias for `min_level` — accepted at runtime but hidden from schema. Both use threshold semantics (e.g., `warn` returns warn+error).
+Storage summary tests now share common assertions for `key_count`, `sample_keys`, and `total_bytes` shape checks.

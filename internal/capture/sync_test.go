@@ -4,10 +4,8 @@
 package capture
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -30,31 +28,14 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 		},
 	}
 
-	body, err := json.Marshal(req)
-	if err != nil {
-		t.Fatalf("Failed to marshal request: %v", err)
-	}
-
-	// Create HTTP request
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	// Create response recorder
-	w := httptest.NewRecorder()
-
-	// Call handler
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	// Check response
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	// Parse response
-	var resp SyncResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
+	resp := decodeSyncResponse(t, w)
 
 	// Verify response
 	if !resp.Ack {
@@ -83,10 +64,7 @@ func TestHandleSync_MethodNotAllowed(t *testing.T) {
 	cap := NewCapture()
 
 	// Try GET instead of POST
-	httpReq := httptest.NewRequest("GET", "/sync", nil)
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRawRequest(t, cap, "GET", nil)
 
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status 405, got %d", w.Code)
@@ -98,11 +76,7 @@ func TestHandleSync_InvalidJSON(t *testing.T) {
 	cap := NewCapture()
 
 	// Send invalid JSON
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader([]byte("not json")))
-	httpReq.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRawRequest(t, cap, "POST", []byte("not json"))
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Expected status 400, got %d", w.Code)
@@ -126,12 +100,7 @@ func TestHandleSync_WithExtensionLogs(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -169,12 +138,7 @@ func TestHandleSync_WithExtensionLogs_RedactsSensitiveData(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
@@ -214,11 +178,10 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	// Send sync request
 	req := SyncRequest{ExtSessionID: "test"}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
 
 	// Verify lastPollAt was updated
 	cap.mu.RLock()
@@ -250,10 +213,7 @@ func TestHandleSync_StoresInProgressHeartbeat(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
@@ -295,22 +255,18 @@ func TestHandleSync_MissingInProgressHeartbeatFailsStartedCommand(t *testing.T) 
 
 	// First sync dispatches the command to extension.
 	firstReqBody := []byte(`{"ext_session_id":"session-1","in_progress":[]}`)
-	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
-	firstResp := httptest.NewRecorder()
-	cap.HandleSync(firstResp, firstReq)
+	firstResp := runSyncRawRequest(t, cap, "POST", firstReqBody)
 	if firstResp.Code != http.StatusOK {
 		t.Fatalf("first sync status = %d, want 200", firstResp.Code)
 	}
 
 	// Second sync ACKs receipt but still reports no in_progress entries.
-	secondReqBody, _ := json.Marshal(map[string]any{
+	secondReqBody := mustMarshalJSON(t, map[string]any{
 		"ext_session_id":   "session-1",
 		"last_command_ack": queryID,
 		"in_progress":      []any{},
 	})
-	secondReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(secondReqBody))
-	secondResp := httptest.NewRecorder()
-	cap.HandleSync(secondResp, secondReq)
+	secondResp := runSyncRawRequest(t, cap, "POST", secondReqBody)
 	if secondResp.Code != http.StatusOK {
 		t.Fatalf("second sync status = %d, want 200", secondResp.Code)
 	}
@@ -324,13 +280,11 @@ func TestHandleSync_MissingInProgressHeartbeatFailsStartedCommand(t *testing.T) 
 	}
 
 	// Third sync still has no in_progress entry -> command should fail fast.
-	thirdReqBody, _ := json.Marshal(map[string]any{
+	thirdReqBody := mustMarshalJSON(t, map[string]any{
 		"ext_session_id": "session-1",
 		"in_progress":    []any{},
 	})
-	thirdReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(thirdReqBody))
-	thirdResp := httptest.NewRecorder()
-	cap.HandleSync(thirdResp, thirdReq)
+	thirdResp := runSyncRawRequest(t, cap, "POST", thirdReqBody)
 	if thirdResp.Code != http.StatusOK {
 		t.Fatalf("third sync status = %d, want 200", thirdResp.Code)
 	}
@@ -415,20 +369,13 @@ func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
 
 	// Sync should return fast poll interval (200ms) since commands are pending
 	req := SyncRequest{ExtSessionID: "test_session"}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	var resp SyncResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
+	resp := decodeSyncResponse(t, w)
 
 	if len(resp.Commands) == 0 {
 		t.Fatal("Expected at least one command in response")
@@ -450,20 +397,13 @@ func TestHandleSync_CommandsIncludeTabID(t *testing.T) {
 	})
 
 	req := SyncRequest{ExtSessionID: "test_session"}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	var resp SyncResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
+	resp := decodeSyncResponse(t, w)
 
 	if len(resp.Commands) != 1 {
 		t.Fatalf("Expected 1 command, got %d", len(resp.Commands))
@@ -485,20 +425,13 @@ func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
 
 	// No pending queries — should get default 1000ms interval
 	req := SyncRequest{ExtSessionID: "test_session"}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	var resp SyncResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
+	resp := decodeSyncResponse(t, w)
 
 	if len(resp.Commands) != 0 {
 		t.Errorf("Expected no commands, got %d", len(resp.Commands))
@@ -520,13 +453,8 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 
 	// First sync: should be fast (200ms) — commands pending
 	req1 := SyncRequest{ExtSessionID: "test_session"}
-	body1, _ := json.Marshal(req1)
-	httpReq1 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body1))
-	w1 := httptest.NewRecorder()
-	cap.HandleSync(w1, httpReq1)
-
-	var resp1 SyncResponse
-	json.NewDecoder(w1.Body).Decode(&resp1)
+	w1 := runSyncRequest(t, cap, req1)
+	resp1 := decodeSyncResponse(t, w1)
 	if resp1.NextPollMs != 200 {
 		t.Errorf("First sync: expected NextPollMs 200, got %d", resp1.NextPollMs)
 	}
@@ -539,13 +467,8 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 			{ID: queryID, Status: "complete", Result: resultBytes},
 		},
 	}
-	body2, _ := json.Marshal(req2)
-	httpReq2 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body2))
-	w2 := httptest.NewRecorder()
-	cap.HandleSync(w2, httpReq2)
-
-	var resp2 SyncResponse
-	json.NewDecoder(w2.Body).Decode(&resp2)
+	w2 := runSyncRequest(t, cap, req2)
+	resp2 := decodeSyncResponse(t, w2)
 
 	// After result delivered, no more pending commands — should revert to 1000ms
 	if resp2.NextPollMs != 1000 {
@@ -571,25 +494,12 @@ func TestHandleSync_CommandResultPropagatesErrorStatus(t *testing.T) {
 			},
 		},
 	}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	cmd, found := cap.GetCommandResult(corrID)
-	if !found {
-		t.Fatal("expected command result to be present for correlation_id")
-	}
-	if cmd.Status != "error" {
-		t.Errorf("command status = %q, want error", cmd.Status)
-	}
-	if cmd.Error != "sync path failure" {
-		t.Errorf("command error = %q, want sync path failure", cmd.Error)
-	}
+	assertCommandResult(t, cap, corrID, "error", "sync path failure")
 }
 
 func TestHandleSync_CommandResultWithIDAndCorrelationPreservesErrorStatus(t *testing.T) {
@@ -618,25 +528,12 @@ func TestHandleSync_CommandResultWithIDAndCorrelationPreservesErrorStatus(t *tes
 			},
 		},
 	}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	cmd, found := cap.GetCommandResult(corrID)
-	if !found {
-		t.Fatal("expected command result to be present for correlation_id")
-	}
-	if cmd.Status != "error" {
-		t.Errorf("command status = %q, want error", cmd.Status)
-	}
-	if cmd.Error != "dom_action_failed" {
-		t.Errorf("command error = %q, want dom_action_failed", cmd.Error)
-	}
+	assertCommandResult(t, cap, corrID, "error", "dom_action_failed")
 }
 
 func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
@@ -738,10 +635,7 @@ func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
 				ExtSessionID:   "test_session",
 				CommandResults: []SyncCommandResult{result},
 			}
-			body, _ := json.Marshal(req)
-			httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-			w := httptest.NewRecorder()
-			cap.HandleSync(w, httpReq)
+			w := runSyncRequest(t, cap, req)
 			if w.Code != http.StatusOK {
 				t.Fatalf("Expected status 200, got %d", w.Code)
 			}
@@ -790,21 +684,14 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 
 	// Extension polls /sync and receives the command
 	req := SyncRequest{ExtSessionID: "test_session"}
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
 	// Parse response and verify waterfall command is present
-	var resp SyncResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
+	resp := decodeSyncResponse(t, w)
 
 	if len(resp.Commands) == 0 {
 		t.Fatal("Expected at least one command in sync response")
@@ -855,11 +742,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	cap.HandleSync(w, httpReq)
+	w := runSyncRequest(t, cap, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200, got %d", w.Code)
@@ -895,37 +778,27 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 		t.Fatal("expected query ID")
 	}
 
-	firstReqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "ack-session"})
-	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
-	firstResp := httptest.NewRecorder()
-	cap.HandleSync(firstResp, firstReq)
+	firstReqBody := mustMarshalJSON(t, SyncRequest{ExtSessionID: "ack-session"})
+	firstResp := runSyncRawRequest(t, cap, "POST", firstReqBody)
 	if firstResp.Code != http.StatusOK {
 		t.Fatalf("first sync status = %d, want 200", firstResp.Code)
 	}
 
-	var first SyncResponse
-	if err := json.NewDecoder(firstResp.Body).Decode(&first); err != nil {
-		t.Fatalf("decode first response: %v", err)
-	}
+	first := decodeSyncResponse(t, firstResp)
 	if len(first.Commands) == 0 || first.Commands[0].ID != queryID {
 		t.Fatalf("first sync should return query %q, got %+v", queryID, first.Commands)
 	}
 
-	ackReqBody, _ := json.Marshal(SyncRequest{
+	ackReqBody := mustMarshalJSON(t, SyncRequest{
 		ExtSessionID:   "ack-session",
 		LastCommandAck: queryID,
 	})
-	ackReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(ackReqBody))
-	ackResp := httptest.NewRecorder()
-	cap.HandleSync(ackResp, ackReq)
+	ackResp := runSyncRawRequest(t, cap, "POST", ackReqBody)
 	if ackResp.Code != http.StatusOK {
 		t.Fatalf("ack sync status = %d, want 200", ackResp.Code)
 	}
 
-	var second SyncResponse
-	if err := json.NewDecoder(ackResp.Body).Decode(&second); err != nil {
-		t.Fatalf("decode second response: %v", err)
-	}
+	second := decodeSyncResponse(t, ackResp)
 	if len(second.Commands) != 0 {
 		t.Fatalf("acknowledged command %q should not be redelivered, got %+v", queryID, second.Commands)
 	}

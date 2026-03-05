@@ -10,6 +10,20 @@ import (
 	"time"
 )
 
+func buildSequentialLogEntries(baseTime time.Time, startIndex, count int) []LogEntryWithSequence {
+	entries := make([]LogEntryWithSequence, count)
+	for i := 0; i < count; i++ {
+		idx := startIndex + i
+		ts := baseTime.Add(time.Duration(idx) * time.Second).Format(time.RFC3339)
+		entries[i] = LogEntryWithSequence{
+			Entry:     LogEntry{"ts": ts, "message": fmt.Sprintf("Log %d", idx)},
+			Sequence:  int64(idx + 1),
+			Timestamp: ts,
+		}
+	}
+	return entries
+}
+
 func TestEnrichLogEntries(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
 
@@ -102,14 +116,7 @@ func TestEnrichLogEntries(t *testing.T) {
 
 func TestApplyLogCursorPagination_NoСursor(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
-	entries := make([]LogEntryWithSequence, 100)
-	for i := 0; i < 100; i++ {
-		entries[i] = LogEntryWithSequence{
-			Entry:     LogEntry{"ts": baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339), "message": fmt.Sprintf("Log %d", i)},
-			Sequence:  int64(i + 1),
-			Timestamp: baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339),
-		}
-	}
+	entries := buildSequentialLogEntries(baseTime, 0, 100)
 
 	tests := []struct {
 		name      string
@@ -174,175 +181,110 @@ func TestApplyLogCursorPagination_NoСursor(t *testing.T) {
 
 func TestApplyLogCursorPagination_AfterCursor(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
-	entries := make([]LogEntryWithSequence, 100)
-	for i := 0; i < 100; i++ {
-		entries[i] = LogEntryWithSequence{
-			Entry:     LogEntry{"ts": baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339), "message": fmt.Sprintf("Log %d", i)},
-			Sequence:  int64(i + 1),
-			Timestamp: baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339),
-		}
-	}
+	entries := buildSequentialLogEntries(baseTime, 0, 100)
 
-	tests := []struct {
-		name        string
-		afterCursor string
-		limit       int
-		wantCount   int
-		wantFirst   int64
-		wantLast    int64
-	}{
-		{
-			name:        "after cursor gets older entries",
-			afterCursor: BuildCursor(entries[50].Timestamp, entries[50].Sequence), // After entry 51
-			limit:       0,
-			wantCount:   50, // Entries 1-50 are older
-			wantFirst:   1,
-			wantLast:    50,
+	runAfterCursorPaginationCases(
+		t,
+		len(entries),
+		[]paginationAfterCursorCase{
+			{
+				name:             "after cursor gets older entries",
+				afterCursor:      BuildCursor(entries[50].Timestamp, entries[50].Sequence), // After entry 51
+				limit:            0,
+				expectedCount:    50, // Entries 1-50 are older
+				expectedFirstSeq: 1,
+				expectedLastSeq:  50,
+				expectedHasMore:  false,
+			},
+			{
+				name:             "after cursor with limit",
+				afterCursor:      BuildCursor(entries[50].Timestamp, entries[50].Sequence),
+				limit:            25,
+				expectedCount:    25,
+				expectedFirstSeq: 26, // Last 25 of the older entries
+				expectedLastSeq:  50,
+				expectedHasMore:  true,
+			},
+			{
+				name:             "after cursor at beginning returns empty",
+				afterCursor:      BuildCursor(entries[0].Timestamp, entries[0].Sequence),
+				limit:            0,
+				expectedCount:    0,
+				expectedFirstSeq: 0,
+				expectedLastSeq:  0,
+				expectedHasMore:  false,
+			},
+			{
+				name:             "after cursor at end returns all but last",
+				afterCursor:      BuildCursor(entries[99].Timestamp, entries[99].Sequence),
+				limit:            0,
+				expectedCount:    99,
+				expectedFirstSeq: 1,
+				expectedLastSeq:  99,
+				expectedHasMore:  false,
+			},
 		},
-		{
-			name:        "after cursor with limit",
-			afterCursor: BuildCursor(entries[50].Timestamp, entries[50].Sequence),
-			limit:       25,
-			wantCount:   25,
-			wantFirst:   26, // Last 25 of the older entries
-			wantLast:    50,
+		func(afterCursor, beforeCursor string, limit int, restartOnEviction bool) ([]LogEntryWithSequence, *CursorPaginationMetadata, error) {
+			return ApplyLogCursorPagination(entries, afterCursor, beforeCursor, "", limit, restartOnEviction)
 		},
-		{
-			name:        "after cursor at beginning returns empty",
-			afterCursor: BuildCursor(entries[0].Timestamp, entries[0].Sequence),
-			limit:       0,
-			wantCount:   0,
-		},
-		{
-			name:        "after cursor at end returns all but last",
-			afterCursor: BuildCursor(entries[99].Timestamp, entries[99].Sequence),
-			limit:       0,
-			wantCount:   99,
-			wantFirst:   1,
-			wantLast:    99,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, metadata, err := ApplyLogCursorPagination(entries, tt.afterCursor, "", "", tt.limit, false)
-			if err != nil {
-				t.Fatalf("ApplyLogCursorPagination() unexpected error: %v", err)
-			}
-
-			assertPaginationCountAndTotal(t, len(result), tt.wantCount, metadata, len(entries))
-
-			if len(result) > 0 {
-				if result[0].Sequence != tt.wantFirst {
-					t.Errorf("First sequence = %d, want %d", result[0].Sequence, tt.wantFirst)
-				}
-				if result[len(result)-1].Sequence != tt.wantLast {
-					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
-				}
-
-				assertPaginationCursorFields(
-					t,
-					metadata,
-					result[0].Timestamp,
-					result[len(result)-1].Timestamp,
-					result[len(result)-1].Sequence,
-				)
-			}
-		})
-	}
+		func(entry LogEntryWithSequence) int64 { return entry.Sequence },
+		func(entry LogEntryWithSequence) string { return entry.Timestamp },
+	)
 }
 
 func TestApplyLogCursorPagination_BeforeCursor(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
-	entries := make([]LogEntryWithSequence, 100)
-	for i := 0; i < 100; i++ {
-		entries[i] = LogEntryWithSequence{
-			Entry:     LogEntry{"ts": baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339), "message": fmt.Sprintf("Log %d", i)},
-			Sequence:  int64(i + 1),
-			Timestamp: baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339),
-		}
-	}
+	entries := buildSequentialLogEntries(baseTime, 0, 100)
 
-	tests := []struct {
-		name         string
-		beforeCursor string
-		limit        int
-		wantCount    int
-		wantFirst    int64
-		wantLast     int64
-	}{
-		{
-			name:         "before cursor gets newer entries",
-			beforeCursor: BuildCursor(entries[50].Timestamp, entries[50].Sequence), // Before entry 51
-			limit:        0,
-			wantCount:    49, // Entries 52-100 are newer
-			wantFirst:    52,
-			wantLast:     100,
+	runBeforeCursorPaginationCases(
+		t,
+		len(entries),
+		[]paginationBeforeCursorCase{
+			{
+				name:             "before cursor gets newer entries",
+				beforeCursor:     BuildCursor(entries[50].Timestamp, entries[50].Sequence), // Before entry 51
+				limit:            0,
+				expectedCount:    49, // Entries 52-100 are newer
+				expectedFirstSeq: 52,
+				expectedLastSeq:  100,
+			},
+			{
+				name:             "before cursor with limit takes first N",
+				beforeCursor:     BuildCursor(entries[50].Timestamp, entries[50].Sequence),
+				limit:            25,
+				expectedCount:    25,
+				expectedFirstSeq: 52, // First 25 of the newer entries
+				expectedLastSeq:  76,
+			},
+			{
+				name:             "before cursor at end returns empty",
+				beforeCursor:     BuildCursor(entries[99].Timestamp, entries[99].Sequence),
+				limit:            0,
+				expectedCount:    0,
+				expectedFirstSeq: 0,
+				expectedLastSeq:  0,
+			},
+			{
+				name:             "before cursor at beginning returns all but first",
+				beforeCursor:     BuildCursor(entries[0].Timestamp, entries[0].Sequence),
+				limit:            0,
+				expectedCount:    99,
+				expectedFirstSeq: 2,
+				expectedLastSeq:  100,
+			},
 		},
-		{
-			name:         "before cursor with limit takes first N",
-			beforeCursor: BuildCursor(entries[50].Timestamp, entries[50].Sequence),
-			limit:        25,
-			wantCount:    25,
-			wantFirst:    52, // First 25 of the newer entries
-			wantLast:     76,
+		func(afterCursor, beforeCursor string, limit int, restartOnEviction bool) ([]LogEntryWithSequence, *CursorPaginationMetadata, error) {
+			return ApplyLogCursorPagination(entries, afterCursor, beforeCursor, "", limit, restartOnEviction)
 		},
-		{
-			name:         "before cursor at end returns empty",
-			beforeCursor: BuildCursor(entries[99].Timestamp, entries[99].Sequence),
-			limit:        0,
-			wantCount:    0,
-		},
-		{
-			name:         "before cursor at beginning returns all but first",
-			beforeCursor: BuildCursor(entries[0].Timestamp, entries[0].Sequence),
-			limit:        0,
-			wantCount:    99,
-			wantFirst:    2,
-			wantLast:     100,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, metadata, err := ApplyLogCursorPagination(entries, "", tt.beforeCursor, "", tt.limit, false)
-			if err != nil {
-				t.Fatalf("ApplyLogCursorPagination() unexpected error: %v", err)
-			}
-
-			assertPaginationCountAndTotal(t, len(result), tt.wantCount, metadata, len(entries))
-
-			if len(result) > 0 {
-				if result[0].Sequence != tt.wantFirst {
-					t.Errorf("First sequence = %d, want %d", result[0].Sequence, tt.wantFirst)
-				}
-				if result[len(result)-1].Sequence != tt.wantLast {
-					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
-				}
-
-				assertPaginationCursorFields(
-					t,
-					metadata,
-					result[0].Timestamp,
-					result[len(result)-1].Timestamp,
-					result[len(result)-1].Sequence,
-				)
-			}
-		})
-	}
+		func(entry LogEntryWithSequence) int64 { return entry.Sequence },
+		func(entry LogEntryWithSequence) string { return entry.Timestamp },
+	)
 }
 
 func TestApplyLogCursorPagination_CursorExpired(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
 	// Buffer has entries 101-200 (first 100 were evicted)
-	entries := make([]LogEntryWithSequence, 100)
-	for i := 0; i < 100; i++ {
-		entries[i] = LogEntryWithSequence{
-			Entry:     LogEntry{"ts": baseTime.Add(time.Duration(100+i) * time.Second).Format(time.RFC3339), "message": fmt.Sprintf("Log %d", 100+i)},
-			Sequence:  int64(101 + i),
-			Timestamp: baseTime.Add(time.Duration(100+i) * time.Second).Format(time.RFC3339),
-		}
-	}
+	entries := buildSequentialLogEntries(baseTime, 100, 100)
 
 	t.Run("expired cursor without restart returns error", func(t *testing.T) {
 		// Cursor points to sequence 50 (which was evicted)

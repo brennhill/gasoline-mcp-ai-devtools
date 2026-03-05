@@ -47,6 +47,7 @@ Each flow map should include:
 - [Tracked Tab Hover Quick Actions](./tracked-tab-hover-quick-actions.md)
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
+- [DRY Test Helpers and Daemon Header Consolidation](./dry-test-helper-and-daemon-header-consolidation.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Network Recording Control](./network-recording-control.md)
 - [Observe Dispatch and Augmentation](./observe-dispatch-and-augmentation.md)

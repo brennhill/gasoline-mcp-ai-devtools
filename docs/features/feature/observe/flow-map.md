@@ -14,5 +14,6 @@ Canonical flow maps:
 
 - [Observe Dispatch and Augmentation](../../../architecture/flow-maps/observe-dispatch-and-augmentation.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
+- [DRY Test Helpers and Daemon Header Consolidation](../../../architecture/flow-maps/dry-test-helper-and-daemon-header-consolidation.md)
 
-Latest sync update (2026-03-05): screenshot upload requests now reuse shared daemon JSON request/header helpers, preserving a single extension-client header contract.
+Latest sync update (2026-03-05): storage summarization tests now share key-count/sample-key/byte-count assertion helpers to keep summary expectations aligned.

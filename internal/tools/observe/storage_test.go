@@ -5,6 +5,40 @@ import (
 	"encoding/json"
 	"testing"
 )
+
+func assertSummaryShape(t *testing.T, result map[string]any, wantKeyCount, wantSampleKeys int) []string {
+	t.Helper()
+	if result["key_count"] != wantKeyCount {
+		t.Errorf("key_count = %v, want %d", result["key_count"], wantKeyCount)
+	}
+	sampleKeys, ok := result["sample_keys"].([]string)
+	if !ok {
+		t.Fatal("sample_keys not a []string")
+	}
+	if len(sampleKeys) != wantSampleKeys {
+		t.Errorf("sample_keys len = %d, want %d", len(sampleKeys), wantSampleKeys)
+	}
+	return sampleKeys
+}
+
+func assertSummaryTotalBytes(t *testing.T, result map[string]any, want int) int {
+	t.Helper()
+	totalBytes := summaryTotalBytes(t, result)
+	if totalBytes != want {
+		t.Errorf("total_bytes = %d, want %d", totalBytes, want)
+	}
+	return totalBytes
+}
+
+func summaryTotalBytes(t *testing.T, result map[string]any) int {
+	t.Helper()
+	totalBytes, ok := result["total_bytes"].(int)
+	if !ok {
+		t.Fatal("total_bytes not an int")
+	}
+	return totalBytes
+}
+
 // ---------------------------------------------------------------------------
 // summarizeStorageMap
 // ---------------------------------------------------------------------------
@@ -13,19 +47,8 @@ func TestSummarizeStorageMap_Empty(t *testing.T) {
 	t.Parallel()
 	result := summarizeStorageMap(map[string]any{})
 
-	if result["key_count"] != 0 {
-		t.Errorf("key_count = %v, want 0", result["key_count"])
-	}
-	if result["total_bytes"] != 0 {
-		t.Errorf("total_bytes = %v, want 0", result["total_bytes"])
-	}
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 0 {
-		t.Errorf("sample_keys len = %d, want 0", len(sampleKeys))
-	}
+	assertSummaryShape(t, result, 0, 0)
+	assertSummaryTotalBytes(t, result, 0)
 }
 
 func TestSummarizeStorageMap_Normal(t *testing.T) {
@@ -36,27 +59,11 @@ func TestSummarizeStorageMap_Normal(t *testing.T) {
 	}
 	result := summarizeStorageMap(data)
 
-	if result["key_count"] != 2 {
-		t.Errorf("key_count = %v, want 2", result["key_count"])
-	}
+	assertSummaryShape(t, result, 2, 2)
 
 	// total_bytes = len("theme") + len("dark") + len("language") + len("en")
 	//             = 5 + 4 + 8 + 2 = 19
-	totalBytes, ok := result["total_bytes"].(int)
-	if !ok {
-		t.Fatal("total_bytes not an int")
-	}
-	if totalBytes != 19 {
-		t.Errorf("total_bytes = %d, want 19", totalBytes)
-	}
-
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 2 {
-		t.Errorf("sample_keys len = %d, want 2", len(sampleKeys))
-	}
+	assertSummaryTotalBytes(t, result, 19)
 }
 
 func TestSummarizeStorageMap_NonStringValue(t *testing.T) {
@@ -66,18 +73,10 @@ func TestSummarizeStorageMap_NonStringValue(t *testing.T) {
 	}
 	result := summarizeStorageMap(data)
 
-	if result["key_count"] != 1 {
-		t.Errorf("key_count = %v, want 1", result["key_count"])
-	}
+	assertSummaryShape(t, result, 1, 1)
 
 	// total_bytes = len("count") + len(json.Marshal(42)) = 5 + 2 = 7
-	totalBytes, ok := result["total_bytes"].(int)
-	if !ok {
-		t.Fatal("total_bytes not an int")
-	}
-	if totalBytes != 7 {
-		t.Errorf("total_bytes = %d, want 7", totalBytes)
-	}
+	assertSummaryTotalBytes(t, result, 7)
 }
 
 func TestSummarizeStorageMap_SampleKeysCappedAt5(t *testing.T) {
@@ -89,17 +88,7 @@ func TestSummarizeStorageMap_SampleKeysCappedAt5(t *testing.T) {
 	}
 	result := summarizeStorageMap(data)
 
-	if result["key_count"] != 7 {
-		t.Errorf("key_count = %v, want 7", result["key_count"])
-	}
-
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 5 {
-		t.Errorf("sample_keys len = %d, want 5", len(sampleKeys))
-	}
+	assertSummaryShape(t, result, 7, 5)
 }
 
 // ---------------------------------------------------------------------------
@@ -110,19 +99,8 @@ func TestSummarizeCookies_Empty(t *testing.T) {
 	t.Parallel()
 	result := summarizeCookies([]any{})
 
-	if result["key_count"] != 0 {
-		t.Errorf("key_count = %v, want 0", result["key_count"])
-	}
-	if result["total_bytes"] != 0 {
-		t.Errorf("total_bytes = %v, want 0", result["total_bytes"])
-	}
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 0 {
-		t.Errorf("sample_keys len = %d, want 0", len(sampleKeys))
-	}
+	assertSummaryShape(t, result, 0, 0)
+	assertSummaryTotalBytes(t, result, 0)
 }
 
 func TestSummarizeCookies_Normal(t *testing.T) {
@@ -133,17 +111,7 @@ func TestSummarizeCookies_Normal(t *testing.T) {
 	}
 	result := summarizeCookies(cookies)
 
-	if result["key_count"] != 2 {
-		t.Errorf("key_count = %v, want 2", result["key_count"])
-	}
-
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 2 {
-		t.Errorf("sample_keys len = %d, want 2", len(sampleKeys))
-	}
+	sampleKeys := assertSummaryShape(t, result, 2, 2)
 
 	// Verify both cookie names appear in sample_keys
 	nameSet := make(map[string]bool)
@@ -154,10 +122,7 @@ func TestSummarizeCookies_Normal(t *testing.T) {
 		t.Errorf("sample_keys = %v, want [session_id, theme]", sampleKeys)
 	}
 
-	totalBytes, ok := result["total_bytes"].(int)
-	if !ok {
-		t.Fatal("total_bytes not an int")
-	}
+	totalBytes := summaryTotalBytes(t, result)
 	if totalBytes <= 0 {
 		t.Errorf("total_bytes = %d, want > 0", totalBytes)
 	}
@@ -172,15 +137,8 @@ func TestSummarizeCookies_MissingNameField(t *testing.T) {
 	result := summarizeCookies(cookies)
 
 	// key_count is len(cookies) which is 2
-	if result["key_count"] != 2 {
-		t.Errorf("key_count = %v, want 2", result["key_count"])
-	}
-
 	// Only the cookie with a name field should appear in sample_keys
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
+	sampleKeys := assertSummaryShape(t, result, 2, 1)
 	if len(sampleKeys) != 1 {
 		t.Errorf("sample_keys len = %d, want 1", len(sampleKeys))
 	}
@@ -197,17 +155,7 @@ func TestSummarizeCookies_SampleCappedAt5(t *testing.T) {
 	}
 	result := summarizeCookies(cookies)
 
-	if result["key_count"] != 8 {
-		t.Errorf("key_count = %v, want 8", result["key_count"])
-	}
-
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
-	if len(sampleKeys) != 5 {
-		t.Errorf("sample_keys len = %d, want 5", len(sampleKeys))
-	}
+	assertSummaryShape(t, result, 8, 5)
 }
 
 func TestSummarizeCookies_NonMapEntry(t *testing.T) {
@@ -219,14 +167,7 @@ func TestSummarizeCookies_NonMapEntry(t *testing.T) {
 	}
 	result := summarizeCookies(cookies)
 
-	if result["key_count"] != 2 {
-		t.Errorf("key_count = %v, want 2", result["key_count"])
-	}
-
-	sampleKeys, ok := result["sample_keys"].([]string)
-	if !ok {
-		t.Fatal("sample_keys not a []string")
-	}
+	sampleKeys := assertSummaryShape(t, result, 2, 1)
 	if len(sampleKeys) != 1 {
 		t.Errorf("sample_keys len = %d, want 1 (only map entries contribute names)", len(sampleKeys))
 	}
