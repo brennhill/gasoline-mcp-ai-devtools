@@ -14,3 +14,5 @@ Canonical flow map:
 Notable coverage:
 
 - Extension staging integrity checks and source-zip fallback for incomplete release extension artifacts.
+- CRX fallback packaging in `scripts/build-crx.js` archives the full `extension/` directory to prevent missing MV3 module imports.
+- Startup integrity regression checks assert manifest file paths, service worker import graph resolution, and CSP-safe extension HTML scripts.
