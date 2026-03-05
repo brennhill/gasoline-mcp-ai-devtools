@@ -64,10 +64,16 @@ describe('tab-state helpers', () => {
     assert.strictEqual(await pingContentScript(8, 5), false)
   })
 
+  test('pingContentScript returns false for non-alive responses', async () => {
+    globalThis.chrome.tabs.sendMessage = mock.fn(() => Promise.resolve({ status: 'not-alive' }))
+    assert.strictEqual(await pingContentScript(9, 25), false)
+  })
+
   test('waitForTabLoad returns true when tab is complete and false on timeout/error', async () => {
     assert.strictEqual(await waitForTabLoad(11, 25), true)
 
     globalThis.chrome.tabs.get = mock.fn(() => Promise.resolve({ id: 11, status: 'loading', active: true }))
+    assert.strictEqual(await waitForTabLoad(11, 110), false)
     assert.strictEqual(await waitForTabLoad(11, 0), false)
 
     globalThis.chrome.tabs.get = mock.fn(() => Promise.reject(new Error('closed')))
@@ -97,12 +103,32 @@ describe('tab-state helpers', () => {
     assert.strictEqual(debugLog.mock.calls[0].arguments[0], 'error')
   })
 
+  test('forwardToAllContentScripts no-ops when chrome tabs API is unavailable', async () => {
+    globalThis.chrome = undefined
+    await forwardToAllContentScripts({ type: 'TEST_NOOP' })
+  })
+
+  test('forwardToAllContentScripts skips tabless entries and tolerated receiver-missing errors', async () => {
+    const debugLog = mock.fn()
+    globalThis.chrome.tabs.query = mock.fn(() => Promise.resolve([{ id: 0 }, {}, { id: 7 }]))
+    globalThis.chrome.tabs.sendMessage = mock.fn(() => Promise.reject(new Error('Receiving end does not exist')))
+
+    await forwardToAllContentScripts({ type: 'TEST_TOLERATED' }, debugLog)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.strictEqual(globalThis.chrome.tabs.sendMessage.mock.calls.length, 1)
+    assert.strictEqual(debugLog.mock.calls.length, 0)
+  })
+
   test('loadSavedSettings handles unavailable storage and get failures', async () => {
     const warn = mock.method(console, 'warn')
     globalThis.chrome = undefined
     assert.deepStrictEqual(await loadSavedSettings(), {})
 
     globalThis.chrome = createChromeMock()
+    globalThis.chrome.storage.local.get = mock.fn(() => Promise.resolve({ serverUrl: 'http://localhost:7890' }))
+    assert.deepStrictEqual(await loadSavedSettings(), { serverUrl: 'http://localhost:7890' })
+
     globalThis.chrome.storage.local.get = mock.fn(() => Promise.reject(new Error('storage down')))
     assert.deepStrictEqual(await loadSavedSettings(), {})
     assert.strictEqual(warn.mock.calls.length, 1)
@@ -121,9 +147,20 @@ describe('tab-state helpers', () => {
     assert.strictEqual(await loadDebugModeState(), true)
   })
 
+  test('loadAiWebPilotState and loadDebugModeState return false when chrome is unavailable', async () => {
+    globalThis.chrome = undefined
+    assert.strictEqual(await loadAiWebPilotState(), false)
+    assert.strictEqual(await loadDebugModeState(), false)
+  })
+
   test('saveSetting writes key/value to local storage', () => {
     saveSetting('featureX', 'on')
     assert.deepStrictEqual(globalThis.chrome.storage.local.set.mock.calls[0].arguments[0], { featureX: 'on' })
+  })
+
+  test('saveSetting no-ops when storage is unavailable', () => {
+    globalThis.chrome = undefined
+    saveSetting('featureY', 'off')
   })
 
   test('tracked tab helpers persist, retrieve, and clear tab state', async () => {
@@ -159,9 +196,63 @@ describe('tab-state helpers', () => {
     ])
   })
 
+  test('getTrackedTabInfo reports complete status when tracked tab is loaded', async () => {
+    globalThis.chrome.storage.local.get = mock.fn(() =>
+      Promise.resolve({
+        trackedTabId: 101,
+        trackedTabUrl: 'https://ready.example',
+        trackedTabTitle: 'Ready'
+      })
+    )
+    globalThis.chrome.tabs.get = mock.fn(() => Promise.resolve({ id: 101, status: 'complete', active: true }))
+
+    assert.deepStrictEqual(await getTrackedTabInfo(), {
+      trackedTabId: 101,
+      trackedTabUrl: 'https://ready.example',
+      trackedTabTitle: 'Ready',
+      tabStatus: 'complete',
+      trackedTabActive: true
+    })
+  })
+
   test('setTrackedTab no-ops for missing tab id', async () => {
     await setTrackedTab({ id: undefined, url: 'https://x.test', title: 'X' })
     assert.strictEqual(globalThis.chrome.storage.local.set.mock.calls.length, 0)
+  })
+
+  test('clearTrackedTab no-ops when storage is unavailable', () => {
+    globalThis.chrome = undefined
+    clearTrackedTab()
+  })
+
+  test('getTrackedTabInfo returns null-state when chrome is unavailable', async () => {
+    globalThis.chrome = undefined
+    assert.deepStrictEqual(await getTrackedTabInfo(), {
+      trackedTabId: null,
+      trackedTabUrl: null,
+      trackedTabTitle: null,
+      tabStatus: null,
+      trackedTabActive: null
+    })
+  })
+
+  test('getTrackedTabInfo tolerates tab lookup failures', async () => {
+    globalThis.chrome.storage.local.get = mock.fn(() =>
+      Promise.resolve({
+        trackedTabId: 44,
+        trackedTabUrl: 'https://missing-tab.test',
+        trackedTabTitle: 'Missing Tab'
+      })
+    )
+    globalThis.chrome.tabs.get = mock.fn(() => Promise.reject(new Error('No tab with id')))
+
+    assert.deepStrictEqual(await getTrackedTabInfo(), {
+      trackedTabId: 44,
+      trackedTabUrl: 'https://missing-tab.test',
+      trackedTabTitle: 'Missing Tab',
+      tabStatus: null,
+      trackedTabActive: null
+    })
   })
 
   test('getAllConfigSettings and getActiveTab return deterministic fallbacks', async () => {
