@@ -41,7 +41,8 @@ function Test-ExtensionStage {
         (Join-Path $EXT_DIR "manifest.json"),
         (Join-Path $EXT_DIR "background\init.js"),
         (Join-Path $EXT_DIR "content\script-injection.js"),
-        (Join-Path $EXT_DIR "inject\index.js")
+        (Join-Path $EXT_DIR "inject\index.js"),
+        (Join-Path $EXT_DIR "theme-bootstrap.js")
     )
     foreach ($path in $required) {
         if (-not (Test-Path $path)) {
@@ -111,7 +112,7 @@ try {
 } catch {
     # Fallback logic for older releases or bad extension zip assets.
     Write-Host "⚠️  Falling back to source zip due to missing/incomplete extension zip" -ForegroundColor Yellow
-    $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+    $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/heads/STABLE.zip"
     Invoke-WebRequest -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
     $TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src"
     if (Test-Path $TEMP_EXTRACT) { Remove-Item -Path $TEMP_EXTRACT -Recurse -Force }

@@ -58,7 +58,8 @@ validate_extension_stage() {
     [ -f "$EXT_DIR/manifest.json" ] &&
     [ -f "$EXT_DIR/background/init.js" ] &&
     [ -f "$EXT_DIR/content/script-injection.js" ] &&
-    [ -f "$EXT_DIR/inject/index.js" ]
+    [ -f "$EXT_DIR/inject/index.js" ] &&
+    [ -f "$EXT_DIR/theme-bootstrap.js" ]
 }
 
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
@@ -149,7 +150,7 @@ if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
         echo -e "✅ Staged extension directory: $EXT_DIR"
     else
         echo -e "${YELLOW}⚠️  Release extension zip missing required modules; falling back to source zip...${NC}"
-        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+        SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/heads/STABLE.zip"
         TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
         mkdir -p "$TEMP_EXTRACT"
         if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
@@ -170,7 +171,7 @@ if curl -fsSL "$EXT_ZIP_URL" -o "$TEMP_ZIP"; then
     fi
 else
     # Fallback to source zip extraction (covers older releases and bad extension zip assets)
-    SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.zip"
+    SOURCE_ZIP_URL="https://github.com/$REPO/archive/refs/heads/STABLE.zip"
     TEMP_EXTRACT="$TEMP_ROOT/ext_extract"
     mkdir -p "$TEMP_EXTRACT"
     if curl -fsSL "$SOURCE_ZIP_URL" -o "$TEMP_ZIP"; then
