@@ -23,7 +23,7 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		DurationMs int    `json:"duration_ms,omitempty"`
 		TabID      int    `json:"tab_id,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -68,7 +68,7 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		TabID     int    `json:"tab_id,omitempty"`
 		World     string `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

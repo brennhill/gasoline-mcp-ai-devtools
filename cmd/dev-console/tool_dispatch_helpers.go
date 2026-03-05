@@ -15,7 +15,7 @@ import (
 // FallbackFn gates the fallback: when set, the alias value is only used as a mode selector when
 // FallbackFn returns true. When nil, any non-empty alias value is accepted as a fallback.
 type modeAlias struct {
-	JSONField  string           // JSON field name in args (e.g. "action", "mode", "format")
+	JSONField  string            // JSON field name in args (e.g. "action", "mode", "format")
 	ConflictFn func(string) bool // Optional: only raise conflict when this returns true
 	FallbackFn func(string) bool // Optional: only use as fallback mode when this returns true
 }

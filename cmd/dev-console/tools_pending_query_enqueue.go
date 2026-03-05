@@ -20,28 +20,16 @@ func (h *ToolHandler) enqueuePendingQuery(req JSONRPCRequest, query queries.Pend
 	}
 
 	if errors.Is(err, queries.ErrQueueFull) {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrQueueFull,
-				fmt.Sprintf("Command queue is full; unable to enqueue action type=%q", query.Type),
-				"Wait for in-flight commands to complete, then retry.",
-				withRetryable(true),
-				withRetryAfterMs(1000),
-				h.diagnosticHint(),
-			),
-		}, true
+		return fail(req, ErrQueueFull,
+			fmt.Sprintf("Command queue is full; unable to enqueue action type=%q", query.Type),
+			"Wait for in-flight commands to complete, then retry.",
+			withRetryable(true), withRetryAfterMs(1000), h.diagnosticHint(),
+		), true
 	}
 
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result: mcpStructuredError(
-			ErrInternal,
-			fmt.Sprintf("Failed to enqueue command type=%q: %v", query.Type, err),
-			"Internal error — do not retry until server health is restored.",
-			h.diagnosticHint(),
-		),
-	}, true
+	return fail(req, ErrInternal,
+		fmt.Sprintf("Failed to enqueue command type=%q: %v", query.Type, err),
+		"Internal error — do not retry until server health is restored.",
+		h.diagnosticHint(),
+	), true
 }

@@ -223,7 +223,7 @@ func TestToolsAnalyzeAudit_ScoringFunctions(t *testing.T) {
 	t.Run("ExtractFindingsMultipleKeys", func(t *testing.T) {
 		// First key empty, second has data
 		r := extractFindings(map[string]any{
-			"issues": []any{},
+			"issues":   []any{},
 			"warnings": []any{"w1"},
 		}, "issues", "warnings")
 		if len(r) != 1 {

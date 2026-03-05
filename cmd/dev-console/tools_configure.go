@@ -48,4 +48,3 @@ func isStoreAction(action string) bool {
 		return false
 	}
 }
-

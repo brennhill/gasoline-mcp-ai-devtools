@@ -53,7 +53,6 @@ var (
 // ToolHandler Delegation
 // ============================================
 
-
 // drainAlerts delegates to the AlertBuffer.
 func (h *ToolHandler) drainAlerts() []Alert {
 	return h.alertBuffer.DrainAlerts()

@@ -21,15 +21,9 @@ func whatAliasConflictResponse(req JSONRPCRequest, aliasParam, whatValue, aliasV
 	if strings.TrimSpace(validValues) != "" {
 		hint += " Valid values: " + validValues
 	}
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result: mcpStructuredError(
-			ErrInvalidParam,
-			fmt.Sprintf("Conflicting parameters: what=%q and %s=%q", whatValue, aliasParam, aliasValue),
-			"Send only the canonical 'what' parameter and retry.",
-			withParam("what"),
-			withHint(hint),
-		),
-	}
+	return fail(req, ErrInvalidParam,
+		fmt.Sprintf("Conflicting parameters: what=%q and %s=%q", whatValue, aliasParam, aliasValue),
+		"Send only the canonical 'what' parameter and retry.",
+		withParam("what"), withHint(hint),
+	)
 }

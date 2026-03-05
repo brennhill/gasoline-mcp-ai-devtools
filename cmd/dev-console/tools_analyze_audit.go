@@ -58,7 +58,7 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 		Summary    bool     `json:"summary"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

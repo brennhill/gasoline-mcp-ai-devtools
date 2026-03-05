@@ -27,7 +27,7 @@ func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMes
 		ContinueOnErr *bool             `json:"continue_on_error"`
 		StopAfterStep int               `json:"stop_after_step"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

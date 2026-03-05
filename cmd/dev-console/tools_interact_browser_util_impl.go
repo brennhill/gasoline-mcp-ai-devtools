@@ -75,7 +75,7 @@ func (h *interactActionHandler) handleSubtitleImpl(req JSONRPCRequest, args json
 	var params struct {
 		Text *string `json:"text"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

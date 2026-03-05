@@ -56,7 +56,7 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 	var params struct {
 		Text string `json:"text"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.Text == "" {

@@ -34,7 +34,7 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 		Limit       int    `json:"limit,omitempty"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

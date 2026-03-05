@@ -18,7 +18,7 @@ func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) 
 		A11yResult json.RawMessage `json:"a11y_result"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &arguments); stop {
+		if resp, stop := parseArgs(req, args, &arguments); stop {
 			return resp
 		}
 	}

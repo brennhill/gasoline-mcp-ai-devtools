@@ -17,7 +17,7 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 		IgnoreEndpoints []string `json:"ignore_endpoints"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

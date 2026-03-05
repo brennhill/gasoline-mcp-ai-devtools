@@ -16,7 +16,7 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		TabID          int    `json:"tab_id,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -83,7 +83,7 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

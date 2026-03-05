@@ -46,11 +46,7 @@ func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args 
 
 	warnings, err := unmarshalWithWarnings(args, &params)
 	if err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"),
-		}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 	warnings = filterGenerateDispatchWarnings(warnings)
 
@@ -81,11 +77,7 @@ func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args 
 		"metadata": generatedTest.Metadata,
 	}
 
-	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  mcpJSONResponse(summary, data),
-	}
+	resp := succeed(req, summary, data)
 
 	return appendWarningsToResponse(resp, warnings)
 }

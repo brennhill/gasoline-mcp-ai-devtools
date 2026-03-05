@@ -21,20 +21,12 @@ func (h *configureSessionHandler) toolDiffSessionsWrapper(req JSONRPCRequest, ar
 
 func (h *configureSessionHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.parent.sessionManager == nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrNotInitialized, "Session manager not initialized", "Internal error — do not retry"),
-		}
+		return fail(req, ErrNotInitialized, "Session manager not initialized", "Internal error — do not retry")
 	}
 
 	result, err := h.parent.sessionManager.HandleTool(args)
 	if err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidParam, err.Error(), "Fix request parameters and retry"),
-		}
+		return fail(req, ErrInvalidParam, err.Error(), "Fix request parameters and retry")
 	}
 
 	responseData := map[string]any{"status": "ok"}

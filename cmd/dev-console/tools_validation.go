@@ -9,7 +9,6 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
-
 func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 	return mcp.UnmarshalWithWarnings(data, v)
 }
@@ -17,4 +16,3 @@ func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 func validateParamsAgainstSchema(data json.RawMessage, schema map[string]any) []string {
 	return mcp.ValidateParamsAgainstSchema(data, schema)
 }
-

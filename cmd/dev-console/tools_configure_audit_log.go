@@ -15,11 +15,7 @@ import (
 
 func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.auditTrail == nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrNotInitialized, "Audit trail not initialized", "Internal error — do not retry"),
-		}
+		return fail(req, ErrNotInitialized, "Audit trail not initialized", "Internal error — do not retry")
 	}
 
 	var params struct {
@@ -30,7 +26,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		Since          string `json:"since"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -40,11 +36,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		operation = "report"
 	}
 	if operation != "analyze" && operation != "report" && operation != "clear" {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidParam, "Invalid audit_log operation: "+params.Operation, "Use operation: analyze, report, or clear", withParam("operation")),
-		}
+		return fail(req, ErrInvalidParam, "Invalid audit_log operation: "+params.Operation, "Use operation: analyze, report, or clear", withParam("operation"))
 	}
 	if operation == "clear" {
 		cleared := h.auditTrail.Clear()
@@ -68,11 +60,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	if params.Since != "" {
 		since, err := time.Parse(time.RFC3339, params.Since)
 		if err != nil {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result:  mcpStructuredError(ErrInvalidParam, "Invalid 'since' timestamp: "+err.Error(), "Use RFC3339 format, for example 2026-02-17T15:04:05Z", withParam("since")),
-			}
+			return fail(req, ErrInvalidParam, "Invalid 'since' timestamp: "+err.Error(), "Use RFC3339 format, for example 2026-02-17T15:04:05Z", withParam("since"))
 		}
 		filter.Since = &since
 	}

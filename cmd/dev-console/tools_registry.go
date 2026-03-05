@@ -170,11 +170,7 @@ func (h *ToolHandler) dispatchViaModules(req JSONRPCRequest, name string, args j
 	}
 
 	if err := module.Validate(args); err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Invalid %s arguments: %v", name, err), "Fix the request parameters and try again"),
-		}, true
+		return fail(req, ErrInvalidParam, fmt.Sprintf("Invalid %s arguments: %v", name, err), "Fix the request parameters and try again"), true
 	}
 
 	return module.Execute(req, args), true

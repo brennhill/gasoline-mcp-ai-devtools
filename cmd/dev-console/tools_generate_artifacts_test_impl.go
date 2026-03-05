@@ -13,7 +13,7 @@ import (
 
 func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params gen.TestGenParams
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.TestName == "" {

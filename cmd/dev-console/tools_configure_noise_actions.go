@@ -42,7 +42,7 @@ type noiseRuleArgs struct {
 func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments noiseRuleArgs
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &arguments); stop {
+		if resp, stop := parseArgs(req, args, &arguments); stop {
 			return resp
 		}
 	}

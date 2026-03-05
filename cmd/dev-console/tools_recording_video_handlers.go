@@ -58,7 +58,7 @@ func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args js
 		TabID int    `json:"tab_id,omitempty"`
 		Audio string `json:"audio,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -96,7 +96,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -120,11 +120,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		if recordingState.StartCorrelationID == "" {
 			msg = "Cannot stop recording: no active interact(screen_recording_start) session found"
 		}
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrNoData, msg, retry, h.diagnosticHint()),
-		}
+		return fail(req, ErrNoData, msg, retry, h.diagnosticHint())
 	}
 
 	correlationID := newCorrelationID("recstop")

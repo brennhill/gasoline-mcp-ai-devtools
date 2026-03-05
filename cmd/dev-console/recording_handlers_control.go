@@ -18,7 +18,7 @@ func (h *ToolHandler) toolConfigureEventRecordingStart(req JSONRPCRequest, args 
 		SensitiveDataEnabled bool   `json:"sensitive_data_enabled"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -62,7 +62,7 @@ func (h *ToolHandler) toolConfigureEventRecordingStop(req JSONRPCRequest, args j
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

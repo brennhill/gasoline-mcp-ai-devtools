@@ -20,7 +20,7 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 		ReplayID   string `json:"replay_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -71,7 +71,7 @@ func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMess
 		ReplayID   string `json:"replay_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

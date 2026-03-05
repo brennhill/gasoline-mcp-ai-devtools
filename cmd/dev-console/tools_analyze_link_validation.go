@@ -31,7 +31,7 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 func (h *ToolHandler) toolValidateLinks(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params az.LinkValidationParams
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
