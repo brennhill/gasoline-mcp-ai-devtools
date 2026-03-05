@@ -23,6 +23,48 @@ const MCP_SERVER_NAME = 'gasoline-browser-devtools';
 const LEGACY_MCP_SERVER_NAMES = ['gasoline-agentic-browser', 'gasoline'];
 
 /**
+ * Resolve the managed gasoline binary path from the installed npm package layout.
+ * Falls back to command name when an absolute binary path cannot be discovered.
+ * @returns {string} Absolute binary path when discoverable, else command name
+ */
+function resolveManagedBinaryPath() {
+  const envOverride = process.env.GASOLINE_BINARY_PATH;
+  if (envOverride && fs.existsSync(envOverride)) {
+    return path.resolve(envOverride);
+  }
+
+  const platformMap = { darwin: 'darwin', linux: 'linux', win32: 'win32' };
+  const archMap = { x64: 'x64', arm64: 'arm64' };
+  const platform = platformMap[process.platform];
+  const arch = archMap[process.arch];
+  if (!platform || !arch) {
+    return 'gasoline-agentic-browser';
+  }
+
+  const effectiveArch = platform === 'win32' ? 'x64' : arch;
+  const ext = platform === 'win32' ? '.exe' : '';
+  const platformKey = `${platform}-${effectiveArch}`;
+  const binaryName = `gasoline${ext}`;
+  const pkgName = `@brennhill/gasoline-agentic-browser-${platformKey}`;
+  const packageRoot = path.resolve(__dirname, '..');
+
+  const candidates = [
+    path.join(packageRoot, 'node_modules', pkgName, 'bin', binaryName),
+    path.join(packageRoot, '..', pkgName, 'bin', binaryName),
+    path.join(packageRoot, '..', '..', pkgName, 'bin', binaryName),
+    path.resolve(packageRoot, '..', '..', '..', 'dist', `gasoline-${platformKey}${ext}`),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return path.resolve(candidate);
+    }
+  }
+
+  return 'gasoline-agentic-browser';
+}
+
+/**
  * Client definitions for all supported AI assistant clients.
  * Each entry describes detection, config path, and install strategy.
  */
@@ -91,8 +133,8 @@ const CLIENT_DEFINITIONS = [
     configPath: { all: '~/.config/opencode/opencode.json' },
     detectDir: { all: '~/.config/opencode' },
     configKey: 'mcp',
-    buildEntry: (envVars) => {
-      const entry = { type: 'local', command: ['gasoline-agentic-browser'], enabled: true };
+    buildEntry: (envVars, binaryCommand = 'gasoline-agentic-browser') => {
+      const entry = { type: 'local', command: [binaryCommand], enabled: true };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;
     },
@@ -119,8 +161,8 @@ const CLIENT_DEFINITIONS = [
     configPath: { all: '~/.config/zed/settings.json' },
     detectDir: { all: '~/.config/zed' },
     configKey: 'context_servers',
-    buildEntry: (envVars) => {
-      const entry = { source: 'custom', command: 'gasoline-agentic-browser', args: [] };
+    buildEntry: (envVars, binaryCommand = 'gasoline-agentic-browser') => {
+      const entry = { source: 'custom', command: binaryCommand, args: [] };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;
     },
@@ -530,4 +572,5 @@ module.exports = {
   validateMCPConfig,
   mergeGassolineConfig,
   parseEnvVar,
+  resolveManagedBinaryPath,
 };

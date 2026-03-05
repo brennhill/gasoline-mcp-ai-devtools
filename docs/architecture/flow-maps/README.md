@@ -59,6 +59,7 @@ Each flow map should include:
 - [Binary Watcher Upgrade Detection](./binary-watcher-upgrade-detection.md)
 - [Feature Doc Frontmatter and Freshness Gates](./feature-doc-frontmatter-freshness-gates.md)
 - [LLM Fast Verify Gate](./llm-fast-verify-gate.md)
+- [Installer Binary Path and Manual Extension Handoff](./installer-binary-path-and-manual-extension-handoff.md)
 - [Interact Navigate and Document](./interact-navigate-and-document.md)
 - [Interact Action Toast Label Normalization](./interact-action-toast-label-normalization.md)
 - [Interact Action Surface Registry](./interact-action-surface-registry.md)
