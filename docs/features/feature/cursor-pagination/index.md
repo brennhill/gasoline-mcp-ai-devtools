@@ -6,7 +6,17 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-test_paths: []
+  - internal/pagination/cursor.go
+  - internal/pagination/pagination.go
+  - internal/pagination/pagination_actions.go
+  - internal/pagination/pagination_websocket.go
+  - internal/pagination/serialization.go
+  - internal/pagination/test_helpers_test.go
+test_paths:
+  - internal/pagination/cursor_test.go
+  - internal/pagination/pagination_test.go
+  - internal/pagination/pagination_actions_test.go
+  - internal/pagination/pagination_websocket_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -25,6 +35,7 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 

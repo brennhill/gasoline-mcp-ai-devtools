@@ -17,7 +17,10 @@ code_paths:
   - internal/annotation/store.go
   - internal/annotation/store_results.go
   - internal/annotation/store_wait.go
+  - internal/tools/analyze/args_parse.go
+  - internal/tools/analyze/computed_styles.go
   - internal/tools/analyze/forms.go
+  - internal/tools/analyze/visual_diff.go
   - internal/schema/analyze.go
   - src/background/commands/analyze.ts
   - src/background/frame-targeting.ts
@@ -35,7 +38,9 @@ test_paths:
   - cmd/dev-console/tools_analyze_handler_test.go
   - cmd/dev-console/tools_pending_query_enqueue_test.go
   - internal/annotation/store_test.go
+  - internal/tools/analyze/computed_styles_test.go
   - internal/tools/analyze/forms_test.go
+  - internal/tools/analyze/visual_diff_test.go
   - tests/extension/data-table.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05

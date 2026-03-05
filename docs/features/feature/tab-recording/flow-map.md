@@ -13,3 +13,6 @@ last_verified_date: 2026-03-05
 Canonical flow map:
 
 - [Tab Recording and Media Ingest](../../../architecture/flow-maps/tab-recording-and-media-ingest.md)
+- [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
+
+Latest sync update (2026-03-05): offscreen recording upload now uses shared daemon header construction to keep client metadata consistent with background/popup paths.

@@ -18,14 +18,12 @@ type ComputedStylesArgs struct {
 
 // ParseComputedStylesArgs validates and parses computed styles arguments.
 func ParseComputedStylesArgs(args json.RawMessage) (*ComputedStylesArgs, error) {
-	var params ComputedStylesArgs
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return nil, err
-		}
+	params, err := parseAnalyzeArgs[ComputedStylesArgs](args)
+	if err != nil {
+		return nil, err
 	}
 	if params.Selector == "" {
 		return nil, errors.New("required parameter 'selector' is missing")
 	}
-	return &params, nil
+	return params, nil
 }

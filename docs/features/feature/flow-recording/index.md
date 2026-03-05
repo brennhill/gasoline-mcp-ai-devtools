@@ -12,6 +12,8 @@ code_paths:
   - src/background/context-menus.ts
   - src/background/recording-utils.ts
   - src/background/draw-mode-toggle.ts
+  - src/popup/action-recording.ts
+  - src/lib/daemon-http.ts
 test_paths:
   - tests/extension/recording.test.js
   - tests/extension/recording-shortcut-command.test.js

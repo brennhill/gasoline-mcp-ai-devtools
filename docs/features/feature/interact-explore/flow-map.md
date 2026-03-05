@@ -21,4 +21,4 @@ Related flow maps:
 - [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): shared frame-target resolution and centralized content fallback script registry for interact extraction paths.
+Latest sync update (2026-03-05): content fallback extraction internals are deduplicated through shared main-element selection and cleanup helpers, and upload daemon calls use shared JSON request helpers.

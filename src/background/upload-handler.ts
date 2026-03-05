@@ -15,6 +15,7 @@ import { debugLog } from './index.js'
 import { getServerUrl } from './state.js'
 import { DebugCategory } from './debug.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { buildDaemonHeaders, buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
 
 // ============================================
 // Timing Constants
@@ -227,7 +228,7 @@ async function dismissFileDialog(serverUrl: string): Promise<void> {
   try {
     const response = await fetchWithTimeout(
       `${serverUrl}/api/os-automation/dismiss`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' } },
+      { method: 'POST', headers: buildDaemonHeaders() },
       5000
     )
     if (!response.ok) {
@@ -288,11 +289,7 @@ async function escalateToStage4Internal(
   try {
     const response = await fetchWithTimeout(
       `${serverUrl}/api/os-automation/inject`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-        body: JSON.stringify({ file_path: filePath, browser_pid: 0 })
-      },
+      buildDaemonJSONRequestInit({ file_path: filePath, browser_pid: 0 }),
       DAEMON_FETCH_TIMEOUT_MS
     )
 
@@ -404,11 +401,7 @@ export async function executeUpload(
   try {
     const response = await fetchWithTimeout(
       `${getServerUrl()}/api/file/read`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-        body: JSON.stringify({ file_path })
-      },
+      buildDaemonJSONRequestInit({ file_path }),
       DAEMON_FETCH_TIMEOUT_MS
     )
     if (!response.ok) {

@@ -11,6 +11,7 @@
 import type { PendingQuery } from '../types/index.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { fetchWithTimeout } from '../lib/timeout-utils.js'
+import { buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
 
 // =============================================================================
 // TYPES
@@ -283,15 +284,9 @@ export class SyncClient {
       // Make request with timeout to prevent hanging forever (8s: server holds up to 5s + margin)
       const response = await fetchWithTimeout(
         `${this.serverUrl}/sync`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
-            'X-Gasoline-Extension-Version': this.extensionVersion
-          },
-          body: JSON.stringify(request)
-        },
+        buildDaemonJSONRequestInit(request, {
+          extensionVersion: this.extensionVersion || undefined
+        }),
         8000
       )
 

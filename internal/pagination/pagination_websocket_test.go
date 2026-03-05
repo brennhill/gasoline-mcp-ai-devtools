@@ -18,12 +18,12 @@ func TestEnrichWebSocketEntries(t *testing.T) {
 		expectedCount    int
 	}{
 		{
-			name:          "empty buffer",
-			events:        []WebSocketEvent{},
-			wsTotalAdded:  0,
+			name:             "empty buffer",
+			events:           []WebSocketEvent{},
+			wsTotalAdded:     0,
 			expectedFirstSeq: 0,
 			expectedLastSeq:  0,
-			expectedCount: 0,
+			expectedCount:    0,
 		},
 		{
 			name: "single event",
@@ -54,8 +54,8 @@ func TestEnrichWebSocketEntries(t *testing.T) {
 				{Event: "close", ID: "ws-2", URL: "wss://echo.example.com", Timestamp: "2026-01-30T10:20:01Z"},
 			},
 			wsTotalAdded:     152, // 150 evicted, 2 remain
-			expectedFirstSeq: 151,  // First entry is sequence 151
-			expectedLastSeq:  152,  // Last entry is sequence 152
+			expectedFirstSeq: 151, // First entry is sequence 151
+			expectedLastSeq:  152, // Last entry is sequence 152
 			expectedCount:    2,
 		},
 	}
@@ -132,17 +132,7 @@ func TestApplyWebSocketCursorPagination_NoCursor(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			if len(result) != tt.expectedCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.expectedCount)
-			}
-
-			if metadata.Count != tt.expectedCount {
-				t.Errorf("Metadata count = %d, want %d", metadata.Count, tt.expectedCount)
-			}
-
-			if metadata.Total != 100 {
-				t.Errorf("Metadata total = %d, want 100", metadata.Total)
-			}
+			assertPaginationCountAndTotal(t, len(result), tt.expectedCount, metadata, 100)
 
 			// When limit is applied (no cursor), should return LAST N entries
 			if tt.limit > 0 && tt.limit < 100 {
@@ -153,25 +143,16 @@ func TestApplyWebSocketCursorPagination_NoCursor(t *testing.T) {
 				}
 			}
 
-			// Verify cursor field is present when results exist
 			if len(result) > 0 {
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			} else {
-				// Empty results should have empty cursor
-				if metadata.Cursor != "" {
-					t.Errorf("Metadata cursor should be empty for empty results, got %v", metadata.Cursor)
-				}
+				assertPaginationEmptyCursor(t, metadata)
 			}
 		})
 	}
@@ -191,8 +172,8 @@ func TestApplyWebSocketCursorPagination_AfterCursor(t *testing.T) {
 	enriched := EnrichWebSocketEntries(events, 100)
 
 	// Build cursors from actual enriched data
-	cursor50 := BuildCursor(enriched[49].Timestamp, enriched[49].Sequence)   // Sequence 50
-	cursor1 := BuildCursor(enriched[0].Timestamp, enriched[0].Sequence)      // Sequence 1
+	cursor50 := BuildCursor(enriched[49].Timestamp, enriched[49].Sequence)  // Sequence 50
+	cursor1 := BuildCursor(enriched[0].Timestamp, enriched[0].Sequence)     // Sequence 1
 	cursor100 := BuildCursor(enriched[99].Timestamp, enriched[99].Sequence) // Sequence 100
 
 	tests := []struct {
@@ -264,19 +245,13 @@ func TestApplyWebSocketCursorPagination_AfterCursor(t *testing.T) {
 					t.Errorf("Last sequence = %d, want %d", lastSeq, tt.expectedLastSeq)
 				}
 
-				// Verify cursor field is present
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			}
 
 			if metadata.HasMore != tt.expectedHasMore {
@@ -331,7 +306,7 @@ func TestApplyWebSocketCursorPagination_CursorExpired(t *testing.T) {
 			afterCursor:           expiredCursor,
 			restartOnEviction:     true,
 			expectError:           false,
-			expectedCount:         10, // Limit applied
+			expectedCount:         10,  // Limit applied
 			expectedFirstSeq:      101, // After restart, take FIRST 10 entries from oldest
 			expectedCursorRestart: true,
 		},
@@ -357,9 +332,7 @@ func TestApplyWebSocketCursorPagination_CursorExpired(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			if len(result) != tt.expectedCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.expectedCount)
-			}
+			assertPaginationCountAndTotal(t, len(result), tt.expectedCount, metadata, len(enriched))
 
 			if tt.expectedCount > 0 {
 				firstSeq := result[0].Sequence
@@ -367,19 +340,13 @@ func TestApplyWebSocketCursorPagination_CursorExpired(t *testing.T) {
 					t.Errorf("First sequence = %d, want %d (oldest after restart)", firstSeq, tt.expectedFirstSeq)
 				}
 
-				// Verify cursor field is present
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			}
 
 			if metadata.CursorRestarted != tt.expectedCursorRestart {

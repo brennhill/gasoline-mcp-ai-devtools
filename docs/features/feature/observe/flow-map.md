@@ -15,4 +15,4 @@ Canonical flow maps:
 - [Observe Dispatch and Augmentation](../../../architecture/flow-maps/observe-dispatch-and-augmentation.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): extension log shaping and fetch-header sanitization now use shared helpers across observe/capture paths.
+Latest sync update (2026-03-05): screenshot upload requests now reuse shared daemon JSON request/header helpers, preserving a single extension-client header contract.

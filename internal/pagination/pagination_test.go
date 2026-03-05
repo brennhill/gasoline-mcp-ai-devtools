@@ -14,18 +14,18 @@ func TestEnrichLogEntries(t *testing.T) {
 	baseTime := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name           string
-		entries        []LogEntry
-		logTotalAdded  int64
-		wantFirstSeq   int64
-		wantLastSeq    int64
+		name          string
+		entries       []LogEntry
+		logTotalAdded int64
+		wantFirstSeq  int64
+		wantLastSeq   int64
 	}{
 		{
-			name: "empty buffer",
-			entries: []LogEntry{},
+			name:          "empty buffer",
+			entries:       []LogEntry{},
 			logTotalAdded: 0,
-			wantFirstSeq: 0,
-			wantLastSeq: 0,
+			wantFirstSeq:  0,
+			wantLastSeq:   0,
 		},
 		{
 			name: "single entry",
@@ -33,8 +33,8 @@ func TestEnrichLogEntries(t *testing.T) {
 				{"ts": baseTime.Format(time.RFC3339), "message": "Log 1"},
 			},
 			logTotalAdded: 1,
-			wantFirstSeq: 1,
-			wantLastSeq: 1,
+			wantFirstSeq:  1,
+			wantLastSeq:   1,
 		},
 		{
 			name: "multiple entries",
@@ -44,8 +44,8 @@ func TestEnrichLogEntries(t *testing.T) {
 				{"ts": baseTime.Add(2 * time.Second).Format(time.RFC3339), "message": "Log 3"},
 			},
 			logTotalAdded: 3,
-			wantFirstSeq: 1,
-			wantLastSeq: 3,
+			wantFirstSeq:  1,
+			wantLastSeq:   3,
 		},
 		{
 			name: "buffer with evictions (logTotalAdded > buffer length)",
@@ -54,8 +54,8 @@ func TestEnrichLogEntries(t *testing.T) {
 				{"ts": baseTime.Add(1 * time.Second).Format(time.RFC3339), "message": "Log 102"},
 			},
 			logTotalAdded: 102,
-			wantFirstSeq: 101, // First 100 logs were evicted
-			wantLastSeq: 102,
+			wantFirstSeq:  101, // First 100 logs were evicted
+			wantLastSeq:   102,
 		},
 	}
 
@@ -148,17 +148,7 @@ func TestApplyLogCursorPagination_NoСursor(t *testing.T) {
 				t.Fatalf("ApplyLogCursorPagination() unexpected error: %v", err)
 			}
 
-			if len(result) != tt.wantCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.wantCount)
-			}
-
-			if metadata.Count != tt.wantCount {
-				t.Errorf("Metadata count = %d, want %d", metadata.Count, tt.wantCount)
-			}
-
-			if metadata.Total != 100 {
-				t.Errorf("Metadata total = %d, want 100", metadata.Total)
-			}
+			assertPaginationCountAndTotal(t, len(result), tt.wantCount, metadata, 100)
 
 			if len(result) > 0 {
 				if result[0].Sequence != tt.wantFirst {
@@ -168,24 +158,15 @@ func TestApplyLogCursorPagination_NoСursor(t *testing.T) {
 					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
 				}
 
-				// Verify cursor points to last entry
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			} else {
-				// Empty results should have empty cursor
-				if metadata.Cursor != "" {
-					t.Errorf("Metadata cursor should be empty for empty results, got %v", metadata.Cursor)
-				}
+				assertPaginationEmptyCursor(t, metadata)
 			}
 		})
 	}
@@ -249,13 +230,7 @@ func TestApplyLogCursorPagination_AfterCursor(t *testing.T) {
 				t.Fatalf("ApplyLogCursorPagination() unexpected error: %v", err)
 			}
 
-			if len(result) != tt.wantCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.wantCount)
-			}
-
-			if metadata.Count != tt.wantCount {
-				t.Errorf("Metadata count = %d, want %d", metadata.Count, tt.wantCount)
-			}
+			assertPaginationCountAndTotal(t, len(result), tt.wantCount, metadata, len(entries))
 
 			if len(result) > 0 {
 				if result[0].Sequence != tt.wantFirst {
@@ -265,19 +240,13 @@ func TestApplyLogCursorPagination_AfterCursor(t *testing.T) {
 					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
 				}
 
-				// Verify cursor field is present
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			}
 		})
 	}
@@ -341,13 +310,7 @@ func TestApplyLogCursorPagination_BeforeCursor(t *testing.T) {
 				t.Fatalf("ApplyLogCursorPagination() unexpected error: %v", err)
 			}
 
-			if len(result) != tt.wantCount {
-				t.Errorf("Result count = %d, want %d", len(result), tt.wantCount)
-			}
-
-			if metadata.Count != tt.wantCount {
-				t.Errorf("Metadata count = %d, want %d", metadata.Count, tt.wantCount)
-			}
+			assertPaginationCountAndTotal(t, len(result), tt.wantCount, metadata, len(entries))
 
 			if len(result) > 0 {
 				if result[0].Sequence != tt.wantFirst {
@@ -357,19 +320,13 @@ func TestApplyLogCursorPagination_BeforeCursor(t *testing.T) {
 					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
 				}
 
-				// Verify cursor field is present
-				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-				if metadata.Cursor != expectedCursor {
-					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-				}
-
-				// Verify timestamp fields
-				if metadata.OldestTimestamp != result[0].Timestamp {
-					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-				}
-				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-				}
+				assertPaginationCursorFields(
+					t,
+					metadata,
+					result[0].Timestamp,
+					result[len(result)-1].Timestamp,
+					result[len(result)-1].Sequence,
+				)
 			}
 		})
 	}
@@ -441,20 +398,14 @@ func TestApplyLogCursorPagination_CursorExpired(t *testing.T) {
 			t.Error("Metadata.Warning is empty, want warning message")
 		}
 
-		// Verify cursor field is present
 		if len(result) > 0 {
-			expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
-			if metadata.Cursor != expectedCursor {
-				t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
-			}
-
-			// Verify timestamp fields
-			if metadata.OldestTimestamp != result[0].Timestamp {
-				t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
-			}
-			if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
-				t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
-			}
+			assertPaginationCursorFields(
+				t,
+				metadata,
+				result[0].Timestamp,
+				result[len(result)-1].Timestamp,
+				result[len(result)-1].Sequence,
+			)
 		}
 	})
 }

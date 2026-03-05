@@ -18,6 +18,7 @@ import type {
 } from '../types/index.js'
 import { getExtensionVersion } from './version-check.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { buildDaemonHeaders } from '../lib/daemon-http.js'
 
 /**
  * Server health response
@@ -39,12 +40,10 @@ export interface ServerHealthResponse {
  * Get standard headers for API requests including version header
  */
 export function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,
-    'X-Gasoline-Extension-Version': getExtensionVersion(),
-    ...additionalHeaders
-  }
+  return buildDaemonHeaders({
+    extensionVersion: getExtensionVersion(),
+    additionalHeaders
+  })
 }
 
 /**
