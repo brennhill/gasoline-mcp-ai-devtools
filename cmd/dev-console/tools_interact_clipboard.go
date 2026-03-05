@@ -42,7 +42,9 @@ func (h *interactActionHandler) handleClipboardRead(req JSONRPCRequest, args jso
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("clipboard_read", "", nil)
 
@@ -103,7 +105,9 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 		Params:        execArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordAIAction("clipboard_write", "", map[string]any{"text_length": len(params.Text)})
 

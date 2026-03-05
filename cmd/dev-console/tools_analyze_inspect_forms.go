@@ -15,22 +15,28 @@ import (
 // Computed Styles (#79)
 // ============================================
 
+func queueAnalyzeInspectAction(h *ToolHandler, req JSONRPCRequest, correlationPrefix, queryType string, args json.RawMessage, tabID int, queuedSummary string) JSONRPCResponse {
+	correlationID := newCorrelationID(correlationPrefix)
+	query := queries.PendingQuery{
+		Type:          queryType,
+		Params:        args,
+		TabID:         tabID,
+		CorrelationID: correlationID,
+	}
+	if resp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return resp
+	}
+
+	return h.MaybeWaitForCommand(req, correlationID, args, queuedSummary)
+}
+
 func toolComputedStyles(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	parsed, err := az.ParseComputedStylesArgs(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, err.Error(), "Add the 'selector' parameter with a CSS selector", withParam("selector"))}
 	}
 
-	correlationID := newCorrelationID("computed_styles")
-	query := queries.PendingQuery{
-		Type:          "computed_styles",
-		Params:        args,
-		TabID:         parsed.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	return h.MaybeWaitForCommand(req, correlationID, args, "Computed styles query queued")
+	return queueAnalyzeInspectAction(h, req, "computed_styles", "computed_styles", args, parsed.TabID, "Computed styles query queued")
 }
 
 // ============================================
@@ -43,16 +49,7 @@ func toolFormDiscovery(h *ToolHandler, req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	correlationID := newCorrelationID("form_discovery")
-	query := queries.PendingQuery{
-		Type:          "form_discovery",
-		Params:        args,
-		TabID:         parsed.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	return h.MaybeWaitForCommand(req, correlationID, args, "Form discovery queued")
+	return queueAnalyzeInspectAction(h, req, "form_discovery", "form_discovery", args, parsed.TabID, "Form discovery queued")
 }
 
 func toolFormState(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -61,16 +58,7 @@ func toolFormState(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSO
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	correlationID := newCorrelationID("form_state")
-	query := queries.PendingQuery{
-		Type:          "form_state",
-		Params:        args,
-		TabID:         parsed.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	return h.MaybeWaitForCommand(req, correlationID, args, "Form state extraction queued")
+	return queueAnalyzeInspectAction(h, req, "form_state", "form_state", args, parsed.TabID, "Form state extraction queued")
 }
 
 func toolDataTable(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -79,16 +67,7 @@ func toolDataTable(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSO
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	correlationID := newCorrelationID("data_table")
-	query := queries.PendingQuery{
-		Type:          "data_table",
-		Params:        args,
-		TabID:         parsed.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	return h.MaybeWaitForCommand(req, correlationID, args, "Data table extraction queued")
+	return queueAnalyzeInspectAction(h, req, "data_table", "data_table", args, parsed.TabID, "Data table extraction queued")
 }
 
 func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -100,7 +79,7 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 	var summaryParams struct {
 		Summary bool `json:"summary"`
 	}
-	json.Unmarshal(args, &summaryParams)
+	_ = json.Unmarshal(args, &summaryParams)
 
 	// Add mode=validate to params for the extension.
 	var rawParams map[string]any
@@ -116,7 +95,9 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 		TabID:         parsed.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	resp := h.MaybeWaitForCommand(req, correlationID, augmentedArgs, "Form validation queued")
 	if summaryParams.Summary {
@@ -134,14 +115,17 @@ func buildFormValidationSummary(resp JSONRPCResponse) JSONRPCResponse {
 	}
 
 	for _, block := range result.Content {
-		idx := 0
+		if block.Text == "" {
+			continue
+		}
+		idx := -1
 		for i, ch := range block.Text {
 			if ch == '{' {
 				idx = i
 				break
 			}
 		}
-		if idx == 0 && block.Text[0] != '{' {
+		if idx < 0 {
 			continue
 		}
 

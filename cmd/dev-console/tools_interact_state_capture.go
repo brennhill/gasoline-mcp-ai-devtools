@@ -38,7 +38,9 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return stateCaptureResult{Status: act.StateCaptureStatusError}
+	}
 
 	cmd, found := h.parent.capture.WaitForCommand(correlationID, 5*time.Second)
 	if !found || cmd.Status == "pending" {
@@ -76,7 +78,9 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return ""
+	}
 
 	return correlationID
 }
@@ -96,7 +100,9 @@ func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateDat
 		Params:        navArgs,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return
+	}
 	stateData["navigation_queued"] = true
 	stateData["correlation_id"] = correlationID
 }

@@ -123,7 +123,9 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	h.parent.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
 

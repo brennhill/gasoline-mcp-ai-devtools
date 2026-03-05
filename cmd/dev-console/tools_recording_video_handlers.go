@@ -26,7 +26,9 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
+		return enqueueResp
+	}
 	r.setInteractRecordingStart(correlationID)
 
 	h.recordAIAction("screen_recording_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
@@ -139,7 +141,9 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
+		return enqueueResp
+	}
 	r.setInteractRecordingStopping(correlationID)
 
 	h.recordAIAction("screen_recording_stop", "", nil)

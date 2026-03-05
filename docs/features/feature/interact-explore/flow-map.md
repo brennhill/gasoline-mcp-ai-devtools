@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_pointer
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 canonical_flow_map: ../../../architecture/flow-maps/interact-navigate-and-document.md
 ---
 
@@ -17,3 +17,5 @@ Related flow maps:
 - [Interact Action Toast Label Normalization](../../../architecture/flow-maps/interact-action-toast-label-normalization.md)
 - [Interact Action Surface Registry](../../../architecture/flow-maps/interact-action-surface-registry.md)
 - [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
+
+Latest sync update (2026-03-05): shared enqueue fail-fast `queue_full` path for interact-dispatched extension commands.

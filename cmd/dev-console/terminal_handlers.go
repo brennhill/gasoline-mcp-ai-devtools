@@ -12,10 +12,12 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // terminalPingInterval is how often the server sends WebSocket ping frames.
@@ -123,7 +125,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send 101 handshake.
 	accept := wsAcceptKey(key)
@@ -162,46 +164,50 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) 
 // within terminalPongTimeout the connection is considered dead and closed. The PTY session
 // survives so the browser can reconnect with scrollback replay.
 func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
+	// Multiple goroutines emit frames (PTY downstream, keepalive ping, and upstream
+	// control responses). Serialize writes to avoid interleaved/corrupted frames.
+	writeFrame := newTerminalFrameWriter(rw)
+
 	// PTY → WebSocket (downstream): read PTY output and send as binary frames.
 	done := make(chan struct{})
-	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, defer close(done) handles teardown
+	util.SafeGo(func() {
 		defer close(done)
 		buf := make([]byte, terminalReadBufSize)
 		for {
 			n, err := sess.Read(buf)
 			if err != nil {
 				// PTY closed or process exited — send close frame.
-				_ = wsWriteFrame(rw, 0x8, nil)
+				_ = writeFrame(0x8, nil)
 				return
 			}
 			if n > 0 {
 				sess.AppendScrollback(buf[:n])
-				if err := wsWriteFrame(rw, 0x2, buf[:n]); err != nil {
+				if err := writeFrame(0x2, buf[:n]); err != nil {
 					return
 				}
 			}
 		}
-	}()
+	})
 
 	// Server-initiated ping keepalive — detects dead connections (browser crash,
 	// laptop sleep) without ever timing out idle users.
 	pingTicker := time.NewTicker(terminalPingInterval)
 	defer pingTicker.Stop()
-	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn, stops when conn closes
+	util.SafeGo(func() {
 		for range pingTicker.C {
-			if err := wsWriteFrame(rw, 0x9, nil); err != nil {
-				conn.Close()
+			if err := writeFrame(0x9, nil); err != nil {
+				_ = conn.Close()
 				return
 			}
 		}
-	}()
+	})
 
 	// WebSocket → PTY (upstream): read frames and dispatch.
 	// NOTE: Do NOT call sess.Close() on WebSocket disconnect — the session
 	// must survive page refreshes so the browser can reconnect with scrollback replay.
 	// Sessions are only killed explicitly via POST /terminal/stop (the Exit button).
-	go func() { // lint:allow-bare-goroutine — lifecycle-tied to WS conn
-		defer conn.Close() // Close conn on exit so downstream detects it and browser auto-reconnects
+	util.SafeGo(func() {
+		defer func() { _ = conn.Close() }() // Close conn on exit so downstream detects it and browser auto-reconnects
 		for {
 			// Refresh read deadline on every iteration — any received frame
 			// (data, pong, ping) proves the connection is alive.
@@ -215,24 +221,35 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session) {
 			}
 			_ = fin // Terminal messages are not fragmented in practice.
 
-			switch {
-			case opcode == 0x8: // Close
-				_ = wsWriteFrame(rw, 0x8, nil)
+			switch opcode {
+			case 0x8: // Close
+				_ = writeFrame(0x8, nil)
 				return // WebSocket closed — stop relaying but keep PTY alive
-			case opcode == 0x9: // Ping → Pong
-				_ = wsWriteFrame(rw, 0xA, payload)
-			case opcode == 0xA: // Pong — no-op, deadline already refreshed above
-			case opcode == 0x2: // Binary — raw keystrokes → PTY stdin
+			case 0x9: // Ping → Pong
+				_ = writeFrame(0xA, payload)
+			case 0xA: // Pong — no-op, deadline already refreshed above
+			case 0x2: // Binary — raw keystrokes → PTY stdin
 				if _, err := sess.Write(payload); err != nil {
 					return
 				}
-			case opcode == 0x1: // Text — JSON control message
+			case 0x1: // Text — JSON control message
 				handleTerminalControlMessage(payload, sess)
 			}
 		}
-	}()
+	})
 
 	<-done
+}
+
+// newTerminalFrameWriter returns a thread-safe frame writer for one WebSocket
+// connection. All callers for that connection must share this writer.
+func newTerminalFrameWriter(rw *bufio.ReadWriter) func(opcode byte, payload []byte) error {
+	var wsWriteMu sync.Mutex
+	return func(opcode byte, payload []byte) error {
+		wsWriteMu.Lock()
+		defer wsWriteMu.Unlock()
+		return wsWriteFrame(rw, opcode, payload)
+	}
 }
 
 // terminalControlMessage is a JSON control message from the browser terminal.

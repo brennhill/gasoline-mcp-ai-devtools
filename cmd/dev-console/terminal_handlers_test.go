@@ -3,14 +3,64 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
 )
+
+func TestNewTerminalFrameWriter_SerializesConcurrentWrites(t *testing.T) {
+	t.Parallel()
+
+	const frameCount = 64
+
+	var wire bytes.Buffer
+	rw := bufio.NewReadWriter(bufio.NewReader(&wire), bufio.NewWriter(&wire))
+	writeFrame := newTerminalFrameWriter(rw)
+
+	var wg sync.WaitGroup
+	for i := 0; i < frameCount; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			payload := []byte(fmt.Sprintf("msg-%02d", i))
+			if err := writeFrame(0x1, payload); err != nil {
+				t.Errorf("writeFrame(%d): %v", i, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	seen := make(map[string]bool, frameCount)
+	reader := bytes.NewReader(wire.Bytes())
+	for {
+		_, _, payload, err := wsReadFrame(reader)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("wsReadFrame failed: %v", err)
+		}
+		seen[string(payload)] = true
+	}
+
+	if len(seen) != frameCount {
+		t.Fatalf("decoded frames = %d, want %d", len(seen), frameCount)
+	}
+	for i := 0; i < frameCount; i++ {
+		expected := fmt.Sprintf("msg-%02d", i)
+		if !seen[expected] {
+			t.Fatalf("missing payload %q", expected)
+		}
+	}
+}
 
 func TestHandleTerminalPage_ServesHTML(t *testing.T) {
 	req := httptest.NewRequest("GET", "/terminal", nil)
@@ -45,7 +95,7 @@ func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 	defer mgr.StopAll()
 
 	body, _ := json.Marshal(map[string]any{
-		"cmd": "/bin/sh",
+		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
@@ -78,7 +128,7 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	defer mgr.StopAll()
 
 	body, _ := json.Marshal(map[string]any{
-		"cmd": "/bin/sh",
+		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
 
@@ -121,7 +171,7 @@ func TestHandleTerminalStop_DestroysSession(t *testing.T) {
 
 	// Start a session first.
 	startBody, _ := json.Marshal(map[string]any{
-		"cmd": "/bin/sh",
+		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(startBody))
@@ -163,8 +213,8 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 
 	// Start a session.
 	_, err := mgr.Start(pty.StartConfig{
-		ID:  "test",
-		Cmd: "/bin/sh",
+		ID:   "test",
+		Cmd:  "/bin/sh",
 		Args: []string{"-c", "exec cat"},
 	})
 	if err != nil {

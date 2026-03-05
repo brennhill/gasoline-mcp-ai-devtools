@@ -202,7 +202,9 @@ func (h *interactActionHandler) queueExecuteScript(
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+		return enqueueResp
+	}
 
 	return h.parent.MaybeWaitForCommand(req, correlationID, waitArgs, queuedMsg)
 }
