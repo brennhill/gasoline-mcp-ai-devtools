@@ -144,6 +144,26 @@ async function cdpClick(tabId, params) {
         method: 'cdp'
     };
 }
+async function dispatchCDPKeyPair(tabId, payload) {
+    const common = {
+        key: payload.key,
+        code: payload.code,
+        windowsVirtualKeyCode: payload.keyCode,
+        nativeVirtualKeyCode: payload.keyCode
+    };
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        ...common,
+        ...(payload.text !== undefined ? { text: payload.text } : {}),
+        ...(payload.unmodifiedText !== undefined ? { unmodifiedText: payload.unmodifiedText } : {}),
+        ...(payload.modifiers !== undefined ? { modifiers: payload.modifiers } : {})
+    });
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        ...common,
+        ...(payload.modifiers !== undefined ? { modifiers: payload.modifiers } : {})
+    });
+}
 async function cdpType(tabId, params) {
     const text = params.text || '';
     if (!text) {
@@ -151,24 +171,13 @@ async function cdpType(tabId, params) {
     }
     for (const char of text) {
         const info = charToKeyInfo(char);
-        const modifiers = info.shiftKey ? 8 : 0;
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyDown',
+        await dispatchCDPKeyPair(tabId, {
             key: info.key,
             code: info.code,
+            keyCode: info.keyCode,
             text: char,
             unmodifiedText: info.shiftKey ? char.toLowerCase() : char,
-            windowsVirtualKeyCode: info.keyCode,
-            nativeVirtualKeyCode: info.keyCode,
-            modifiers
-        });
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyUp',
-            key: info.key,
-            code: info.code,
-            windowsVirtualKeyCode: info.keyCode,
-            nativeVirtualKeyCode: info.keyCode,
-            modifiers
+            modifiers: info.shiftKey ? 8 : 0
         });
     }
     return {
@@ -186,42 +195,22 @@ async function cdpKeyPress(tabId, params) {
     const mapped = KEY_CODES[key];
     if (mapped) {
         // Named key (Enter, Tab, etc.)
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyDown',
+        await dispatchCDPKeyPair(tabId, {
             key,
             code: mapped.code,
-            windowsVirtualKeyCode: mapped.keyCode,
-            nativeVirtualKeyCode: mapped.keyCode
-        });
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyUp',
-            key,
-            code: mapped.code,
-            windowsVirtualKeyCode: mapped.keyCode,
-            nativeVirtualKeyCode: mapped.keyCode
+            keyCode: mapped.keyCode
         });
     }
     else {
         // Single character
         const info = charToKeyInfo(key);
-        const modifiers = info.shiftKey ? 8 : 0;
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyDown',
+        await dispatchCDPKeyPair(tabId, {
             key: info.key,
             code: info.code,
+            keyCode: info.keyCode,
             text: key,
             unmodifiedText: info.shiftKey ? key.toLowerCase() : key,
-            windowsVirtualKeyCode: info.keyCode,
-            nativeVirtualKeyCode: info.keyCode,
-            modifiers
-        });
-        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
-            type: 'keyUp',
-            key: info.key,
-            code: info.code,
-            windowsVirtualKeyCode: info.keyCode,
-            nativeVirtualKeyCode: info.keyCode,
-            modifiers
+            modifiers: info.shiftKey ? 8 : 0
         });
     }
     return {

@@ -3,10 +3,11 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { StorageKey } from '../lib/constants.js';
+import { clearTrackedTab as clearTrackedTabState } from './tab-state.js';
 // Re-export split modules so existing consumers keep working
 export { installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener } from './keyboard-shortcuts.js';
 export { installContextMenus } from './context-menus.js';
-export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, clearTrackedTab, getAllConfigSettings, getActiveTab } from './tab-state.js';
+export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, setTrackedTab, clearTrackedTab, getAllConfigSettings, getActiveTab, sendTabToast } from './tab-state.js';
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
@@ -158,7 +159,7 @@ export async function handleTrackedTabClosed(closedTabId, logFn) {
     if (result.trackedTabId === closedTabId) {
         if (logFn)
             logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-        chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+        clearTrackedTabState();
     }
 }
 // =============================================================================
@@ -205,17 +206,13 @@ export function installStartupListener(logFn) {
                 catch {
                     if (logFn)
                         logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
-                    chrome.storage.local.remove([
-                        StorageKey.TRACKED_TAB_ID,
-                        StorageKey.TRACKED_TAB_URL,
-                        StorageKey.TRACKED_TAB_TITLE
-                    ]);
+                    clearTrackedTabState();
                 }
             }
         }
         catch {
             // Safety fallback: clear if we can't check
-            chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+            clearTrackedTabState();
         }
     });
 }

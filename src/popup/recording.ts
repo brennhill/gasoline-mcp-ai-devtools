@@ -19,6 +19,7 @@ interface RecordingElements {
   statusEl: HTMLElement
   optionsEl: HTMLElement | null
   saveInfoEl: HTMLElement | null
+  topNoticeEl: HTMLElement | null
 }
 
 interface RecordingState {
@@ -45,12 +46,16 @@ interface ApprovalElements {
 const START_LABEL = 'Record screen'
 const STOP_LABEL = 'Stop recording'
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record'
+const RECENT_RECORDING_START_MS = 8000
+const TOP_NOTICE_DURATION_MS = 4000
 const AUDIO_LABELS: Record<string, string> = {
   '': 'Video only',
   tab: 'Video + tab audio',
   mic: 'Video + microphone',
   both: 'Video + tab + mic'
 }
+
+let topNoticeTimer: ReturnType<typeof setTimeout> | null = null
 
 function applyRecordHighlight(els: RecordingElements): void {
   const section = els.row.closest('.section')
@@ -68,6 +73,7 @@ function removeRecordHighlight(els: RecordingElements): void {
 
 // #lizard forgives
 function showRecording(els: RecordingElements, state: RecordingState, name: string, startTime: number): void {
+  const wasRecording = state.isRecording
   removeRecordHighlight(els)
   state.isRecording = true
   els.row.classList.add('is-recording')
@@ -82,6 +88,10 @@ function showRecording(els: RecordingElements, state: RecordingState, name: stri
     const secs = elapsed % 60
     els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
   }, 1000)
+
+  if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
+    showTopNotice(els, 'Recording started')
+  }
 }
 
 function showIdle(els: RecordingElements, state: RecordingState): void {
@@ -132,6 +142,17 @@ function sendRecordingGestureDecision(type: 'RECORDING_GESTURE_GRANTED' | 'RECOR
   chrome.runtime.sendMessage({ type }, () => {
     void chrome.runtime.lastError
   })
+}
+
+function showTopNotice(els: RecordingElements, text: string): void {
+  const notice = els.topNoticeEl
+  if (!notice) return
+  notice.textContent = text
+  notice.style.display = 'block'
+  if (topNoticeTimer) clearTimeout(topNoticeTimer)
+  topNoticeTimer = setTimeout(() => {
+    notice.style.display = 'none'
+  }, TOP_NOTICE_DURATION_MS)
 }
 
 function showSavedLink(saveInfoEl: HTMLElement, displayName: string, filePath: string): void {
@@ -293,7 +314,8 @@ export function setupRecordingUI(): void {
     label,
     statusEl,
     optionsEl: document.getElementById('record-options'),
-    saveInfoEl: document.getElementById('record-save-info')
+    saveInfoEl: document.getElementById('record-save-info'),
+    topNoticeEl: document.getElementById('record-top-notice')
   }
   const approvalEls: ApprovalElements = {
     card: document.getElementById('record-approval-card'),

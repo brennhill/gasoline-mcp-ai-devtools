@@ -9,13 +9,13 @@
 import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
 import { installPerfObservers } from '../lib/perf-snapshot.js';
 import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
-import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network.js';
+import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies, sanitizeHeaders } from '../lib/network.js';
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
 import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
 import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js';
 import { postLog } from '../lib/bridge.js';
-import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
+import { MAX_RESPONSE_LENGTH, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
 import { errorMessage } from '../lib/error-utils.js';
 // Store original fetch for restoration
 let originalFetch = null;
@@ -51,17 +51,8 @@ export function wrapFetch(originalFetchFn) {
                     responseBody = '[Could not read response]';
                 }
                 // Filter sensitive headers (check both init.headers and Request object headers)
-                const safeHeaders = {};
                 const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null);
-                if (rawHeaders) {
-                    const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
-                    Object.keys(headers).forEach((key) => {
-                        const value = headers[key];
-                        if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-                            safeHeaders[key] = value;
-                        }
-                    });
-                }
+                const safeHeaders = sanitizeHeaders(rawHeaders);
                 const logPayload = {
                     level: 'error',
                     type: 'network',
@@ -80,17 +71,8 @@ export function wrapFetch(originalFetchFn) {
         catch (error) {
             const duration = Date.now() - startTime;
             // Filter sensitive headers for the error path
-            const safeHeaders = {};
             const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null);
-            if (rawHeaders) {
-                const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
-                Object.keys(headers).forEach((key) => {
-                    const value = headers[key];
-                    if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-                        safeHeaders[key] = value;
-                    }
-                });
-            }
+            const safeHeaders = sanitizeHeaders(rawHeaders);
             const logPayload = {
                 level: 'error',
                 type: 'network',

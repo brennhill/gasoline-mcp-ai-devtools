@@ -4,16 +4,15 @@
  */
 import { getExtensionVersion } from './version-check.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { buildDaemonHeaders } from '../lib/daemon-http.js';
 /**
  * Get standard headers for API requests including version header
  */
 export function getRequestHeaders(additionalHeaders = {}) {
-    return {
-        'Content-Type': 'application/json',
-        'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,
-        'X-Gasoline-Extension-Version': getExtensionVersion(),
-        ...additionalHeaders
-    };
+    return buildDaemonHeaders({
+        extensionVersion: getExtensionVersion(),
+        additionalHeaders
+    });
 }
 /**
  * Generic telemetry batch sender. All telemetry POST endpoints follow the same

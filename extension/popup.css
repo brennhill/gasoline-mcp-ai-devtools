@@ -36,6 +36,17 @@
         border-radius: 6px;
       }
 
+      .record-top-notice {
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #3fb950;
+        background: rgba(63, 185, 80, 0.12);
+        border: 1px solid rgba(63, 185, 80, 0.45);
+        border-radius: 6px;
+      }
+
       .status-label {
         font-size: 12px;
         color: #888;

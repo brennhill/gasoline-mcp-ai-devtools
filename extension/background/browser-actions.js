@@ -2,7 +2,7 @@
  * Purpose: Handles browser navigation actions (navigate, refresh, back, forward, tab management) with CSP probing and async timeouts.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-import { waitForTabLoad, pingContentScript } from './event-listeners.js';
+import { waitForTabLoad, pingContentScript, getActiveTab } from './event-listeners.js';
 import { debugLog } from './index.js';
 import { isAiWebPilotEnabled } from './state.js';
 import { DebugCategory } from './debug.js';
@@ -253,8 +253,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                     };
                 }
                 await chrome.tabs.remove(targetTabID);
-                const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const activeTab = activeTabs[0];
+                const activeTab = await getActiveTab();
                 return {
                     success: true,
                     action: 'close_tab',

@@ -7,77 +7,16 @@
 // Includes frame routing helpers used by dom and a11y.
 import { registerCommand } from './registry.js';
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js';
-import { normalizeFrameTarget } from '../../lib/frame-utils.js';
 import { errorMessage } from '../../lib/error-utils.js';
-/**
- * Frame selection probe executed in page context.
- * Must be self-contained for chrome.scripting.executeScript({ func }).
- */
-function analyzeFrameProbe(frameTarget) {
-    const isTop = window === window.top;
-    const getParentFrameIndex = () => {
-        if (isTop)
-            return -1;
-        try {
-            const parentFrames = window.parent?.frames;
-            if (!parentFrames)
-                return -1;
-            for (let i = 0; i < parentFrames.length; i++) {
-                if (parentFrames[i] === window)
-                    return i;
-            }
-        }
-        catch {
-            return -1;
-        }
-        return -1;
-    };
-    if (frameTarget === undefined) {
-        return { matches: isTop };
-    }
-    if (frameTarget === 'all') {
-        return { matches: true };
-    }
-    if (typeof frameTarget === 'number') {
-        return { matches: getParentFrameIndex() === frameTarget };
-    }
-    if (isTop) {
-        return { matches: false };
-    }
-    try {
-        const frameEl = window.frameElement;
-        if (!frameEl || typeof frameEl.matches !== 'function') {
-            return { matches: false };
-        }
-        return { matches: frameEl.matches(frameTarget) };
-    }
-    catch {
-        return { matches: false };
-    }
-}
+import { domFrameProbe } from '../dom-frame-probe.js';
+import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js';
 async function resolveAnalyzeFrameSelection(tabId, frame) {
-    const normalized = normalizeFrameTarget(frame);
-    if (normalized === null) {
-        throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value');
-    }
+    const normalized = normalizeFrameArg(frame);
     // No frame targeting requested — skip the probe entirely and target the main frame.
     if (normalized === undefined) {
         return { frameIds: [0], mode: 'main' };
     }
-    // Pass null instead of undefined to satisfy chrome.scripting.executeScript serialization.
-    const probeResults = await chrome.scripting.executeScript({
-        target: { tabId, allFrames: true },
-        world: 'MAIN',
-        func: analyzeFrameProbe,
-        args: [normalized]
-    });
-    const frameIds = Array.from(new Set(probeResults
-        .filter((r) => !!r.result?.matches)
-        .map((r) => r.frameId)
-        .filter((id) => typeof id === 'number')));
-    if (frameIds.length === 0) {
-        throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page');
-    }
+    const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe);
     if (normalized === 'all') {
         return { frameIds, mode: 'all' };
     }
@@ -101,6 +40,19 @@ async function sendFrameQueries(tabId, frameIds, message) {
             };
         }
     }));
+}
+function buildSingleFrameResult(perFrame, errorCode) {
+    const first = perFrame[0];
+    if (!first) {
+        return { error: errorCode, message: 'No frame response received' };
+    }
+    if (first.error) {
+        return { error: errorCode, message: first.error, frame_id: first.frame_id };
+    }
+    return { ...(first.result || {}), frame_id: first.frame_id };
+}
+function isFrameRoutingError(message) {
+    return message.startsWith('frame_not_found') || message.startsWith('invalid_frame');
 }
 function toNonNegativeInt(value) {
     if (typeof value !== 'number' || !Number.isFinite(value))
@@ -308,66 +260,66 @@ async function executeDOMQueryFallbackViaScripting(tabId, params, fallbackReason
         fallback_reason: fallbackReason
     };
 }
+async function runMainDOMAnalyzeQuery(ctx) {
+    try {
+        return (await chrome.tabs.sendMessage(ctx.tabId, {
+            type: 'DOM_QUERY',
+            params: ctx.query.params
+        }));
+    }
+    catch (err) {
+        const fallbackReason = isContentScriptUnreachableError(err)
+            ? 'content_script_unreachable'
+            : 'content_script_send_failed';
+        try {
+            return await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason);
+        }
+        catch {
+            throw err;
+        }
+    }
+}
+async function runFrameAwareAnalyzeQuery(ctx, config) {
+    const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame);
+    if (frameSelection.mode === 'main') {
+        if (config.mainQuery) {
+            return config.mainQuery(ctx);
+        }
+        return (await chrome.tabs.sendMessage(ctx.tabId, {
+            type: config.messageType,
+            params: ctx.query.params
+        }));
+    }
+    const frameParams = stripFrameParam(ctx.params);
+    const perFrame = await sendFrameQueries(ctx.tabId, frameSelection.frameIds, {
+        type: config.messageType,
+        params: frameParams
+    });
+    if (perFrame.length === 1) {
+        return buildSingleFrameResult(perFrame, config.singleFrameErrorCode);
+    }
+    return config.aggregate(perFrame);
+}
 // =============================================================================
 // DOM
 // =============================================================================
 registerCommand('dom', async (ctx) => {
     try {
-        const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame);
-        // Fast path: preserve legacy behavior when no frame is specified.
-        if (frameSelection.mode === 'main') {
-            let result;
-            try {
-                result = (await chrome.tabs.sendMessage(ctx.tabId, {
-                    type: 'DOM_QUERY',
-                    params: ctx.query.params
-                }));
-            }
-            catch (err) {
-                const fallbackReason = isContentScriptUnreachableError(err)
-                    ? 'content_script_unreachable'
-                    : 'content_script_send_failed';
-                try {
-                    result = await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason);
-                }
-                catch {
-                    throw err;
-                }
-            }
-            ctx.sendResult(result);
-            return;
-        }
-        const frameParams = stripFrameParam(ctx.params);
-        const perFrame = await sendFrameQueries(ctx.tabId, frameSelection.frameIds, {
-            type: 'DOM_QUERY',
-            params: frameParams
+        const result = await runFrameAwareAnalyzeQuery(ctx, {
+            messageType: 'DOM_QUERY',
+            singleFrameErrorCode: 'dom_query_failed',
+            aggregate: aggregateDOMFrameResults,
+            mainQuery: runMainDOMAnalyzeQuery
         });
-        let result;
-        if (perFrame.length === 1) {
-            const first = perFrame[0];
-            if (!first) {
-                result = { error: 'dom_query_failed', message: 'No frame response received' };
-            }
-            else if (first.error) {
-                result = { error: 'dom_query_failed', message: first.error, frame_id: first.frame_id };
-            }
-            else {
-                result = { ...(first.result || {}), frame_id: first.frame_id };
-            }
-        }
-        else {
-            result = aggregateDOMFrameResults(perFrame);
-        }
         ctx.sendResult(result);
     }
     catch (err) {
         const message = errorMessage(err, 'Failed to execute DOM query');
         console.error('[Gasoline][DOM] Command failed:', message, err.stack || err);
-        const isFrameNotFound = message.startsWith('frame_not_found');
-        const isInvalidFrame = message.startsWith('invalid_frame');
+        const routingError = isFrameRoutingError(message);
         ctx.sendResult({
-            error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
-            message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
+            error: routingError ? message : 'dom_query_failed',
+            message: routingError ? message : `Failed to execute DOM query: ${message}`
         });
     }
 });
@@ -376,47 +328,20 @@ registerCommand('dom', async (ctx) => {
 // =============================================================================
 registerCommand('a11y', async (ctx) => {
     try {
-        const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame);
-        // Fast path: preserve legacy behavior when no frame is specified.
-        if (frameSelection.mode === 'main') {
-            const result = await chrome.tabs.sendMessage(ctx.tabId, {
-                type: 'A11Y_QUERY',
-                params: ctx.query.params
-            });
-            ctx.sendResult(result);
-            return;
-        }
-        const frameParams = stripFrameParam(ctx.params);
-        const perFrame = await sendFrameQueries(ctx.tabId, frameSelection.frameIds, {
-            type: 'A11Y_QUERY',
-            params: frameParams
+        const result = await runFrameAwareAnalyzeQuery(ctx, {
+            messageType: 'A11Y_QUERY',
+            singleFrameErrorCode: 'a11y_audit_failed',
+            aggregate: aggregateA11yFrameResults
         });
-        let result;
-        if (perFrame.length === 1) {
-            const first = perFrame[0];
-            if (!first) {
-                result = { error: 'a11y_audit_failed', message: 'No frame response received' };
-            }
-            else if (first.error) {
-                result = { error: 'a11y_audit_failed', message: first.error, frame_id: first.frame_id };
-            }
-            else {
-                result = { ...(first.result || {}), frame_id: first.frame_id };
-            }
-        }
-        else {
-            result = aggregateA11yFrameResults(perFrame);
-        }
         ctx.sendResult(result);
     }
     catch (err) {
         const message = errorMessage(err, 'Failed to execute accessibility audit');
         console.error('[Gasoline][A11Y] Command failed:', message, err.stack || err);
-        const isFrameNotFound = message.startsWith('frame_not_found');
-        const isInvalidFrame = message.startsWith('invalid_frame');
+        const routingError = isFrameRoutingError(message);
         ctx.sendResult({
-            error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
-            message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
+            error: routingError ? message : 'a11y_audit_failed',
+            message: routingError ? message : `Failed to execute accessibility audit: ${message}`
         });
     }
 });

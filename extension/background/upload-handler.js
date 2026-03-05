@@ -7,6 +7,7 @@ import { debugLog } from './index.js';
 import { getServerUrl } from './state.js';
 import { DebugCategory } from './debug.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { buildDaemonHeaders, buildDaemonJSONRequestInit } from '../lib/daemon-http.js';
 // ============================================
 // Timing Constants
 // ============================================
@@ -154,7 +155,7 @@ let escalationInProgress = false;
  */
 async function dismissFileDialog(serverUrl) {
     try {
-        const response = await fetchWithTimeout(`${serverUrl}/api/os-automation/dismiss`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' } }, 5000);
+        const response = await fetchWithTimeout(`${serverUrl}/api/os-automation/dismiss`, { method: 'POST', headers: buildDaemonHeaders() }, 5000);
         if (!response.ok) {
             return;
         }
@@ -198,11 +199,7 @@ async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
     // Step 3: Call daemon for OS automation with browser_pid: 0 (auto-detect)
     let daemonResponse;
     try {
-        const response = await fetchWithTimeout(`${serverUrl}/api/os-automation/inject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ file_path: filePath, browser_pid: 0 })
-        }, DAEMON_FETCH_TIMEOUT_MS);
+        const response = await fetchWithTimeout(`${serverUrl}/api/os-automation/inject`, buildDaemonJSONRequestInit({ file_path: filePath, browser_pid: 0 }), DAEMON_FETCH_TIMEOUT_MS);
         if (!response.ok) {
             let errorMsg = `HTTP ${response.status}`;
             try {
@@ -294,11 +291,7 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
     // Stage 1: Fetch file data from Go server
     let fileData;
     try {
-        const response = await fetchWithTimeout(`${getServerUrl()}/api/file/read`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ file_path })
-        }, DAEMON_FETCH_TIMEOUT_MS);
+        const response = await fetchWithTimeout(`${getServerUrl()}/api/file/read`, buildDaemonJSONRequestInit({ file_path }), DAEMON_FETCH_TIMEOUT_MS);
         if (!response.ok) {
             sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: HTTP ${response.status}`);
             actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error');

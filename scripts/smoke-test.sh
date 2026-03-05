@@ -116,6 +116,7 @@ _smoke_check_deps
 
 # ── Source framework (initializes globals) ────────────────
 # shellcheck source=/dev/null
+export SMOKE_KEEP_DAEMON_ON_EXIT="${SMOKE_KEEP_DAEMON_ON_EXIT:-1}"
 source "$SMOKE_DIR/framework-smoke.sh"
 init_smoke "$PORT"
 # Note: init_smoke sets the EXIT trap (_smoke_master_cleanup).
@@ -320,11 +321,25 @@ if [ "$MODULE_NUM" -eq 0 ] && [ -z "$START_FROM" ]; then
     exit 1
 fi
 
-# ── Cleanup: kill any orphaned test servers ───────────────
+# ── Cleanup: kill test helpers, then ensure daemon remains available ──
 pkill -f "upload-server.py" 2>/dev/null || true
-kill_server 2>/dev/null || true
-if [ -f "$RUNNER_DIR/cleanup-test-daemons.sh" ]; then
-    bash "$RUNNER_DIR/cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+
+if [ "${SMOKE_KEEP_DAEMON_ON_EXIT:-1}" = "1" ]; then
+    if ! wait_for_health 10; then
+        echo "  Daemon is down after smoke run. Restarting on port $PORT..."
+        start_daemon_with_flags --enable-os-upload-automation >/dev/null 2>&1 || true
+        sleep 1
+    fi
+
+    if wait_for_health 10; then
+        post_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+        post_ver=$(echo "$post_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
+        echo "  Post-run daemon status: up on port $PORT (v${post_ver})."
+    else
+        echo "  WARNING: post-run daemon is still unavailable on port $PORT."
+    fi
+else
+    echo "  Post-run daemon cleanup mode enabled (SMOKE_KEEP_DAEMON_ON_EXIT=0)."
 fi
 
 # ── Summary ──────────────────────────────────────────────

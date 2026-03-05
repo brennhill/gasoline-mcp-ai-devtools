@@ -115,11 +115,7 @@ async function buildCRX() {
     // Create zip using system zip command
     try {
       await exec(`cd ${EXTENSION_DIR} && zip -q -r "../${TEMP_ZIP}" \
-        manifest.json background.js background.js.map content.js content.js.map inject.js inject.js.map early-patch.js early-patch.js.map \
-        early-patch.bundled.js content.bundled.js inject.bundled.js \
-        popup.html popup.js popup.js.map options.html options.js options.js.map \
-        icons/ lib/ \
-        -x "*.DS_Store" "package.json"`)
+        .`)
     } catch (err) {
       console.error('❌ Failed to create zip:', err.message)
       // CLI script exits with error status

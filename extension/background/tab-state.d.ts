@@ -54,6 +54,10 @@ export interface TrackedTabInfo {
  */
 export declare function getTrackedTabInfo(): Promise<TrackedTabInfo>;
 /**
+ * Persist tracked tab state.
+ */
+export declare function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>): Promise<void>;
+/**
  * Clear tracked tab state
  */
 export declare function clearTrackedTab(): void;
@@ -66,4 +70,9 @@ export declare function getAllConfigSettings(): Promise<Record<string, boolean |
  * Returns null if no active tab or no tab id.
  */
 export declare function getActiveTab(): Promise<chrome.tabs.Tab | null>;
+/**
+ * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Silently ignores errors (content script may not be loaded).
+ */
+export declare function sendTabToast(tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error' | 'audio', duration_ms?: number): void;
 //# sourceMappingURL=tab-state.d.ts.map

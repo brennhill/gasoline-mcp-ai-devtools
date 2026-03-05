@@ -136,7 +136,13 @@ func (h *interactActionHandler) buildInteractHandlers() map[string]ModeHandler {
 		"screen_recording_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.recordingInteractHandler.handleRecordStart(req, args)
 		},
+		"record_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+			return th.recordingInteractHandler.handleRecordStart(req, args)
+		},
 		"screen_recording_stop": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+			return th.recordingInteractHandler.handleRecordStop(req, args)
+		},
+		"record_stop": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.recordingInteractHandler.handleRecordStop(req, args)
 		},
 		"upload": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -260,4 +266,3 @@ func (h *interactActionHandler) applyJitter(action string) int {
 	}
 	return jitterMs
 }
-

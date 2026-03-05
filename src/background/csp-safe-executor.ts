@@ -49,6 +49,7 @@ interface ExecutorCommand {
 }
 
 export function cspSafeExecutor(command: ExecutorCommand): any {
+  /* jscpd:ignore-start */
   // --- Inline serialize (self-contained, no external refs) ---
   function serialize(value: any, depth: number, seen: WeakSet<object>): any {
     if (depth > 10) return '[max depth]'
@@ -118,6 +119,7 @@ export function cspSafeExecutor(command: ExecutorCommand): any {
     }
     return String(value)
   }
+  /* jscpd:ignore-end */
 
   // --- Resolve a StructuredValue to an actual JS value ---
   function resolveValue(val: ExecutorValue): any {

@@ -12,6 +12,7 @@
 
 import type { StorageChange } from '../types/index.js'
 import { StorageKey } from '../lib/constants.js'
+import { clearTrackedTab as clearTrackedTabState } from './tab-state.js'
 
 // Re-export split modules so existing consumers keep working
 export {
@@ -32,6 +33,7 @@ export {
   loadDebugModeState,
   saveSetting,
   getTrackedTabInfo,
+  setTrackedTab,
   clearTrackedTab,
   getAllConfigSettings,
   getActiveTab,
@@ -215,7 +217,7 @@ export async function handleTrackedTabClosed(
   const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])) as { trackedTabId?: number }
   if (result.trackedTabId === closedTabId) {
     if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
+    clearTrackedTabState()
   }
 }
 
@@ -266,16 +268,12 @@ export function installStartupListener(logFn?: (message: string) => void): void 
           if (logFn) logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking')
         } catch {
           if (logFn) logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state')
-          chrome.storage.local.remove([
-            StorageKey.TRACKED_TAB_ID,
-            StorageKey.TRACKED_TAB_URL,
-            StorageKey.TRACKED_TAB_TITLE
-          ])
+          clearTrackedTabState()
         }
       }
     } catch {
       // Safety fallback: clear if we can't check
-      chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
+      clearTrackedTabState()
     }
   })
 }

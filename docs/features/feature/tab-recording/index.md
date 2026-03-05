@@ -12,8 +12,11 @@ code_paths:
   - cmd/dev-console/tools_recording_video_handlers.go
   - src/background/event-listeners.ts
   - src/background/init.ts
+  - src/background/context-menus.ts
+  - src/background/recording-badge.ts
   - src/background/recording-capture.ts
   - src/background/recording.ts
+  - src/background/recording-utils.ts
   - src/offscreen/recording-worker.ts
   - src/lib/daemon-http.ts
   - src/popup/recording.ts
@@ -24,6 +27,8 @@ test_paths:
   - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_recording_video_test.go
   - tests/extension/recording-shortcut-command.test.js
+  - tests/extension/context-menus-labels.test.js
+  - tests/extension/recording-listeners-target-tab.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

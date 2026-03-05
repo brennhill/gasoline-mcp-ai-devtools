@@ -397,6 +397,30 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
 export async function resolveTargetTab(query, paramsObj) {
     const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined;
     const useActiveTab = paramsObj.use_active_tab === true;
+    async function resolveAutoTrackOrEscapeFallback(trackedTabId, fallbackMessage) {
+        if (isAiWebPilotEnabled()) {
+            const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
+            if (recovered.target || recovered.error) {
+                return recovered;
+            }
+        }
+        if (isBrowserEscapeAction(query.type, paramsObj)) {
+            const activeTab = await getActiveTab();
+            if (activeTab?.id) {
+                diagnosticLog(`[Diagnostic] ${fallbackMessage} ${activeTab.id} for escape action ${query.type}`);
+                return {
+                    target: {
+                        tabId: activeTab.id,
+                        url: activeTab.url || '',
+                        source: 'active_tab_fallback',
+                        trackedTabId,
+                        useActiveTab: true
+                    }
+                };
+            }
+        }
+        return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
+    }
     if (explicitTabId) {
         const explicitTab = await getTabWithRetry(explicitTabId);
         if (!explicitTab?.id) {
@@ -490,51 +514,9 @@ export async function resolveTargetTab(query, paramsObj) {
         catch {
             /* best effort */
         }
-        if (isAiWebPilotEnabled()) {
-            const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
-            if (recovered.target || recovered.error) {
-                return recovered;
-            }
-        }
-        if (isBrowserEscapeAction(query.type, paramsObj)) {
-            const activeTab = await getActiveTab();
-            if (activeTab?.id) {
-                diagnosticLog(`[Diagnostic] Falling back to active tab ${activeTab.id} for escape action ${query.type}`);
-                return {
-                    target: {
-                        tabId: activeTab.id,
-                        url: activeTab.url || '',
-                        source: 'active_tab_fallback',
-                        trackedTabId,
-                        useActiveTab: true
-                    }
-                };
-            }
-        }
-        return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
+        return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Falling back to active tab');
     }
-    if (isAiWebPilotEnabled()) {
-        const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
-        if (recovered.target || recovered.error) {
-            return recovered;
-        }
-    }
-    if (isBrowserEscapeAction(query.type, paramsObj)) {
-        const activeTab = await getActiveTab();
-        if (activeTab?.id) {
-            diagnosticLog(`[Diagnostic] Using active tab fallback ${activeTab.id} for escape action ${query.type}`);
-            return {
-                target: {
-                    tabId: activeTab.id,
-                    url: activeTab.url || '',
-                    source: 'active_tab_fallback',
-                    trackedTabId: null,
-                    useActiveTab: true
-                }
-            };
-        }
-    }
-    return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
+    return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Using active tab fallback');
 }
 /**
  * Check if a URL is restricted — content scripts cannot run on these pages.

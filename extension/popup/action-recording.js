@@ -3,7 +3,8 @@
  * Why: Separates event recording controls from screen recording, keeping each feature self-contained.
  * Docs: docs/features/feature/flow-recording/index.md
  */
-import { StorageKey } from '../lib/constants.js';
+import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js';
+import { postDaemonJSON } from '../lib/daemon-http.js';
 const START_LABEL = 'Record action workflow';
 const STOP_LABEL = 'Stop recording';
 function showRecording(els, state) {
@@ -45,45 +46,49 @@ function getServerUrl() {
     return new Promise((resolve) => {
         chrome.storage.local.get(StorageKey.SERVER_URL, (result) => {
             void chrome.runtime.lastError;
-            resolve(result[StorageKey.SERVER_URL] || 'http://localhost:7890');
+            resolve(result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL);
         });
     });
+}
+function getConfigureError(data) {
+    const message = data.error?.message;
+    return typeof message === 'string' && message.length > 0 ? message : null;
+}
+function extractRecordingID(data) {
+    const text = data.result?.content?.[0]?.text ?? '';
+    const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/);
+    return idMatch?.[1] ?? null;
+}
+async function callConfigureFromPopup(argumentsPayload) {
+    const serverUrl = await getServerUrl();
+    const resp = await postDaemonJSON(`${serverUrl}/mcp`, {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: {
+            name: 'configure',
+            arguments: argumentsPayload
+        }
+    });
+    if (!resp.ok) {
+        throw new Error(`Server error: HTTP ${resp.status}`);
+    }
+    return (await resp.json());
 }
 async function startActionRecording(els, state) {
     els.label.textContent = 'Starting...';
     try {
-        const serverUrl = await getServerUrl();
-        const resp = await fetch(`${serverUrl}/mcp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Gasoline-Client': 'gasoline-extension'
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: Date.now(),
-                method: 'tools/call',
-                params: {
-                    name: 'configure',
-                    arguments: { what: 'event_recording_start', name: `workflow-${Date.now()}` }
-                }
-            })
+        const data = await callConfigureFromPopup({
+            what: 'event_recording_start',
+            name: `workflow-${Date.now()}`
         });
-        if (!resp.ok) {
+        const configureError = getConfigureError(data);
+        if (configureError) {
             showIdle(els, state);
-            showError(els, `Server error: HTTP ${resp.status}`);
+            showError(els, configureError);
             return;
         }
-        const data = await resp.json();
-        if (data.error) {
-            showIdle(els, state);
-            showError(els, data.error.message ?? 'Unknown error');
-            return;
-        }
-        // Extract recording_id from response text
-        const text = data.result?.content?.[0]?.text ?? '';
-        const idMatch = text.match(/"recording_id"\s*:\s*"([^"]+)"/);
-        state.recordingId = idMatch?.[1] ?? null;
+        state.recordingId = extractRecordingID(data);
         state.startTime = Date.now();
         // Persist state so reopening popup shows recording in progress
         chrome.storage.local.set({
@@ -103,31 +108,13 @@ async function startActionRecording(els, state) {
 async function stopActionRecording(els, state) {
     els.label.textContent = 'Stopping...';
     try {
-        const serverUrl = await getServerUrl();
-        const resp = await fetch(`${serverUrl}/mcp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Gasoline-Client': 'gasoline-extension'
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: Date.now(),
-                method: 'tools/call',
-                params: {
-                    name: 'configure',
-                    arguments: { what: 'event_recording_stop', recording_id: state.recordingId ?? '' }
-                }
-            })
+        const data = await callConfigureFromPopup({
+            what: 'event_recording_stop',
+            recording_id: state.recordingId ?? ''
         });
-        if (!resp.ok) {
-            showIdle(els, state);
-            showError(els, `Server error: HTTP ${resp.status}`);
-            return;
-        }
-        const data = await resp.json();
-        if (data.error) {
-            showError(els, data.error.message ?? 'Unknown error');
+        const configureError = getConfigureError(data);
+        if (configureError) {
+            showError(els, configureError);
         }
         chrome.storage.local.remove('gasoline_action_recording', () => {
             void chrome.runtime.lastError;

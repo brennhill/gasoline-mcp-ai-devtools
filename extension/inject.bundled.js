@@ -2965,17 +2965,8 @@ function wrapFetch(originalFetchFn) {
         } catch {
           responseBody = "[Could not read response]";
         }
-        const safeHeaders = {};
         const rawHeaders = init?.headers || (typeof input === "object" && "headers" in input ? input.headers : null);
-        if (rawHeaders) {
-          const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
-          Object.keys(headers).forEach((key) => {
-            const value = headers[key];
-            if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-              safeHeaders[key] = value;
-            }
-          });
-        }
+        const safeHeaders = sanitizeHeaders(rawHeaders);
         const logPayload = {
           level: "error",
           type: "network",
@@ -2992,17 +2983,8 @@ function wrapFetch(originalFetchFn) {
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
-      const safeHeaders = {};
       const rawHeaders = init?.headers || (typeof input === "object" && "headers" in input ? input.headers : null);
-      if (rawHeaders) {
-        const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
-        Object.keys(headers).forEach((key) => {
-          const value = headers[key];
-          if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-            safeHeaders[key] = value;
-          }
-        });
-      }
+      const safeHeaders = sanitizeHeaders(rawHeaders);
       const logPayload = {
         level: "error",
         type: "network",

@@ -13,6 +13,7 @@ import { registerCommand } from './registry.js';
 import { CDP_VERSION } from '../../lib/constants.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { delay } from '../../lib/timeout-utils.js';
+import { postDaemonJSON } from '../../lib/daemon-http.js';
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
@@ -115,10 +116,10 @@ export function computeFullPageCaptureDimensions(contentWidth, contentHeight, hi
 /** Post screenshot data to server for saving and query resolution. */
 async function postScreenshot(dataUrl, pageUrl, queryId) {
     try {
-        const response = await fetch(`${getServerUrl()}/screenshots`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ data_url: dataUrl, url: pageUrl, query_id: queryId })
+        const response = await postDaemonJSON(`${getServerUrl()}/screenshots`, {
+            data_url: dataUrl,
+            url: pageUrl,
+            query_id: queryId
         });
         return response.ok;
     }

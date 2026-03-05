@@ -8,6 +8,7 @@ import type { ScreenRecordingHandlers, RecordingShortcutHandlers } from './keybo
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { toggleDrawModeForTab } from './draw-mode-toggle.js'
+import { setTrackedTab, clearTrackedTab } from './tab-state.js'
 
 // =============================================================================
 // CONTEXT MENU IDS
@@ -18,6 +19,55 @@ const MENU_ID_SCREENSHOT = 'gasoline-screenshot'
 const MENU_ID_ANNOTATE = 'gasoline-annotate-page'
 const MENU_ID_RECORD = 'gasoline-record-screen'
 const MENU_ID_ACTION_RECORD = 'gasoline-action-record'
+
+const CONTROL_TAB_TITLE = 'Control Tab'
+const RELEASE_CONTROL_TITLE = 'Release Control'
+const ANNOTATE_START_TITLE = 'Annotate Page'
+const ANNOTATE_STOP_TITLE = 'Stop Annotation'
+const RECORD_START_TITLE = 'Record Screen'
+const RECORD_STOP_TITLE = 'Stop Screen Recording'
+const ACTION_RECORD_START_TITLE = 'Record User Actions'
+const ACTION_RECORD_STOP_TITLE = 'Stop User Action Recording'
+
+function updateContextMenuTitle(menuId: string, title: string): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.contextMenus.update(menuId, { title }, () => resolve())
+  })
+}
+
+async function isDrawModeActive(tabId: number | undefined): Promise<boolean> {
+  if (!tabId) return false
+  try {
+    const result = (await chrome.tabs.sendMessage(tabId, {
+      type: 'GASOLINE_GET_ANNOTATIONS'
+    })) as { draw_mode_active?: boolean }
+    return result?.draw_mode_active === true
+  } catch {
+    return false
+  }
+}
+
+async function refreshDynamicContextMenuTitles(
+  tabId: number | undefined,
+  recordingHandlers: ScreenRecordingHandlers,
+  actionRecordingHandlers: RecordingShortcutHandlers
+): Promise<void> {
+  const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
+  const trackedTabId = tracked[StorageKey.TRACKED_TAB_ID]
+  const drawModeActive = await isDrawModeActive(tabId)
+
+  await Promise.all([
+    updateContextMenuTitle(MENU_ID_CONTROL, trackedTabId && tabId === trackedTabId ? RELEASE_CONTROL_TITLE : CONTROL_TAB_TITLE),
+    updateContextMenuTitle(MENU_ID_ANNOTATE, drawModeActive ? ANNOTATE_STOP_TITLE : ANNOTATE_START_TITLE),
+    updateContextMenuTitle(MENU_ID_RECORD, recordingHandlers.isRecording() ? RECORD_STOP_TITLE : RECORD_START_TITLE),
+    updateContextMenuTitle(
+      MENU_ID_ACTION_RECORD,
+      actionRecordingHandlers.isRecording() ? ACTION_RECORD_STOP_TITLE : ACTION_RECORD_START_TITLE
+    )
+  ])
+  const contextMenusWithRefresh = chrome.contextMenus as unknown as { refresh?: () => void }
+  contextMenusWithRefresh.refresh?.()
+}
 
 // =============================================================================
 // CONTEXT MENU INSTALLATION
@@ -36,11 +86,22 @@ export function installContextMenus(
 
   chrome.contextMenus.removeAll(() => {
     const ctx: ['page'] = ['page']
-    chrome.contextMenus.create({ id: MENU_ID_CONTROL, title: 'Control Page', contexts: ctx })
+    chrome.contextMenus.create({ id: MENU_ID_CONTROL, title: CONTROL_TAB_TITLE, contexts: ctx })
     chrome.contextMenus.create({ id: MENU_ID_SCREENSHOT, title: 'Take Screenshot', contexts: ctx })
-    chrome.contextMenus.create({ id: MENU_ID_ANNOTATE, title: 'Annotate Page', contexts: ctx })
-    chrome.contextMenus.create({ id: MENU_ID_RECORD, title: 'Record Screen', contexts: ctx })
-    chrome.contextMenus.create({ id: MENU_ID_ACTION_RECORD, title: 'Record User Actions', contexts: ctx })
+    chrome.contextMenus.create({ id: MENU_ID_ANNOTATE, title: ANNOTATE_START_TITLE, contexts: ctx })
+    chrome.contextMenus.create({ id: MENU_ID_RECORD, title: RECORD_START_TITLE, contexts: ctx })
+    chrome.contextMenus.create({ id: MENU_ID_ACTION_RECORD, title: ACTION_RECORD_START_TITLE, contexts: ctx })
+  })
+
+  const contextMenusWithShown = chrome.contextMenus as unknown as {
+    onShown?: {
+      addListener: (listener: (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => void) => void
+    }
+  }
+  contextMenusWithShown.onShown?.addListener((_info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
+    refreshDynamicContextMenuTitles(tab?.id, recordingHandlers, actionRecordingHandlers).catch((err) => {
+      if (logFn) logFn(`Context menu title refresh error: ${errorMessage(err)}`)
+    })
   })
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -48,12 +109,14 @@ export function installContextMenus(
 
     if (info.menuItemId === MENU_ID_CONTROL) {
       try {
-        await chrome.storage.local.set({
-          [StorageKey.TRACKED_TAB_ID]: tab.id,
-          [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
-          [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
-        })
-        if (logFn) logFn(`Now controlling tab ${tab.id}: ${tab.url}`)
+        const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
+        if (tracked[StorageKey.TRACKED_TAB_ID] === tab.id) {
+          clearTrackedTab()
+          if (logFn) logFn(`Released control for tab ${tab.id}`)
+        } else {
+          await setTrackedTab(tab)
+          if (logFn) logFn(`Now controlling tab ${tab.id}: ${tab.url}`)
+        }
       } catch (err) {
         if (logFn) logFn(`Control page error: ${errorMessage(err)}`)
       }
@@ -87,5 +150,7 @@ export function installContextMenus(
         if (logFn) logFn('Cannot reach content script for annotation via context menu')
       }
     }
+
+    refreshDynamicContextMenuTitles(tab.id, recordingHandlers, actionRecordingHandlers).catch(() => {})
   })
 }

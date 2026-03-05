@@ -9,6 +9,26 @@
     return fallback;
   }
 
+  // extension/lib/daemon-http.js
+  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  function buildDaemonHeaders(options = {}) {
+    const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
+    const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
+    const headers = {
+      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+    };
+    if (contentType !== null) {
+      headers["Content-Type"] = contentType;
+    }
+    if (normalizedVersion) {
+      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+    }
+    return {
+      ...headers,
+      ...additionalHeaders
+    };
+  }
+
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
   var defaultState = {
@@ -242,7 +262,10 @@
         console.log(LOG, "POSTing to", `${serverUrl}/recordings/save`, { size: blob.size, hasAudio });
         const response = await fetch(`${serverUrl}/recordings/save`, {
           method: "POST",
-          headers: { "X-Gasoline-Client": "gasoline-extension-offscreen" },
+          headers: buildDaemonHeaders({
+            clientName: "gasoline-extension-offscreen",
+            contentType: null
+          }),
           body: formData
         });
         console.log(LOG, "Server response:", response.status);
