@@ -2,7 +2,7 @@
 doc_type: qa_plan
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 ---
@@ -13,9 +13,11 @@ owners:
 
 1. `npm run docs:check:strict`
 2. `npm run docs:lint:content-contract`
-3. `npm run docs:lint:reference-schema-sync`
-4. `npm run docs:ci`
-5. `(cd cookwithgasoline.com && npm run build)`
+3. `npm run docs:lint:style-contract`
+4. `npm run docs:lint:vale`
+5. `npm run docs:lint:reference-schema-sync`
+6. `npm run docs:ci`
+7. `(cd cookwithgasoline.com && npm run build)`
 
 ## Manual Checks
 
@@ -29,6 +31,7 @@ owners:
 - Reference docs drift when schema enums change.
 - Visual regressions in top hero layout and section spacing.
 - Missing metadata/frontmatter on changed docs/blog/articles files.
+- New tutorial/article pages bypassing tone/readability best practices.
 
 ## Linked Architecture
 

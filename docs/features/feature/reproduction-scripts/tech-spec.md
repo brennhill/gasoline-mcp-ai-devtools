@@ -1,7 +1,7 @@
 ---
 feature: Reproduction Scripts
 status: in-progress
-version: v5.9
+version: 0.7.12
 doc_type: tech-spec
 feature_id: feature-reproduction-scripts
 last_reviewed: 2026-02-16

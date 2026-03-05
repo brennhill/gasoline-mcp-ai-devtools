@@ -3,7 +3,7 @@ feature: api-schema
 status: shipped
 tool: observe
 mode: api
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-api-schema
 last_reviewed: 2026-02-16

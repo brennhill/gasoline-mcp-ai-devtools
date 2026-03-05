@@ -3,7 +3,7 @@ feature: link-health
 status: active
 tool: analyze
 mode: link_health
-version: v1.0
+version: 0.7.12
 last-updated: 2026-02-09
 last_reviewed: 2026-02-16
 ---

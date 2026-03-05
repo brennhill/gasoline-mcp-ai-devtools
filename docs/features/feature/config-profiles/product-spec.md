@@ -3,7 +3,7 @@ feature: config-profiles
 status: proposed
 tool: configure
 mode: profiles
-version: v6.3
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-config-profiles
 last_reviewed: 2026-02-16

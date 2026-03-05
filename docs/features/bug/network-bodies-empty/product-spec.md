@@ -3,7 +3,7 @@ feature: network-bodies-empty
 status: in-progress
 tool: observe
 mode: network_bodies
-version: 5.2.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: bug-network-bodies-empty
 last_reviewed: 2026-02-16

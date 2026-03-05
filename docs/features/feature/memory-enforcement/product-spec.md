@@ -3,7 +3,7 @@ feature: memory-enforcement
 status: shipped
 tool: configure
 mode: health
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-memory-enforcement
 last_reviewed: 2026-02-16

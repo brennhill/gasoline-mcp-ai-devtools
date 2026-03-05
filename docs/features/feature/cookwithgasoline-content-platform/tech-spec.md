@@ -2,7 +2,7 @@
 doc_type: tech_spec
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 ---
@@ -23,6 +23,8 @@ owners:
 ## Contracts and Validation
 
 - Content contract: `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- Style contract: `scripts/docs/check-content-style-contract.mjs`
+- Vale style gate: `scripts/docs/run-vale-on-changed.mjs` + `.vale/styles/Gasoline/*`
 - Reference schema sync contract: `scripts/docs/check-reference-schema-sync.mjs`
 - Feature bundle contract: `scripts/docs/check-feature-bundles.js`
 

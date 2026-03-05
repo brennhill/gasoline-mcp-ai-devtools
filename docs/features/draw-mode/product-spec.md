@@ -2,7 +2,7 @@
 feature: Draw Mode
 status: proposed
 tool: interact, analyze
-version: v0.7
+version: 0.7.12
 doc_type: product-spec
 feature_id: draw-mode
 last_reviewed: 2026-02-16

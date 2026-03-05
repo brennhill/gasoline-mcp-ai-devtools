@@ -148,7 +148,7 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	result, err := parseConfigureArgs("noise_rule", []string{
 		"--rule-id", "rule-1",
 		"--store-action", "save",
-		"--selector", "#app",
+		"--pattern", "err-*",
 		"--namespace", "test-ns",
 	})
 	if err != nil {
@@ -158,7 +158,7 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	checks := map[string]string{
 		"rule_id":      "rule-1",
 		"store_action": "save",
-		"selector":     "#app",
+		"pattern":      "err-*",
 		"namespace":    "test-ns",
 	}
 	for k, want := range checks {

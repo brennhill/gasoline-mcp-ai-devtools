@@ -3,7 +3,7 @@ feature: Playback Engine
 status: proposed
 tool: configure, observe
 mode: playback, playback_results
-version: v0.7
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-playback-engine
 last_reviewed: 2026-02-18
