@@ -5,30 +5,15 @@
 package server
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
-	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
-
-// sanitizeFilename removes characters unsafe for filenames.
-var unsafeChars = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
-
-func sanitizeForFilename(s string) string {
-	s = unsafeChars.ReplaceAllString(s, "_")
-	if len(s) > 50 {
-		s = s[:50]
-	}
-	return s
-}
 
 const maxPostBodySize = 10 * 1024 * 1024 // 10MB
 
@@ -37,30 +22,6 @@ type screenshotRequest struct {
 	DataURL       string `json:"data_url"`
 	URL           string `json:"url"`
 	CorrelationID string `json:"correlation_id"`
-}
-
-// decodeDataURL extracts raw image bytes from a data URL string.
-func decodeDataURL(dataURL string) ([]byte, error) {
-	parts := strings.SplitN(dataURL, ",", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid dataUrl format")
-	}
-	return base64.StdEncoding.DecodeString(parts[1])
-}
-
-// buildScreenshotFilename creates a sanitized filename from hostname, timestamp, and optional correlation ID.
-func buildScreenshotFilename(pageURL, correlationID string) string {
-	hostname := "unknown"
-	if pageURL != "" {
-		if u, err := url.Parse(pageURL); err == nil && u.Host != "" {
-			hostname = u.Host
-		}
-	}
-	ts := time.Now().Format("20060102-150405")
-	if correlationID != "" {
-		return fmt.Sprintf("%s-%s-%s.jpg", sanitizeForFilename(hostname), ts, sanitizeForFilename(correlationID))
-	}
-	return fmt.Sprintf("%s-%s.jpg", sanitizeForFilename(hostname), ts)
 }
 
 // saveScreenshotFile writes image data to the screenshots directory and returns the full path.
@@ -99,13 +60,13 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imageData, err := decodeDataURL(body.DataURL)
+	imageData, err := util.DecodeDataURL(body.DataURL)
 	if err != nil {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid base64 data"})
 		return
 	}
 
-	filename := buildScreenshotFilename(body.URL, body.CorrelationID)
+	filename := util.BuildScreenshotFilename(body.URL, body.CorrelationID)
 	savePath, err := saveScreenshotFile(filename, imageData)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})

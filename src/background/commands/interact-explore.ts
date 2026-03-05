@@ -5,6 +5,7 @@
 import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
 import { domPrimitiveNavDiscovery } from '../dom-primitives-nav-discovery.js'
 import { registerCommand } from './registry.js'
+import { errorMessage } from '../../lib/error-utils.js'
 
 // =============================================================================
 // READABLE CONTENT EXTRACTION (self-contained for chrome.scripting.executeScript)
@@ -251,7 +252,7 @@ registerCommand('explore_page', async (ctx) => {
 
     ctx.sendResult(payload)
   } catch (err) {
-    const message = (err as Error).message || 'Explore page failed'
+    const message = errorMessage(err, 'Explore page failed')
     ctx.sendResult({
       error: 'explore_page_failed',
       message

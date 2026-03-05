@@ -266,4 +266,14 @@ export declare function racePromises<T>(promises: Promise<T>[]): Promise<T>;
  * );
  */
 export declare function executeWithTimeoutAndCleanup<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T, cleanup?: () => void): Promise<T>;
+/**
+ * Fetch a URL with an AbortController-based timeout.
+ * Consolidates the recurring AbortController + setTimeout + clearTimeout pattern.
+ *
+ * @param url URL to fetch
+ * @param options Standard RequestInit (headers, method, body, etc.)
+ * @param timeoutMs Timeout in milliseconds before aborting
+ * @returns The fetch Response
+ */
+export declare function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response>;
 //# sourceMappingURL=timeout-utils.d.ts.map

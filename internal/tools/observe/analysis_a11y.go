@@ -44,7 +44,7 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 			"partial":      true,
 			"summary":      a11ysummary.BuildSummary(a11ysummary.Counts{}),
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit (partial — "+err.Error()+")", partialResult)}
+		return mcp.Succeed(req, "A11y audit (partial — "+err.Error()+")", partialResult)
 	}
 
 	var auditResult map[string]any
@@ -53,11 +53,11 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 	}
 
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit", buildA11ySummary(auditResult))}
+		return mcp.Succeed(req, "A11y audit", buildA11ySummary(auditResult))
 	}
 
 	ensureA11ySummary(auditResult)
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit", auditResult)}
+	return mcp.Succeed(req, "A11y audit", auditResult)
 }
 
 // ensureA11ySummary adds or normalizes the summary map on a11y results.

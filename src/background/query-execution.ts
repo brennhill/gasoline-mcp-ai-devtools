@@ -11,6 +11,7 @@ import { DebugCategory } from './debug.js'
 import { scaleTimeout } from '../lib/timeouts.js'
 import { parseExpression } from './csp-safe-parser.js'
 import { cspSafeExecutor } from './csp-safe-executor.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // =============================================================================
 // CSP PROBE
@@ -211,7 +212,7 @@ export async function executeViaScriptingAPI(
     }
     return { success: false, error: 'no_result', message: 'chrome.scripting.executeScript produced no result' }
   } catch (err) {
-    const msg = (err as Error).message || ''
+    const msg = errorMessage(err) || ''
     if (msg.includes('timeout')) {
       return { success: false, error: 'execution_timeout', message: msg }
     }
@@ -274,7 +275,7 @@ async function executeViaStructuredCommand(
       execution_mode: modeTag
     }
   } catch (err) {
-    const msg = (err as Error).message || ''
+    const msg = errorMessage(err) || ''
     if (msg.includes('timeout')) {
       return { success: false, error: 'execution_timeout', message: msg, execution_mode: modeTag }
     }
@@ -335,7 +336,7 @@ export async function executeWithWorldRouting(
 
     return result
   } catch (err) {
-    let message = (err as Error).message || 'Tab communication failed'
+    let message = errorMessage(err, 'Tab communication failed')
 
     // Auto-fallback: content script not reachable — try scripting API MAIN, then structured
     if (world === 'auto' && message.includes('Receiving end does not exist')) {

@@ -4,6 +4,7 @@
  */
 import { StorageKey } from '../lib/constants.js';
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js';
+import { errorMessage } from '../lib/error-utils.js';
 // =============================================================================
 // CONTEXT MENU IDS
 // =============================================================================
@@ -45,7 +46,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
             }
             catch (err) {
                 if (logFn)
-                    logFn(`Control page error: ${err.message}`);
+                    logFn(`Control page error: ${errorMessage(err)}`);
             }
         }
         else if (info.menuItemId === MENU_ID_SCREENSHOT) {
@@ -63,7 +64,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
             }
             catch (err) {
                 if (logFn)
-                    logFn(`Context menu recording error: ${err.message}`);
+                    logFn(`Context menu recording error: ${errorMessage(err)}`);
             }
         }
         else if (info.menuItemId === MENU_ID_ACTION_RECORD) {
@@ -78,7 +79,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
             }
             catch (err) {
                 if (logFn)
-                    logFn(`Context menu action recording error: ${err.message}`);
+                    logFn(`Context menu action recording error: ${errorMessage(err)}`);
             }
         }
         else if (info.menuItemId === MENU_ID_ANNOTATE) {

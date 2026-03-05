@@ -9,6 +9,8 @@ import { domPrimitiveQuery } from './dom-primitives-query.js';
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
 import { normalizeFrameTarget } from '../lib/frame-utils.js';
 import { isReadOnlyAction, isMutatingAction } from './action-metadata.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -111,9 +113,6 @@ function toDOMResult(value) {
         return null;
     return candidate;
 }
-function wait(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
 /** Resolve which DOM action name to dispatch for wait_for based on params.
  *  Callers must validate mutual exclusivity before calling this. */
 function resolveWaitForAction(params) {
@@ -147,7 +146,7 @@ async function executeWaitForURL(tabId, params) {
             };
         }
         const remaining = timeoutMs - (Date.now() - startedAt);
-        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
+        await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
     }
 }
 async function executeWaitFor(target, params) {
@@ -170,7 +169,7 @@ async function executeWaitFor(target, params) {
     let lastResult = toDOMResult(quickPicked?.result) ?? null;
     while (Date.now() - startedAt < timeoutMs) {
         const remaining = timeoutMs - (Date.now() - startedAt);
-        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
+        await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
         const probeResults = await chrome.scripting.executeScript({
             target,
             world: 'MAIN',
@@ -393,8 +392,8 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
             sendAsyncResult(syncClient, query.id, query.correlation_id, status, await enrichWithEffectiveContext(tabId, urlResult), urlResult.success ? undefined : urlResult.error);
         }
         catch (err) {
-            actionToast(tabId, action, err.message, 'error');
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, err.message);
+            actionToast(tabId, action, errorMessage(err), 'error');
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMessage(err));
         }
         return;
     }
@@ -458,7 +457,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const MIN_TOAST_MS = 500;
         const elapsed = Date.now() - tryingShownAt;
         if (!readOnly && elapsed < MIN_TOAST_MS)
-            await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed));
+            await delay(MIN_TOAST_MS - elapsed);
         // list_interactive: merge elements from all frames
         if (action === 'list_interactive') {
             const merged = mergeListInteractive(rawResult);
@@ -498,8 +497,8 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         }
     }
     catch (err) {
-        actionToast(tabId, action, err.message, 'error');
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, err.message);
+        actionToast(tabId, action, errorMessage(err), 'error');
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMessage(err));
     }
 }
 //# sourceMappingURL=dom-dispatch.js.map

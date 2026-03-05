@@ -896,6 +896,15 @@
     };
   }
 
+  // extension/lib/error-utils.js
+  function errorMessage(err, fallback = "Unknown error") {
+    if (err instanceof Error && err.message)
+      return err.message;
+    if (typeof err === "string" && err)
+      return err;
+    return fallback;
+  }
+
   // extension/content/message-handlers.js
   var nextRequestId = 1;
   function parseQueryParams(params) {
@@ -1128,7 +1137,7 @@
     try {
       sendResponse(extractReadable());
     } catch (err) {
-      sendResponse({ error: "get_readable_failed", message: err.message || "Readable extraction failed" });
+      sendResponse({ error: "get_readable_failed", message: errorMessage(err, "Readable extraction failed") });
     }
     return false;
   }
@@ -1136,7 +1145,7 @@
     try {
       sendResponse(extractMarkdown());
     } catch (err) {
-      sendResponse({ error: "get_markdown_failed", message: err.message || "Markdown extraction failed" });
+      sendResponse({ error: "get_markdown_failed", message: errorMessage(err, "Markdown extraction failed") });
     }
     return false;
   }
@@ -1144,7 +1153,7 @@
     try {
       sendResponse(extractPageSummary());
     } catch (err) {
-      sendResponse({ error: "page_summary_failed", message: err.message || "Page summary extraction failed" });
+      sendResponse({ error: "page_summary_failed", message: errorMessage(err, "Page summary extraction failed") });
     }
     return false;
   }

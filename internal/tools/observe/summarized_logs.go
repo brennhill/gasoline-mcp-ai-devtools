@@ -47,12 +47,12 @@ func GetSummarizedLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) 
 	summary := summarizedLogsSummary(views, groups, anomalies, noiseSuppressed, timeStart, timeEnd)
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), time.Time{})
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Summarized logs", map[string]any{
+	return mcp.Succeed(req, "Summarized logs", map[string]any{
 		"groups":    cleanSummarizedLogGroups(groups),
 		"anomalies": anomalies,
 		"summary":   summary,
 		"metadata":  responseMeta,
-	})}
+	})
 }
 
 type summarizedLogsParams struct {

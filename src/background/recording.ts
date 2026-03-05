@@ -8,12 +8,14 @@
 // chrome runtime listener registration to recording-listeners.ts.
 
 import { getServerUrl } from './state.js'
-import { pingContentScript, waitForTabLoad } from './event-listeners.js'
+import { pingContentScript, waitForTabLoad, getActiveTab, sendTabToast } from './event-listeners.js'
 import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
 import type { OffscreenRecordingStartedMessage, OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js'
 import { installRecordingListeners } from './recording-listeners.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { delay } from '../lib/timeout-utils.js'
 
 // =============================================================================
 // STATE
@@ -140,8 +142,7 @@ export async function startRecording(
         return { status: 'error', name: '', error: `RECORD_START: Target tab ${targetTabId} not found.` }
       }
     } else {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      tab = tabs[0]
+      tab = (await getActiveTab()) ?? undefined
     }
     console.log(LOG, 'Resolved recording tab:', {
       requestedTabId: targetTabId ?? null,
@@ -182,7 +183,7 @@ export async function startRecording(
       }
       // Add extra delay to ensure extension is fully initialized for tabCapture
       console.log(LOG, 'Waiting for extension to fully initialize...')
-      await new Promise((r) => setTimeout(r, scaleTimeout(1000)))
+      await delay(scaleTimeout(1000))
     } else {
       console.log(LOG, 'Skipping content script ping (fromPopup=true)')
     }
@@ -292,14 +293,7 @@ export async function startRecording(
     })
 
     // Show "Recording started" toast (fades after 2s)
-    chrome.tabs
-      .sendMessage(tab.id, {
-        type: 'GASOLINE_ACTION_TOAST',
-        text: 'Recording started',
-        state: 'success' as const,
-        duration_ms: scaleTimeout(2000)
-      })
-      .catch(() => {})
+    sendTabToast(tab.id, 'Recording started', '', 'success', scaleTimeout(2000))
 
     // Watermark removed — badge timer on extension icon replaces it (not captured by tabCapture)
     if (tabUpdateListener) chrome.tabs.onUpdated.removeListener(tabUpdateListener)
@@ -309,11 +303,11 @@ export async function startRecording(
     return { status: 'recording', name, startTime: recordingState.startTime }
   } catch (err) {
     recordingState.active = false // eslint-disable-line require-atomic-updates
-    console.error(LOG, 'START EXCEPTION:', (err as Error).message, (err as Error).stack)
+    console.error(LOG, 'START EXCEPTION:', errorMessage(err), (err as Error).stack)
     return {
       status: 'error',
       name: '',
-      error: `RECORD_START: ${(err as Error).message || 'Failed to start recording.'}`
+      error: `RECORD_START: ${errorMessage(err, 'Failed to start recording.')}`
     }
   }
 }
@@ -398,15 +392,13 @@ export async function stopRecording(truncated: boolean = false): Promise<{
     // Show save toast on the recorded tab
     if (tabId && stopResult.status === 'saved') {
       const sizeMB = stopResult.size_bytes ? (stopResult.size_bytes / (1024 * 1024)).toFixed(1) : '?'
-      chrome.tabs
-        .sendMessage(tabId, {
-          type: 'GASOLINE_ACTION_TOAST',
-          text: 'Recording saved',
-          detail: `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`,
-          state: 'success' as const,
-          duration_ms: scaleTimeout(5000)
-        })
-        .catch(() => {})
+      sendTabToast(
+        tabId,
+        'Recording saved',
+        `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`,
+        'success',
+        scaleTimeout(5000)
+      )
     }
 
     return {
@@ -419,12 +411,12 @@ export async function stopRecording(truncated: boolean = false): Promise<{
       error: stopResult.error
     }
   } catch (err) {
-    console.error(LOG, 'STOP EXCEPTION:', (err as Error).message, (err as Error).stack)
+    console.error(LOG, 'STOP EXCEPTION:', errorMessage(err), (err as Error).stack)
     await clearRecordingState()
     return {
       status: 'error',
       name: recordingState.name || '',
-      error: `RECORD_STOP: ${(err as Error).message || 'Failed to stop recording.'}`
+      error: `RECORD_STOP: ${errorMessage(err, 'Failed to stop recording.')}`
     }
   }
 }

@@ -9,6 +9,7 @@
  * Manages recording controls, timer display, and mic permission flow.
  */
 import { StorageKey } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
@@ -159,7 +160,7 @@ function tryMicPermissionThenStart(els, state, audioMode) {
         sendRecordStart(els, state, audioMode);
     })
         .catch((err) => {
-        console.log('[Gasoline REC] Popup: getUserMedia FAILED:', err.name, err.message);
+        console.log('[Gasoline REC] Popup: getUserMedia FAILED:', err.name, errorMessage(err));
         chrome.storage.local.remove(StorageKey.MIC_GRANTED);
         showIdle(els, state);
         if (els.saveInfoEl)

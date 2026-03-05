@@ -1,4 +1,5 @@
 // csp-safe-parser.ts — Recursive descent parser for JS expressions into structured commands.
+import { errorMessage } from '../lib/error-utils.js';
 // Patterns that we reject outright before attempting to parse
 const REJECTED_PATTERNS = [
     { pattern: /^\s*$/, reason: 'Empty expression' },
@@ -62,7 +63,7 @@ export function parseExpression(input) {
         return { ok: true, command: { expr } };
     }
     catch (e) {
-        return { ok: false, reason: e.message };
+        return { ok: false, reason: errorMessage(e) };
     }
 }
 function decomposeAssignment(expr) {

@@ -9,6 +9,7 @@ import { updateBadge } from './communication.js';
 import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
 import { getTrackedTabInfo } from './event-listeners.js';
 import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js';
+import { errorMessage } from '../lib/error-utils.js';
 // =============================================================================
 // MODULE STATE
 // =============================================================================
@@ -55,7 +56,7 @@ export function startSyncClient(deps) {
             catch (err) {
                 deps.debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
                     type: command.type,
-                    error: err.message
+                    error: errorMessage(err)
                 });
             }
             finally {

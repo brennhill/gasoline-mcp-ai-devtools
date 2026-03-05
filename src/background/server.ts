@@ -17,6 +17,7 @@ import type {
   ConnectionStatus
 } from '../types/index.js'
 import { getExtensionVersion } from './version-check.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /**
  * Server health response
@@ -163,7 +164,7 @@ export async function checkServerHealth(serverUrl: string): Promise<ServerHealth
   } catch (error) {
     return {
       connected: false,
-      error: (error as Error).message
+      error: errorMessage(error)
     }
   }
 }
@@ -228,9 +229,9 @@ export async function sendStatusPing(
       console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
     }
   } catch (err) {
-    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: (err as Error).message })
+    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) })
     if (diagnosticLogFn) {
-      diagnosticLogFn('[Gasoline] Status ping error: ' + (err as Error).message)
+      diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err))
     }
   }
 }

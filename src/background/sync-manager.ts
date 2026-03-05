@@ -15,6 +15,7 @@ import { updateBadge } from './communication.js'
 import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js'
 import { getTrackedTabInfo } from './event-listeners.js'
 import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // =============================================================================
 // TYPES
@@ -113,7 +114,7 @@ export function startSyncClient(deps: SyncManagerDeps): void {
         } catch (err) {
           deps.debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
             type: command.type,
-            error: (err as Error).message
+            error: errorMessage(err)
           })
         } finally {
           removeProcessingQuery(command.id)

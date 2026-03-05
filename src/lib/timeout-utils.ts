@@ -484,3 +484,26 @@ export async function executeWithTimeoutAndCleanup<T>(
     throw err
   }
 }
+
+/**
+ * Fetch a URL with an AbortController-based timeout.
+ * Consolidates the recurring AbortController + setTimeout + clearTimeout pattern.
+ *
+ * @param url URL to fetch
+ * @param options Standard RequestInit (headers, method, body, etc.)
+ * @param timeoutMs Timeout in milliseconds before aborting
+ * @returns The fetch Response
+ */
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(id)
+  }
+}

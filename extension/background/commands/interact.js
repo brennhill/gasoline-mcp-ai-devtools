@@ -16,6 +16,7 @@ import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteComman
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
 import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js';
+import { errorMessage } from '../../lib/error-utils.js';
 // =============================================================================
 // SUBTITLE
 // =============================================================================
@@ -181,7 +182,7 @@ registerCommand('state_*', async (ctx) => {
         ctx.sendResult(result);
     }
     catch (err) {
-        ctx.sendResult({ error: err.message });
+        ctx.sendResult({ error: errorMessage(err) });
     }
 });
 // =============================================================================
@@ -204,7 +205,7 @@ registerCommand('execute', async (ctx) => {
             ctx.sendResult({
                 success: false,
                 error: 'execution_failed',
-                message: err.message || 'Execution failed'
+                message: errorMessage(err, 'Execution failed')
             });
         }
     }
@@ -280,7 +281,7 @@ function runHighlightFallback(params) {
         return {
             success: false,
             error: 'highlight_fallback_failed',
-            message: err?.message || 'Highlight fallback failed'
+            message: errorMessage(err, 'Highlight fallback failed')
         };
     }
 }
@@ -308,7 +309,7 @@ async function executeHighlightFallback(tabId, params, mainWorldError) {
         };
     }
     catch (err) {
-        const fallbackError = err?.message || 'highlight_fallback_failed';
+        const fallbackError = errorMessage(err, 'highlight_fallback_failed');
         return {
             success: false,
             error: 'highlight_fallback_failed',
@@ -331,7 +332,7 @@ async function handlePilotCommandOnTab(tabId, command, params) {
     }
     catch (err) {
         if (command === 'GASOLINE_HIGHLIGHT' && isContentScriptUnreachableError(err)) {
-            return executeHighlightFallback(tabId, params, err.message || 'command_failed');
+            return executeHighlightFallback(tabId, params, errorMessage(err, 'command_failed'));
         }
         throw err;
     }
@@ -353,7 +354,7 @@ export async function handlePilotCommand(command, params, preferredTabId) {
         return await handlePilotCommandOnTab(tabId, command, params);
     }
     catch (err) {
-        return { error: err.message || 'command_failed' };
+        return { error: errorMessage(err, 'command_failed') };
     }
 }
 //# sourceMappingURL=interact.js.map

@@ -34,6 +34,7 @@ import {
 import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js'
 import { postLog } from '../lib/bridge.js'
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // Store original fetch for restoration
 let originalFetch: typeof fetch | null = null
@@ -144,7 +145,7 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
         type: 'network',
         method: method.toUpperCase(),
         url,
-        error: (error as Error).message,
+        error: errorMessage(error),
         duration,
         ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
       }

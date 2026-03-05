@@ -5,6 +5,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { CDP_VERSION } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
 // Key code mappings for CDP Input.dispatchKeyEvent
 const KEY_CODES = {
     Enter: { code: 'Enter', keyCode: 13 },
@@ -242,7 +243,7 @@ function parseCDPParams(query) {
     }
 }
 function mapCDPError(err) {
-    const msg = err?.message || 'unknown_error';
+    const msg = errorMessage(err, 'unknown_error');
     if (msg.includes('Cannot attach to this target')) {
         return 'cdp_attach_failed: Cannot attach debugger to this tab. It may be an internal browser page.';
     }

@@ -9,6 +9,8 @@
  */
 
 import type { PendingQuery } from '../types/index.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { fetchWithTimeout } from '../lib/timeout-utils.js'
 
 // =============================================================================
 // TYPES
@@ -278,22 +280,20 @@ export class SyncClient {
         request.last_command_ack = this.state.lastCommandAck
       }
 
-      // Make request with timeout to prevent hanging forever
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8s: server holds up to 5s + margin
-
-      const response = await fetch(`${this.serverUrl}/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
-          'X-Gasoline-Extension-Version': this.extensionVersion
+      // Make request with timeout to prevent hanging forever (8s: server holds up to 5s + margin)
+      const response = await fetchWithTimeout(
+        `${this.serverUrl}/sync`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
+            'X-Gasoline-Extension-Version': this.extensionVersion
+          },
+          body: JSON.stringify(request)
         },
-        body: JSON.stringify(request),
-        signal: controller.signal
-      })
-
-      clearTimeout(timeoutId)
+        8000
+      )
 
       if (!response.ok) {
         throw new Error(
@@ -387,7 +387,7 @@ export class SyncClient {
       this.syncing = false
       this.flushRequested = false
       this.onFailure()
-      this.log('Sync failed, retrying', { error: (err as Error).message })
+      this.log('Sync failed, retrying', { error: errorMessage(err) })
       this.scheduleNextSync(BASE_POLL_MS)
     }
   }
@@ -464,7 +464,7 @@ export class SyncClient {
       ])
       this.log('Command completed OK', { id: command.id })
     } catch (err) {
-      const message = (err as Error).message || 'Command execution failed'
+      const message = errorMessage(err, 'Command execution failed')
       this.log('Command execution FAILED', { id: command.id, error: message })
       this.queueCommandResult({
         id: command.id,

@@ -6,6 +6,7 @@
 import { registerCommand } from './registry.js'
 import type { CommandHandler } from './registry.js'
 import { isContentScriptUnreachableError } from './helpers.js'
+import { errorMessage } from '../../lib/error-utils.js'
 
 /**
  * Inline readable extractor for chrome.scripting.executeScript fallback.
@@ -336,7 +337,7 @@ function contentExtractorCommand(messageType: string, errorCode: string): Comman
       }
       ctx.sendResult({
         error: errorCode,
-        message: (err as Error).message || `${errorCode}`
+        message: errorMessage(err) || `${errorCode}`
       })
     }
   }

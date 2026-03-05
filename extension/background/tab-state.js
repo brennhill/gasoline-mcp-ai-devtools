@@ -3,6 +3,7 @@
  * Split from event-listeners.ts to keep files under 800 LOC.
  */
 import { scaleTimeout } from '../lib/timeouts.js';
+import { delay } from '../lib/timeout-utils.js';
 import { StorageKey } from '../lib/constants.js';
 // =============================================================================
 // CONTENT SCRIPT HELPERS
@@ -38,9 +39,7 @@ export async function waitForTabLoad(tabId, timeoutMs = scaleTimeout(5000)) {
         catch {
             return false;
         }
-        await new Promise((r) => {
-            setTimeout(r, scaleTimeout(100));
-        });
+        await delay(scaleTimeout(100));
     }
     return false;
 }
@@ -185,5 +184,20 @@ export async function getAllConfigSettings() {
         StorageKey.NETWORK_BODY_CAPTURE_ENABLED
     ]));
     return result;
+}
+// =============================================================================
+// ACTIVE TAB LOOKUP
+// =============================================================================
+/**
+ * Query for the currently active tab in the current window.
+ * Returns null if no active tab or no tab id.
+ */
+export async function getActiveTab() {
+    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = activeTabs[0];
+    if (!tab?.id) {
+        return null;
+    }
+    return tab;
 }
 //# sourceMappingURL=tab-state.js.map

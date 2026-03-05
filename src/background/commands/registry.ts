@@ -11,6 +11,7 @@ import type { SyncClient } from '../sync-client.js'
 import { initReady } from '../state.js'
 import { DebugCategory } from '../debug.js'
 import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js'
+import { errorMessage } from '../../lib/error-utils.js'
 import {
   debugLog,
   sendResult,
@@ -221,7 +222,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       }
       target = resolved.target
     } catch (err) {
-      const targetErr = (err as Error).message || 'target_resolution_failed'
+      const targetErr = errorMessage(err, 'target_resolution_failed')
       lifecycle.sendError(
         {
           success: false,
@@ -283,7 +284,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       )
     }
   } catch (err) {
-    const errMsg = (err as Error).message || 'Unexpected error handling query'
+    const errMsg = errorMessage(err, 'Unexpected error handling query')
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
       type: query.type,
       id: query.id,

@@ -1,6 +1,7 @@
 // analyze-page-structure.ts — Structural page analysis command handler (#341).
 
 import { registerCommand } from './registry.js'
+import { errorMessage } from '../../lib/error-utils.js'
 
 // =============================================================================
 // PAGE STRUCTURE ANALYSIS (#341)
@@ -272,7 +273,7 @@ registerCommand('page_structure', async (ctx) => {
 
     ctx.sendResult(payload)
   } catch (err) {
-    const message = (err as Error).message || 'Page structure analysis failed'
+    const message = errorMessage(err, 'Page structure analysis failed')
     ctx.sendResult({
       error: 'page_structure_failed',
       message

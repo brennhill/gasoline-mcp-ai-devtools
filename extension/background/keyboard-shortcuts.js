@@ -2,6 +2,11 @@
  * Purpose: Keyboard shortcut listeners for draw mode, action-sequence recording, and screen recording.
  * Split from event-listeners.ts to keep files under 800 LOC.
  */
+// =============================================================================
+// RECORDING SHORTCUT TYPES & HELPERS
+// =============================================================================
+import { errorMessage } from '../lib/error-utils.js';
+import { getActiveTab } from './event-listeners.js';
 export function buildActionSequenceRecordingName(now = new Date()) {
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -85,8 +90,7 @@ export function installDrawModeCommandListener(logFn) {
         if (command !== 'toggle_draw_mode')
             return;
         try {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-            const tab = tabs[0];
+            const tab = await getActiveTab();
             if (!tab?.id)
                 return;
             try {
@@ -131,7 +135,7 @@ export function installDrawModeCommandListener(logFn) {
         }
         catch (err) {
             if (logFn)
-                logFn(`Draw mode keyboard shortcut error: ${err.message}`);
+                logFn(`Draw mode keyboard shortcut error: ${errorMessage(err)}`);
         }
     });
 }
@@ -168,7 +172,7 @@ export function installRecordingShortcutCommandListener(handlers, logFn) {
         }
         catch (err) {
             if (logFn)
-                logFn(`Recording shortcut error: ${err.message}`);
+                logFn(`Recording shortcut error: ${errorMessage(err)}`);
         }
     });
 }
@@ -193,7 +197,7 @@ export function installScreenRecordingCommandListener(handlers, logFn) {
         }
         catch (err) {
             if (logFn)
-                logFn(`Screen recording shortcut error: ${err.message}`);
+                logFn(`Screen recording shortcut error: ${errorMessage(err)}`);
         }
     });
 }

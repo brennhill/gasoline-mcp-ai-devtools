@@ -8,7 +8,7 @@
 
 import type { PendingQuery } from '../types/index.js'
 import type { SyncClient } from './sync-client.js'
-import { waitForTabLoad, pingContentScript } from './event-listeners.js'
+import { waitForTabLoad, pingContentScript, getActiveTab } from './event-listeners.js'
 import { debugLog } from './index.js'
 import { isAiWebPilotEnabled } from './state.js'
 import { DebugCategory } from './debug.js'
@@ -17,6 +17,8 @@ import { executeWithWorldRouting, probeCSPStatus, type CSPProbeResult } from './
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js'
 import { persistTrackedTab } from './commands/helpers.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { delay } from '../lib/timeout-utils.js'
 
 // =============================================================================
 // TIMEOUT CONFIGURATION
@@ -98,7 +100,7 @@ export async function handleNavigateAction(
   actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'trying', 10000)
   await chrome.tabs.update(tabId, { url })
   await waitForTabLoad(tabId)
-  await new Promise((r) => setTimeout(r, 500))
+  await delay(500)
 
   const tab = await chrome.tabs.get(tabId)
 
@@ -131,7 +133,7 @@ export async function handleNavigateAction(
   debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url })
   await chrome.tabs.reload(tabId)
   await waitForTabLoad(tabId)
-  await new Promise((r) => setTimeout(r, 1000))
+  await delay(1000)
 
   const reloadedTab = await chrome.tabs.get(tabId)
 
@@ -329,8 +331,7 @@ export async function handleBrowserAction(
         }
 
         await chrome.tabs.remove(targetTabID)
-        const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
-        const activeTab = activeTabs[0]
+        const activeTab = await getActiveTab()
         return {
           success: true,
           action: 'close_tab',
@@ -344,7 +345,7 @@ export async function handleBrowserAction(
         return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` }
     }
   } catch (err) {
-    return { success: false, error: 'browser_action_failed', message: (err as Error).message }
+    return { success: false, error: 'browser_action_failed', message: errorMessage(err) }
   }
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pagination"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // GetBrowserLogs returns console log entries with cursor-based pagination.
@@ -147,7 +148,7 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 	if len(paginated) > 0 {
 		last := paginated[len(paginated)-1]
 		if ts := logEntryTimestamp(last.Entry); ts != "" {
-			newestTS = parseRFC3339Flexible(ts)
+			newestTS = util.ParseTimestamp(ts)
 		}
 	}
 
@@ -165,7 +166,7 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		if paramHint != "" {
 			summaryResp["param_hint"] = paramHint
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", summaryResp)}
+		return mcp.Succeed(req, "Browser logs", summaryResp)
 	}
 
 	response := map[string]any{
@@ -191,5 +192,5 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		response["extension_logs_count"] = len(extLogs)
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", response)}
+	return mcp.Succeed(req, "Browser logs", response)
 }

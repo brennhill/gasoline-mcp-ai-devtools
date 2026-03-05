@@ -8,6 +8,9 @@
 
 import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
+import { sendTabToast } from './event-listeners.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { delay } from '../lib/timeout-utils.js'
 
 const LOG = '[Gasoline REC]'
 
@@ -34,7 +37,7 @@ export async function getStreamIdWithRecovery(tabId: number): Promise<string> {
   try {
     return await getStreamId(tabId)
   } catch (err) {
-    if ((err as Error).message?.includes('active stream')) {
+    if (errorMessage(err)?.includes('active stream')) {
       console.warn(LOG, 'Active stream detected — closing offscreen document to release leaked streams')
       try {
         await chrome.offscreen.closeDocument()
@@ -42,7 +45,7 @@ export async function getStreamIdWithRecovery(tabId: number): Promise<string> {
         /* might not exist */
       }
       // Brief pause to let Chrome release the capture
-      await new Promise((r) => setTimeout(r, scaleTimeout(200)))
+      await delay(scaleTimeout(200))
       console.log(LOG, 'Retrying getMediaStreamId after cleanup')
       return await getStreamId(tabId)
     }
@@ -77,15 +80,7 @@ export async function requestRecordingGesture(
   mediaType: string
 ): Promise<{ status: string; name: string; error?: string }> {
   chrome.tabs.update(tab.id!, { active: true })
-  chrome.tabs
-    .sendMessage(tab.id!, {
-      type: 'GASOLINE_ACTION_TOAST',
-      text: `\u2191 Click Gasoline Icon`,
-      detail: `Grant ${mediaType.toLowerCase()} recording permission`,
-      state: 'audio' as const,
-      duration_ms: scaleTimeout(30000)
-    })
-    .catch(() => {})
+  sendTabToast(tab.id!, `\u2191 Click Gasoline Icon`, `Grant ${mediaType.toLowerCase()} recording permission`, 'audio', scaleTimeout(30000))
 
   await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } })
   const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000))
@@ -93,15 +88,7 @@ export async function requestRecordingGesture(
 
   if (!gestureGranted) {
     console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')
-    chrome.tabs
-      .sendMessage(tab.id!, {
-        type: 'GASOLINE_ACTION_TOAST',
-        text: `\u2191 Click Gasoline Icon`,
-        detail: `Grant ${mediaType.toLowerCase()} recording permission`,
-        state: 'audio' as const,
-        duration_ms: scaleTimeout(8000)
-      })
-      .catch(() => {})
+    sendTabToast(tab.id!, `\u2191 Click Gasoline Icon`, `Grant ${mediaType.toLowerCase()} recording permission`, 'audio', scaleTimeout(8000))
     return {
       status: 'error',
       name: '',
@@ -109,15 +96,7 @@ export async function requestRecordingGesture(
     }
   }
 
-  chrome.tabs
-    .sendMessage(tab.id!, {
-      type: 'GASOLINE_ACTION_TOAST',
-      text: 'Recording',
-      detail: 'Recording started',
-      state: 'success' as const,
-      duration_ms: scaleTimeout(2000)
-    })
-    .catch(() => {})
+  sendTabToast(tab.id!, 'Recording', 'Recording started', 'success', scaleTimeout(2000))
 
   return { status: 'ok', name }
 }

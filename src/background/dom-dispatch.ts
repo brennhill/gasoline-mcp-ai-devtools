@@ -19,6 +19,8 @@ import { domPrimitiveQuery } from './dom-primitives-query.js'
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
 import { normalizeFrameTarget } from '../lib/frame-utils.js'
 import { isReadOnlyAction, isMutatingAction } from './action-metadata.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { delay } from '../lib/timeout-utils.js'
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {
@@ -155,9 +157,6 @@ function toDOMResult(value: unknown): DOMResult | null {
   return candidate
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 /** Resolve which DOM action name to dispatch for wait_for based on params.
  *  Callers must validate mutual exclusivity before calling this. */
@@ -192,7 +191,7 @@ async function executeWaitForURL(tabId: number, params: DOMActionParams): Promis
       }
     }
     const remaining = timeoutMs - (Date.now() - startedAt)
-    await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
+    await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
   }
 }
 
@@ -217,7 +216,7 @@ async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParam
   let lastResult: DOMResult | null = toDOMResult(quickPicked?.result) ?? null
   while (Date.now() - startedAt < timeoutMs) {
     const remaining = timeoutMs - (Date.now() - startedAt)
-    await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
+    await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
 
     const probeResults = await chrome.scripting.executeScript({
       target,
@@ -505,8 +504,8 @@ export async function executeDOMAction(
         urlResult.success ? undefined : urlResult.error
       )
     } catch (err) {
-      actionToast(tabId, action, (err as Error).message, 'error')
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, (err as Error).message)
+      actionToast(tabId, action, errorMessage(err), 'error')
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMessage(err))
     }
     return
   }
@@ -593,7 +592,7 @@ export async function executeDOMAction(
     // Ensure "trying" toast is visible for at least 500ms
     const MIN_TOAST_MS = 500
     const elapsed = Date.now() - tryingShownAt
-    if (!readOnly && elapsed < MIN_TOAST_MS) await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed))
+    if (!readOnly && elapsed < MIN_TOAST_MS) await delay(MIN_TOAST_MS - elapsed)
 
     // list_interactive: merge elements from all frames
     if (action === 'list_interactive') {
@@ -648,7 +647,7 @@ export async function executeDOMAction(
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')
     }
   } catch (err) {
-    actionToast(tabId, action, (err as Error).message, 'error')
-    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, (err as Error).message)
+    actionToast(tabId, action, errorMessage(err), 'error')
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMessage(err))
   }
 }

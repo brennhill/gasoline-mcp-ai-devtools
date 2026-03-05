@@ -136,19 +136,14 @@ type SyncCommand struct {
 // - Extension disconnect transitions expire pending queries to avoid indefinite LLM waits.
 // - Long-poll returns within bounded timeout even when no commands are queued.
 func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	var req SyncRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 
@@ -225,6 +220,5 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		CaptureOverrides: c.buildCaptureOverrides(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	util.JSONResponse(w, http.StatusOK, resp)
 }

@@ -39,6 +39,7 @@ export {
 // Import for logging formatting functions (still in this file for now)
 import type { LogEntry } from '../types/index.js'
 import { getRequestHeaders } from './server.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /**
  * Truncate a single argument if too large
@@ -175,8 +176,8 @@ export async function captureScreenshot(
     return { success: true, entry: screenshotEntry }
   } catch (error) {
     if (debugLogFn) {
-      debugLogFn('error', 'Screenshot capture failed', { error: (error as Error).message })
+      debugLogFn('error', 'Screenshot capture failed', { error: errorMessage(error) })
     }
-    return { success: false, error: (error as Error).message }
+    return { success: false, error: errorMessage(error) }
   }
 }

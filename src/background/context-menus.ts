@@ -6,6 +6,7 @@
 import { StorageKey } from '../lib/constants.js'
 import type { ScreenRecordingHandlers, RecordingShortcutHandlers } from './keyboard-shortcuts.js'
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // =============================================================================
 // CONTEXT MENU IDS
@@ -53,7 +54,7 @@ export function installContextMenus(
         })
         if (logFn) logFn(`Now controlling tab ${tab.id}: ${tab.url}`)
       } catch (err) {
-        if (logFn) logFn(`Control page error: ${(err as Error).message}`)
+        if (logFn) logFn(`Control page error: ${errorMessage(err)}`)
       }
     } else if (info.menuItemId === MENU_ID_SCREENSHOT) {
       try {
@@ -65,7 +66,7 @@ export function installContextMenus(
       try {
         await toggleScreenRecording(recordingHandlers, tab, logFn)
       } catch (err) {
-        if (logFn) logFn(`Context menu recording error: ${(err as Error).message}`)
+        if (logFn) logFn(`Context menu recording error: ${errorMessage(err)}`)
       }
     } else if (info.menuItemId === MENU_ID_ACTION_RECORD) {
       try {
@@ -76,7 +77,7 @@ export function installContextMenus(
           await actionRecordingHandlers.startRecording(name, 15, '', '', true, tab.id)
         }
       } catch (err) {
-        if (logFn) logFn(`Context menu action recording error: ${(err as Error).message}`)
+        if (logFn) logFn(`Context menu action recording error: ${errorMessage(err)}`)
       }
     } else if (info.menuItemId === MENU_ID_ANNOTATE) {
       try {

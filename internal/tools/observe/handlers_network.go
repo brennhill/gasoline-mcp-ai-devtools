@@ -87,7 +87,7 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		if len(filtered) == 0 {
 			summary["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), hintFilters)
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", summary)}
+		return mcp.Succeed(req, "Network bodies", summary)
 	}
 
 	response := map[string]any{
@@ -100,7 +100,7 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		response["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), hintFilters)
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", response)}
+	return mcp.Succeed(req, "Network bodies", response)
 }
 
 // GetWSEvents returns captured WebSocket events with optional filtering.
@@ -149,7 +149,7 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		if len(filtered) == 0 {
 			summary["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
 		}
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", summary)}
+		return mcp.Succeed(req, "WebSocket events", summary)
 	}
 
 	response := map[string]any{
@@ -165,5 +165,5 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		response["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", response)}
+	return mcp.Succeed(req, "WebSocket events", response)
 }

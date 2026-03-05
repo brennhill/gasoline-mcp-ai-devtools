@@ -7,9 +7,11 @@
 
 import type { PendingQuery } from '../../types/index.js'
 import type { SyncClient } from '../sync-client.js'
-import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js'
+import { getTrackedTabInfo, clearTrackedTab, getActiveTab } from '../event-listeners.js'
 import { DebugCategory } from '../debug.js'
 import { isAiWebPilotEnabled } from '../state.js'
+import { errorMessage } from '../../lib/error-utils.js'
+import { delay } from '../../lib/timeout-utils.js'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -315,7 +317,7 @@ async function getTabWithRetry(tabId: number, retry = false): Promise<chrome.tab
     if (!retry) {
       return null
     }
-    await new Promise((r) => setTimeout(r, 300))
+    await delay(300)
     try {
       return await chrome.tabs.get(tabId)
     } catch {
@@ -324,14 +326,6 @@ async function getTabWithRetry(tabId: number, retry = false): Promise<chrome.tab
   }
 }
 
-async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
-  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  const tab = activeTabs[0]
-  if (!tab?.id) {
-    return null
-  }
-  return tab
-}
 
 function buildMissingTargetError(
   queryType: string,
@@ -470,7 +464,7 @@ async function tryAutoTrackFallback(
     attempts.push({
       step: 'switch_to_non_internal_tab',
       status: 'failed',
-      detail: `Failed to enumerate/switch tabs: ${(err as Error).message}`
+      detail: `Failed to enumerate/switch tabs: ${errorMessage(err)}`
     })
   }
 
@@ -508,7 +502,7 @@ async function tryAutoTrackFallback(
     attempts.push({
       step: 'open_new_tab_and_track',
       status: 'failed',
-      detail: `Failed to open tab: ${(err as Error).message}`
+      detail: `Failed to open tab: ${errorMessage(err)}`
     })
   }
 
@@ -694,7 +688,7 @@ export function isRestrictedUrl(url: string | undefined): boolean {
 
 /** Check if an error indicates the content script is not loaded on the target page. */
 export function isContentScriptUnreachableError(err: unknown): boolean {
-  const message = (err as Error)?.message || ''
+  const message = errorMessage(err, '')
   return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
 }
 

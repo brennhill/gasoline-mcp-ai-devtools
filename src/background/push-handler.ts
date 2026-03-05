@@ -7,7 +7,10 @@
 // push-handler.ts — Background handlers for screenshot push and push capability tracking.
 
 import { getServerUrl } from './state.js'
+import { getActiveTab } from './event-listeners.js'
 import { getRequestHeaders } from './server.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { fetchWithTimeout } from '../lib/timeout-utils.js'
 
 /** Timeout for push fetch calls (ms). */
 const PUSH_FETCH_TIMEOUT_MS = 8_000
@@ -36,14 +39,11 @@ export async function fetchPushCapabilities(): Promise<PushCapabilities | null> 
   }
 
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), PUSH_FETCH_TIMEOUT_MS)
-    const response = await fetch(`${getServerUrl()}/push/capabilities`, {
-      method: 'GET',
-      headers: getRequestHeaders(),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
+    const response = await fetchWithTimeout(
+      `${getServerUrl()}/push/capabilities`,
+      { method: 'GET', headers: getRequestHeaders() },
+      PUSH_FETCH_TIMEOUT_MS
+    )
     if (!response.ok) return null
     cachedCapabilities = (await response.json()) as PushCapabilities
     capabilitiesFetchedAt = now
@@ -77,8 +77,7 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
         return
       }
 
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const tab = tabs[0]
+      const tab = await getActiveTab()
       if (!tab?.id) return
 
       // Show "trying" toast for visual loading state
@@ -121,7 +120,7 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
         // Tab unreachable for toast
       }
     } catch (err) {
-      if (logFn) logFn(`Screenshot push error: ${(err as Error).message}`)
+      if (logFn) logFn(`Screenshot push error: ${errorMessage(err)}`)
     }
   })
 }
@@ -144,8 +143,7 @@ export function installChatCommandListener(logFn?: (message: string) => void): v
         return
       }
 
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const tab = tabs[0]
+      const tab = await getActiveTab()
       if (!tab?.id) return
 
       await chrome.tabs.sendMessage(tab.id, {
@@ -153,7 +151,7 @@ export function installChatCommandListener(logFn?: (message: string) => void): v
         client_name: caps.client_name || 'AI'
       })
     } catch (err) {
-      if (logFn) logFn(`Chat toggle error: ${(err as Error).message}`)
+      if (logFn) logFn(`Chat toggle error: ${errorMessage(err)}`)
     }
   })
 }
@@ -168,20 +166,20 @@ export async function pushScreenshot(
   tabId: number
 ): Promise<{ status: string; event_id?: string } | null> {
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), PUSH_FETCH_TIMEOUT_MS)
-    const response = await fetch(`${getServerUrl()}/push/screenshot`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify({
-        screenshot_data_url: screenshotDataUrl,
-        note,
-        page_url: pageUrl,
-        tab_id: tabId
-      }),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
+    const response = await fetchWithTimeout(
+      `${getServerUrl()}/push/screenshot`,
+      {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({
+          screenshot_data_url: screenshotDataUrl,
+          note,
+          page_url: pageUrl,
+          tab_id: tabId
+        })
+      },
+      PUSH_FETCH_TIMEOUT_MS
+    )
     if (!response.ok) return null
     return (await response.json()) as { status: string; event_id?: string }
   } catch {
@@ -198,19 +196,19 @@ export async function pushChatMessage(
   tabId: number
 ): Promise<{ status: string; event_id?: string } | null> {
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), PUSH_FETCH_TIMEOUT_MS)
-    const response = await fetch(`${getServerUrl()}/push/message`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify({
-        message,
-        page_url: pageUrl,
-        tab_id: tabId
-      }),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
+    const response = await fetchWithTimeout(
+      `${getServerUrl()}/push/message`,
+      {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({
+          message,
+          page_url: pageUrl,
+          tab_id: tabId
+        })
+      },
+      PUSH_FETCH_TIMEOUT_MS
+    )
     if (!response.ok) return null
     return (await response.json()) as { status: string; event_id?: string }
   } catch {
@@ -221,8 +219,7 @@ export async function pushChatMessage(
 /** Show a toast when push is unavailable. */
 async function showPushUnavailableToast(detail: string): Promise<void> {
   try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const tab = tabs[0]
+    const tab = await getActiveTab()
     if (!tab?.id) return
 
     await chrome.tabs.sendMessage(tab.id, {

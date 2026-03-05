@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import { getExtensionVersion } from './version-check.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Get standard headers for API requests including version header
  */
@@ -99,7 +100,7 @@ export async function checkServerHealth(serverUrl) {
     catch (error) {
         return {
             connected: false,
-            error: error.message
+            error: errorMessage(error)
         };
     }
 }
@@ -150,9 +151,9 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
         }
     }
     catch (err) {
-        console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: err.message });
+        console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) });
         if (diagnosticLogFn) {
-            diagnosticLogFn('[Gasoline] Status ping error: ' + err.message);
+            diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err));
         }
     }
 }

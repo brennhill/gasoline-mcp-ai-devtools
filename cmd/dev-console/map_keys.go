@@ -3,16 +3,12 @@
 package main
 
 import (
-	"sort"
 	"strings"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // sortedMapKeys returns a sorted, comma-separated list of keys from a string-keyed map.
 func sortedMapKeys[T any](m map[string]T) string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return strings.Join(keys, ", ")
+	return strings.Join(util.SortedMapKeys(m), ", ")
 }

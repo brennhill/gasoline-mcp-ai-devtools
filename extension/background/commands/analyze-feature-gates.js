@@ -1,6 +1,7 @@
 // analyze-feature-gates.ts — Feature gate detection command handler (#345).
 import { analyzeFeatureGates } from '../analyze-feature-gates.js';
 import { registerCommand } from './registry.js';
+import { errorMessage } from '../../lib/error-utils.js';
 // =============================================================================
 // FEATURE GATES DETECTION (#345)
 // =============================================================================
@@ -22,7 +23,7 @@ registerCommand('feature_gates', async (ctx) => {
         ctx.sendResult(result);
     }
     catch (err) {
-        const message = err.message || 'Feature gates scan failed';
+        const message = errorMessage(err, 'Feature gates scan failed');
         ctx.sendResult({
             error: 'feature_gates_failed',
             message

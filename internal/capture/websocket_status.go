@@ -20,11 +20,6 @@ func updateDirectionStats(stats *directionStats, event WebSocketEvent, msgTime t
 	stats.recentTimes = appendAndPrune(stats.recentTimes, msgTime)
 }
 
-// parseTimestamp delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
-func parseTimestamp(ts string) time.Time {
-	return util.ParseTimestamp(ts)
-}
-
 // appendAndPrune maintains a bounded-by-time event window.
 //
 // Invariants:
@@ -67,7 +62,7 @@ func formatDuration(d time.Duration) string {
 
 // formatAge formats the age of a timestamp relative to now (e.g., "0.2s", "3s", "2m30s")
 func formatAge(ts string) string {
-	t := parseTimestamp(ts)
+	t := util.ParseTimestamp(ts)
 	if t.IsZero() {
 		return ""
 	}
@@ -99,7 +94,7 @@ func buildWSConnection(conn *connectionState) WebSocketConnection {
 		},
 		Sampling: WebSocketSamplingStatus{Active: conn.sampling},
 	}
-	if openedTime := parseTimestamp(conn.openedAt); !openedTime.IsZero() {
+	if openedTime := util.ParseTimestamp(conn.openedAt); !openedTime.IsZero() {
 		wc.Duration = formatDuration(time.Since(openedTime))
 	}
 	if conn.incoming.lastData != "" {

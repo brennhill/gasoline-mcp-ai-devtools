@@ -11,6 +11,7 @@
  */
 
 import { StorageKey } from '../lib/constants.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 interface RecordingElements {
   row: HTMLElement
@@ -182,7 +183,7 @@ function tryMicPermissionThenStart(els: RecordingElements, state: RecordingState
       sendRecordStart(els, state, audioMode)
     })
     .catch((err) => {
-      console.log('[Gasoline REC] Popup: getUserMedia FAILED:', (err as Error).name, (err as Error).message)
+      console.log('[Gasoline REC] Popup: getUserMedia FAILED:', (err as Error).name, errorMessage(err))
       chrome.storage.local.remove(StorageKey.MIC_GRANTED)
       showIdle(els, state)
       if (els.saveInfoEl) showMicPermissionPrompt(els.saveInfoEl, audioMode)

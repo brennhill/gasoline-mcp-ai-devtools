@@ -5,7 +5,7 @@
 export { installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener } from './keyboard-shortcuts.js';
 export type { RecordingShortcutHandlers, ScreenRecordingHandlers } from './keyboard-shortcuts.js';
 export { installContextMenus } from './context-menus.js';
-export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, clearTrackedTab, getAllConfigSettings } from './tab-state.js';
+export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, clearTrackedTab, getAllConfigSettings, getActiveTab } from './tab-state.js';
 export type { SavedSettings, TrackedTabInfo } from './tab-state.js';
 export declare const ALARM_NAMES: {
     readonly RECONNECT: "reconnect";

@@ -72,7 +72,7 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 		}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Page info", result)}
+	return mcp.Succeed(req, "Page info", result)
 }
 
 func resolvePageURL(cap *capture.Store, trackedURL string) string {

@@ -11,6 +11,7 @@
 // Standalone: imports nothing from src/background/ to avoid circular deps.
 
 import type { OffscreenStartRecordingMessage, OffscreenStopRecordingMessage } from '../types/runtime-messages.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024
@@ -214,7 +215,7 @@ async function handleStartRecording(msg: OffscreenStartRecordingMessage): Promis
       success: true
     })
   } catch (err) {
-    console.error(LOG, 'START EXCEPTION:', (err as Error).message, (err as Error).stack)
+    console.error(LOG, 'START EXCEPTION:', errorMessage(err), (err as Error).stack)
     // Clean up any acquired streams to release the tab capture
     for (const s of acquiredStreams) {
       console.log(LOG, 'Cleaning up leaked stream, stopping', s.getTracks().length, 'tracks')
@@ -225,7 +226,7 @@ async function handleStartRecording(msg: OffscreenStartRecordingMessage): Promis
       target: 'background',
       type: 'OFFSCREEN_RECORDING_STARTED',
       success: false,
-      error: `RECORD_START: ${(err as Error).message || 'Failed to start recording in offscreen document.'}`
+      error: `RECORD_START: ${errorMessage(err, 'Failed to start recording in offscreen document.')}`
     })
   }
 }
@@ -356,14 +357,14 @@ function handleStopRecording(truncated: boolean = false): void {
         path: savePath
       })
     } catch (err) {
-      console.error(LOG, 'SAVE EXCEPTION:', (err as Error).message, (err as Error).stack)
+      console.error(LOG, 'SAVE EXCEPTION:', errorMessage(err), (err as Error).stack)
       state = { ...defaultState }
       chrome.runtime.sendMessage({
         target: 'background',
         type: 'OFFSCREEN_RECORDING_STOPPED',
         status: 'error',
         name,
-        error: `RECORD_STOP: ${(err as Error).message || 'Save failed.'}`
+        error: `RECORD_STOP: ${errorMessage(err, 'Save failed.')}`
       })
     }
   }

@@ -1,5 +1,14 @@
 "use strict";
 (() => {
+  // extension/lib/error-utils.js
+  function errorMessage(err, fallback = "Unknown error") {
+    if (err instanceof Error && err.message)
+      return err.message;
+    if (typeof err === "string" && err)
+      return err;
+    return fallback;
+  }
+
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
   var defaultState = {
@@ -150,7 +159,7 @@
         success: true
       });
     } catch (err) {
-      console.error(LOG, "START EXCEPTION:", err.message, err.stack);
+      console.error(LOG, "START EXCEPTION:", errorMessage(err), err.stack);
       for (const s of acquiredStreams) {
         console.log(LOG, "Cleaning up leaked stream, stopping", s.getTracks().length, "tracks");
         s.getTracks().forEach((t) => t.stop());
@@ -160,7 +169,7 @@
         target: "background",
         type: "OFFSCREEN_RECORDING_STARTED",
         success: false,
-        error: `RECORD_START: ${err.message || "Failed to start recording in offscreen document."}`
+        error: `RECORD_START: ${errorMessage(err, "Failed to start recording in offscreen document.")}`
       });
     }
   }
@@ -267,14 +276,14 @@
           path: savePath
         });
       } catch (err) {
-        console.error(LOG, "SAVE EXCEPTION:", err.message, err.stack);
+        console.error(LOG, "SAVE EXCEPTION:", errorMessage(err), err.stack);
         state = { ...defaultState };
         chrome.runtime.sendMessage({
           target: "background",
           type: "OFFSCREEN_RECORDING_STOPPED",
           status: "error",
           name,
-          error: `RECORD_STOP: ${err.message || "Save failed."}`
+          error: `RECORD_STOP: ${errorMessage(err, "Save failed.")}`
         });
       }
     };

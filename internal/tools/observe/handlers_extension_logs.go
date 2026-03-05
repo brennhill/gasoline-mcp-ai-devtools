@@ -68,9 +68,9 @@ func GetExtensionLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		newestTS = allLogs[len(allLogs)-1].Timestamp
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Extension logs", map[string]any{
+	return mcp.Succeed(req, "Extension logs", map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
 		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
-	})}
+	})
 }
