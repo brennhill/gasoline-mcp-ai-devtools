@@ -39,6 +39,13 @@ test_paths:
 
 ---
 
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map Pointer: [flow-map.md](./flow-map.md)
+
 ## Architecture
 
 ### Dedicated Terminal Server

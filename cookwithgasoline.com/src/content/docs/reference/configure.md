@@ -161,22 +161,23 @@ configure({what:"clear", buffer: "logs"})
 
 ---
 
-## recording_start — Start Recording
+## event_recording_start — Start Recording
 
 Start capturing a browser session. Records user actions and browser state for later playback or comparison.
 
 ```js
-configure({what:"recording_start"})
+configure({what:"event_recording_start"})
+configure({what:"event_recording_start", name: "checkout-run"})
 ```
 
 ---
 
-## recording_stop — Stop Recording
+## event_recording_stop — Stop Recording
 
 Stop an active recording session.
 
 ```js
-configure({what:"recording_stop", recording_id: "rec-123"})
+configure({what:"event_recording_stop", recording_id: "rec-123"})
 ```
 
 | Parameter | Type | Description |

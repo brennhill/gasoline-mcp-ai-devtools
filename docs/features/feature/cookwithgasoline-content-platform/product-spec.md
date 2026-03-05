@@ -2,7 +2,7 @@
 doc_type: product_spec
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 ---
@@ -21,12 +21,15 @@ Keep `cookwithgasoline.com` aligned with current product capabilities while pres
   - `/blog/*`: release-note chronology.
   - `/articles/*`: evergreen, topic-organized guides.
 - Contract checks that prevent docs drift when tool modes/actions change in code.
+- Writing-style contract checks that keep tutorials beginner-friendly and machine-parseable.
+- Single-channel version references (`latest`) sourced from root `VERSION` across docs surfaces.
 
 ## User Outcomes
 
 - Developers can scan homepage + solutions quickly and understand core capabilities.
 - Readers can find accurate, current tool parameters/actions in reference docs.
 - Agents can parse deterministic markdown endpoints for every docs/blog/articles route.
+- Readers and agents can see the exact docs version currently published.
 
 ## Non-Goals
 

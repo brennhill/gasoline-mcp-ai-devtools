@@ -1,6 +1,7 @@
 import type { APIRoute, GetStaticPaths } from 'astro'
 import { getCollection } from 'astro:content'
 import { resolveDocSlug } from '../utils/contentSlugs'
+import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion'
 
 export const prerender = true
 
@@ -20,7 +21,7 @@ function renderFrontmatter(entry: any) {
   const resolvedSlug = resolveDocSlug(entry)
   const canonicalPath = resolvedSlug === '' ? '/' : `/${resolvedSlug}/`
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
 }
 
 function findEntryBySlugPath(docs: any[], slugPath: string) {

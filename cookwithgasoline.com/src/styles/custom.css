@@ -1729,6 +1729,16 @@ code:not(pre code) {
   margin: 0;
 }
 
+.gasoline-footer-version {
+  margin-top: 0.24rem !important;
+  color: color-mix(in srgb, var(--g-muted) 82%, var(--g-ink) 18%);
+}
+
+.gasoline-footer-version strong {
+  color: var(--g-ink);
+  font-weight: 700;
+}
+
 .gasoline-footer-blogline {
   margin-top: 0.28rem !important;
 }

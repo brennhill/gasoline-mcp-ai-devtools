@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: cookwithgasoline-content-publishing-and-agent-markdown
 status: active
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 feature_ids:
@@ -12,11 +12,16 @@ entrypoints:
   - cookwithgasoline.com/src/content/docs/downloads.md
   - cookwithgasoline.com/src/pages/[...slug].md.ts
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
   - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/run-vale-on-changed.mjs
+  - .vale.ini
 code_paths:
+  - .vale.ini
+  - .vale/styles/Gasoline/*.yml
   - cookwithgasoline.com/astro.config.mjs
   - cookwithgasoline.com/public/images/integrations/*.svg
   - cookwithgasoline.com/public/images/landing/*.svg
@@ -47,20 +52,25 @@ code_paths:
   - cookwithgasoline.com/src/pages/llms-full.txt.ts
   - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
   - cookwithgasoline.com/src/utils/markdownPaths.ts
+  - cookwithgasoline.com/src/utils/siteVersion.ts
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
   - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/run-vale-on-changed.mjs
   - scripts/docs/check-feature-bundles.js
   - .github/workflows/ci.yml
 test_paths:
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
   - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/run-vale-on-changed.mjs
 ---
 
 # Cookwithgasoline Content Publishing and Agent Markdown Flow
@@ -79,6 +89,8 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 - Landing layout contract gate in `scripts/docs/check-landing-layout-contract.mjs`
 - Light-theme contract gate in `scripts/docs/check-light-theme-contract.mjs`
 - Reference/schema sync gate in `scripts/docs/check-reference-schema-sync.mjs`
+- Style contract gate in `scripts/docs/check-content-style-contract.mjs`
+- Vale plain-language gate in `scripts/docs/run-vale-on-changed.mjs`
 
 ## Primary Flow
 
@@ -88,7 +100,7 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 4. Every docs/blog/articles slug is mirrored as `/<slug>.md` via `src/pages/[...slug].md.ts`.
 5. `<link rel="alternate" type="text/markdown">` in `Head.astro` points each HTML route to its markdown mirror.
 6. `llms.txt` and `llms-full.txt` enumerate markdown/HTML URLs from `src/utils/markdownPaths.ts`.
-7. CI executes `docs:ci` to enforce feature bundle completeness, content contract compliance, and schema-to-reference mode coverage.
+7. CI executes `docs:ci` to enforce feature bundle completeness, content contract compliance, style/voice contract checks, version-surface integrity, and schema-to-reference mode coverage.
 8. Downloads-page copy and expressive-code visual guardrails are enforced by `check-downloads-page-contract.mjs`.
 9. Large-screen solutions-panel staggering is enforced by `check-landing-layout-contract.mjs`.
 10. Light-only theme behavior and selector removal are enforced by `check-light-theme-contract.mjs`.
@@ -99,6 +111,11 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 | --- | --- |
 | Missing slug in markdown mirror route | Returns markdown `404` response |
 | Missing title/description on changed docs file | CI failure with explicit frontmatter error |
+| Version reference missing in footer or markdown/LLM docs surfaces | CI failure from content contract version-surface checks |
+| Missing date/authors/tags on changed article or blog file | CI failure from style contract |
+| How-to article lacks `How to` title prefix or steps | CI failure from style contract |
+| First-use acronym is not expanded in a changed how-to article | CI failure from style contract |
+| Non-descriptive links or jargon in changed content | CI failure from Vale style gate |
 | Reference page missing key sections | CI failure (`Quick Reference`, `Common Parameters`) |
 | Reference page missing a live schema mode/action | CI failure from `check-reference-schema-sync.mjs` |
 | Blog post missing date/authors/tags | CI failure with required key list |
@@ -108,6 +125,8 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 ## State and Contracts
 
 - **SEO contract:** Changed docs/blog/articles files require `title` and `description` frontmatter.
+- **Style contract:** Changed articles/blog/how-to docs enforce metadata completeness, tutorial structure, acronym expansion, and plain-language link-text checks.
+- **Version contract:** Footer, markdown mirrors, and `llms*.txt` always publish root `VERSION` as the latest docs version.
 - **LLM contract:** Every docs/blog/articles page has deterministic markdown at `*.md` and is discoverable in `llms.txt`.
 - **Reference contract:** Pages under `/reference/` keep predictable section anchors and cover live schema modes/actions.
 - **Backward compatibility:** Legacy `/markdown/<slug>.md` routes remain available.
@@ -136,22 +155,29 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 - `cookwithgasoline.com/src/pages/llms-full.txt.ts`
 - `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
 - `cookwithgasoline.com/src/utils/markdownPaths.ts`
+- `cookwithgasoline.com/src/utils/siteVersion.ts`
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-content-style-contract.mjs`
 - `scripts/docs/check-downloads-page-contract.mjs`
 - `scripts/docs/check-landing-layout-contract.mjs`
 - `scripts/docs/check-light-theme-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
+- `scripts/docs/run-vale-on-changed.mjs`
 - `scripts/docs/check-feature-bundles.js`
+- `.vale.ini`
+- `.vale/styles/Gasoline/*.yml`
 - `.github/workflows/ci.yml`
 
 ## Test Paths
 
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-content-style-contract.mjs`
 - `scripts/docs/check-downloads-page-contract.mjs`
 - `scripts/docs/check-landing-layout-contract.mjs`
 - `scripts/docs/check-light-theme-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
 - `scripts/docs/check-feature-bundles.js`
+- `scripts/docs/run-vale-on-changed.mjs`
 
 ## Edit Guardrails
 
@@ -160,4 +186,6 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 3. Reference pages must preserve `## Quick Reference` and `## Common Parameters` headings.
 4. Reference pages must keep mode/action sections synchronized with `internal/schema/*`.
 5. Keep legacy `/markdown/*` compatibility until consumers are migrated.
-6. Any site IA refactor must update this flow map and its feature index in the same PR.
+6. Changed how-to files must keep acronym expansions and step-by-step structure.
+7. Docs version references must remain sourced from root `VERSION` (no hard-coded release strings).
+8. Any site IA refactor must update this flow map and its feature index in the same PR.

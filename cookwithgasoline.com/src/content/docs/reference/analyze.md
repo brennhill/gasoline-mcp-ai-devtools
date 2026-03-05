@@ -110,6 +110,14 @@ Recent navigation history for the current tab.
 analyze({what: "history"})
 ```
 
+### `navigation_patterns`
+
+Analyze user navigation flow patterns from captured activity (common entry routes, transitions, and repeated paths).
+
+```js
+analyze({what: "navigation_patterns"})
+```
+
 ---
 
 ## Security
