@@ -17,30 +17,18 @@ func (h *interactActionHandler) resolveDOMSelectorFromIndex(req JSONRPCRequest, 
 
 	sel, ok, stale, latestGeneration := h.resolveIndexToSelector(req.ClientID, params.TabID, *params.Index, params.IndexGen)
 	if stale {
-		return args, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				formatIndexGenerationConflict(params.IndexGen, latestGeneration),
-				"Re-run interact with what='list_interactive' for the current page context, then retry with the returned index_generation.",
-				withParam("index_generation"),
-				withParam("index"),
-			),
-		}, true
+		return args, fail(req, ErrInvalidParam,
+			formatIndexGenerationConflict(params.IndexGen, latestGeneration),
+			"Re-run interact with what='list_interactive' for the current page context, then retry with the returned index_generation.",
+			withParam("index_generation"), withParam("index"),
+		), true
 	}
 	if !ok {
-		return args, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				fmt.Sprintf("Element index %d not found for tab_id=%d. Call list_interactive first to refresh the element index for this tab/client scope.", *params.Index, params.TabID),
-				"Call interact with what='list_interactive' first (same tab/client scope), then use the returned index.",
-				withParam("index"),
-				withParam("tab_id"),
-			),
-		}, true
+		return args, fail(req, ErrInvalidParam,
+			fmt.Sprintf("Element index %d not found for tab_id=%d. Call list_interactive first to refresh the element index for this tab/client scope.", *params.Index, params.TabID),
+			"Call interact with what='list_interactive' first (same tab/client scope), then use the returned index.",
+			withParam("index"), withParam("tab_id"),
+		), true
 	}
 
 	params.Selector = sel
@@ -53,16 +41,11 @@ func validateDOMSelectorRequirement(req JSONRPCRequest, action string, params do
 		return JSONRPCResponse{}, false
 	}
 
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result: mcpStructuredError(
-			ErrMissingParam,
-			"Required parameter 'selector', 'element_id', or 'index' is missing",
-			"Add 'selector' (CSS or semantic selector), or use 'element_id'/'index' from list_interactive results.",
-			withParam("selector"),
-		),
-	}, true
+	return fail(req, ErrMissingParam,
+		"Required parameter 'selector', 'element_id', or 'index' is missing",
+		"Add 'selector' (CSS or semantic selector), or use 'element_id'/'index' from list_interactive results.",
+		withParam("selector"),
+	), true
 }
 
 func validateWaitForConditions(req JSONRPCRequest, action string, params domPrimitiveParams) (JSONRPCResponse, bool) {
@@ -86,39 +69,24 @@ func validateWaitForConditions(req JSONRPCRequest, action string, params domPrim
 	}
 
 	if conditionCount == 0 {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"wait_for requires at least one condition: selector, text, or url_contains",
-				"Provide 'selector' (wait for element), 'text' (wait for text), or 'url_contains' (wait for URL change).",
-				withParam("selector"),
-			),
-		}, true
+		return fail(req, ErrMissingParam,
+			"wait_for requires at least one condition: selector, text, or url_contains",
+			"Provide 'selector' (wait for element), 'text' (wait for text), or 'url_contains' (wait for URL change).",
+			withParam("selector"),
+		), true
 	}
 	if conditionCount > 1 {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"wait_for conditions are mutually exclusive: use only one of selector, text, or url_contains",
-				"Choose a single wait condition per call.",
-			),
-		}, true
+		return fail(req, ErrInvalidParam,
+			"wait_for conditions are mutually exclusive: use only one of selector, text, or url_contains",
+			"Choose a single wait condition per call.",
+		), true
 	}
 	if params.Absent && !hasSelector {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"wait_for with absent requires a selector",
-				"Provide 'selector' to specify which element to wait to disappear.",
-				withParam("selector"),
-			),
-		}, true
+		return fail(req, ErrMissingParam,
+			"wait_for with absent requires a selector",
+			"Provide 'selector' to specify which element to wait to disappear.",
+			withParam("selector"),
+		), true
 	}
 	return JSONRPCResponse{}, false
 }

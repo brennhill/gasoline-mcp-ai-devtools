@@ -52,7 +52,7 @@ func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMe
 		URLFilter       string   `json:"url"`
 		SeverityMin     string   `json:"severity_min"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

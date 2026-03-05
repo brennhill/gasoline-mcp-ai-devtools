@@ -24,11 +24,7 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		WaitForStable    *bool `json:"wait_for_stable,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"),
-		}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	waitForURLChange := true
@@ -91,16 +87,11 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		}
 		lastURL, changed := h.waitForTrackedURLChange(req, beforeURL, timeoutMs)
 		if !changed {
-			failResp := JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrExtTimeout,
-					"URL did not change after click within timeout",
-					"Increase timeout_ms, disable wait_for_url_change, or verify the click target triggers navigation.",
-					withParam("wait_for_url_change"),
-				),
-			}
+			failResp := fail(req, ErrExtTimeout,
+				"URL did not change after click within timeout",
+				"Increase timeout_ms, disable wait_for_url_change, or verify the click target triggers navigation.",
+				withParam("wait_for_url_change"),
+			)
 			trace = append(trace, WorkflowStep{
 				Action:   "wait_for_url_change",
 				Status:   "error",
@@ -231,31 +222,21 @@ func (h *interactActionHandler) validateNavigateAndDocumentTab(req JSONRPCReques
 
 	enabled, trackedTabID, _ := h.parent.capture.GetTrackingStatus()
 	if !enabled || trackedTabID <= 0 {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				fmt.Sprintf("navigate_and_document with tab_id=%d requires an actively tracked tab", tabID),
-				"Switch tracking to the target tab first (interact what=switch_tab), then retry navigate_and_document.",
-				withParam("tab_id"),
-			),
-		}, true
+		return fail(req, ErrInvalidParam,
+			fmt.Sprintf("navigate_and_document with tab_id=%d requires an actively tracked tab", tabID),
+			"Switch tracking to the target tab first (interact what=switch_tab), then retry navigate_and_document.",
+			withParam("tab_id"),
+		), true
 	}
 	if trackedTabID == tabID {
 		return JSONRPCResponse{}, false
 	}
 
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result: mcpStructuredError(
-			ErrInvalidParam,
-			fmt.Sprintf("navigate_and_document requires tracked tab_id=%d; got tab_id=%d", trackedTabID, tabID),
-			"Switch tracking to the target tab first (interact what=switch_tab) or omit tab_id.",
-			withParam("tab_id"),
-		),
-	}, true
+	return fail(req, ErrInvalidParam,
+		fmt.Sprintf("navigate_and_document requires tracked tab_id=%d; got tab_id=%d", trackedTabID, tabID),
+		"Switch tracking to the target tab first (interact what=switch_tab) or omit tab_id.",
+		withParam("tab_id"),
+	), true
 }
 
 // remainingNavigateAndDocumentTimeoutMs converts total workflow timeout into
@@ -272,14 +253,9 @@ func remainingNavigateAndDocumentTimeoutMs(workflowStart time.Time, totalTimeout
 }
 
 func navigateAndDocumentTimeoutBudgetExceeded(req JSONRPCRequest, stage string) JSONRPCResponse {
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result: mcpStructuredError(
-			ErrExtTimeout,
-			fmt.Sprintf("timeout_ms exhausted before %s stage", stage),
-			"Increase timeout_ms or disable one of the workflow wait stages.",
-			withParam("timeout_ms"),
-		),
-	}
+	return fail(req, ErrExtTimeout,
+		fmt.Sprintf("timeout_ms exhausted before %s stage", stage),
+		"Increase timeout_ms or disable one of the workflow wait stages.",
+		withParam("timeout_ms"),
+	)
 }

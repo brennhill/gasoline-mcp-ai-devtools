@@ -15,7 +15,7 @@ func (h *ToolHandler) generateCSPImpl(req JSONRPCRequest, args json.RawMessage) 
 		Mode string `json:"mode"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &arguments); stop {
+		if resp, stop := parseArgs(req, args, &arguments); stop {
 			return resp
 		}
 	}

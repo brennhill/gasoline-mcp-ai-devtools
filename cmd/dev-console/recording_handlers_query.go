@@ -15,7 +15,7 @@ func (h *ToolHandler) toolGetRecordings(req JSONRPCRequest, args json.RawMessage
 		Limit int `json:"limit"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -48,7 +48,7 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 		RecordingID string `json:"recording_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

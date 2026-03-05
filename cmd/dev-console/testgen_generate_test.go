@@ -27,6 +27,7 @@ func newTestToolHandler() *ToolHandler {
 		elementIndexRegistry: newElementIndexRegistry(),
 	}
 }
+
 // ============================================
 // Tests for buildRegressionAssertions
 // ============================================

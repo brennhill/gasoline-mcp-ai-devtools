@@ -14,7 +14,7 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	var params struct {
 		URL string `json:"url"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -70,7 +70,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 		TabIndex   *int  `json:"tab_index,omitempty"`
 		SetTracked *bool `json:"set_tracked,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.TabID <= 0 && params.TabIndex == nil {
@@ -169,7 +169,7 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

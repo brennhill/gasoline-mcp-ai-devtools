@@ -16,7 +16,7 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -82,7 +82,7 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 		Name         string `json:"name"` // backward-compatible alias
 		IncludeURL   bool   `json:"include_url,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

@@ -18,7 +18,7 @@ func (h *interactActionHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, 
 		SaveTo string `json:"save_to,omitempty"`
 		TabID  int    `json:"tab_id,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

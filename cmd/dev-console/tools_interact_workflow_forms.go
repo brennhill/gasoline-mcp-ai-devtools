@@ -21,7 +21,7 @@ func (h *interactActionHandler) handleFillFormAndSubmit(req JSONRPCRequest, args
 		TabID          int         `json:"tab_id,omitempty"`
 		TimeoutMs      int         `json:"timeout_ms,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if len(params.Fields) == 0 {
@@ -73,7 +73,7 @@ func (h *interactActionHandler) handleFillForm(req JSONRPCRequest, args json.Raw
 		TabID     int         `json:"tab_id,omitempty"`
 		TimeoutMs int         `json:"timeout_ms,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if len(params.Fields) == 0 {

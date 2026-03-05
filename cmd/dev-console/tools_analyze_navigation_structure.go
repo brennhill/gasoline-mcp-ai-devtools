@@ -19,7 +19,7 @@ func (h *ToolHandler) toolAnalyzeNavigation(req JSONRPCRequest, args json.RawMes
 		TabID int `json:"tab_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -47,7 +47,7 @@ func (h *ToolHandler) toolAnalyzePageStructure(req JSONRPCRequest, args json.Raw
 		TabID int `json:"tab_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

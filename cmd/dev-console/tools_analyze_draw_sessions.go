@@ -66,7 +66,7 @@ func (h *ToolHandler) toolGetDrawSession(req JSONRPCRequest, args json.RawMessag
 		File string `json:"file"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

@@ -19,7 +19,7 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 		Value       json.RawMessage `json:"value"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &compositeArgs); stop {
+		if resp, stop := parseArgs(req, args, &compositeArgs); stop {
 			return resp
 		}
 	}
@@ -114,7 +114,7 @@ func (h *ToolHandler) configureClearImpl(req JSONRPCRequest, args json.RawMessag
 		Buffer string `json:"buffer"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

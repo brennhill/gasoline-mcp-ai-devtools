@@ -14,7 +14,7 @@ func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.Ra
 		ActionJitterMs *int `json:"action_jitter_ms"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

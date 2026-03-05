@@ -19,7 +19,7 @@ func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JS
 		StatusMax int    `json:"status_max"`
 		SaveTo    string `json:"save_to"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

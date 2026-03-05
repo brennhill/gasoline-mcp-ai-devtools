@@ -26,7 +26,7 @@ type uploadParams struct {
 func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	h := u.parent
 	var params uploadParams
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

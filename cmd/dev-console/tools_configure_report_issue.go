@@ -21,7 +21,7 @@ func (h *ToolHandler) toolConfigureReportIssue(req JSONRPCRequest, args json.Raw
 		UserContext string `json:"user_context"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

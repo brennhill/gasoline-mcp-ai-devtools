@@ -21,7 +21,7 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 		Tags        []string          `json:"tags"`
 		Steps       []json.RawMessage `json:"steps"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

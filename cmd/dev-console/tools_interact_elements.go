@@ -18,7 +18,7 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 		VisibleOnly bool `json:"visible_only,omitempty"`
 		Limit       int  `json:"limit,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

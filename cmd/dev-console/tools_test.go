@@ -595,7 +595,6 @@ func TestMcpTextResponse(t *testing.T) {
 	}
 }
 
-
 func TestMcpJSONResponse(t *testing.T) {
 	data := map[string]any{
 		"status": "ok",

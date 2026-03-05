@@ -11,7 +11,7 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 		What string `json:"what"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

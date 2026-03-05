@@ -82,7 +82,7 @@ func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMe
 		URL   string `json:"url"`
 		LastN int    `json:"last_n,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 

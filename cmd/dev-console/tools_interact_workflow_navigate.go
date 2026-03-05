@@ -20,7 +20,7 @@ func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, arg
 		TimeoutMs      int    `json:"timeout_ms,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.URL == "" {

@@ -20,7 +20,7 @@ func (h *ToolHandler) toolObservePageInventory(req JSONRPCRequest, args json.Raw
 		Limit       int  `json:"limit"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

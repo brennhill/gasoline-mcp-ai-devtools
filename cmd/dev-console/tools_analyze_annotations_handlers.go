@@ -50,11 +50,7 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 	operation := strings.ToLower(strings.TrimSpace(params.Operation))
 	if operation != "" {
 		if operation != "flush" {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result:  mcpStructuredError(ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush")),
-			}
+			return fail(req, ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush"))
 		}
 		return h.toolFlushAnnotations(req, params.Correlation, urlFilter)
 	}
@@ -164,7 +160,7 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 }
 
 func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) map[string]any {
-	matched := annotation.URLMatches(urlFilter,session.PageURL)
+	matched := annotation.URLMatches(urlFilter, session.PageURL)
 	annotations := session.Annotations
 	if !matched {
 		annotations = []Annotation{}
@@ -248,17 +244,11 @@ func resolveAnnotationURLFilter(req JSONRPCRequest, urlValue, urlPatternValue st
 	urlValue = strings.TrimSpace(urlValue)
 	urlPatternValue = strings.TrimSpace(urlPatternValue)
 	if urlValue != "" && urlPatternValue != "" && urlValue != urlPatternValue {
-		return "", JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Conflicting annotation scope filters: 'url' and 'url_pattern' differ",
-				"Provide only one annotation scope filter, or set both to the same value.",
-				withParam("url"),
-				withParam("url_pattern"),
-			),
-		}, true
+		return "", fail(req, ErrInvalidParam,
+			"Conflicting annotation scope filters: 'url' and 'url_pattern' differ",
+			"Provide only one annotation scope filter, or set both to the same value.",
+			withParam("url"), withParam("url_pattern"),
+		), true
 	}
 	if urlPatternValue != "" {
 		return urlPatternValue, JSONRPCResponse{}, false
@@ -376,7 +366,7 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		CorrelationID string `json:"correlation_id"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}

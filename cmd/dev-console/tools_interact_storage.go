@@ -24,7 +24,7 @@ func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.R
 		TimeoutMs   int     `json:"timeout_ms,omitempty"`
 		World       string  `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -52,7 +52,7 @@ func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args jso
 		TimeoutMs   int    `json:"timeout_ms,omitempty"`
 		World       string `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -76,7 +76,7 @@ func (h *interactActionHandler) handleClearStorage(req JSONRPCRequest, args json
 		TimeoutMs   int    `json:"timeout_ms,omitempty"`
 		World       string `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -100,7 +100,7 @@ func (h *interactActionHandler) handleSetCookie(req JSONRPCRequest, args json.Ra
 		TimeoutMs int     `json:"timeout_ms,omitempty"`
 		World     string  `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.Name == "" {
@@ -134,7 +134,7 @@ func (h *interactActionHandler) handleDeleteCookie(req JSONRPCRequest, args json
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
 		World     string `json:"world,omitempty"`
 	}
-		if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.Name == "" {

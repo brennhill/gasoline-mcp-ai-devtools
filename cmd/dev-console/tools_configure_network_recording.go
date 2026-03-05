@@ -17,7 +17,7 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 		Method    string `json:"method"`
 	}
 	if len(args) > 0 {
-				if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := parseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
