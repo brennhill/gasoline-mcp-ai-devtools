@@ -3,7 +3,7 @@ feature: dynamic-exposure
 status: proposed
 tool: configure
 mode: feature-flags
-version: v6.3
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-dynamic-exposure
 last_reviewed: 2026-02-16

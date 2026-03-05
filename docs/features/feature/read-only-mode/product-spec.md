@@ -3,7 +3,7 @@ feature: read-only-mode
 status: proposed
 tool: configure
 mode: security
-version: v6.3
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-read-only-mode
 last_reviewed: 2026-02-16

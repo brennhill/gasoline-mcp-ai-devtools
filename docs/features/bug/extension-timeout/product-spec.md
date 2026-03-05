@@ -3,7 +3,7 @@ feature: extension-timeout
 status: in-progress
 tool: all
 mode: all
-version: 5.2.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: bug-extension-timeout
 last_reviewed: 2026-02-16

@@ -3,7 +3,7 @@ feature: project-isolation
 status: proposed
 tool: configure
 mode: multi-tenancy
-version: v6.3
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-project-isolation
 last_reviewed: 2026-02-16

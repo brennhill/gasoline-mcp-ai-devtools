@@ -1,7 +1,7 @@
 ---
 feature: query-dom
 status: shipped
-version: v7.0
+version: 0.7.12
 tool: analyze
 mode: dom
 authors: []

@@ -3,7 +3,7 @@ feature: query-dom-not-implemented
 status: in-progress
 tool: generate
 mode: dom
-version: 5.2.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: bug-query-dom-not-implemented
 last_reviewed: 2026-02-16

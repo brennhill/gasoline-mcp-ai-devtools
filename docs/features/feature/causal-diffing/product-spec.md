@@ -3,7 +3,7 @@ feature: causal-diffing
 status: proposed
 tool: configure
 mode: causal_diff
-version: v6.1
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-causal-diffing
 last_reviewed: 2026-02-16

@@ -1,6 +1,6 @@
 ---
 feature: analyze-tool
-version: v7.0
+version: 0.7.12
 doc_type: qa-plan
 feature_id: feature-analyze-tool
 last_reviewed: 2026-02-17
