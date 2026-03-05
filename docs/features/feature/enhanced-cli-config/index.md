@@ -25,6 +25,7 @@ test_paths:
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
+  - tests/extension/install-script-extension-source.test.js
   - tests/cli/cli-integration.test.cjs
 ---
 

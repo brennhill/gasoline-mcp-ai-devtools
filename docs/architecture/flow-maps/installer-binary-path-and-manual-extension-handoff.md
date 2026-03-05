@@ -34,6 +34,7 @@ test_paths:
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
+  - tests/extension/install-script-extension-source.test.js
 ---
 
 # Installer Binary Path and Manual Extension Handoff
@@ -59,7 +60,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 1. Installer resolves platform and downloads/stages binary + extension artifacts.
 2. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
 3. Extension staging validates required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`).
-4. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
+4. If the release extension zip is incomplete, installer falls back to `refs/heads/STABLE.zip` source extraction and validates again.
 5. Wrapper/native install writes MCP client configs.
 6. Config entries prefer resolved binary paths over transient launchers.
 7. Installer prints explicit manual extension checklist:
@@ -73,7 +74,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 ## Error and Recovery Paths
 
 1. If platform binary cannot be resolved, wrappers fall back to command name for compatibility.
-2. If release extension zip is missing required module files, installer falls back to source zip and revalidates staged files.
+2. If release extension zip is missing required module files, installer falls back to STABLE branch source zip and revalidates staged files.
 3. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
 4. Missing client config directories are skipped without aborting install.
 
@@ -110,6 +111,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `tests/extension/release-extension-zip.test.js`
 - `tests/extension/release-extension-crx-fallback.test.js`
 - `tests/extension/manifest-startup-integrity.test.js`
+- `tests/extension/install-script-extension-source.test.js`
 
 ## Edit Guardrails
 
