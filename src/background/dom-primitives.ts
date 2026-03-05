@@ -306,10 +306,16 @@ export function domPrimitive(
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          // #443: If no interactive ancestor, check for an interactive child element
-          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
-            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
-            : null
+          // #449: Filter interactive child candidates with visibility/actionability checks
+          // and exclude hidden inputs to avoid selecting non-actionable elements.
+          let interactiveChild: Element | null = null
+          if (!interactive && typeof parent.querySelectorAll === 'function') {
+            const childCandidates = parent.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]')
+            for (let ci = 0; ci < childCandidates.length; ci++) {
+              const child = childCandidates[ci]!
+              if (isActionableVisible(child)) { interactiveChild = child; break }
+            }
+          }
           const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target) || !isVisible(target)) continue
           if (!seen.has(target)) {
@@ -382,10 +388,16 @@ export function domPrimitive(
           const parent = node.parentElement
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-          // #443: If no interactive ancestor, check for an interactive child element
-          const interactiveChild = !interactive && typeof parent.querySelector === 'function'
-            ? parent.querySelector('a[href], button, input, select, textarea, [role="button"], [role="link"]')
-            : null
+          // #449: Filter interactive child candidates with visibility/actionability checks
+          // and exclude hidden inputs to avoid selecting non-actionable elements.
+          let interactiveChild: Element | null = null
+          if (!interactive && typeof parent.querySelectorAll === 'function') {
+            const childCandidates = parent.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="link"]')
+            for (let ci = 0; ci < childCandidates.length; ci++) {
+              const child = childCandidates[ci]!
+              if (isActionableVisible(child)) { interactiveChild = child; break }
+            }
+          }
           const target = interactive || interactiveChild || parent
           if (isGasolineOwnedElement(target)) continue
           if (!fallback) fallback = target
@@ -698,9 +710,14 @@ export function domPrimitive(
       const src = child.getAttribute('src') || child.getAttribute('href') || ''
       if (src.startsWith('chrome-extension://') || src.startsWith('moz-extension://')) return true
     }
-    // Check if the element is inside a shadow DOM hosted by a custom element
-    // (extensions often inject shadow DOMs for style isolation).
-    // Walk up through shadow boundaries by jumping to the host element.
+    // #453: Check if the element is inside a shadow DOM hosted by an extension-injected custom element.
+    // Generic web components also use hyphenated tag names, so a bare hyphen check causes
+    // false positives. Restrict detection to extension-origin signals:
+    //   1. Shadow host's own resources reference extension URLs
+    //   2. Host carries known extension-injected markers (data-extension-id, __ext, grammarly-, etc.)
+    //   3. Host tag starts with a known extension prefix
+    const extensionTagPrefixes = ['grammarly-', 'lastpass-', 'bitwarden-', '1password-', 'dashlane-', 'honey-', 'loom-']
+    const extensionAttrPatterns = ['data-extension-id', 'data-ext-', '__ext']
     let node: Node | null = el
     while (node) {
       const root: Node | null = typeof node.getRootNode === 'function' ? node.getRootNode() : null
@@ -708,8 +725,23 @@ export function domPrimitive(
         const host: Element | undefined = (root as ShadowRoot & { host?: Element }).host
         if (host) {
           const hostTag = host.tagName?.toLowerCase() || ''
-          // Extension-injected elements typically use custom element names
-          if (hostTag.includes('-') && !hostTag.startsWith('slot')) return true
+          // Check if the shadow host itself references extension resources
+          const hostResources = host.querySelectorAll('iframe, img, script, link')
+          for (let j = 0; j < hostResources.length; j++) {
+            const res = hostResources[j]!
+            const resSrc = res.getAttribute('src') || res.getAttribute('href') || ''
+            if (resSrc.startsWith('chrome-extension://') || resSrc.startsWith('moz-extension://')) return true
+          }
+          // Check for known extension tag prefixes
+          if (extensionTagPrefixes.some(prefix => hostTag.startsWith(prefix))) return true
+          // Check for extension-injected marker attributes on the host
+          if (host.hasAttributes()) {
+            const attrs = host.attributes
+            for (let k = 0; k < attrs.length; k++) {
+              const attrName = attrs[k]!.name.toLowerCase()
+              if (extensionAttrPatterns.some(pat => attrName.startsWith(pat) || attrName.includes(pat))) return true
+            }
+          }
           // Cross the shadow boundary to continue walking up the tree
           node = host
           continue
@@ -1293,6 +1325,32 @@ export function domPrimitive(
 
     if (action === 'auto_dismiss_overlays') {
       // Auto-dismiss cookie consent banners and overlays (#342)
+
+      // #453: Dismiss loop detection must run BEFORE consent-selector short-circuit
+      // to prevent infinite loops when a consent banner cannot be dismissed.
+      const overlayElement = findTopmostOverlay()
+      if (overlayElement) {
+        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+        if (priorAutoStamp) {
+          const elapsed = Date.now() - Number(priorAutoStamp)
+          if (elapsed < dismissStampTTL) {
+            const info = describeOverlay(overlayElement)
+            const loopError = domError(
+              'dismiss_loop_detected',
+              `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
+              'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
+              'navigate away, or ignore it if it does not block interaction.'
+            )
+            loopError.overlay_type = info.overlay_type
+            loopError.overlay_selector = info.overlay_selector
+            loopError.overlay_text_preview = info.overlay_text_preview
+            loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
+            return { error: loopError }
+          }
+          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+        }
+      }
+
       // Strategy 1: Try known consent framework selectors (most specific)
       const consentSelectors = [
         // CookieBot
@@ -1330,28 +1388,7 @@ export function domPrimitive(
       }
 
       // Strategy 2: Fall back to dismiss_top_overlay multi-strategy approach
-      const overlayElement = findTopmostOverlay()
       if (overlayElement) {
-        // #444: Dismiss loop detection — same check as dismiss_top_overlay
-        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
-        if (priorAutoStamp) {
-          const elapsed = Date.now() - Number(priorAutoStamp)
-          if (elapsed < dismissStampTTL) {
-            const info = describeOverlay(overlayElement)
-            const loopError = domError(
-              'dismiss_loop_detected',
-              `Overlay (${info.overlay_selector}) was already attempted ${Math.round(elapsed / 1000)}s ago and is still visible. ` +
-              'It may be non-dismissable. Try a different approach: use a specific selector to target its close mechanism, ' +
-              'navigate away, or ignore it if it does not block interaction.'
-            )
-            loopError.overlay_type = info.overlay_type
-            loopError.overlay_selector = info.overlay_selector
-            loopError.overlay_text_preview = info.overlay_text_preview
-            loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
-            return { error: loopError }
-          }
-          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
-        }
         // Reuse the dismiss_top_overlay strategy chain
         const closeButtonSelectors = [
           'button.close', '.btn-close',
@@ -2639,6 +2676,8 @@ export function domPrimitive(
             // Also try the overlay element directly
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
+            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo,
@@ -2658,6 +2697,8 @@ export function domPrimitive(
           })()
 
           node.click()
+          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
           return mutatingSuccess(node, {
             strategy,
             selector_used: selector || resolvedMatchStrategy,
@@ -2698,6 +2739,8 @@ export function domPrimitive(
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
+            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',
@@ -2715,6 +2758,8 @@ export function domPrimitive(
           })()
 
           node.click()
+          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
           return mutatingSuccess(node, {
             dismissed_count: 1,
             strategy,

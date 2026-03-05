@@ -33,6 +33,8 @@
             // Also try the overlay element directly
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
+            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo,
@@ -52,6 +54,8 @@
           })()
 
           node.click()
+          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
           return mutatingSuccess(node, {
             strategy,
             selector_used: selector || resolvedMatchStrategy,
@@ -92,6 +96,8 @@
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
+            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',
@@ -109,6 +115,8 @@
           })()
 
           node.click()
+          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
+          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
           return mutatingSuccess(node, {
             dismissed_count: 1,
             strategy,

@@ -25,6 +25,20 @@ import { persistTrackedTab } from './commands/helpers.js'
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
 
+/**
+ * Race a promise against a timeout. Properly clears the timer when the promise
+ * settles first so no dangling setTimeout keeps the service worker alive.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      (err) => { clearTimeout(timer); reject(err as Error) }
+    )
+  })
+}
+
 // =============================================================================
 // BROWSER ACTION TYPES
 // =============================================================================
@@ -358,20 +372,11 @@ export async function handleAsyncExecuteCommand(
   }
 
   try {
-    const result = await Promise.race([
+    const result = await withTimeout(
       executeWithWorldRouting(tabId, query.params, world),
-      new Promise<never>((_, reject) => {
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`
-              )
-            ),
-          ASYNC_EXECUTE_TIMEOUT_MS
-        )
-      })
-    ])
+      ASYNC_EXECUTE_TIMEOUT_MS,
+      `Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`
+    )
 
     if (result.success) {
       actionToast(tabId, reason || 'execute_js', undefined, 'success')
@@ -466,20 +471,11 @@ export async function handleAsyncBrowserAction(
     })
 
   try {
-    const execResult = await Promise.race([
+    const execResult = await withTimeout(
       executionPromise,
-      new Promise<never>((_, reject) => {
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`
-              )
-            ),
-          ASYNC_BROWSER_ACTION_TIMEOUT_MS
-        )
-      })
-    ])
+      ASYNC_BROWSER_ACTION_TIMEOUT_MS,
+      `Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`
+    )
 
     if (execResult.success !== false) {
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', execResult)

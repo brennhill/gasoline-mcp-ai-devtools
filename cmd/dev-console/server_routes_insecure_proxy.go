@@ -20,6 +20,10 @@ const (
 	// insecureProxyTimeout is the HTTP client timeout for outbound requests
 	// made through the insecure proxy endpoint.
 	insecureProxyTimeout = 20 * time.Second
+
+	// insecureProxyMaxResponseBytes caps the proxied response body size
+	// to prevent memory exhaustion from unexpectedly large upstream responses.
+	insecureProxyMaxResponseBytes = 50 * 1024 * 1024 // 50MB
 )
 
 // ssrfCheckEnabled controls whether the SSRF denylist is enforced.
@@ -121,5 +125,5 @@ func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap
 		w.Header().Set("X-Gasoline-Production-Parity", "true")
 	}
 	w.WriteHeader(upstreamResp.StatusCode)
-	_, _ = io.Copy(w, upstreamResp.Body)
+	_, _ = io.Copy(w, io.LimitReader(upstreamResp.Body, insecureProxyMaxResponseBytes))
 }

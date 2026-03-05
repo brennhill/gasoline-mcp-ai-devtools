@@ -7,7 +7,7 @@
  */
 export { MEMORY_SOFT_LIMIT, MEMORY_HARD_LIMIT, MEMORY_CHECK_INTERVAL_MS, MEMORY_AVG_LOG_ENTRY_SIZE, MEMORY_AVG_WS_EVENT_SIZE, MEMORY_AVG_NETWORK_BODY_SIZE, MEMORY_AVG_ACTION_SIZE } from './background/state-manager.js';
 export { RATE_LIMIT_CONFIG } from './background/communication.js';
-export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, extensionLogQueue } from './background/state.js';
+export { EXTENSION_SESSION_ID, getServerUrl, isDebugMode, getConnectionStatus, getCurrentLogLevel, isScreenshotOnError, getExtensionLogQueue } from './background/state.js';
 export { DebugCategory } from './background/index.js';
 export { debugLog, getDebugLog, clearDebugLog, exportDebugLog } from './background/index.js';
 export { sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher } from './background/index.js';

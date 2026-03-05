@@ -31,7 +31,7 @@ export { RATE_LIMIT_CONFIG } from './background/communication.js';
 // =============================================================================
 // === PUBLIC API: CORE STATE
 // =============================================================================
-export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, extensionLogQueue } from './background/state.js';
+export { EXTENSION_SESSION_ID, getServerUrl, isDebugMode, getConnectionStatus, getCurrentLogLevel, isScreenshotOnError, getExtensionLogQueue } from './background/state.js';
 export { DebugCategory } from './background/index.js';
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING

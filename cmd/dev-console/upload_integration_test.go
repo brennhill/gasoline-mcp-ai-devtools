@@ -113,7 +113,7 @@ func TestUploadInteg_ExtensionOnlyMiddleware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
-	mux := setupHTTPRoutes(server, nil)
+	mux, _ := setupHTTPRoutes(server, nil)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 

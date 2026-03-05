@@ -20,6 +20,11 @@ func isErrorResponse(resp JSONRPCResponse) bool {
 	return act.IsErrorResponse(resp)
 }
 
+// isNonFinalResponse — delegated to internal/tools/interact package.
+func isNonFinalResponse(resp JSONRPCResponse) bool {
+	return act.IsNonFinalResponse(resp)
+}
+
 // responseStatus — delegated to internal/tools/interact package.
 func responseStatus(resp JSONRPCResponse) string {
 	return act.ResponseStatus(resp)

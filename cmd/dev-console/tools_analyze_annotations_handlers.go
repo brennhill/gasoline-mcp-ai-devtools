@@ -29,7 +29,7 @@ const annotationBlockingWaitMax = 10 * time.Minute
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait         bool   `json:"wait"`
+		Wait         *bool  `json:"wait"`
 		Background   *bool  `json:"background"`
 		AnnotSession string `json:"annot_session"`
 		Operation    string `json:"operation"`
@@ -42,8 +42,12 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 		lenientUnmarshal(args, &params)
 	}
 	// Canonical param is "background" (false = block). "wait" is a quiet alias.
+	// Default to wait=true when both background and wait are omitted.
+	waitValue := true // default: blocking
 	if params.Background != nil {
-		params.Wait = !*params.Background
+		waitValue = !*params.Background
+	} else if params.Wait != nil {
+		waitValue = *params.Wait
 	}
 
 	urlFilter, filterResp, hasFilterErr := resolveAnnotationURLFilter(req, params.URL, params.URLPattern)
@@ -61,9 +65,9 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 
 	waitTimeout := annotationBlockingWaitDuration(params.TimeoutMs)
 	if params.AnnotSession != "" {
-		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait, waitTimeout, urlFilter)
+		return h.getNamedAnnotations(req, params.AnnotSession, waitValue, waitTimeout, urlFilter)
 	}
-	return h.getAnonymousAnnotations(req, params.Wait, waitTimeout, urlFilter)
+	return h.getAnonymousAnnotations(req, waitValue, waitTimeout, urlFilter)
 }
 
 func annotationBlockingWaitDuration(timeoutMs int) time.Duration {

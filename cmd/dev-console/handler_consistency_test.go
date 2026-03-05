@@ -32,7 +32,7 @@ func TestAllPOSTEndpoints_RejectGET(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	postOnlyEndpoints := []string{
 		"/websocket-events",
@@ -69,7 +69,7 @@ func TestAllPOSTEndpoints_InvalidJSON(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// Endpoints that accept POST with JSON bodies and should return 400 on invalid JSON.
 	// Excluded: /sync (has its own test), /recordings/save (multipart), /shutdown (no body).
@@ -190,7 +190,7 @@ func TestDiagnostics_ReturnsRealData(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	// Ingest some data into various buffers.
 	cap.AddWebSocketEvents([]capture.WebSocketEvent{

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
@@ -38,9 +39,10 @@ type Server struct {
 	TTL             time.Duration    // TTL for read-time filtering (0 means unlimited)
 
 	// Async logging
-	logChan      chan []LogEntry // buffered channel for async log writes
-	logDropCount int64           // atomic counter for dropped logs (when channel full)
-	logDone      chan struct{}   // signal when async logger exits
+	logChan       chan []LogEntry // buffered channel for async log writes
+	logDropCount  int64           // atomic counter for dropped logs (when channel full)
+	logDone       chan struct{}   // signal when async logger exits
+	logChanClosed atomic.Bool    // guards against double-close panic on logChan
 
 	// One-shot warnings surfaced via MCP tool responses.
 	warningsMu  sync.Mutex

@@ -15,6 +15,16 @@ import { persistTrackedTab } from './commands/helpers.js';
 // =============================================================================
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
+/**
+ * Race a promise against a timeout. Properly clears the timer when the promise
+ * settles first so no dangling setTimeout keeps the service worker alive.
+ */
+function withTimeout(promise, timeoutMs, message) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then((value) => { clearTimeout(timer); resolve(value); }, (err) => { clearTimeout(timer); reject(err); });
+    });
+}
 /** Cached CSP status from the most recent navigation */
 let lastCSPStatus = { csp_restricted: false, csp_level: 'none' };
 /** Get the CSP status from the most recent navigation (for sync layer) */
@@ -275,12 +285,7 @@ export async function handleAsyncExecuteCommand(query, tabId, world, syncClient,
         /* ignore parse errors */
     }
     try {
-        const result = await Promise.race([
-            executeWithWorldRouting(tabId, query.params, world),
-            new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(`Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`)), ASYNC_EXECUTE_TIMEOUT_MS);
-            })
-        ]);
+        const result = await withTimeout(executeWithWorldRouting(tabId, query.params, world), ASYNC_EXECUTE_TIMEOUT_MS, `Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`);
         if (result.success) {
             actionToast(tabId, reason || 'execute_js', undefined, 'success');
         }
@@ -350,12 +355,7 @@ export async function handleAsyncBrowserAction(query, tabId, params, syncClient,
         };
     });
     try {
-        const execResult = await Promise.race([
-            executionPromise,
-            new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(`Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`)), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
-            })
-        ]);
+        const execResult = await withTimeout(executionPromise, ASYNC_BROWSER_ACTION_TIMEOUT_MS, `Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`);
         if (execResult.success !== false) {
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', execResult);
         }

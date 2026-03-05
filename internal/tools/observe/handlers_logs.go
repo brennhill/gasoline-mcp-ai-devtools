@@ -186,7 +186,7 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 			limit = params.Limit
 		}
 		limit = clampLimit(limit, 100)
-		extLogs := buildExtensionLogEntries(deps.GetCapture().GetExtensionLogs(), limit, params.Level)
+		extLogs := buildExtensionLogEntries(deps.GetCapture().GetExtensionLogs(), limit, params.Level, params.MinLevel)
 		response["extension_logs"] = extLogs
 		response["extension_logs_count"] = len(extLogs)
 	}

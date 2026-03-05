@@ -61,6 +61,38 @@ func IsErrorResponse(resp mcp.JSONRPCResponse) bool {
 	return false
 }
 
+// IsNonFinalResponse checks if a JSONRPCResponse is a non-final async response
+// (queued or still_processing) that carries a correlation_id for later polling.
+func IsNonFinalResponse(resp mcp.JSONRPCResponse) bool {
+	if resp.Error != nil {
+		return false
+	}
+	var result mcp.MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
+		return false
+	}
+	if len(result.Content) == 0 {
+		return false
+	}
+	text := result.Content[0].Text
+	// Look for the JSON payload after the summary line.
+	idx := 0
+	for idx < len(text) && text[idx] != '{' {
+		idx++
+	}
+	if idx >= len(text) {
+		return false
+	}
+	var data map[string]any
+	if json.Unmarshal([]byte(text[idx:]), &data) != nil {
+		return false
+	}
+	if final, ok := data["final"].(bool); ok && !final {
+		return true
+	}
+	return false
+}
+
 // ResponseStatus returns "success" or "error" based on the response.
 func ResponseStatus(resp mcp.JSONRPCResponse) string {
 	if IsErrorResponse(resp) {

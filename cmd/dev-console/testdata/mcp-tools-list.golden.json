@@ -749,6 +749,7 @@
             "websocket",
             "actions",
             "logs",
+            "inbox",
             "all"
           ],
           "type": "string"

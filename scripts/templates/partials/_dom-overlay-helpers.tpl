@@ -75,9 +75,14 @@
       const src = child.getAttribute('src') || child.getAttribute('href') || ''
       if (src.startsWith('chrome-extension://') || src.startsWith('moz-extension://')) return true
     }
-    // Check if the element is inside a shadow DOM hosted by a custom element
-    // (extensions often inject shadow DOMs for style isolation).
-    // Walk up through shadow boundaries by jumping to the host element.
+    // #453: Check if the element is inside a shadow DOM hosted by an extension-injected custom element.
+    // Generic web components also use hyphenated tag names, so a bare hyphen check causes
+    // false positives. Restrict detection to extension-origin signals:
+    //   1. Shadow host's own resources reference extension URLs
+    //   2. Host carries known extension-injected markers (data-extension-id, __ext, grammarly-, etc.)
+    //   3. Host tag starts with a known extension prefix
+    const extensionTagPrefixes = ['grammarly-', 'lastpass-', 'bitwarden-', '1password-', 'dashlane-', 'honey-', 'loom-']
+    const extensionAttrPatterns = ['data-extension-id', 'data-ext-', '__ext']
     let node: Node | null = el
     while (node) {
       const root: Node | null = typeof node.getRootNode === 'function' ? node.getRootNode() : null
@@ -85,8 +90,23 @@
         const host: Element | undefined = (root as ShadowRoot & { host?: Element }).host
         if (host) {
           const hostTag = host.tagName?.toLowerCase() || ''
-          // Extension-injected elements typically use custom element names
-          if (hostTag.includes('-') && !hostTag.startsWith('slot')) return true
+          // Check if the shadow host itself references extension resources
+          const hostResources = host.querySelectorAll('iframe, img, script, link')
+          for (let j = 0; j < hostResources.length; j++) {
+            const res = hostResources[j]!
+            const resSrc = res.getAttribute('src') || res.getAttribute('href') || ''
+            if (resSrc.startsWith('chrome-extension://') || resSrc.startsWith('moz-extension://')) return true
+          }
+          // Check for known extension tag prefixes
+          if (extensionTagPrefixes.some(prefix => hostTag.startsWith(prefix))) return true
+          // Check for extension-injected marker attributes on the host
+          if (host.hasAttributes()) {
+            const attrs = host.attributes
+            for (let k = 0; k < attrs.length; k++) {
+              const attrName = attrs[k]!.name.toLowerCase()
+              if (extensionAttrPatterns.some(pat => attrName.startsWith(pat) || attrName.includes(pat))) return true
+            }
+          }
           // Cross the shadow boundary to continue walking up the tree
           node = host
           continue

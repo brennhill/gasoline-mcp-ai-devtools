@@ -29,7 +29,7 @@ const (
 // The httpDone channel closes if srv.Serve() exits for any reason other than
 // a clean Shutdown — this prevents zombie daemons that are alive but deaf.
 // termSrv and termDone are optional (nil if terminal server failed to start).
-func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-chan struct{}, termSrv *http.Server, termDone <-chan struct{}) {
+func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-chan struct{}, termSrv *http.Server, termDone <-chan struct{}, mcpHandler *MCPHandler) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -70,6 +70,14 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		termCancel()
 	}
 
+	// Close the ToolHandler first to cancel in-flight readiness gates (requireExtension
+	// blocking waits) so they unblock before the HTTP server shuts down.
+	if mcpHandler != nil && mcpHandler.toolHandler != nil {
+		if th, ok := mcpHandler.toolHandler.(*ToolHandler); ok {
+			th.Close()
+		}
+	}
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), httpShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -78,6 +86,12 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 
 	server.shutdownAsyncLogger(asyncLoggerDrainTimeout)
 	server.closeAnnotationStore()
+	// Close capture store to stop background cleanup goroutines (QueryDispatcher).
+	if mcpHandler != nil && mcpHandler.toolHandler != nil {
+		if th, ok := mcpHandler.toolHandler.(*ToolHandler); ok && th.capture != nil {
+			th.capture.Close()
+		}
+	}
 	if server.ptyManager != nil {
 		server.ptyManager.StopAll()
 	}

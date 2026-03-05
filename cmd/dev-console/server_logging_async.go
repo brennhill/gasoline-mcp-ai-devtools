@@ -155,6 +155,9 @@ func (s *Server) maybeRotateLogFile(f *os.File) {
 
 // appendToFile queues log entries for async writing (never blocks).
 func (s *Server) appendToFile(entries []LogEntry) error {
+	if s.logChanClosed.Load() {
+		return fmt.Errorf("log channel closed, %d entries dropped", len(entries))
+	}
 	select {
 	case s.logChan <- entries:
 		// Queued successfully
@@ -192,8 +195,12 @@ func (s *Server) clearEntriesInMemory() {
 }
 
 // shutdownAsyncLogger gracefully shuts down the async logger, draining remaining logs.
+// Safe to call multiple times (e.g., from both Server.Close and awaitShutdownSignal).
 func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
-	// Close channel to signal worker to exit after draining
+	// Guard against double-close panic: only the first caller closes the channel.
+	if !s.logChanClosed.CompareAndSwap(false, true) {
+		return
+	}
 	close(s.logChan)
 
 	// Wait for worker to finish draining, with timeout

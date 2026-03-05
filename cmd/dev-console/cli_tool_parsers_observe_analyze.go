@@ -18,6 +18,7 @@ func parseObserveArgs(mode string, args []string) (map[string]any, error) {
 		"--since-cursor":           {mcpKey: "since_cursor", kind: flagString},
 		"--restart-on-eviction":    {mcpKey: "restart_on_eviction", kind: flagBool},
 		// Filtering
+		"--level":                  {mcpKey: "level", kind: flagString},
 		"--min-level":              {mcpKey: "min_level", kind: flagString},
 		"--source":                 {mcpKey: "source", kind: flagString},
 		"--url":                    {mcpKey: "url", kind: flagString},

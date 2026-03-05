@@ -82,10 +82,51 @@ function runGitDiff(range) {
     .filter(Boolean);
 }
 
+function isShallowRepository() {
+  try {
+    const result = execSync('git rev-parse --is-shallow-repository', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return result === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function ensureSufficientDepth() {
+  if (!isShallowRepository()) {
+    return;
+  }
+
+  // Attempt to deepen the clone enough for diff ranges to work.
+  try {
+    execSync('git fetch --deepen=50', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    throw new Error(
+      'Content contract: shallow clone detected and git fetch --deepen=50 failed. ' +
+      'Either use a full clone (fetch-depth: 0) or set CONTENT_CONTRACT_FILES explicitly.'
+    );
+  }
+
+  // If still shallow after deepening, warn but continue — ranges may still fail.
+  if (isShallowRepository()) {
+    console.warn(
+      'Content contract: repository is still shallow after deepening. ' +
+      'Diff ranges may be incomplete. Consider fetch-depth: 0 in CI.'
+    );
+  }
+}
+
 function getChangedFiles() {
   if (process.env.CONTENT_CONTRACT_FILES) {
     return splitEnvFileList(process.env.CONTENT_CONTRACT_FILES);
   }
+
+  ensureSufficientDepth();
 
   const changed = new Set();
   const ranges = [];
@@ -100,15 +141,26 @@ function getChangedFiles() {
 
   ranges.push('HEAD~1..HEAD');
 
+  let anyRangeSucceeded = false;
+
   for (const range of ranges) {
     try {
       const files = runGitDiff(range);
       for (const file of files) {
         changed.add(file);
       }
+      anyRangeSucceeded = true;
     } catch {
       // Try next range.
     }
+  }
+
+  if (!anyRangeSucceeded && ranges.length > 0) {
+    throw new Error(
+      'Content contract: all git diff ranges failed. ' +
+      'This may indicate a shallow clone without sufficient history. ' +
+      'Set CONTENT_CONTRACT_FILES or use fetch-depth: 0 in CI.'
+    );
   }
 
   try {
