@@ -70,7 +70,7 @@ function getStreamId(tabId: number): Promise<string> {
 
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to click the Gasoline icon.
+ * Shows a toast prompting the user to open the Gasoline popup and approve.
  */
 export async function requestRecordingGesture(
   tab: chrome.tabs.Tab,
@@ -80,19 +80,40 @@ export async function requestRecordingGesture(
   mediaType: string
 ): Promise<{ status: string; name: string; error?: string }> {
   chrome.tabs.update(tab.id!, { active: true })
-  sendTabToast(tab.id!, `\u2191 Click Gasoline Icon`, `Grant ${mediaType.toLowerCase()} recording permission`, 'audio', scaleTimeout(30000))
+  sendTabToast(
+    tab.id!,
+    `\u2191 Open Gasoline Popup`,
+    `Approve ${mediaType.toLowerCase()} recording request`,
+    'audio',
+    scaleTimeout(30000)
+  )
 
   await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } })
-  const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000))
+  const gestureResult = await waitForRecordingGesture(scaleTimeout(30000))
   await chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
 
-  if (!gestureGranted) {
-    console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')
-    sendTabToast(tab.id!, `\u2191 Click Gasoline Icon`, `Grant ${mediaType.toLowerCase()} recording permission`, 'audio', scaleTimeout(8000))
+  if (gestureResult === 'denied') {
+    console.log(LOG, 'GESTURE_DENIED: User denied recording request from popup')
     return {
       status: 'error',
       name: '',
-      error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline extension icon to grant ${mediaType.toLowerCase()} recording permission, then try again.`
+      error: `RECORD_START: ${mediaType} recording request was denied in the Gasoline popup.`
+    }
+  }
+
+  if (gestureResult !== 'granted') {
+    console.log(LOG, 'GESTURE_TIMEOUT: User did not approve recording request within 30s')
+    sendTabToast(
+      tab.id!,
+      `\u2191 Open Gasoline Popup`,
+      `Approve ${mediaType.toLowerCase()} recording request`,
+      'audio',
+      scaleTimeout(8000)
+    )
+    return {
+      status: 'error',
+      name: '',
+      error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Gasoline popup, click Approve, then try again.`
     }
   }
 
@@ -101,19 +122,25 @@ export async function requestRecordingGesture(
   return { status: 'ok', name }
 }
 
-/** Wait for user to click extension icon (popup sends RECORDING_GESTURE_GRANTED). */
-function waitForRecordingGesture(timeoutMs: number): Promise<boolean> {
+/** Wait for popup approval decision (grant/deny) with timeout fallback. */
+function waitForRecordingGesture(timeoutMs: number): Promise<'granted' | 'denied' | 'timeout'> {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       chrome.runtime.onMessage.removeListener(listener)
-      resolve(false)
+      resolve('timeout')
     }, timeoutMs)
 
     const listener = (message: { type?: string }) => {
       if (message.type === 'RECORDING_GESTURE_GRANTED') {
         clearTimeout(timeout)
         chrome.runtime.onMessage.removeListener(listener)
-        resolve(true)
+        resolve('granted')
+        return
+      }
+      if (message.type === 'RECORDING_GESTURE_DENIED') {
+        clearTimeout(timeout)
+        chrome.runtime.onMessage.removeListener(listener)
+        resolve('denied')
       }
     }
     chrome.runtime.onMessage.addListener(listener)

@@ -158,7 +158,7 @@ export interface StatusUpdateMessage {
 /**
  * Union of all background-bound messages
  */
-export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage | PushChatMessage | ScreenRecordingStartMessage | ScreenRecordingStopMessage | OpenPopupForRecordingMessage;
+export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage | PushChatMessage | ScreenRecordingStartMessage | ScreenRecordingStopMessage | RecordingGestureGrantedMessage | RecordingGestureDeniedMessage | OpenPopupForRecordingMessage;
 /**
  * Draw mode: content script requests screenshot capture
  */
@@ -198,6 +198,18 @@ interface ScreenRecordingStartMessage {
  */
 interface ScreenRecordingStopMessage {
     readonly type: 'screen_recording_stop';
+}
+/**
+ * Popup approval for MCP-initiated screen recording request.
+ */
+interface RecordingGestureGrantedMessage {
+    readonly type: 'RECORDING_GESTURE_GRANTED';
+}
+/**
+ * Popup denial for MCP-initiated screen recording request.
+ */
+interface RecordingGestureDeniedMessage {
+    readonly type: 'RECORDING_GESTURE_DENIED';
 }
 /**
  * Content script requests popup open to activate activeTab for tabCapture.

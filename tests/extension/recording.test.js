@@ -172,6 +172,14 @@ function simulateRecordingGestureGranted() {
   }
 }
 
+// Simulate popup denial for MCP-initiated recording start.
+function simulateRecordingGestureDenied() {
+  const message = { type: 'RECORDING_GESTURE_DENIED' }
+  for (const listener of [...onMessageListeners]) {
+    listener(message)
+  }
+}
+
 async function waitForPendingRecordingIntent(timeoutMs = 2500) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -374,14 +382,39 @@ describe('MCP-initiated recording flow', () => {
       (c) =>
         c.arguments[0] === 77 &&
         c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' &&
-        String(c.arguments[1]?.text || '').includes('Click Gasoline Icon')
+        String(c.arguments[1]?.text || '').includes('Open Gasoline Popup')
     )
-    assert.ok(permissionToastOnTarget, 'Should show click-icon permission toast on target tab')
+    assert.ok(permissionToastOnTarget, 'Should show popup-approval permission toast on target tab')
 
     const stopPromise = stopRecording()
     await new Promise((r) => setTimeout(r, 50))
     simulateOffscreenStopped()
     await stopPromise
+  })
+
+  test('should return denied error when popup rejects MCP recording request', async () => {
+    globalThis.chrome = createRecordingChromeMock({
+      tabsQueryResult: [{ id: 42, url: 'http://active-tab.example', title: 'Active Tab' }]
+    })
+    globalThis.chrome.tabs.get = mock.fn((tabId) =>
+      Promise.resolve({
+        id: tabId,
+        windowId: 1,
+        status: 'complete',
+        url: `http://target-${tabId}.example`,
+        title: 'Target Tab'
+      })
+    )
+
+    const startPromise = startRecording('mcp-denied', 15, 'query-mcp-denied', '', false, 77)
+
+    await waitForPendingRecordingIntent()
+    simulateRecordingGestureDenied()
+
+    const result = await startPromise
+    assert.strictEqual(result.status, 'error')
+    assert.ok(String(result.error || '').toLowerCase().includes('denied'))
+    assert.strictEqual(isRecording(), false)
   })
 })
 
