@@ -16,7 +16,11 @@ code_paths:
   - internal/a11ysummary/summary.go
   - internal/tools/observe/analysis_a11y.go
   - internal/tools/observe/analysis_screenshot.go
+  - internal/tools/observe/handlers_extension_logs.go
+  - internal/tools/observe/handlers_logs.go
   - src/background/commands/observe.ts
+  - src/inject/observers.ts
+  - src/lib/network.ts
   - internal/capture/queries.go
   - internal/capture/sync.go
 test_paths:
@@ -29,6 +33,9 @@ test_paths:
   - internal/a11ysummary/summary_test.go
   - internal/tools/observe/analysis_test.go
   - internal/tools/observe/analysis_save_test.go
+  - tests/extension/inject-console-network-exceptions.test.js
+  - tests/extension/network-bodies.test.js
+  - tests/extension/sync-client.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

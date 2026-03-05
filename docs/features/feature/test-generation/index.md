@@ -13,6 +13,7 @@ code_paths:
   - cmd/dev-console/testgen_heal.go
   - cmd/dev-console/testgen.go
   - cmd/dev-console/tools_generate.go
+  - internal/schema/generate.go
 test_paths:
   - cmd/dev-console/testgen_context_test.go
   - cmd/dev-console/testgen_generate_test.go
@@ -20,6 +21,7 @@ test_paths:
   - cmd/dev-console/testgen_classify_dispatch_test.go
   - internal/testgen/generate_test.go
   - internal/testgen/helpers_test.go
+  - internal/schema/invariants_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -53,4 +55,6 @@ last_verified_date: 2026-03-05
 - Alias/contracts: `cmd/dev-console/testgen_aliases.go`
 - Provider delegation: `cmd/dev-console/testgen_provider_adapter.go`
 - Heal and classify handlers: `cmd/dev-console/testgen_heal.go`, `cmd/dev-console/testgen_classify.go`
+- Generate tool schema contract: `internal/schema/generate.go`
 - Core behavior tests: `cmd/dev-console/testgen_context_test.go`, `cmd/dev-console/testgen_generate_test.go`, `cmd/dev-console/testgen_heal_test.go`, `cmd/dev-console/testgen_classify_dispatch_test.go`
+- Schema invariants: `internal/schema/invariants_test.go`

@@ -20,6 +20,8 @@ code_paths:
   - internal/tools/analyze/forms.go
   - internal/schema/analyze.go
   - src/background/commands/analyze.ts
+  - src/background/frame-targeting.ts
+  - src/background/dom-frame-probe.ts
   - src/background/commands/helpers.ts
   - src/content/message-handlers.ts
   - src/content/runtime-message-listener.ts

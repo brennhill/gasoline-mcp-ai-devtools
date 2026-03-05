@@ -19,5 +19,6 @@ Related flow maps:
 - [Interact Action Toast Label Normalization](../../../architecture/flow-maps/interact-action-toast-label-normalization.md)
 - [Interact Action Surface Registry](../../../architecture/flow-maps/interact-action-surface-registry.md)
 - [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
+- [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): shared enqueue fail-fast `queue_full` path for interact-dispatched extension commands.
+Latest sync update (2026-03-05): shared frame-target resolution and centralized content fallback script registry for interact extraction paths.

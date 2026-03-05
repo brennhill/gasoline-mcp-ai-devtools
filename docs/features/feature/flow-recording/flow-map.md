@@ -13,3 +13,6 @@ last_verified_date: 2026-03-05
 Canonical flow map:
 
 - [Recording Control and Playback](../../../architecture/flow-maps/recording-control-and-playback.md)
+- [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
+
+Latest sync update (2026-03-05): screen-recording slug generation is centralized for shortcut and popup/runtime listener entrypoints.

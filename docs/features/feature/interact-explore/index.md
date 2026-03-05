@@ -41,6 +41,9 @@ code_paths:
   - src/background/browser-actions.ts
   - src/background/cdp-dispatch.ts
   - src/background/dom-dispatch.ts
+  - src/background/frame-targeting.ts
+  - src/background/content-fallback-scripts.ts
+  - src/background/draw-mode-toggle.ts
   - src/background/dom-types.ts
   - src/background/dom-primitives.ts
   - src/inject/execute-js.ts
@@ -70,6 +73,7 @@ test_paths:
   - internal/tools/configure/mode_specs_test.go
   - extension/background/dom-primitives-overlay.test.js
   - cmd/dev-console/tools_async_enrich_test.go
+  - tests/extension/interact-content-fallback.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

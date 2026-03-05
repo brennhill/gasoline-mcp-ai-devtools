@@ -72,3 +72,4 @@ Each flow map should include:
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)
+- [Shared Extraction and Contract Normalization](./shared-extraction-and-contract-normalization.md)
