@@ -76,8 +76,7 @@ observe({what: "logs", min_level: "warn", limit: 50})
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `min_level` | string | Minimum level: `debug` < `log` < `info` < `warn` < `error` |
-| `level` | string | Exact level filter (only return this level) |
+| `min_level` | string | Minimum level threshold: `debug` < `log` < `info` < `warn` < `error` |
 | `source` | string | Exact source filter |
 | `include_extension_logs` | boolean | Include extension debug logs alongside console output |
 | `extension_limit` | number | Max extension logs when `include_extension_logs: true` |
@@ -129,7 +128,6 @@ observe({what: "network_bodies", method: "POST", limit: 5})
 | `method` | string | Filter by HTTP method (GET, POST, etc.) |
 | `status_min` | number | Minimum status code (e.g., 400 for errors only) |
 | `status_max` | number | Maximum status code |
-| `body_key` | string | Extract values for a specific JSON key from response bodies |
 | `body_path` | string | Extract JSON value using dot-path (e.g., `data.items[0].id`) |
 | `limit` | number | Maximum entries |
 

@@ -54,6 +54,9 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
+	// Quiet alias: async → background.
+	args = mergeAsyncAlias(args)
+
 	var composableParams struct {
 		Subtitle           *string `json:"subtitle"`
 		IncludeScreenshot  bool    `json:"include_screenshot"`
@@ -100,4 +103,28 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	return resp
+}
+
+// mergeAsyncAlias rewrites {"async":true} → {"background":true} in raw JSON args.
+// If "background" is already set, the explicit value takes precedence.
+func mergeAsyncAlias(args json.RawMessage) json.RawMessage {
+	if len(args) == 0 {
+		return args
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return args
+	}
+	asyncVal, hasAsync := raw["async"]
+	_, hasBackground := raw["background"]
+	if !hasAsync || hasBackground {
+		return args
+	}
+	raw["background"] = asyncVal
+	delete(raw, "async")
+	merged, err := json.Marshal(raw)
+	if err != nil {
+		return args
+	}
+	return merged
 }

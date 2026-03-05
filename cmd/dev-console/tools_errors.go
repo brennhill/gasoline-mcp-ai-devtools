@@ -48,3 +48,14 @@ func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(fina
 func withRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
 	return mcp.WithRecoveryToolCall(toolCall)
 }
+
+// describeCapabilitiesRecovery returns a recovery_tool_call for describe_capabilities scoped to a tool.
+func describeCapabilitiesRecovery(toolName string) func(*StructuredError) {
+	return withRecoveryToolCall(map[string]any{
+		"tool": "configure",
+		"arguments": map[string]any{
+			"what": "describe_capabilities",
+			"tool": toolName,
+		},
+	})
+}

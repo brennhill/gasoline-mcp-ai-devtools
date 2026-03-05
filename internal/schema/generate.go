@@ -14,13 +14,13 @@ func GenerateToolSchema() mcp.MCPTool {
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
-					"type": "string",
-					"enum": []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+					"type":        "string",
+					"description": "Artifact type to generate from captured data",
+					"enum":        []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
 				},
 				"format": map[string]any{
 					"type":        "string",
-					"description": "Deprecated alias for 'what'",
-					"enum":        []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+					"description": "Deprecated alias for 'what'. Prefer 'what'.",
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -96,8 +96,9 @@ func GenerateToolSchema() mcp.MCPTool {
 					"description": "Max status code (har)",
 				},
 				"mode": map[string]any{
-					"type": "string",
-					"enum": []string{"strict", "moderate", "report_only"},
+					"type":        "string",
+					"description": "CSP strictness: strict (default), moderate, or report_only (csp)",
+					"enum":        []string{"strict", "moderate", "report_only"},
 				},
 				"include_report_uri": map[string]any{
 					"type":        "boolean",
@@ -185,7 +186,7 @@ func GenerateToolSchema() mcp.MCPTool {
 				},
 				"output_format": map[string]any{
 					"type":        "string",
-					"description": "Output format: file or inline (test_from_context)",
+					"description": "Output format. reproduction: 'gasoline-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
 				},
 			},
 			"required": []string{"what"},

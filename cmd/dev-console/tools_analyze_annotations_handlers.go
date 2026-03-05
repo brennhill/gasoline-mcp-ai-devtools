@@ -17,17 +17,18 @@ import (
 // annotationWaitCommandTTL is how long pending annotation commands remain active.
 const annotationWaitCommandTTL = 10 * time.Minute
 
-// annotationBlockingWaitDefault is the initial synchronous wait budget for annotations(wait=true).
+// annotationBlockingWaitDefault is the initial synchronous wait budget for annotations(background:false).
 // If annotations arrive in this window, return them directly without requiring polling.
 const annotationBlockingWaitDefault = 15 * time.Second
 
-// annotationBlockingWaitMax caps caller-provided timeout_ms for wait=true annotation calls.
+// annotationBlockingWaitMax caps caller-provided timeout_ms for blocking annotation calls.
 const annotationBlockingWaitMax = 10 * time.Minute
 
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait         bool   `json:"wait"`
+		Wait         bool  `json:"wait"`
+		Background   *bool `json:"background"`
 		AnnotSession string `json:"annot_session"`
 		Operation    string `json:"operation"`
 		Correlation  string `json:"correlation_id"`
@@ -37,6 +38,10 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
+	}
+	// Canonical param is "background" (false = block). "wait" is a quiet alias.
+	if params.Background != nil {
+		params.Wait = !*params.Background
 	}
 
 	urlFilter, filterResp, hasFilterErr := resolveAnnotationURLFilter(req, params.URL, params.URLPattern)

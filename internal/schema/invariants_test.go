@@ -70,6 +70,23 @@ func checkPropsForCombiners(t *testing.T, toolName string, props map[string]any,
 	}
 }
 
+// TestObserveSchema_LevelNotExposed verifies that 'level' is a quiet alias
+// (not in schema) and only 'min_level' is exposed.
+func TestObserveSchema_LevelNotExposed(t *testing.T) {
+	t.Parallel()
+	tool := ObserveToolSchema()
+	props, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("observe schema missing properties")
+	}
+	if _, found := props["level"]; found {
+		t.Error("observe schema should not expose 'level' — it is a quiet alias for 'min_level'")
+	}
+	if _, found := props["min_level"]; !found {
+		t.Error("observe schema should expose 'min_level'")
+	}
+}
+
 // TestAllToolSchemas_HavePropertiesAndObjectType ensures every tool schema has
 // type:object and a non-empty properties field, catching accidentally empty or
 // malformed schemas.

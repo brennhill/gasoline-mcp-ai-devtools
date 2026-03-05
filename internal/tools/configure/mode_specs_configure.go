@@ -31,7 +31,7 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Hint: "Quick code snippets for common operations",
 	},
 	"streaming": {
-		Hint:     "Enable/disable push notifications for browser events",
+		Hint:     "Enable/disable push notifications for browser events. streaming_action: enable|disable|status (default: status)",
 		Optional: []string{"streaming_action", "events", "throttle_seconds", "severity_min"},
 	},
 	"test_boundary_start": {
@@ -45,19 +45,19 @@ var configureModeSpecs = map[string]modeParamSpec{
 	},
 	"event_recording_start": {
 		Hint:     "Start recording browser session (actions + video)",
-		Optional: []string{"name", "tab_id", "sensitive_data_enabled"},
+		Optional: []string{"name", "url", "sensitive_data_enabled"},
 	},
 	"event_recording_stop": {
 		Hint:     "Stop an active browser recording",
-		Optional: []string{"recording_id"},
+		Required: []string{"recording_id"},
 	},
 	"playback": {
 		Hint:     "Replay a saved recording",
-		Optional: []string{"recording_id"},
+		Required: []string{"recording_id"},
 	},
 	"log_diff": {
 		Hint:     "Compare error logs between original and replay recordings",
-		Optional: []string{"original_id", "replay_id"},
+		Required: []string{"original_id", "replay_id"},
 	},
 	"telemetry": {
 		Hint:     "Set telemetry metadata mode (off/auto/full)",
@@ -80,22 +80,24 @@ var configureModeSpecs = map[string]modeParamSpec{
 	},
 	"save_sequence": {
 		Hint:     "Save a named sequence of interact actions for replay",
-		Optional: []string{"name", "description", "steps", "tags"},
+		Required: []string{"name", "steps"},
+		Optional: []string{"description", "tags"},
 	},
 	"get_sequence": {
 		Hint:     "Retrieve a saved action sequence by name",
-		Optional: []string{"name"},
+		Required: []string{"name"},
 	},
 	"list_sequences": {
 		Hint: "List all saved action sequences",
 	},
 	"delete_sequence": {
 		Hint:     "Delete a saved action sequence",
-		Optional: []string{"name"},
+		Required: []string{"name"},
 	},
 	"replay_sequence": {
 		Hint:     "Replay a saved action sequence with optional overrides",
-		Optional: []string{"name", "override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
+		Required: []string{"name"},
+		Optional: []string{"override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
 	},
 	"doctor": {
 		Hint: "System diagnostics: port, state directory, log health",

@@ -12,7 +12,7 @@ import (
 
 // serverInstructions is sent once per session in the initialize response.
 // It provides workflow guidance so tool descriptions can stay minimal.
-const serverInstructions = `Gasoline Agentic Browser provides real-time browser telemetry and automation via 5 tools.
+const serverInstructions = `Gasoline Agentic Browser provides real-time browser telemetry and automation via 5 tools. All 5 tools dispatch on the 'what' parameter.
 
 Workflow:
 - observe: read passive buffers (errors, logs, network, screenshots, actions, etc.)
@@ -21,7 +21,10 @@ Workflow:
 - configure: session settings (noise rules, storage, streaming, clear buffers, health, restart)
 - interact: browser automation (navigate, click, type, fill forms, upload, execute JS, record) — controls any web page
 
+First call: configure(what:'describe_capabilities', summary:true) for a compact overview; add tool/mode params to drill into specifics.
+
 Key patterns:
+- Diagnostics: configure(what:'health') for daemon/extension status, observe(what:'pilot') for AI Web Pilot availability.
 - Browser automation: use interact to navigate to any URL, click buttons, type text, fill forms, and control the browser. Use observe(what="screenshot") to visually verify page state before and after actions.
 - Pagination: observe returns after_cursor/before_cursor in metadata. Pass them back for next page. Use restart_on_eviction=true if cursor expired.
 - Async analysis: analyze dispatches to the extension; poll results with observe(what="command_result", correlation_id=...).

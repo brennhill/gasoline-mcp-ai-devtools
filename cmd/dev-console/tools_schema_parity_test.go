@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
 )
 
 func TestSchemaParity_AnalyzeWhatEnumMatchesHandlers(t *testing.T) {
@@ -93,9 +95,20 @@ func sortedKeysObserveHandlers() []string {
 }
 
 func sortedInteractRuntimeActions(h *ToolHandler) []string {
+	// Build set of alias action names to exclude from parity check.
+	// Aliases are hidden from the schema enum but still routed at runtime.
+	aliasSet := make(map[string]bool)
+	for _, spec := range schema.InteractActionSpecs() {
+		if spec.IsAlias {
+			aliasSet[spec.Name] = true
+		}
+	}
+
 	actions := make(map[string]bool)
 	for action := range h.interactAction().interactDispatch() {
-		actions[action] = true
+		if !aliasSet[action] {
+			actions[action] = true
+		}
 	}
 	for action := range domPrimitiveActions {
 		actions[action] = true

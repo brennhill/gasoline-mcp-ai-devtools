@@ -16,6 +16,7 @@ import (
 func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Limit   int    `json:"limit"`
+		LastN   int    `json:"last_n"`
 		URL     string `json:"url"`
 		Type    string `json:"type"`
 		Summary bool   `json:"summary"`
@@ -33,6 +34,11 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 		}
 		return true
 	}, params.Limit)
+
+	// last_n: slice to only the N most recent entries (already sorted newest-first).
+	if params.LastN > 0 && len(filtered) > params.LastN {
+		filtered = filtered[:params.LastN]
+	}
 	var newestTS time.Time
 	if len(allActions) > 0 {
 		newestTS = time.UnixMilli(allActions[len(allActions)-1].Timestamp)
