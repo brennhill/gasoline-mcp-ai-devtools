@@ -181,6 +181,20 @@ jobs:
       - name: Content contract (SEO + LLM legibility)
         run: npm run docs:lint:content-contract
 
+      - name: Style contract (tutorial structure + acronym expansion)
+        run: npm run docs:lint:style-contract
+
+      - name: Install Vale
+        run: |
+          VALE_VERSION="3.13.0"
+          curl -fsSL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o /tmp/vale.tar.gz
+          tar -xzf /tmp/vale.tar.gz -C /tmp
+          sudo mv /tmp/vale /usr/local/bin/vale
+          vale --version
+
+      - name: Vale style gate
+        run: npm run docs:lint:vale
+
       - name: Feature docs strict gate (frontmatter + freshness)
         run: npm run docs:check:strict
 

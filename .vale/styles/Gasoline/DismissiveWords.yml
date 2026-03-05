@@ -1,0 +1,10 @@
+extends: existence
+message: "Avoid dismissive wording like '%s'. Prefer neutral, specific guidance."
+link: https://learn.microsoft.com/en-us/style-guide/bias-free-communication
+level: warning
+ignorecase: true
+tokens:
+  - '\bobviously\b'
+  - '\bsimply\b'
+  - '\beasy\b'
+
