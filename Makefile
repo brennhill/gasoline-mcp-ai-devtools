@@ -311,11 +311,8 @@ extension-zip:
 	@mkdir -p $(BUILD_DIR)
 	@rm -f $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
 	cd extension && zip -r ../$(BUILD_DIR)/gasoline-extension-v$(VERSION).zip \
-		manifest.json background.js content.js inject.js early-patch.js \
-		early-patch.bundled.js content.bundled.js inject.bundled.js \
-		popup.html popup.js options.html options.js \
-		icons/ lib/ \
-		-x "*.DS_Store" "package.json"
+		. \
+		-x "*.DS_Store" "package.json" "*__tests__/*" "*.test.js" "*.test.cjs"
 	@echo "Built $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip"
 	@ls -lh $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
 
