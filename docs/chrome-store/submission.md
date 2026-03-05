@@ -20,7 +20,7 @@ Gasoline
 
 **Short Description:** (132 characters max)
 ```
-Browser observability for AI coding agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.
+Agentic Browser Devtools - rapid e2e web development. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.
 ```
 
 **Detailed Description:**

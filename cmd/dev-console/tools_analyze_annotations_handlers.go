@@ -29,8 +29,8 @@ const annotationBlockingWaitMax = 10 * time.Minute
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait         bool  `json:"wait"`
-		Background   *bool `json:"background"`
+		Wait         bool   `json:"wait"`
+		Background   *bool  `json:"background"`
 		AnnotSession string `json:"annot_session"`
 		Operation    string `json:"operation"`
 		Correlation  string `json:"correlation_id"`
@@ -408,6 +408,9 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		result["all_elements"] = detail.AllElements
 		result["element_count"] = detail.ElementCount
 	}
+	if len(detail.SelectorCandidates) > 0 {
+		result["selector_candidates"] = detail.SelectorCandidates
+	}
 	if len(detail.IframeContent) > 0 {
 		result["iframe_content"] = detail.IframeContent
 	}
@@ -419,6 +422,12 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	}
 	if detail.CSSFramework != "" {
 		result["css_framework"] = detail.CSSFramework
+	}
+	if detail.JSFramework != "" {
+		result["js_framework"] = detail.JSFramework
+	}
+	if len(detail.Component) > 0 {
+		result["component"] = detail.Component
 	}
 
 	// Error correlation: find console errors near the annotation's timestamp
@@ -433,7 +442,7 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	}
 
 	// Detail-level LLM hints (context-aware)
-	if detailHints := buildDetailHints(detail.CSSFramework, detail.A11yFlags, hasCorrelatedErrors); detailHints != nil {
+	if detailHints := buildDetailHints(detail.CSSFramework, detail.JSFramework, detail.A11yFlags, hasCorrelatedErrors); detailHints != nil {
 		result["hints"] = detailHints
 	}
 

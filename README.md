@@ -5,7 +5,7 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline Agentic Browser Devtool MCP - Browser Observability for AI Coding Agents" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Agentic Browser Devtools - rapid e2e web development" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.7.12-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
@@ -20,7 +20,7 @@
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 [![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://cookwithgasoline.com)
 
-**Browser observability for AI coding agents - autonomously debug and fix issues in real time.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
+**Agentic Browser Devtools - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
 
 [Documentation](https://cookwithgasoline.com) •
 [Quick Start](https://cookwithgasoline.com/getting-started/) •

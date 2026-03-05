@@ -3,7 +3,7 @@ doc_type: architecture_flow_map
 feature_id: feature-framework-selector-resilience
 status: shipped
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 ---
 
 # Framework Selector Resilience Smoke Flow
@@ -17,6 +17,7 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
 1. `scripts/smoke-test.sh --only 29`
 2. `scripts/smoke-tests/29-framework-selector-resilience.sh`
 3. `npm run smoke:build-framework-fixtures`
+4. `npm run smoke:framework-parity`
 
 ## Feature Docs
 
@@ -36,7 +37,10 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
    - Async delayed UI (`Async Save`) is discoverable and actionable.
    - Lazy/virtualized target (`Framework Target 80`) appears after scroll.
    - Route remount churn keeps actions stable via stale `element_id` recovery.
-   - Selector churn resilience remains stable across 3 refresh cycles.
+   - Selector churn resilience remains stable across configurable refresh cycles.
+6. Repeat controls:
+   - `FRAMEWORK_RESILIENCE_FULL_REPEATS` repeats the full scenario per framework.
+   - `FRAMEWORK_SELECTOR_REFRESH_CYCLES` controls per-run refresh loops.
 
 ## Error and Recovery Paths
 
@@ -62,6 +66,9 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
    - Vue → `"Vue"`
    - Svelte → `"Svelte"`
    - Next fixture → `"Next.js"`
+4. Repeat contract:
+   - Defaults: `FRAMEWORK_RESILIENCE_FULL_REPEATS=1`, `FRAMEWORK_SELECTOR_REFRESH_CYCLES=3`
+   - Parity gate: `FRAMEWORK_RESILIENCE_FULL_REPEATS=3`, `FRAMEWORK_SELECTOR_REFRESH_CYCLES=3`
 
 ## Code Paths
 
@@ -73,11 +80,14 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
 6. `scripts/smoke-tests/framework-fixtures/next-app/pages/index.jsx`
 7. `scripts/smoke-tests/framework-fixtures/next-app/next.config.mjs`
 8. `scripts/smoke-test.sh`
+9. `package.json` (`smoke:framework-parity`)
+10. `scripts/smoke-tests/framework-fixtures/README.md`
 
 ## Test Paths
 
 1. `scripts/smoke-test.sh --only 29`
 2. `scripts/smoke-tests/29-framework-selector-resilience.sh`
+3. `npm run smoke:framework-parity`
 
 ## Edit Guardrails
 
