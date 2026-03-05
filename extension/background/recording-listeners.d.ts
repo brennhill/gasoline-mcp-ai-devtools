@@ -2,23 +2,9 @@
  * Purpose: Installs Chrome runtime message listeners for recording start/stop, auto-stop from offscreen memory guard, and mic permission flow.
  * Docs: docs/features/feature/flow-recording/index.md
  */
+import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js';
 /** Dependencies injected by recording.ts to avoid circular imports. */
-export interface RecordingListenerDeps {
-    startRecording: (name: string, fps: number, queryId: string, audio: string, fromPopup: boolean, targetTabId?: number) => Promise<{
-        status: string;
-        name: string;
-        startTime?: number;
-        error?: string;
-    }>;
-    stopRecording: (truncated?: boolean) => Promise<{
-        status: string;
-        name: string;
-        duration_seconds?: number;
-        size_bytes?: number;
-        truncated?: boolean;
-        path?: string;
-        error?: string;
-    }>;
+export interface RecordingListenerDeps extends Omit<ScreenRecordingHandlers, 'isRecording'> {
     isActive: () => boolean;
     getTabId: () => number;
     setInactive: () => void;

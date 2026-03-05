@@ -6,6 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="$SCRIPT_DIR/tests"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/uat-result-lib.sh"
 
 echo "════════════════════════════════════════════════════════════════════════════════"
 echo "ORIGINAL UAT TEST SUITE — 54 Tests, 20 Categories"
@@ -82,45 +84,118 @@ echo ""
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
+TOTAL_SKIP=0
+REPORTED_CATEGORIES=0
+MISSING_CATEGORIES=0
+CORRUPT_CATEGORIES=0
+INVALID_COUNTER_CATEGORIES=0
 
 for test in "${TESTS[@]}"; do
     RESULT_FILE="$RESULTS_DIR/${test}.txt"
+    parse_status=0
 
-    if [ -f "$RESULT_FILE" ]; then
-        PASS=$(grep -c "^  PASS:" "$RESULT_FILE" 2>/dev/null || echo "0")
-        FAIL=$(grep -c "^  FAIL:" "$RESULT_FILE" 2>/dev/null || echo "0")
+    if parse_uat_category_result "$RESULT_FILE"; then
+        REPORTED_CATEGORIES=$((REPORTED_CATEGORIES + 1))
+        PASS="$UAT_RESULT_PASS"
+        FAIL="$UAT_RESULT_FAIL"
+        SKIP="$UAT_RESULT_SKIP"
 
         TOTAL_PASS=$((TOTAL_PASS + PASS))
         TOTAL_FAIL=$((TOTAL_FAIL + FAIL))
+        TOTAL_SKIP=$((TOTAL_SKIP + SKIP))
 
         if [ "$FAIL" -eq 0 ]; then
-            echo "✅ $test: $PASS passed"
+            if [ "$SKIP" -gt 0 ]; then
+                echo "⚠️  $test: $PASS passed, $SKIP skipped"
+            else
+                echo "✅ $test: $PASS passed"
+            fi
         else
-            echo "❌ $test: $PASS passed, $FAIL FAILED"
-            # Show failures
-            grep "^  FAIL:" "$RESULT_FILE" | head -3
+            echo "❌ $test: $PASS passed, $FAIL FAILED, $SKIP skipped"
         fi
+        continue
     else
-        echo "⚠️  $test: NO RESULTS FILE"
+        parse_status="$?"
     fi
+
+    case "$parse_status" in
+        1)
+            MISSING_CATEGORIES=$((MISSING_CATEGORIES + 1))
+            echo "⚠️  $test: NO RESULT FILE"
+            ;;
+        2)
+            CORRUPT_CATEGORIES=$((CORRUPT_CATEGORIES + 1))
+            echo "⚠️  $test: CORRUPTED RESULT FILE"
+            ;;
+        3)
+            INVALID_COUNTER_CATEGORIES=$((INVALID_COUNTER_CATEGORIES + 1))
+            echo "⚠️  $test: INVALID RESULT COUNTERS"
+            ;;
+        *)
+            CORRUPT_CATEGORIES=$((CORRUPT_CATEGORIES + 1))
+            echo "⚠️  $test: UNKNOWN RESULT PARSE ERROR"
+            ;;
+    esac
 done
+
+TOTAL_ASSERTIONS=$((TOTAL_PASS + TOTAL_FAIL + TOTAL_SKIP))
+INTEGRITY_ERRORS=$((MISSING_CATEGORIES + CORRUPT_CATEGORIES + INVALID_COUNTER_CATEGORIES))
+CATEGORY_TOTAL="${#TESTS[@]}"
+CATEGORY_COVERAGE_PCT="$(awk "BEGIN { if ($CATEGORY_TOTAL == 0) { print \"0.0\" } else { printf \"%.1f\", ($REPORTED_CATEGORIES*100)/$CATEGORY_TOTAL } }")"
+FAIL_ON_RESULT_INTEGRITY="${GASOLINE_UAT_FAIL_ON_RESULT_INTEGRITY:-1}"
+
+if [ "$TOTAL_ASSERTIONS" -eq 0 ]; then
+    INTEGRITY_ERRORS=$((INTEGRITY_ERRORS + 1))
+    echo ""
+    echo "⚠️  Result integrity check: zero assertions collected from all categories."
+fi
+
+if [ "$FAIL_ON_RESULT_INTEGRITY" = "1" ] && [ "$INTEGRITY_ERRORS" -gt 0 ]; then
+    RESULT_INTEGRITY_FAILED=true
+else
+    RESULT_INTEGRITY_FAILED=false
+fi
+
+if [ -n "${GASOLINE_UAT_SUMMARY_FILE:-}" ]; then
+    cat > "$GASOLINE_UAT_SUMMARY_FILE" <<EOF
+RESULTS_DIR=$RESULTS_DIR
+TOTAL_PASS=$TOTAL_PASS
+TOTAL_FAIL=$TOTAL_FAIL
+TOTAL_SKIP=$TOTAL_SKIP
+TOTAL_ASSERTIONS=$TOTAL_ASSERTIONS
+CATEGORY_TOTAL=$CATEGORY_TOTAL
+CATEGORY_REPORTED=$REPORTED_CATEGORIES
+CATEGORY_MISSING=$MISSING_CATEGORIES
+CATEGORY_CORRUPT=$CORRUPT_CATEGORIES
+CATEGORY_INVALID=$INVALID_COUNTER_CATEGORIES
+INTEGRITY_ERRORS=$INTEGRITY_ERRORS
+DURATION=$DURATION
+EOF
+fi
 
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────────"
 echo "Summary:"
 echo "  Total Passed:  $TOTAL_PASS"
 echo "  Total Failed:  $TOTAL_FAIL"
+echo "  Total Skipped: $TOTAL_SKIP"
+echo "  Total Checks:  $TOTAL_ASSERTIONS"
+echo "  Category Coverage: $REPORTED_CATEGORIES/$CATEGORY_TOTAL (${CATEGORY_COVERAGE_PCT}%)"
+echo "  Result Integrity Errors: $INTEGRITY_ERRORS"
 echo "  Duration:      ${DURATION}s"
-echo "  Tests/sec:     $(( (TOTAL_PASS + TOTAL_FAIL) / (DURATION + 1) ))"
+echo "  Tests/sec:     $(( TOTAL_ASSERTIONS / (DURATION + 1) ))"
 echo "════════════════════════════════════════════════════════════════════════════════"
 echo ""
 
-if [ "$TOTAL_FAIL" -eq 0 ]; then
+if [ "$TOTAL_FAIL" -eq 0 ] && [ "$RESULT_INTEGRITY_FAILED" = false ]; then
     echo "🎉 ALL ORIGINAL TESTS PASSED"
     exit 0
 else
     echo "⚠️  FAILURES DETECTED"
     echo ""
+    if [ "$RESULT_INTEGRITY_FAILED" = true ]; then
+        echo "Result integrity checks failed (missing/corrupt/invalid category results)."
+    fi
     echo "Failed test details in: $RESULTS_DIR"
     exit 1
 fi

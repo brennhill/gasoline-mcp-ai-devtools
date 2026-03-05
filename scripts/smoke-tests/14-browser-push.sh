@@ -133,10 +133,10 @@ run_test_14_3() {
 }
 run_test_14_3
 
-# ── Test 14.4: _pending_push piggyback lifecycle ─────────
-begin_test "14.4" "[DAEMON ONLY] _pending_push hint appears when inbox non-empty and clears after drain" \
-    "Queue a push event, verify piggyback hint on regular tool response, then drain and verify hint disappears" \
-    "Tests: inbox hinting contract for LLM guidance"
+# ── Test 14.4: piggyback hint lifecycle ──────────────────
+begin_test "14.4" "[DAEMON ONLY] _push_* piggyback appears when inbox non-empty and clears after drain" \
+    "Queue a push event, verify _push_* piggyback on regular tool response, then drain and verify hint disappears" \
+    "Tests: inbox piggyback contract for LLM guidance"
 
 run_test_14_4() {
     _push_drain_inbox
@@ -148,26 +148,34 @@ run_test_14_4() {
     _push_http_post_json "/push/message" "$payload" >/dev/null 2>&1 || true
 
     local hinted_resp hinted_text
-    hinted_resp=$(call_tool "observe" '{"what":"page"}')
-    hinted_text=$(extract_content_text "$hinted_resp")
-    log_diagnostic "14.4" "observe(page) with pending push" "$hinted_resp" "$hinted_text"
+    local hinted_seen=false
+    for _hint_poll in $(seq 1 8); do
+        hinted_resp=$(call_tool "configure" '{"what":"health"}')
+        hinted_text=$(extract_content_text "$hinted_resp")
+        if echo "$hinted_resp" | grep -q "_push_"; then
+            hinted_seen=true
+            break
+        fi
+        sleep 0.25
+    done
+    log_diagnostic "14.4" "configure(health) with pending push" "$hinted_resp" "$hinted_text"
 
-    if ! echo "$hinted_resp" | grep -q "_pending_push:"; then
-        fail "Expected _pending_push hint when inbox had pending event. Content: $(truncate "$hinted_text" 220)"
+    if [ "$hinted_seen" != "true" ]; then
+        fail "Expected _push_* piggyback when inbox had pending event. Content: $(truncate "$hinted_text" 220)"
         return
     fi
 
     _push_drain_inbox
 
     local clean_resp clean_text
-    clean_resp=$(call_tool "observe" '{"what":"page"}')
+    clean_resp=$(call_tool "configure" '{"what":"health"}')
     clean_text=$(extract_content_text "$clean_resp")
-    log_diagnostic "14.4" "observe(page) after inbox drain" "$clean_resp" "$clean_text"
+    log_diagnostic "14.4" "configure(health) after inbox drain" "$clean_resp" "$clean_text"
 
-    if echo "$clean_resp" | grep -q "_pending_push:"; then
-        fail "Expected no _pending_push hint after draining inbox. Content: $(truncate "$clean_text" 220)"
+    if echo "$clean_resp" | grep -q "_push_"; then
+        fail "Expected no _push_* piggyback after draining inbox. Content: $(truncate "$clean_text" 220)"
     else
-        pass "_pending_push hint appears and clears correctly."
+        pass "_push_* piggyback appears and clears correctly."
     fi
 }
 run_test_14_4

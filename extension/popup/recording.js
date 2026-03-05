@@ -13,12 +13,15 @@ import { errorMessage } from '../lib/error-utils.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
+const RECENT_RECORDING_START_MS = 8000;
+const TOP_NOTICE_DURATION_MS = 4000;
 const AUDIO_LABELS = {
     '': 'Video only',
     tab: 'Video + tab audio',
     mic: 'Video + microphone',
     both: 'Video + tab + mic'
 };
+let topNoticeTimer = null;
 function applyRecordHighlight(els) {
     const section = els.row.closest('.section');
     if (section)
@@ -35,6 +38,7 @@ function removeRecordHighlight(els) {
 }
 // #lizard forgives
 function showRecording(els, state, name, startTime) {
+    const wasRecording = state.isRecording;
     removeRecordHighlight(els);
     state.isRecording = true;
     els.row.classList.add('is-recording');
@@ -50,6 +54,9 @@ function showRecording(els, state, name, startTime) {
         const secs = elapsed % 60;
         els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     }, 1000);
+    if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
+        showTopNotice(els, 'Recording started');
+    }
 }
 function showIdle(els, state) {
     state.isRecording = false;
@@ -100,6 +107,18 @@ function sendRecordingGestureDecision(type) {
     chrome.runtime.sendMessage({ type }, () => {
         void chrome.runtime.lastError;
     });
+}
+function showTopNotice(els, text) {
+    const notice = els.topNoticeEl;
+    if (!notice)
+        return;
+    notice.textContent = text;
+    notice.style.display = 'block';
+    if (topNoticeTimer)
+        clearTimeout(topNoticeTimer);
+    topNoticeTimer = setTimeout(() => {
+        notice.style.display = 'none';
+    }, TOP_NOTICE_DURATION_MS);
 }
 function showSavedLink(saveInfoEl, displayName, filePath) {
     saveInfoEl.textContent = 'Saved: ';
@@ -251,7 +270,8 @@ export function setupRecordingUI() {
         label,
         statusEl,
         optionsEl: document.getElementById('record-options'),
-        saveInfoEl: document.getElementById('record-save-info')
+        saveInfoEl: document.getElementById('record-save-info'),
+        topNoticeEl: document.getElementById('record-top-notice')
     };
     const approvalEls = {
         card: document.getElementById('record-approval-card'),

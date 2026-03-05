@@ -252,12 +252,15 @@
   var START_LABEL = "Record screen";
   var STOP_LABEL = "Stop recording";
   var HIGHLIGHT_LABEL = "\u25CF \xAB Click here to record";
+  var RECENT_RECORDING_START_MS = 8e3;
+  var TOP_NOTICE_DURATION_MS = 4e3;
   var AUDIO_LABELS = {
     "": "Video only",
     tab: "Video + tab audio",
     mic: "Video + microphone",
     both: "Video + tab + mic"
   };
+  var topNoticeTimer = null;
   function applyRecordHighlight(els) {
     const section = els.row.closest(".section");
     if (section)
@@ -273,6 +276,7 @@
     }
   }
   function showRecording(els, state, name, startTime) {
+    const wasRecording = state.isRecording;
     removeRecordHighlight(els);
     state.isRecording = true;
     els.row.classList.add("is-recording");
@@ -288,6 +292,9 @@
       const secs = elapsed % 60;
       els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
     }, 1e3);
+    if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
+      showTopNotice(els, "Recording started");
+    }
   }
   function showIdle(els, state) {
     state.isRecording = false;
@@ -338,6 +345,18 @@
     chrome.runtime.sendMessage({ type }, () => {
       void chrome.runtime.lastError;
     });
+  }
+  function showTopNotice(els, text) {
+    const notice = els.topNoticeEl;
+    if (!notice)
+      return;
+    notice.textContent = text;
+    notice.style.display = "block";
+    if (topNoticeTimer)
+      clearTimeout(topNoticeTimer);
+    topNoticeTimer = setTimeout(() => {
+      notice.style.display = "none";
+    }, TOP_NOTICE_DURATION_MS);
   }
   function showSavedLink(saveInfoEl, displayName, filePath) {
     saveInfoEl.textContent = "Saved: ";
@@ -481,7 +500,8 @@
       label,
       statusEl,
       optionsEl: document.getElementById("record-options"),
-      saveInfoEl: document.getElementById("record-save-info")
+      saveInfoEl: document.getElementById("record-save-info"),
+      topNoticeEl: document.getElementById("record-top-notice")
     };
     const approvalEls = {
       card: document.getElementById("record-approval-card"),

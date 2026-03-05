@@ -25,8 +25,11 @@ code_paths:
   - cmd/dev-console/tools_recording_video_observe.go
   - src/background/event-listeners.ts
   - src/background/init.ts
+  - src/background/context-menus.ts
+  - src/background/recording-badge.ts
   - src/background/recording-capture.ts
   - src/background/recording.ts
+  - src/background/recording-utils.ts
   - src/popup/recording.ts
   - extension/manifest.json
   - extension/popup.html
@@ -66,11 +69,13 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 2. Recording state transitions are derived from command results in `recordingInteractHandler.resolveInteractRecordingState`.
 3. `recordingInteractHandler.handleRecordStop` enforces valid state before queueing stop command.
 4. MCP-initiated start writes `gasoline_pending_recording`; popup renders an approval card and sends `RECORDING_GESTURE_GRANTED` / `RECORDING_GESTURE_DENIED`.
-5. Popup row and recording shortcut both call extension `startRecording(..., fromPopup=true, targetTabId=activeTab)` for direct local start.
+5. Popup row and recording shortcut call extension `startRecording(..., fromPopup=true, targetTabId=trackedOrActiveTab)` so manual record follows tracked-tab intent.
 6. Shortcut toggle checks current recording state: active -> `stopRecording`; idle -> `startRecording`.
-7. `/screenshots` validates rate limits and data URLs, then persists image and optional query result payload.
-8. `/draw-mode/complete` stores screenshot, annotations, details, and pushes completion updates.
-9. `toolObserveSavedVideos` enumerates persisted video metadata across primary + legacy dirs.
+7. Context-menu labels are refreshed on `contextMenus.onShown` to reflect live state (`Control/Release`, `Record/Stop`, `Annotate/Stop`, action recording start/stop).
+8. Recording badge timer lifecycle is driven from `startRecording` / `stopRecording` so popup, keyboard, context menu, and MCP entry points stay in sync.
+9. `/screenshots` validates rate limits and data URLs, then persists image and optional query result payload.
+10. `/draw-mode/complete` stores screenshot, annotations, details, and pushes completion updates.
+11. `toolObserveSavedVideos` enumerates persisted video metadata across primary + legacy dirs.
 
 ## Error and Recovery Paths
 
@@ -101,8 +106,11 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 - `cmd/dev-console/tools_recording_video_observe.go`
 - `src/background/event-listeners.ts`
 - `src/background/init.ts`
+- `src/background/context-menus.ts`
+- `src/background/recording-badge.ts`
 - `src/background/recording-capture.ts`
 - `src/background/recording.ts`
+- `src/background/recording-utils.ts`
 - `src/popup/recording.ts`
 - `extension/manifest.json`
 - `extension/popup.html`
@@ -119,6 +127,8 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 - `cmd/dev-console/tools_draw_mode_http_test.go`
 - `cmd/dev-console/annotation_store_test.go`
 - `tests/extension/recording-shortcut-command.test.js`
+- `tests/extension/context-menus-labels.test.js`
+- `tests/extension/recording-listeners-target-tab.test.js`
 
 ## Edit Guardrails
 

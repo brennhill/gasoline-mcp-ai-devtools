@@ -10,7 +10,7 @@
 import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
-import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener, installContextMenus, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
+import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener, installContextMenus, saveSetting, forwardToAllContentScripts, getActiveTab, sendTabToast, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
 import { installPushCommandListener, installChatCommandListener } from './push-handler.js';
 import { isRecording, startRecording, stopRecording } from './recording.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
@@ -99,19 +99,10 @@ async function initializeExtensionAsync() {
                 else if (oldTabId !== null) {
                     // Tracking was lost — notify user on active tab
                     console.log('[Gasoline] Tracking lost for tab', oldTabId);
-                    chrome.tabs
-                        .query({ active: true, currentWindow: true })
-                        .then((tabs) => {
-                        if (tabs[0]?.id) {
-                            chrome.tabs
-                                .sendMessage(tabs[0].id, {
-                                type: 'GASOLINE_ACTION_TOAST',
-                                text: 'Tab tracking lost',
-                                detail: 'Re-enable in Gasoline popup',
-                                state: 'warning',
-                                duration_ms: 5000
-                            })
-                                .catch(() => { });
+                    getActiveTab()
+                        .then((tab) => {
+                        if (tab?.id) {
+                            sendTabToast(tab.id, 'Tab tracking lost', 'Re-enable in Gasoline popup', 'warning', 5000);
                         }
                     })
                         .catch(() => { });

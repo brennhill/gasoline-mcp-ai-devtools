@@ -50,12 +50,15 @@ _smoke_master_cleanup() {
     for handler in $_smoke_cleanup_handlers; do
         "$handler" 2>/dev/null || true
     done
-    # Base cleanup: kill daemon, remove temp dir
-    kill_server 2>/dev/null || true
-    pkill -f "upload-server.py" 2>/dev/null || true
-    if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
-        bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+    # Keep daemon alive by default so developers can continue working after smoke.
+    # Set SMOKE_KEEP_DAEMON_ON_EXIT=0 for strict cleanup mode in automation.
+    if [ "${SMOKE_KEEP_DAEMON_ON_EXIT:-1}" != "1" ]; then
+        kill_server 2>/dev/null || true
+        if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
+            bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+        fi
     fi
+    pkill -f "upload-server.py" 2>/dev/null || true
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null || true
 }
 
@@ -429,7 +432,7 @@ interact_and_wait() {
     local max_polls="${3:-}"
     if [ -z "$max_polls" ]; then
         case "$action" in
-            navigate|refresh|back|forward|new_tab|upload|record_start|record_stop)
+            navigate|refresh|back|forward|new_tab|upload|record_start|record_stop|screen_recording_start|screen_recording_stop)
                 max_polls=120 ;; # up to 60s at 0.5s interval for slower async browser actions
             *)
                 max_polls=20 ;;

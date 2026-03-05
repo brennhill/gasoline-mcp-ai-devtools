@@ -1,5 +1,6 @@
 // csp-safe-executor.ts — Pre-compiled executor for structured commands in MAIN world.
 export function cspSafeExecutor(command) {
+    /* jscpd:ignore-start */
     // --- Inline serialize (self-contained, no external refs) ---
     function serialize(value, depth, seen) {
         if (depth > 10)
@@ -87,6 +88,7 @@ export function cspSafeExecutor(command) {
         }
         return String(value);
     }
+    /* jscpd:ignore-end */
     // --- Resolve a StructuredValue to an actual JS value ---
     function resolveValue(val) {
         switch (val.type) {

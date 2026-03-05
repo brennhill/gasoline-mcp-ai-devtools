@@ -16,6 +16,9 @@ import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGestu
 import { installRecordingListeners } from './recording-listeners.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { delay } from '../lib/timeout-utils.js'
+import { buildRecordingToastLabel } from './recording-utils.js'
+import { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-badge.js'
+import { setTrackedTab } from './tab-state.js'
 
 // =============================================================================
 // STATE
@@ -80,6 +83,7 @@ export function getRecordingInfo(): { active: boolean; name: string; startTime: 
 
 async function clearRecordingState(): Promise<void> {
   recordingState = { ...defaultState }
+  stopRecordingBadgeTimer()
   if (tabUpdateListener) {
     chrome.tabs.onUpdated.removeListener(tabUpdateListener)
     tabUpdateListener = null
@@ -163,11 +167,7 @@ export async function startRecording(
       willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID]
     })
     if (!storage[StorageKey.TRACKED_TAB_ID]) {
-      await chrome.storage.local.set({
-        [StorageKey.TRACKED_TAB_ID]: tab.id,
-        [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
-        [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
-      })
+      await setTrackedTab(tab)
     }
 
     // Ensure content script is responsive (needed for toasts + watermark).
@@ -291,9 +291,10 @@ export async function startRecording(
     await chrome.storage.local.set({
       [StorageKey.RECORDING]: { active: true, name, startTime: Date.now() }
     })
+    startRecordingBadgeTimer(recordingState.startTime)
 
     // Show "Recording started" toast (fades after 2s)
-    sendTabToast(tab.id, 'Recording started', '', 'success', scaleTimeout(2000))
+    sendTabToast(tab.id, buildRecordingToastLabel(tab.url), '', 'success', scaleTimeout(2000))
 
     // Watermark removed — badge timer on extension icon replaces it (not captured by tabCapture)
     if (tabUpdateListener) chrome.tabs.onUpdated.removeListener(tabUpdateListener)
@@ -340,6 +341,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
   if (!recordingState.active) {
     // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
     console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage')
+    stopRecordingBadgeTimer()
     chrome.storage.local.remove(StorageKey.RECORDING).catch(() => {})
     return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' }
   }
@@ -348,6 +350,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
 
   // Mark as no longer active immediately to prevent double-stop
   recordingState.active = false
+  stopRecordingBadgeTimer()
   console.log(LOG, 'Marked active=false, sending STOP to offscreen')
 
   try {

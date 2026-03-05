@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **gasoline** (18259 symbols, 51510 relationships, 300 execution flows).
+This project is indexed by GitNexus as **gasoline** (18028 symbols, 50952 relationships, 300 execution flows).
 
 ## Always Start Here
 
@@ -58,3 +58,10 @@ No code-only refactor is considered complete until this documentation contract i
 15. Reviews and handoffs must cover correctness, modularity, performance, testability, docs quality, and DRY adherence.
 16. CI must block merges on broken docs links, missing required docs, or failing quality gates.
 17. ToolHandler naming convention is strict: `tool*` for top-level MCP mode/action entry points, `handle*` for sub-action handlers/helpers.
+18. Shared extension storage keys (`TRACKED_TAB_*`, recording state, pending intents) must be accessed through feature helpers/modules; avoid new ad-hoc read/write/remove call sites.
+19. Multi-entry-point actions (keyboard, context menu, popup, MCP) must use one shared toggle/start-stop helper so behavior stays identical.
+20. Cross-context message contracts must be declared in `src/types/runtime-messages.ts` (and corresponding wire/schema files when applicable) before adding new runtime message types.
+21. User-facing recording labels/toasts/badge text must come from shared helpers to keep wording and truncation consistent across entry points.
+22. Duplicate code checks are required for refactors touching `src/background` or `src/popup` (`npx jscpd src/background src/popup --min-lines 8 --min-tokens 60`), and each non-trivial clone must be either extracted or documented as intentional.
+23. Behavior-replacing refactors must update or delete obsolete tests in the same change (for example, replacing watermark behavior with badge behavior).
+24. See `docs/core/common-patterns.md` for the canonical patterns and review checklist.

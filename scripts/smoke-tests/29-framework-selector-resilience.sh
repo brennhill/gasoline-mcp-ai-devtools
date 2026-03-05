@@ -84,6 +84,11 @@ interact_failed() {
     [ "$verdict" = "fail" ]
 }
 
+is_transient_transport_issue() {
+    local raw="$1"
+    echo "$raw" | grep -qiE "transport_no_response|Server connection error|deadline exceeded|connection refused|EOF|starting up|Extension is not connected|no_data"
+}
+
 extract_first_submit_selector() {
     local text="$1"
     local payload
@@ -159,12 +164,27 @@ wait_for_text_contains() {
 
 ensure_hydrated_ready() {
     local framework_key="$1"
-    interact_and_wait "wait_for" '{"action":"wait_for","selector":"#hydrated-ready","timeout_ms":8000,"reason":"Wait for hydration to complete"}' 30
-    if interact_failed "$INTERACT_RESULT"; then
-        fail "Hydration wait failed for ${framework_key}. Result: $(truncate "$INTERACT_RESULT" 240)"
-        return 1
-    fi
-    return 0
+    local attempt
+    for attempt in 1 2 3; do
+        interact_and_wait "wait_for" '{"action":"wait_for","selector":"#hydrated-ready","timeout_ms":8000,"reason":"Wait for hydration to complete"}' 30
+        if ! interact_failed "$INTERACT_RESULT"; then
+            return 0
+        fi
+
+        if ! is_transient_transport_issue "$INTERACT_RESULT"; then
+            fail "Hydration wait failed for ${framework_key}. Result: $(truncate "$INTERACT_RESULT" 240)"
+            return 1
+        fi
+
+        if ! wait_for_extension 8; then
+            fail "Extension disconnected during hydration check for ${framework_key}."
+            return 1
+        fi
+        sleep 0.5
+    done
+
+    fail "Hydration wait failed for ${framework_key} after retries. Result: $(truncate "$INTERACT_RESULT" 240)"
+    return 1
 }
 
 dismiss_overlay_if_present() {
@@ -274,9 +294,21 @@ exercise_async_content_flow() {
         return 1
     fi
 
-    interact_and_wait "click" '{"action":"click","selector":"#async-panel button","reason":"Click async action"}'
+    dismiss_overlay_if_present "$framework_key" || return 1
+
+    interact_and_wait "click" '{"action":"click","selector":"#async-panel button","auto_dismiss":true,"wait_for_stable":true,"reason":"Click async action"}'
+    if interact_failed "$INTERACT_RESULT" && echo "$INTERACT_RESULT" | grep -qi "blocked_by_overlay"; then
+        dismiss_overlay_if_present "$framework_key" || return 1
+        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Force-dismiss consent overlay if still present","script":"(function(){ var btn=document.querySelector(\"#consent-modal button\"); if(btn){ btn.click(); return \"dismissed\"; } return \"not_present\"; })()"}'
+        interact_and_wait "click" '{"action":"click","selector":"#async-panel button","auto_dismiss":true,"wait_for_stable":true,"reason":"Retry async action after overlay dismissal"}'
+    fi
     if interact_failed "$INTERACT_RESULT"; then
         fail "Async Save click failed for ${framework_key}. Result: $(truncate "$INTERACT_RESULT" 240)"
+        return 1
+    fi
+
+    if ! wait_for_text_contains "#async-result" "async:clicked" 10 0.3 "Wait for async click acknowledgement"; then
+        fail "Async Save click did not update async-result for ${framework_key}. Result: $(truncate "$INTERACT_RESULT" 240)"
         return 1
     fi
 
@@ -355,22 +387,66 @@ run_framework_resilience_test() {
     page_url="$(framework_url "$framework_key")"
 
     for full_repeat in $(seq 1 "$FRAMEWORK_RESILIENCE_FULL_REPEATS"); do
+        if ! wait_for_extension 8; then
+            fail "Extension disconnected before ${framework_key} run ${full_repeat}."
+            return
+        fi
+
         local previous_token=""
-        interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"${page_url}\",\"reason\":\"Framework smoke: open ${framework_key} fixture (run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS})\"}" 30
+        local nav_attempt
+        for nav_attempt in 1 2 3; do
+            interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"${page_url}\",\"reason\":\"Framework smoke: open ${framework_key} fixture (run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS})\"}" 30
+            if ! interact_failed "$INTERACT_RESULT"; then
+                break
+            fi
+            if ! is_transient_transport_issue "$INTERACT_RESULT"; then
+                fail "Navigate to ${framework_key} fixture failed on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Result: $(truncate "$INTERACT_RESULT" 240)"
+                return
+            fi
+            if ! wait_for_extension 8; then
+                fail "Extension disconnected while navigating ${framework_key} run ${full_repeat}."
+                return
+            fi
+            sleep 0.5
+        done
         if interact_failed "$INTERACT_RESULT"; then
-            fail "Navigate to ${framework_key} fixture failed on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Result: $(truncate "$INTERACT_RESULT" 240)"
+            fail "Navigate to ${framework_key} fixture failed on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS} after retries. Result: $(truncate "$INTERACT_RESULT" 240)"
             return
         fi
 
         local analyze_response analyze_text
-        analyze_response=$(call_tool "analyze" '{"what":"page_structure"}')
-        analyze_text=$(extract_content_text "$analyze_response")
-        if [ -z "$analyze_text" ]; then
-            fail "analyze(page_structure) returned empty content for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}."
+        local analyze_ok=false
+        local analyze_attempt
+        for analyze_attempt in 1 2 3; do
+            analyze_response=$(call_tool "analyze" '{"what":"page_structure"}')
+            analyze_text=$(extract_content_text "$analyze_response")
+            if [ -z "$analyze_text" ] && [ -n "$analyze_response" ]; then
+                analyze_text="$analyze_response"
+            fi
+
+            if [ -n "$analyze_text" ] && echo "$analyze_text" | grep -q "\"name\":\"${expected_framework_name}\""; then
+                analyze_ok=true
+                break
+            fi
+
+            if is_transient_transport_issue "$analyze_text"; then
+                if ! wait_for_extension 8; then
+                    fail "Extension disconnected during framework detection for ${framework_key}."
+                    return
+                fi
+                sleep 0.5
+                continue
+            fi
+
+            if [ -z "$analyze_text" ]; then
+                fail "analyze(page_structure) returned empty content for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}."
+            else
+                fail "Framework detection mismatch for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Expected '${expected_framework_name}'. Result: $(truncate "$analyze_text" 240)"
+            fi
             return
-        fi
-        if ! echo "$analyze_text" | grep -q "\"name\":\"${expected_framework_name}\""; then
-            fail "Framework detection mismatch for ${framework_key} on run ${full_repeat}/${FRAMEWORK_RESILIENCE_FULL_REPEATS}. Expected '${expected_framework_name}'. Result: $(truncate "$analyze_text" 240)"
+        done
+        if [ "$analyze_ok" != "true" ]; then
+            fail "Framework detection for ${framework_key} did not stabilize after retries. Last result: $(truncate "$analyze_text" 240)"
             return
         fi
 

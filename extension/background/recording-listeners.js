@@ -9,33 +9,26 @@
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { postDaemonJSON } from '../lib/daemon-http.js';
+import { buildScreenRecordingSlug } from './recording-utils.js';
+import { stopRecordingBadgeTimer } from './recording-badge.js';
 const LOG = '[Gasoline REC]';
-// Badge timer — shows elapsed time on extension icon (not captured by tabCapture)
-let badgeTimerInterval = null;
-let badgeStartTime = null;
-function startBadgeTimer(startTime) {
-    stopBadgeTimer();
-    badgeStartTime = startTime;
-    chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
-    updateBadge();
-    badgeTimerInterval = setInterval(updateBadge, 1000);
-}
-function updateBadge() {
-    if (!badgeStartTime)
-        return;
-    const elapsed = Math.round((Date.now() - badgeStartTime) / 1000);
-    const mins = Math.floor(elapsed / 60);
-    const secs = elapsed % 60;
-    const text = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
-    chrome.action.setBadgeText({ text });
-}
-function stopBadgeTimer() {
-    if (badgeTimerInterval) {
-        clearInterval(badgeTimerInterval);
-        badgeTimerInterval = null;
+async function resolvePopupRecordingTargetTab() {
+    const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
+    const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID];
+    if (trackedTabId) {
+        try {
+            return await chrome.tabs.get(trackedTabId);
+        }
+        catch (err) {
+            console.warn(LOG, 'Tracked tab unavailable for popup recording start, falling back to active tab', {
+                trackedTabId,
+                error: errorMessage(err)
+            });
+        }
     }
-    badgeStartTime = null;
-    chrome.action.setBadgeText({ text: '' });
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0];
 }
 /**
  * Install all chrome.runtime.onMessage listeners for recording.
@@ -58,7 +51,7 @@ export function installRecordingListeners(deps) {
             status: message.status,
             name: message.name
         });
-        stopBadgeTimer();
+        stopRecordingBadgeTimer();
         deps.setInactive();
         deps.clearRecordingState().catch(() => { });
     });
@@ -72,32 +65,19 @@ export function installRecordingListeners(deps) {
             return false;
         if (message.type === 'screen_recording_start') {
             console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio });
-            chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-                let slug = 'recording';
-                try {
-                    const hostname = new URL(tabs[0]?.url ?? '').hostname.replace(/^www\./, '');
-                    slug =
-                        hostname
-                            .replace(/[^a-z0-9]/gi, '-')
-                            .replace(/-+/g, '-')
-                            .replace(/^-|-$/g, '') || 'recording';
-                }
-                catch {
-                    /* use default */
-                }
+            resolvePopupRecordingTargetTab().then((targetTab) => {
+                const slug = buildScreenRecordingSlug(targetTab?.url);
                 const audio = message.audio ?? '';
                 console.log(LOG, 'Popup screen_recording_start \u2192 startRecording', {
                     slug,
                     audio,
-                    tabUrl: tabs[0]?.url?.substring(0, 60)
+                    targetTabId: targetTab?.id,
+                    tabUrl: targetTab?.url?.substring(0, 60)
                 });
                 deps
-                    .startRecording(slug, 15, '', audio, true)
+                    .startRecording(slug, 15, '', audio, true, targetTab?.id)
                     .then((result) => {
                     console.log(LOG, 'Popup screen_recording_start result:', result);
-                    if (result.status === 'recording' && result.startTime) {
-                        startBadgeTimer(result.startTime);
-                    }
                     sendResponse(result);
                 })
                     .catch((err) => {
@@ -109,7 +89,6 @@ export function installRecordingListeners(deps) {
         }
         if (message.type === 'screen_recording_stop') {
             console.log(LOG, 'Popup screen_recording_stop received');
-            stopBadgeTimer();
             deps
                 .stopRecording()
                 .then((result) => {
@@ -187,11 +166,7 @@ export function installRecordingListeners(deps) {
             return false;
         if (message.type !== 'REVEAL_FILE' || !message.path)
             return false;
-        fetch(`${deps.getServerUrl()}/recordings/reveal`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ path: message.path })
-        })
+        postDaemonJSON(`${deps.getServerUrl()}/recordings/reveal`, { path: message.path })
             .then((r) => {
             if (!r.ok)
                 throw new Error(`HTTP ${r.status}`);

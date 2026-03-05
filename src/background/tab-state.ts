@@ -164,6 +164,8 @@ export interface TrackedTabInfo {
   trackedTabActive: boolean | null
 }
 
+const TRACKED_TAB_STORAGE_KEYS = [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]
+
 /**
  * Get tracked tab information, including Chrome tab status.
  */
@@ -172,11 +174,11 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
     return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null }
   }
 
-  const result = (await chrome.storage.local.get([
-    StorageKey.TRACKED_TAB_ID,
-    StorageKey.TRACKED_TAB_URL,
-    StorageKey.TRACKED_TAB_TITLE
-  ])) as { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }
+  const result = (await chrome.storage.local.get(TRACKED_TAB_STORAGE_KEYS)) as {
+    trackedTabId?: number
+    trackedTabUrl?: string
+    trackedTabTitle?: string
+  }
 
   const tabId = result.trackedTabId || null
   let tabStatus: 'loading' | 'complete' | null = null
@@ -205,11 +207,23 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
 }
 
 /**
+ * Persist tracked tab state.
+ */
+export async function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage || !tab.id) return
+  await chrome.storage.local.set({
+    [StorageKey.TRACKED_TAB_ID]: tab.id,
+    [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
+    [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
+  })
+}
+
+/**
  * Clear tracked tab state
  */
 export function clearTrackedTab(): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
+  chrome.storage.local.remove(TRACKED_TAB_STORAGE_KEYS)
 }
 
 /**

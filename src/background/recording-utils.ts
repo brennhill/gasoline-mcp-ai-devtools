@@ -20,3 +20,19 @@ export function buildScreenRecordingSlug(url: string | undefined): string {
     return 'recording'
   }
 }
+
+/**
+ * Build a short human-readable recording toast label from a tab URL.
+ */
+export function buildRecordingToastLabel(url: string | undefined): string {
+  try {
+    const parsed = new URL(url ?? '')
+    const host = parsed.hostname.replace(/^www\./, '')
+    const path = parsed.pathname === '/' ? '' : parsed.pathname
+    const base = `${host}${path}`
+    const clipped = base.length > 42 ? `${base.slice(0, 39)}...` : base
+    return `Recording ${clipped}`
+  } catch {
+    return 'Recording started'
+  }
+}

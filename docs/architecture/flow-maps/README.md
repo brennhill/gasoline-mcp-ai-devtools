@@ -55,6 +55,7 @@ Each flow map should include:
 - [Recording Control and Playback](./recording-control-and-playback.md)
 - [Tab Recording and Media Ingest](./tab-recording-and-media-ingest.md)
 - [Self-Testing Test Harness](./self-testing-test-harness.md)
+- [Self-Testing UAT Runner and Coverage](./self-testing-uat-runner-and-coverage.md)
 - [Test Generation Dispatch](./test-generation-dispatch.md)
 - [Issue Reporting Submission](./issue-reporting-submission.md)
 - [Annotation Detail Enrichment](./annotation-detail-enrichment.md)

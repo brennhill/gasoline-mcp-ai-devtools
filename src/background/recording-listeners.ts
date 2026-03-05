@@ -15,37 +15,25 @@ import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
 import { buildScreenRecordingSlug } from './recording-utils.js'
 import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
+import { stopRecordingBadgeTimer } from './recording-badge.js'
 
 const LOG = '[Gasoline REC]'
 
-// Badge timer — shows elapsed time on extension icon (not captured by tabCapture)
-let badgeTimerInterval: ReturnType<typeof setInterval> | null = null
-let badgeStartTime: number | null = null
-
-function startBadgeTimer(startTime: number): void {
-  stopBadgeTimer()
-  badgeStartTime = startTime
-  chrome.action.setBadgeBackgroundColor({ color: '#dc2626' })
-  updateBadge()
-  badgeTimerInterval = setInterval(updateBadge, 1000)
-}
-
-function updateBadge(): void {
-  if (!badgeStartTime) return
-  const elapsed = Math.round((Date.now() - badgeStartTime) / 1000)
-  const mins = Math.floor(elapsed / 60)
-  const secs = elapsed % 60
-  const text = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
-  chrome.action.setBadgeText({ text })
-}
-
-function stopBadgeTimer(): void {
-  if (badgeTimerInterval) {
-    clearInterval(badgeTimerInterval)
-    badgeTimerInterval = null
+async function resolvePopupRecordingTargetTab(): Promise<chrome.tabs.Tab | undefined> {
+  const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
+  const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID]
+  if (trackedTabId) {
+    try {
+      return await chrome.tabs.get(trackedTabId)
+    } catch (err) {
+      console.warn(LOG, 'Tracked tab unavailable for popup recording start, falling back to active tab', {
+        trackedTabId,
+        error: errorMessage(err)
+      })
+    }
   }
-  badgeStartTime = null
-  chrome.action.setBadgeText({ text: '' })
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+  return tabs[0]
 }
 
 /** Dependencies injected by recording.ts to avoid circular imports. */
@@ -77,7 +65,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
         status: message.status,
         name: message.name
       })
-      stopBadgeTimer()
+      stopRecordingBadgeTimer()
       deps.setInactive()
       deps.clearRecordingState().catch(() => {})
     }
@@ -97,21 +85,19 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       if (sender.id !== chrome.runtime.id) return false
       if (message.type === 'screen_recording_start') {
         console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio })
-        chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-          const slug = buildScreenRecordingSlug(tabs[0]?.url)
+        resolvePopupRecordingTargetTab().then((targetTab) => {
+          const slug = buildScreenRecordingSlug(targetTab?.url)
           const audio = message.audio ?? ''
           console.log(LOG, 'Popup screen_recording_start \u2192 startRecording', {
             slug,
             audio,
-            tabUrl: tabs[0]?.url?.substring(0, 60)
+            targetTabId: targetTab?.id,
+            tabUrl: targetTab?.url?.substring(0, 60)
           })
           deps
-            .startRecording(slug, 15, '', audio, true)
+            .startRecording(slug, 15, '', audio, true, targetTab?.id)
             .then((result) => {
               console.log(LOG, 'Popup screen_recording_start result:', result)
-              if (result.status === 'recording' && result.startTime) {
-                startBadgeTimer(result.startTime)
-              }
               sendResponse(result)
             })
             .catch((err) => {
@@ -123,7 +109,6 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       }
       if (message.type === 'screen_recording_stop') {
         console.log(LOG, 'Popup screen_recording_stop received')
-        stopBadgeTimer()
         deps
           .stopRecording()
           .then((result) => {

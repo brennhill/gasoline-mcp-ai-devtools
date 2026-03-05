@@ -7,10 +7,10 @@ import { domPrimitive } from './dom-primitives.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 import { domPrimitiveQuery } from './dom-primitives-query.js';
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
-import { normalizeFrameTarget } from '../lib/frame-utils.js';
 import { isReadOnlyAction, isMutatingAction } from './action-metadata.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { delay } from '../lib/timeout-utils.js';
+import { normalizeFrameArg, resolveMatchedFrameIds } from './frame-targeting.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -31,26 +31,11 @@ function hasMatchedTargetEvidence(result) {
         typeof matched.text_preview === 'string');
 }
 async function resolveExecutionTarget(tabId, frame) {
-    const normalized = normalizeFrameTarget(frame);
-    if (normalized === null) {
-        throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value');
-    }
+    const normalized = normalizeFrameArg(frame);
     if (normalized === undefined || normalized === 'all') {
         return { tabId, allFrames: true };
     }
-    const probeResults = await chrome.scripting.executeScript({
-        target: { tabId, allFrames: true },
-        world: 'MAIN',
-        func: domFrameProbe,
-        args: [normalized]
-    });
-    const frameIds = Array.from(new Set(probeResults
-        .filter((r) => !!r.result?.matches)
-        .map((r) => r.frameId)
-        .filter((id) => typeof id === 'number')));
-    if (frameIds.length === 0) {
-        throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page');
-    }
+    const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe);
     return { tabId, frameIds };
 }
 /** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */

@@ -15,4 +15,4 @@ Canonical flow map:
 - [Tab Recording and Media Ingest](../../../architecture/flow-maps/tab-recording-and-media-ingest.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): MCP-initiated recording now requires popup approval (`Approve` / `Deny`) via `gasoline_pending_recording` + `RECORDING_GESTURE_GRANTED|DENIED`, while interact aliases `record_start`/`record_stop` continue routing to `screen_recording_start`/`screen_recording_stop`.
+Latest sync update (2026-03-05): popup `Record screen` now prioritizes the tracked tab, context-menu labels now reflect live state (`Control/Release`, annotation start/stop, screen/action recording start/stop), MCP pending approval shows `?` on the extension badge until approved/denied, and recording badge timer state now comes from shared start/stop lifecycle handlers across all entry points.

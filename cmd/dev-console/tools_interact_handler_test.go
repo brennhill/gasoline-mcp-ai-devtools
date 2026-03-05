@@ -127,6 +127,22 @@ func TestToolsInteractDispatch_StateActionAliases(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDispatch_RecordingActionAliases(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	for _, action := range []string{"record_start", "record_stop"} {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, fmt.Sprintf(`{"action":"%s"}`, action))
+			result := parseToolResult(t, resp)
+			text := result.Content[0].Text
+			if strings.Contains(text, "unknown_mode") {
+				t.Fatalf("%s should be recognized alias, got unknown_mode: %s", action, text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)

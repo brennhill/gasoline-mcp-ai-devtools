@@ -122,6 +122,7 @@ export function saveSetting(key, value) {
         return;
     chrome.storage.local.set({ [key]: value });
 }
+const TRACKED_TAB_STORAGE_KEYS = [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE];
 /**
  * Get tracked tab information, including Chrome tab status.
  */
@@ -129,11 +130,7 @@ export async function getTrackedTabInfo() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
         return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null };
     }
-    const result = (await chrome.storage.local.get([
-        StorageKey.TRACKED_TAB_ID,
-        StorageKey.TRACKED_TAB_URL,
-        StorageKey.TRACKED_TAB_TITLE
-    ]));
+    const result = (await chrome.storage.local.get(TRACKED_TAB_STORAGE_KEYS));
     const tabId = result.trackedTabId || null;
     let tabStatus = null;
     let trackedTabActive = null;
@@ -159,12 +156,24 @@ export async function getTrackedTabInfo() {
     };
 }
 /**
+ * Persist tracked tab state.
+ */
+export async function setTrackedTab(tab) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !tab.id)
+        return;
+    await chrome.storage.local.set({
+        [StorageKey.TRACKED_TAB_ID]: tab.id,
+        [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
+        [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
+    });
+}
+/**
  * Clear tracked tab state
  */
 export function clearTrackedTab() {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+    chrome.storage.local.remove(TRACKED_TAB_STORAGE_KEYS);
 }
 /**
  * Get all extension config settings.
@@ -199,5 +208,25 @@ export async function getActiveTab() {
         return null;
     }
     return tab;
+}
+// =============================================================================
+// TAB TOAST
+// =============================================================================
+/**
+ * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Silently ignores errors (content script may not be loaded).
+ */
+export function sendTabToast(tabId, text, detail = '', state = 'success', duration_ms = 3000) {
+    chrome.tabs
+        .sendMessage(tabId, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text,
+        detail,
+        state,
+        duration_ms
+    })
+        .catch(() => {
+        /* content script may not be loaded */
+    });
 }
 //# sourceMappingURL=tab-state.js.map
