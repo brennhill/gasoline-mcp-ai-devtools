@@ -4,6 +4,9 @@ description: "Fix form bugs with a step-by-step approach covering labels, ARIA a
 date: 2026-03-03
 authors: [brenn]
 tags: [forms, accessibility, aria, debugging]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['forms', 'accessibility', 'aria', 'debugging', 'articles', 'broken', 'labels', 'validation']
 ---
 
 Forms are where trust is won or lost.

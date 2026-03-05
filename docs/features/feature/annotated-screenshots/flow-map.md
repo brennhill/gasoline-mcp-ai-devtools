@@ -4,6 +4,8 @@ feature_id: feature-annotated-screenshots
 canonical_map: docs/architecture/flow-maps/annotation-detail-enrichment.md
 status: active
 last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Annotated Screenshots — Flow Map

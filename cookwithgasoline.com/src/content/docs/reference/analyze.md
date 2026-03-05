@@ -1,6 +1,9 @@
 ---
 title: "Analyze — Active Analysis"
 description: "Complete reference for the analyze tool. 27 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, visual regression, form analysis, performance snapshots, and more."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'analyze']
 ---
 
 The `analyze` tool triggers active analysis — DOM queries, accessibility audits, security scans, link health checks, and visual annotations. Unlike `observe` (which reads passive buffers), `analyze` dispatches work to the browser extension and returns results.
@@ -8,6 +11,8 @@ The `analyze` tool triggers active analysis — DOM queries, accessibility audit
 :::note[Synchronous Mode]
 Tools now block until the extension returns a result (up to 15s). Set `background: true` to return immediately with a `correlation_id`, then poll with `observe({what: "command_result", correlation_id: "..."})`.
 :::
+
+Need one runnable call + response shape + failure fix for every mode? See [Analyze Executable Examples](/reference/examples/analyze-examples/).
 
 ## Quick Reference
 

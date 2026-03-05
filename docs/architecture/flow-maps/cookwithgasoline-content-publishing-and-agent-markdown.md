@@ -11,6 +11,9 @@ entrypoints:
   - cookwithgasoline.com/src/content/docs/index.mdx
   - cookwithgasoline.com/src/content/docs/downloads.md
   - cookwithgasoline.com/src/pages/[...slug].md.ts
+  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
+  - scripts/docs/check-docs-quality-gates.mjs
+  - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
@@ -20,18 +23,25 @@ entrypoints:
   - scripts/docs/run-vale-on-changed.mjs
   - .vale.ini
 code_paths:
+  - package.json
   - .vale.ini
   - .vale/styles/Gasoline/*.yml
   - cookwithgasoline.com/astro.config.mjs
+  - cookwithgasoline.com/src/content.config.ts
   - cookwithgasoline.com/public/images/integrations/*.svg
   - cookwithgasoline.com/public/images/landing/*.svg
   - cookwithgasoline.com/public/images/solutions-seo-signal.svg
   - cookwithgasoline.com/src/content/docs/articles/*.md
+  - cookwithgasoline.com/src/content/docs/blog/*.md
   - cookwithgasoline.com/src/content/docs/downloads.md
+  - cookwithgasoline.com/src/content/docs/guides/start-here-by-role.md
+  - cookwithgasoline.com/src/content/docs/guides/tracks/*.md
+  - cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md
   - cookwithgasoline.com/src/content/docs/guides/seo-analysis.md
   - cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md
   - cookwithgasoline.com/src/content/docs/index.mdx
   - cookwithgasoline.com/src/content/docs/reference/index.md
+  - cookwithgasoline.com/src/content/docs/reference/examples/*.md
   - cookwithgasoline.com/src/content/docs/reference/observe.md
   - cookwithgasoline.com/src/content/docs/reference/analyze.md
   - cookwithgasoline.com/src/content/docs/reference/interact.md
@@ -45,24 +55,34 @@ code_paths:
   - cookwithgasoline.com/src/components/WorkflowLibrary.astro
   - cookwithgasoline.com/src/components/ArticlesLibrary.astro
   - cookwithgasoline.com/src/styles/custom.css
+  - cookwithgasoline.com/src/data/relatedGuides.ts
+  - cookwithgasoline.com/src/data/searchSynonyms.ts
   - cookwithgasoline.com/src/data/workflows.ts
   - cookwithgasoline.com/src/pages/[...slug].md.ts
   - cookwithgasoline.com/src/pages/index.md.ts
   - cookwithgasoline.com/src/pages/llms.txt.ts
   - cookwithgasoline.com/src/pages/llms-full.txt.ts
   - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
+  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
   - cookwithgasoline.com/src/utils/markdownPaths.ts
   - cookwithgasoline.com/src/utils/siteVersion.ts
+  - scripts/docs/check-docs-quality-gates.mjs
+  - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
   - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/generate-reference-executable-examples.mjs
+  - scripts/docs/normalize-site-tags.mjs
+  - scripts/docs/sync-verification-metadata.mjs
   - scripts/docs/run-vale-on-changed.mjs
   - scripts/docs/check-feature-bundles.js
   - .github/workflows/ci.yml
 test_paths:
+  - scripts/docs/check-docs-quality-gates.mjs
+  - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
@@ -70,7 +90,12 @@ test_paths:
   - scripts/docs/check-landing-layout-contract.mjs
   - scripts/docs/check-light-theme-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/generate-reference-executable-examples.mjs
+  - scripts/docs/normalize-site-tags.mjs
+  - scripts/docs/sync-verification-metadata.mjs
   - scripts/docs/run-vale-on-changed.mjs
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Cookwithgasoline Content Publishing and Agent Markdown Flow
@@ -84,6 +109,9 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 - Splash homepage in `cookwithgasoline.com/src/content/docs/index.mdx`
 - Downloads page content in `cookwithgasoline.com/src/content/docs/downloads.md`
 - Agent markdown mirror route in `cookwithgasoline.com/src/pages/[...slug].md.ts`
+- Synonym dictionary endpoint in `cookwithgasoline.com/src/pages/search-synonyms.json.ts`
+- Phase-based docs quality gate in `scripts/docs/check-docs-quality-gates.mjs`
+- Duplicate content-ID guard in `scripts/docs/check-site-content-ids.mjs`
 - Content contract gate in `scripts/docs/check-cookwithgasoline-content-contract.mjs`
 - Downloads page contract gate in `scripts/docs/check-downloads-page-contract.mjs`
 - Landing layout contract gate in `scripts/docs/check-landing-layout-contract.mjs`
@@ -104,6 +132,8 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 8. Downloads-page copy and expressive-code visual guardrails are enforced by `check-downloads-page-contract.mjs`.
 9. Large-screen solutions-panel staggering is enforced by `check-landing-layout-contract.mjs`.
 10. Light-only theme behavior and selector removal are enforced by `check-light-theme-contract.mjs`.
+11. Phased docs quality gates enforce integrity, freshness, and executable reference-example coverage (`check-docs-quality-gates.mjs`).
+12. Duplicate content IDs are blocked by deterministic slug checks (`check-site-content-ids.mjs`).
 
 ## Error and Recovery Paths
 

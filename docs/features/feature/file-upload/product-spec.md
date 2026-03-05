@@ -2,7 +2,9 @@
 doc_type: product-spec
 feature_id: feature-file-upload
 status: shipped
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # File Upload Product Spec

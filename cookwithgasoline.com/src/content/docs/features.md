@@ -1,6 +1,9 @@
 ---
 title: What Gasoline Captures
 description: "Gasoline captures console logs, network errors, exceptions, WebSocket events, network bodies, user actions, Web Vitals, and generates Playwright tests, PR summaries, and accessibility reports."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['features']
 ---
 
 Gasoline is an open-source MCP server that passively observes your browser, analyzes performance, and generates code — everything an AI coding assistant needs to diagnose and fix issues autonomously. Zero dependencies. Localhost only.

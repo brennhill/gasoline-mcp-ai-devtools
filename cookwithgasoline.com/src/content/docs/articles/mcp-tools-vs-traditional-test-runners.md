@@ -4,6 +4,9 @@ description: "Understand when to use MCP-based workflows versus traditional test
 date: 2026-03-03
 authors: [brenn]
 tags: [mcp, testing, playwright, strategy]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['mcp', 'testing', 'playwright', 'strategy', 'articles', 'tools', 'vs', 'traditional', 'test', 'runners']
 ---
 
 You do not need to pick one forever.

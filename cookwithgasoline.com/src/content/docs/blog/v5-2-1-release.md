@@ -4,6 +4,9 @@ description: "Hotfix for error clustering and network filtering"
 date: 2026-01-10T21:47:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.2.1

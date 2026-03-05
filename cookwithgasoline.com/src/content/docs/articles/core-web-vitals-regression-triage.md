@@ -4,6 +4,9 @@ description: "A practical, plain-language guide to finding and fixing Core Web V
 date: 2026-03-03
 authors: [brenn]
 tags: [performance, web-vitals, triage, debugging]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['performance', 'web-vitals', 'bug-triage', 'debugging', 'articles', 'core', 'web', 'vitals', 'regression']
 ---
 
 When pages feel slower after a release, users notice before dashboards do.

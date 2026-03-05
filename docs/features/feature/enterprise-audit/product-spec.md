@@ -6,8 +6,11 @@ mode: audit_log, security_audit
 version: 0.7.12
 doc_type: product-spec
 feature_id: feature-enterprise-audit
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
+
 # Product Spec: Enterprise Audit
 
 User-facing requirements, rationale, and deprecations for the Enterprise Audit feature.

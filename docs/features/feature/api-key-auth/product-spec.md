@@ -6,8 +6,11 @@ mode: request validation
 version: 0.7.12
 doc_type: product-spec
 feature_id: feature-api-key-auth
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
+
 # Product Spec: API Key Auth
 
 User-facing requirements, rationale, and deprecations for the API Key Auth feature.

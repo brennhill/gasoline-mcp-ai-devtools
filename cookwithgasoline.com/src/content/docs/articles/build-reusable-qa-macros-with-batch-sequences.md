@@ -4,6 +4,9 @@ description: "Create repeatable Quality Assurance flows with batch sequences so 
 date: 2026-03-03
 authors: [brenn]
 tags: [qa, automation, workflows, testing]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['qa', 'automation', 'workflows', 'testing', 'articles', 'build', 'reusable', 'macros', 'batch', 'sequences']
 ---
 
 If your team repeats the same 20 clicks every day, you need a macro.

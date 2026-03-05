@@ -4,7 +4,7 @@ feature_id: browser-push
 status: implementation
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-01
+last_reviewed: 2026-03-05
 code_paths:
   - internal/push/
   - cmd/dev-console/push_state.go
@@ -20,6 +20,8 @@ test_paths:
   - cmd/dev-console/push_state_test.go
   - cmd/dev-console/push_handlers_test.go
   - cmd/dev-console/tools_observe_inbox_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Browser Push

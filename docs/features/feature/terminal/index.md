@@ -19,6 +19,8 @@ test_paths:
   - tests/extension/terminal-widget.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Terminal

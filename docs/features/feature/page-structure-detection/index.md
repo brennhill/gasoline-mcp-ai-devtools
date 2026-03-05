@@ -4,12 +4,14 @@ feature_id: feature-page-structure-detection
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - src/background/commands/analyze.ts
   - cmd/dev-console/tools_analyze_page_structure_test.go
 test_paths:
   - cmd/dev-console/tools_analyze_page_structure_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Page Structure Detection

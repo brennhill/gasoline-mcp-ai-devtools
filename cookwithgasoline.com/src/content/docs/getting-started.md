@@ -1,6 +1,9 @@
 ---
 title: Fire It Up
 description: Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['getting', 'started']
 ---
 
 Gasoline is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.

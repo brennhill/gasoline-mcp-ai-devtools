@@ -4,7 +4,7 @@ feature_id: feature-bridge-restart
 status: implemented
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/bridge.go
   - cmd/dev-console/bridge_startup.go
@@ -21,6 +21,8 @@ test_paths:
   - cmd/dev-console/bridge_startup_contention_test.go
   - cmd/dev-console/bridge_faststart_extended_test.go
   - cmd/dev-console/bridge_fastpath_unit_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Bridge Restart

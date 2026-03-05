@@ -1,6 +1,9 @@
 ---
 title: "Troubleshooting"
 description: "Fix common Gasoline issues: extension not connecting, MCP mode problems, port conflicts, stale processes, and debug mode."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['troubleshooting']
 ---
 
 ## Extension Not Connecting to Server

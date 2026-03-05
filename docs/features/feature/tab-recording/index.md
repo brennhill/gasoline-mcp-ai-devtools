@@ -4,7 +4,7 @@ feature_id: feature-tab-recording
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-05
 code_paths:
   - cmd/dev-console/tools_recording_video.go
   - cmd/dev-console/tools_recording_video_handlers.go
@@ -17,6 +17,8 @@ code_paths:
 test_paths:
   - cmd/dev-console/tools_recording_video_test.go
   - tests/extension/recording-shortcut-command.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tab Recording

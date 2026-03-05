@@ -1,6 +1,9 @@
 ---
 title: Technical Architecture
 description: How Gasoline MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['architecture']
 ---
 
 ## The Big Picture

@@ -4,6 +4,9 @@ description: "Record product demos locally, replay them reliably, and keep data 
 date: 2026-03-03
 authors: [brenn]
 tags: [demos, recording, product, workflows]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['demos', 'recording', 'product', 'workflows', 'articles', 'local', 'first', 'demo', 'teams']
 ---
 
 Great demos are hard to repeat. Local-first recording makes them much easier.

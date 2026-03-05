@@ -4,6 +4,9 @@ description: "Simple beginner setup for connecting Windsurf to Gasoline Agentic 
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, windsurf, mcp, setup]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['beginner', 'windsurf', 'mcp', 'setup', 'articles', 'connect', 'gasoline']
 ---
 
 If you use Windsurf and want real browser evidence during development, this guide is for you.

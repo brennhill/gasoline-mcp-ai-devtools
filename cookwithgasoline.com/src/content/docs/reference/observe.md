@@ -1,11 +1,16 @@
 ---
 title: "Observe — Read Browser State"
 description: "Complete reference for the observe tool. 30 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, storage, page inventory, inbox messages, and more."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'observe']
 ---
 
 The `observe` tool reads the current browser state. It's your AI's eyes into the browser — errors, network traffic, WebSocket messages, performance metrics, visual state, and more.
 
 **Always call `observe()` before `interact()` or `generate()`** to give the AI context about the current page.
+
+Need one runnable call + response shape + failure fix for every mode? See [Observe Executable Examples](/reference/examples/observe-examples/).
 
 ## Quick Reference
 

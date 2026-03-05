@@ -19,6 +19,9 @@ Write tutorials and articles that are:
 
 This guide is the default writing standard for **Gasoline Agentic Devtools** content.
 
+Visual standards companion: [cookwithgasoline.com visual evidence guide](../../cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md)
+CI gates companion: [docs quality CI gates](./docs-quality-ci-gates.md)
+
 ## Audience and Reading Assumptions
 
 - Primary audience: semi-technical and non-technical users trying agentic tools for the first time

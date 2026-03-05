@@ -4,10 +4,12 @@ scope: feature/historical-snapshots
 ai-priority: medium
 tags: [v7, testing]
 relates-to: [product-spec.md, tech-spec.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: qa-plan
 feature_id: feature-historical-snapshots
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Historical Snapshots — QA Plan

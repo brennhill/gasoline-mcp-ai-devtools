@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: llm-fast-verify-gate
 status: active
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
@@ -24,6 +24,8 @@ test_paths:
   - cmd/dev-console/tools_schema_parity_test.go
   - cmd/dev-console/tools_interact_navigate_document_test.go
   - cmd/dev-console/tools_contract_enforcement_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # LLM Fast Verify Gate

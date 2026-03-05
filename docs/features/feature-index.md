@@ -4,8 +4,11 @@ scope: feature/index
 ai-priority: high
 tags: [feature-index, status, navigation, canonical]
 relates-to: [../README.md, feature/]
-last-verified: 2026-02-17
+last-verified: 2026-03-05
 canonical: true
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Feature Index

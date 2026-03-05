@@ -1,6 +1,9 @@
 ---
 title: Security
 description: "Gasoline's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['security']
 ---
 
 Gasoline is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).

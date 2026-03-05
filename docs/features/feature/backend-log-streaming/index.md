@@ -4,7 +4,7 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
@@ -55,6 +55,8 @@ code_paths:
 test_paths:
   - internal/capture/extension_log_store_test.go
   - internal/capture/buffer_clear_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Backend Log Streaming

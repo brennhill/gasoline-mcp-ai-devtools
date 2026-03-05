@@ -4,10 +4,12 @@ scope: feature/causality-analysis
 ai-priority: medium
 tags: [v7, analysis, debugging, eyes]
 relates-to: [../request-session-correlation.md, ../../core/architecture.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: product-spec
 feature_id: feature-causality-analysis
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Causality Analysis
