@@ -20,6 +20,30 @@ Build command:
 npm run smoke:build-framework-fixtures
 ```
 
+Parity gate command (full scenario repeated 3x per framework):
+
+```bash
+npm run smoke:framework-parity
+```
+
+Combined framework + annotation parity suite:
+
+```bash
+npm run smoke:annotation-parity-suite
+```
+
+Repeated benchmark with pass-rate threshold:
+
+```bash
+npm run smoke:annotation-parity-benchmark
+```
+
+Optional repeat controls:
+
+```bash
+FRAMEWORK_RESILIENCE_FULL_REPEATS=3 FRAMEWORK_SELECTOR_REFRESH_CYCLES=3 bash scripts/smoke-test.sh --only 29
+```
+
 Generated output is written to:
 
 - `cmd/dev-console/testpages/frameworks/react.html`

@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-04
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 ---
@@ -39,6 +39,7 @@ Each flow map should include:
 - [File Upload Smoke Harness](./file-upload-smoke-harness.md)
 - [Analyze Structured Extraction](./analyze-structured-extraction.md)
 - [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
+- [Annotation Parity Smoke Gate](./annotation-parity-smoke-gate.md)
 - [Checkpoint, Noise, and Persistence Split](./ai-domain-packages.md)
 - [Capture Buffer Store Extraction](./capture-buffer-store.md)
 - [Tracked Tab Hover Quick Actions](./tracked-tab-hover-quick-actions.md)

@@ -50,7 +50,7 @@ pypi/
 [project]
 name = "gasoline-agentic-browser"
 version = "5.1.0"
-description = "Browser observability for AI coding agents"
+description = "Agentic Browser Devtools - rapid e2e web development"
 requires-python = ">=3.8"
 dependencies = []
 

@@ -2,7 +2,7 @@
 doc_type: flow_map
 scope: annotation_detail_enrichment
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-05
 owners:
   - Brenn
 ---
@@ -28,14 +28,18 @@ Enrichment of annotation detail responses with parent/sibling DOM context, CSS f
    - **New:** `parent_context` (parent + grandparent tag/classes/id/role)
    - **New:** `siblings` (up to 2 before + 2 after with tag/classes/text/position)
    - **New:** `css_framework` via `detectCSSFramework(el)` — heuristic detection of Tailwind/Bootstrap/CSS Modules/styled-components
+   - **New:** `selector_candidates` — deduplicated fallback locator strategies (`css`, `testid`, `role`, `label`, `placeholder`, `text`)
+   - **New:** `js_framework` + `component` metadata from runtime component inspection
 4. Extension sends detail data to Go server via `storeElementDetails()` route
 5. Go `Detail` struct stores new fields as `json.RawMessage` (parent_context, siblings) and `string` (css_framework)
 6. LLM calls `analyze({what:'annotation_detail', correlation_id:'...'})`:
    a. Handler retrieves detail from annotation store
+   b. Handler returns `selector_candidates`, `js_framework`, and `component` when present
    b. **New:** `findAnnotationTimestamp()` locates the annotation's timestamp
    c. **New:** `findErrorsNearTimestamp()` scans log entries for errors within ±5 seconds
-   d. **New:** `buildDetailHints()` generates context-aware LLM guidance based on framework, a11y flags, and correlated errors
+   d. **New:** `buildDetailHints()` generates context-aware LLM guidance based on CSS/runtime frameworks, a11y flags, and correlated errors
 7. Response includes all enriched fields + hints
+8. `generate({what:'visual_test'})` consumes `selector_candidates` via `resolveAnnotationLocator(...)` and emits resilient Playwright locators with fallback order.
 
 ## Session-Level Hints
 
@@ -50,6 +54,7 @@ When LLM calls `analyze({what:'annotations'})`:
 - CSS framework detection returns empty string on no match or error
 - Error correlation returns no results if annotation timestamp not found or no errors in window
 - Detail hints return nil (omitted from response) when no special data is present
+- Invalid/broken selector candidates in generated tests are skipped at runtime and fallback continues
 
 ## State and Contracts
 
@@ -62,19 +67,21 @@ When LLM calls `analyze({what:'annotations'})`:
 
 | Component | File |
 |-----------|------|
-| Extension DOM capture | `extension/content/draw-mode.js` — `buildElementDetail()`, `detectCSSFramework()` |
+| Extension DOM capture | `extension/content/draw-mode.js` — `buildElementDetail()`, `detectCSSFramework()`, `collectSelectorCandidates()`, `detectComponentSource()` |
 | Go Detail struct | `internal/annotation/store.go` — `Detail` struct |
 | Go handler + enrichment | `cmd/dev-console/tools_analyze_annotations_handlers.go` |
-| Session hints | `cmd/dev-console/tools_analyze_annotations_handlers.go` — `buildSessionHints()`, `buildDetailHints()` |
+| Detail/session hints | `cmd/dev-console/tools_analyze_annotations_hints.go` — `buildSessionHints()`, `buildDetailHints()` |
+| Visual test generation | `cmd/dev-console/tools_generate_annotations_visual.go` — `resolveAnnotationLocator` output + selector fallback |
 | Error correlation | `cmd/dev-console/tools_analyze_annotations_handlers.go` — `findAnnotationTimestamp()`, `findErrorsNearTimestamp()` |
 
 ## Test Paths
 
 | Component | File |
 |-----------|------|
-| Extension enrichments | `tests/extension/draw-mode.test.js` — "Element Detail Enrichment" describe block |
+| Extension enrichments | `tests/extension/draw-mode.test.js` — "Element Detail Enrichment" describe block (`selector_candidates`, `js_framework`, `component`) |
 | Go TTL change | `internal/annotation/store_test.go` — `TestStore_SessionTTL_Is2Hours` |
-| Go handler fields | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_NewEnrichmentFields`, `*_NewFieldsAbsentWhenEmpty` |
+| Go handler fields | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_NewEnrichmentFields`, `*_NewFieldsAbsentWhenEmpty`, `*_Hints_RuntimeFramework` |
+| Generated locator fallback | `cmd/dev-console/tools_generate_annotations_test.go` — `TestGenerate_VisualTest_UsesSelectorCandidates` |
 | Error correlation | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_ErrorCorrelation`, `*_ErrorCorrelation_NoErrors` |
 | LLM hints | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotations_SessionHints_*`, `TestToolGetAnnotationDetail_Hints_*`, `*_NoHints_*`, `*_NamedSessionHints` |
 

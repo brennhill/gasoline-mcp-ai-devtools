@@ -60,7 +60,7 @@ func buildSessionHints(screenshotPath string) map[string]any {
 
 // buildDetailHints returns context-aware LLM hints for annotation detail responses.
 // Returns nil if no hints apply (no framework, no a11y flags, no correlated errors).
-func buildDetailHints(cssFramework string, a11yFlags []string, hasCorrelatedErrors bool) map[string]any {
+func buildDetailHints(cssFramework string, jsFramework string, a11yFlags []string, hasCorrelatedErrors bool) map[string]any {
 	hints := make(map[string]any)
 
 	if cssFramework != "" {
@@ -75,6 +75,21 @@ func buildDetailHints(cssFramework string, a11yFlags []string, hasCorrelatedErro
 			hints["design_system"] = "This element uses styled-components/Emotion. Modify the component's styled template literal."
 		default:
 			hints["design_system"] = "CSS framework detected: " + cssFramework + ". Use framework-idiomatic patterns."
+		}
+	}
+
+	if jsFramework != "" {
+		switch jsFramework {
+		case "react":
+			hints["runtime_framework"] = "Runtime framework appears to be React. Prefer component-level fixes over direct DOM mutation."
+		case "vue":
+			hints["runtime_framework"] = "Runtime framework appears to be Vue. Keep template bindings and reactive state in sync with style/layout changes."
+		case "angular":
+			hints["runtime_framework"] = "Runtime framework appears to be Angular. Prefer template/component stylesheet updates instead of manual DOM patches."
+		case "svelte":
+			hints["runtime_framework"] = "Runtime framework appears to be Svelte. Apply fixes in component markup/style so compiled DOM stays consistent."
+		default:
+			hints["runtime_framework"] = "Runtime framework detected: " + jsFramework + ". Prefer framework-native component changes."
 		}
 	}
 

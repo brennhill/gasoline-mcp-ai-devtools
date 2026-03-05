@@ -4,12 +4,55 @@
 
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // generatePlaywrightFromAnnotations builds a Playwright script from annotation sessions.
 func generatePlaywrightFromAnnotations(testName string, pages []*AnnotationSession, store *AnnotationStore) string {
 	var b builder
 	b.line("import { test, expect } from '@playwright/test';")
+	b.line("")
+	b.line("async function resolveAnnotationLocator(page, candidates) {")
+	b.line("  for (const raw of Array.isArray(candidates) ? candidates : []) {")
+	b.line("    if (typeof raw !== 'string' || !raw) continue;")
+	b.line("    const separator = raw.indexOf('=');")
+	b.line("    const strategy = separator > 0 ? raw.slice(0, separator) : 'css';")
+	b.line("    const value = separator > 0 ? raw.slice(separator + 1) : raw;")
+	b.line("    try {")
+	b.line("      let locator;")
+	b.line("      switch (strategy) {")
+	b.line("        case 'testid':")
+	b.line("          locator = page.getByTestId(value);")
+	b.line("          break;")
+	b.line("        case 'label':")
+	b.line("          locator = page.getByLabel(value);")
+	b.line("          break;")
+	b.line("        case 'placeholder':")
+	b.line("          locator = page.getByPlaceholder(value);")
+	b.line("          break;")
+	b.line("        case 'text':")
+	b.line("          locator = page.getByText(value, { exact: false });")
+	b.line("          break;")
+	b.line("        case 'role': {")
+	b.line("          const [role, name] = value.split('|', 2);")
+	b.line("          if (!role) continue;")
+	b.line("          locator = name ? page.getByRole(role, { name }) : page.getByRole(role);")
+	b.line("          break;")
+	b.line("        }")
+	b.line("        case 'css':")
+	b.line("        default:")
+	b.line("          locator = page.locator(value);")
+	b.line("          break;")
+	b.line("      }")
+	b.line("      if (await locator.count()) return locator.first();")
+	b.line("    } catch {")
+	b.line("      // Candidate failed to parse or execute; continue to next fallback.")
+	b.line("    }")
+	b.line("  }")
+	b.line("  return page.locator('body');")
+	b.line("}")
 	b.line("")
 	b.linef("test('%s', async ({ page }) => {", jsEscapeSingle(testName))
 
@@ -34,17 +77,16 @@ func generatePlaywrightFromAnnotations(testName string, pages []*AnnotationSessi
 						b.linef("  // TODO [a11y]: %s", flag)
 					}
 				}
-				selector := detail.Selector
-				if detail.ID != "" {
-					selector = "#" + detail.ID
-				}
-				b.linef("  await expect(page.locator('%s')).toBeVisible();", jsEscapeSingle(selector))
 			} else {
 				b.line("  // (detail expired — re-run draw mode for full selectors)")
 			}
 
-			b.linef("  await expect(page.locator('%s')).toHaveScreenshot('annotation-%d-%d.png');",
-				jsEscapeSingle(annotationLocator(ann, detail)), i+1, j+1)
+			locatorVar := fmt.Sprintf("annotationLocator%d_%d", i+1, j+1)
+			candidates := buildLocatorCandidates(ann, detail)
+			b.linef("  const %s = await resolveAnnotationLocator(page, %s);", locatorVar, jsStringArray(candidates))
+			b.linef("  await expect(%s).toBeVisible();", locatorVar)
+
+			b.linef("  await expect(%s).toHaveScreenshot('annotation-%d-%d.png');", locatorVar, i+1, j+1)
 			b.line("")
 		}
 	}
@@ -53,14 +95,65 @@ func generatePlaywrightFromAnnotations(testName string, pages []*AnnotationSessi
 	return b.string()
 }
 
-func annotationLocator(ann Annotation, detail *AnnotationDetail) string {
-	if detail != nil && detail.ID != "" {
-		return "#" + detail.ID
+func buildLocatorCandidates(ann Annotation, detail *AnnotationDetail) []string {
+	seen := make(map[string]struct{})
+	candidates := make([]string, 0, 8)
+	add := func(candidate string) {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			return
+		}
+		if _, exists := seen[candidate]; exists {
+			return
+		}
+		seen[candidate] = struct{}{}
+		candidates = append(candidates, candidate)
 	}
-	if detail != nil && detail.Selector != "" {
-		return detail.Selector
+
+	if detail != nil {
+		for _, candidate := range detail.SelectorCandidates {
+			add(candidate)
+		}
+		if detail.ID != "" {
+			add("css=#" + detail.ID)
+		}
+		if detail.Selector != "" {
+			add("css=" + detail.Selector)
+		}
 	}
-	return "body"
+
+	if text := extractSummaryText(ann.ElementSummary); text != "" {
+		add("text=" + text)
+	}
+
+	return candidates
+}
+
+func extractSummaryText(summary string) string {
+	start := strings.Index(summary, "'")
+	end := strings.LastIndex(summary, "'")
+	if start >= 0 && end > start {
+		return strings.TrimSpace(summary[start+1 : end])
+	}
+	return ""
+}
+
+func jsStringArray(values []string) string {
+	if len(values) == 0 {
+		return "[]"
+	}
+	var b strings.Builder
+	b.WriteString("[")
+	for i, value := range values {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString("'")
+		b.WriteString(jsEscapeSingle(value))
+		b.WriteString("'")
+	}
+	b.WriteString("]")
+	return b.String()
 }
 
 // jsEscapeSingle escapes a string for safe embedding inside JS single-quoted literals.

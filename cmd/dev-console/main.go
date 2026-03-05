@@ -66,7 +66,7 @@ func main() {
 // #lizard forgives
 func printHelp() {
 	fmt.Print(`
-Gasoline - Browser observability for AI coding agents
+Gasoline - Agentic Browser Devtools - rapid e2e web development
 
 Usage: gasoline [options]
 
