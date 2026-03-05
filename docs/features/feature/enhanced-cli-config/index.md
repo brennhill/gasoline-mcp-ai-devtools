@@ -6,6 +6,9 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-02-23
 code_paths:
+  - Makefile
+  - scripts/install.sh
+  - scripts/install.ps1
   - npm/gasoline-mcp/lib/cli.js
   - npm/gasoline-mcp/lib/skills.js
   - npm/gasoline-mcp/lib/postinstall-skills.js
@@ -15,6 +18,7 @@ code_paths:
 test_paths:
   - pypi/gasoline-mcp/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_skills.py
+  - tests/extension/release-extension-zip.test.js
   - tests/cli/cli-integration.test.cjs
 ---
 
