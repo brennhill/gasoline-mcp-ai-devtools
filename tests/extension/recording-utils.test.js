@@ -13,6 +13,7 @@ describe('recording url helpers', () => {
   test('buildScreenRecordingSlug falls back on invalid urls', () => {
     assert.strictEqual(buildScreenRecordingSlug('not-a-url'), 'recording')
     assert.strictEqual(buildScreenRecordingSlug(undefined), 'recording')
+    assert.strictEqual(buildScreenRecordingSlug('https://___/x'), 'recording')
   })
 
   test('buildRecordingToastLabel produces clipped host+path label', () => {

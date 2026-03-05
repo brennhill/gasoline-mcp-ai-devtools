@@ -35,6 +35,23 @@ describe('recording badge lifecycle', () => {
     assert.ok(latestText.length > 0)
   })
 
+  test('startRecordingBadgeTimer supports short second-format labels', () => {
+    startRecordingBadgeTimer(Date.now() - 5_000)
+    const textCalls = globalThis.chrome.action.setBadgeText.mock.calls
+    const latestText = textCalls[textCalls.length - 1].arguments[0].text
+    assert.ok(latestText.endsWith('s'))
+  })
+
+  test('startRecordingBadgeTimer gracefully handles zero epoch input', () => {
+    startRecordingBadgeTimer(0)
+    const textCalls = globalThis.chrome.action.setBadgeText.mock.calls
+    if (textCalls.length > 0) {
+      const latestText = textCalls[textCalls.length - 1].arguments[0].text
+      assert.strictEqual(typeof latestText, 'string')
+    }
+    stopRecordingBadgeTimer()
+  })
+
   test('stopRecordingBadgeTimer clears badge text', () => {
     startRecordingBadgeTimer(Date.now() - 5_000)
     stopRecordingBadgeTimer()
