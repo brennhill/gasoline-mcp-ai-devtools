@@ -25,7 +25,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 This automatically:
 - Downloads the latest stable binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~/.gasoline/extension/`
+- Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
 - Auto-configures all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Claude Desktop, VS Code)
 
 ## 2. Load the Chrome Extension
@@ -35,7 +35,7 @@ This is the one step that requires human interaction — Chrome doesn't allow pr
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right toggle)
 3. Click **Load unpacked**
-4. Select the folder: **`~/.gasoline/extension`**
+4. Select the folder: **`~/GasolineAgenticDevtoolExtension`**
 
 You'll see the Gasoline icon in your toolbar. It will show "Not Connected" until you complete step 3.
 
@@ -43,7 +43,7 @@ You'll see the Gasoline icon in your toolbar. It will show "Not Connected" until
 If you're willing to restart Chrome, you can pre-load the extension via CLI flag:
 ```bash
 # macOS
-open -a "Google Chrome" --args --load-extension="$HOME/.gasoline/extension"
+open -a "Google Chrome" --args --load-extension="$HOME/GasolineAgenticDevtoolExtension"
 ```
 This only applies to that Chrome session. For persistent installation, use the Load Unpacked flow above.
 :::

@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_pointer
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 canonical_flow_map: ../../../architecture/flow-maps/installer-binary-path-and-manual-extension-handoff.md
 ---
 
@@ -16,5 +16,6 @@ Notable coverage:
 - Extension staging integrity checks and source-zip fallback for incomplete release extension artifacts.
 - Installer extension refresh now stages + validates + promotes atomically, with rollback to previous extension state on promotion failure.
 - Strict checksum mode (`GASOLINE_INSTALL_STRICT=1`) enforces fail-closed binary verification.
+- Installer defaults unpacked extension output to `~/GasolineAgenticDevtoolExtension` (overridable via `GASOLINE_EXTENSION_DIR`) so users can select it in Chrome without enabling hidden files.
 - CRX fallback packaging in `scripts/build-crx.js` archives the full `extension/` directory to prevent missing MV3 module imports.
 - Startup integrity regression checks assert manifest file paths and service worker import graph resolve before release.

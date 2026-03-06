@@ -35,7 +35,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 **What this does (no further action needed):**
 - Downloads the platform binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~/.gasoline/extension/`
+- Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 **If the install script is unavailable**, fall back to npm:
@@ -60,7 +60,7 @@ This is the **one step that requires human interaction**. Chrome does not allow 
 > 1. Open **chrome://extensions** in Chrome
 > 2. Enable **Developer mode** (toggle in the top-right corner)
 > 3. Click **Load unpacked**
-> 4. Select the folder: **~/.gasoline/extension**
+> 4. Select the folder: **~/GasolineAgenticDevtoolExtension**
 >
 > The Gasoline icon should appear in your toolbar. Click it — it should show "Connected".
 
@@ -70,7 +70,7 @@ This is the **one step that requires human interaction**. Chrome does not allow 
 If the user is willing to restart Chrome, the extension can be loaded via CLI flag without any UI clicks:
 ```bash
 # macOS — launches Chrome with the extension pre-loaded
-open -a "Google Chrome" --args --load-extension="$HOME/.gasoline/extension"
+open -a "Google Chrome" --args --load-extension="$HOME/GasolineAgenticDevtoolExtension"
 ```
 This only applies to that Chrome session. For persistent installation, the manual Load Unpacked flow is required.
 :::

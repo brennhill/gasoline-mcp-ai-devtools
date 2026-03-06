@@ -7,17 +7,17 @@
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-mcp-ai-devtools"
+REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
 INSTALL_DIR="$HOME/.gasoline"
 BIN_DIR="$INSTALL_DIR/bin"
-EXT_DIR="$INSTALL_DIR/extension"
+EXT_DIR="${GASOLINE_EXTENSION_DIR:-$HOME/GasolineAgenticDevtoolExtension}"
 STAGE_EXT_DIR="$INSTALL_DIR/.extension-stage-$$"
 BACKUP_EXT_DIR="$INSTALL_DIR/.extension-backup-$$"
 # The VERSION file on the STABLE branch is the source of truth for the latest release.
@@ -81,6 +81,8 @@ promote_extension_stage() {
     if [ -d "$EXT_DIR" ]; then
         mv "$EXT_DIR" "$BACKUP_EXT_DIR"
     fi
+
+    mkdir -p "$(dirname "$EXT_DIR")"
 
     if ! mv "$STAGE_EXT_DIR" "$EXT_DIR"; then
         echo -e "${RED}❌ Failed to promote staged extension directory.${NC}"

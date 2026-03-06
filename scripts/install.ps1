@@ -6,16 +6,16 @@
 # It avoids external dependencies like bash/curl by using built-in .NET/PowerShell features.
 #
 # USAGE:
-#   irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 
 # Stop the script if any command results in an error. Equivalent to 'set -e'.
 $ErrorActionPreference = "Stop"
 
 # Configuration: Single source of truth for repository and local paths.
-$REPO = "brennhill/gasoline-mcp-ai-devtools"
+$REPO = "brennhill/gasoline-agentic-browser-devtools-mcp"
 $INSTALL_DIR = Join-Path $HOME ".gasoline"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
-$EXT_DIR = Join-Path $INSTALL_DIR "extension"
+$EXT_DIR = if ($env:GASOLINE_EXTENSION_DIR) { $env:GASOLINE_EXTENSION_DIR } else { Join-Path $HOME "GasolineAgenticDevtoolExtension" }
 $GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
@@ -194,6 +194,11 @@ function Promote-ExtensionStage {
 
     if (Test-Path $EXT_DIR) {
         Move-Item -Path $EXT_DIR -Destination $BACKUP_EXT_DIR -Force
+    }
+
+    $extensionParentDir = Split-Path -Path $EXT_DIR -Parent
+    if (-not [string]::IsNullOrWhiteSpace($extensionParentDir) -and -not (Test-Path $extensionParentDir)) {
+        New-Item -Path $extensionParentDir -ItemType Directory -Force | Out-Null
     }
 
     try {

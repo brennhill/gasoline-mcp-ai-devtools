@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename)
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const INSTALL_SH = path.join(REPO_ROOT, 'scripts', 'install.sh')
 const INSTALL_PS1 = path.join(REPO_ROOT, 'scripts', 'install.ps1')
+const SERVER_INSTALL_JS = path.join(REPO_ROOT, 'server', 'scripts', 'install.js')
 
 test('bash installer validates theme bootstrap and falls back to STABLE source zip', () => {
   const script = fs.readFileSync(INSTALL_SH, 'utf8')
@@ -57,6 +58,11 @@ test('bash installer uses staged extension promotion and supports strict checksu
     script,
     /Strict checksum mode enabled/,
     'install.sh should surface strict checksum mode in installer output'
+  )
+  assert.match(
+    script,
+    /EXT_DIR="\$\{GASOLINE_EXTENSION_DIR:-\$HOME\/GasolineAgenticDevtoolExtension\}"/,
+    'install.sh should default extension install location to a visible home-directory folder'
   )
 })
 
@@ -103,6 +109,11 @@ test('powershell installer uses unique temp paths, staged promotion, and strict 
     /\$STRICT_CHECKSUM = \$env:GASOLINE_INSTALL_STRICT -eq "1"/,
     'install.ps1 should support strict checksum mode via GASOLINE_INSTALL_STRICT'
   )
+  assert.match(
+    script,
+    /\$EXT_DIR = if \(\$env:GASOLINE_EXTENSION_DIR\) \{ \$env:GASOLINE_EXTENSION_DIR \} else \{ Join-Path \$HOME "GasolineAgenticDevtoolExtension" \}/,
+    'install.ps1 should default extension install location to a visible home-directory folder'
+  )
 })
 
 test('powershell installer force-stops stale server and prints manual recovery warning', () => {
@@ -127,5 +138,15 @@ test('powershell installer force-stops stale server and prints manual recovery w
     script,
     /Get-Process gasoline -ErrorAction SilentlyContinue \| Stop-Process -Force/,
     'install.ps1 must provide manual process kill instructions'
+  )
+})
+
+test('node installer checklist defaults to visible extension path and supports env override', () => {
+  const script = fs.readFileSync(SERVER_INSTALL_JS, 'utf8')
+
+  assert.match(
+    script,
+    /const extensionDir = process\.env\.GASOLINE_EXTENSION_DIR \|\| path\.join\(os\.homedir\(\), 'GasolineAgenticDevtoolExtension'\)/,
+    'server install script should print visible extension directory by default and respect GASOLINE_EXTENSION_DIR override'
   )
 })

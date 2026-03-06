@@ -31,7 +31,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 
 This script automatically:
 1.  **Downloads** the latest stable `gasoline` binary for your OS and architecture.
-2.  **Installs** the browser extension files to `~/.gasoline/extension`.
+2.  **Installs** the browser extension files to `~/GasolineAgenticDevtoolExtension`.
 3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
@@ -45,7 +45,7 @@ Since you've already downloaded the extension files with the script above, you j
 1.  Open `chrome://extensions`
 2.  Enable **Developer mode** (top right)
 3.  Click **Load unpacked**
-4.  Select the folder: `~/.gasoline/extension`
+4.  Select the folder: `~/GasolineAgenticDevtoolExtension`
 
 Click the Gasoline Agentic Browser icon in your toolbar — it should show **Connected**.
 
