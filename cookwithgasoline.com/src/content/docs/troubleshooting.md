@@ -128,7 +128,7 @@ This verifies port availability, binary version, client configuration, and print
    ```bash
    curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
    ```
-2. Reload the extension: go to `chrome://extensions`, remove the old version, click **Load unpacked**, select `~/.gasoline/extension`
+2. Reload the extension: go to `chrome://extensions`, remove the old version, click **Load unpacked**, select `~/GasolineAgenticDevtoolExtension`
 3. Both should show the same major version
 
 Minor/patch version differences are fine and won't trigger the warning.

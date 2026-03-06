@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: installer-binary-path-and-manual-extension-handoff
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 owners:
   - Brenn
 entrypoints:
@@ -60,7 +60,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 3. Binary installers verify SHA-256 against release `checksums.txt` (or fail immediately in strict mode).
 4. Extension is extracted into a staging directory and validated for required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`, `theme-bootstrap.js`).
 5. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
-6. Only validated staging directories are promoted atomically to `~/.gasoline/extension`; prior extension state is restored on promotion failure.
+6. Only validated staging directories are promoted atomically to `~/GasolineAgenticDevtoolExtension`; prior extension state is restored on promotion failure.
 7. Wrapper/native install writes MCP client configs.
 8. Config entries prefer resolved binary paths over transient launchers.
 9. Installer prints explicit manual extension checklist:
@@ -89,6 +89,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 4. Installer output must never imply that browser extension installation is fully automatic.
 5. In strict mode, checksum verification is mandatory for release binary downloads.
 6. Existing-daemon reuse on port checks requires service identity and version parity.
+7. Extension unpacked path defaults to `~/GasolineAgenticDevtoolExtension` (overridable with `GASOLINE_EXTENSION_DIR`).
 
 ## Code Paths
 
