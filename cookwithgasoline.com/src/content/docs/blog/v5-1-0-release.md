@@ -1,6 +1,6 @@
 ---
-title: "Gasoline v5.1.0: Single-Tab Tracking Isolation"
-description: "v5.1.0 fixes a critical privacy vulnerability where all browser tabs were captured regardless of tracking state. Plus network schema improvements and PyPI distribution."
+title: "Gasoline v0.5.10: Single-Tab Tracking Isolation"
+description: "v0.5.10 fixes a critical privacy vulnerability where all browser tabs were captured regardless of tracking state. Plus network schema improvements and PyPI distribution."
 date: 2026-01-28T20:25:00Z
 authors:
   - brenn
@@ -10,20 +10,20 @@ tags:
   - privacy
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['--releases', 'releases', 'security', 'privacy', 'blog', 'v5', 'release']
+normalized_tags: ['--releases', 'releases', 'security', 'privacy', 'blog', 'v0.5', 'release']
 ---
 
-Gasoline v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
+Gasoline v0.5.10 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
 
 ## The Problem: All Tabs Were Captured
 
-Prior to v5.1.0, the extension captured console logs, network requests, and other telemetry from **every open browser tab** — regardless of whether tracking was enabled for that tab. If you had 40 tabs open and clicked "Track This Page" on one of them, data from all 40 tabs was forwarded to the MCP server.
+Prior to v0.5.10, the extension captured console logs, network requests, and other telemetry from **every open browser tab** — regardless of whether tracking was enabled for that tab. If you had 40 tabs open and clicked "Track This Page" on one of them, data from all 40 tabs was forwarded to the MCP server.
 
 This was a privacy vulnerability. Tabs containing banking sites, personal email, or other sensitive sessions would leak telemetry into the AI assistant's context.
 
 ## The Fix: Single-Tab Tracking Isolation
 
-v5.1.0 introduces **tab-scoped filtering** in the content script. The extension now:
+v0.5.10 introduces **tab-scoped filtering** in the content script. The extension now:
 
 1. **Only captures from the explicitly tracked tab.** All other tabs are completely isolated.
 2. **Attaches a `tabId`** to every forwarded message for data attribution.
@@ -56,15 +56,14 @@ These changes help LLMs interpret network data without guessing units.
 Gasoline is now available on PyPI alongside NPM:
 
 ```bash
-pip install gasoline-mcp
-gasoline-mcp
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 Same binary, same behavior. Platform-specific wheels for macOS (arm64, x64), Linux (arm64, x64), and Windows (x64).
 
 ## Known Issues
 
-Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/KNOWN-ISSUES.md) for details:
+Five issues are deferred to v0.5.20. See [KNOWN-ISSUES.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/KNOWN-ISSUES.md) for details:
 
 - `query_dom` not yet implemented
 - Accessibility audit runtime error
@@ -75,7 +74,7 @@ Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brenn
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.1.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 Or update your `.mcp.json`:
@@ -85,8 +84,8 @@ Or update your `.mcp.json`:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "gasoline-mcp@5.1.0", "--port", "7890", "--persist"]
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-browser",
+      "args": ["--port", "7890", "--persist"]
     }
   }
 }

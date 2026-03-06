@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v4.0.0 Released"
+title: "Gasoline v0.4.00 Released"
 description: "Refinement phase - polishing the core, adding developer experience features"
 date: 2025-12-22T21:15:00Z
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v4']
+normalized_tags: ['release', 'blog', 'v0.4']
 ---
 
-## What's New in v4.0.0
+## What's New in v0.4.00
 
-Gasoline v4.0.0 is the refinement phase. The core architecture from v3 works well—this version focuses on making it robust and adding missing developer-focused features.
+Gasoline v0.4.00 is the refinement phase. The core architecture from v0.3 works well—this version focuses on making it robust and adding missing developer-focused features.
 
 ### Major Features
 

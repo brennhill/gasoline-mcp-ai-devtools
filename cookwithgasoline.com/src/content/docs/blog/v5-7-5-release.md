@@ -1,15 +1,15 @@
 ---
-title: "Gasoline v5.7.5 Released"
+title: "Gasoline v0.5.75 Released"
 description: "Fast-start MCP mode, port diagnostics, and improved error messages for better developer experience"
 date: 2026-02-06
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
+normalized_tags: ['release', 'blog', 'v0.5']
 ---
 
-## What's New in v5.7.5
+## What's New in v0.5.75
 
 This release makes Gasoline MCP feel instant. The new fast-start mode responds to MCP clients in ~130ms while the daemon boots in the background.
 
@@ -56,7 +56,7 @@ Daemon startup timeout reduced from 10s to 4s. If something is wrong, you'll kno
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.7.5
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ## Full Changelog

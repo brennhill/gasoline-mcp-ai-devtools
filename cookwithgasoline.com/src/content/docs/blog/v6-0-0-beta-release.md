@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v6.0.0 Released"
+title: "Gasoline v0.6.00 Released"
 description: "AI agents can now check all links on your page, automate your browser with complete visibility, and identify performance bottlenecks in real time."
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v6', 'beta']
+normalized_tags: ['release', 'blog', 'v0.6', 'beta']
 ---
 
-## What's New in v6.0.0
+## What's New in v0.6.00
 
-Gasoline v6.0.0 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
+Gasoline v0.6.00 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
 
 ### Features
 
@@ -47,14 +47,14 @@ Gasoline v6.0.0 introduces the Link Health Analyzer, plus browser automation, re
 
 ### Breaking Changes
 
-- **Extension v5.x → v6.0.0** — Auto-update via Chrome. Manual re-add may be required if permissions are denied.
+- **Extension v0.5.x → v0.6.00** — Auto-update via Chrome. Manual re-add may be required if permissions are denied.
 - **MCP Server** — Same 4-tool interface; no API changes.
 
 ## Upgrade
 
 ### Browser Extension
 
-**[📥 Download gasoline-extension-v6.0.0.crx](/downloads/gasoline-extension-v6.0.0.crx)** (480 KB)
+**[📥 Download gasoline-extension-v0.6.00.crx](/downloads/gasoline-extension-v6.0.0.crx)** (480 KB)
 
 Extension ID: `behrmkvjipzkr7hu6mwmbt5vpdgcdyvk`
 
@@ -71,20 +71,15 @@ Drag-drop the signed CRX into `chrome://extensions/`:
 ### MCP Server
 
 ```bash
-npm install -g gasoline-mcp@6.0.0
-gasoline-mcp --help
-```
-
-Or via pip:
-```bash
-pip install gasoline-mcp==6.0.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+~/.gasoline/bin/gasoline-agentic-browser --help
 ```
 
 ## Known Limitations
 
 - **Recording audio on muted tabs** — Tab audio capture requires tab to have sound playing. Silent tabs record video only.
 - **Watermark on rapid navigation** — Watermark may not re-appear if user navigates during recording. Next navigation resets correctly.
-- **Chrome 120+ only** — Manifest v3 (MV3) requires Chrome 120 or later. No Safari/Firefox support in v6.
+- **Chrome 120+ only** — Manifest v0.3 (MV3) requires Chrome 120 or later. No Safari/Firefox support in v6.
 
 ## What's Next
 
@@ -94,4 +89,4 @@ pip install gasoline-mcp==6.0.0
 
 ## Full Changelog
 
-[v5.8.0...v6.0.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.8.0...v6.0.0)
+[v0.5.80...v0.6.00](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.8.0...v6.0.0)

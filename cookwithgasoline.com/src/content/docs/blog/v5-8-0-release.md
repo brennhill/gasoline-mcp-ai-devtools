@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v5.8.0 Released"
+title: "Gasoline v0.5.80 Released"
 description: "Early-patch WebSocket capture, visual action toasts, and a 106-test UAT suite"
 date: 2026-02-06T22:52:00Z
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
+normalized_tags: ['release', 'blog', 'v0.5']
 ---
 
-## What's New in v5.8.0
+## What's New in v0.5.80
 
-Gasoline v5.8.0 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
+Gasoline v0.5.80 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
 
 ### Features
 
@@ -35,7 +35,7 @@ Gasoline v5.8.0 solves a long-standing WebSocket capture blind spot: pages that 
 
 ### Performance
 
-Binary sizes decreased ~4% from v5.7.5. All SLOs continue to pass:
+Binary sizes decreased ~4% from v0.5.75. All SLOs continue to pass:
 - MCP fast-start: ~130ms
 - Tool response: < 1ms
 - Max binary: 7.7 MB (target: < 15 MB)
@@ -43,9 +43,9 @@ Binary sizes decreased ~4% from v5.7.5. All SLOs continue to pass:
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.8.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ## Full Changelog
 
-[v5.7.5...v5.8.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.7.5...v5.8.0)
+[v0.5.75...v0.5.80](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.7.5...v5.8.0)

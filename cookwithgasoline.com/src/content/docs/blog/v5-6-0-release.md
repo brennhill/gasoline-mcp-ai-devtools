@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v5.6.0 Released"
+title: "Gasoline v0.5.60 Released"
 description: "Server reliability, persistence guarantees, and architecture tests"
 date: 2026-02-06
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
+normalized_tags: ['release', 'blog', 'v0.5']
 ---
 
-## What's New in v5.6.0
+## What's New in v0.5.60
 
-Gasoline v5.6.0 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
+Gasoline v0.5.60 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
 
 ### Features
 
@@ -35,9 +35,9 @@ Gasoline v5.6.0 focuses on server-side reliability with persistence guarantees a
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.6.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ## Full Changelog
 
-[v5.6.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.6.0)
+[v0.5.60 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.6.0)
