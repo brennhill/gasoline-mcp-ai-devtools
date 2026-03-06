@@ -190,6 +190,9 @@ jobs:
       - name: Build extension zip
         run: make extension-zip
 
+      - name: Generate checksums manifest
+        run: make checksums
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
@@ -200,6 +203,7 @@ jobs:
             dist/gasoline-agentic-browser-linux-x64
             dist/gasoline-agentic-browser-win32-x64.exe
             dist/gasoline-extension-v*.zip
+            dist/checksums.txt
           generate_release_notes: true
           draft: false
           prerelease: false
