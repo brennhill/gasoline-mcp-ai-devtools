@@ -118,4 +118,8 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Hint:     "Report an issue to the Gasoline team via GitHub",
 		Optional: []string{"operation", "template", "title", "user_context"},
 	},
+	"setup_quality_gates": {
+		Hint:     "Scaffold .gasoline.json and code standards file for automated quality gate enforcement",
+		Optional: []string{"target_dir"},
+	},
 }
