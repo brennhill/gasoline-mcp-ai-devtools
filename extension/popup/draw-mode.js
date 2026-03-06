@@ -42,7 +42,7 @@ export function setupDrawModeButton() {
                 return;
             }
             label.textContent = 'Starting...';
-            chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' }, (resp) => {
+            chrome.tabs.sendMessage(tab.id, { type: 'gasoline_draw_mode_start', started_by: 'user' }, (resp) => {
                 if (chrome.runtime.lastError) {
                     showDrawModeError(label, 'Content script not loaded — try refreshing the page');
                     return;

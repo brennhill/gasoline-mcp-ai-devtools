@@ -330,7 +330,7 @@ async function readCapturedBody(url, cloned, contentType) {
 }
 function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq, responseTruncated) {
     const message = {
-        type: 'GASOLINE_NETWORK_BODY',
+        type: 'gasoline_network_body',
         payload: {
             url,
             method,
@@ -454,7 +454,7 @@ export function adoptEarlyBodies() {
         adopted++;
         const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
         const message = {
-            type: 'GASOLINE_NETWORK_BODY',
+            type: 'gasoline_network_body',
             payload: {
                 url: entry.url,
                 method: entry.method,

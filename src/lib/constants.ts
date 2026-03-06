@@ -124,17 +124,17 @@ export const MAX_URL_LENGTH = 80
  * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
  */
 export const SettingName = {
-  NETWORK_WATERFALL: 'setNetworkWaterfallEnabled',
-  PERFORMANCE_MARKS: 'setPerformanceMarksEnabled',
-  ACTION_REPLAY: 'setActionReplayEnabled',
-  WEBSOCKET_CAPTURE: 'setWebSocketCaptureEnabled',
-  WEBSOCKET_CAPTURE_MODE: 'setWebSocketCaptureMode',
-  PERFORMANCE_SNAPSHOT: 'setPerformanceSnapshotEnabled',
-  DEFERRAL: 'setDeferralEnabled',
-  NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
-  ACTION_TOASTS: 'setActionToastsEnabled',
-  SUBTITLES: 'setSubtitlesEnabled',
-  SERVER_URL: 'setServerUrl'
+  NETWORK_WATERFALL: 'set_network_waterfall_enabled',
+  PERFORMANCE_MARKS: 'set_performance_marks_enabled',
+  ACTION_REPLAY: 'set_action_replay_enabled',
+  WEBSOCKET_CAPTURE: 'set_web_socket_capture_enabled',
+  WEBSOCKET_CAPTURE_MODE: 'set_web_socket_capture_mode',
+  PERFORMANCE_SNAPSHOT: 'set_performance_snapshot_enabled',
+  DEFERRAL: 'set_deferral_enabled',
+  NETWORK_BODY_CAPTURE: 'set_network_body_capture_enabled',
+  ACTION_TOASTS: 'set_action_toasts_enabled',
+  SUBTITLES: 'set_subtitles_enabled',
+  SERVER_URL: 'set_server_url'
 } as const
 
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName]
@@ -147,7 +147,7 @@ export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.v
 // =============================================================================
 
 export const RuntimeMessageName = {
-  SHOW_TRACKED_HOVER_LAUNCHER: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER'
+  SHOW_TRACKED_HOVER_LAUNCHER: 'gasoline_show_tracked_hover_launcher'
 } as const
 
 /**

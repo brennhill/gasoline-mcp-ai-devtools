@@ -94,7 +94,7 @@ export function forwardHighlightMessage(message: {
 
     // Post message to page context (inject.js)
     postToInject({
-      type: 'GASOLINE_HIGHLIGHT_REQUEST',
+      type: 'gasoline_highlight_request',
       requestId,
       params: message.params
     })
@@ -135,7 +135,7 @@ export async function handleStateCommand(
     event: MessageEvent<{ type?: string; messageId?: string; result?: { error?: string; [key: string]: unknown } }>
   ) => {
     if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_STATE_RESPONSE' && event.data?.messageId === messageId) {
+    if (event.data?.type === 'gasoline_state_response' && event.data?.messageId === messageId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve(event.data.result || { error: 'No result from state command' })
     }
@@ -144,7 +144,7 @@ export async function handleStateCommand(
 
   // Send command to inject.js (include state for restore action)
   postToInject({
-    type: 'GASOLINE_STATE_COMMAND',
+    type: 'gasoline_state_command',
     messageId,
     action,
     name,
@@ -175,7 +175,7 @@ export function handleToggleMessage(
 ): void {
   if (!TOGGLE_MESSAGES.has(message.type)) return
 
-  const payload: SettingMessage = { type: 'GASOLINE_SETTING', setting: message.type }
+  const payload: SettingMessage = { type: 'gasoline_setting', setting: message.type }
   if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
     payload.mode = message.mode
   } else if (message.type === SettingName.SERVER_URL) {
@@ -220,7 +220,7 @@ function executeInMainWorld(
   }, safetyTimeoutMs)
 
   postToInject({
-    type: 'GASOLINE_EXECUTE_JS',
+    type: 'gasoline_execute_js',
     requestId,
     script: params.script || '',
     timeoutMs
@@ -298,7 +298,7 @@ export function handleA11yQuery(
 
   // Forward to inject.js via postMessage
   postToInject({
-    type: 'GASOLINE_A11Y_QUERY',
+    type: 'gasoline_a11y_query',
     requestId,
     params: parsedParams
   })
@@ -326,7 +326,7 @@ export function handleDomQuery(
 
   // Forward to inject.js via postMessage
   postToInject({
-    type: 'GASOLINE_DOM_QUERY',
+    type: 'gasoline_dom_query',
     requestId,
     params: parsedParams
   })
@@ -350,7 +350,7 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
     // Accept responses with no nonce for backwards compat during migration.
     const nonce = event.data?._nonce
     if (nonce && nonce !== getPageNonce()) return
-    if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE' && event.data?.requestId === requestId) {
+    if (event.data?.type === 'gasoline_waterfall_response' && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve({ entries: event.data.entries || [] })
     }
@@ -360,7 +360,7 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
 
   // Post message to page context
   postToInject({
-    type: 'GASOLINE_GET_WATERFALL',
+    type: 'gasoline_get_waterfall',
     requestId
   })
 
@@ -428,8 +428,8 @@ export function handleComputedStylesQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'GASOLINE_COMPUTED_STYLES_QUERY',
-    'GASOLINE_COMPUTED_STYLES_RESPONSE',
+    'gasoline_computed_styles_query',
+    'gasoline_computed_styles_response',
     'Computed styles query',
     params,
     sendResponse
@@ -441,8 +441,8 @@ export function handleFormDiscoveryQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'GASOLINE_FORM_DISCOVERY_QUERY',
-    'GASOLINE_FORM_DISCOVERY_RESPONSE',
+    'gasoline_form_discovery_query',
+    'gasoline_form_discovery_response',
     'Form discovery',
     params,
     sendResponse
@@ -454,8 +454,8 @@ export function handleFormStateQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'GASOLINE_FORM_STATE_QUERY',
-    'GASOLINE_FORM_STATE_RESPONSE',
+    'gasoline_form_state_query',
+    'gasoline_form_state_response',
     'Form state',
     params,
     sendResponse
@@ -467,8 +467,8 @@ export function handleDataTableQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'GASOLINE_DATA_TABLE_QUERY',
-    'GASOLINE_DATA_TABLE_RESPONSE',
+    'gasoline_data_table_query',
+    'gasoline_data_table_response',
     'Data table extraction',
     params,
     sendResponse
@@ -480,8 +480,8 @@ export function handleLinkHealthQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'GASOLINE_LINK_HEALTH_QUERY',
-    'GASOLINE_LINK_HEALTH_RESPONSE',
+    'gasoline_link_health_query',
+    'gasoline_link_health_response',
     'Link health check',
     params,
     sendResponse

@@ -12,7 +12,7 @@ export declare const VALID_STATE_ACTIONS: Set<StateAction>;
  * Setting message from content script
  */
 export interface SettingMessageData {
-    type: 'GASOLINE_SETTING';
+    type: 'gasoline_setting';
     setting: string;
     enabled?: boolean;
     mode?: string;
@@ -22,7 +22,7 @@ export interface SettingMessageData {
  * State command message from content script
  */
 export interface StateCommandMessageData {
-    type: 'GASOLINE_STATE_COMMAND';
+    type: 'gasoline_state_command';
     messageId: string;
     action: StateAction;
     state?: BrowserStateSnapshot;

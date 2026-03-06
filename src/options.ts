@@ -212,10 +212,10 @@ export function saveOptions(): void {
 
     // Notify background of changes so it can update its in-memory state
     chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
-    chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-    chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+    chrome.runtime.sendMessage({ type: 'set_screenshot_on_error', enabled: screenshotOnError })
+    chrome.runtime.sendMessage({ type: 'set_source_map_enabled', enabled: sourceMapEnabled })
     chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
-    chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+    chrome.runtime.sendMessage({ type: 'set_debug_mode', enabled: debugMode })
 
     // Sync terminal dev root to daemon so MCP and terminal use the same CWD
     if (terminalDevRoot) {
@@ -340,7 +340,7 @@ export async function handleExportDebugLog(): Promise<ExportResult> {
   }
 
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getDebugLog' }, (response: { log?: string } | undefined) => {
+    chrome.runtime.sendMessage({ type: 'get_debug_log' }, (response: { log?: string } | undefined) => {
       if (exportBtn) {
         exportBtn.disabled = false
         exportBtn.textContent = 'Export Debug Log'
@@ -375,7 +375,7 @@ export async function handleExportDebugLog(): Promise<ExportResult> {
  */
 export async function handleClearDebugLog(): Promise<ClearLogResponse> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'clearDebugLog' }, (response: ClearLogResponse | undefined) => {
+    chrome.runtime.sendMessage({ type: 'clear_debug_log' }, (response: ClearLogResponse | undefined) => {
       resolve(response || { success: false })
     })
   })

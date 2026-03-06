@@ -72,7 +72,7 @@ function handleMessage(message, sender, sendResponse, deps) {
     // Type validation: ensure message conforms to expected discriminated union
     // TypeScript's type system ensures exhaustiveness, but add logging for debugging
     switch (messageType) {
-        case 'GET_TAB_ID':
+        case 'get_tab_id':
             sendResponse({ tabId: sender.tab?.id });
             return true;
         case 'ws_event':
@@ -95,7 +95,7 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'log':
             handleLogMessageAsync(message, sender, deps);
             return true;
-        case 'getStatus':
+        case 'get_status':
             sendResponse({
                 ...deps.getConnectionStatus(),
                 serverUrl: deps.getServerUrl(),
@@ -107,34 +107,34 @@ function handleMessage(message, sender, sendResponse, deps) {
                 memoryPressure: deps.getMemoryPressureState()
             });
             return false;
-        case 'clearLogs':
+        case 'clear_logs':
             handleClearLogsAsync(sendResponse, deps);
             return true;
-        case 'setLogLevel':
+        case 'set_log_level':
             deps.setCurrentLogLevel(message.level);
             deps.saveSetting(StorageKey.LOG_LEVEL, message.level);
             return false;
-        case 'setScreenshotOnError':
+        case 'set_screenshot_on_error':
             deps.setScreenshotOnError(message.enabled);
             deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled);
             sendResponse({ success: true });
             return false;
-        case 'setAiWebPilotEnabled':
+        case 'set_ai_web_pilot_enabled':
             handleSetAiWebPilotEnabled(message.enabled, sendResponse, deps);
             return false;
-        case 'getAiWebPilotEnabled':
+        case 'get_ai_web_pilot_enabled':
             sendResponse({ enabled: deps.getAiWebPilotEnabled() });
             return false;
-        case 'getTrackingState':
+        case 'get_tracking_state':
             handleGetTrackingState(sendResponse, deps, sender.tab?.id);
             return true;
-        case 'getDiagnosticState':
+        case 'get_diagnostic_state':
             handleGetDiagnosticState(sendResponse, deps);
             return true;
-        case 'captureScreenshot':
+        case 'capture_screenshot':
             handleCaptureScreenshot(sendResponse, deps);
             return true;
-        case 'setSourceMapEnabled':
+        case 'set_source_map_enabled':
             deps.setSourceMapEnabled(message.enabled);
             deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled);
             if (!message.enabled) {
@@ -142,42 +142,42 @@ function handleMessage(message, sender, sendResponse, deps) {
             }
             sendResponse({ success: true });
             return false;
-        case 'setNetworkWaterfallEnabled':
-        case 'setPerformanceMarksEnabled':
-        case 'setActionReplayEnabled':
-        case 'setWebSocketCaptureEnabled':
-        case 'setWebSocketCaptureMode':
-        case 'setPerformanceSnapshotEnabled':
-        case 'setDeferralEnabled':
-        case 'setNetworkBodyCaptureEnabled':
-        case 'setActionToastsEnabled':
-        case 'setSubtitlesEnabled':
+        case 'set_network_waterfall_enabled':
+        case 'set_performance_marks_enabled':
+        case 'set_action_replay_enabled':
+        case 'set_web_socket_capture_enabled':
+        case 'set_web_socket_capture_mode':
+        case 'set_performance_snapshot_enabled':
+        case 'set_deferral_enabled':
+        case 'set_network_body_capture_enabled':
+        case 'set_action_toasts_enabled':
+        case 'set_subtitles_enabled':
             handleForwardedSetting(message, sendResponse, deps);
             return false;
-        case 'setDebugMode':
+        case 'set_debug_mode':
             deps.setDebugMode(message.enabled);
             deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled);
             sendResponse({ success: true });
             return false;
-        case 'getDebugLog':
+        case 'get_debug_log':
             sendResponse({ log: deps.exportDebugLog() });
             return false;
-        case 'clearDebugLog':
+        case 'clear_debug_log':
             deps.clearDebugLog();
             deps.debugLog('lifecycle', 'Debug log cleared');
             sendResponse({ success: true });
             return false;
-        case 'setServerUrl':
+        case 'set_server_url':
             handleSetServerUrl(message.url, sendResponse, deps);
             return false;
-        case 'GASOLINE_CAPTURE_SCREENSHOT':
+        case 'gasoline_capture_screenshot':
             // Content script requests screenshot capture (while draw mode overlay is still visible)
             handleDrawModeCaptureScreenshot(sender, sendResponse);
             return true;
-        case 'GASOLINE_PUSH_CHAT':
+        case 'gasoline_push_chat':
             handlePushChatAsync(message, sender, sendResponse);
             return true;
-        case 'DRAW_MODE_COMPLETED':
+        case 'draw_mode_completed':
             // Fire-and-forget: content script sends draw mode results
             handleDrawModeCompletedAsync(message, sender, deps);
             return false;
@@ -256,7 +256,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         if (trackedTabId) {
             chrome.tabs
                 .sendMessage(trackedTabId, {
-                type: 'trackingStateChanged',
+                type: 'tracking_state_changed',
                 state: {
                     isTracked: true,
                     aiPilotEnabled: aiPilotEnabled
@@ -270,7 +270,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         if (untrackedTabId && untrackedTabId !== trackedTabId) {
             chrome.tabs
                 .sendMessage(untrackedTabId, {
-                type: 'trackingStateChanged',
+                type: 'tracking_state_changed',
                 state: {
                     isTracked: false,
                     aiPilotEnabled: false

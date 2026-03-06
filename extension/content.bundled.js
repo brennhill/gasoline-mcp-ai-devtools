@@ -29,21 +29,21 @@
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
-    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-    ACTION_REPLAY: "setActionReplayEnabled",
-    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-    DEFERRAL: "setDeferralEnabled",
-    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-    ACTION_TOASTS: "setActionToastsEnabled",
-    SUBTITLES: "setSubtitlesEnabled",
-    SERVER_URL: "setServerUrl"
+    NETWORK_WATERFALL: "set_network_waterfall_enabled",
+    PERFORMANCE_MARKS: "set_performance_marks_enabled",
+    ACTION_REPLAY: "set_action_replay_enabled",
+    WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+    WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+    PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+    DEFERRAL: "set_deferral_enabled",
+    NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+    ACTION_TOASTS: "set_action_toasts_enabled",
+    SUBTITLES: "set_subtitles_enabled",
+    SERVER_URL: "set_server_url"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+    SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -182,7 +182,7 @@
   async function updateTrackingStatus() {
     try {
       const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
-      const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
+      const response = await chrome.runtime.sendMessage({ type: "get_tab_id" });
       currentTabId = response?.tabId ?? null;
       isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === trackedTabId;
     } catch {
@@ -239,13 +239,13 @@
           continue;
         if (setting.isMode) {
           window.postMessage({
-            type: "GASOLINE_SETTING",
+            type: "gasoline_setting",
             setting: setting.messageType,
             mode: value,
             _nonce: pageNonce
           }, window.location.origin);
         } else {
-          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+          window.postMessage({ type: "gasoline_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
         }
       }
     });
@@ -355,7 +355,7 @@
       const onMessage = (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
           return;
-        if (event.data?.type !== "GASOLINE_INJECT_BRIDGE_PONG")
+        if (event.data?.type !== "gasoline_inject_bridge_pong")
           return;
         if (event.data?.requestId !== requestId)
           return;
@@ -367,7 +367,7 @@
       timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
       try {
         window.postMessage({
-          type: "GASOLINE_INJECT_BRIDGE_PING",
+          type: "gasoline_inject_bridge_ping",
           requestId,
           _nonce: pageNonce
         }, window.location.origin);
@@ -515,11 +515,11 @@
 
   // extension/content/message-forwarding.js
   var MESSAGE_MAP = {
-    GASOLINE_LOG: "log",
-    GASOLINE_WS: "ws_event",
-    GASOLINE_NETWORK_BODY: "network_body",
-    GASOLINE_ENHANCED_ACTION: "enhanced_action",
-    GASOLINE_PERFORMANCE_SNAPSHOT: "performance_snapshot"
+    gasoline_log: "log",
+    gasoline_ws: "ws_event",
+    gasoline_network_body: "network_body",
+    gasoline_enhanced_action: "enhanced_action",
+    gasoline_performance_snapshot: "performance_snapshot"
   };
   var contextValid = true;
   function safeSendMessage(msg) {
@@ -537,10 +537,10 @@
 
   // extension/content/window-message-listener.js
   var RESPONSE_HANDLERS = {
-    GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
-    GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
-    GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id, result),
-    GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id, result)
+    gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
+    gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
+    gasoline_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
+    gasoline_dom_query_response: (id, result) => resolveDomRequest(id, result)
   };
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
@@ -1023,7 +1023,7 @@
       const requestId = registerHighlightRequest((result) => deferred.resolve(result));
       const deferred = createDeferredPromise();
       postToInject({
-        type: "GASOLINE_HIGHLIGHT_REQUEST",
+        type: "gasoline_highlight_request",
         requestId,
         params: message.params
       });
@@ -1044,14 +1044,14 @@
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "GASOLINE_STATE_RESPONSE" && event.data?.messageId === messageId) {
+      if (event.data?.type === "gasoline_state_response" && event.data?.messageId === messageId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve(event.data.result || { error: "No result from state command" });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_STATE_COMMAND",
+      type: "gasoline_state_command",
       messageId,
       action,
       name,
@@ -1070,7 +1070,7 @@
   function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
       return;
-    const payload = { type: "GASOLINE_SETTING", setting: message.type };
+    const payload = { type: "gasoline_setting", setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
       payload.mode = message.mode;
     } else if (message.type === SettingName.SERVER_URL) {
@@ -1095,7 +1095,7 @@
       }
     }, safetyTimeoutMs);
     postToInject({
-      type: "GASOLINE_EXECUTE_JS",
+      type: "gasoline_execute_js",
       requestId,
       script: params.script || "",
       timeoutMs
@@ -1140,7 +1140,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_A11Y_QUERY",
+      type: "gasoline_a11y_query",
       requestId,
       params: parsedParams
     });
@@ -1156,7 +1156,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_DOM_QUERY",
+      type: "gasoline_dom_query",
       requestId,
       params: parsedParams
     });
@@ -1171,14 +1171,14 @@
       const nonce = event.data?._nonce;
       if (nonce && nonce !== getPageNonce())
         return;
-      if (event.data?.type === "GASOLINE_WATERFALL_RESPONSE" && event.data?.requestId === requestId) {
+      if (event.data?.type === "gasoline_waterfall_response" && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve({ entries: event.data.entries || [] });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_GET_WATERFALL",
+      type: "gasoline_get_waterfall",
       requestId
     });
     withTimeoutAndCleanup(deferred.promise, 5e3, {
@@ -1215,19 +1215,19 @@
     return true;
   }
   function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_COMPUTED_STYLES_QUERY", "GASOLINE_COMPUTED_STYLES_RESPONSE", "Computed styles query", params, sendResponse);
+    return forwardInjectQuery("gasoline_computed_styles_query", "gasoline_computed_styles_response", "Computed styles query", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_DISCOVERY_QUERY", "GASOLINE_FORM_DISCOVERY_RESPONSE", "Form discovery", params, sendResponse);
+    return forwardInjectQuery("gasoline_form_discovery_query", "gasoline_form_discovery_response", "Form discovery", params, sendResponse);
   }
   function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_STATE_QUERY", "GASOLINE_FORM_STATE_RESPONSE", "Form state", params, sendResponse);
+    return forwardInjectQuery("gasoline_form_state_query", "gasoline_form_state_response", "Form state", params, sendResponse);
   }
   function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_DATA_TABLE_QUERY", "GASOLINE_DATA_TABLE_RESPONSE", "Data table extraction", params, sendResponse);
+    return forwardInjectQuery("gasoline_data_table_query", "gasoline_data_table_response", "Data table extraction", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
+    return forwardInjectQuery("gasoline_link_health_query", "gasoline_link_health_response", "Link health check", params, sendResponse);
   }
   function handleGetReadable(sendResponse) {
     try {
@@ -1795,7 +1795,7 @@
       statusEl.style.color = "#60a5fa";
     }
     chrome.runtime.sendMessage({
-      type: "GASOLINE_PUSH_CHAT",
+      type: "gasoline_push_chat",
       message,
       page_url: window.location.href
     }, (response) => {
@@ -1838,9 +1838,9 @@
         subtitlesEnabled = result.subtitlesEnabled;
     });
     const syncHandlers = {
-      GASOLINE_PING: () => {
+      gasoline_ping: () => {
       },
-      GASOLINE_ACTION_TOAST: (msg) => {
+      gasoline_action_toast: (msg) => {
         if (!actionToastsEnabled)
           return false;
         const m = msg;
@@ -1848,15 +1848,15 @@
           showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
         return false;
       },
-      GASOLINE_TOGGLE_CHAT: (msg) => {
+      gasoline_toggle_chat: (msg) => {
         toggleChatWidget(msg.client_name);
         return false;
       },
-      GASOLINE_RECORDING_WATERMARK: (msg) => {
+      gasoline_recording_watermark: (msg) => {
         toggleRecordingWatermark(msg.visible ?? false);
         return false;
       },
-      GASOLINE_SUBTITLE: (msg) => {
+      gasoline_subtitle: (msg) => {
         if (!subtitlesEnabled)
           return false;
         showSubtitle(msg.text ?? "");
@@ -1872,7 +1872,7 @@
       }
     };
     const delegatedHandlers = {
-      GASOLINE_DRAW_MODE_START: (msg, sr) => {
+      gasoline_draw_mode_start: (msg, sr) => {
         const m = msg;
         import(
           /* webpackIgnore: true */
@@ -1883,7 +1883,7 @@
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+      gasoline_draw_mode_stop: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1893,7 +1893,7 @@
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+      gasoline_get_annotations: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1902,34 +1902,34 @@
         }).catch(() => sr({ draw_mode_active: false }));
         return true;
       },
-      GASOLINE_HIGHLIGHT: (msg, sr) => {
+      gasoline_highlight: (msg, sr) => {
         forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;
       },
-      GASOLINE_MANAGE_STATE: (msg, sr) => {
+      gasoline_manage_state: (msg, sr) => {
         handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
         return true;
       },
-      GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-      GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
-      A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
-      DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
-      GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
-      COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
-      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
-      FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
-      DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
-      GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
-      GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
-      GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
+      gasoline_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      gasoline_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+      dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+      get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
+      link_health_query: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
+      computed_styles_query: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
+      form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
+      data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
+      gasoline_get_readable: (_msg, sr) => handleGetReadable(sr),
+      gasoline_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+      gasoline_page_summary: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
         console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
         return false;
       }
-      if (message.type === "GASOLINE_PING")
+      if (message.type === "gasoline_ping")
         return handlePing(sendResponse);
       const syncHandler = syncHandlers[message.type];
       if (syncHandler) {
@@ -1951,13 +1951,13 @@
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       if (sender.id !== chrome.runtime.id)
         return false;
-      if (message.type === "trackingStateChanged") {
+      if (message.type === "tracking_state_changed") {
         const newState = message.state;
         updateFavicon(newState);
       }
       return false;
     });
-    chrome.runtime.sendMessage({ type: "getTrackingState" }, (response) => {
+    chrome.runtime.sendMessage({ type: "get_tracking_state" }, (response) => {
       if (response && response.state) {
         updateFavicon(response.state);
       }
@@ -3262,7 +3262,7 @@
       }
     }
     try {
-      chrome.runtime.sendMessage({ type: "captureScreenshot" }, (response) => {
+      chrome.runtime.sendMessage({ type: "capture_screenshot" }, (response) => {
         const err = chrome.runtime.lastError;
         const success = !err && response !== void 0 && response.success !== false;
         showScreenshotFlash(success);

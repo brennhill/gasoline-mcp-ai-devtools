@@ -12,11 +12,11 @@ import type { BackgroundMessageFromContent } from './types.js'
 
 // Dispatch table: page postMessage type -> background message type
 export const MESSAGE_MAP: Record<string, string> = {
-  GASOLINE_LOG: 'log',
-  GASOLINE_WS: 'ws_event',
-  GASOLINE_NETWORK_BODY: 'network_body',
-  GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-  GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
+  gasoline_log: 'log',
+  gasoline_ws: 'ws_event',
+  gasoline_network_body: 'network_body',
+  gasoline_enhanced_action: 'enhanced_action',
+  gasoline_performance_snapshot: 'performance_snapshot'
 } as const
 
 // Track whether the extension context is still valid

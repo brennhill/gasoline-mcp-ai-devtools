@@ -89,17 +89,17 @@ var MAX_LONG_TASKS = 50;
 var MAX_SLOWEST_REQUESTS = 3;
 var MAX_URL_LENGTH = 80;
 var SettingName = {
-  NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-  PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-  ACTION_REPLAY: "setActionReplayEnabled",
-  WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-  WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-  PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-  DEFERRAL: "setDeferralEnabled",
-  NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-  ACTION_TOASTS: "setActionToastsEnabled",
-  SUBTITLES: "setSubtitlesEnabled",
-  SERVER_URL: "setServerUrl"
+  NETWORK_WATERFALL: "set_network_waterfall_enabled",
+  PERFORMANCE_MARKS: "set_performance_marks_enabled",
+  ACTION_REPLAY: "set_action_replay_enabled",
+  WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+  WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+  PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+  DEFERRAL: "set_deferral_enabled",
+  NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+  ACTION_TOASTS: "set_action_toasts_enabled",
+  SUBTITLES: "set_subtitles_enabled",
+  SERVER_URL: "set_server_url"
 };
 var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
 var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
@@ -383,7 +383,7 @@ function recordEnhancedAction(type, element, opts = {}) {
     enhancedActionBuffer.shift();
   }
   if (typeof window !== "undefined" && window.postMessage) {
-    window.postMessage({ type: "GASOLINE_ENHANCED_ACTION", payload: action }, window.location.origin);
+    window.postMessage({ type: "gasoline_enhanced_action", payload: action }, window.location.origin);
   }
   return action;
 }
@@ -879,7 +879,7 @@ async function readCapturedBody(url, cloned, contentType) {
 }
 function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq, responseTruncated) {
   const message = {
-    type: "GASOLINE_NETWORK_BODY",
+    type: "gasoline_network_body",
     payload: {
       url,
       method,
@@ -975,7 +975,7 @@ function adoptEarlyBodies() {
     adopted++;
     const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
     const message = {
-      type: "GASOLINE_NETWORK_BODY",
+      type: "gasoline_network_body",
       payload: {
         url: entry.url,
         method: entry.method,
@@ -1230,7 +1230,7 @@ function sendPerformanceSnapshot() {
   const snapshot = capturePerformanceSnapshot();
   if (!snapshot)
     return;
-  window.postMessage({ type: "GASOLINE_PERFORMANCE_SNAPSHOT", payload: snapshot }, window.location.origin);
+  window.postMessage({ type: "gasoline_performance_snapshot", payload: snapshot }, window.location.origin);
 }
 var snapshotResendTimer = null;
 function scheduleSnapshotResend() {
@@ -1464,7 +1464,7 @@ function postLog(payload) {
     enrichments.push("userActions");
   const { level, type, args, error, stack, ...otherFields } = payload;
   window.postMessage({
-    type: "GASOLINE_LOG",
+    type: "gasoline_log",
     payload: {
       // Enriched fields (these are the source of truth)
       ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -2176,7 +2176,7 @@ var originalWebSocket = null;
 var webSocketCaptureEnabled = true;
 function postLifecycleEvent(event, connectionId, urlString, extra) {
   window.postMessage({
-    type: "GASOLINE_WS",
+    type: "gasoline_ws",
     payload: {
       type: "websocket",
       event,
@@ -2193,7 +2193,7 @@ function postMessageEvent(connectionId, urlString, direction, data) {
   const formatted = formatPayload(data);
   const { data: truncatedData, truncated } = truncateWsMessage(formatted);
   window.postMessage({
-    type: "GASOLINE_WS",
+    type: "gasoline_ws",
     payload: {
       type: "websocket",
       event: "message",
@@ -3869,7 +3869,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
   if (!VALID_STATE_ACTIONS.has(action)) {
     console.warn("[Gasoline] Invalid state action:", action);
     window.postMessage({
-      type: "GASOLINE_STATE_RESPONSE",
+      type: "gasoline_state_response",
       messageId,
       result: { error: `Invalid action: ${action}` }
     }, window.location.origin);
@@ -3878,7 +3878,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
   if (action === "restore" && (!state || typeof state !== "object")) {
     console.warn("[Gasoline] Invalid state object for restore");
     window.postMessage({
-      type: "GASOLINE_STATE_RESPONSE",
+      type: "gasoline_state_response",
       messageId,
       result: { error: "Invalid state object" }
     }, window.location.origin);
@@ -3898,7 +3898,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
     result = { error: errorMessage(err) };
   }
   window.postMessage({
-    type: "GASOLINE_STATE_RESPONSE",
+    type: "gasoline_state_response",
     messageId,
     result
   }, window.location.origin);
@@ -3929,10 +3929,10 @@ async function handleLinkHealthQuery(data) {
 }
 function handleLinkHealthMessage(data) {
   handleLinkHealthQuery(data).then((result) => {
-    postResponse({ type: "GASOLINE_LINK_HEALTH_RESPONSE", requestId: data.requestId, result });
+    postResponse({ type: "gasoline_link_health_response", requestId: data.requestId, result });
   }).catch((err) => {
     postResponse({
-      type: "GASOLINE_LINK_HEALTH_RESPONSE",
+      type: "gasoline_link_health_response",
       requestId: data.requestId,
       result: { error: "link_health_error", message: err.message || "Failed to check link health" }
     });
@@ -3942,12 +3942,12 @@ function installMessageListener(captureStateFn, restoreStateFn) {
   if (typeof window === "undefined")
     return;
   const messageHandlers = {
-    GASOLINE_SETTING: (data) => {
+    gasoline_setting: (data) => {
       const settingData = data;
       if (isValidSettingPayload(settingData))
         handleSetting(settingData);
     },
-    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+    gasoline_state_command: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
     GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
     GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
@@ -3974,7 +3974,7 @@ function installMessageListener(captureStateFn, restoreStateFn) {
 }
 function handleBridgePingMessage(data) {
   postResponse({
-    type: "GASOLINE_INJECT_BRIDGE_PONG",
+    type: "gasoline_inject_bridge_pong",
     requestId: data.requestId
   });
 }
@@ -3986,13 +3986,13 @@ function handleComputedStylesMessage(data) {
       properties: params.properties
     });
     postResponse({
-      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      type: "gasoline_computed_styles_response",
       requestId: data.requestId,
       result: { elements: result, count: result.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      type: "gasoline_computed_styles_response",
       requestId: data.requestId,
       result: { error: "computed_styles_error", message: errorMessage(err, "Failed to query computed styles") }
     });
@@ -4006,13 +4006,13 @@ function handleFormDiscoveryMessage(data) {
       mode: params.mode === "validate" ? "validate" : "discover"
     });
     postResponse({
-      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      type: "gasoline_form_discovery_response",
       requestId: data.requestId,
       result: { forms: result, count: result.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      type: "gasoline_form_discovery_response",
       requestId: data.requestId,
       result: { error: "form_discovery_error", message: errorMessage(err, "Failed to discover forms") }
     });
@@ -4026,13 +4026,13 @@ function handleFormStateMessage(data) {
       mode: "discover"
     });
     postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
+      type: "gasoline_form_state_response",
       requestId: data.requestId,
       result: { forms, count: forms.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
+      type: "gasoline_form_state_response",
       requestId: data.requestId,
       result: { error: "form_state_error", message: errorMessage(err, "Failed to extract form state") }
     });
@@ -4047,13 +4047,13 @@ function handleDataTableMessage(data) {
       max_cols: params.max_cols
     });
     postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      type: "gasoline_data_table_response",
       requestId: data.requestId,
       result
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      type: "gasoline_data_table_response",
       requestId: data.requestId,
       result: { error: "data_table_error", message: errorMessage(err, "Failed to extract table data") }
     });
@@ -4064,7 +4064,7 @@ function handleExecuteJs(data) {
   if (typeof script !== "string") {
     console.warn("[Gasoline] Script must be a string");
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "gasoline_execute_js_result",
       requestId,
       result: { success: false, error: "invalid_script", message: "Script must be a string" }
     });
@@ -4076,14 +4076,14 @@ function handleExecuteJs(data) {
   }
   executeJavaScript(script, timeoutMs).then((result) => {
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "gasoline_execute_js_result",
       requestId,
       result
     });
   }).catch((err) => {
     console.error("[Gasoline] Failed to execute JS:", err);
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "gasoline_execute_js_result",
       requestId,
       result: { success: false, error: "execution_failed", message: err.message }
     });
@@ -4093,7 +4093,7 @@ function handleA11yQuery(data) {
   const { requestId, params } = data;
   if (typeof runAxeAuditWithTimeout !== "function") {
     postResponse({
-      type: "GASOLINE_A11Y_QUERY_RESPONSE",
+      type: "gasoline_a11y_query_response",
       requestId,
       result: {
         error: "runAxeAuditWithTimeout not available - try reloading the extension"
@@ -4104,14 +4104,14 @@ function handleA11yQuery(data) {
   try {
     runAxeAuditWithTimeout(params || {}).then((result) => {
       postResponse({
-        type: "GASOLINE_A11Y_QUERY_RESPONSE",
+        type: "gasoline_a11y_query_response",
         requestId,
         result
       });
     }).catch((err) => {
       console.error("[Gasoline] Accessibility audit error:", err);
       postResponse({
-        type: "GASOLINE_A11Y_QUERY_RESPONSE",
+        type: "gasoline_a11y_query_response",
         requestId,
         result: { error: err.message || "Accessibility audit failed" }
       });
@@ -4119,7 +4119,7 @@ function handleA11yQuery(data) {
   } catch (err) {
     console.error("[Gasoline] Failed to run accessibility audit:", err);
     postResponse({
-      type: "GASOLINE_A11Y_QUERY_RESPONSE",
+      type: "gasoline_a11y_query_response",
       requestId,
       result: { error: errorMessage(err, "Failed to run accessibility audit") }
     });
@@ -4129,7 +4129,7 @@ function handleDomQuery(data) {
   const { requestId, params } = data;
   if (typeof executeDOMQuery !== "function") {
     postResponse({
-      type: "GASOLINE_DOM_QUERY_RESPONSE",
+      type: "gasoline_dom_query_response",
       requestId,
       result: {
         error: "executeDOMQuery not available - try reloading the extension"
@@ -4140,14 +4140,14 @@ function handleDomQuery(data) {
   try {
     executeDOMQuery(params || {}).then((result) => {
       postResponse({
-        type: "GASOLINE_DOM_QUERY_RESPONSE",
+        type: "gasoline_dom_query_response",
         requestId,
         result
       });
     }).catch((err) => {
       console.error("[Gasoline] DOM query error:", err);
       postResponse({
-        type: "GASOLINE_DOM_QUERY_RESPONSE",
+        type: "gasoline_dom_query_response",
         requestId,
         result: { error: err.message || "DOM query failed" }
       });
@@ -4155,7 +4155,7 @@ function handleDomQuery(data) {
   } catch (err) {
     console.error("[Gasoline] Failed to run DOM query:", err);
     postResponse({
-      type: "GASOLINE_DOM_QUERY_RESPONSE",
+      type: "gasoline_dom_query_response",
       requestId,
       result: { error: errorMessage(err, "Failed to run DOM query") }
     });
@@ -4166,7 +4166,7 @@ function handleGetWaterfall(data) {
   try {
     const entries = getNetworkWaterfall({});
     postResponse({
-      type: "GASOLINE_WATERFALL_RESPONSE",
+      type: "gasoline_waterfall_response",
       requestId,
       entries: entries || [],
       page_url: window.location.href
@@ -4174,7 +4174,7 @@ function handleGetWaterfall(data) {
   } catch (err) {
     console.error("[Gasoline] Failed to get network waterfall:", err);
     postResponse({
-      type: "GASOLINE_WATERFALL_RESPONSE",
+      type: "gasoline_waterfall_response",
       requestId,
       entries: []
     });
@@ -4391,12 +4391,12 @@ if (typeof window !== "undefined") {
       return;
     if (pageNonce2 && event.data?._nonce !== pageNonce2)
       return;
-    if (event.data?.type === "GASOLINE_HIGHLIGHT_REQUEST") {
+    if (event.data?.type === "gasoline_highlight_request") {
       const { requestId, params } = event.data;
       const { selector, duration_ms } = params || { selector: "" };
       const result = highlightElement(selector, duration_ms);
       window.postMessage({
-        type: "GASOLINE_HIGHLIGHT_RESPONSE",
+        type: "gasoline_highlight_response",
         requestId,
         result
       }, window.location.origin);

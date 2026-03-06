@@ -16,7 +16,7 @@ let webSocketCaptureEnabled = true;
 /** Post a WebSocket lifecycle event (open/close/error) */
 function postLifecycleEvent(event, connectionId, urlString, extra) {
     window.postMessage({
-        type: 'GASOLINE_WS',
+        type: 'gasoline_ws',
         payload: {
             type: 'websocket',
             event,
@@ -34,7 +34,7 @@ function postMessageEvent(connectionId, urlString, direction, data) {
     const formatted = formatPayload(data);
     const { data: truncatedData, truncated } = truncateWsMessage(formatted);
     window.postMessage({
-        type: 'GASOLINE_WS',
+        type: 'gasoline_ws',
         payload: {
             type: 'websocket',
             event: 'message',

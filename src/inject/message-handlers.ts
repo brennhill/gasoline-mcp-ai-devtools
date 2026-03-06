@@ -51,7 +51,7 @@ function postResponse(data: Record<string, unknown>): void {
  * Execute JS request message from content script
  */
 interface ExecuteJsRequestMessageData {
-  type: 'GASOLINE_EXECUTE_JS'
+  type: 'gasoline_execute_js'
   requestId: number | string
   script: string
   timeoutMs?: number
@@ -61,7 +61,7 @@ interface ExecuteJsRequestMessageData {
  * A11y query request message from content script
  */
 interface A11yQueryRequestMessageData {
-  type: 'GASOLINE_A11Y_QUERY'
+  type: 'gasoline_a11y_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -70,7 +70,7 @@ interface A11yQueryRequestMessageData {
  * DOM query request message from content script
  */
 interface DomQueryRequestMessageData {
-  type: 'GASOLINE_DOM_QUERY'
+  type: 'gasoline_dom_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -79,7 +79,7 @@ interface DomQueryRequestMessageData {
  * Highlight request message from content script
  */
 interface HighlightRequestMessageData {
-  type: 'GASOLINE_HIGHLIGHT_REQUEST'
+  type: 'gasoline_highlight_request'
   requestId: number | string
   params?: {
     selector: string
@@ -91,7 +91,7 @@ interface HighlightRequestMessageData {
  * Get waterfall request message from content script
  */
 interface GetWaterfallRequestMessageData {
-  type: 'GASOLINE_GET_WATERFALL'
+  type: 'gasoline_get_waterfall'
   requestId: number | string
 }
 
@@ -99,7 +99,7 @@ interface GetWaterfallRequestMessageData {
  * Link health query request message from content script
  */
 interface LinkHealthQueryRequestMessageData {
-  type: 'GASOLINE_LINK_HEALTH_QUERY'
+  type: 'gasoline_link_health_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -108,7 +108,7 @@ interface LinkHealthQueryRequestMessageData {
  * Computed styles query request message from content script
  */
 interface ComputedStylesQueryRequestMessageData {
-  type: 'GASOLINE_COMPUTED_STYLES_QUERY'
+  type: 'gasoline_computed_styles_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -117,7 +117,7 @@ interface ComputedStylesQueryRequestMessageData {
  * Form discovery query request message from content script
  */
 interface FormDiscoveryQueryRequestMessageData {
-  type: 'GASOLINE_FORM_DISCOVERY_QUERY'
+  type: 'gasoline_form_discovery_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -126,7 +126,7 @@ interface FormDiscoveryQueryRequestMessageData {
  * Form state query request message from content script
  */
 interface FormStateQueryRequestMessageData {
-  type: 'GASOLINE_FORM_STATE_QUERY'
+  type: 'gasoline_form_state_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -135,7 +135,7 @@ interface FormStateQueryRequestMessageData {
  * Data table query request message from content script
  */
 interface DataTableQueryRequestMessageData {
-  type: 'GASOLINE_DATA_TABLE_QUERY'
+  type: 'gasoline_data_table_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -144,7 +144,7 @@ interface DataTableQueryRequestMessageData {
  * Bridge readiness ping from content script to inject context
  */
 interface BridgePingMessageData {
-  type: 'GASOLINE_INJECT_BRIDGE_PING'
+  type: 'gasoline_inject_bridge_ping'
   requestId: number | string
 }
 
@@ -188,11 +188,11 @@ export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageD
 function handleLinkHealthMessage(data: LinkHealthQueryRequestMessageData): void {
   handleLinkHealthQuery(data)
     .then((result) => {
-      postResponse({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result })
+      postResponse({ type: 'gasoline_link_health_response', requestId: data.requestId, result })
     })
     .catch((err: Error) => {
       postResponse({
-        type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+        type: 'gasoline_link_health_response',
         requestId: data.requestId,
         result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
       })
@@ -206,11 +206,11 @@ export function installMessageListener(
   if (typeof window === 'undefined') return
 
   const messageHandlers: Record<string, (data: PageMessageData) => void> = {
-    GASOLINE_SETTING: (data) => {
+    gasoline_setting: (data) => {
       const settingData = data as SettingMessageData
       if (isValidSettingPayload(settingData)) handleSetting(settingData)
     },
-    GASOLINE_STATE_COMMAND: (data) =>
+    gasoline_state_command: (data) =>
       handleStateCommand(data as StateCommandMessageData, captureStateFn, restoreStateFn),
     GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data as ExecuteJsRequestMessageData),
     GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
@@ -239,7 +239,7 @@ export function installMessageListener(
 
 function handleBridgePingMessage(data: BridgePingMessageData): void {
   postResponse({
-    type: 'GASOLINE_INJECT_BRIDGE_PONG',
+    type: 'gasoline_inject_bridge_pong',
     requestId: data.requestId
   })
 }
@@ -252,13 +252,13 @@ function handleComputedStylesMessage(data: ComputedStylesQueryRequestMessageData
       properties: params.properties
     })
     postResponse({
-      type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+      type: 'gasoline_computed_styles_response',
       requestId: data.requestId,
       result: { elements: result, count: result.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+      type: 'gasoline_computed_styles_response',
       requestId: data.requestId,
       result: { error: 'computed_styles_error', message: errorMessage(err, 'Failed to query computed styles') }
     })
@@ -273,13 +273,13 @@ function handleFormDiscoveryMessage(data: FormDiscoveryQueryRequestMessageData):
       mode: params.mode === 'validate' ? 'validate' : 'discover'
     })
     postResponse({
-      type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+      type: 'gasoline_form_discovery_response',
       requestId: data.requestId,
       result: { forms: result, count: result.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+      type: 'gasoline_form_discovery_response',
       requestId: data.requestId,
       result: { error: 'form_discovery_error', message: errorMessage(err, 'Failed to discover forms') }
     })
@@ -294,13 +294,13 @@ function handleFormStateMessage(data: FormStateQueryRequestMessageData): void {
       mode: 'discover'
     })
     postResponse({
-      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      type: 'gasoline_form_state_response',
       requestId: data.requestId,
       result: { forms, count: forms.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      type: 'gasoline_form_state_response',
       requestId: data.requestId,
       result: { error: 'form_state_error', message: errorMessage(err, 'Failed to extract form state') }
     })
@@ -316,13 +316,13 @@ function handleDataTableMessage(data: DataTableQueryRequestMessageData): void {
       max_cols: params.max_cols
     })
     postResponse({
-      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      type: 'gasoline_data_table_response',
       requestId: data.requestId,
       result
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      type: 'gasoline_data_table_response',
       requestId: data.requestId,
       result: { error: 'data_table_error', message: errorMessage(err, 'Failed to extract table data') }
     })
@@ -336,7 +336,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
   if (typeof script !== 'string') {
     console.warn('[Gasoline] Script must be a string')
     postResponse({
-      type: 'GASOLINE_EXECUTE_JS_RESULT',
+      type: 'gasoline_execute_js_result',
       requestId,
       result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
     })
@@ -351,7 +351,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
   executeJavaScript(script, timeoutMs)
     .then((result) => {
       postResponse({
-        type: 'GASOLINE_EXECUTE_JS_RESULT',
+        type: 'gasoline_execute_js_result',
         requestId,
         result
       })
@@ -359,7 +359,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
     .catch((err: Error) => {
       console.error('[Gasoline] Failed to execute JS:', err)
       postResponse({
-        type: 'GASOLINE_EXECUTE_JS_RESULT',
+        type: 'gasoline_execute_js_result',
         requestId,
         result: { success: false, error: 'execution_failed', message: err.message }
       })
@@ -371,7 +371,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
 
   if (typeof runAxeAuditWithTimeout !== 'function') {
     postResponse({
-      type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+      type: 'gasoline_a11y_query_response',
       requestId,
       result: {
         error: 'runAxeAuditWithTimeout not available - try reloading the extension'
@@ -384,7 +384,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
     runAxeAuditWithTimeout(params || {})
       .then((result) => {
         postResponse({
-          type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+          type: 'gasoline_a11y_query_response',
           requestId,
           result
         })
@@ -392,7 +392,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
       .catch((err: Error) => {
         console.error('[Gasoline] Accessibility audit error:', err)
         postResponse({
-          type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+          type: 'gasoline_a11y_query_response',
           requestId,
           result: { error: err.message || 'Accessibility audit failed' }
         })
@@ -400,7 +400,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
   } catch (err) {
     console.error('[Gasoline] Failed to run accessibility audit:', err)
     postResponse({
-      type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+      type: 'gasoline_a11y_query_response',
       requestId,
       result: { error: errorMessage(err, 'Failed to run accessibility audit') }
     })
@@ -412,7 +412,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
 
   if (typeof executeDOMQuery !== 'function') {
     postResponse({
-      type: 'GASOLINE_DOM_QUERY_RESPONSE',
+      type: 'gasoline_dom_query_response',
       requestId,
       result: {
         error: 'executeDOMQuery not available - try reloading the extension'
@@ -425,7 +425,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
     executeDOMQuery((params || {}) as unknown as DOMQueryParams)
       .then((result) => {
         postResponse({
-          type: 'GASOLINE_DOM_QUERY_RESPONSE',
+          type: 'gasoline_dom_query_response',
           requestId,
           result
         })
@@ -433,7 +433,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
       .catch((err: Error) => {
         console.error('[Gasoline] DOM query error:', err)
         postResponse({
-          type: 'GASOLINE_DOM_QUERY_RESPONSE',
+          type: 'gasoline_dom_query_response',
           requestId,
           result: { error: err.message || 'DOM query failed' }
         })
@@ -441,7 +441,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
   } catch (err) {
     console.error('[Gasoline] Failed to run DOM query:', err)
     postResponse({
-      type: 'GASOLINE_DOM_QUERY_RESPONSE',
+      type: 'gasoline_dom_query_response',
       requestId,
       result: { error: errorMessage(err, 'Failed to run DOM query') }
     })
@@ -455,7 +455,7 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
     const entries = getNetworkWaterfall({})
 
     postResponse({
-      type: 'GASOLINE_WATERFALL_RESPONSE',
+      type: 'gasoline_waterfall_response',
       requestId,
       entries: entries || [],
       page_url: window.location.href
@@ -463,7 +463,7 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
   } catch (err) {
     console.error('[Gasoline] Failed to get network waterfall:', err)
     postResponse({
-      type: 'GASOLINE_WATERFALL_RESPONSE',
+      type: 'gasoline_waterfall_response',
       requestId,
       entries: []
     })

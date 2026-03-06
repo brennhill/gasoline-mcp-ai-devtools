@@ -40,7 +40,7 @@ async function isDrawModeActive(tabId: number | undefined): Promise<boolean> {
   if (!tabId) return false
   try {
     const result = (await chrome.tabs.sendMessage(tabId, {
-      type: 'GASOLINE_GET_ANNOTATIONS'
+      type: 'gasoline_get_annotations'
     })) as { draw_mode_active?: boolean }
     return result?.draw_mode_active === true
   } catch {
@@ -122,7 +122,7 @@ export function installContextMenus(
       }
     } else if (info.menuItemId === MENU_ID_SCREENSHOT) {
       try {
-        chrome.tabs.sendMessage(tab.id, { type: 'captureScreenshot' })
+        chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' })
       } catch {
         if (logFn) logFn('Cannot reach content script for screenshot via context menu')
       }

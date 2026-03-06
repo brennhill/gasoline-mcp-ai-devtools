@@ -13,7 +13,7 @@ export { executeJavaScript, safeSerializeForExecute } from './execute-js.js';
  * Link health query request message from content script
  */
 interface LinkHealthQueryRequestMessageData {
-    type: 'GASOLINE_LINK_HEALTH_QUERY';
+    type: 'gasoline_link_health_query';
     requestId: number | string;
     params?: Record<string, unknown>;
 }

@@ -62,6 +62,6 @@ function contentExtractorCommand(messageType: string, errorCode: string): Comman
   }
 }
 
-registerCommand('get_readable', contentExtractorCommand('GASOLINE_GET_READABLE', 'get_readable_failed'))
-registerCommand('get_markdown', contentExtractorCommand('GASOLINE_GET_MARKDOWN', 'get_markdown_failed'))
-registerCommand('page_summary', contentExtractorCommand('GASOLINE_PAGE_SUMMARY', 'page_summary_failed'))
+registerCommand('get_readable', contentExtractorCommand('gasoline_get_readable', 'get_readable_failed'))
+registerCommand('get_markdown', contentExtractorCommand('gasoline_get_markdown', 'get_markdown_failed'))
+registerCommand('page_summary', contentExtractorCommand('gasoline_page_summary', 'page_summary_failed'))
