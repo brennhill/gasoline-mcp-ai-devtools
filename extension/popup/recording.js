@@ -152,7 +152,7 @@ function showSavedLink(saveInfoEl, displayName, filePath) {
     if (linkEl) {
         linkEl.addEventListener('click', (e) => {
             e.preventDefault();
-            chrome.runtime.sendMessage({ type: 'REVEAL_FILE', path: filePath }, (result) => {
+            chrome.runtime.sendMessage({ type: 'reveal_file', path: filePath }, (result) => {
                 if (result?.error) {
                     saveInfoEl.textContent = `Could not open folder: ${result.error}`;
                     saveInfoEl.style.color = '#f85149';

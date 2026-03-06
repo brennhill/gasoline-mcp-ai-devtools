@@ -29,7 +29,7 @@ function createChromeMock({ trackedTabId = null, drawModeActive = false } = {}) 
     },
     tabs: {
       sendMessage: mock.fn((_tabId, message) => {
-        if (message?.type === 'GASOLINE_GET_ANNOTATIONS') {
+        if (message?.type === 'gasoline_get_annotations') {
           return Promise.resolve({ draw_mode_active: drawModeActive })
         }
         return Promise.resolve({})

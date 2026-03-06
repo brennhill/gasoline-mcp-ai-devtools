@@ -1730,7 +1730,7 @@ export function deactivateAndSendResults() {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.sendMessage({
-          type: 'GASOLINE_ACTION_TOAST',
+          type: 'gasoline_action_toast',
           text: 'Annotations submitted',
           state: 'success',
           duration_ms: 2000
@@ -1749,7 +1749,7 @@ export function deactivateAndSendResults() {
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime) {
           const msg = {
-            type: 'DRAW_MODE_COMPLETED',
+            type: 'draw_mode_completed',
             annotations: result.annotations,
             elementDetails: result.elementDetails,
             page_url: pageUrl,
@@ -1798,7 +1798,7 @@ export function deactivateAndSendResults() {
     }, 1000)
 
     try {
-      chrome.runtime.sendMessage({ type: 'GASOLINE_CAPTURE_SCREENSHOT' }, (screenshotResponse) => {
+      chrome.runtime.sendMessage({ type: 'gasoline_capture_screenshot' }, (screenshotResponse) => {
         if (screenshotHandled) return // Timeout already fired
         screenshotHandled = true
         clearTimeout(fallbackTimer)
@@ -1825,7 +1825,7 @@ function submitActiveTextInputBeforeExit() {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.sendMessage({
-          type: 'GASOLINE_ACTION_TOAST',
+          type: 'gasoline_action_toast',
           text: 'Annotation text required',
           detail: 'Type feedback, then press the shortcut again to submit.',
           state: 'error',

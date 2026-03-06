@@ -72,7 +72,7 @@ describe('handleExecuteJs bridge readiness', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 0)
   })
 
-  test('dispatches GASOLINE_EXECUTE_JS only after bridge readiness succeeds', async () => {
+  test('dispatches gasoline_execute_js only after bridge readiness succeeds', async () => {
     mockEnsureInjectBridgeReady.mock.mockImplementation(async () => true)
     mockIsInjectScriptLoaded.mock.mockImplementation(() => true)
 
@@ -83,7 +83,7 @@ describe('handleExecuteJs bridge readiness', () => {
     assert.strictEqual(sendResponse.mock.calls.length, 0, 'should not respond before inject result/timeout')
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
     const [posted, origin] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(posted.type, 'GASOLINE_EXECUTE_JS')
+    assert.strictEqual(posted.type, 'gasoline_execute_js')
     assert.strictEqual(posted.script, '1+1')
     assert.strictEqual(posted.timeoutMs, 900)
     assert.ok(typeof posted.requestId === 'number')

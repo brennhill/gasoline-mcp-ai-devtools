@@ -542,7 +542,7 @@ describe('Background Script Pilot Command Handler', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    await handlePilotCommand('GASOLINE_EXECUTE_JS', {
+    await handlePilotCommand('gasoline_execute_js', {
       script: 'return 1+1',
       timeout_ms: 5000
     })
@@ -552,7 +552,7 @@ describe('Background Script Pilot Command Handler', () => {
 
     // Check the message type
     const sentMessage = mockChrome.tabs.sendMessage.mock.calls[0].arguments[1]
-    assert.strictEqual(sentMessage.type, 'GASOLINE_EXECUTE_JS', 'Should send correct message type')
+    assert.strictEqual(sentMessage.type, 'gasoline_execute_js', 'Should send correct message type')
   })
 
   test('handlePilotCommand should reject GASOLINE_EXECUTE_JS when disabled', async () => {
@@ -563,7 +563,7 @@ describe('Background Script Pilot Command Handler', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', {
+    const result = await handlePilotCommand('gasoline_execute_js', {
       script: 'return 1+1'
     })
 

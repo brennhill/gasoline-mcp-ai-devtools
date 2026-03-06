@@ -54,7 +54,7 @@ describe('DOM Query Production Paths', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [posted, origin] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(posted.type, 'GASOLINE_DOM_QUERY')
+    assert.strictEqual(posted.type, 'gasoline_dom_query')
     assert.strictEqual(posted.params.selector, '#submit')
     assert.ok(typeof posted.requestId === 'number')
     assert.strictEqual(origin, 'http://localhost:3000')

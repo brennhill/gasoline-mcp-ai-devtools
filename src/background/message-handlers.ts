@@ -304,7 +304,7 @@ function handleMessage(
       return false
 
     default:
-      // screen_recording_start/stop, OFFSCREEN_*, MIC_GRANTED_CLOSE_TAB, REVEAL_FILE
+      // screen_recording_start/stop, offscreen_*, mic_granted_close_tab, reveal_file
       // are handled by recording-listeners.ts — return false so they can handle it.
       return false
   }

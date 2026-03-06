@@ -178,7 +178,7 @@ describe('AI Web Pilot Toggle Persistence (Message-Based)', () => {
 
     // Verify message was sent to background
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === true
+      (c) => c.arguments[0]?.type === 'set_ai_web_pilot_enabled' && c.arguments[0]?.enabled === true
     )
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message to background')
 
@@ -193,7 +193,7 @@ describe('AI Web Pilot Toggle Persistence (Message-Based)', () => {
 
     // Verify message was sent
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === false
+      (c) => c.arguments[0]?.type === 'set_ai_web_pilot_enabled' && c.arguments[0]?.enabled === false
     )
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message to background')
   })
@@ -263,7 +263,7 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', { selector: '.test' })
+    const result = await handlePilotCommand('gasoline_highlight', { selector: '.test' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
@@ -280,7 +280,7 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('GASOLINE_MANAGE_STATE', { action: 'save' })
+    const result = await handlePilotCommand('gasoline_manage_state', { action: 'save' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
@@ -297,7 +297,7 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', { script: 'console.log("test")' })
+    const result = await handlePilotCommand('gasoline_execute_js', { script: 'console.log("test")' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
@@ -327,7 +327,7 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', { selector: '.test' })
+    const result = await handlePilotCommand('gasoline_highlight', { selector: '.test' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
@@ -345,7 +345,7 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('GASOLINE_MANAGE_STATE', { action: 'list' })
+    const result = await handlePilotCommand('gasoline_manage_state', { action: 'list' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
@@ -363,7 +363,7 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', { script: 'return 1+1' })
+    const result = await handlePilotCommand('gasoline_execute_js', { script: 'return 1+1' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
@@ -405,7 +405,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
 
     // Verify popup sent the toggle message to background
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled'
+      (c) => c.arguments[0]?.type === 'set_ai_web_pilot_enabled'
     )
     assert.ok(messageCalls.length > 0, 'Popup should send setAiWebPilotEnabled message to background')
     assert.strictEqual(messageCalls[0].arguments[0].enabled, true, 'Message should include enabled=true')
@@ -417,7 +417,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     await handleAiWebPilotToggle(true)
 
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled'
+      (c) => c.arguments[0]?.type === 'set_ai_web_pilot_enabled'
     )
 
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message')

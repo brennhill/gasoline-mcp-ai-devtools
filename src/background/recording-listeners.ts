@@ -200,7 +200,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
     ) => {
       // Only accept messages from the extension itself
       if (sender.id !== chrome.runtime.id) return false
-      if (message.type !== 'REVEAL_FILE' || !message.path) return false
+      if (message.type !== 'reveal_file' || !message.path) return false
 
       postDaemonJSON(`${deps.getServerUrl()}/recordings/reveal`, { path: message.path })
         .then((r) => {
