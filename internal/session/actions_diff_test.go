@@ -1,17 +1,16 @@
-// Purpose: Validate actions_diff_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for session actions diff computation.
 // Docs: docs/features/feature/pagination/index.md
 
 // actions_diff_test.go — Tests for actions-diff.go and helpers.go.
 // Covers: diffErrors, countPerfRegressions, hasStatusRegression, computeSummary,
-// validateName, removeFromOrder, ExtractURLPath.
+// validateName, removeFromOrder.
 package session
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
 )
 
 // ============================================
@@ -322,8 +321,8 @@ func TestComputeSummary_Unchanged(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{{Message: "still here"}}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{{Message: "still here"}}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -346,8 +345,8 @@ func TestComputeSummary_Improved(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{{Message: "fixed"}}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{{Message: "fixed"}}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -366,8 +365,8 @@ func TestComputeSummary_Regressed_NewErrors(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{{Message: "new err"}}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{{Message: "new err"}}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -383,8 +382,8 @@ func TestComputeSummary_Regressed_NetworkErrors(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{{Status: 500}}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{{Status: 500}}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -403,8 +402,8 @@ func TestComputeSummary_Regressed_PerfRegressions(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{LoadTime: &MetricChange{Regression: true}},
 	}
 
@@ -528,50 +527,6 @@ func TestValidateName_ValidName(t *testing.T) {
 }
 
 // ============================================
-// ExtractURLPath (helpers.go)
-// ============================================
-
-func TestExtractURLPath_NoQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("/api/users")
-	if result != "/api/users" {
-		t.Errorf("Expected '/api/users', got %q", result)
-	}
-}
-
-func TestExtractURLPath_WithQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("/api/users?page=1&limit=10")
-	if result != "/api/users" {
-		t.Errorf("Expected '/api/users', got %q", result)
-	}
-}
-
-func TestExtractURLPath_EmptyString(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("")
-	if result != "/" {
-		t.Errorf("Expected '/', got %q", result)
-	}
-}
-
-func TestExtractURLPath_OnlyQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("?foo=bar")
-	if result != "/" {
-		t.Errorf("Expected '/', got %q", result)
-	}
-}
-
-func TestExtractURLPath_FullURL(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("https://example.com/api/v1/data?key=value")
-	if result != "/api/v1/data" {
-		t.Errorf("Expected '/api/v1/data', got %q", result)
-	}
-}
-
-// ============================================
 // removeFromOrder (indirect test through Delete)
 // ============================================
 
@@ -624,15 +579,15 @@ func TestDiffPerformance_IntegrationWithCompare(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 500},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 500},
 		Network: performance.NetworkSummary{RequestCount: 5, TransferSize: 25000},
 	}
 	sm.Capture("baseline", "")
 
 	// Make it much worse
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 5000},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 5000},
 		Network: performance.NetworkSummary{RequestCount: 50, TransferSize: 250000},
 	}
 	sm.Capture("degraded", "")

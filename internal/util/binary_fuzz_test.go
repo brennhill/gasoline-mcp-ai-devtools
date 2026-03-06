@@ -1,6 +1,4 @@
-// Purpose: Validate binary_fuzz_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Fuzz utility operations for edge-case inputs and panics.
 
 // binary_fuzz_test.go — Fuzz tests for binary format detection.
 

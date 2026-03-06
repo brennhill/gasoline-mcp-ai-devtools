@@ -1,6 +1,5 @@
-// Purpose: Validate annotation_store_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for annotation store parsing and persistence.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // annotation_store_test.go — Tests for annotation HTTP route helpers.
 // Pure store tests live in internal/annotation/store_test.go.
@@ -253,7 +252,7 @@ func TestStoreElementDetails_MultipleDetails(t *testing.T) {
 		"d1": json.RawMessage(`{"selector":"div.a","tag":"div","text_content":"A"}`),
 		"d2": json.RawMessage(`{"selector":"span.b","tag":"span","text_content":"B"}`),
 	}
-	storeElementDetails(details)
+	storeElementDetails(globalAnnotationStore, details)
 
 	got1, found1 := globalAnnotationStore.GetDetail("d1")
 	if !found1 || got1.Selector != "div.a" {
@@ -281,7 +280,7 @@ func TestStoreElementDetails_InvalidJSON(t *testing.T) {
 		"bad": json.RawMessage(`not-valid-json`),
 	}
 	// Should not panic; invalid JSON is silently ignored
-	storeElementDetails(details)
+	storeElementDetails(globalAnnotationStore, details)
 
 	_, found := globalAnnotationStore.GetDetail("bad")
 	if found {
@@ -298,97 +297,8 @@ func TestStoreElementDetails_Empty(t *testing.T) {
 	}()
 
 	// Should not panic with empty map
-	storeElementDetails(map[string]json.RawMessage{})
+	storeElementDetails(globalAnnotationStore, map[string]json.RawMessage{})
 
 	// Should not panic with nil map
-	storeElementDetails(nil)
-}
-
-// --- storeAnnotationSession edge cases ---
-
-func TestStoreAnnotationSession_WithSessionName(t *testing.T) {
-	oldStore := globalAnnotationStore
-	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
-	defer func() {
-		globalAnnotationStore.Close()
-		globalAnnotationStore = oldStore
-	}()
-
-	body := &drawModeRequest{
-		PageURL:          "https://example.com",
-		TabID:            50,
-		AnnotSessionName: "named-test",
-	}
-	annotations := []Annotation{{ID: "a1", Text: "test"}}
-
-	storeAnnotationSession(body, "/tmp/ss.png", annotations)
-
-	// Should be stored in both anonymous and named
-	session := globalAnnotationStore.GetSession(50)
-	if session == nil {
-		t.Fatal("expected session in anonymous store")
-	}
-	if session.ScreenshotPath != "/tmp/ss.png" {
-		t.Errorf("expected screenshot path '/tmp/ss.png', got %q", session.ScreenshotPath)
-	}
-	if session.PageURL != "https://example.com" {
-		t.Errorf("expected page URL 'https://example.com', got %q", session.PageURL)
-	}
-	if session.TabID != 50 {
-		t.Errorf("expected tab ID 50, got %d", session.TabID)
-	}
-	if len(session.Annotations) != 1 || session.Annotations[0].ID != "a1" || session.Annotations[0].Text != "test" {
-		t.Errorf("expected annotation {ID:a1, Text:test}, got %+v", session.Annotations)
-	}
-
-	ns := globalAnnotationStore.GetNamedSession("named-test")
-	if ns == nil {
-		t.Fatal("expected named session")
-	}
-	if ns.Name != "named-test" {
-		t.Errorf("expected named session name 'named-test', got %q", ns.Name)
-	}
-	if len(ns.Pages) != 1 {
-		t.Fatalf("expected 1 page in named session, got %d", len(ns.Pages))
-	}
-	if ns.Pages[0].PageURL != "https://example.com" {
-		t.Errorf("expected named session page URL 'https://example.com', got %q", ns.Pages[0].PageURL)
-	}
-}
-
-func TestStoreAnnotationSession_WithoutSessionName(t *testing.T) {
-	oldStore := globalAnnotationStore
-	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
-	defer func() {
-		globalAnnotationStore.Close()
-		globalAnnotationStore = oldStore
-	}()
-
-	body := &drawModeRequest{
-		PageURL: "https://example.com",
-		TabID:   51,
-	}
-	annotations := []Annotation{{ID: "a1", Text: "test"}}
-
-	storeAnnotationSession(body, "", annotations)
-
-	session := globalAnnotationStore.GetSession(51)
-	if session == nil {
-		t.Fatal("expected session in anonymous store")
-	}
-	if session.TabID != 51 {
-		t.Errorf("expected tab ID 51, got %d", session.TabID)
-	}
-	if session.PageURL != "https://example.com" {
-		t.Errorf("expected page URL 'https://example.com', got %q", session.PageURL)
-	}
-	if len(session.Annotations) != 1 || session.Annotations[0].Text != "test" {
-		t.Errorf("expected annotation text 'test', got %+v", session.Annotations)
-	}
-
-	// With empty session name, no named session should be created
-	names := globalAnnotationStore.ListNamedSessions()
-	if len(names) != 0 {
-		t.Errorf("expected no named sessions, got %v", names)
-	}
+	storeElementDetails(globalAnnotationStore, nil)
 }

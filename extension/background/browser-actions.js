@@ -1,22 +1,32 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Handles browser navigation actions (navigate, refresh, back, forward, tab management) with CSP probing and async timeouts.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
-import { waitForTabLoad, pingContentScript } from './event-listeners.js';
+import { waitForTabLoad, pingContentScript, getActiveTab } from './event-listeners.js';
 import { debugLog } from './index.js';
 import { isAiWebPilotEnabled } from './state.js';
 import { DebugCategory } from './debug.js';
 import { broadcastTrackingState } from './message-handlers.js';
 import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
+import { persistTrackedTab } from './commands/helpers.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
+/**
+ * Race a promise against a timeout. Properly clears the timer when the promise
+ * settles first so no dangling setTimeout keeps the service worker alive.
+ */
+function withTimeout(promise, timeoutMs, message) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then((value) => { clearTimeout(timer); resolve(value); }, (err) => { clearTimeout(timer); reject(err); });
+    });
+}
 /** Cached CSP status from the most recent navigation */
 let lastCSPStatus = { csp_restricted: false, csp_level: 'none' };
 /** Get the CSP status from the most recent navigation (for sync layer) */
@@ -45,12 +55,20 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'trying', 10000);
     await chrome.tabs.update(tabId, { url });
     await waitForTabLoad(tabId);
-    await new Promise((r) => setTimeout(r, 500));
+    await delay(500);
     const tab = await chrome.tabs.get(tabId);
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
         actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success');
-        return enrichWithCSP(tabId, { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' });
+        return enrichWithCSP(tabId, {
+            success: true,
+            action: 'navigate',
+            url,
+            final_url: tab.url,
+            title: tab.title,
+            content_script_status: 'loaded',
+            message: 'Content script ready'
+        });
     }
     if (tab.url?.startsWith('file://')) {
         return {
@@ -66,7 +84,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
     await chrome.tabs.reload(tabId);
     await waitForTabLoad(tabId);
-    await new Promise((r) => setTimeout(r, 1000));
+    await delay(1000);
     const reloadedTab = await chrome.tabs.get(tabId);
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
@@ -131,7 +149,12 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
                 const refreshedTab = await chrome.tabs.get(tabId);
-                return enrichWithCSP(tabId, { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title });
+                return enrichWithCSP(tabId, {
+                    success: true,
+                    action: 'refresh',
+                    url: refreshedTab.url,
+                    title: refreshedTab.title
+                });
             }
             case 'navigate':
                 if (!url)
@@ -188,6 +211,11 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 }
                 const updated = await chrome.tabs.update(targetTab.id, { active: true });
                 const activeTab = updated || targetTab;
+                // Persist tracked tab so the extension-side state matches the server-side
+                // update (issue #271). This ensures subsequent /sync heartbeats report
+                // the correct tracked tab.
+                await persistTrackedTab(activeTab);
+                broadcastTrackingState().catch(() => { });
                 return {
                     success: true,
                     action: 'switch_tab',
@@ -195,6 +223,23 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                     tab_index: typeof activeTab.index === 'number' ? activeTab.index : targetTab.index,
                     url: activeTab.url || targetTab.url,
                     title: activeTab.title || targetTab.title
+                };
+            }
+            case 'activate_tab': {
+                actionToast(tabId, reason || 'activate_tab', reason ? undefined : 'bringing tab to foreground', 'trying', 5000);
+                await chrome.tabs.update(tabId, { active: true });
+                // Also focus the window containing this tab
+                const tab = await chrome.tabs.get(tabId);
+                if (tab.windowId) {
+                    await chrome.windows.update(tab.windowId, { focused: true });
+                }
+                actionToast(tabId, reason || 'activate_tab', undefined, 'success');
+                return {
+                    success: true,
+                    action: 'activate_tab',
+                    tab_id: tabId,
+                    url: tab.url,
+                    title: tab.title
                 };
             }
             case 'close_tab': {
@@ -208,8 +253,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                     };
                 }
                 await chrome.tabs.remove(targetTabID);
-                const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const activeTab = activeTabs[0];
+                const activeTab = await getActiveTab();
                 return {
                     success: true,
                     action: 'close_tab',
@@ -224,7 +268,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
         }
     }
     catch (err) {
-        return { success: false, error: 'browser_action_failed', message: err.message };
+        return { success: false, error: 'browser_action_failed', message: errorMessage(err) };
     }
 }
 // =============================================================================
@@ -232,6 +276,14 @@ export async function handleBrowserAction(tabId, params, actionToast) {
 // =============================================================================
 export async function handleAsyncExecuteCommand(query, tabId, world, syncClient, sendAsyncResult, actionToast) {
     const startTime = Date.now();
+    if (!isAiWebPilotEnabled()) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', {
+            success: false,
+            error: 'ai_web_pilot_disabled',
+            message: 'AI Web Pilot is not enabled'
+        }, 'ai_web_pilot_disabled');
+        return;
+    }
     // Extract reason for toast display
     let reason;
     try {
@@ -242,12 +294,7 @@ export async function handleAsyncExecuteCommand(query, tabId, world, syncClient,
         /* ignore parse errors */
     }
     try {
-        const result = await Promise.race([
-            executeWithWorldRouting(tabId, query.params, world),
-            new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(`Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`)), ASYNC_EXECUTE_TIMEOUT_MS);
-            })
-        ]);
+        const result = await withTimeout(executeWithWorldRouting(tabId, query.params, world), ASYNC_EXECUTE_TIMEOUT_MS, `Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`);
         if (result.success) {
             actionToast(tabId, reason || 'execute_js', undefined, 'success');
         }
@@ -317,12 +364,7 @@ export async function handleAsyncBrowserAction(query, tabId, params, syncClient,
         };
     });
     try {
-        const execResult = await Promise.race([
-            executionPromise,
-            new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(`Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`)), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
-            })
-        ]);
+        const execResult = await withTimeout(executionPromise, ASYNC_BROWSER_ACTION_TIMEOUT_MS, `Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`);
         if (execResult.success !== false) {
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', execResult);
         }

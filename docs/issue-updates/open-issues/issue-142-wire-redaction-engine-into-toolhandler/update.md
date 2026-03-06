@@ -1,7 +1,7 @@
 # Product Update: Issue #142
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/142
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/142
 - Title: Wire redaction engine into ToolHandler
 - Last Updated: 2026-02-17T22:13:38Z
 

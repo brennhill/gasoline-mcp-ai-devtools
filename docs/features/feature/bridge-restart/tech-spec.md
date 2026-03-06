@@ -2,10 +2,14 @@
 doc_type: tech_spec
 feature_id: feature-bridge-restart
 status: implemented
-last_reviewed: 2026-02-18
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Bridge Restart — Tech Spec
+
+Related startup flow map: [Bridge Startup Contention and Convergence](../../../architecture/flow-maps/bridge-startup-contention-and-convergence.md)
 
 ## Architecture
 
@@ -70,6 +74,24 @@ if status := checkDaemonStatus(state, req, port); status != "" { ... }
 ```
 
 This position ensures restart works even when the daemon is completely unresponsive (checkDaemonStatus would block or fail).
+
+## Startup Contention Algorithm (Current)
+
+Bridge startup now uses a single-host, lock-file startup leader election to converge concurrent clients quickly:
+
+1. Probe existing daemon (`tryConnectToExisting`).
+2. If absent, attempt startup lock acquisition (`bridge-startup-<port>.lock.json`).
+3. Lock holder becomes leader and spawns daemon immediately.
+4. Followers poll for peer readiness within bounded wait budget.
+5. If lock owner is stale/dead, follower reclaims lock and takes over startup.
+6. During `starting`, `tools/call` requests are forwarded to converge instead of returning transient startup retry envelopes.
+
+Reference implementation:
+
+- `cmd/dev-console/bridge_startup_orchestration.go`
+- `cmd/dev-console/bridge_startup_lock.go`
+- `cmd/dev-console/bridge_startup_state.go`
+- `cmd/dev-console/bridge.go`
 
 ## Response Format
 

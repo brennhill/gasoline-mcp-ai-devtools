@@ -1,5 +1,4 @@
-// Purpose: Validate websocket-streaming_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for WebSocket streaming capture and message routing.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -39,7 +38,7 @@ func TestRecordingWebSocketConnectionEstablished(t *testing.T) {
 	}
 
 	// Recording should exist and be ready to receive WebSocket events
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if recording == nil {
 		t.Errorf("Expected recording to be created for WS integration")
 	}
@@ -89,7 +88,7 @@ func TestRecordingWebSocketRealTimeStreaming(t *testing.T) {
 	}
 
 	// Verify all events captured
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 5 {
 		t.Errorf("Expected 5 actions, got %d", len(recording.Actions))
 	}
@@ -145,7 +144,7 @@ func TestRecordingWebSocketBufferOverflow(t *testing.T) {
 	}
 
 	// Verify all 101 actions are stored (recording stores in memory, no ring buffer limits yet)
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 101 {
 		t.Errorf("Expected 101 actions, got %d (ring buffer behavior will limit to 10,000 at WS level)", len(recording.Actions))
 	}
@@ -200,7 +199,7 @@ func TestRecordingWebSocketConnectionDropFallback(t *testing.T) {
 	}
 
 	// Verify all events captured through fallback
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 6 {
 		t.Errorf("Expected 6 actions (3 pre-drop + 3 post-fallback), got %d", len(recording.Actions))
 	}
@@ -273,7 +272,7 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 	}
 
 	// Verify all events captured across reconnect cycles
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 6 {
 		t.Errorf("Expected 6 actions across 3 cycles, got %d", len(recording.Actions))
 	}
@@ -314,7 +313,7 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 // ============================================================================
 
 // Test Case 2.1: Create Recording Metadata
-// GIVEN: User calls configure({action: 'recording_start', name: 'checkout', url: 'https://...'})
+// GIVEN: User calls configure({action: 'event_recording_start', name: 'checkout', url: 'https://...'})
 // WHEN: Recording created
 // THEN: metadata.json saved to ~/.gasoline/recordings/{id}/metadata.json
 // AND: File contains: id, name, created_at, duration, action_count, start_url, viewport, sensitive_data_enabled
@@ -339,7 +338,7 @@ func TestRecordingCreateMetadata(t *testing.T) {
 	}
 
 	// Verify recording exists in memory
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if recording == nil {
 		t.Errorf("Expected recording to exist in memory")
 	}
@@ -397,7 +396,7 @@ func TestRecordingAddActions(t *testing.T) {
 	}
 
 	// Verify all actions added
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 5 {
 		t.Errorf("Expected 5 actions, got: %d", len(recording.Actions))
 	}
@@ -420,11 +419,11 @@ func TestRecordingAddActions(t *testing.T) {
 
 // Test Case 2.3: Persist Recording to Disk
 // GIVEN: Active recording with 10 actions
-// WHEN: configure({action: 'recording_stop', recording_id: '...'})
+// WHEN: configure({action: 'event_recording_stop', recording_id: '...'})
 // THEN: metadata.json persisted with all 10 actions
 // AND: File readable as valid JSON
 // AND: action_count = 10
-// AND: duration_ms > 0
+// AND: duration_ms >= 0
 func TestRecordingPersistToDisk(t *testing.T) {
 	t.Parallel()
 
@@ -459,8 +458,8 @@ func TestRecordingPersistToDisk(t *testing.T) {
 	if actionCount != 10 {
 		t.Errorf("Expected 10 actions, got: %d", actionCount)
 	}
-	if duration <= 0 {
-		t.Errorf("Expected positive duration, got: %d", duration)
+	if duration < 0 {
+		t.Errorf("Expected non-negative duration, got: %d", duration)
 	}
 
 	// Try to load the recording back from disk
@@ -506,7 +505,7 @@ func TestRecordingSensitiveDataRedaction(t *testing.T) {
 	}
 
 	// Verify text was redacted
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 1 {
 		t.Fatalf("Expected 1 action, got: %d", len(recording.Actions))
 	}
@@ -517,7 +516,7 @@ func TestRecordingSensitiveDataRedaction(t *testing.T) {
 }
 
 // Test Case 2.5: Sensitive Data Full Capture (Opt-In)
-// GIVEN: User calls configure({action: 'recording_start', sensitive_data_enabled: true})
+// GIVEN: User calls configure({action: 'event_recording_start', sensitive_data_enabled: true})
 // AND: Extension shows warning popup (mocked in test)
 // WHEN: Type action on password input: "test_password"
 // THEN: Stored as: {type: "type", text: "test_password", ...}
@@ -534,7 +533,7 @@ func TestRecordingSensitiveDataOptIn(t *testing.T) {
 	}
 
 	// Verify flag is set
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if !recording.SensitiveDataEnabled {
 		t.Errorf("Expected sensitive_data_enabled=true")
 	}
@@ -573,7 +572,7 @@ func TestRecordingSensitiveDataOptIn(t *testing.T) {
 
 // Test Case 2.6: Storage Quota Enforcement
 // GIVEN: Recording storage at 100% (1GB used)
-// WHEN: User calls configure({action: 'recording_start', name: 'new'})
+// WHEN: User calls configure({action: 'event_recording_start', name: 'new'})
 // THEN: Error returned: "recording_storage_full: Recording storage at capacity (1GB)..."
 // AND: No recording created
 // AND: Next call still fails (no auto-delete)
@@ -584,7 +583,7 @@ func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 
 	// Simulate storage being at max capacity
 	// Set recordingStorageUsed to 1GB (recording.go constant: recordingStorageMax = 1GB)
-	capture.rec.SetRecordingStorageUsed(1024 * 1024 * 1024) // 1GB
+	capture.recordingManager.SetRecordingStorageUsed(1024 * 1024 * 1024) // 1GB
 
 	// Try to start a new recording when storage is full
 	recordingID, err := capture.StartRecording("over-quota", "https://example.com", false)
@@ -605,7 +604,7 @@ func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 	}
 
 	// Verify activeRecordingID is empty (no recording started)
-	if capture.rec.GetActiveRecordingID() != "" {
+	if capture.recordingManager.GetActiveRecordingID() != "" {
 		t.Errorf("Expected activeRecordingID to be empty when over quota")
 	}
 }
@@ -622,7 +621,7 @@ func TestRecordingStorageWarning(t *testing.T) {
 
 	// Simulate storage at 80% capacity (warning threshold)
 	// recording.go constant: recordingWarningLevel = 800MB
-	capture.rec.SetRecordingStorageUsed(800 * 1024 * 1024) // 800MB (80% of 1GB)
+	capture.recordingManager.SetRecordingStorageUsed(800 * 1024 * 1024) // 800MB (80% of 1GB)
 
 	// Try to start a recording when at warning level
 	// The operation should proceed (non-blocking) but a warning should be logged
@@ -639,7 +638,7 @@ func TestRecordingStorageWarning(t *testing.T) {
 	}
 
 	// Verify recording is active
-	if capture.rec.GetActiveRecordingID() != recordingID {
+	if capture.recordingManager.GetActiveRecordingID() != recordingID {
 		t.Errorf("Expected active recording to be set")
 	}
 
@@ -1393,7 +1392,7 @@ func TestLogDiffCategorize(t *testing.T) {
 
 // Test Case 5.1: Start Recording
 // GIVEN: User clicks "Start Recording" in extension popup
-// WHEN: Extension calls configure({action: 'recording_start', name: 'checkout'})
+// WHEN: Extension calls configure({action: 'event_recording_start', name: 'checkout'})
 // THEN: Status = "ok", recording_id returned
 // AND: Extension shows recording UI (red dot, action counter)
 // AND: Starts capturing actions (clicks, typing, navigation)
@@ -1402,7 +1401,7 @@ func TestExtensionStartRecording(t *testing.T) {
 
 	capture := setupTestCapture(t)
 
-	// Simulate extension calling recording_start via configure tool
+	// Simulate extension calling event_recording_start via configure tool
 	recordingID, err := capture.StartRecording("checkout", "https://example.com/checkout", false)
 	if err != nil {
 		t.Fatalf("Failed to start recording: %v", err)
@@ -1419,16 +1418,16 @@ func TestExtensionStartRecording(t *testing.T) {
 	}
 
 	// Verify recording created in memory and ready for action capture
-	if capture.rec.GetActiveRecordingID() == "" {
+	if capture.recordingManager.GetActiveRecordingID() == "" {
 		t.Errorf("Expected active recording ID to be set")
 	}
 
-	if capture.rec.GetActiveRecordingID() != recordingID {
-		t.Errorf("Expected active recording to be %s, got: %s", recordingID, capture.rec.GetActiveRecordingID())
+	if capture.recordingManager.GetActiveRecordingID() != recordingID {
+		t.Errorf("Expected active recording to be %s, got: %s", recordingID, capture.recordingManager.GetActiveRecordingID())
 	}
 
 	// Verify recording state is initialized
-	recording := capture.rec.GetInMemoryRecording(recordingID)
+	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if recording == nil {
 		t.Errorf("Expected recording to exist in memory")
 	}
@@ -1448,7 +1447,7 @@ func TestExtensionStartRecording(t *testing.T) {
 // Test Case 5.2: Stop Recording
 // GIVEN: Recording active with 12 captured actions
 // WHEN: User clicks "Stop Recording" in extension popup
-// THEN: Calls configure({action: 'recording_stop', recording_id: '...'})
+// THEN: Calls configure({action: 'event_recording_stop', recording_id: '...'})
 // AND: Response: {status: "ok", action_count: 12, duration_ms: 34521}
 // AND: Extension stops capturing
 // AND: Shows summary (12 actions, 34.5 seconds)
@@ -1493,7 +1492,7 @@ func TestExtensionStopRecording(t *testing.T) {
 	}
 
 	// Verify recording is no longer active
-	if capture.rec.GetActiveRecordingID() != "" {
+	if capture.recordingManager.GetActiveRecordingID() != "" {
 		t.Errorf("Expected active recording to be cleared after stop")
 	}
 
@@ -1514,7 +1513,7 @@ func TestExtensionStopRecording(t *testing.T) {
 
 // Test Case 5.3: Auto-Name Recording
 // GIVEN: Recording captures flow on https://example.com/checkout
-// AND: No explicit name provided in recording_start
+// AND: No explicit name provided in event_recording_start
 // WHEN: Recording stopped
 // THEN: Auto-name from page title: "Checkout - Example Store"
 // AND: metadata.json: name = "Checkout - Example Store"

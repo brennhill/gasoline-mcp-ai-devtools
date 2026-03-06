@@ -1,8 +1,10 @@
 ---
 doc_type: architecture_index
 status: active
-last_reviewed: 2026-02-24
+last_reviewed: 2026-03-05
 owners: []
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Architecture Documentation
@@ -28,6 +30,7 @@ This folder contains the architecture contract used to make safe edits.
 - [Extension Message Protocol](../core/extension-message-protocol.md)
 - [MCP Command Option Matrix](../core/mcp-command-option-matrix.md)
 - [Code Index](../core/code-index.md)
+- [Flow Maps](./flow-maps/README.md)
 - ADRs in this folder (`ADR-00x-*`)
 
 ## Comments in Code Files

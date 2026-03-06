@@ -9,7 +9,7 @@
  *   content.js forwards as GASOLINE_A11Y_QUERY via window.postMessage
  *   inject.js calls runAxeAuditWithTimeout() and returns GASOLINE_A11Y_QUERY_RESPONSE
  *   content.js receives response and calls sendResponse back to background.js
- *   background.js posts result to server via /query-result endpoint
+ *   background.js queues result via SyncClient for delivery through /sync
  */
 
 import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
@@ -439,8 +439,7 @@ describe('Background Script: A11Y query dispatch', () => {
     //   sendResult(syncClient, query.id, result)
     //
     // Since the full handlePendingQuery requires a syncClient and complex state,
-    // we test the direct server.js postQueryResult function instead, and verify
-    // the chrome.tabs.sendMessage mock for the dispatch path.
+    // we verify the dispatch message here and result-queueing separately.
     //
     // Test the actual dispatch pattern used in pending-queries.js:
     const tabId = 42
@@ -462,34 +461,24 @@ describe('Background Script: A11Y query dispatch', () => {
     assert.strictEqual(result.summary.violations, 2)
   })
 
-  test('should post result to /query-result endpoint', async () => {
-    const { postQueryResult } = await import('../../extension/background/server.js')
-
-    // Reset fetch mock after import
-    mockFetch.mock.resetCalls()
-
+  test('should queue result for /sync delivery', async () => {
+    const { sendResult } = await import('../../extension/background/commands/helpers.js')
     const queryId = 'test-query-123'
     const result = {
       summary: { violations: 1, passes: 10 },
       violations: [{ id: 'image-alt', impact: 'critical' }]
     }
+    const mockSyncClient = {
+      queueCommandResult: mock.fn()
+    }
 
-    await postQueryResult('http://localhost:7890', queryId, 'a11y', result)
+    sendResult(mockSyncClient, queryId, result)
 
-    // Find the query-result fetch call
-    const resultCalls = mockFetch.mock.calls.filter((call) => {
-      const url = call.arguments[0]
-      return typeof url === 'string' && url.includes('/query-result')
-    })
-    assert.strictEqual(resultCalls.length, 1, `Expected 1 /query-result call, found ${resultCalls.length}`)
-
-    const [url, opts] = resultCalls[0].arguments
-    assert.ok(url.includes('/query-result'), `Expected URL to include /query-result, got: ${url}`)
-    assert.strictEqual(opts.method, 'POST')
-
-    const body = JSON.parse(opts.body)
-    assert.strictEqual(body.id, queryId)
-    assert.ok(body.result)
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
+    const [queuedPayload] = mockSyncClient.queueCommandResult.mock.calls[0].arguments
+    assert.strictEqual(queuedPayload.id, queryId)
+    assert.strictEqual(queuedPayload.status, 'complete')
+    assert.deepStrictEqual(queuedPayload.result, result)
   })
 
   test('should handle sendMessage failure gracefully', async () => {

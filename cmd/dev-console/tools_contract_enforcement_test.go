@@ -1,6 +1,5 @@
-// Purpose: Validate tools_contract_enforcement_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for tool contract enforcement and validation.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_contract_enforcement_test.go — Contract enforcement tests, async bridge round-trip,
 // pilot-disabled bad paths, and shared observe helpers.
@@ -14,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // ============================================
@@ -149,6 +148,12 @@ func TestContractEnforcement_ErrorsHaveRetryableField(t *testing.T) {
 
 			if _, exists := data["retryable"]; !exists {
 				t.Errorf("error code %q missing 'retryable' field", tc.code)
+			}
+			if code, _ := data["error_code"].(string); code == "" {
+				t.Errorf("error code %q missing canonical 'error_code' field", tc.code)
+			}
+			if playbook, _ := data["recovery_playbook"].(string); playbook == "" {
+				t.Errorf("error code %q missing canonical 'recovery_playbook' field", tc.code)
 			}
 		})
 	}

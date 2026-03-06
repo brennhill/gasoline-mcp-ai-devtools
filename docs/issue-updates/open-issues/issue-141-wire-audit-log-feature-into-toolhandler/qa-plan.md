@@ -1,7 +1,7 @@
 # QA Plan: Issue #141
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/141
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/141
 - Title: Wire audit_log feature into ToolHandler
 
 ## QA Goal

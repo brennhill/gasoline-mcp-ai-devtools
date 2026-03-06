@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 **Version:** 1.0  
 **Date:** 2026-02-09  
-**Target:** Drive traffic and uptake for gasoline-mcp-ai-devtools
+**Target:** Drive traffic and uptake for gasoline-agentic-browser-devtools-mcp
 
 ---
 

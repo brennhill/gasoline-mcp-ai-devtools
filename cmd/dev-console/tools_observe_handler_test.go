@@ -1,6 +1,7 @@
-// Purpose: Validate tools_observe_handler_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for observe tool handler dispatch.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
+
+// TODO: Split into tools_observe_page_test.go for page-specific tests when this file approaches 1000 LOC.
 
 // tools_observe_handler_test.go — Comprehensive unit tests for observe tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -72,6 +73,28 @@ func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 	}
 }
 
+func TestToolsObserveDispatch_UnknownModeAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"mode":"nonexistent_mode"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown mode alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
@@ -82,6 +105,47 @@ func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("nil args (no 'what') should return isError:true")
+	}
+}
+
+func TestToolsObserveDispatch_ModeAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"mode":"pilot"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("mode alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsObserveDispatch_ConflictingWhatAndMode(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"pilot","mode":"errors"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/mode should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
 	}
 }
 
@@ -471,50 +535,7 @@ func TestToolsObserveNetworkBodies_BodyPathFilter(t *testing.T) {
 	}
 }
 
-func TestToolsObserveNetworkBodies_BodyKeyFilter(t *testing.T) {
-	t.Parallel()
-	h, _, cap := makeToolHandler(t)
-
-	ts := time.Now().UTC().Format(time.RFC3339)
-	cap.AddNetworkBodies([]capture.NetworkBody{
-		{
-			URL:          "https://api.example.com/data",
-			Method:       "GET",
-			Status:       200,
-			ResponseBody: `{"data":{"items":[{"id":1},{"id":2}]}}`,
-			Timestamp:    ts,
-		},
-	})
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id"}`))
-	result := parseToolResult(t, resp)
-	if result.IsError {
-		t.Fatalf("network_bodies with body_key should not error, got: %s", result.Content[0].Text)
-	}
-	data := extractResultJSON(t, result)
-
-	count, _ := data["count"].(float64)
-	if count != 1 {
-		t.Fatalf("count = %v, want 1", count)
-	}
-
-	entries, _ := data["entries"].([]any)
-	entry, _ := entries[0].(map[string]any)
-	responseBody, _ := entry["response_body"].(string)
-
-	var extracted any
-	if err := json.Unmarshal([]byte(responseBody), &extracted); err != nil {
-		t.Fatalf("response_body should be valid JSON, got err: %v", err)
-	}
-
-	values, ok := extracted.([]any)
-	if !ok || len(values) != 2 {
-		t.Fatalf("body_key extraction should return 2 values, got: %v", extracted)
-	}
-}
-
-func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
+func TestToolsObserveNetworkBodies_BodyPathValidation(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 
@@ -530,14 +551,8 @@ func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id","body_path":"data.id"}`))
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.items["}`))
 	result := parseToolResult(t, resp)
-	if !result.IsError {
-		t.Fatal("using both body_key and body_path should return isError:true")
-	}
-
-	resp = h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.items["}`))
-	result = parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("invalid body_path syntax should return isError:true")
 	}
@@ -632,6 +647,161 @@ func TestToolsObservePilot_ResponseFields(t *testing.T) {
 }
 
 // ============================================
+// observe(what:"page") — page_ready_for_commands Tests
+// ============================================
+
+func TestToolsObservePage_PageReadyForCommands_AllConditionsMet(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	// Set up all conditions for page_ready_for_commands=true
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	ready, ok := data["page_ready_for_commands"]
+	if !ok {
+		t.Fatal("response missing 'page_ready_for_commands' field")
+	}
+	if ready != true {
+		t.Errorf("page_ready_for_commands = %v, want true", ready)
+	}
+
+	tabStatus, ok := data["tab_status"]
+	if !ok {
+		t.Fatal("response missing 'tab_status' field")
+	}
+	if tabStatus != "complete" {
+		t.Errorf("tab_status = %v, want 'complete'", tabStatus)
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_ExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionDisconnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (extension disconnected)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_PilotDisabled(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(false)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (pilot disabled)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_NoTrackedTab(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	// No tracked tab set
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (no tracked tab)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_TabLoading(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("loading")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (tab loading)", data["page_ready_for_commands"])
+	}
+	if data["tab_status"] != "loading" {
+		t.Errorf("tab_status = %v, want 'loading'", data["tab_status"])
+	}
+}
+
+func TestToolsObservePage_DataAgeMs_Present(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SimulateExtensionConnectForTest()
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	meta, ok := data["metadata"].(map[string]any)
+	if !ok {
+		t.Fatal("metadata should be a map")
+	}
+	if _, ok := meta["data_age_ms"]; !ok {
+		t.Error("metadata missing 'data_age_ms' field")
+	}
+}
+
+func TestToolsObserveErrors_DataAgeMs_Present(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	server.mu.Lock()
+	server.entries = append(server.entries, LogEntry{
+		"level": "error", "message": "Test error", "ts": ts,
+	})
+	server.mu.Unlock()
+
+	resp := callObserveRaw(h, "errors")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	meta, ok := data["metadata"].(map[string]any)
+	if !ok {
+		t.Fatal("metadata should be a map")
+	}
+	if _, ok := meta["data_age_ms"]; !ok {
+		t.Error("metadata missing 'data_age_ms' field")
+	}
+}
+
+// ============================================
 // isServerSideObserveMode Tests
 // ============================================
 
@@ -696,31 +866,22 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	}
 
 	text := result.Content[0].Text
-	// Should contain error code line
-	if !strings.HasPrefix(text, "Error: ") {
-		t.Errorf("structured error should start with 'Error: ', got: %s", text[:min(50, len(text))])
-	}
+	errorJSON := extractJSONFromText(text)
 
-	// Parse the JSON part of the error
-	idx := strings.Index(text, "\n")
-	if idx < 0 {
-		t.Fatal("structured error should have newline separating header from JSON")
-	}
-	jsonPart := text[idx+1:]
 	var se StructuredError
-	if err := json.Unmarshal([]byte(jsonPart), &se); err != nil {
-		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, jsonPart)
+	if err := json.Unmarshal([]byte(errorJSON), &se); err != nil {
+		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, text)
 	}
-	if se.Error == "" {
-		t.Error("StructuredError.Error should not be empty")
+	if se.ErrorCode == "" {
+		t.Error("StructuredError.ErrorCode should not be empty")
 	}
 	if se.Message == "" {
 		t.Error("StructuredError.Message should not be empty")
 	}
-	if se.Retry == "" {
-		t.Error("StructuredError.Retry should not be empty")
+	if se.RecoveryPlaybook == "" {
+		t.Error("StructuredError.RecoveryPlaybook should not be empty")
 	}
 
 	// Verify JSON fields are snake_case
-	assertSnakeCaseFields(t, jsonPart)
+	assertSnakeCaseFields(t, errorJSON)
 }

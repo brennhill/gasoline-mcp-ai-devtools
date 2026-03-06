@@ -1,0 +1,9 @@
+MANIFEST.in
+README.md
+pyproject.toml
+gasoline_agentic_browser_darwin_x64/__init__.py
+gasoline_agentic_browser_darwin_x64/gasoline
+gasoline_agentic_browser_darwin_x64.egg-info/PKG-INFO
+gasoline_agentic_browser_darwin_x64.egg-info/SOURCES.txt
+gasoline_agentic_browser_darwin_x64.egg-info/dependency_links.txt
+gasoline_agentic_browser_darwin_x64.egg-info/top_level.txt

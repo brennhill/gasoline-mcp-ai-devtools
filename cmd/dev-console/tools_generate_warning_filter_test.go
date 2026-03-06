@@ -1,5 +1,4 @@
-// Purpose: Validate tools_generate_warning_filter_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for generate tool warning message filtering.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_warning_filter_test.go — Regression tests for generate dispatch warnings.
@@ -9,10 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestGenerateTestFromContext_NoWarningsForDispatchParams(t *testing.T) {
@@ -59,7 +59,7 @@ func TestHandleGenerateTestFromContext_FiltersOnlyDispatchWarnings(t *testing.T)
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.handleGenerateTestFromContext(req, json.RawMessage(`{"what":"test_from_context","context":"interaction","typo_field":true}`))
+	resp := h.testGen().handleGenerateTestFromContext(req, json.RawMessage(`{"what":"test_from_context","context":"interaction","typo_field":true}`))
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("handleGenerateTestFromContext should succeed, got error: %s", firstText(result))
@@ -100,7 +100,7 @@ func TestHandleGenerateTestHeal_FiltersOnlyDispatchWarnings(t *testing.T) {
 	testDir := makeProjectTempDir(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.handleGenerateTestHeal(req, json.RawMessage(fmt.Sprintf(`{"what":"test_heal","action":"batch","test_dir":%q,"typo_field":true}`, testDir)))
+	resp := h.testGen().handleGenerateTestHeal(req, json.RawMessage(fmt.Sprintf(`{"what":"test_heal","action":"batch","test_dir":%q,"typo_field":true}`, testDir)))
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("handleGenerateTestHeal should succeed, got error: %s", firstText(result))
@@ -124,7 +124,7 @@ func TestHandleGenerateTestClassify_FiltersOnlyDispatchWarnings(t *testing.T) {
 	h := newTestToolHandler()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := h.handleGenerateTestClassify(req, json.RawMessage(`{"what":"test_classify","action":"failure","failure":{"test_name":"login test","error":"Timeout waiting for selector \"#login-btn\""},"typo_field":true}`))
+	resp := h.testGen().handleGenerateTestClassify(req, json.RawMessage(`{"what":"test_classify","action":"failure","failure":{"test_name":"login test","error":"Timeout waiting for selector \"#login-btn\""},"typo_field":true}`))
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("handleGenerateTestClassify should succeed, got error: %s", firstText(result))
@@ -144,9 +144,8 @@ func TestHandleGenerateTestClassify_FiltersOnlyDispatchWarnings(t *testing.T) {
 
 func makeProjectTempDir(t *testing.T) string {
 	t.Helper()
-
-	dir, err := os.MkdirTemp(".", "test-heal-")
-	if err != nil {
+	dir := filepath.Join(".tmp-test-heal", strings.ReplaceAll(t.Name(), "/", "_"))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("failed to create project temp dir: %v", err)
 	}
 	t.Cleanup(func() {

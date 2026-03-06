@@ -1,6 +1,5 @@
-// Purpose: Validate handler_security_mode_warning_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for security-mode warning injection in responses.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -9,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestToolResponsePostProcessing_AddsSecurityModeMetadataAndWarning(t *testing.T) {
@@ -73,7 +72,7 @@ func TestToolResponsePostProcessing_AddsSecurityModeMetadataAndWarning(t *testin
 	}
 }
 
-func makeTestCapture(t *testing.T) *capture.Capture {
+func makeTestCapture(t *testing.T) *capture.Store {
 	t.Helper()
 	cap := capture.NewCapture()
 	cap.SetPilotEnabled(true)

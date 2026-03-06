@@ -1,6 +1,4 @@
-// Purpose: Validate binary_property_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Property-based tests for utility invariants.
 
 // binary_property_test.go — Property-based tests for binary format detection.
 

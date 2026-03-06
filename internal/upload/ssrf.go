@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Blocks SSRF via DNS-pinned dialing: resolves hostnames, rejects private IPs, and provides SSRF-safe HTTP transport.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload
@@ -10,18 +9,48 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 const SSRFLookupTimeout = 5 * time.Second
 
-// SSRFAllowedHostsList holds host or host:port values that bypass SSRF checks.
-// Set via --ssrf-allow-host flag (repeatable). Intended for test use only.
-var SSRFAllowedHostsList []string
+// ssrfMu protects ssrfAllowedHosts and ssrfSkipCheck from concurrent access.
+var (
+	ssrfMu           sync.RWMutex
+	ssrfAllowedHosts []string
+	ssrfSkipCheck    bool
+)
 
-// SkipSSRFCheck disables private IP blocking in tests where httptest.NewServer
-// uses 127.0.0.1. Must only be set from test code.
-var SkipSSRFCheck bool
+// SetSSRFAllowedHosts replaces the allowed-hosts list (set via --ssrf-allow-host flag).
+func SetSSRFAllowedHosts(hosts []string) {
+	ssrfMu.Lock()
+	defer ssrfMu.Unlock()
+	ssrfAllowedHosts = hosts
+}
+
+// SSRFAllowedHosts returns a defensive copy of the current allowed-hosts list.
+func SSRFAllowedHosts() []string {
+	ssrfMu.RLock()
+	defer ssrfMu.RUnlock()
+	cp := make([]string, len(ssrfAllowedHosts))
+	copy(cp, ssrfAllowedHosts)
+	return cp
+}
+
+// SetSkipSSRFCheck toggles private-IP bypass (test use only).
+func SetSkipSSRFCheck(skip bool) {
+	ssrfMu.Lock()
+	defer ssrfMu.Unlock()
+	ssrfSkipCheck = skip
+}
+
+// SkipSSRFCheckEnabled returns true when private-IP blocking is bypassed.
+func SkipSSRFCheckEnabled() bool {
+	ssrfMu.RLock()
+	defer ssrfMu.RUnlock()
+	return ssrfSkipCheck
+}
 
 // privateRanges is parsed once at init for efficient SSRF checks.
 var privateRanges []*net.IPNet
@@ -34,9 +63,13 @@ func init() {
 		"192.168.0.0/16", // RFC 1918
 		"169.254.0.0/16", // link-local / cloud metadata
 		"0.0.0.0/8",      // unspecified (routes to localhost)
+		"224.0.0.0/4",    // IPv4 multicast
+		"100.64.0.0/10",  // RFC 6598 Carrier-Grade NAT
+		"198.18.0.0/15",  // RFC 2544 benchmarking
 		"::1/128",        // IPv6 loopback
 		"fc00::/7",       // IPv6 unique local
 		"fe80::/10",      // IPv6 link-local
+		"ff00::/8",       // IPv6 multicast
 	} {
 		_, ipNet, _ := net.ParseCIDR(cidr)
 		privateRanges = append(privateRanges, ipNet)
@@ -45,7 +78,7 @@ func init() {
 
 // IsPrivateIP returns true if the IP is in a private, loopback, link-local, or unspecified range.
 func IsPrivateIP(ip net.IP) bool {
-	if ip.IsUnspecified() || ip.IsLoopback() {
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsMulticast() {
 		return true
 	}
 	for _, cidr := range privateRanges {
@@ -58,7 +91,7 @@ func IsPrivateIP(ip net.IP) bool {
 
 // IsSSRFAllowedHost returns true if hostOrAddr matches an --ssrf-allow-host entry.
 func IsSSRFAllowedHost(hostOrAddr string) bool {
-	for _, allowed := range SSRFAllowedHostsList {
+	for _, allowed := range SSRFAllowedHosts() {
 		if allowed == hostOrAddr {
 			return true
 		}

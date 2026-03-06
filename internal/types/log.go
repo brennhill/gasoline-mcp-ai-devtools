@@ -4,7 +4,10 @@
 
 package types
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ============================================
 // Server Logging
@@ -14,21 +17,22 @@ import "time"
 // Implemented as a map to allow flexible field addition without schema changes.
 // any: Console log entries have dynamic fields (level, message, source, tabId, stack, etc.)
 // that vary by log type. A typed struct would require many optional fields.
-type LogEntry map[string]any
+type LogEntry = map[string]any
 
 // ============================================
 // Extension Logging
 // ============================================
 
-// ExtensionLog represents a log entry from the extension's background or content scripts
+// ExtensionLog represents a log entry from the extension's background or content scripts.
+// Data is json.RawMessage to preserve the raw JSON from the extension wire format,
+// enabling zero-copy passthrough to MCP consumers and correct redaction of nested values.
 type ExtensionLog struct {
-	Timestamp time.Time `json:"timestamp"`
-	Level     string    `json:"level"`              // "debug", "info", "warn", "error"
-	Message   string    `json:"message"`            // Log message
-	Source    string    `json:"source"`             // "background", "content", "inject"
-	Category  string    `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
-	// any: Extension logs carry arbitrary debug context (request IDs, URLs, counts, etc.)
-	Data map[string]any `json:"data,omitempty"` // Additional structured data
+	Timestamp time.Time       `json:"timestamp"`
+	Level     string          `json:"level"`              // "debug", "info", "warn", "error"
+	Message   string          `json:"message"`            // Log message
+	Source    string          `json:"source"`             // "background", "content", "inject"
+	Category  string          `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
+	Data      json.RawMessage `json:"data,omitempty"`     // Additional structured data (any JSON)
 }
 
 // ============================================

@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches DOM actions (click, type, wait_for, list_interactive, query) to injected page scripts with frame targeting and CDP escalation.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 
 // dom-dispatch.ts — DOM action dispatcher and utilities.
@@ -11,29 +8,19 @@
 // Script builders stay self-contained because chrome.scripting.executeScript
 // serializes injected functions independently.
 
-import type { PendingQuery } from '../types/queries'
-import type { SyncClient } from './sync-client'
-import type { DOMActionParams, DOMResult } from './dom-types'
-import { domFrameProbe } from './dom-frame-probe'
-import { domPrimitive } from './dom-primitives'
-import { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
-
-type SendAsyncResult = (
-  syncClient: SyncClient,
-  queryId: string,
-  correlationId: string,
-  status: 'complete' | 'error' | 'timeout',
-  result?: unknown,
-  error?: string
-) => void
-
-type ActionToast = (
-  tabId: number,
-  text: string,
-  detail?: string,
-  state?: 'trying' | 'success' | 'warning' | 'error',
-  durationMs?: number
-) => void
+import type { PendingQuery } from '../types/queries.js'
+import type { SyncClient } from './sync-client.js'
+import type { DOMActionParams, DOMResult } from './dom-types.js'
+import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
+import { domFrameProbe } from './dom-frame-probe.js'
+import { domPrimitive } from './dom-primitives.js'
+import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
+import { domPrimitiveQuery } from './dom-primitives-query.js'
+import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
+import { isReadOnlyAction, isMutatingAction } from './action-metadata.js'
+import { errorMessage } from '../lib/error-utils.js'
+import { delay } from '../lib/timeout-utils.js'
+import { normalizeFrameArg, resolveMatchedFrameIds } from './frame-targeting.js'
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {
@@ -41,24 +28,6 @@ function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   } catch {
     return null
   }
-}
-
-function isReadOnlyAction(action: string): boolean {
-  return action === 'list_interactive' || action.startsWith('get_')
-}
-
-function isMutatingAction(action: string): boolean {
-  return (
-    action === 'click' ||
-    action === 'type' ||
-    action === 'select' ||
-    action === 'check' ||
-    action === 'set_attribute' ||
-    action === 'paste' ||
-    action === 'key_press' ||
-    action === 'focus' ||
-    action === 'scroll_to'
-  )
 }
 
 function hasMatchedTargetEvidence(result: DOMResult): boolean {
@@ -76,49 +45,13 @@ function hasMatchedTargetEvidence(result: DOMResult): boolean {
 
 type DOMExecutionTarget = { tabId: number; allFrames: true } | { tabId: number; frameIds: number[] }
 
-function normalizeFrameTarget(frame: unknown): string | number | undefined | null {
-  if (frame === undefined || frame === null) return undefined
-  if (typeof frame === 'number') {
-    if (!Number.isInteger(frame) || frame < 0) return null
-    return frame
-  }
-  if (typeof frame === 'string') {
-    const trimmed = frame.trim()
-    if (trimmed.length === 0) return null
-    return trimmed
-  }
-  return null
-}
-
 async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DOMExecutionTarget> {
-  const normalized = normalizeFrameTarget(frame)
-  if (normalized === null) {
-    throw new Error('invalid_frame')
-  }
+  const normalized = normalizeFrameArg(frame)
 
   if (normalized === undefined || normalized === 'all') {
     return { tabId, allFrames: true }
   }
-
-  const probeResults = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    world: 'MAIN',
-    func: domFrameProbe,
-    args: [normalized]
-  })
-
-  const frameIds = Array.from(
-    new Set(
-      probeResults
-        .filter((r) => !!(r.result as { matches?: boolean } | undefined)?.matches)
-        .map((r) => r.frameId)
-        .filter((id): id is number => typeof id === 'number')
-    )
-  )
-
-  if (frameIds.length === 0) {
-    throw new Error('frame_not_found')
-  }
+  const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe)
 
   return { tabId, frameIds }
 }
@@ -139,9 +72,7 @@ function pickFrameResult(results: chrome.scripting.InjectionResult[]): { result:
 }
 
 /** Merge list_interactive results from all frames (up to 100 elements). */
-function mergeListInteractive(
-  results: chrome.scripting.InjectionResult[]
-): {
+function mergeListInteractive(results: chrome.scripting.InjectionResult[]): {
   success: boolean
   elements: unknown[]
   candidate_count?: number
@@ -200,41 +131,54 @@ function toDOMResult(value: unknown): DOMResult | null {
   return candidate
 }
 
-function withTimeoutResult(
-  results: chrome.scripting.InjectionResult[],
-  selector: string,
-  timeoutMs: number
-): chrome.scripting.InjectionResult[] {
-  const timeoutResult: DOMResult = {
-    success: false,
-    action: 'wait_for',
-    selector,
-    error: 'timeout',
-    message: `Element not found within ${timeoutMs}ms: ${selector}`
-  }
-
-  if (results.length === 0) {
-    return [{ frameId: 0, result: timeoutResult } as chrome.scripting.InjectionResult]
-  }
-  return results.map((result) => ({ ...result, result: timeoutResult }))
+/** Resolve which DOM action name to dispatch for wait_for based on params.
+ *  Callers must validate mutual exclusivity before calling this. */
+function resolveWaitForAction(params: DOMActionParams): string {
+  if (params.absent) return 'wait_for_absent'
+  if (params.text) return 'wait_for_text'
+  return 'wait_for'
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+async function executeWaitForURL(tabId: number, params: DOMActionParams): Promise<DOMResult> {
+  const urlSubstring = params.url_contains!
+  const timeoutMs = Math.max(1, params.timeout_ms ?? 5000)
+  const startedAt = Date.now()
+
+  while (true) {
+    const tab = await chrome.tabs.get(tabId)
+    if (tab.url && tab.url.includes(urlSubstring)) {
+      return {
+        success: true,
+        action: 'wait_for',
+        selector: '',
+        value: tab.url
+      }
+    }
+    if (Date.now() - startedAt >= timeoutMs) {
+      return {
+        success: false,
+        action: 'wait_for',
+        selector: '',
+        error: 'timeout',
+        message: `URL did not contain "${urlSubstring}" within ${timeoutMs}ms`
+      }
+    }
+    const remaining = timeoutMs - (Date.now() - startedAt)
+    await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
+  }
 }
 
-async function executeWaitFor(
-  target: DOMExecutionTarget,
-  params: DOMActionParams
-): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
+async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParams): Promise<DOMResult> {
   const selector = params.selector || ''
-  const timeoutMs = Math.max(1, params.timeout_ms || 5000)
+  const timeoutMs = Math.max(1, params.timeout_ms ?? 5000)
+  const domAction = resolveWaitForAction(params)
+  const domOpts = { timeout_ms: timeoutMs, text: params.text }
   const startedAt = Date.now()
   const quickCheck = await chrome.scripting.executeScript({
     target,
     world: 'MAIN',
     func: domPrimitive,
-    args: [params.action!, selector, { timeout_ms: timeoutMs }]
+    args: [domAction, selector, domOpts]
   })
   const quickPicked = pickFrameResult(quickCheck)
   const quickResult = toDOMResult(quickPicked?.result)
@@ -242,26 +186,42 @@ async function executeWaitFor(
     return quickResult
   }
 
-  let lastResults = quickCheck
+  let lastResult: DOMResult | null = toDOMResult(quickPicked?.result) ?? null
   while (Date.now() - startedAt < timeoutMs) {
-    await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, timeoutMs))
+    const remaining = timeoutMs - (Date.now() - startedAt)
+    await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)))
 
     const probeResults = await chrome.scripting.executeScript({
       target,
       world: 'MAIN',
       func: domPrimitive,
-      args: [params.action!, selector, { timeout_ms: timeoutMs }]
+      args: [domAction, selector, domOpts]
     })
-    lastResults = probeResults
 
     const picked = pickFrameResult(probeResults)
     const result = toDOMResult(picked?.result)
+    if (result) lastResult = result
     if (result?.success) {
-      return probeResults
+      return result
     }
   }
 
-  return withTimeoutResult(lastResults, selector, timeoutMs)
+  const label =
+    domAction === 'wait_for_text'
+      ? `Text "${params.text}" not found within ${timeoutMs}ms`
+      : domAction === 'wait_for_absent'
+        ? `Element still present within ${timeoutMs}ms: ${selector}`
+        : undefined
+  if (lastResult?.error === 'timeout') {
+    return lastResult
+  }
+  return {
+    success: false,
+    action: 'wait_for',
+    selector,
+    error: 'timeout',
+    message: label || `Element not found within ${timeoutMs}ms: ${selector}`
+  }
 }
 
 async function executeStandardAction(
@@ -277,17 +237,22 @@ async function executeStandardAction(
       params.selector || '',
       {
         text: params.text,
+        key: params.key,
         value: params.value,
+        direction: params.direction,
         clear: params.clear,
         checked: params.checked,
         name: params.name,
         timeout_ms: params.timeout_ms,
+        stability_ms: params.stability_ms,
         analyze: params.analyze,
         observe_mutations: params.observe_mutations,
         element_id: params.element_id,
         scope_selector: params.scope_selector,
         scope_rect: params.scope_rect,
-        new_tab: params.new_tab
+        nth: params.nth,
+        new_tab: params.new_tab,
+        structured: params.structured
       }
     ]
   })
@@ -297,8 +262,17 @@ async function executeListInteractive(
   target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[]> {
-  const args: [string] | [string, { scope_rect: DOMActionParams['scope_rect'] }] = params.scope_rect
-    ? [params.selector || '', { scope_rect: params.scope_rect }]
+  // Build options object with scope_rect and filter params (#369)
+  const opts: Record<string, unknown> = {}
+  if (params.scope_rect) opts.scope_rect = params.scope_rect
+  if (params.text_contains) opts.text_contains = params.text_contains
+  if (params.role) opts.role = params.role
+  if (params.visible_only) opts.visible_only = params.visible_only
+  if (params.exclude_nav) opts.exclude_nav = params.exclude_nav
+
+  const hasOpts = Object.keys(opts).length > 0
+  const args: [string] | [string, Record<string, unknown>] = hasOpts
+    ? [params.selector || '', opts]
     : [params.selector || '']
   return chrome.scripting.executeScript({
     target,
@@ -308,11 +282,29 @@ async function executeListInteractive(
   })
 }
 
+// #370: Execute DOM query (exists, count, text, text_all, attributes)
+async function executeQuery(
+  target: DOMExecutionTarget,
+  params: DOMActionParams
+): Promise<chrome.scripting.InjectionResult[]> {
+  const opts: Record<string, unknown> = {}
+  if (params.query_type) opts.query_type = params.query_type
+  if (params.attribute_names) opts.attribute_names = params.attribute_names
+  if (params.scope_selector) opts.scope_selector = params.scope_selector
+
+  return chrome.scripting.executeScript({
+    target,
+    world: 'MAIN',
+    func: domPrimitiveQuery,
+    args: [params.selector || '', Object.keys(opts).length > 0 ? opts : undefined]
+  })
+}
+
 function sendToastForResult(
   tabId: number,
   readOnly: boolean,
   result: { success?: boolean; error?: string },
-  actionToast: ActionToast,
+  actionToast: ActionToastFn,
   toastLabel: string,
   toastDetail: string | undefined
 ): void {
@@ -395,7 +387,12 @@ async function enrichWithEffectiveContext(tabId: number, result: unknown): Promi
   try {
     const tab = await chrome.tabs.get(tabId)
     if (result && typeof result === 'object' && !Array.isArray(result)) {
-      return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title }
+      return {
+        ...(result as Record<string, unknown>),
+        effective_tab_id: tabId,
+        effective_url: tab.url,
+        effective_title: tab.title
+      }
     }
     return result
   } catch {
@@ -408,8 +405,8 @@ export async function executeDOMAction(
   query: PendingQuery,
   tabId: number,
   syncClient: SyncClient,
-  sendAsyncResult: SendAsyncResult,
-  actionToast: ActionToast
+  sendAsyncResult: SendAsyncResultFn,
+  actionToast: ActionToastFn
 ): Promise<void> {
   const params = parseDOMParams(query)
   if (!params) {
@@ -422,26 +419,115 @@ export async function executeDOMAction(
     sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_action')
     return
   }
-  if (action === 'wait_for' && !selector) {
-    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_selector')
-    return
+  if (action === 'wait_for') {
+    const hasSelector = !!(selector || params.element_id)
+    const hasText = !!params.text
+    const hasURL = !!params.url_contains
+    const condCount = (hasSelector || params.absent ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0)
+    if (condCount === 0) {
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for requires selector, text, or url_contains'
+      )
+      return
+    }
+    if (condCount > 1) {
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for conditions are mutually exclusive'
+      )
+      return
+    }
+    if (params.absent && !hasSelector) {
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for with absent requires a selector'
+      )
+      return
+    }
   }
 
   const toastLabel = reason || action
   const toastDetail = reason ? undefined : selector || 'page'
   const readOnly = isReadOnlyAction(action)
 
+  // URL-based wait_for: polls chrome.tabs.get from background — no page injection needed.
+  if (action === 'wait_for' && params.url_contains) {
+    try {
+      const urlResult = await executeWaitForURL(tabId, params)
+      const status = urlResult.success ? 'complete' : 'error'
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        status,
+        await enrichWithEffectiveContext(tabId, urlResult),
+        urlResult.success ? undefined : urlResult.error
+      )
+    } catch (err) {
+      actionToast(tabId, action, errorMessage(err), 'error')
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMessage(err))
+    }
+    return
+  }
+
   try {
     const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
 
+    // CDP auto-escalation: try hardware events first for click/type/key_press (main frame only).
+    // Falls back to DOM primitives silently if CDP is unavailable or fails.
+    if (isCDPEscalatable(action) && !params.frame && params.nth === undefined) {
+      try {
+        const cdpResult = await tryCDPEscalation(tabId, action, params)
+        if (cdpResult) {
+          const {
+            result: reconciledResult,
+            status,
+            error
+          } = deriveAsyncStatusFromDOMResult(action, selector || '', cdpResult)
+          const domResult = toDOMResult(reconciledResult)
+          if (domResult) {
+            sendToastForResult(tabId, false, domResult, actionToast, toastLabel, toastDetail)
+          } else {
+            actionToast(tabId, toastLabel, toastDetail, 'success')
+          }
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id!,
+            status,
+            await enrichWithEffectiveContext(tabId, reconciledResult),
+            error
+          )
+          return
+        }
+      } catch {
+        // CDP failed — fall through to DOM primitives
+      }
+    }
+
     const rawResult =
       action === 'list_interactive'
         ? await executeListInteractive(executionTarget, params)
-        : action === 'wait_for'
-          ? await executeWaitFor(executionTarget, params)
-          : await executeStandardAction(executionTarget, params)
+        : action === 'query'
+          ? await executeQuery(executionTarget, params)
+          : action === 'wait_for'
+            ? await executeWaitFor(executionTarget, params)
+            : await executeStandardAction(executionTarget, params)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
@@ -451,11 +537,11 @@ export async function executeDOMAction(
         return
       }
 
-      const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
-        action,
-        selector || '',
-        rawResult
-      )
+      const {
+        result: reconciledResult,
+        status,
+        error
+      } = deriveAsyncStatusFromDOMResult(action, selector || '', rawResult)
       const domResult = toDOMResult(reconciledResult)
       if (domResult) {
         sendToastForResult(tabId, readOnly, domResult, actionToast, toastLabel, toastDetail)
@@ -479,7 +565,7 @@ export async function executeDOMAction(
     // Ensure "trying" toast is visible for at least 500ms
     const MIN_TOAST_MS = 500
     const elapsed = Date.now() - tryingShownAt
-    if (!readOnly && elapsed < MIN_TOAST_MS) await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed))
+    if (!readOnly && elapsed < MIN_TOAST_MS) await delay(MIN_TOAST_MS - elapsed)
 
     // list_interactive: merge elements from all frames
     if (action === 'list_interactive') {
@@ -502,19 +588,19 @@ export async function executeDOMAction(
       let resultPayload: unknown
       if (picked) {
         const base: Record<string, unknown> = { ...(firstResult as Record<string, unknown>), frame_id: picked.frameId }
-        const matched = base["matched"]
+        const matched = base['matched']
         if (matched && typeof matched === 'object' && !Array.isArray(matched)) {
-          base["matched"] = { ...(matched as Record<string, unknown>), frame_id: picked.frameId }
+          base['matched'] = { ...(matched as Record<string, unknown>), frame_id: picked.frameId }
         }
         resultPayload = base
       } else {
         resultPayload = firstResult
       }
-      const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
-        action,
-        selector || '',
-        resultPayload
-      )
+      const {
+        result: reconciledResult,
+        status,
+        error
+      } = deriveAsyncStatusFromDOMResult(action, selector || '', resultPayload)
       const domResult = toDOMResult(reconciledResult)
       if (domResult) {
         sendToastForResult(tabId, readOnly, domResult, actionToast, toastLabel, toastDetail)
@@ -534,7 +620,7 @@ export async function executeDOMAction(
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')
     }
   } catch (err) {
-    actionToast(tabId, action, (err as Error).message, 'error')
-    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, (err as Error).message)
+    actionToast(tabId, action, errorMessage(err), 'error')
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMessage(err))
   }
 }

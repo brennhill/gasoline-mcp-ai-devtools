@@ -1,6 +1,5 @@
-// Purpose: Validate security_coverage_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Coverage-expansion tests for security edge cases and branch paths.
+// Docs: docs/features/feature/security-hardening/index.md
 
 // security_coverage_test.go — Targeted coverage tests for uncovered security paths (part 1).
 // Covers: formatDuration, redactSecret, networkFlagDescription, networkFlagRemediation,
@@ -12,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // ============================================
@@ -166,7 +166,7 @@ func TestNetworkFlagRemediation_AllTypes(t *testing.T) {
 
 func TestExtractOrigin_DataURL(t *testing.T) {
 	t.Parallel()
-	got := extractOrigin("data:text/html,<h1>Hello</h1>")
+	got := util.ExtractOrigin("data:text/html,<h1>Hello</h1>")
 	if got != "" {
 		t.Errorf("extractOrigin(data:...) = %q, want empty", got)
 	}
@@ -174,7 +174,7 @@ func TestExtractOrigin_DataURL(t *testing.T) {
 
 func TestExtractOrigin_BlobURL(t *testing.T) {
 	t.Parallel()
-	got := extractOrigin("blob:https://example.com/uuid-here")
+	got := util.ExtractOrigin("blob:https://example.com/uuid-here")
 	if got != "https://example.com" {
 		t.Errorf("extractOrigin(blob:...) = %q, want https://example.com", got)
 	}
@@ -182,7 +182,7 @@ func TestExtractOrigin_BlobURL(t *testing.T) {
 
 func TestExtractOrigin_NoScheme(t *testing.T) {
 	t.Parallel()
-	got := extractOrigin("example.com/path")
+	got := util.ExtractOrigin("example.com/path")
 	if got != "" {
 		t.Errorf("extractOrigin(no scheme) = %q, want empty", got)
 	}
@@ -190,7 +190,7 @@ func TestExtractOrigin_NoScheme(t *testing.T) {
 
 func TestExtractOrigin_NoHost(t *testing.T) {
 	t.Parallel()
-	got := extractOrigin("file:///path/to/file")
+	got := util.ExtractOrigin("file:///path/to/file")
 	if got != "" {
 		t.Errorf("extractOrigin(file:///) = %q, want empty", got)
 	}

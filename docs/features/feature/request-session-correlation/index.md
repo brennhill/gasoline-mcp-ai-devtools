@@ -1,12 +1,25 @@
 ---
 doc_type: feature_index
 feature_id: feature-request-session-correlation
-status: proposed
+status: active
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
 code_paths:
-test_paths: []
+  - cmd/dev-console/client_registry_adapter.go
+  - cmd/dev-console/main_connection_mcp_bootstrap.go
+  - cmd/dev-console/server_routes_clients.go
+  - internal/capture/interfaces.go
+  - internal/capture/client_registry_setter.go
+  - internal/session/client_registry.go
+  - internal/session/types.go
+  - internal/session/verify_actions.go
+test_paths:
+  - cmd/dev-console/server_routes_clients_test.go
+  - internal/session/client_registry_test.go
+  - internal/session/verify_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Request Session Correlation
@@ -23,6 +36,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 

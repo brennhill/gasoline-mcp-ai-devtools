@@ -1,6 +1,6 @@
 // Purpose: Implement doc.go internal behavior used by MCP runtime features.
 // Why: Maintains stable server behavior across tool and transport paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/normalized-event-schema/index.md
 
 // doc.go — Package documentation for foundational cross-cutting types.
 

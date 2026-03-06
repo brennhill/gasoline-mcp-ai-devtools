@@ -5,17 +5,21 @@ set -eo pipefail
 begin_category "13" "Draw Mode" "12"
 
 # ── Test 13.1: Schema — draw_mode_start in interact ────────
-begin_test "13.1" "[DAEMON ONLY] Schema: draw_mode_start in interact action enum" \
-    "Verify tools/list includes draw_mode_start as a valid interact action" \
+begin_test "13.1" "[DAEMON ONLY] Schema: draw_mode_start in interact what enum" \
+    "Verify tools/list includes draw_mode_start as a valid interact action (canonical what enum)" \
     "Tests: schema registration for draw mode activation"
 
 run_test_13_1() {
     local tools_resp
     tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
-    if echo "$tools_resp" | jq -e '.result.tools[] | select(.name=="interact") | .inputSchema.properties.action.enum[] | select(.=="draw_mode_start")' >/dev/null 2>&1; then
-        pass "draw_mode_start in interact action enum."
+    if echo "$tools_resp" | jq -e '
+        .result.tools[] | select(.name=="interact")
+        | ((.inputSchema.properties.what.enum // .inputSchema.properties.action.enum // []))
+        | .[] | select(.=="draw_mode_start")
+    ' >/dev/null 2>&1; then
+        pass "draw_mode_start in interact enum (what/action)."
     else
-        fail "draw_mode_start NOT in interact action enum."
+        fail "draw_mode_start NOT in interact enum (checked what/action)."
     fi
 }
 run_test_13_1
@@ -48,13 +52,13 @@ run_test_13_3() {
     local tools_resp
     tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
     local has_vt has_ar has_ai
-    has_vt=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | .inputSchema.properties.format.enum[] | select(.=="visual_test")' 2>/dev/null)
-    has_ar=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | .inputSchema.properties.format.enum[] | select(.=="annotation_report")' 2>/dev/null)
-    has_ai=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | .inputSchema.properties.format.enum[] | select(.=="annotation_issues")' 2>/dev/null)
+    has_vt=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | (.inputSchema.properties.what.enum // .inputSchema.properties.format.enum // [])[] | select(.=="visual_test")' 2>/dev/null)
+    has_ar=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | (.inputSchema.properties.what.enum // .inputSchema.properties.format.enum // [])[] | select(.=="annotation_report")' 2>/dev/null)
+    has_ai=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | (.inputSchema.properties.what.enum // .inputSchema.properties.format.enum // [])[] | select(.=="annotation_issues")' 2>/dev/null)
     if [ "$has_vt" = "visual_test" ] && [ "$has_ar" = "annotation_report" ] && [ "$has_ai" = "annotation_issues" ]; then
-        pass "All 3 annotation generate formats in schema."
+        pass "All 3 annotation generate formats in schema (what/format)."
     else
-        fail "Missing generate formats: visual_test=$has_vt, annotation_report=$has_ar, annotation_issues=$has_ai."
+        fail "Missing generate formats (checked what/format): visual_test=$has_vt, annotation_report=$has_ar, annotation_issues=$has_ai."
     fi
 }
 run_test_13_3
@@ -99,10 +103,14 @@ run_test_13_5() {
         skip "Pilot not enabled."
         return
     fi
+    if [ ! -t 0 ]; then
+        skip "Interactive draw input requires a TTY."
+        return
+    fi
 
     echo "  >>> Draw 1-2 rectangles on the page, type text for each, then press ESC <<<"
     echo "  -- Press Enter AFTER you have drawn and pressed ESC --"
-    if [ -t 0 ]; then read -r; fi
+    read -r
 
     local response
     response=$(call_tool "analyze" '{"what":"annotations"}')
@@ -331,6 +339,10 @@ run_test_13_9() {
         skip "Pilot not enabled."
         return
     fi
+    if [ ! -t 0 ]; then
+        skip "Interactive multi-page annotation draw requires a TTY."
+        return
+    fi
 
     local session_name="smoke-session-$$"
 
@@ -378,10 +390,33 @@ begin_test "13.10" "[DAEMON ONLY] Generate Playwright test from annotations" \
     "Tests: annotation-to-test code generation"
 
 run_test_13_10() {
-    local response
-    response=$(call_tool "generate" '{"format":"visual_test"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    local response content_text
+    local max_attempts=8
+    local settled=false
+
+    for i in $(seq 1 "$max_attempts"); do
+        response=$(call_tool "generate" '{"what":"visual_test"}')
+        content_text=$(extract_content_text "$response")
+
+        if [ -z "$content_text" ]; then
+            content_text="$response"
+        fi
+
+        if echo "$content_text" | grep -qi "starting up"; then
+            if [ "$i" -lt "$max_attempts" ]; then
+                sleep 2
+                continue
+            fi
+        else
+            settled=true
+            break
+        fi
+    done
+
+    if [ "$settled" != "true" ] && echo "$content_text" | grep -qi "starting up"; then
+        skip "visual_test deferred: daemon still starting after ${max_attempts} retries."
+        return
+    fi
 
     if echo "$content_text" | grep -q "test(" && echo "$content_text" | grep -q "page.goto"; then
         pass "visual_test contains test() and page.goto()."
@@ -400,7 +435,7 @@ begin_test "13.11" "[DAEMON ONLY] Generate annotation report (Markdown)" \
 
 run_test_13_11() {
     local response
-    response=$(call_tool "generate" '{"format":"annotation_report"}')
+    response=$(call_tool "generate" '{"what":"annotation_report"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
@@ -428,7 +463,7 @@ begin_test "13.12" "[DAEMON ONLY] Generate annotation issues (structured JSON)" 
 
 run_test_13_12() {
     local response
-    response=$(call_tool "generate" '{"format":"annotation_issues"}')
+    response=$(call_tool "generate" '{"what":"annotation_issues"}')
     local content_text
     content_text=$(extract_content_text "$response")
 

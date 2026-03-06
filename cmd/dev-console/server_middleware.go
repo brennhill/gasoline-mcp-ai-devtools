@@ -1,3 +1,7 @@
+// Purpose: Implements HTTP middleware for CORS handling, extension origin validation, and request logging.
+// Why: Enforces browser extension origin checks and cross-origin policy at the middleware layer before handlers run.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package main
 
 import (

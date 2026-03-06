@@ -1,8 +1,6 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Forwards window.postMessage events from the inject context to the background script via chrome.runtime.sendMessage.
+ * Docs: docs/features/feature/observe/index.md
  */
 
 /**
@@ -10,7 +8,7 @@
  * Forwards messages between page context and background script
  */
 
-import type { BackgroundMessageFromContent } from './types'
+import type { BackgroundMessageFromContent } from './types.js'
 
 // Dispatch table: page postMessage type -> background message type
 export const MESSAGE_MAP: Record<string, string> = {

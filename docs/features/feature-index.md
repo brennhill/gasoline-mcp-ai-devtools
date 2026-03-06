@@ -4,8 +4,11 @@ scope: feature/index
 ai-priority: high
 tags: [feature-index, status, navigation, canonical]
 relates-to: [../README.md, feature/]
-last-verified: 2026-02-17
+last-verified: 2026-03-05
 canonical: true
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Feature Index
@@ -44,6 +47,7 @@ canonical: true
 | Dynamic Exposure | proposed | configure | (feature flags) | — | [feature/dynamic-exposure](feature/dynamic-exposure/) |
 | Enterprise Audit | shipped | analyze | security_audit | 5.0.0 | [feature/enterprise-audit](feature/enterprise-audit/) |
 | Error Clustering | shipped | analyze | error_clusters | 5.0.0 | [feature/error-clustering](feature/error-clustering/) |
+| Framework Selector Resilience | shipped | analyze, interact | page_structure, navigate/click/type/list_interactive/wait_for | 0.7.12 | [feature/framework-selector-resilience](feature/framework-selector-resilience/) |
 | Gasoline CI | proposed | observe, generate | CI integration | — | [feature/gasoline-ci](feature/gasoline-ci/) |
 | HAR Export | deprecated | — | — | 5.0.0 | [feature/har-export](feature/har-export/) |
 | In-Browser Agent Panel | proposed | observe, analyze, interact, configure | agent_panel, agent_watch (proposed) | — | [feature/in-browser-agent-panel](feature/in-browser-agent-panel/) |
@@ -65,6 +69,7 @@ canonical: true
 | Self-Testing | in-progress | interact, generate | execute_js, test_from_context | — | [feature/self-testing](feature/self-testing/) |
 | SPA Route Measurement | in-progress | analyze, observe | performance, timeline | — | [feature/spa-route-measurement](feature/spa-route-measurement/) |
 | Temporal Graph | shipped | analyze | history | 5.0.0 | [feature/temporal-graph](feature/temporal-graph/) |
+| Test Harness V2 | proposed | — | — | — | [feature-test-harness.md](feature-test-harness.md) |
 | TTL Retention | shipped | configure | (data TTL) | 5.0.0 | [feature/ttl-retention](feature/ttl-retention/) |
 | Web Vitals | shipped | observe | vitals | 5.0.0 | [feature/web-vitals](feature/web-vitals/) |
 | Workflow Integration | proposed | observe, generate | (CI integration) | — | [feature/workflow-integration](feature/workflow-integration/) |
@@ -73,11 +78,11 @@ canonical: true
 
 | Status | Count |
 |--------|-------|
-| Shipped | 23 |
+| Shipped | 24 |
 | In-Progress | 6 |
 | Proposed | 10 |
 | Deprecated | 4 |
-| **Total** | **43** |
+| **Total** | **44** |
 
 ## MCP Tool Distribution
 

@@ -1,6 +1,5 @@
-// Purpose: Validate tools_test_helpers_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for tool test helper utilities.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_test_helpers_test.go — Shared test helpers for all tool tests.
 // Consolidates duplicated factories, parsers, JSON extractors, and assertion helpers.
@@ -8,11 +7,12 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -22,7 +22,7 @@ import (
 // makeToolHandler creates a ToolHandler with a temp-dir-backed Server and fresh Capture.
 // Replaces: makeObserveToolHandler, makeAnalyzeToolHandler, makeGenerateToolHandler,
 // makeConfigureToolHandler, makeInteractToolHandler (all identical).
-func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
+func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Store) {
 	t.Helper()
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
@@ -42,7 +42,7 @@ func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
 type toolTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 // newToolTestEnv creates a toolTestEnv with t.TempDir() and t.Cleanup.
@@ -60,6 +60,16 @@ func newToolTestEnv(t *testing.T) *toolTestEnv {
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &toolTestEnv{handler: handler, server: server, capture: cap}
+}
+
+// mockConnectedTrackedTab simulates an extension sync and a tracked active tab.
+// Use this for tests that exercise interact flows requiring extension + tab state.
+func mockConnectedTrackedTab(t *testing.T, cap *capture.Store) {
+	t.Helper()
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 }
 
 // ============================================
@@ -198,7 +208,41 @@ func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
 
 	what, _ := params["what"].(string)
 	switch what {
-	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation":
+	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation", "navigation", "page_structure":
+	default:
+		return raw
+	}
+
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+
+	params["sync"] = false
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
+// normalizeObserveArgsForAsync adds sync=false for async-capable observe operations
+// (page_inventory) unless sync/wait/background is already specified.
+func normalizeObserveArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+
+	what, _ := params["what"].(string)
+	switch what {
+	case "page_inventory":
 	default:
 		return raw
 	}

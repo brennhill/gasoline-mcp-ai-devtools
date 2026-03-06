@@ -1,9 +1,9 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Shared constants (server defaults, serialization limits, buffer sizes, storage keys, feature toggles) used across all extension modules.
  */
+export declare const CDP_VERSION = "1.3";
 export declare const DEFAULT_SERVER_URL = "http://localhost:7890";
+export declare const TERMINAL_PORT_OFFSET = 1;
 export declare const MAX_STRING_LENGTH = 10240;
 export declare const MAX_RESPONSE_LENGTH = 5120;
 export declare const MAX_DEPTH = 10;
@@ -73,9 +73,12 @@ export declare const SettingName: {
     readonly SUBTITLES: "setSubtitlesEnabled";
     readonly SERVER_URL: "setServerUrl";
 };
-export type SettingNameValue = typeof SettingName[keyof typeof SettingName];
+export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
 /** All valid setting names as a Set (for runtime validation) */
 export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
+export declare const RuntimeMessageName: {
+    readonly SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
+};
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
  * These are the settings that the inject script knows how to handle.
@@ -108,9 +111,16 @@ export declare const StorageKey: {
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
     readonly RECORDING: "gasoline_recording";
+    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
     readonly PENDING_RECORDING: "gasoline_pending_recording";
     readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
     readonly MIC_GRANTED: "gasoline_mic_granted";
     readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
+    readonly TERMINAL_CONFIG: "gasoline_terminal_config";
+    readonly TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command";
+    readonly TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root";
+    readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
+    readonly TERMINAL_SESSION: "gasoline_terminal_session";
+    readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
 };
 //# sourceMappingURL=constants.d.ts.map

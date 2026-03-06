@@ -1,6 +1,5 @@
-// Purpose: Validate main_helpers_more_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Additional tests for main helper functions.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -13,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func TestFindMCPConfigResolution(t *testing.T) {
@@ -41,7 +40,7 @@ func TestFindMCPConfigResolutionClaudePath(t *testing.T) {
 
 	home := os.Getenv("HOME")
 	claudePath := filepath.Join(home, ".claude.json")
-	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
+	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline-browser-devtools":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", claudePath, err)
 	}
 	if got := findMCPConfig(); got != claudePath {
@@ -96,7 +95,7 @@ func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
 	}
 	oldOut := os.Stdout
 	os.Stdout = w
-	runSetupCheck(port)
+	runSetupCheckWithOptions(port, setupCheckOptions{})
 	os.Stdout = oldOut
 	_ = w.Close()
 	out, err := io.ReadAll(r)

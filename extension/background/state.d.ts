@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Owns all mutable module-level state (connection status, settings, flags) for the background service worker.
+ * Why: Separates state ownership from business logic so mutations are explicit and testable.
  */
 /** Session ID for detecting extension reloads */
 export declare const EXTENSION_SESSION_ID: string;
@@ -30,22 +27,6 @@ export interface ExtensionLogQueueEntry {
     category: string;
     data?: unknown;
 }
-/**
- * Compatibility mirrors for legacy imports.
- * New code should prefer getters/setters below.
- */
-export declare let serverUrl: string;
-export declare let debugMode: boolean;
-export declare let connectionStatus: MutableConnectionStatus;
-export declare let currentLogLevel: string;
-export declare let screenshotOnError: boolean;
-export declare let _captureOverrides: Record<string, string>;
-export declare let aiControlled: boolean;
-export declare let _connectionCheckRunning: boolean;
-export declare let __aiWebPilotEnabledCache: boolean;
-export declare let __aiWebPilotCacheInitialized: boolean;
-export declare let __pilotInitCallback: (() => void) | null;
-export declare const extensionLogQueue: ExtensionLogQueueEntry[];
 export declare function getServerUrl(): string;
 export declare function isDebugMode(): boolean;
 export declare function getConnectionStatus(): MutableConnectionStatus;
@@ -81,5 +62,4 @@ export declare function _resetPilotCacheForTesting(value?: boolean): void;
  * Check if AI Web Pilot is enabled
  */
 export declare function isAiWebPilotEnabled(): boolean;
-export declare function resetStateForTesting(): void;
 //# sourceMappingURL=state.d.ts.map

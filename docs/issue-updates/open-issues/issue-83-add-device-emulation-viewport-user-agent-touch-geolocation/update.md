@@ -1,7 +1,7 @@
 # Product Update: Issue #83
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/83
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/83
 - Title: Add device emulation (viewport, user agent, touch, geolocation)
 - Last Updated: 2026-02-16T14:43:45Z
 

@@ -1,31 +1,29 @@
-// Purpose: Validate binary_integration_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Integration tests for error clustering and API schema analysis end-to-end flows.
+// Docs: docs/features/feature/api-schema/index.md
 
 //go:build integration
 // +build integration
 
 // binary_integration_test.go — Integration tests for binary format detection
-// NOTE: These tests require capture methods that have different signatures.
 // Run with: go test -tags=integration ./internal/analysis/...
 package analysis
 
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/util"
+	cap "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // Integration tests for binary format detection in network/websocket
 
 func TestNetworkBody_BinaryFormatIntegration(t *testing.T) {
 	t.Parallel()
-	capture := capture.NewCapture()
+	c := cap.NewCapture()
 
 	// Add a network body with MessagePack binary data
 	msgpackData := string([]byte{0x81, 0xa3, 0x6b, 0x65, 0x79, 0xa5, 0x76, 0x61, 0x6c, 0x75, 0x65})
-	bodies := []capture.NetworkBody{
+	bodies := []cap.NetworkBody{
 		{
 			URL:          "https://api.example.com/data",
 			Method:       "GET",
@@ -33,10 +31,10 @@ func TestNetworkBody_BinaryFormatIntegration(t *testing.T) {
 			ResponseBody: msgpackData,
 		},
 	}
-	capture.AddNetworkBodies(bodies)
+	c.AddNetworkBodies(bodies)
 
 	// Retrieve and verify binary format was detected
-	result := capture.GetNetworkBodies(capture.NetworkBodyFilter{Limit: 1})
+	result := c.GetNetworkBodies()
 	if len(result) != 1 {
 		t.Fatalf("expected 1 body, got %d", len(result))
 	}
@@ -50,10 +48,10 @@ func TestNetworkBody_BinaryFormatIntegration(t *testing.T) {
 
 func TestNetworkBody_TextNoFormat(t *testing.T) {
 	t.Parallel()
-	capture := capture.NewCapture()
+	c := cap.NewCapture()
 
 	// Add a network body with JSON text data
-	bodies := []capture.NetworkBody{
+	bodies := []cap.NetworkBody{
 		{
 			URL:          "https://api.example.com/json",
 			Method:       "GET",
@@ -61,10 +59,10 @@ func TestNetworkBody_TextNoFormat(t *testing.T) {
 			ResponseBody: `{"key": "value"}`,
 		},
 	}
-	capture.AddNetworkBodies(bodies)
+	c.AddNetworkBodies(bodies)
 
 	// Verify no binary format detected for text
-	result := capture.GetNetworkBodies(capture.NetworkBodyFilter{Limit: 1})
+	result := c.GetNetworkBodies()
 	if len(result) != 1 {
 		t.Fatalf("expected 1 body, got %d", len(result))
 	}
@@ -75,11 +73,11 @@ func TestNetworkBody_TextNoFormat(t *testing.T) {
 
 func TestWebSocketEvent_BinaryFormatIntegration(t *testing.T) {
 	t.Parallel()
-	capture := capture.NewCapture()
+	c := cap.NewCapture()
 
 	// Add a WebSocket message with protobuf binary data
 	protobufData := string([]byte{0x08, 0x96, 0x01})
-	events := []capture.WebSocketEvent{
+	events := []cap.WebSocketEvent{
 		{
 			Event:     "message",
 			ID:        "ws-1",
@@ -89,10 +87,10 @@ func TestWebSocketEvent_BinaryFormatIntegration(t *testing.T) {
 			Size:      len(protobufData),
 		},
 	}
-	capture.AddWebSocketEvents(events)
+	c.AddWebSocketEvents(events)
 
 	// Retrieve and verify binary format was detected
-	result := capture.GetWebSocketEvents(capture.WebSocketEventFilter{Limit: 1})
+	result := c.GetWebSocketEvents(cap.WebSocketEventFilter{Limit: 1})
 	if len(result) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(result))
 	}
@@ -106,10 +104,10 @@ func TestWebSocketEvent_BinaryFormatIntegration(t *testing.T) {
 
 func TestWebSocketEvent_OpenCloseNoFormat(t *testing.T) {
 	t.Parallel()
-	capture := capture.NewCapture()
+	c := cap.NewCapture()
 
 	// Add open/close events which shouldn't have binary format detection
-	events := []capture.WebSocketEvent{
+	events := []cap.WebSocketEvent{
 		{
 			Event: "open",
 			ID:    "ws-1",
@@ -122,10 +120,10 @@ func TestWebSocketEvent_OpenCloseNoFormat(t *testing.T) {
 			CloseReason: "normal",
 		},
 	}
-	capture.AddWebSocketEvents(events)
+	c.AddWebSocketEvents(events)
 
 	// Verify no binary format for non-message events
-	result := capture.GetWebSocketEvents(capture.WebSocketEventFilter{Limit: 10})
+	result := c.GetWebSocketEvents(cap.WebSocketEventFilter{Limit: 10})
 	for _, ev := range result {
 		if ev.BinaryFormat != "" {
 			t.Errorf("expected empty binary_format for %s event, got %q", ev.Event, ev.BinaryFormat)
@@ -135,10 +133,10 @@ func TestWebSocketEvent_OpenCloseNoFormat(t *testing.T) {
 
 func TestWebSocketEvent_TextMessageNoFormat(t *testing.T) {
 	t.Parallel()
-	capture := capture.NewCapture()
+	c := cap.NewCapture()
 
 	// Add a text message
-	events := []capture.WebSocketEvent{
+	events := []cap.WebSocketEvent{
 		{
 			Event:     "message",
 			ID:        "ws-1",
@@ -148,10 +146,10 @@ func TestWebSocketEvent_TextMessageNoFormat(t *testing.T) {
 			Size:      18,
 		},
 	}
-	capture.AddWebSocketEvents(events)
+	c.AddWebSocketEvents(events)
 
 	// Verify no binary format for text message
-	result := capture.GetWebSocketEvents(capture.WebSocketEventFilter{Limit: 1})
+	result := c.GetWebSocketEvents(cap.WebSocketEventFilter{Limit: 1})
 	if len(result) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(result))
 	}
@@ -177,7 +175,7 @@ func BenchmarkDetectBinaryFormat(b *testing.B) {
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				DetectBinaryFormat(tc.data)
+				util.DetectBinaryFormat(tc.data)
 			}
 		})
 	}

@@ -1,3 +1,6 @@
+// Purpose: Defines the ToolModule interface and pluggable module registry for mode-based tool dispatch.
+// Why: Enables tool modes to be registered as self-contained modules with validate/execute/describe contracts.
+
 package main
 
 import (
@@ -72,6 +75,20 @@ func (m *toolMethodModule) Examples() []json.RawMessage {
 	return m.examples
 }
 
+func validateJSONObjectArgs(args json.RawMessage) error {
+	if len(args) == 0 {
+		return nil
+	}
+	var decoded any
+	if err := json.Unmarshal(args, &decoded); err != nil {
+		return err
+	}
+	if _, ok := decoded.(map[string]any); !ok {
+		return fmt.Errorf("tool_dispatch: arguments must be a JSON object, got %T. Wrap tool arguments in {}", decoded)
+	}
+	return nil
+}
+
 // toolModuleRegistry stores tool modules by MCP tool name.
 type toolModuleRegistry struct {
 	modules map[string]ToolModule
@@ -104,31 +121,31 @@ func (h *ToolHandler) buildToolModuleRegistry() *toolModuleRegistry {
 		"observe",
 		"Read captured browser state: logs, network, screenshots, and async results",
 		[]json.RawMessage{json.RawMessage(`{"what":"logs"}`), json.RawMessage(`{"what":"screenshot"}`)},
-		nil,
+		validateJSONObjectArgs,
 		h.toolObserve,
 	))
 	registry.register("analyze", newToolMethodModule(
 		"analyze",
 		"Run analysis checks over DOM, links, accessibility, and audits",
 		[]json.RawMessage{json.RawMessage(`{"what":"dom","selector":"body","background":true}`)},
-		nil,
+		validateJSONObjectArgs,
 		h.toolAnalyze,
 	))
 	registry.register("generate", newToolMethodModule(
 		"generate",
 		"Generate artifacts (reproduction, csp, sarif, tests) from captured context",
-		[]json.RawMessage{json.RawMessage(`{"format":"reproduction","last_n":20}`)},
-		nil,
+		[]json.RawMessage{json.RawMessage(`{"what":"reproduction","last_n":20}`)},
+		validateJSONObjectArgs,
 		h.toolGenerate,
 	))
 	registry.register("configure", newToolMethodModule(
 		"configure",
 		"Session settings, diagnostics, and recording utilities",
 		[]json.RawMessage{
-			json.RawMessage(`{"action":"health"}`),
-			json.RawMessage(`{"action":"clear","buffer":"logs"}`),
+			json.RawMessage(`{"what":"health"}`),
+			json.RawMessage(`{"what":"clear","buffer":"logs"}`),
 		},
-		nil,
+		validateJSONObjectArgs,
 		h.toolConfigure,
 	))
 	registry.register("interact", newToolMethodModule(
@@ -139,7 +156,7 @@ func (h *ToolHandler) buildToolModuleRegistry() *toolModuleRegistry {
 			json.RawMessage(`{"what":"click","selector":"button.submit"}`),
 			json.RawMessage(`{"what":"type","selector":"input[name=search]","text":"hello"}`),
 		},
-		nil,
+		validateJSONObjectArgs,
 		h.toolInteract,
 	))
 	return registry
@@ -153,11 +170,7 @@ func (h *ToolHandler) dispatchViaModules(req JSONRPCRequest, name string, args j
 	}
 
 	if err := module.Validate(args); err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Invalid %s arguments: %v", name, err), "Fix the request parameters and try again"),
-		}, true
+		return fail(req, ErrInvalidParam, fmt.Sprintf("Invalid %s arguments: %v", name, err), "Fix the request parameters and try again"), true
 	}
 
 	return module.Execute(req, args), true

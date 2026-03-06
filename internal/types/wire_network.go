@@ -15,7 +15,7 @@ type WireNetworkBody struct {
 	Duration          int    `json:"duration,omitempty"`
 	RequestTruncated  bool   `json:"request_truncated,omitempty"`
 	ResponseTruncated bool   `json:"response_truncated,omitempty"`
-	TabId             int    `json:"tab_id,omitempty"`
+	TabID             int    `json:"tab_id,omitempty"`
 }
 
 // WireNetworkWaterfallEntry is the canonical wire format for a PerformanceResourceTiming entry.

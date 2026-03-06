@@ -1,6 +1,5 @@
-// Purpose: Validate playbooks_content_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for playbook content serving and validation.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -25,6 +24,7 @@ func TestQuickstartContent_IncludesInteractFailureRecoveryExamples(t *testing.T)
 		"ambiguous_target",
 		"stale_element_id",
 		"scope_not_found",
+		"blocked_by_overlay",
 		"Stop and report evidence",
 	}
 	for _, token := range requiredTokens {

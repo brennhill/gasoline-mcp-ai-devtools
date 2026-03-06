@@ -91,6 +91,7 @@ function createMockChrome(trackedTabId = 1, activeTabId = 1) {
 
 describe('pending query targeting', () => {
   let bgModule
+  let resetPilotCacheForTesting
 
   beforeEach(async () => {
     mock.reset()
@@ -103,8 +104,9 @@ describe('pending query targeting', () => {
     )
 
     bgModule = await import('../../extension/background.js')
+    ;({ _resetPilotCacheForTesting: resetPilotCacheForTesting } = await import('../../extension/background/state.js'))
     bgModule.markInitComplete()
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('uses explicit tab_id over tracked tab and returns resolved target metadata', async () => {

@@ -1,5 +1,4 @@
-// Purpose: Validate coverage_gaps_part2_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Coverage-expansion tests for capture pipeline edge cases and branch paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // coverage_gaps_part2_test.go — Targeted tests for uncovered capture paths (part 2).
@@ -15,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // ============================================
@@ -298,22 +297,12 @@ func TestHandleQueryResult_WithCorrelationID_ErrorStatus(t *testing.T) {
 	c.RegisterCommand(corrID, "", 30*time.Second)
 
 	payload := `{"correlation_id":"` + corrID + `","status":"error","error":"boom"}`
-	rr := httptest.NewRecorder()
-	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
+	rr := runQueryResultRequest(t, c, payload)
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 
-	cmd, found := c.GetCommandResult(corrID)
-	if !found {
-		t.Fatal("expected command result to be present for correlation_id")
-	}
-	if cmd.Status != "error" {
-		t.Errorf("command status = %q, want error", cmd.Status)
-	}
-	if cmd.Error != "boom" {
-		t.Errorf("command error = %q, want boom", cmd.Error)
-	}
+	assertCommandResult(t, c, corrID, "error", "boom")
 }
 
 func TestHandleQueryResult_WithIDAndCorrelationID_PreservesErrorStatus(t *testing.T) {
@@ -333,22 +322,12 @@ func TestHandleQueryResult_WithIDAndCorrelationID_PreservesErrorStatus(t *testin
 	}
 
 	payload := `{"id":"` + queryID + `","correlation_id":"` + corrID + `","status":"error","error":"boom","result":{"success":false}}`
-	rr := httptest.NewRecorder()
-	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
+	rr := runQueryResultRequest(t, c, payload)
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 
-	cmd, found := c.GetCommandResult(corrID)
-	if !found {
-		t.Fatal("expected command result to be present for correlation_id")
-	}
-	if cmd.Status != "error" {
-		t.Errorf("command status = %q, want error", cmd.Status)
-	}
-	if cmd.Error != "boom" {
-		t.Errorf("command error = %q, want boom", cmd.Error)
-	}
+	assertCommandResult(t, c, corrID, "error", "boom")
 }
 
 // ============================================

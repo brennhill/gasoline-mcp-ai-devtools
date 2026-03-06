@@ -1,19 +1,21 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Manages recording lifecycle (start/stop) and recording state, delegating capture plumbing and listener registration to sub-modules.
+ * Docs: docs/features/feature/flow-recording/index.md
  */
 // recording.ts — Recording lifecycle management (start/stop) and state.
 // Delegates tab capture / offscreen plumbing to recording-capture.ts and
 // chrome runtime listener registration to recording-listeners.ts.
 import { getServerUrl } from './state.js';
-import { pingContentScript, waitForTabLoad } from './event-listeners.js';
+import { pingContentScript, waitForTabLoad, getActiveTab, sendTabToast } from './event-listeners.js';
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js';
 import { installRecordingListeners } from './recording-listeners.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { delay } from '../lib/timeout-utils.js';
+import { buildRecordingToastLabel } from './recording-utils.js';
+import { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-badge.js';
+import { setTrackedTab } from './tab-state.js';
 const defaultState = {
     active: false,
     name: '',
@@ -53,6 +55,7 @@ export function getRecordingInfo() {
 // =============================================================================
 async function clearRecordingState() {
     recordingState = { ...defaultState };
+    stopRecordingBadgeTimer();
     if (tabUpdateListener) {
         chrome.tabs.onUpdated.removeListener(tabUpdateListener);
         tabUpdateListener = null;
@@ -104,8 +107,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             }
         }
         else {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-            tab = tabs[0];
+            tab = (await getActiveTab()) ?? undefined;
         }
         console.log(LOG, 'Resolved recording tab:', {
             requestedTabId: targetTabId ?? null,
@@ -120,13 +122,12 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         }
         // Auto-enable tab tracking if not already tracked
         const storage = await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID);
-        console.log(LOG, 'Tracked tab:', { trackedTabId: storage[StorageKey.TRACKED_TAB_ID], willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID] });
+        console.log(LOG, 'Tracked tab:', {
+            trackedTabId: storage[StorageKey.TRACKED_TAB_ID],
+            willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID]
+        });
         if (!storage[StorageKey.TRACKED_TAB_ID]) {
-            await chrome.storage.local.set({
-                [StorageKey.TRACKED_TAB_ID]: tab.id,
-                [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
-                [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
-            });
+            await setTrackedTab(tab);
         }
         // Ensure content script is responsive (needed for toasts + watermark).
         // Skip when from popup — tab reload would close the popup.
@@ -141,7 +142,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             }
             // Add extra delay to ensure extension is fully initialized for tabCapture
             console.log(LOG, 'Waiting for extension to fully initialize...');
-            await new Promise((r) => setTimeout(r, scaleTimeout(1000)));
+            await delay(scaleTimeout(1000));
         }
         else {
             console.log(LOG, 'Skipping content script ping (fromPopup=true)');
@@ -241,36 +242,23 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         await chrome.storage.local.set({
             [StorageKey.RECORDING]: { active: true, name, startTime: Date.now() }
         });
+        startRecordingBadgeTimer(recordingState.startTime);
         // Show "Recording started" toast (fades after 2s)
-        chrome.tabs
-            .sendMessage(tab.id, {
-            type: 'GASOLINE_ACTION_TOAST',
-            text: 'Recording started',
-            state: 'success',
-            duration_ms: scaleTimeout(2000)
-        })
-            .catch(() => { });
-        // Show recording watermark overlay in the page
-        chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => { });
-        // Re-send watermark when recording tab navigates or content script re-injects
+        sendTabToast(tab.id, buildRecordingToastLabel(tab.url), '', 'success', scaleTimeout(2000));
+        // Watermark removed — badge timer on extension icon replaces it (not captured by tabCapture)
         if (tabUpdateListener)
             chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-        tabUpdateListener = (updatedTabId, changeInfo) => {
-            if (updatedTabId === recordingState.tabId && changeInfo.status === 'complete' && recordingState.active) {
-                chrome.tabs.sendMessage(updatedTabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => { });
-            }
-        };
-        chrome.tabs.onUpdated.addListener(tabUpdateListener);
+        tabUpdateListener = null;
         console.log(LOG, 'Recording STARTED successfully', { name, tabId: tab.id, audioMode: audio, fps });
         return { status: 'recording', name, startTime: recordingState.startTime };
     }
     catch (err) {
         recordingState.active = false; // eslint-disable-line require-atomic-updates
-        console.error(LOG, 'START EXCEPTION:', err.message, err.stack);
+        console.error(LOG, 'START EXCEPTION:', errorMessage(err), err.stack);
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${err.message || 'Failed to start recording.'}`
+            error: `RECORD_START: ${errorMessage(err, 'Failed to start recording.')}`
         };
     }
 }
@@ -292,17 +280,15 @@ export async function stopRecording(truncated = false) {
     if (!recordingState.active) {
         // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
         console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage');
+        stopRecordingBadgeTimer();
         chrome.storage.local.remove(StorageKey.RECORDING).catch(() => { });
         return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' };
     }
     const { tabId } = recordingState;
     // Mark as no longer active immediately to prevent double-stop
     recordingState.active = false;
+    stopRecordingBadgeTimer();
     console.log(LOG, 'Marked active=false, sending STOP to offscreen');
-    // Hide recording watermark overlay
-    if (tabId) {
-        chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => { });
-    }
     try {
         // Send stop command to offscreen document and wait for result (30s timeout for upload)
         const stopResult = await new Promise((resolve) => {
@@ -340,15 +326,7 @@ export async function stopRecording(truncated = false) {
         // Show save toast on the recorded tab
         if (tabId && stopResult.status === 'saved') {
             const sizeMB = stopResult.size_bytes ? (stopResult.size_bytes / (1024 * 1024)).toFixed(1) : '?';
-            chrome.tabs
-                .sendMessage(tabId, {
-                type: 'GASOLINE_ACTION_TOAST',
-                text: 'Recording saved',
-                detail: `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`,
-                state: 'success',
-                duration_ms: scaleTimeout(5000)
-            })
-                .catch(() => { });
+            sendTabToast(tabId, 'Recording saved', `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`, 'success', scaleTimeout(5000));
         }
         return {
             status: stopResult.status,
@@ -361,12 +339,12 @@ export async function stopRecording(truncated = false) {
         };
     }
     catch (err) {
-        console.error(LOG, 'STOP EXCEPTION:', err.message, err.stack);
+        console.error(LOG, 'STOP EXCEPTION:', errorMessage(err), err.stack);
         await clearRecordingState();
         return {
             status: 'error',
             name: recordingState.name || '',
-            error: `RECORD_STOP: ${err.message || 'Failed to stop recording.'}`
+            error: `RECORD_STOP: ${errorMessage(err, 'Failed to stop recording.')}`
         };
     }
 }

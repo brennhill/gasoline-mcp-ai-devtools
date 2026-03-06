@@ -1,6 +1,5 @@
-// Purpose: Validate ring_buffer_slo_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: SLO compliance tests for ring buffer latency and throughput budgets.
+// Docs: docs/features/feature/ring-buffer/index.md
 
 // ring_buffer_slo_test.go — Performance SLO tests for ring buffer operations.
 

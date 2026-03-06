@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-
-	"github.com/dev-console/dev-console/internal/util"
 )
 
 // computeConfidence determines the confidence level for an origin entry.
@@ -201,11 +199,6 @@ func countLowConfidenceExclusions(details []OriginDetail) int {
 		}
 	}
 	return count
-}
-
-// extractOriginFromURL delegates to util.ExtractOrigin for origin extraction.
-func extractOriginFromURL(rawURL string) string {
-	return util.ExtractOrigin(rawURL)
 }
 
 // exactContentTypeMap maps exact Content-Type values to CSP resource categories.

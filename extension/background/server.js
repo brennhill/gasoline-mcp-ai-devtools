@@ -1,39 +1,48 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Gasoline MCP server.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import { getExtensionVersion } from './version-check.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { buildDaemonHeaders } from '../lib/daemon-http.js';
 /**
  * Get standard headers for API requests including version header
  */
 export function getRequestHeaders(additionalHeaders = {}) {
-    return {
-        'Content-Type': 'application/json',
-        'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,
-        'X-Gasoline-Extension-Version': getExtensionVersion(),
-        ...additionalHeaders
-    };
+    return buildDaemonHeaders({
+        extensionVersion: getExtensionVersion(),
+        additionalHeaders
+    });
+}
+/**
+ * Generic telemetry batch sender. All telemetry POST endpoints follow the same
+ * pattern: log count, POST JSON, check response.ok, log acceptance.
+ * Includes AbortSignal.timeout(10000) to prevent hanging requests.
+ */
+async function sendTelemetryBatch(serverUrl, endpoint, payloadKey, items, label, debugLogFn) {
+    if (debugLogFn)
+        debugLogFn('connection', `Sending ${items.length} ${label} to server`);
+    const response = await fetch(`${serverUrl}${endpoint}`, {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ [payloadKey]: items }),
+        signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) {
+        const error = `Server error (${label}): ${response.status} ${response.statusText}`;
+        if (debugLogFn)
+            debugLogFn('error', error);
+        throw new Error(error);
+    }
+    if (debugLogFn)
+        debugLogFn('connection', `Server accepted ${items.length} ${label}`);
+    return response;
 }
 /**
  * Send log entries to the server
  */
 export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${entries.length} entries to server`);
-    const response = await fetch(`${serverUrl}/logs`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ entries })
-    });
-    if (!response.ok) {
-        const error = `Server error: ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
+    const response = await sendTelemetryBatch(serverUrl, '/logs', 'entries', entries, 'entries', debugLogFn);
     const result = (await response.json());
     if (debugLogFn)
         debugLogFn('connection', `Server accepted entries, total: ${result.entries}`);
@@ -43,101 +52,25 @@ export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
  * Send WebSocket events to the server
  */
 export async function sendWSEventsToServer(serverUrl, events, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${events.length} WS events to server`);
-    const response = await fetch(`${serverUrl}/websocket-events`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ events })
-    });
-    if (!response.ok) {
-        const error = `Server error (WS): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${events.length} WS events`);
+    await sendTelemetryBatch(serverUrl, '/websocket-events', 'events', events, 'WS events', debugLogFn);
 }
 /**
  * Send network bodies to the server
  */
 export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
-    const response = await fetch(`${serverUrl}/network-bodies`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ bodies })
-    });
-    if (!response.ok) {
-        const error = `Server error (network bodies): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${bodies.length} network bodies`);
-}
-/**
- * Send network waterfall data to server
- */
-export async function sendNetworkWaterfallToServer(serverUrl, payload, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`);
-    const response = await fetch(`${serverUrl}/network-waterfall`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-        const error = `Server error (network waterfall): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${payload.entries.length} waterfall entries`);
+    await sendTelemetryBatch(serverUrl, '/network-bodies', 'bodies', bodies, 'network bodies', debugLogFn);
 }
 /**
  * Send enhanced actions to server
  */
 export async function sendEnhancedActionsToServer(serverUrl, actions, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${actions.length} enhanced actions to server`);
-    const response = await fetch(`${serverUrl}/enhanced-actions`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ actions })
-    });
-    if (!response.ok) {
-        const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${actions.length} enhanced actions`);
+    await sendTelemetryBatch(serverUrl, '/enhanced-actions', 'actions', actions, 'enhanced actions', debugLogFn);
 }
 /**
  * Send performance snapshots to server
  */
 export async function sendPerformanceSnapshotsToServer(serverUrl, snapshots, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${snapshots.length} performance snapshots to server`);
-    const response = await fetch(`${serverUrl}/performance-snapshots`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify({ snapshots })
-    });
-    if (!response.ok) {
-        const error = `Server error (performance snapshots): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${snapshots.length} performance snapshots`);
+    await sendTelemetryBatch(serverUrl, '/performance-snapshots', 'snapshots', snapshots, 'performance snapshots', debugLogFn);
 }
 /**
  * Check server health
@@ -166,7 +99,7 @@ export async function checkServerHealth(serverUrl) {
     catch (error) {
         return {
             connected: false,
-            error: error.message
+            error: errorMessage(error)
         };
     }
 }
@@ -203,104 +136,6 @@ export function updateBadge(status) {
     }
 }
 /**
- * Post query results back to the server
- */
-export async function postQueryResult(serverUrl, queryId, type, result, debugLogFn) {
-    const endpoint = '/query-result';
-    const logData = { queryId, type, endpoint, resultSize: JSON.stringify(result).length };
-    if (debugLogFn)
-        debugLogFn('api', `POST ${endpoint}`, logData);
-    console.log(`[Gasoline API] POST ${endpoint}`, logData); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-    try {
-        const response = await fetch(`${serverUrl}${endpoint}`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ id: queryId, result })
-        });
-        if (!response.ok) {
-            const errMsg = `Failed to post query result: HTTP ${response.status}`;
-            if (debugLogFn)
-                debugLogFn('api', errMsg, { queryId, type, endpoint });
-            console.error(`[Gasoline API] ${errMsg}`, { queryId, type, endpoint }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-        else {
-            if (debugLogFn)
-                debugLogFn('api', `POST ${endpoint} success`, { queryId });
-            console.log(`[Gasoline API] POST ${endpoint} success`, { queryId }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-    }
-    catch (err) {
-        const errMsg = err.message;
-        if (debugLogFn)
-            debugLogFn('api', `POST ${endpoint} error: ${errMsg}`, { queryId, type });
-        console.error('[Gasoline API] Error posting query result:', { queryId, type, endpoint, error: errMsg });
-    }
-}
-/**
- * POST async command result to server using correlation_id
- */
-export async function postAsyncCommandResult(serverUrl, correlationId, status, result = null, error = null, debugLogFn) {
-    const payload = {
-        correlation_id: correlationId,
-        status: status
-    };
-    if (result !== null) {
-        payload.result = result;
-    }
-    if (error !== null) {
-        payload.error = error;
-    }
-    try {
-        const response = await fetch(`${serverUrl}/query-result`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, {
-                // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-                correlationId,
-                status
-            });
-        }
-    }
-    catch (err) {
-        console.error('[Gasoline] Error posting async command result:', {
-            correlationId,
-            status,
-            error: err.message
-        });
-        if (debugLogFn) {
-            debugLogFn('connection', 'Failed to post async command result', {
-                correlationId,
-                status,
-                error: err.message
-            });
-        }
-    }
-}
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-/**
- * Post extension logs to server
- */
-export async function postExtensionLogs(serverUrl, logs) {
-    if (logs.length === 0)
-        return;
-    try {
-        const response = await fetch(`${serverUrl}/extension-logs`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ logs })
-        });
-        if (!response.ok) {
-            console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-    }
-    catch (err) {
-        console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: err.message });
-    }
-}
-/**
  * Send status ping to server
  */
 export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) {
@@ -315,41 +150,10 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
         }
     }
     catch (err) {
-        console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: err.message });
+        console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) });
         if (diagnosticLogFn) {
-            diagnosticLogFn('[Gasoline] Status ping error: ' + err.message);
+            diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err));
         }
-    }
-}
-/**
- * Poll server for pending queries
- */
-export async function pollPendingQueries(serverUrl, extSessionId, pilotState, diagnosticLogFn, debugLogFn) {
-    try {
-        if (diagnosticLogFn) {
-            diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`);
-        }
-        const response = await fetch(`${serverUrl}/pending-queries`, {
-            headers: {
-                ...getRequestHeaders({ 'X-Gasoline-Ext-Session': extSessionId, 'X-Gasoline-Pilot': pilotState })
-            }
-        });
-        if (!response.ok) {
-            if (debugLogFn)
-                debugLogFn('connection', 'Poll pending-queries failed', { status: response.status });
-            return [];
-        }
-        const data = (await response.json());
-        if (!data.queries || data.queries.length === 0)
-            return [];
-        if (debugLogFn)
-            debugLogFn('connection', 'Got pending queries', { count: data.queries.length });
-        return data.queries;
-    }
-    catch (err) {
-        if (debugLogFn)
-            debugLogFn('connection', 'Poll pending-queries error', { error: err.message });
-        return [];
     }
 }
 //# sourceMappingURL=server.js.map

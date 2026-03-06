@@ -5,7 +5,7 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
 )
 
 // A11yCache manages accessibility audit result cache with LRU eviction
@@ -22,9 +22,9 @@ type a11yInflightEntry struct{}
 
 // PerformanceStore manages performance snapshots and baselines with LRU eviction.
 type PerformanceStore struct {
-	snapshots       map[string]performance.PerformanceSnapshot
+	snapshots       map[string]performance.Snapshot
 	snapshotOrder   []string
-	baselines       map[string]performance.PerformanceBaseline
+	baselines       map[string]performance.Baseline
 	baselineOrder   []string
-	beforeSnapshots map[string]performance.PerformanceSnapshot // keyed by correlation_id, for perf_diff
+	beforeSnapshots map[string]performance.Snapshot // keyed by correlation_id, for perf_diff
 }

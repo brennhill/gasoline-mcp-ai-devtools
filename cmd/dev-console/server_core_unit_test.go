@@ -1,6 +1,5 @@
-// Purpose: Validate server_core_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for dev-console server core logic.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -103,34 +102,6 @@ func TestServerLoadEntriesBoundsAndMalformedLines(t *testing.T) {
 	}
 	if entries[0]["message"] != "second" || entries[1]["message"] != "third" {
 		t.Fatalf("loaded entries = %+v, want last two valid entries", entries)
-	}
-}
-
-func TestServerSaveEntriesAndCopy(t *testing.T) {
-	logFile := filepath.Join(t.TempDir(), "save.jsonl")
-	srv := &Server{
-		logFile: logFile,
-		entries: []LogEntry{
-			{"level": "info", "message": "one"},
-			{"level": "warn", "message": "two"},
-		},
-	}
-	if err := srv.saveEntries(); err != nil {
-		t.Fatalf("saveEntries() error = %v", err)
-	}
-
-	updated := []LogEntry{{"level": "error", "message": "replacement"}}
-	if err := srv.saveEntriesCopy(updated); err != nil {
-		t.Fatalf("saveEntriesCopy() error = %v", err)
-	}
-
-	data, err := os.ReadFile(logFile)
-	if err != nil {
-		t.Fatalf("ReadFile(%q) error = %v", logFile, err)
-	}
-	text := string(data)
-	if !strings.Contains(text, `"replacement"`) || strings.Contains(text, `"message":"one"`) {
-		t.Fatalf("saveEntriesCopy did not replace content as expected: %q", text)
 	}
 }
 

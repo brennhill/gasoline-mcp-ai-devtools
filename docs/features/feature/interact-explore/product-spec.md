@@ -3,10 +3,12 @@ status: shipped
 scope: feature/interact-explore
 ai-priority: high
 tags: [core, interact, browser-control]
-last-verified: 2026-02-17
+last-verified: 2026-03-05
 doc_type: product-spec
 feature_id: feature-interact-explore
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interact Product Spec (TARGET)

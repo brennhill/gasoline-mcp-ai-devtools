@@ -243,7 +243,7 @@ In this video, you'll see:
 
 📦 Download: https://cookwithgasoline.com/downloads/
 📖 Docs: https://cookwithgasoline.com/features/#websocket-events
-💻 GitHub: https://github.com/brennhill/gasoline-mcp-ai-devtools
+💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 💬 Discord: [LINK]
 
 Timestamps:

@@ -1,16 +1,20 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Shared constants (server defaults, serialization limits, buffer sizes, storage keys, feature toggles) used across all extension modules.
  */
 
 /**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
-import { scaleTimeout } from './timeouts'
+import { scaleTimeout } from './timeouts.js'
+
+// Chrome DevTools Protocol version used for debugger.attach calls
+export const CDP_VERSION = '1.3'
 
 // Server defaults
 export const DEFAULT_SERVER_URL = 'http://localhost:7890'
+
+// Terminal server runs on a dedicated port (main port + offset) for isolation.
+export const TERMINAL_PORT_OFFSET = 1
 
 // Serialization limits
 export const MAX_STRING_LENGTH = 10240 // 10KB
@@ -130,13 +134,21 @@ export const SettingName = {
   NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
   ACTION_TOASTS: 'setActionToastsEnabled',
   SUBTITLES: 'setSubtitlesEnabled',
-  SERVER_URL: 'setServerUrl',
+  SERVER_URL: 'setServerUrl'
 } as const
 
-export type SettingNameValue = typeof SettingName[keyof typeof SettingName]
+export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName]
 
 /** All valid setting names as a Set (for runtime validation) */
 export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
+
+// =============================================================================
+// RUNTIME MESSAGE NAMES — Shared one-off message names used across contexts.
+// =============================================================================
+
+export const RuntimeMessageName = {
+  SHOW_TRACKED_HOVER_LAUNCHER: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER'
+} as const
 
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
@@ -153,7 +165,7 @@ export const INJECT_FORWARDED_SETTINGS: ReadonlySet<string> = new Set<string>([
   SettingName.PERFORMANCE_SNAPSHOT,
   SettingName.DEFERRAL,
   SettingName.NETWORK_BODY_CAPTURE,
-  SettingName.SERVER_URL,
+  SettingName.SERVER_URL
 ])
 
 // =============================================================================
@@ -185,8 +197,15 @@ export const StorageKey = {
   ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
   SUBTITLES_ENABLED: 'subtitlesEnabled',
   RECORDING: 'gasoline_recording',
+  TRACKED_HOVER_LAUNCHER_HIDDEN: 'gasoline_tracked_hover_launcher_hidden',
   PENDING_RECORDING: 'gasoline_pending_recording',
   PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
   MIC_GRANTED: 'gasoline_mic_granted',
   RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+  TERMINAL_CONFIG: 'gasoline_terminal_config',
+  TERMINAL_AI_COMMAND: 'gasoline_terminal_ai_command',
+  TERMINAL_DEV_ROOT: 'gasoline_terminal_dev_root',
+  POPUP_LAST_STATUS: 'gasoline_popup_last_status',
+  TERMINAL_SESSION: 'gasoline_terminal_session',
+  TERMINAL_UI_STATE: 'gasoline_terminal_ui_state'
 } as const

@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Validates HTTP methods, form action URLs, cookie headers, OS automation paths, and sanitizes inputs for safe embedding.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload
@@ -63,7 +62,7 @@ func ValidateFormActionURL(rawURL string) error {
 	}
 
 	// In test mode, allow private IPs (httptest.NewServer uses 127.0.0.1)
-	if SkipSSRFCheck {
+	if SkipSSRFCheckEnabled() {
 		return nil
 	}
 
@@ -88,8 +87,9 @@ func ValidateCookieHeader(cookies string) error {
 	return nil
 }
 
-// ValidatePathForOSAutomation rejects file paths containing shell metacharacters
-// that could be used for command injection in OS automation scripts.
+// ValidatePathForOSAutomation rejects path bytes that can break script framing
+// in OS automation handlers. Shell metacharacters are allowed because callers
+// use transport-specific escaping/sanitization before script execution.
 func ValidatePathForOSAutomation(filePath string) error {
 	// Reject null bytes (path traversal via null byte injection)
 	if strings.ContainsRune(filePath, 0) {
@@ -120,12 +120,12 @@ func SanitizeForContentDisposition(s string) string {
 	return s
 }
 
-// SanitizeForAppleScript escapes a string for safe embedding in AppleScript.
-// Replaces backslashes and double quotes to prevent command injection.
+// SanitizeForAppleScript escapes string delimiters for safe embedding in
+// AppleScript double-quoted string literals.
 func SanitizeForAppleScript(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	return s
+	escaped := strings.ReplaceAll(s, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return escaped
 }
 
 // SanitizeForSendKeys escapes a string for safe use with SendKeys.

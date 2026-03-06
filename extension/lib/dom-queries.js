@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Structured DOM querying, page info extraction, and accessibility auditing via axe-core for the inject context.
  * Docs: docs/features/feature/query-dom/index.md
  */
 /**
@@ -150,22 +149,35 @@ export async function getPageInfo() {
  */
 function loadAxeCore() {
     return new Promise((resolve, reject) => {
-        if (window.axe) {
+        const hasAxe = () => typeof window !== 'undefined' && !!window.axe;
+        if (hasAxe()) {
             resolve();
             return;
         }
+        let settled = false;
+        const finish = (fn) => {
+            if (settled)
+                return;
+            settled = true;
+            fn();
+        };
         // Wait for axe-core to be injected by content script (which has chrome.runtime API access)
         // Note: This function runs in page context (inject script), so we can't call chrome.runtime.getURL()
         const checkInterval = setInterval(() => {
-            if (window.axe) {
-                clearInterval(checkInterval);
-                resolve();
+            if (hasAxe()) {
+                finish(() => {
+                    clearInterval(checkInterval);
+                    clearTimeout(loadTimeout);
+                    resolve();
+                });
             }
         }, scaleTimeout(100));
         // Timeout after 5 seconds
-        setTimeout(() => {
-            clearInterval(checkInterval);
-            reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'));
+        const loadTimeout = setTimeout(() => {
+            finish(() => {
+                clearInterval(checkInterval);
+                reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'));
+            });
         }, scaleTimeout(5000));
     });
 }
@@ -189,19 +201,38 @@ export async function runAxeAudit(params) {
     return formatAxeResults(results);
 }
 /**
- * Run axe audit with a timeout
+ * Build an empty partial result with an error message.
+ * Used by timeout and catch paths to avoid duplicated object literals.
+ */
+function emptyPartialResult(errorMessage) {
+    return {
+        violations: [],
+        passes: [],
+        incomplete: [],
+        inapplicable: [],
+        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+        partial: true,
+        error: errorMessage
+    };
+}
+/**
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-    return Promise.race([
-        runAxeAudit(params),
-        new Promise((resolve) => {
-            setTimeout(() => resolve({
-                violations: [],
-                summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                error: 'Accessibility audit timeout'
-            }), timeoutMs);
-        })
-    ]);
+    try {
+        return await Promise.race([
+            runAxeAudit(params),
+            new Promise((resolve) => {
+                setTimeout(() => resolve(emptyPartialResult('Accessibility audit timeout')), timeoutMs);
+            })
+        ]);
+    }
+    catch (err) {
+        // Issue #276: Return partial results with error instead of throwing.
+        // Handles "Axe is already running" and other runtime errors gracefully.
+        return emptyPartialResult(err instanceof Error ? err.message : String(err));
+    }
 }
 /**
  * Format axe-core results into a compact representation

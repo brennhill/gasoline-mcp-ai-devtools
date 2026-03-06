@@ -1,5 +1,5 @@
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Configures stdout/stderr isolation in bridge mode so MCP JSON-RPC framing cannot be corrupted by diagnostic output.
+// Why: Duplicates the original stdout for MCP transport and redirects os.Stdout/Stderr to a wrapper log file.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main
@@ -10,8 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 const bridgeWrapperLogFileName = "bridge-wrapper.log"
@@ -19,18 +20,17 @@ const bridgeWrapperLogFileName = "bridge-wrapper.log"
 var (
 	bridgeIOSetupMu     sync.Mutex
 	bridgeIOConfigured  bool
-	bridgeMCPTransport  *os.File
+	bridgeMCPTransport  atomic.Pointer[os.File] // set once during setup, read on every MCP write
 	bridgeWrapperLogOut *os.File
 )
 
 // activeMCPTransportWriter returns the file used for MCP JSON-RPC transport.
 // In normal mode this is os.Stdout; in bridge isolation mode it's a dedicated
 // duplicate of the original stdout pipe.
+// Lock-free on the read path: uses atomic.Pointer since the value is set once at setup.
 func activeMCPTransportWriter() *os.File {
-	bridgeIOSetupMu.Lock()
-	defer bridgeIOSetupMu.Unlock()
-	if bridgeMCPTransport != nil {
-		return bridgeMCPTransport
+	if f := bridgeMCPTransport.Load(); f != nil {
+		return f
 	}
 	return os.Stdout
 }
@@ -68,7 +68,7 @@ func ensureBridgeIOIsolation(logFileHint string) error {
 		return fmt.Errorf("redirect std streams: %w", redirErr)
 	}
 
-	bridgeMCPTransport = transport
+	bridgeMCPTransport.Store(transport)
 	bridgeWrapperLogOut = logOut
 	bridgeIOConfigured = true
 	setStderrSink(logOut)

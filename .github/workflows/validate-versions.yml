@@ -2,9 +2,9 @@ name: Validate Versions
 
 on:
   push:
-    branches: [main, next]
+    branches: [main, UNSTABLE]
   pull_request:
-    branches: [main, next]
+    branches: [main, UNSTABLE]
   workflow_call: # Allow other workflows to call this
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
           import sys
           import tomllib
 
-          path = "pypi/gasoline-mcp/pyproject.toml"
+          path = "pypi/gasoline-agentic-browser/pyproject.toml"
           with open(path, "rb") as fh:
               data = tomllib.load(fh)
 
@@ -69,7 +69,7 @@ jobs:
           # Critical files that MUST match VERSION
           declare -A CRITICAL_FILES=(
             ["cmd/dev-console/main.go"]="version = \"$VERSION\""
-            ["npm/gasoline-mcp/package.json"]="\"version\": \"$VERSION\""
+            ["npm/gasoline-agentic-browser/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-arm64/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-x64/package.json"]="\"version\": \"$VERSION\""
             ["npm/linux-arm64/package.json"]="\"version\": \"$VERSION\""
@@ -77,12 +77,12 @@ jobs:
             ["npm/win32-x64/package.json"]="\"version\": \"$VERSION\""
             ["extension/manifest.json"]="\"version\": \"$VERSION\""
             ["extension/package.json"]="\"version\": \"$VERSION\""
-            ["pypi/gasoline-mcp/pyproject.toml"]="version = \"$VERSION\""
-            ["pypi/gasoline-mcp-darwin-arm64/pyproject.toml"]="version = \"$VERSION\""
-            ["pypi/gasoline-mcp-darwin-x64/pyproject.toml"]="version = \"$VERSION\""
-            ["pypi/gasoline-mcp-linux-arm64/pyproject.toml"]="version = \"$VERSION\""
-            ["pypi/gasoline-mcp-linux-x64/pyproject.toml"]="version = \"$VERSION\""
-            ["pypi/gasoline-mcp-win32-x64/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser-darwin-arm64/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser-darwin-x64/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser-linux-arm64/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser-linux-x64/pyproject.toml"]="version = \"$VERSION\""
+            ["pypi/gasoline-agentic-browser-win32-x64/pyproject.toml"]="version = \"$VERSION\""
             ["server/package.json"]="\"version\": \"$VERSION\""
           )
 
@@ -104,9 +104,9 @@ jobs:
           echo ""
 
           # Check optionalDependencies in main package.json
-          echo "Checking optionalDependencies in npm/gasoline-mcp/package.json..."
+          echo "Checking optionalDependencies in npm/gasoline-agentic-browser/package.json..."
           OPTIONAL_DEPS=$(node -e "
-            const pkg = require('./npm/gasoline-mcp/package.json');
+            const pkg = require('./npm/gasoline-agentic-browser/package.json');
             const deps = pkg.optionalDependencies || {};
             let errors = 0;
             for (const [name, version] of Object.entries(deps)) {

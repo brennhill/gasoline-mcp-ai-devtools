@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Extension startup initialization -- loads settings, installs listeners, recovers state after service worker restart, and initiates first connection.
+ * Docs: docs/features/feature/cold-start-queuing/index.md
  */
 
 /**
@@ -15,7 +12,6 @@
 import {
   debugLog,
   DebugCategory,
-  diagnosticLog,
   setDebugMode,
   resetSyncClientConnection,
   sharedServerCircuitBreaker,
@@ -31,7 +27,7 @@ import {
   clearDebugLog,
   sendStatusPingWrapper,
   DEFAULT_SERVER_URL
-} from './index'
+} from './index.js'
 import {
   getServerUrl,
   getConnectionStatus,
@@ -48,7 +44,7 @@ import {
   setAiWebPilotEnabledCache,
   setAiWebPilotCacheInitialized,
   setPilotInitCallback
-} from './state'
+} from './state.js'
 import {
   isSourceMapEnabled,
   setSourceMapEnabled,
@@ -61,7 +57,7 @@ import {
   flushErrorGroups,
   cleanupStaleErrorGroups,
   clearScreenshotTimestamps
-} from './state-manager'
+} from './state-manager.js'
 import {
   loadDebugModeState,
   installStartupListener,
@@ -73,17 +69,22 @@ import {
   installTabRemovedListener,
   installTabUpdatedListener,
   installDrawModeCommandListener,
+  installRecordingShortcutCommandListener,
+  installScreenRecordingCommandListener,
+  installContextMenus,
   saveSetting,
   forwardToAllContentScripts,
-  getTrackedTabInfo,
+  getActiveTab,
+  sendTabToast,
   handleTrackedTabClosed,
   handleTrackedTabUrlChange
-} from './event-listeners'
-import { handlePendingQuery } from './pending-queries'
-import type { MessageHandlerDependencies } from './message-handlers'
-import { installMessageListener, broadcastTrackingState } from './message-handlers'
-import { captureScreenshot, updateBadge } from './communication'
-import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils'
+} from './event-listeners.js'
+import { installPushCommandListener, installChatCommandListener } from './push-handler.js'
+import { isRecording, startRecording, stopRecording } from './recording.js'
+import type { MessageHandlerDependencies } from './message-handlers.js'
+import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
+import { captureScreenshot, updateBadge } from './communication.js'
+import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js'
 
 /**
  * Initialize the extension on startup
@@ -119,6 +120,12 @@ async function initializeExtensionAsync(): Promise<void> {
     }
     // Mark the current state version
     await markStateVersion()
+
+    // Allow content scripts to access chrome.storage.session (required for terminal state persistence).
+    // Without this, content scripts silently fail to read/write session storage.
+    if (chrome.storage.session?.setAccessLevel) {
+      await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
+    }
 
     // ============= STEP 2: Load debug mode =============
     const debugEnabled = await loadDebugModeState()
@@ -172,19 +179,10 @@ async function initializeExtensionAsync(): Promise<void> {
         } else if (oldTabId !== null) {
           // Tracking was lost — notify user on active tab
           console.log('[Gasoline] Tracking lost for tab', oldTabId)
-          chrome.tabs
-            .query({ active: true, currentWindow: true })
-            .then((tabs) => {
-              if (tabs[0]?.id) {
-                chrome.tabs
-                  .sendMessage(tabs[0].id, {
-                    type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Tab tracking lost',
-                    detail: 'Re-enable in Gasoline popup',
-                    state: 'warning',
-                    duration_ms: 5000
-                  })
-                  .catch(() => {})
+          getActiveTab()
+            .then((tab) => {
+              if (tab?.id) {
+                sendTabToast(tab.id, 'Tab tracking lost', 'Re-enable in Gasoline popup', 'warning', 5000)
               }
             })
             .catch(() => {})
@@ -246,15 +244,7 @@ async function initializeExtensionAsync(): Promise<void> {
       handleLogMessage,
       handleClearLogs,
       captureScreenshot: (tabId, relatedErrorId) =>
-        captureScreenshot(
-          tabId,
-          getServerUrl(),
-          relatedErrorId,
-          null,
-          canTakeScreenshot,
-          recordScreenshot,
-          debugLog
-        ),
+        captureScreenshot(tabId, getServerUrl(), relatedErrorId, null, canTakeScreenshot, recordScreenshot, debugLog),
       checkConnectionAndUpdate,
       clearSourceMapCache,
 
@@ -297,6 +287,26 @@ async function initializeExtensionAsync(): Promise<void> {
 
     // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
     installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+
+    // ============= STEP 9.7: Install push keyboard shortcut listeners =============
+    installPushCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+    installChatCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+
+    // ============= STEP 9.8: Install recording keyboard shortcut listener =============
+    installRecordingShortcutCommandListener(
+      {
+        isRecording,
+        startRecording,
+        stopRecording
+      },
+      (msg) => console.log(`[Gasoline] ${msg}`)
+    )
+
+    // ============= STEP 9.9: Install screen recording shortcut + context menus =============
+    const screenRecHandlers = { isRecording, startRecording, stopRecording }
+    const actionRecHandlers = { isRecording, startRecording, stopRecording }
+    installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
+    installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
 
     // ============= STEP 10: Set disconnected badge immediately =============
     // Badge must reflect disconnected state BEFORE the async health check.

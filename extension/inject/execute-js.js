@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Purpose: JavaScript execution sandbox for evaluating arbitrary scripts in page context with safe serialization and timeout support.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 import { createDeferredPromise } from '../lib/timeout-utils.js';
 /**
@@ -25,8 +23,52 @@ function serializeObject(obj, depth, seen) {
         const node = obj;
         return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
     }
+    // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
+    // that Object.keys() misses. Their toJSON() returns a plain object.
+    if (typeof obj.toJSON === 'function') {
+        try {
+            return safeSerializeForExecute(obj.toJSON(), depth + 1, seen);
+        }
+        catch {
+            // Fall through to Object.keys() enumeration
+        }
+    }
     const result = {};
     const keys = Object.keys(obj).slice(0, 50);
+    // Host objects like DOMRect/CSSStyleDeclaration expose values via prototype getters,
+    // so Object.keys() can be empty even when useful primitive fields exist.
+    if (keys.length === 0) {
+        try {
+            const proto = Object.getPrototypeOf(obj);
+            if (proto && proto !== Object.prototype) {
+                const hostResult = {};
+                const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
+                for (const key of propNames) {
+                    if (key === 'constructor')
+                        continue;
+                    try {
+                        const hostValue = obj[key];
+                        const hostType = typeof hostValue;
+                        if (hostValue === undefined || hostType === 'function')
+                            continue;
+                        if (hostType === 'string' || hostType === 'number' || hostType === 'boolean' || hostValue === null) {
+                            hostResult[key] = hostValue;
+                        }
+                    }
+                    catch {
+                        // Ignore getter access errors and continue.
+                    }
+                    if (Object.keys(hostResult).length >= 50)
+                        break;
+                }
+                if (Object.keys(hostResult).length > 0)
+                    return hostResult;
+            }
+        }
+        catch {
+            // Fall through to default enumeration.
+        }
+    }
     for (const key of keys) {
         try {
             result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);

@@ -1,0 +1,75 @@
+<svg
+  width="1240"
+  height="380"
+  viewBox="0 0 1240 380"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">Gasoline hover widget</title>
+  <desc id="desc">A compact hover widget with action buttons and a flame badge, styled to match the live interface.</desc>
+
+  <defs>
+    <pattern id="dot-grid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#D3D8E2" />
+    </pattern>
+    <linearGradient id="panel-fill" x1="168" y1="122" x2="1088" y2="254" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5F8FC" />
+      <stop offset="1" stop-color="#F7FAFF" />
+    </linearGradient>
+    <linearGradient id="track-fill" x1="182" y1="136" x2="904" y2="238" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EEF2F8" />
+      <stop offset="1" stop-color="#E9EEF6" />
+    </linearGradient>
+    <filter id="soft-shadow" x="132" y="98" width="980" height="190" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#1A202B" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <rect width="1240" height="380" fill="#F4F4F2" />
+  <rect x="0" y="0" width="620" height="380" fill="#ECEEEA" />
+  <rect x="620" y="0" width="620" height="380" fill="url(#dot-grid)" opacity="0.8" />
+
+  <path d="M0 0H215C235 0 251 16 251 36V92" stroke="#ACAB9F" stroke-width="4" fill="none" />
+  <path d="M412 0V112" stroke="#B5B4AB" stroke-width="3" />
+
+  <g filter="url(#soft-shadow)">
+    <rect x="160" y="122" width="920" height="132" rx="34" fill="url(#panel-fill)" stroke="#D8DEE8" stroke-width="2.5" />
+    <rect x="176" y="136" width="748" height="104" rx="28" fill="url(#track-fill)" stroke="#D7DEEA" stroke-width="2" />
+  </g>
+
+  <rect x="186" y="146" width="172" height="84" rx="20" fill="#E9EEF6" stroke="#CBD3DF" stroke-width="2" />
+  <rect x="366" y="146" width="172" height="84" rx="20" fill="#E9EEF6" stroke="#CBD3DF" stroke-width="2" />
+  <rect x="546" y="146" width="172" height="84" rx="20" fill="#E9EEF6" stroke="#CBD3DF" stroke-width="2" />
+  <rect x="826" y="146" width="172" height="84" rx="20" fill="#E9EEF6" stroke="#CBD3DF" stroke-width="2" />
+
+  <path d="M248 174L230 192L251 213L292 172L316 180L322 199L281 240L260 249L244 247L199 202L205 178L230 161L248 174Z" stroke="#2A3343" stroke-width="5.5" stroke-linejoin="round" />
+  <circle cx="452" cy="188" r="20" stroke="#2A3343" stroke-width="5.5" />
+  <path d="M452 158V172M452 204V218M422 188H436M468 188H482" stroke="#2A3343" stroke-width="5.5" stroke-linecap="round" />
+  <path d="M606 170H664L633 188L664 206H606" stroke="#2A3343" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+
+  <circle cx="766" cy="180" r="3" fill="#8D97A8" />
+  <circle cx="766" cy="192" r="3" fill="#8D97A8" />
+  <circle cx="766" cy="204" r="3" fill="#8D97A8" />
+
+  <g transform="translate(882 188)">
+    <circle r="24" fill="#2A3343" />
+    <circle r="12.5" fill="#EEF2F8" />
+    <g stroke="#2A3343" stroke-width="4.5" stroke-linecap="round">
+      <path d="M0 -38V-30" />
+      <path d="M27 -27L22 -22" />
+      <path d="M38 0H30" />
+      <path d="M27 27L22 22" />
+      <path d="M0 38V30" />
+      <path d="M-27 27L-22 22" />
+      <path d="M-38 0H-30" />
+      <path d="M-27 -27L-22 -22" />
+    </g>
+  </g>
+
+  <circle cx="1020" cy="188" r="62" fill="#F5EBDD" />
+  <circle cx="1020" cy="188" r="52" fill="#121822" />
+  <path d="M1020 146C1037 168 1048 182 1048 204C1048 234 1036 253 1020 253C1004 253 992 234 992 204C992 182 1003 168 1020 146Z" fill="#F6B332" />
+  <path d="M1020 161C1032 176 1039 187 1039 205C1039 227 1031 240 1020 240C1009 240 1001 227 1001 205C1001 187 1008 176 1020 161Z" fill="#FFE86D" />
+</svg>

@@ -1,6 +1,5 @@
-// Purpose: Validate thirdparty_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for third-party script origin analysis.
+// Docs: docs/features/feature/api-schema/index.md
 
 package analysis
 

@@ -3,10 +3,12 @@ feature: Context Streaming
 status: proposed
 tool: observe
 mode: real-time, push-notifications
-version: v6.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-context-streaming
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Product Spec: Context Streaming (#5)
@@ -203,7 +205,7 @@ await gasoline.configure({
 
 - **Latency:** <100ms from event occurrence to AI notification
 - **Completeness:** 100% of actionable events captured
-- **Efficiency:** Average event <500 bytes; 10-100x less data than polling
+- **Efficiency:** Average event <500 bytes; 10-to-100 times less data than polling
 - **Diagnosis Speed:** 3-5x faster failure diagnosis vs polling
 - **Reliability:** 99.9% delivery rate; no lost events
 

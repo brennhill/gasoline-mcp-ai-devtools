@@ -4,6 +4,9 @@ description: "Fast-start MCP mode, port diagnostics, and improved error messages
 date: 2026-02-06
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.7.5
@@ -58,4 +61,4 @@ npx gasoline-mcp@5.7.5
 
 ## Full Changelog
 
-See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.7.5).
+See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.5).

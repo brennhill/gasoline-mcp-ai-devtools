@@ -16,8 +16,132 @@ $REPO = "brennhill/gasoline-mcp-ai-devtools"
 $INSTALL_DIR = Join-Path $HOME ".gasoline"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
 $EXT_DIR = Join-Path $INSTALL_DIR "extension"
+$GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
+$STRICT_CHECKSUM = $env:GASOLINE_INSTALL_STRICT -eq "1"
+$TEMP_TOKEN = [Guid]::NewGuid().ToString("N")
+$STAGE_EXT_DIR = Join-Path $INSTALL_DIR ".extension-stage-$TEMP_TOKEN"
+$BACKUP_EXT_DIR = Join-Path $INSTALL_DIR ".extension-backup-$TEMP_TOKEN"
+$INSTALL_WARNINGS = New-Object System.Collections.Generic.List[string]
+$script:WARNINGS_PRINTED = $false
+
+function Add-InstallWarning {
+    param([string]$Message)
+    if (-not [string]::IsNullOrWhiteSpace($Message)) {
+        [void]$INSTALL_WARNINGS.Add($Message)
+    }
+}
+
+function Show-InstallWarnings {
+    if ($script:WARNINGS_PRINTED -or $INSTALL_WARNINGS.Count -eq 0) {
+        return
+    }
+    $script:WARNINGS_PRINTED = $true
+
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host "🚨 INSTALL WARNING: MANUAL ACTION REQUIRED" -ForegroundColor Red
+    foreach ($warning in $INSTALL_WARNINGS) {
+        Write-Host " - $warning" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "The old server may still be running. Kill it manually:" -ForegroundColor Red
+    Write-Host "  Get-Process gasoline -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
+    Write-Host "  taskkill /F /IM gasoline.exe /T" -ForegroundColor Yellow
+    Write-Host "  Remove-Item `"$GASOLINE_BIN`" -Force" -ForegroundColor Yellow
+    Write-Host "Then re-run installer:" -ForegroundColor Red
+    Write-Host "  irm https://raw.githubusercontent.com/$REPO/STABLE/scripts/install.ps1 | iex" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Red
+}
+
+function Get-GasolineServerPids {
+    $pids = @()
+    $targetPath = [System.IO.Path]::GetFullPath($GASOLINE_BIN).ToLowerInvariant()
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'gasoline.exe'" -ErrorAction SilentlyContinue
+
+    foreach ($proc in $processes) {
+        if (-not $proc.ProcessId) { continue }
+
+        if ([string]::IsNullOrWhiteSpace($proc.ExecutablePath)) {
+            # No path info: still kill to avoid stale lock survivors.
+            $pids += [int]$proc.ProcessId
+            continue
+        }
+
+        try {
+            $procPath = [System.IO.Path]::GetFullPath($proc.ExecutablePath).ToLowerInvariant()
+            if ($procPath -eq $targetPath) {
+                $pids += [int]$proc.ProcessId
+            }
+        } catch {
+            $pids += [int]$proc.ProcessId
+        }
+    }
+
+    return @($pids | Sort-Object -Unique)
+}
+
+function Stop-GasolineServerProcesses {
+    $targetPids = @(Get-GasolineServerPids)
+    if ($targetPids.Count -eq 0) {
+        return $true
+    }
+
+    Write-Host "🛑 Stopping running Gasoline server: PID(s) $($targetPids -join ', ')"
+    foreach ($procId in $targetPids) {
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    }
+
+    Start-Sleep -Milliseconds 350
+    $remaining = @(Get-GasolineServerPids)
+    if ($remaining.Count -eq 0) {
+        return $true
+    }
+
+    Write-Host "⚠️  Escalating termination with taskkill..." -ForegroundColor Yellow
+    foreach ($procId in $remaining) {
+        & taskkill /F /PID $procId /T *> $null
+    }
+
+    Start-Sleep -Milliseconds 500
+    $remaining = @(Get-GasolineServerPids)
+    if ($remaining.Count -eq 0) {
+        return $true
+    }
+
+    Add-InstallWarning "Old server is still running after forced stop attempt (PID(s): $($remaining -join ', '))."
+    return $false
+}
+
+function Replace-GasolineBinary {
+    param(
+        [string]$StagePath,
+        [string]$LivePath
+    )
+
+    $maxAttempts = 4
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        [void](Stop-GasolineServerProcesses)
+        try {
+            if (Test-Path $LivePath) {
+                Remove-Item -Path $LivePath -Force -ErrorAction Stop
+            }
+            Move-Item -Path $StagePath -Destination $LivePath -Force -ErrorAction Stop
+            return $true
+        } catch {
+            if ($attempt -lt $maxAttempts) {
+                Write-Host "⚠️  Binary replace attempt $attempt/$maxAttempts failed; retrying..." -ForegroundColor Yellow
+                Start-Sleep -Milliseconds (400 * $attempt)
+                continue
+            }
+            Add-InstallWarning "Could not replace $LivePath due to an active file/process lock."
+            return $false
+        }
+    }
+
+    return $false
+}
 
 Write-Host ""
 Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
@@ -28,21 +152,28 @@ Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
 Write-Host ""
 Write-Host "🔥 Gasoline Installer" -ForegroundColor DarkYellow
 Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
-function Reset-ExtensionDir {
-    if (Test-Path $EXT_DIR) {
-        Remove-Item -Path (Join-Path $EXT_DIR '*') -Recurse -Force -ErrorAction SilentlyContinue
-    } else {
-        New-Item -Path $EXT_DIR -ItemType Directory -Force | Out-Null
+if ($STRICT_CHECKSUM) {
+    Write-Host "🔒 Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)" -ForegroundColor Yellow
+}
+
+function New-ExtensionStage {
+    if (Test-Path $STAGE_EXT_DIR) {
+        Remove-Item -Path $STAGE_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
     }
+    New-Item -Path $STAGE_EXT_DIR -ItemType Directory -Force | Out-Null
 }
 
 function Test-ExtensionStage {
+    param(
+        [string]$BaseDir = $EXT_DIR
+    )
+
     $required = @(
-        (Join-Path $EXT_DIR "manifest.json"),
-        (Join-Path $EXT_DIR "background\init.js"),
-        (Join-Path $EXT_DIR "content\script-injection.js"),
-        (Join-Path $EXT_DIR "inject\index.js"),
-        (Join-Path $EXT_DIR "theme-bootstrap.js")
+        (Join-Path $BaseDir "manifest.json"),
+        (Join-Path $BaseDir "background\init.js"),
+        (Join-Path $BaseDir "content\script-injection.js"),
+        (Join-Path $BaseDir "inject\index.js"),
+        (Join-Path $BaseDir "theme-bootstrap.js")
     )
     foreach ($path in $required) {
         if (-not (Test-Path $path)) {
@@ -52,6 +183,41 @@ function Test-ExtensionStage {
     return $true
 }
 
+function Promote-ExtensionStage {
+    if (-not (Test-ExtensionStage -BaseDir $STAGE_EXT_DIR)) {
+        throw "Extension staging failed: required module files are missing from staging."
+    }
+
+    if (Test-Path $BACKUP_EXT_DIR) {
+        Remove-Item -Path $BACKUP_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    if (Test-Path $EXT_DIR) {
+        Move-Item -Path $EXT_DIR -Destination $BACKUP_EXT_DIR -Force
+    }
+
+    try {
+        Move-Item -Path $STAGE_EXT_DIR -Destination $EXT_DIR -Force
+    } catch {
+        if (Test-Path $BACKUP_EXT_DIR) {
+            Move-Item -Path $BACKUP_EXT_DIR -Destination $EXT_DIR -Force -ErrorAction SilentlyContinue
+        }
+        throw
+    }
+
+    if (-not (Test-ExtensionStage -BaseDir $EXT_DIR)) {
+        Remove-Item -Path $EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $BACKUP_EXT_DIR) {
+            Move-Item -Path $BACKUP_EXT_DIR -Destination $EXT_DIR -Force -ErrorAction SilentlyContinue
+        }
+        throw "Promoted extension failed validation; previous extension restored."
+    }
+
+    if (Test-Path $BACKUP_EXT_DIR) {
+        Remove-Item -Path $BACKUP_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # 1. Fetch Version: Get the latest stable version tag from GitHub.
 Write-Host "🔍 Checking for updates..."
 $VERSION = (Invoke-RestMethod -Uri $VERSION_URL).Trim()
@@ -59,74 +225,124 @@ Write-Host "✨ Version: v$VERSION (win32-x64)"
 
 # 2. Directory Setup: Ensure the target installation folders exist on the filesystem.
 if (-not (Test-Path $BIN_DIR)) { New-Item -Path $BIN_DIR -ItemType Directory -Force }
-Reset-ExtensionDir
+if (-not (Test-Path $INSTALL_DIR)) { New-Item -Path $INSTALL_DIR -ItemType Directory -Force | Out-Null }
 Write-Host "📁 Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
-$GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
+$INSTALL_BIN = $GASOLINE_BIN
 $BINARY_NAME = "gasoline-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
+$STAGED_BIN = "$GASOLINE_BIN.tmp.$TEMP_TOKEN"
 
 Write-Host "⬇️  Downloading latest binary..."
 # Download to a temporary '.tmp' file to ensure an atomic replacement later.
-Invoke-WebRequest -Uri $BINARY_URL -OutFile "$GASOLINE_BIN.tmp"
+if (Test-Path $STAGED_BIN) {
+    Remove-Item -Path $STAGED_BIN -Force -ErrorAction SilentlyContinue
+}
+Invoke-WebRequest -Uri $BINARY_URL -OutFile $STAGED_BIN
 
 # 4. Integrity Verification: Verify the SHA-256 hash against the official release manifest.
+ $checksumVerified = $false
 try {
     # Fetch the checksum manifest and parse the hash for the windows binary.
     $checksums = Invoke-RestMethod -Uri $CHECKSUM_URL
     $expectedLine = ($checksums -split "`n") | Where-Object { $_ -match $BINARY_NAME }
-    if ($expectedLine) {
-        $expectedHash = ($expectedLine -split "\s+")[0]
-        # Calculate the hash of the downloaded file using built-in Windows security tools.
-        $actualHash = (Get-FileHash "$GASOLINE_BIN.tmp" -Algorithm SHA256).Hash.ToLower()
-        if ($expectedHash -ne $actualHash) {
-            Write-Error "❌ Checksum verification failed! The download may be corrupted."
-        }
-        Write-Host "✅ Checksum verified."
+    if (-not $expectedLine) {
+        throw "checksums.txt did not include $BINARY_NAME"
     }
+
+    $expectedHash = ($expectedLine -split "\s+")[0].ToLower()
+    # Calculate the hash of the downloaded file using built-in Windows security tools.
+    $actualHash = (Get-FileHash $STAGED_BIN -Algorithm SHA256).Hash.ToLower()
+    if ($expectedHash -ne $actualHash) {
+        throw "Checksum mismatch for $BINARY_NAME"
+    }
+
+    $checksumVerified = $true
+    Write-Host "✅ Checksum verified."
 } catch {
-    # Non-fatal warning if checksums cannot be verified (e.g., firewall issues).
-    Write-Host "⚠️  Checksum verification skipped (could not fetch manifest)." -ForegroundColor Yellow
+    $msg = $_.Exception.Message
+    if ($msg -like "*mismatch*") {
+        throw "❌ Checksum verification failed! The download may be corrupted or tampered with."
+    }
+    if ($STRICT_CHECKSUM) {
+        throw "❌ Strict checksum mode: $msg"
+    }
+    # Non-fatal warning if checksums cannot be verified (e.g., firewall issues) and strict mode is disabled.
+    Write-Host "⚠️  Checksum verification skipped: $msg" -ForegroundColor Yellow
 }
 
-# Atomically replace the old binary with the newly downloaded and verified version.
-Move-Item -Path "$GASOLINE_BIN.tmp" -Destination $GASOLINE_BIN -Force
+if ($STRICT_CHECKSUM -and -not $checksumVerified) {
+    throw "❌ Strict checksum mode: verification did not complete successfully."
+}
+
+# Force-stop old server, then replace binary with retries for lock contention.
+if (-not (Replace-GasolineBinary -StagePath $STAGED_BIN -LivePath $GASOLINE_BIN)) {
+    $FALLBACK_BIN = Join-Path $BIN_DIR "gasoline.new.exe"
+    try {
+        Move-Item -Path $STAGED_BIN -Destination $FALLBACK_BIN -Force -ErrorAction Stop
+        $INSTALL_BIN = $FALLBACK_BIN
+        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because gasoline.exe could not be replaced."
+    } catch {
+        Add-InstallWarning "Downloaded update could not be installed. gasoline.exe is likely still locked by a running process."
+    }
+} else {
+    Write-Host "✅ Binary replaced: $GASOLINE_BIN"
+}
 
 # 5. Extension Staging: Refresh the browser extension files.
 # Tries the optimized release asset first, falling back to the full source zip if missing.
 Write-Host "⬇️  Refreshing browser extension..."
 $EXT_ZIP_NAME = "gasoline-extension-v$VERSION.zip"
 $EXT_ZIP_URL = "https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
-$TEMP_ZIP = Join-Path $env:TEMP "gasoline-ext.zip"
+$TEMP_ZIP = Join-Path $env:TEMP "gasoline-ext-$TEMP_TOKEN.zip"
+$TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src-$TEMP_TOKEN"
 
 try {
     Invoke-WebRequest -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
-    Reset-ExtensionDir
-    Expand-Archive -Path $TEMP_ZIP -DestinationPath $EXT_DIR -Force
-    if (-not (Test-ExtensionStage)) {
+    New-ExtensionStage
+    Expand-Archive -Path $TEMP_ZIP -DestinationPath $STAGE_EXT_DIR -Force
+    if (-not (Test-ExtensionStage -BaseDir $STAGE_EXT_DIR)) {
         throw "Release extension zip missing required module files"
     }
-    Write-Host "✅ Staged extension directory: $EXT_DIR"
 } catch {
     # Fallback logic for older releases or bad extension zip assets.
     Write-Host "⚠️  Falling back to source zip due to missing/incomplete extension zip" -ForegroundColor Yellow
     $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/heads/STABLE.zip"
     Invoke-WebRequest -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
-    $TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src"
     if (Test-Path $TEMP_EXTRACT) { Remove-Item -Path $TEMP_EXTRACT -Recurse -Force }
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $TEMP_EXTRACT -Force
     # Find the extracted folder (named repo-version) and copy the extension subdirectory.
-    $extractRoot = Get-ChildItem -Path $TEMP_EXTRACT | Select-Object -First 1
-    Reset-ExtensionDir
-    Copy-Item -Path (Join-Path $extractRoot.FullName "extension\*") -Destination $EXT_DIR -Recurse -Force
-    if (-not (Test-ExtensionStage)) {
+    $extractRoot = Get-ChildItem -Path $TEMP_EXTRACT | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+    if (-not $extractRoot) {
+        throw "Source zip extraction failed: missing root directory."
+    }
+
+    $sourceExtensionDir = Join-Path $extractRoot.FullName "extension"
+    if (-not (Test-Path $sourceExtensionDir)) {
+        throw "Source zip extraction failed: missing extension directory."
+    }
+
+    New-ExtensionStage
+    Copy-Item -Path (Join-Path $sourceExtensionDir "*") -Destination $STAGE_EXT_DIR -Recurse -Force
+    if (-not (Test-ExtensionStage -BaseDir $STAGE_EXT_DIR)) {
         throw "Extension staging failed: required module files are missing."
     }
-    Write-Host "✅ Staged extension directory: $EXT_DIR"
-    # Clean up the deep source extraction.
-    Remove-Item -Path $TEMP_EXTRACT -Recurse -Force
+}
+
+Promote-ExtensionStage
+Write-Host "✅ Staged extension directory: $EXT_DIR"
+
+# Clean up staging temp directories.
+if (Test-Path $TEMP_EXTRACT) {
+    Remove-Item -Path $TEMP_EXTRACT -Recurse -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path $STAGE_EXT_DIR) {
+    Remove-Item -Path $STAGE_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path $BACKUP_EXT_DIR) {
+    Remove-Item -Path $BACKUP_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
 }
 # Cleanup the temporary zip file.
 Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
@@ -138,4 +354,12 @@ Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
 #   - Reset any running Gasoline processes.
 #   - Display final success message and extension instructions.
 Write-Host "🚀 Finalizing configuration..."
-& $GASOLINE_BIN --install
+if (-not (Test-Path $INSTALL_BIN)) {
+    Add-InstallWarning "Installer could not locate an executable to run for --install."
+    Show-InstallWarnings
+    throw "Gasoline binary install failed. See warning panel for manual recovery steps."
+}
+
+& $INSTALL_BIN --install
+[void](Stop-GasolineServerProcesses)
+Show-InstallWarnings

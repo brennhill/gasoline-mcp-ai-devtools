@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Extracts all links from the current page and checks their health via HEAD/GET/no-cors fallback chain, categorizing results by status.
  * Docs: docs/features/feature/link-health/index.md
  */
 
@@ -257,7 +256,13 @@ interface FetchAttempt {
 }
 
 /** Sentinel response for failed fetch attempts. */
-const FAILED_RESPONSE: Response = { status: 0, ok: false, redirected: false, url: '', headers: new Headers() } as Response
+const FAILED_RESPONSE: Response = {
+  status: 0,
+  ok: false,
+  redirected: false,
+  url: '',
+  headers: new Headers()
+} as Response
 
 /**
  * Attempt a fetch and return a normalized result.

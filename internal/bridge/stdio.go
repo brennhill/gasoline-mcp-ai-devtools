@@ -1,5 +1,4 @@
-// Purpose: Implements framed stdio transport, timeouts, and bridge connection lifecycle.
-// Why: Protects MCP request reliability by isolating framing, timeout, and reconnect concerns.
+// Purpose: Reads MCP messages from stdin supporting both line-delimited JSON and Content-Length framing.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package bridge
@@ -23,14 +22,6 @@ const (
 	// StdioFramingContentLength is MCP Content-Length framing.
 	StdioFramingContentLength
 )
-
-// ReadStdioMessage reads one MCP message from a buffered reader.
-// Supports both line-delimited JSON and Content-Length framed messages.
-// maxBodySize caps the Content-Length value to prevent memory exhaustion.
-func ReadStdioMessage(reader *bufio.Reader, maxBodySize int) ([]byte, error) {
-	msg, _, err := ReadStdioMessageWithMode(reader, maxBodySize)
-	return msg, err
-}
 
 // ReadStdioMessageWithMode reads one MCP message and returns the detected framing mode.
 // Supports both line-delimited JSON and Content-Length framed messages.

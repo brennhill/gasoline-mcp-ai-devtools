@@ -1,7 +1,7 @@
 {
-  "name": "gasoline-mcp",
-  "version": "0.7.10",
-  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
+  "name": "gasoline-agentic-browser",
+  "version": "0.8.0",
+  "description": "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",
     "logs",
@@ -16,11 +16,11 @@
   ],
   "homepage": "https://cookwithgasoline.com",
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
+    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/brennhill/gasoline-mcp-ai-devtools.git"
+    "url": "git+https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git"
   },
   "license": "AGPL-3.0-only",
   "author": "Brenn Hill",

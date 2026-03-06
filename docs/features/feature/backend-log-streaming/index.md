@@ -4,7 +4,7 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
@@ -17,6 +17,7 @@ code_paths:
   - internal/capture/enhanced_actions.go
   - internal/capture/enhanced-actions-types.go
   - internal/capture/extension_log_redaction.go
+  - internal/capture/extension_log_store.go
   - internal/capture/extension_logs.go
   - internal/capture/extension_state.go
   - internal/capture/extension-logging-types.go
@@ -41,6 +42,7 @@ code_paths:
   - internal/capture/settings.go
   - internal/capture/status.go
   - internal/capture/sync.go
+  - internal/capture/sync_processing.go
   - internal/capture/test_helpers.go
   - internal/capture/testhelpers.go
   - internal/capture/ttl.go
@@ -48,9 +50,22 @@ code_paths:
   - internal/capture/types.go
   - internal/capture/websocket-types.go
   - internal/capture/websocket.go
+  - src/background/server.ts
+  - src/background/sync-client.ts
+  - src/lib/daemon-http.ts
   - src/lib/network.ts
   - src/lib/websocket.ts
-test_paths: []
+test_paths:
+  - internal/capture/sync_test.go
+  - internal/capture/sync_test_helpers_test.go
+  - internal/capture/settings_path_test.go
+  - internal/capture/coverage_gaps_part2_test.go
+  - internal/capture/api_contract_test.go
+  - internal/capture/extension_log_store_test.go
+  - internal/capture/buffer_clear_test.go
+  - tests/extension/sync-client.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Backend Log Streaming
@@ -67,6 +82,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -76,4 +92,6 @@ test_paths: []
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- `internal/capture/sync_test_helpers_test.go` centralizes `/sync` request marshaling, transport dispatch, and response decoding helpers.
+- `internal/capture/sync_test.go` now reuses those helpers across heartbeat, adaptive polling, and command lifecycle tests.
+- Additional capture contract tests (`settings_path_test`, `coverage_gaps_part2_test`, `api_contract_test`) now reuse shared helper assertions to keep endpoint/status checks consistent.

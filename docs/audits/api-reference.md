@@ -126,7 +126,7 @@ Read browser console errors.
 {
   "errors": [{"message":"...","source":"...","url":"...","line":0,"column":0,"stack":"...","timestamp":"...","tab_id":0}],
   "count": 0,
-  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"0.0s"}
+  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"0.0s","data_age_ms":0}
 }
 ```
 
@@ -158,7 +158,7 @@ Read browser console logs with cursor pagination.
 {
   "logs": [{"level":"...","message":"...","source":"...","url":"...","line":0,"column":0,"timestamp":"...","tab_id":0}],
   "count": 0,
-  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"0.0s","total":0,"has_more":false,"cursor":"..."}
+  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"0.0s","data_age_ms":0,"total":0,"has_more":false,"cursor":"..."}
 }
 ```
 
@@ -190,9 +190,20 @@ Read all network requests (Performance API: all resource types).
 {
   "entries": [{"url":"...","initiator_type":"...","duration_ms":0,"start_time":0,"transfer_size":0,"decoded_body_size":0,"encoded_body_size":0,"timestamp":"...","page_url":"..."}],
   "count": 0,
-  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"..."}
+  "metadata": {"retrieved_at":"...","is_stale":false,"data_age":"...","data_age_ms":123}
 }
 ```
+
+#### Observe metadata fields
+
+Most buffer-backed observe modes include a `metadata` object with:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `retrieved_at` | string (RFC3339) | Server timestamp when response was assembled |
+| `is_stale` | boolean | True when extension connectivity is stale/disconnected |
+| `data_age` | string | Human-readable age of newest entry (`"0.5s"`, `"no_data"`) |
+| `data_age_ms` | number | Machine-readable age in milliseconds (`-1` when no data) |
 
 ##### observe({what: "network_bodies"})
 
@@ -246,6 +257,17 @@ No additional parameters.
 Read current page URL and title.
 
 No additional parameters.
+
+**Success response**:
+```json
+{
+  "url": "https://example.com/dashboard",
+  "title": "Dashboard",
+  "tab_id": 123,
+  "tab_status": "complete",
+  "page_ready_for_commands": true
+}
+```
 
 ##### observe({what: "tabs"})
 
@@ -707,7 +729,7 @@ End a test boundary.
 |-----------|------|----------|---------|-------------|
 | test_id | string | yes | -- | Test identifier |
 
-##### configure({what: "recording_start"})
+##### configure({what: "event_recording_start"})
 
 Start a flow recording.
 
@@ -717,7 +739,7 @@ Start a flow recording.
 | url | string | no | "about:blank" | URL filter |
 | sensitive_data_enabled | boolean | no | false | Include sensitive data |
 
-##### configure({what: "recording_stop"})
+##### configure({what: "event_recording_stop"})
 
 Stop a flow recording.
 
@@ -943,7 +965,7 @@ Delete a saved state.
 |-----------|------|----------|---------|-------------|
 | snapshot_name | string | yes | -- | State name |
 
-##### interact({what: "record_start"})
+##### interact({what: "screen_recording_start"})
 
 Start screen recording.
 
@@ -953,7 +975,7 @@ Start screen recording.
 | audio | string | no | -- | Audio mode: tab, mic, both |
 | fps | number | no | 15 | FPS (5-60) |
 
-##### interact({what: "record_stop"})
+##### interact({what: "screen_recording_stop"})
 
 Stop screen recording.
 

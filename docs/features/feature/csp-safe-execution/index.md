@@ -4,16 +4,18 @@ feature_id: feature-csp-safe-execution
 status: implemented
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-24
+last_reviewed: 2026-03-05
 code_paths:
   - src/background/csp-safe-types.ts
   - src/background/csp-safe-parser.ts
   - src/background/csp-safe-executor.ts
   - src/background/query-execution.ts
+  - src/inject/execute-js.ts
 test_paths:
-  - tests/extension/csp-safe-parser.test.js
-  - tests/extension/csp-safe-executor.test.js
-  - tests/extension/csp-safe-integration.test.js
+  - extension/background/__tests__/query-execution-serialization.test.js
+  - tests/extension/execute-js.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # CSP-Safe JavaScript Execution
@@ -45,4 +47,10 @@ Tier 2 is the big win: content scripts in ISOLATED world are exempt from page CS
 - Parser: `src/background/csp-safe-parser.ts`
 - Executor: `src/background/csp-safe-executor.ts`
 - Integration: `src/background/query-execution.ts`
-- Tests: `tests/extension/csp-safe-{parser,executor,integration}.test.js`
+- Tests: `extension/background/__tests__/query-execution-serialization.test.js`
+
+## Serialization Contract
+
+- `execute_js` must return plain JSON-compatible values.
+- Host objects with prototype getters (for example DOMRect-like values) are serialized via `toJSON()` when available, then prototype getter introspection fallback.
+- This prevents empty `{}` payloads for geometry/style-like values returned from page context.

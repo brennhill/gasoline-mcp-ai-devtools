@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // PersistedSettings is the on-disk cache schema for extension pilot status.
@@ -98,10 +98,10 @@ func (c *Capture) LoadSettingsFromDisk() {
 		return
 	}
 	if settings.AIWebPilotEnabled != nil {
-		c.ext.pilotEnabled = *settings.AIWebPilotEnabled
-		c.ext.pilotStatusKnown = true
-		c.ext.pilotUpdatedAt = settings.Timestamp
-		c.ext.pilotSource = PilotSourceSettingsCache
+		c.extensionState.pilotEnabled = *settings.AIWebPilotEnabled
+		c.extensionState.pilotStatusKnown = true
+		c.extensionState.pilotUpdatedAt = settings.Timestamp
+		c.extensionState.pilotSource = PilotSourceSettingsCache
 	}
 }
 
@@ -120,14 +120,14 @@ func (c *Capture) SaveSettingsToDisk() error {
 
 	c.mu.RLock()
 	var pilotEnabled *bool
-	if c.ext.pilotStatusKnown {
-		v := c.ext.pilotEnabled
+	if c.extensionState.pilotStatusKnown {
+		v := c.extensionState.pilotEnabled
 		pilotEnabled = &v
 	}
 	settings := PersistedSettings{
 		AIWebPilotEnabled: pilotEnabled,
-		Timestamp:         c.ext.pilotUpdatedAt,
-		ExtSessionID:      c.ext.extSessionID,
+		Timestamp:         c.extensionState.pilotUpdatedAt,
+		ExtSessionID:      c.extensionState.extSessionID,
 	}
 	c.mu.RUnlock()
 

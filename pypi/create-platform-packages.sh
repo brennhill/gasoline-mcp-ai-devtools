@@ -2,10 +2,10 @@
 set -euo pipefail
 
 PLATFORMS=("darwin-arm64" "darwin-x64" "linux-arm64" "linux-x64" "win32-x64")
-VERSION="7.8.0"
+VERSION="0.7.12"
 
 for platform in "${PLATFORMS[@]}"; do
-    pkg_name="gasoline-mcp-${platform}"
+    pkg_name="gasoline-agentic-browser-${platform}"
     pkg_dir="pypi/${pkg_name}"
     pkg_python_name=$(echo "${pkg_name}" | tr '-' '_')
     
@@ -26,7 +26,7 @@ EOF
 [project]
 name = "${pkg_name}"
 version = "${VERSION}"
-description = "Gasoline MCP binary for ${platform}"
+description = "Gasoline Agentic Browser binary for ${platform}"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"
 authors = [
@@ -35,7 +35,7 @@ authors = [
 
 [project.urls]
 Homepage = "https://cookwithgasoline.com"
-Repository = "https://github.com/brennhill/gasoline-mcp-ai-devtools"
+Repository = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
@@ -50,17 +50,17 @@ EOF
     cat > "${pkg_dir}/README.md" <<EOF
 # ${pkg_name}
 
-Platform-specific binary package for Gasoline MCP (${platform}).
+Platform-specific binary package for Gasoline Agentic Browser (${platform}).
 
 This package is automatically installed as a dependency when you run:
 
 \`\`\`bash
-pip install gasoline-mcp
+pip install gasoline-agentic-browser
 \`\`\`
 
 You do not need to install this package directly.
 
-For more information, see the main [gasoline-mcp](https://pypi.org/project/gasoline-mcp/) package.
+For more information, see the main [gasoline-agentic-browser](https://pypi.org/project/gasoline-agentic-browser/) package.
 EOF
     
     # Create MANIFEST.in to include binary
@@ -75,6 +75,6 @@ echo ""
 echo "All platform packages created successfully!"
 echo "Next steps:"
 echo "  1. Build all platforms: make build-all-platforms"
-echo "  2. Copy binaries to pypi/*/gasoline_mcp_*/ directories"
+echo "  2. Copy binaries to pypi/*/gasoline_agentic_browser_*/ directories"
 echo "  3. Build Python packages: make build-pypi"
 echo "  4. Publish: make publish-pypi"

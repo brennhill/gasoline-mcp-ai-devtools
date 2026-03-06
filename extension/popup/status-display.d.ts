@@ -7,7 +7,7 @@
  * @fileoverview Status Display Module
  * Updates connection status display in popup
  */
-import type { PopupConnectionStatus } from './types';
+import type { PopupConnectionStatus } from './types.js';
 /**
  * Update the connection status display
  */

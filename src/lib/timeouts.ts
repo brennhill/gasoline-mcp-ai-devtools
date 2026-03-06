@@ -1,7 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Timeout scaling helpers that read GASOLINE_TEST_TIMEOUT_SCALE to accelerate timeouts during automated tests.
  */
 
 /**
@@ -11,7 +9,8 @@
 declare const process: { env: Record<string, string | undefined> } | undefined
 function readTestScale(): number {
   const globalScale =
-    typeof globalThis !== 'undefined' && typeof (globalThis as { GASOLINE_TEST_TIMEOUT_SCALE?: number }).GASOLINE_TEST_TIMEOUT_SCALE === 'number'
+    typeof globalThis !== 'undefined' &&
+    typeof (globalThis as { GASOLINE_TEST_TIMEOUT_SCALE?: number }).GASOLINE_TEST_TIMEOUT_SCALE === 'number'
       ? (globalThis as unknown as { GASOLINE_TEST_TIMEOUT_SCALE: number }).GASOLINE_TEST_TIMEOUT_SCALE
       : null
   if (globalScale !== null) return globalScale

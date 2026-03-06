@@ -66,10 +66,7 @@ const WIRE_PAIRS = [
  */
 function extractGoFields(content, typeName) {
   // Match: type TypeName struct { ... }
-  const structRegex = new RegExp(
-    `type\\s+${typeName}\\s+struct\\s*\\{([^}]*)\\}`,
-    's'
-  )
+  const structRegex = new RegExp(`type\\s+${typeName}\\s+struct\\s*\\{([^}]*)\\}`, 's')
   const match = content.match(structRegex)
   if (!match) return null
 

@@ -1,6 +1,5 @@
-// Purpose: Validate bridge_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for dev-console bridge logic.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // bridge_unit_test.go — Unit tests for bridge helper functions.
 package main
@@ -16,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // NOTE: Tests that redirect os.Stdout cannot use t.Parallel().
@@ -68,7 +67,7 @@ func TestSendToolError(t *testing.T) {
 	origStdout := os.Stdout
 	os.Stdout = w
 
-	sendToolError("req-1", "Server is starting up. Please retry.", bridge.StdioFramingLine)
+	sendToolErrorWithOptions("req-1", "Server is starting up. Please retry.", bridge.StdioFramingLine, bridgeToolErrorOptions{})
 
 	os.Stdout = origStdout
 	_ = w.Close()

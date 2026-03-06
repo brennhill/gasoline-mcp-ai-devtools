@@ -4,6 +4,9 @@ description: "MCP stdio server - proper bidirectional protocol implementation"
 date: 2025-12-19T01:23:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v3']
 ---
 
 ## What's New in v3.0.0
@@ -51,4 +54,4 @@ Gasoline v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio serve
 
 **Milestone:** This was the version that proved the concept could work. Everything from here builds on this foundation.
 
-See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.
+See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
