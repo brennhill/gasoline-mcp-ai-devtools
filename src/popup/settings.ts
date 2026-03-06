@@ -82,7 +82,7 @@ export async function handleClearLogs(): Promise<{ success?: boolean; error?: st
   }
 
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'clearLogs' }, (response: { success?: boolean; error?: string } | undefined) => {
+    chrome.runtime.sendMessage({ type: 'clear_logs' }, (response: { success?: boolean; error?: string } | undefined) => {
       if (clearBtn) {
         clearBtn.disabled = false
         clearBtn.textContent = 'Clear Logs'

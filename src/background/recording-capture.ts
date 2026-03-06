@@ -173,13 +173,13 @@ function waitForRecordingGesture(timeoutMs: number): Promise<'granted' | 'denied
     }, timeoutMs)
 
     const listener = (message: { type?: string }) => {
-      if (message.type === 'RECORDING_GESTURE_GRANTED') {
+      if (message.type === 'recording_gesture_granted') {
         clearTimeout(timeout)
         chrome.runtime.onMessage.removeListener(listener)
         resolve('granted')
         return
       }
-      if (message.type === 'RECORDING_GESTURE_DENIED') {
+      if (message.type === 'recording_gesture_denied') {
         clearTimeout(timeout)
         chrome.runtime.onMessage.removeListener(listener)
         resolve('denied')

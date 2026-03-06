@@ -42,7 +42,7 @@ export function installRecordingListeners(deps) {
         // Only accept messages from the extension itself
         if (sender.id !== chrome.runtime.id)
             return;
-        if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED')
+        if (message.target !== 'background' || message.type !== 'offscreen_recording_stopped')
             return;
         // Only handle if we think we're still recording (auto-stop case)
         if (!deps.isActive())
@@ -137,7 +137,7 @@ export function installRecordingListeners(deps) {
                         console.log(LOG, 'Sending guidance toast to tab', returnTabId);
                         chrome.tabs
                             .sendMessage(returnTabId, {
-                            type: 'GASOLINE_ACTION_TOAST',
+                            type: 'gasoline_action_toast',
                             text: 'Mic permission granted',
                             detail: 'Open Gasoline and click Record',
                             state: 'success',

@@ -139,7 +139,7 @@ function handleStopTracking(): void {
       // Notify content script so favicon restores without reload
       chrome.tabs
         .sendMessage(prevTabId, {
-          type: 'trackingStateChanged',
+          type: 'tracking_state_changed',
           state: { isTracked: false, aiPilotEnabled: false }
         })
         .catch(() => {
@@ -222,7 +222,7 @@ export async function handleTrackPageClick(): Promise<void> {
               // Only reload if content script is not already injected
               if (tab.id) {
                 const tabId = tab.id
-                chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
+                chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }, (response) => {
                   if (chrome.runtime.lastError || !response?.status) {
                     // Content script not loaded — reload to inject it
                     console.log('[Gasoline] Content script not found, reloading tab', tabId)
@@ -231,7 +231,7 @@ export async function handleTrackPageClick(): Promise<void> {
                     // Content script already running — notify it of tracking change
                     console.log('[Gasoline] Content script already loaded, skipping reload')
                     chrome.tabs.sendMessage(tabId, {
-                      type: 'trackingStateChanged',
+                      type: 'tracking_state_changed',
                       state: { isTracked: true, aiPilotEnabled: false }
                     })
                   }

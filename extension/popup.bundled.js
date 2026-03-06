@@ -28,21 +28,21 @@
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
-    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-    ACTION_REPLAY: "setActionReplayEnabled",
-    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-    DEFERRAL: "setDeferralEnabled",
-    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-    ACTION_TOASTS: "setActionToastsEnabled",
-    SUBTITLES: "setSubtitlesEnabled",
-    SERVER_URL: "setServerUrl"
+    NETWORK_WATERFALL: "set_network_waterfall_enabled",
+    PERFORMANCE_MARKS: "set_performance_marks_enabled",
+    ACTION_REPLAY: "set_action_replay_enabled",
+    WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+    WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+    PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+    DEFERRAL: "set_deferral_enabled",
+    NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+    ACTION_TOASTS: "set_action_toasts_enabled",
+    SUBTITLES: "set_subtitles_enabled",
+    SERVER_URL: "set_server_url"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+    SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -690,12 +690,12 @@
     });
     approvalEls.approveBtn?.addEventListener("click", (event) => {
       event.preventDefault();
-      sendRecordingGestureDecision("RECORDING_GESTURE_GRANTED");
+      sendRecordingGestureDecision("recording_gesture_granted");
       clearPendingRecordingIntent();
     });
     approvalEls.denyBtn?.addEventListener("click", (event) => {
       event.preventDefault();
-      sendRecordingGestureDecision("RECORDING_GESTURE_DENIED");
+      sendRecordingGestureDecision("recording_gesture_denied");
       clearPendingRecordingIntent();
     });
     getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value) => {
@@ -708,7 +708,7 @@
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
-            type: "GASOLINE_ACTION_TOAST",
+            type: "gasoline_action_toast",
             text: "",
             detail: "",
             state: "success",
@@ -776,7 +776,7 @@
           return;
         }
         label.textContent = "Starting...";
-        chrome.tabs.sendMessage(tab.id, { type: "GASOLINE_DRAW_MODE_START", started_by: "user" }, (resp) => {
+        chrome.tabs.sendMessage(tab.id, { type: "gasoline_draw_mode_start", started_by: "user" }, (resp) => {
           if (chrome.runtime.lastError) {
             showDrawModeError(label, "Content script not loaded \u2014 try refreshing the page");
             return;
@@ -998,13 +998,13 @@
     {
       id: "toggle-screenshot",
       storageKey: StorageKey.SCREENSHOT_ON_ERROR,
-      messageType: "setScreenshotOnError",
+      messageType: "set_screenshot_on_error",
       default: true
     },
     {
       id: "toggle-source-maps",
       storageKey: StorageKey.SOURCE_MAP_ENABLED,
-      messageType: "setSourceMapEnabled",
+      messageType: "set_source_map_enabled",
       default: true
     },
     {
@@ -1158,7 +1158,7 @@
           }
         });
         chrome.tabs.sendMessage(prevTabId, {
-          type: "trackingStateChanged",
+          type: "tracking_state_changed",
           state: { isTracked: false, aiPilotEnabled: false }
         }).catch(() => {
         });
@@ -1212,14 +1212,14 @@
               console.log("[Gasoline] Now tracking tab:", tab.id, tab.url);
               if (tab.id) {
                 const tabId = tab.id;
-                chrome.tabs.sendMessage(tabId, { type: "GASOLINE_PING" }, (response) => {
+                chrome.tabs.sendMessage(tabId, { type: "gasoline_ping" }, (response) => {
                   if (chrome.runtime.lastError || !response?.status) {
                     console.log("[Gasoline] Content script not found, reloading tab", tabId);
                     chrome.tabs.reload(tabId);
                   } else {
                     console.log("[Gasoline] Content script already loaded, skipping reload");
                     chrome.tabs.sendMessage(tabId, {
-                      type: "trackingStateChanged",
+                      type: "tracking_state_changed",
                       state: { isTracked: true, aiPilotEnabled: false }
                     });
                   }
@@ -1248,7 +1248,7 @@
     });
   }
   async function handleAiWebPilotToggle(enabled) {
-    chrome.runtime.sendMessage({ type: "setAiWebPilotEnabled", enabled }, (response) => {
+    chrome.runtime.sendMessage({ type: "set_ai_web_pilot_enabled", enabled }, (response) => {
       if (!response || !response.success) {
         console.error("[Gasoline] Failed to set AI Web Pilot toggle in background");
         const toggle = document.getElementById("aiWebPilotEnabled");
@@ -1307,7 +1307,7 @@
       clearBtn.textContent = "Clearing...";
     }
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "clearLogs" }, (response) => {
+      chrome.runtime.sendMessage({ type: "clear_logs" }, (response) => {
         if (clearBtn) {
           clearBtn.disabled = false;
           clearBtn.textContent = "Clear Logs";
@@ -1399,7 +1399,7 @@
         updateConnectionStatus(cached);
     });
     try {
-      chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {
+      chrome.runtime.sendMessage({ type: "get_status" }, (status) => {
         if (chrome.runtime.lastError) {
           updateConnectionStatus({
             connected: false,
@@ -1439,7 +1439,7 @@
     if (clearBtn)
       clearBtn.addEventListener("click", handleClearLogs);
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "statusUpdate" && message.status) {
+      if (message.type === "status_update" && message.status) {
         updateConnectionStatus(message.status);
         cacheStatus(message.status);
       } else if (message.type === "pilotStatusChanged") {

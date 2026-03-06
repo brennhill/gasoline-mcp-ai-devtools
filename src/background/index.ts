@@ -375,7 +375,7 @@ function logConnectionChange(
 function broadcastStatusUpdate(): void {
   if (typeof chrome === 'undefined' || !chrome.runtime) return
   chrome.runtime
-    .sendMessage({ type: 'statusUpdate', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
+    .sendMessage({ type: 'status_update', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
     .catch((err) => console.error('[Gasoline] Error sending status update:', err))
 }
 

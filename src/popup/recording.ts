@@ -155,7 +155,7 @@ function setApprovalPendingState(
   if (!state.isRecording && els.optionsEl) els.optionsEl.style.display = 'block'
 }
 
-function sendRecordingGestureDecision(type: 'RECORDING_GESTURE_GRANTED' | 'RECORDING_GESTURE_DENIED'): void {
+function sendRecordingGestureDecision(type: 'recording_gesture_granted' | 'recording_gesture_denied'): void {
   chrome.runtime.sendMessage({ type }, () => {
     void chrome.runtime.lastError
   })
@@ -400,13 +400,13 @@ export function setupRecordingUI(): void {
 
   approvalEls.approveBtn?.addEventListener('click', (event) => {
     event.preventDefault()
-    sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED')
+    sendRecordingGestureDecision('recording_gesture_granted')
     clearPendingRecordingIntent()
   })
 
   approvalEls.denyBtn?.addEventListener('click', (event) => {
     event.preventDefault()
-    sendRecordingGestureDecision('RECORDING_GESTURE_DENIED')
+    sendRecordingGestureDecision('recording_gesture_denied')
     clearPendingRecordingIntent()
   })
 
@@ -422,7 +422,7 @@ export function setupRecordingUI(): void {
       if (tabs[0]?.id) {
         chrome.tabs
           .sendMessage(tabs[0].id, {
-            type: 'GASOLINE_ACTION_TOAST',
+            type: 'gasoline_action_toast',
             text: '',
             detail: '',
             state: 'success' as const,

@@ -34,7 +34,7 @@ async function isDrawModeActive(tabId) {
         return false;
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'GASOLINE_GET_ANNOTATIONS'
+            type: 'gasoline_get_annotations'
         }));
         return result?.draw_mode_active === true;
     }
@@ -103,7 +103,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_SCREENSHOT) {
             try {
-                chrome.tabs.sendMessage(tab.id, { type: 'captureScreenshot' });
+                chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' });
             }
             catch {
                 if (logFn)

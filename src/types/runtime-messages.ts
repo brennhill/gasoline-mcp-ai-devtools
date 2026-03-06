@@ -29,7 +29,7 @@ import type { RuntimeMessageName } from '../lib/constants.js'
  * Message to get current tab ID
  */
 export interface GetTabIdMessage {
-  readonly type: 'GET_TAB_ID'
+  readonly type: 'get_tab_id'
 }
 
 export interface GetTabIdResponse {
@@ -85,21 +85,21 @@ export interface LogMessage {
  * Get extension status message
  */
 export interface GetStatusMessage {
-  readonly type: 'getStatus'
+  readonly type: 'get_status'
 }
 
 /**
  * Clear logs message
  */
 export interface ClearLogsMessage {
-  readonly type: 'clearLogs'
+  readonly type: 'clear_logs'
 }
 
 /**
  * Set log level message
  */
 export interface SetLogLevelMessage {
-  readonly type: 'setLogLevel'
+  readonly type: 'set_log_level'
   readonly level: LogLevelFilter
 }
 
@@ -108,19 +108,19 @@ export interface SetLogLevelMessage {
  */
 export interface SetBooleanSettingMessage {
   readonly type:
-    | 'setScreenshotOnError'
-    | 'setAiWebPilotEnabled'
-    | 'setSourceMapEnabled'
-    | 'setNetworkWaterfallEnabled'
-    | 'setPerformanceMarksEnabled'
-    | 'setActionReplayEnabled'
-    | 'setWebSocketCaptureEnabled'
-    | 'setPerformanceSnapshotEnabled'
-    | 'setDeferralEnabled'
-    | 'setNetworkBodyCaptureEnabled'
-    | 'setActionToastsEnabled'
-    | 'setSubtitlesEnabled'
-    | 'setDebugMode'
+    | 'set_screenshot_on_error'
+    | 'set_ai_web_pilot_enabled'
+    | 'set_source_map_enabled'
+    | 'set_network_waterfall_enabled'
+    | 'set_performance_marks_enabled'
+    | 'set_action_replay_enabled'
+    | 'set_web_socket_capture_enabled'
+    | 'set_performance_snapshot_enabled'
+    | 'set_deferral_enabled'
+    | 'set_network_body_capture_enabled'
+    | 'set_action_toasts_enabled'
+    | 'set_subtitles_enabled'
+    | 'set_debug_mode'
   readonly enabled: boolean
 }
 
@@ -128,7 +128,7 @@ export interface SetBooleanSettingMessage {
  * Set WebSocket capture mode message
  */
 export interface SetWebSocketCaptureModeMessage {
-  readonly type: 'setWebSocketCaptureMode'
+  readonly type: 'set_web_socket_capture_mode'
   readonly mode: WebSocketCaptureMode
 }
 
@@ -136,7 +136,7 @@ export interface SetWebSocketCaptureModeMessage {
  * Get AI Web Pilot enabled message
  */
 export interface GetAiWebPilotEnabledMessage {
-  readonly type: 'getAiWebPilotEnabled'
+  readonly type: 'get_ai_web_pilot_enabled'
 }
 
 export interface GetAiWebPilotEnabledResponse {
@@ -147,7 +147,7 @@ export interface GetAiWebPilotEnabledResponse {
  * Get tracking state message (for favicon replacer)
  */
 interface GetTrackingStateMessage {
-  readonly type: 'getTrackingState'
+  readonly type: 'get_tracking_state'
 }
 
 interface GetTrackingStateResponse {
@@ -161,7 +161,7 @@ interface GetTrackingStateResponse {
  * Get diagnostic state message
  */
 export interface GetDiagnosticStateMessage {
-  readonly type: 'getDiagnosticState'
+  readonly type: 'get_diagnostic_state'
 }
 
 export interface GetDiagnosticStateResponse {
@@ -174,25 +174,25 @@ export interface GetDiagnosticStateResponse {
  * Capture screenshot message
  */
 export interface CaptureScreenshotMessage {
-  readonly type: 'captureScreenshot'
+  readonly type: 'capture_screenshot'
 }
 
 /**
  * Debug log messages
  */
 export interface GetDebugLogMessage {
-  readonly type: 'getDebugLog'
+  readonly type: 'get_debug_log'
 }
 
 export interface ClearDebugLogMessage {
-  readonly type: 'clearDebugLog'
+  readonly type: 'clear_debug_log'
 }
 
 /**
  * Set server URL message
  */
 export interface SetServerUrlMessage {
-  readonly type: 'setServerUrl'
+  readonly type: 'set_server_url'
   readonly url: string
 }
 
@@ -200,7 +200,7 @@ export interface SetServerUrlMessage {
  * Status update notification (background to popup)
  */
 export interface StatusUpdateMessage {
-  readonly type: 'statusUpdate'
+  readonly type: 'status_update'
   readonly status: ConnectionStatus & { aiControlled: boolean }
 }
 
@@ -239,7 +239,7 @@ export type BackgroundMessage =
  * Draw mode: content script requests screenshot capture
  */
 interface DrawModeCaptureScreenshotMessage {
-  readonly type: 'GASOLINE_CAPTURE_SCREENSHOT'
+  readonly type: 'gasoline_capture_screenshot'
 }
 
 /**
@@ -247,7 +247,7 @@ interface DrawModeCaptureScreenshotMessage {
  * Fields match the wire format sent by extension/content/draw-mode.js.
  */
 export interface DrawModeCompletedMessage {
-  readonly type: 'DRAW_MODE_COMPLETED'
+  readonly type: 'draw_mode_completed'
   readonly annotations?: readonly unknown[]
   readonly screenshot_data_url?: string
   readonly elementDetails?: Readonly<Record<string, unknown>>
@@ -260,7 +260,7 @@ export interface DrawModeCompletedMessage {
  * Push chat: content script sends a chat message to push to AI.
  */
 interface PushChatMessage {
-  readonly type: 'GASOLINE_PUSH_CHAT'
+  readonly type: 'gasoline_push_chat'
   readonly message: string
   readonly page_url: string
 }
@@ -284,28 +284,28 @@ interface ScreenRecordingStopMessage {
  * Popup approval for MCP-initiated screen recording request.
  */
 interface RecordingGestureGrantedMessage {
-  readonly type: 'RECORDING_GESTURE_GRANTED'
+  readonly type: 'recording_gesture_granted'
 }
 
 /**
  * Popup denial for MCP-initiated screen recording request.
  */
 interface RecordingGestureDeniedMessage {
-  readonly type: 'RECORDING_GESTURE_DENIED'
+  readonly type: 'recording_gesture_denied'
 }
 
 /**
  * Content script requests popup open to activate activeTab for tabCapture.
  */
 interface OpenPopupForRecordingMessage {
-  readonly type: 'GASOLINE_OPEN_POPUP_FOR_RECORDING'
+  readonly type: 'gasoline_open_popup_for_recording'
 }
 
 /**
  * Toggle chat widget message (background to content).
  */
 interface ToggleChatMessage {
-  readonly type: 'GASOLINE_TOGGLE_CHAT'
+  readonly type: 'gasoline_toggle_chat'
   readonly client_name?: string
 }
 
@@ -317,7 +317,7 @@ interface ToggleChatMessage {
  * Ping message to check if content script is loaded
  */
 export interface ContentPingMessage {
-  readonly type: 'GASOLINE_PING'
+  readonly type: 'gasoline_ping'
 }
 
 export interface ContentPingResponse {
@@ -329,7 +329,7 @@ export interface ContentPingResponse {
  * Highlight element message
  */
 export interface HighlightMessage {
-  readonly type: 'GASOLINE_HIGHLIGHT'
+  readonly type: 'gasoline_highlight'
   readonly params: {
     readonly selector: string
     readonly duration_ms?: number
@@ -352,7 +352,7 @@ export interface HighlightResponse {
  * Execute JavaScript message
  */
 export interface ExecuteJsMessage {
-  readonly type: 'GASOLINE_EXECUTE_JS'
+  readonly type: 'gasoline_execute_js'
   readonly params: {
     readonly script: string
     readonly timeout_ms?: number
@@ -363,7 +363,7 @@ export interface ExecuteJsMessage {
  * Execute query message (polling system)
  */
 export interface ExecuteQueryMessage {
-  readonly type: 'GASOLINE_EXECUTE_QUERY'
+  readonly type: 'gasoline_execute_query'
   readonly queryId: string
   readonly params: string | Record<string, unknown>
 }
@@ -372,7 +372,7 @@ export interface ExecuteQueryMessage {
  * DOM query message
  */
 export interface DomQueryMessage {
-  readonly type: 'DOM_QUERY'
+  readonly type: 'dom_query'
   readonly params:
     | string
     | {
@@ -386,7 +386,7 @@ export interface DomQueryMessage {
  * Accessibility query message
  */
 export interface A11yQueryMessage {
-  readonly type: 'A11Y_QUERY'
+  readonly type: 'a11y_query'
   readonly params:
     | string
     | {
@@ -399,14 +399,14 @@ export interface A11yQueryMessage {
  * Get network waterfall message
  */
 export interface GetNetworkWaterfallMessage {
-  readonly type: 'GET_NETWORK_WATERFALL'
+  readonly type: 'get_network_waterfall'
 }
 
 /**
  * Link health check message
  */
 interface LinkHealthMessage {
-  readonly type: 'LINK_HEALTH_QUERY'
+  readonly type: 'link_health_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -414,7 +414,7 @@ interface LinkHealthMessage {
  * Computed styles query message
  */
 interface ComputedStylesQueryMessage {
-  readonly type: 'COMPUTED_STYLES_QUERY'
+  readonly type: 'computed_styles_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -422,7 +422,7 @@ interface ComputedStylesQueryMessage {
  * Form discovery query message
  */
 interface FormDiscoveryQueryMessage {
-  readonly type: 'FORM_DISCOVERY_QUERY'
+  readonly type: 'form_discovery_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -430,7 +430,7 @@ interface FormDiscoveryQueryMessage {
  * Form state query message
  */
 interface FormStateQueryMessage {
-  readonly type: 'FORM_STATE_QUERY'
+  readonly type: 'form_state_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -438,7 +438,7 @@ interface FormStateQueryMessage {
  * Data table query message
  */
 interface DataTableQueryMessage {
-  readonly type: 'DATA_TABLE_QUERY'
+  readonly type: 'data_table_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -446,25 +446,25 @@ interface DataTableQueryMessage {
  * Draw mode control messages (background to content)
  */
 interface DrawModeStartMessage {
-  readonly type: 'GASOLINE_DRAW_MODE_START'
+  readonly type: 'gasoline_draw_mode_start'
   readonly started_by?: string
   readonly annot_session_name?: string
   readonly correlation_id?: string
 }
 
 interface DrawModeStopMessage {
-  readonly type: 'GASOLINE_DRAW_MODE_STOP'
+  readonly type: 'gasoline_draw_mode_stop'
 }
 
 interface GetAnnotationsMessage {
-  readonly type: 'GASOLINE_GET_ANNOTATIONS'
+  readonly type: 'gasoline_get_annotations'
 }
 
 /**
  * Tracking state change notification (background to content)
  */
 export interface TrackingStateChangedMessage {
-  readonly type: 'trackingStateChanged'
+  readonly type: 'tracking_state_changed'
   readonly isTracked: boolean
   readonly aiPilotEnabled: boolean
 }
@@ -473,7 +473,7 @@ export interface TrackingStateChangedMessage {
  * State management message
  */
 export interface ManageStateMessage {
-  readonly type: 'GASOLINE_MANAGE_STATE'
+  readonly type: 'gasoline_manage_state'
   readonly params: {
     readonly action: StateAction
     readonly name?: string
@@ -487,7 +487,7 @@ export interface ManageStateMessage {
  * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 interface ActionToastMessage {
-  readonly type: 'GASOLINE_ACTION_TOAST'
+  readonly type: 'gasoline_action_toast'
   readonly text: string
   readonly detail?: string
   readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio'
@@ -498,7 +498,7 @@ interface ActionToastMessage {
  * Subtitle overlay message (persistent narration text)
  */
 interface SubtitleMessage {
-  readonly type: 'GASOLINE_SUBTITLE'
+  readonly type: 'gasoline_subtitle'
   readonly text: string
 }
 
@@ -506,7 +506,7 @@ interface SubtitleMessage {
  * Recording watermark overlay message
  */
 interface RecordingWatermarkMessage {
-  readonly type: 'GASOLINE_RECORDING_WATERMARK'
+  readonly type: 'gasoline_recording_watermark'
   readonly visible: boolean
 }
 
@@ -555,37 +555,37 @@ export type ContentMessage =
  * Page to content script messages (postMessage types)
  */
 export type PageMessageType =
-  | 'GASOLINE_LOG'
-  | 'GASOLINE_WS'
-  | 'GASOLINE_NETWORK_BODY'
-  | 'GASOLINE_ENHANCED_ACTION'
-  | 'GASOLINE_PERFORMANCE_SNAPSHOT'
-  | 'GASOLINE_INJECT_BRIDGE_PONG'
-  | 'GASOLINE_HIGHLIGHT_RESPONSE'
-  | 'GASOLINE_EXECUTE_JS_RESULT'
-  | 'GASOLINE_A11Y_QUERY_RESPONSE'
-  | 'GASOLINE_DOM_QUERY_RESPONSE'
-  | 'GASOLINE_STATE_RESPONSE'
-  | 'GASOLINE_WATERFALL_RESPONSE'
-  | 'GASOLINE_LINK_HEALTH_RESPONSE'
-  | 'GASOLINE_FORM_STATE_RESPONSE'
-  | 'GASOLINE_DATA_TABLE_RESPONSE'
+  | 'gasoline_log'
+  | 'gasoline_ws'
+  | 'gasoline_network_body'
+  | 'gasoline_enhanced_action'
+  | 'gasoline_performance_snapshot'
+  | 'gasoline_inject_bridge_pong'
+  | 'gasoline_highlight_response'
+  | 'gasoline_execute_js_result'
+  | 'gasoline_a11y_query_response'
+  | 'gasoline_dom_query_response'
+  | 'gasoline_state_response'
+  | 'gasoline_waterfall_response'
+  | 'gasoline_link_health_response'
+  | 'gasoline_form_state_response'
+  | 'gasoline_data_table_response'
 
 /**
  * Content to page messages (postMessage types)
  */
 export type ContentToPageMessageType =
-  | 'GASOLINE_SETTING'
-  | 'GASOLINE_INJECT_BRIDGE_PING'
-  | 'GASOLINE_HIGHLIGHT_REQUEST'
-  | 'GASOLINE_EXECUTE_JS'
-  | 'GASOLINE_A11Y_QUERY'
-  | 'GASOLINE_DOM_QUERY'
-  | 'GASOLINE_STATE_COMMAND'
-  | 'GASOLINE_GET_WATERFALL'
-  | 'GASOLINE_LINK_HEALTH_QUERY'
-  | 'GASOLINE_FORM_STATE_QUERY'
-  | 'GASOLINE_DATA_TABLE_QUERY'
+  | 'gasoline_setting'
+  | 'gasoline_inject_bridge_ping'
+  | 'gasoline_highlight_request'
+  | 'gasoline_execute_js'
+  | 'gasoline_a11y_query'
+  | 'gasoline_dom_query'
+  | 'gasoline_state_command'
+  | 'gasoline_get_waterfall'
+  | 'gasoline_link_health_query'
+  | 'gasoline_form_state_query'
+  | 'gasoline_data_table_query'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)
@@ -596,7 +596,7 @@ export type ContentToPageMessageType =
  */
 export interface OffscreenStartRecordingMessage {
   readonly target: 'offscreen'
-  readonly type: 'OFFSCREEN_START_RECORDING'
+  readonly type: 'offscreen_start_recording'
   readonly streamId: string
   readonly serverUrl: string
   readonly name: string
@@ -611,7 +611,7 @@ export interface OffscreenStartRecordingMessage {
  */
 export interface OffscreenStopRecordingMessage {
   readonly target: 'offscreen'
-  readonly type: 'OFFSCREEN_STOP_RECORDING'
+  readonly type: 'offscreen_stop_recording'
 }
 
 /**
@@ -619,7 +619,7 @@ export interface OffscreenStopRecordingMessage {
  */
 export interface OffscreenRecordingStartedMessage {
   readonly target: 'background'
-  readonly type: 'OFFSCREEN_RECORDING_STARTED'
+  readonly type: 'offscreen_recording_started'
   readonly success: boolean
   readonly error?: string
 }
@@ -629,7 +629,7 @@ export interface OffscreenRecordingStartedMessage {
  */
 export interface OffscreenRecordingStoppedMessage {
   readonly target: 'background'
-  readonly type: 'OFFSCREEN_RECORDING_STOPPED'
+  readonly type: 'offscreen_recording_stopped'
   readonly status: string
   readonly name: string
   readonly duration_seconds?: number

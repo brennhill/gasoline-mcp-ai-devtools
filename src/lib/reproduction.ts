@@ -285,7 +285,7 @@ interface RecordActionOptions {
 
 // PostMessage payload type
 interface GasolineEnhancedActionMessage {
-  type: 'GASOLINE_ENHANCED_ACTION'
+  type: 'gasoline_enhanced_action'
   payload: EnhancedActionRecord
 }
 
@@ -350,7 +350,7 @@ export function recordEnhancedAction(
   // Emit to content script for server relay
   if (typeof window !== 'undefined' && window.postMessage) {
     window.postMessage(
-      { type: 'GASOLINE_ENHANCED_ACTION', payload: action } as GasolineEnhancedActionMessage,
+      { type: 'gasoline_enhanced_action', payload: action } as GasolineEnhancedActionMessage,
       window.location.origin
     )
   }

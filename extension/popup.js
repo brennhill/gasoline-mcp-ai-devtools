@@ -109,7 +109,7 @@ export function initPopup() {
     });
     // 2) Request fresh status from background worker (async — updates UI when ready).
     try {
-        chrome.runtime.sendMessage({ type: 'getStatus' }, (status) => {
+        chrome.runtime.sendMessage({ type: 'get_status' }, (status) => {
             if (chrome.runtime.lastError) {
                 updateConnectionStatus({
                     connected: false,
@@ -154,7 +154,7 @@ export function initPopup() {
         clearBtn.addEventListener('click', handleClearLogs);
     // Listen for status updates
     chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'statusUpdate' && message.status) {
+        if (message.type === 'status_update' && message.status) {
             updateConnectionStatus(message.status);
             cacheStatus(message.status);
         }

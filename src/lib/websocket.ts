@@ -59,7 +59,7 @@ interface WsEventPayload {
 
 /** PostMessage payload type */
 interface GasolineWsMessage {
-  type: 'GASOLINE_WS'
+  type: 'gasoline_ws'
   payload: WsEventPayload
 }
 
@@ -76,7 +76,7 @@ function postLifecycleEvent(
 ): void {
   window.postMessage(
     {
-      type: 'GASOLINE_WS',
+      type: 'gasoline_ws',
       payload: {
         type: 'websocket',
         event,
@@ -104,7 +104,7 @@ function postMessageEvent(
 
   window.postMessage(
     {
-      type: 'GASOLINE_WS',
+      type: 'gasoline_ws',
       payload: {
         type: 'websocket',
         event: 'message',

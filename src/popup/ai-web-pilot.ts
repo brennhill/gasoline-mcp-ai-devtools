@@ -57,7 +57,7 @@ export async function initAiWebPilotToggle(): Promise<void> {
 export async function handleAiWebPilotToggle(enabled: boolean): Promise<void> {
   // ONLY communicate with background - do NOT write to storage directly
   chrome.runtime.sendMessage(
-    { type: 'setAiWebPilotEnabled', enabled },
+    { type: 'set_ai_web_pilot_enabled', enabled },
     (response: { success?: boolean } | undefined) => {
       if (!response || !response.success) {
         console.error('[Gasoline] Failed to set AI Web Pilot toggle in background')

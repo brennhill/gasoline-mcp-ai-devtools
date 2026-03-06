@@ -117,7 +117,7 @@ export function actionToast(tabId, action, detail, state = 'success', durationMs
     const toastCopy = resolveToastCopy(action, detail, state);
     chrome.tabs
         .sendMessage(tabId, {
-        type: 'GASOLINE_ACTION_TOAST',
+        type: 'gasoline_action_toast',
         text: toastCopy.text,
         detail: toastCopy.detail,
         state,
@@ -503,7 +503,7 @@ export async function resolveTargetTab(query, paramsObj) {
             if (toastTab?.id) {
                 chrome.tabs
                     .sendMessage(toastTab.id, {
-                    type: 'GASOLINE_ACTION_TOAST',
+                    type: 'gasoline_action_toast',
                     text: 'Tracked tab unavailable',
                     detail: "Provide tab_id or use 'use_active_tab=true'",
                     state: 'warning',
