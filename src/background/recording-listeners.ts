@@ -126,15 +126,15 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
   )
 
   /**
-   * Handle MIC_GRANTED_CLOSE_TAB from the mic-permission page.
+   * Handle mic_granted_close_tab from the mic-permission page.
    * Closes the permission tab, activates the original tab, and shows a guidance toast.
    */
   // #lizard forgives
   chrome.runtime.onMessage.addListener((message: { type?: string }, sender: chrome.runtime.MessageSender) => {
     // Only accept messages from the extension itself
     if (sender.id !== chrome.runtime.id) return false
-    if (message.type !== 'MIC_GRANTED_CLOSE_TAB') return false
-    console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id)
+    if (message.type !== 'mic_granted_close_tab') return false
+    console.log(LOG, 'mic_granted_close_tab received from tab', sender.tab?.id)
 
     // Read the stored return tab before closing the permission tab
     getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value: unknown) => {
@@ -190,7 +190,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
   })
 
   /**
-   * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
+   * Handle reveal_file — opens the file in the OS file manager via the Go server.
    */
   chrome.runtime.onMessage.addListener(
     (
