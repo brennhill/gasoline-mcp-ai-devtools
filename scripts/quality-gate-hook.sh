@@ -97,7 +97,7 @@ FILE_DIR=$(dirname "$FILE_PATH")
 case "$FILE_EXT" in
     go|ts|js|tsx|jsx|py|rs)
         if command -v npx &>/dev/null; then
-            DUPES=$(npx --yes jscpd "$FILE_DIR" --min-lines 8 --min-tokens 60 --reporters consoleFull --silent 2>/dev/null | tail -20 || true)
+            DUPES=$(npx --yes jscpd "$FILE_DIR" --min-lines 3 --min-tokens 60 --reporters consoleFull --silent 2>/dev/null | tail -20 || true)
             if [ -n "$DUPES" ] && echo "$DUPES" | grep -q "Clone found"; then
                 CONTEXT="$CONTEXT
 === DUPLICATE CODE DETECTED ===

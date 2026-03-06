@@ -160,7 +160,7 @@ AI calls Edit/Write
 {
   "code_standards": "gasoline-code-standards.md",
   "file_size_limit": 800,
-  "duplicate_threshold": 8
+  "duplicate_threshold": 3
 }
 ```
 
@@ -168,7 +168,7 @@ AI calls Edit/Write
 |-------|---------|-------------|
 | `code_standards` | `gasoline-code-standards.md` | Path to your standards doc |
 | `file_size_limit` | `800` | Warn when files exceed this LOC |
-| `duplicate_threshold` | `8` | Min lines for duplicate detection |
+| `duplicate_threshold` | `3` | Min lines for duplicate detection |
 
 ### Pointing to an existing doc
 
