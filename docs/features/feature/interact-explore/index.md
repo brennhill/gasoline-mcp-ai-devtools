@@ -52,6 +52,9 @@ code_paths:
   - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
   - src/background/dom-primitives-list-interactive.ts
+  - src/background/dom-primitives-intent.ts
+  - src/background/dom-primitives-overlay.ts
+  - src/background/dom-primitives-stability.ts
   - scripts/templates/partials/_dom-intent.tpl
   - scripts/templates/partials/_dom-selectors.tpl
   - scripts/templates/dom-primitives.ts.tpl

@@ -1,9 +1,11 @@
 // eslint-disable max-lines - Auto-generated from template + partials; must be a single self-contained function for chrome.scripting.executeScript.
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Core DOM primitives for selector-based actions (click, type, wait_for, etc.).
+ * #502: Intent/overlay/stability actions extracted to separate self-contained modules:
+ *   - dom-primitives-intent.ts (open_composer, submit_active_composer, confirm_top_dialog)
+ *   - dom-primitives-overlay.ts (dismiss_top_overlay, auto_dismiss_overlays)
+ *   - dom-primitives-stability.ts (wait_for_stable, action_diff)
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 // dom-primitives.ts — Pre-compiled DOM interaction functions for chrome.scripting.executeScript.
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
@@ -62,8 +64,12 @@ export function domPrimitive(
     const scopeSelectorUsed = requestedScope || undefined
     const scopeRectUsed = scopeRect || undefined
 
-    if (intentActions.has(action)) {
-      return resolveIntentTarget(requestedScope, activeScope)
+    // #502: wait_for_text and wait_for_absent target document.body — no selector resolution needed.
+    // Other former intent actions (open_composer, submit_active_composer, confirm_top_dialog,
+    // dismiss_top_overlay, auto_dismiss_overlays, wait_for_stable, action_diff) are now
+    // dispatched directly by dom-dispatch.ts to extracted self-contained modules.
+    if (action === 'wait_for_text' || action === 'wait_for_absent') {
+      return { element: document.body, match_count: 1, match_strategy: action }
     }
 
     // key_press without selector: dispatch on activeElement or body (#321)

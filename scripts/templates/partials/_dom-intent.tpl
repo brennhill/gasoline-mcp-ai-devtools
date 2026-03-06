@@ -1,138 +1,6 @@
-  // --- PARTIAL: Intent Resolution & List Interactive ---
-  function listInteractiveCompatibility(): {
-    success: boolean
-    elements: unknown[]
-    candidate_count?: number
-    scope_rect_used?: ScopeRect
-    error?: string
-    message?: string
-  } {
-    const interactiveSelectors = [
-      'a[href]',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      '[role="button"]',
-      '[role="link"]',
-      '[role="tab"]',
-      '[role="menuitem"]',
-      '[contenteditable="true"]',
-      '[onclick]',
-      '[tabindex]'
-    ]
-
-    const seen = new Set<Element>()
-    const rawEntries: {
-      element: Element
-      baseSelector: string
-      tag: string
-      inputType?: string
-      elementType: string
-      label: string
-      role?: string
-      placeholder?: string
-      visible: boolean
-    }[] = []
-
-    const scope = (selector || '').trim()
-    const scopeRoot = (() => {
-      if (!scope) return document as ParentNode
-      try {
-        const matches = querySelectorAllDeep(scope)
-        if (matches.length === 0) return null
-        return chooseBestScopeMatch(matches) as ParentNode
-      } catch {
-        return null
-      }
-    })()
-    if (!scopeRoot) {
-      return {
-        success: false,
-        elements: [],
-        error: 'scope_not_found',
-        message: `No scope element matches selector: ${scope}`
-      }
-    }
-
-    for (const cssSelector of interactiveSelectors) {
-      const matches = querySelectorAllDeep(cssSelector, scopeRoot)
-      for (const el of matches) {
-        if (seen.has(el)) continue
-        seen.add(el)
-
-        const htmlEl = el as HTMLElement
-        const rect = typeof htmlEl.getBoundingClientRect === 'function'
-          ? htmlEl.getBoundingClientRect()
-          : ({ width: 0, height: 0 } as DOMRect)
-        if (!intersectsScopeRect(el)) continue
-        const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
-        const shadowSelector = buildShadowSelector(el)
-        const baseSelector = shadowSelector || buildUniqueSelector(el, htmlEl, cssSelector)
-        const label =
-          el.getAttribute('aria-label') ||
-          el.getAttribute('title') ||
-          el.getAttribute('placeholder') ||
-          (htmlEl.textContent || '').trim().slice(0, 60) ||
-          el.tagName.toLowerCase()
-
-        rawEntries.push({
-          element: el,
-          baseSelector,
-          tag: el.tagName.toLowerCase(),
-          inputType: el instanceof HTMLInputElement ? el.type : undefined,
-          elementType: classifyElement(el),
-          label,
-          role: el.getAttribute('role') || undefined,
-          placeholder: el.getAttribute('placeholder') || undefined,
-          visible
-        })
-
-        if (rawEntries.length >= 100) break
-      }
-      if (rawEntries.length >= 100) break
-    }
-
-    const selectorCount = new Map<string, number>()
-    for (const entry of rawEntries) {
-      selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1)
-    }
-    const selectorIndex = new Map<string, number>()
-
-    const elements = rawEntries.map((entry, index) => {
-      let selector = entry.baseSelector
-      const count = selectorCount.get(entry.baseSelector) || 1
-      if (count > 1) {
-        const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1
-        selectorIndex.set(entry.baseSelector, nth)
-        selector = `${entry.baseSelector}:nth-match(${nth})`
-      }
-      return {
-        index,
-        tag: entry.tag,
-        type: entry.inputType,
-        element_type: entry.elementType,
-        selector,
-        element_id: getOrCreateElementID(entry.element),
-        label: entry.label,
-        role: entry.role,
-        placeholder: entry.placeholder,
-        bbox: extractBoundingBox(entry.element),
-        visible: entry.visible
-      }
-    })
-
-    return {
-      success: true,
-      elements,
-      candidate_count: elements.length,
-      ...(scopeRect ? { scope_rect_used: scopeRect } : {})
-    }
-  }
-
-  if (action === 'list_interactive') {
-    return listInteractiveCompatibility()
-  }
+  // --- PARTIAL: Element Resolution Helpers ---
+  // #502: listInteractiveCompatibility removed — list_interactive is dispatched directly
+  // by dom-dispatch.ts to domPrimitiveListInteractive.
 
   // — Resolve element for all other actions —
   function domError(error: string, message: string): DOMResult {
@@ -217,19 +85,8 @@
     })
   }
 
-  const intentActions = new Set([
-    'open_composer',
-    'submit_active_composer',
-    'confirm_top_dialog',
-    'dismiss_top_overlay',
-    'auto_dismiss_overlays',
-    'wait_for_stable',
-    'wait_for_text',
-    'wait_for_absent',
-    'action_diff'
-  ])
-
-  type RankedIntentCandidate = { element: Element; score: number }
+  // #502: intentActions set removed — intent/overlay/stability actions are dispatched directly
+  // by dom-dispatch.ts to self-contained extracted modules.
 
   function uniqueElements(elements: Element[]): Element[] {
     const out: Element[] = []
@@ -258,44 +115,7 @@
     return Math.min(max, Math.round((rect.width * rect.height) / 10000))
   }
 
-  function pickBestIntentTarget(
-    ranked: RankedIntentCandidate[],
-    matchStrategy: string,
-    notFoundError: string,
-    notFoundMessage: string
-  ): { element?: Element; error?: DOMResult; match_count?: number; match_strategy?: string } {
-    const viable = ranked
-      .filter((entry) => entry.score > 0 && isActionableVisible(entry.element) && intersectsScopeRect(entry.element))
-      .sort((a, b) => b.score - a.score)
-
-    if (viable.length === 0) {
-      return { error: domError(notFoundError, notFoundMessage) }
-    }
-
-    const topScore = viable[0]!.score
-    const tiedTop = viable.filter((entry) => entry.score === topScore)
-    if (tiedTop.length > 1) {
-      return {
-        error: {
-          success: false,
-          action,
-          selector,
-          error: 'ambiguous_target',
-          message: `Multiple candidates tie for ${action}. Use nth, scope_selector/scope_rect, or list_interactive element_id.`,
-          match_count: tiedTop.length,
-          match_strategy: matchStrategy,
-          ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
-          candidates: summarizeCandidates(tiedTop.map((entry) => entry.element))
-        }
-      }
-    }
-
-    return {
-      element: viable[0]!.element,
-      match_count: 1,
-      match_strategy: matchStrategy
-    }
-  }
+  // #502: pickBestIntentTarget removed — now in dom-primitives-intent.ts and dom-primitives-overlay.ts.
 
   function collectDialogs(): Element[] {
     const selectors = ['[role="dialog"]', '[aria-modal="true"]', 'dialog[open]']
