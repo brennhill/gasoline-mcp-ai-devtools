@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Purpose: Dispatches window.postMessage commands from the content script to specialized inject-context handlers (settings, state, JS execution, DOM/a11y queries).
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 
 // message-handlers.ts — Message dispatch from content script to inject-context handlers.
@@ -13,25 +11,27 @@
  * and DOM/accessibility queries.
  */
 
-import type { BrowserStateSnapshot } from '../types/index'
+import type { BrowserStateSnapshot } from '../types/index.js'
 
-import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries'
-import { checkLinkHealth } from '../lib/link-health'
-import { queryComputedStyles } from './computed-styles'
-import { discoverForms } from './form-discovery'
-import { getNetworkWaterfall } from '../lib/network'
+import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries.js'
+import { checkLinkHealth } from '../lib/link-health.js'
+import { queryComputedStyles } from './computed-styles.js'
+import { discoverForms } from './form-discovery.js'
+import { extractDataTables } from './data-table.js'
+import { getNetworkWaterfall } from '../lib/network.js'
 
-import { executeJavaScript } from './execute-js'
+import { executeJavaScript } from './execute-js.js'
+import { errorMessage } from '../lib/error-utils.js'
 import {
   isValidSettingPayload,
   handleSetting,
   handleStateCommand,
   type SettingMessageData,
   type StateCommandMessageData
-} from './settings'
+} from './settings.js'
 
 // Re-export for barrel (src/inject/index.ts)
-export { executeJavaScript, safeSerializeForExecute } from './execute-js'
+export { executeJavaScript, safeSerializeForExecute } from './execute-js.js'
 
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = ''
@@ -123,6 +123,24 @@ interface FormDiscoveryQueryRequestMessageData {
 }
 
 /**
+ * Form state query request message from content script
+ */
+interface FormStateQueryRequestMessageData {
+  type: 'GASOLINE_FORM_STATE_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
+ * Data table query request message from content script
+ */
+interface DataTableQueryRequestMessageData {
+  type: 'GASOLINE_DATA_TABLE_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
  * Bridge readiness ping from content script to inject context
  */
 interface BridgePingMessageData {
@@ -144,6 +162,8 @@ type PageMessageData =
   | LinkHealthQueryRequestMessageData
   | ComputedStylesQueryRequestMessageData
   | FormDiscoveryQueryRequestMessageData
+  | FormStateQueryRequestMessageData
+  | DataTableQueryRequestMessageData
   | BridgePingMessageData
 
 /**
@@ -157,7 +177,7 @@ export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageD
   } catch (err) {
     return {
       error: 'link_health_error',
-      message: (err as Error).message || 'Failed to check link health'
+      message: errorMessage(err, 'Failed to check link health')
     }
   }
 }
@@ -197,8 +217,11 @@ export function installMessageListener(
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),
     GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
     GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
-    GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
+    GASOLINE_COMPUTED_STYLES_QUERY: (data) =>
+      handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
     GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData),
+    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data as FormStateQueryRequestMessageData),
+    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data as DataTableQueryRequestMessageData),
     GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data as BridgePingMessageData)
   }
 
@@ -237,7 +260,7 @@ function handleComputedStylesMessage(data: ComputedStylesQueryRequestMessageData
     postResponse({
       type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
       requestId: data.requestId,
-      result: { error: 'computed_styles_error', message: (err as Error).message || 'Failed to query computed styles' }
+      result: { error: 'computed_styles_error', message: errorMessage(err, 'Failed to query computed styles') }
     })
   }
 }
@@ -258,7 +281,50 @@ function handleFormDiscoveryMessage(data: FormDiscoveryQueryRequestMessageData):
     postResponse({
       type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
       requestId: data.requestId,
-      result: { error: 'form_discovery_error', message: (err as Error).message || 'Failed to discover forms' }
+      result: { error: 'form_discovery_error', message: errorMessage(err, 'Failed to discover forms') }
+    })
+  }
+}
+
+function handleFormStateMessage(data: FormStateQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string }
+    const forms = discoverForms({
+      selector: params.selector,
+      mode: 'discover'
+    })
+    postResponse({
+      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      requestId: data.requestId,
+      result: { forms, count: forms.length }
+    })
+  } catch (err) {
+    postResponse({
+      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      requestId: data.requestId,
+      result: { error: 'form_state_error', message: errorMessage(err, 'Failed to extract form state') }
+    })
+  }
+}
+
+function handleDataTableMessage(data: DataTableQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string; max_rows?: number; max_cols?: number }
+    const result = extractDataTables({
+      selector: params.selector,
+      max_rows: params.max_rows,
+      max_cols: params.max_cols
+    })
+    postResponse({
+      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      requestId: data.requestId,
+      result
+    })
+  } catch (err) {
+    postResponse({
+      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      requestId: data.requestId,
+      result: { error: 'data_table_error', message: errorMessage(err, 'Failed to extract table data') }
     })
   }
 }
@@ -336,7 +402,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
     postResponse({
       type: 'GASOLINE_A11Y_QUERY_RESPONSE',
       requestId,
-      result: { error: (err as Error).message || 'Failed to run accessibility audit' }
+      result: { error: errorMessage(err, 'Failed to run accessibility audit') }
     })
   }
 }
@@ -377,7 +443,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
     postResponse({
       type: 'GASOLINE_DOM_QUERY_RESPONSE',
       requestId,
-      result: { error: (err as Error).message || 'Failed to run DOM query' }
+      result: { error: errorMessage(err, 'Failed to run DOM query') }
     })
   }
 }

@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #64
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/64
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/64
 - Title: Add structured page reading (readability/markdown extraction)
 
 ## Objective

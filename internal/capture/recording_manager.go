@@ -6,7 +6,7 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/recording"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
 )
 
 // NewRecordingManager creates a RecordingManager with initialized state.
@@ -19,70 +19,70 @@ var NewRecordingManager = recording.NewRecordingManager
 
 // StartRecording delegates to RecordingManager.
 func (c *Capture) StartRecording(name, pageURL string, sensitiveDataEnabled bool) (string, error) {
-	return c.rec.StartRecording(name, pageURL, sensitiveDataEnabled)
+	return c.recordingManager.StartRecording(name, pageURL, sensitiveDataEnabled)
 }
 
 // StopRecording delegates to RecordingManager.
 func (c *Capture) StopRecording(recordingID string) (int, int64, error) {
-	return c.rec.StopRecording(recordingID)
+	return c.recordingManager.StopRecording(recordingID)
 }
 
 // AddRecordingAction delegates to RecordingManager.
 func (c *Capture) AddRecordingAction(action RecordingAction) error {
-	return c.rec.AddRecordingAction(action)
+	return c.recordingManager.AddRecordingAction(action)
 }
 
 // ListRecordings delegates to RecordingManager.
 func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
-	return c.rec.ListRecordings(limit)
+	return c.recordingManager.ListRecordings(limit)
 }
 
 // GetRecording delegates to RecordingManager.
 func (c *Capture) GetRecording(recordingID string) (*Recording, error) {
-	return c.rec.GetRecording(recordingID)
+	return c.recordingManager.GetRecording(recordingID)
 }
 
 // StartPlayback delegates to RecordingManager.
 func (c *Capture) StartPlayback(recordingID string) (*PlaybackSession, error) {
-	return c.rec.StartPlayback(recordingID)
+	return c.recordingManager.StartPlayback(recordingID)
 }
 
 // ExecutePlayback delegates to RecordingManager.
 func (c *Capture) ExecutePlayback(recordingID string) (*PlaybackSession, error) {
-	return c.rec.ExecutePlayback(recordingID)
+	return c.recordingManager.ExecutePlayback(recordingID)
 }
 
 // DetectFragileSelectors delegates to RecordingManager.
 func (c *Capture) DetectFragileSelectors(sessions []*PlaybackSession) map[string]bool {
-	return c.rec.DetectFragileSelectors(sessions)
+	return c.recordingManager.DetectFragileSelectors(sessions)
 }
 
 // GetPlaybackStatus delegates to RecordingManager.
 func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]any {
-	return c.rec.GetPlaybackStatus(session)
+	return c.recordingManager.GetPlaybackStatus(session)
 }
 
 // DiffRecordings delegates to RecordingManager.
 func (c *Capture) DiffRecordings(originalID, replayID string) (*LogDiffResult, error) {
-	return c.rec.DiffRecordings(originalID, replayID)
+	return c.recordingManager.DiffRecordings(originalID, replayID)
 }
 
 // CategorizeActionTypes delegates to RecordingManager.
 func (c *Capture) CategorizeActionTypes(recording *Recording) map[string]int {
-	return c.rec.CategorizeActionTypes(recording)
+	return c.recordingManager.CategorizeActionTypes(recording)
 }
 
 // GetStorageInfo delegates to RecordingManager.
 func (c *Capture) GetStorageInfo() (StorageInfo, error) {
-	return c.rec.GetStorageInfo()
+	return c.recordingManager.GetStorageInfo()
 }
 
 // DeleteRecording delegates to RecordingManager.
 func (c *Capture) DeleteRecording(recordingID string) error {
-	return c.rec.DeleteRecording(recordingID)
+	return c.recordingManager.DeleteRecording(recordingID)
 }
 
 // RecalculateStorageUsed delegates to RecordingManager.
 func (c *Capture) RecalculateStorageUsed() error {
-	return c.rec.RecalculateStorageUsed()
+	return c.recordingManager.RecalculateStorageUsed()
 }

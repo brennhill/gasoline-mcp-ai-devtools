@@ -1,7 +1,7 @@
 # Product Update: Issue #52
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/52
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/52
 - Title: Deterministic targeting: require explicit tab/session for browser actions
 - Last Updated: 2026-02-16T13:19:30Z
 

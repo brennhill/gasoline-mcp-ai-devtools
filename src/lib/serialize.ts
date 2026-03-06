@@ -1,7 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Pure stateless serialization utilities -- safe value serialization with circular reference detection, DOM element selector generation, and sensitive input detection.
  */
 
 /**
@@ -14,7 +12,7 @@
  */
 
 import { MAX_STRING_LENGTH, MAX_DEPTH, SENSITIVE_INPUT_TYPES } from './constants.js'
-import type { JsonValue } from '../types/index'
+import type { JsonValue } from '../types/index.js'
 
 // Extended input element interface for type checking
 interface InputLikeElement extends Element {

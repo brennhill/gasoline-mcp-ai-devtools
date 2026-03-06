@@ -1,13 +1,13 @@
+// Purpose: Provides MCP response builders (text, markdown, JSON, error) and safe marshal/unmarshal helpers for tool results.
+// Why: Standardizes response shaping across all five tools through a single set of formatting functions.
+
 package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/mcp"
-	"github.com/dev-console/dev-console/internal/pagination"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 func safeMarshal(v any, fallback string) json.RawMessage {
@@ -22,20 +22,37 @@ func mcpTextResponse(text string) json.RawMessage {
 	return mcp.TextResponse(text)
 }
 
-func mcpErrorResponse(text string) json.RawMessage {
-	return mcp.ErrorResponse(text)
+// succeed builds a success JSONRPCResponse with a JSON summary + data payload.
+func succeed(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
-// ResponseFormat tags each response for documentation and testing.
-type ResponseFormat string
+// succeedText builds a success JSONRPCResponse with a plain text payload.
+func succeedText(req JSONRPCRequest, text string) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpTextResponse(text)}
+}
 
-const (
-	FormatMarkdown ResponseFormat = "markdown"
-	FormatJSON     ResponseFormat = "json"
-)
+// succeedRaw builds a success JSONRPCResponse with a pre-built Result payload.
+func succeedRaw(req JSONRPCRequest, result json.RawMessage) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: result}
+}
 
-func mcpMarkdownResponse(summary string, markdown string) json.RawMessage {
-	return mcp.MarkdownResponse(summary, markdown)
+// fail builds an error JSONRPCResponse with a structured error payload (isError=true).
+func fail(req JSONRPCRequest, code, message, retry string, opts ...func(*StructuredError)) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpStructuredError(code, message, retry, opts...)}
+}
+
+// failJSON builds an error JSONRPCResponse with a JSON data payload (isError=true).
+func failJSON(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpJSONErrorResponse(summary, data)}
+}
+
+// parseArgs unmarshals JSON args into v. Returns (resp, true) if parsing failed.
+func parseArgs(req JSONRPCRequest, args json.RawMessage, v any) (JSONRPCResponse, bool) {
+	if err := json.Unmarshal(args, v); err != nil {
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"), true
+	}
+	return JSONRPCResponse{}, false
 }
 
 func mcpJSONErrorResponse(summary string, data any) json.RawMessage {
@@ -46,72 +63,71 @@ func mcpJSONResponse(summary string, data any) json.RawMessage {
 	return mcp.JSONResponse(summary, data)
 }
 
-func markdownTable(headers []string, rows [][]string) string {
-	return mcp.MarkdownTable(headers, rows)
-}
-
-func truncate(s string, maxLen int) string {
-	return mcp.Truncate(s, maxLen)
-}
-
-// ============================================
-// Response Metadata (Staleness)
-// ============================================
-
-// ResponseMetadata provides freshness information for buffer-backed observe responses.
-type ResponseMetadata struct {
-	RetrievedAt string `json:"retrieved_at"`
-	IsStale     bool   `json:"is_stale"`
-	DataAge     string `json:"data_age"`
-}
-
-// buildResponseMetadata constructs freshness metadata for an observe response.
-// newestEntry is the timestamp of the most recent entry in the buffer (zero if empty).
-// cap is used to check extension connectivity.
-func buildResponseMetadata(cap *capture.Capture, newestEntry time.Time) ResponseMetadata {
-	now := time.Now()
-	meta := ResponseMetadata{
-		RetrievedAt: now.Format(time.RFC3339),
-		IsStale:     !cap.IsExtensionConnected(),
-	}
-	if !newestEntry.IsZero() {
-		age := now.Sub(newestEntry)
-		meta.DataAge = fmt.Sprintf("%.1fs", age.Seconds())
-	} else {
-		meta.DataAge = "no_data"
-	}
-	return meta
-}
-
-// buildPaginatedResponseMetadata merges freshness metadata with cursor pagination metadata.
-func buildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
-	base := buildResponseMetadata(cap, newestEntry)
-	meta := map[string]any{
-		"retrieved_at": base.RetrievedAt,
-		"is_stale":     base.IsStale,
-		"data_age":     base.DataAge,
-		"total":        pMeta.Total,
-		"has_more":     pMeta.HasMore,
-	}
-	if pMeta.Cursor != "" {
-		meta["cursor"] = pMeta.Cursor
-	}
-	if pMeta.OldestTimestamp != "" {
-		meta["oldest_timestamp"] = pMeta.OldestTimestamp
-	}
-	if pMeta.NewestTimestamp != "" {
-		meta["newest_timestamp"] = pMeta.NewestTimestamp
-	}
-	if pMeta.CursorRestarted {
-		meta["cursor_restarted"] = true
-		meta["original_cursor"] = pMeta.OriginalCursor
-	}
-	if pMeta.Warning != "" {
-		meta["warning"] = pMeta.Warning
-	}
-	return meta
-}
-
 func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {
 	return mcp.AppendWarningsToResponse(resp, warnings)
+}
+
+// mutateToolResult unmarshals the response result into MCPToolResult, applies the
+// mutation function, and remarshals. Returns the original response unchanged if
+// unmarshal or remarshal fails.
+func mutateToolResult(resp JSONRPCResponse, fn func(*MCPToolResult)) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	fn(&result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// injectCSPBlockedActions adds blocked_actions and blocked_reason to a JSON
+// response when the current page CSP restricts script execution. When CSP is
+// clear the response is returned unchanged (zero token cost). (#262)
+func (h *ToolHandler) injectCSPBlockedActions(resp JSONRPCResponse) JSONRPCResponse {
+	restricted, level := h.capture.GetCSPStatus()
+	if !restricted {
+		return resp
+	}
+	actions, reason := capture.CSPBlockedActions(level)
+	if actions == nil {
+		return resp
+	}
+
+	return mutateToolResult(resp, func(r *MCPToolResult) {
+		if len(r.Content) == 0 {
+			return
+		}
+
+		text := r.Content[0].Text
+		// Find the JSON object within the text (after the summary line).
+		jsonStart := -1
+		for i := 0; i < len(text); i++ {
+			if text[i] == '{' {
+				jsonStart = i
+				break
+			}
+		}
+		if jsonStart < 0 {
+			return
+		}
+
+		var data map[string]any
+		if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {
+			return
+		}
+
+		data["blocked_actions"] = actions
+		data["blocked_reason"] = reason
+
+		dataJSON, err := json.Marshal(data)
+		if err != nil {
+			return
+		}
+
+		r.Content[0].Text = text[:jsonStart] + string(dataJSON)
+	})
 }

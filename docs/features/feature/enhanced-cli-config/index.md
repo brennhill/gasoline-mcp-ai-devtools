@@ -8,25 +8,30 @@ last_reviewed: 2026-03-05
 code_paths:
   - Makefile
   - scripts/build-crx.js
-  - extension/popup.html
-  - extension/options.html
-  - extension/theme-bootstrap.js
+  - cmd/dev-console/native_install.go
   - scripts/install.sh
   - scripts/install.ps1
-  - npm/gasoline-mcp/lib/cli.js
-  - npm/gasoline-mcp/lib/skills.js
-  - npm/gasoline-mcp/lib/postinstall-skills.js
-  - pypi/gasoline-mcp/gasoline_mcp/platform.py
-  - pypi/gasoline-mcp/gasoline_mcp/skills.py
-  - scripts/install-bundled-skills.sh
+  - server/scripts/install.js
+  - npm/gasoline-agentic-browser/lib/config.js
+  - npm/gasoline-agentic-browser/lib/install.js
+  - npm/gasoline-agentic-browser/lib/cli.js
+  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
+  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
+  - docs/mcp-install-guide.md
 test_paths:
+  - cmd/dev-console/native_install_test.go
+  - npm/gasoline-agentic-browser/lib/install.test.js
+  - pypi/gasoline-agentic-browser/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_skills.py
+  - tests/extension/install-script-extension-source.test.js
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
-  - tests/extension/install-script-extension-source.test.js
+  - tests/cli/server-install-hardening.test.cjs
   - tests/cli/cli-integration.test.cjs
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Enhanced Cli Config

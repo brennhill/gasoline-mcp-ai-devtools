@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Handles Stage 3 multipart form submission: field validation, streaming upload, and HTTP error mapping.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload
@@ -10,10 +9,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -22,7 +19,7 @@ import (
 var UploadHTTPClient = &http.Client{
 	Timeout: 10 * time.Minute, // Large file uploads can take a while
 	Transport: NewSSRFSafeTransport(func() bool {
-		return SkipSSRFCheck
+		return SkipSSRFCheckEnabled()
 	}),
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		// Prevent redirect to private IPs (SSRF via redirect)
@@ -36,159 +33,10 @@ var UploadHTTPClient = &http.Client{
 	},
 }
 
-// HandleFormSubmit is the core logic for form submission, testable without HTTP.
-// Stage 3 requires --upload-dir.
 func HandleFormSubmit(req FormSubmitRequest, sec *Security) StageResponse {
 	return HandleFormSubmitCtx(context.Background(), req, sec)
 }
 
-func formSubmitStage3Error(msg string) StageResponse {
-	return StageResponse{Success: false, Stage: 3, Error: msg}
-}
-
-// ValidateFormSubmitFields validates all form submission fields.
-func ValidateFormSubmitFields(req *FormSubmitRequest, sec *Security) (*PathValidationResult, error) {
-	if req.FormAction == "" {
-		return nil, fmt.Errorf("missing required parameter: form_action")
-	}
-	if req.FilePath == "" {
-		return nil, fmt.Errorf("missing required parameter: file_path")
-	}
-	if req.FileInputName == "" {
-		return nil, fmt.Errorf("missing required parameter: file_input_name")
-	}
-
-	pathResult, pathErr := sec.ValidateFilePath(req.FilePath, true)
-	if pathErr != nil {
-		return nil, pathErr
-	}
-
-	if err := ValidateFormActionURL(req.FormAction); err != nil {
-		return nil, fmt.Errorf("invalid form_action URL: %w", err)
-	}
-
-	if req.Method == "" {
-		req.Method = "POST"
-	}
-	if err := ValidateHTTPMethod(req.Method); err != nil {
-		return nil, err
-	}
-
-	if err := ValidateCookieHeader(req.Cookies); err != nil {
-		return nil, err
-	}
-
-	for k := range req.Fields {
-		if strings.ContainsAny(k, "\r\n\x00\"") {
-			return nil, fmt.Errorf("form field name %q contains invalid characters", k)
-		}
-	}
-
-	return pathResult, nil
-}
-
-// OpenAndValidateFile opens and validates a file for upload.
-func OpenAndValidateFile(resolvedPath, displayPath string) (*os.File, os.FileInfo, error) {
-	// #nosec G304 -- file path validated by Security chain
-	file, err := os.Open(resolvedPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil, fmt.Errorf("file not found: %s: %w", displayPath, err)
-		}
-		return nil, nil, fmt.Errorf("failed to open file: %s: %w", displayPath, err)
-	}
-
-	info, err := file.Stat()
-	if err != nil {
-		file.Close() //nolint:errcheck // closing on error path
-		return nil, nil, fmt.Errorf("failed to stat file: %s: %w", displayPath, err)
-	}
-
-	if err := CheckHardlink(info); err != nil {
-		file.Close() //nolint:errcheck // closing on error path
-		return nil, nil, err
-	}
-
-	return file, info, nil
-}
-
-var httpStatusErrors = map[int]string{
-	401: "User not logged into platform (HTTP 401). Please log in and retry.",
-	403: "CSRF token mismatch or forbidden (HTTP 403). Token may be expired.",
-	422: "Form validation failed (HTTP 422). Check required fields.",
-}
-
-// Truncate returns s unchanged if len(s) <= maxLen. Otherwise, it truncates
-// and appends "..." so the total output length equals maxLen.
-func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return "..."[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
-}
-
-func buildHTTPErrorResponse(resp *http.Response, fileName string, fileSize int64, elapsed int64) StageResponse {
-	bodyBytes := make([]byte, 1024)
-	n, _ := resp.Body.Read(bodyBytes)
-	bodyPreview := string(bodyBytes[:n])
-
-	errMsg, ok := httpStatusErrors[resp.StatusCode]
-	if !ok {
-		errMsg = fmt.Sprintf("Platform returned HTTP %d", resp.StatusCode)
-	}
-
-	return StageResponse{
-		Success:       false,
-		Stage:         3,
-		Error:         errMsg,
-		FileName:      fileName,
-		FileSizeBytes: fileSize,
-		DurationMs:    elapsed,
-		Suggestions:   []string{"Check authentication", "Verify CSRF token", "Response: " + Truncate(bodyPreview, 200)},
-	}
-}
-
-// StreamMultipartForm writes the multipart form data to the pipe writer.
-func StreamMultipartForm(pw *io.PipeWriter, writer *multipart.Writer, req FormSubmitRequest, file *os.File) error {
-	defer pw.Close() //nolint:errcheck // pipe close
-
-	if req.CSRFToken != "" {
-		if err := writer.WriteField("csrf_token", req.CSRFToken); err != nil {
-			return err
-		}
-	}
-
-	for k, v := range req.Fields {
-		if err := writer.WriteField(k, v); err != nil {
-			return err
-		}
-	}
-
-	fileName := filepath.Base(req.FilePath)
-	mimeType := DetectMimeType(fileName)
-	partHeader := make(textproto.MIMEHeader)
-	safeName := SanitizeForContentDisposition(req.FileInputName)
-	safeFileName := SanitizeForContentDisposition(fileName)
-	partHeader.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, safeName, safeFileName))
-	partHeader.Set("Content-Type", mimeType)
-
-	fw, err := writer.CreatePart(partHeader)
-	if err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(fw, file); err != nil {
-		return err
-	}
-
-	return writer.Close()
-}
-
-// ExecuteFormSubmit performs the actual HTTP form submission.
 func ExecuteFormSubmit(ctx context.Context, req FormSubmitRequest, file *os.File, info os.FileInfo, writer *multipart.Writer, pr *io.PipeReader, pw *io.PipeWriter, start time.Time) StageResponse {
 	writeErrCh := make(chan error, 1)
 	go func() { // lint:allow-bare-goroutine — short-lived pipe writer, error captured via channel
@@ -238,7 +86,6 @@ func ExecuteFormSubmit(ctx context.Context, req FormSubmitRequest, file *os.File
 	}
 }
 
-// HandleFormSubmitCtx is the context-aware form submission handler.
 func HandleFormSubmitCtx(ctx context.Context, req FormSubmitRequest, sec *Security) StageResponse {
 	start := time.Now()
 

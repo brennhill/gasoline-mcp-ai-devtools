@@ -4,10 +4,12 @@ scope: feature/buffer-clearing/implementation
 ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: tech-spec
 feature_id: feature-buffer-clearing
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Buffer-Specific Clearing - Technical Spec
@@ -40,7 +42,7 @@ Add `buffer` parameter to configure tool schema:
 "buffer": map[string]interface{}{
   "type":        "string",
   "description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
-  "enum":        []string{"network", "websocket", "actions", "logs", "all"},
+  "enum":        []string{"network", "websocket", "actions", "logs", "inbox", "all"},
 },
 ```
 

@@ -1,5 +1,4 @@
-// Purpose: Implements async command/query dispatch and correlation state tracking.
-// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Purpose: Core QueryDispatcher struct: manages pending queries, results, expiration, and queue capacity.
 // Docs: docs/features/feature/query-service/index.md
 
 package queries

@@ -1,6 +1,5 @@
-// Purpose: Validate server_routes_insecure_proxy_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for insecure proxy route handling.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -12,11 +11,49 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
-func TestInsecureProxyEndpoint_StripsCSPHeaders(t *testing.T) {
+func TestInsecureProxyEndpoint_SSRFDenylist(t *testing.T) {
 	t.Parallel()
+
+	srv := newTestServerForHandlers(t)
+	cap := capture.NewCapture()
+	cap.SetSecurityMode("insecure_proxy", []string{"csp_headers"})
+	mux, _ := setupHTTPRoutes(srv, cap)
+
+	// Test various private/internal IP ranges.
+	tests := []struct {
+		name   string
+		target string
+	}{
+		{"cloud_metadata", "http://169.254.169.254/latest/meta-data/"},
+		{"loopback", "http://127.0.0.1:8080/secret"},
+		{"private_10", "http://10.0.0.1/internal"},
+		{"private_172", "http://172.16.0.1/internal"},
+		{"private_192", "http://192.168.1.1/internal"},
+		{"ipv6_loopback", "http://[::1]:8080/secret"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			req := localRequest(http.MethodGet, "/insecure-proxy?target="+url.QueryEscape(tc.target), nil)
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusForbidden {
+				t.Fatalf("GET /insecure-proxy to %s status = %d, want 403", tc.target, rr.Code)
+			}
+		})
+	}
+}
+
+func TestInsecureProxyEndpoint_StripsCSPHeaders(t *testing.T) {
+	// Not parallel — toggles package-level ssrfCheckEnabled.
+	origSSRF := ssrfCheckEnabled
+	ssrfCheckEnabled = false
+	t.Cleanup(func() { ssrfCheckEnabled = origSSRF })
 
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'self'")
@@ -30,7 +67,7 @@ func TestInsecureProxyEndpoint_StripsCSPHeaders(t *testing.T) {
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
 	cap.SetSecurityMode("insecure_proxy", []string{"csp_headers"})
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	req := localRequest(http.MethodGet, "/insecure-proxy?target="+url.QueryEscape(upstream.URL), nil)
 	rr := httptest.NewRecorder()
@@ -59,7 +96,7 @@ func TestInsecureProxyEndpoint_RequiresInsecureMode(t *testing.T) {
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
 	cap.SetSecurityMode("normal", nil)
-	mux := setupHTTPRoutes(srv, cap)
+	mux, _ := setupHTTPRoutes(srv, cap)
 
 	req := localRequest(http.MethodGet, "/insecure-proxy?target="+url.QueryEscape("https://example.com"), nil)
 	rr := httptest.NewRecorder()

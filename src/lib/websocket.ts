@@ -1,7 +1,6 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Wraps the WebSocket constructor to intercept lifecycle events and messages, delegating tracking and sampling to websocket-tracking.ts.
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // websocket.ts — WebSocket constructor instrumentation and capture installation.
@@ -14,7 +13,7 @@
  * Re-exports all tracking primitives so existing importers are unaffected.
  */
 
-import type { WebSocketCaptureMode } from '../types/index'
+import type { WebSocketCaptureMode } from '../types/index.js'
 
 import {
   type WebSocketMessageData,
@@ -29,12 +28,7 @@ import {
 } from './websocket-tracking.js'
 
 // Re-export everything from tracking so existing import paths work unchanged
-export {
-  getSize,
-  formatPayload,
-  truncateWsMessage,
-  createConnectionTracker
-} from './websocket-tracking.js'
+export { getSize, formatPayload, truncateWsMessage, createConnectionTracker } from './websocket-tracking.js'
 export type { ConnectionTracker } from './websocket-tracking.js'
 
 // =============================================================================

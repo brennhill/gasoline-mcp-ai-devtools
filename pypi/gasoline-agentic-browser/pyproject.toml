@@ -1,0 +1,58 @@
+[project]
+name = "gasoline-agentic-browser"
+version = "0.8.0"
+description = "Gasoline Agentic Browser is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "AGPL-3.0-only"
+authors = [
+    {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
+]
+keywords = [
+    "mcp",
+    "mcp-server",
+    "ai-debugging",
+    "ai-observability",
+    "llm-ops",
+    "devtools",
+    "prompt-engineering",
+    "agent-inspection"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "gasoline-agentic-browser-darwin-arm64==0.8.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "gasoline-agentic-browser-darwin-x64==0.8.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "gasoline-agentic-browser-linux-arm64==0.8.0; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "gasoline-agentic-browser-linux-x64==0.8.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "gasoline-agentic-browser-win32-x64==0.8.0; sys_platform == 'win32'",
+]
+
+[project.urls]
+Homepage = "https://cookwithgasoline.com"
+Documentation = "https://cookwithgasoline.com/getting-started/"
+Repository = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
+Issues = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
+
+[project.scripts]
+gasoline-agentic-browser = "gasoline_agentic_browser.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["gasoline_agentic_browser"]
+
+[tool.setuptools.package-data]
+gasoline_agentic_browser = ["skills/skills.json", "skills/*/SKILL.md"]

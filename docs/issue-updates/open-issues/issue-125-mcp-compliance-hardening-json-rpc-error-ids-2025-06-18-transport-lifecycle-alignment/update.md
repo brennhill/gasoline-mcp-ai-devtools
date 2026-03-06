@@ -1,7 +1,7 @@
 # Product Update: Issue #125
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/125
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/125
 - Title: MCP compliance hardening: JSON-RPC error IDs + 2025-06-18 transport/lifecycle alignment
 - Last Updated: 2026-02-17T11:44:22Z
 

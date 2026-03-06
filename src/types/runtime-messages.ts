@@ -9,16 +9,17 @@
  * Chrome runtime messages for background, content, and inject script communication
  */
 
-import type { LogEntry, ScreenshotLogEntry } from './telemetry'
-import type { WebSocketEvent, WebSocketCaptureMode } from './websocket'
-import type { NetworkBodyPayload, WaterfallEntry } from './network'
-import type { EnhancedAction } from './actions'
-import type { PerformanceSnapshot } from './performance'
-import type { LogLevelFilter } from './telemetry'
-import type { ConnectionStatus } from './state'
-import type { BrowserStateSnapshot, StateAction } from './state'
-import type { DomQueryResult } from './dom'
-import type { A11yAuditResult } from './accessibility'
+import type { LogEntry, ScreenshotLogEntry } from './telemetry.js'
+import type { WebSocketEvent, WebSocketCaptureMode } from './websocket.js'
+import type { NetworkBodyPayload, WaterfallEntry } from './network.js'
+import type { EnhancedAction } from './actions.js'
+import type { PerformanceSnapshot } from './performance.js'
+import type { LogLevelFilter } from './telemetry.js'
+import type { ConnectionStatus } from './state.js'
+import type { BrowserStateSnapshot, StateAction } from './state.js'
+import type { DomQueryResult } from './dom.js'
+import type { A11yAuditResult } from './accessibility.js'
+import type { RuntimeMessageName } from '../lib/constants.js'
 
 // =============================================================================
 // BACKGROUND MESSAGE TYPES (chrome.runtime messages)
@@ -145,11 +146,11 @@ export interface GetAiWebPilotEnabledResponse {
 /**
  * Get tracking state message (for favicon replacer)
  */
-export interface GetTrackingStateMessage {
+interface GetTrackingStateMessage {
   readonly type: 'getTrackingState'
 }
 
-export interface GetTrackingStateResponse {
+interface GetTrackingStateResponse {
   readonly state: {
     isTracked: boolean
     aiPilotEnabled: boolean
@@ -227,11 +228,17 @@ export type BackgroundMessage =
   | SetServerUrlMessage
   | DrawModeCaptureScreenshotMessage
   | DrawModeCompletedMessage
+  | PushChatMessage
+  | ScreenRecordingStartMessage
+  | ScreenRecordingStopMessage
+  | RecordingGestureGrantedMessage
+  | RecordingGestureDeniedMessage
+  | OpenPopupForRecordingMessage
 
 /**
  * Draw mode: content script requests screenshot capture
  */
-export interface DrawModeCaptureScreenshotMessage {
+interface DrawModeCaptureScreenshotMessage {
   readonly type: 'GASOLINE_CAPTURE_SCREENSHOT'
 }
 
@@ -247,6 +254,59 @@ export interface DrawModeCompletedMessage {
   readonly page_url?: string
   readonly correlation_id?: string
   readonly annot_session_name?: string
+}
+
+/**
+ * Push chat: content script sends a chat message to push to AI.
+ */
+interface PushChatMessage {
+  readonly type: 'GASOLINE_PUSH_CHAT'
+  readonly message: string
+  readonly page_url: string
+}
+
+/**
+ * Screen recording start (from popup or hover launcher).
+ */
+interface ScreenRecordingStartMessage {
+  readonly type: 'screen_recording_start'
+  readonly audio?: string
+}
+
+/**
+ * Screen recording stop (from popup or hover launcher).
+ */
+interface ScreenRecordingStopMessage {
+  readonly type: 'screen_recording_stop'
+}
+
+/**
+ * Popup approval for MCP-initiated screen recording request.
+ */
+interface RecordingGestureGrantedMessage {
+  readonly type: 'RECORDING_GESTURE_GRANTED'
+}
+
+/**
+ * Popup denial for MCP-initiated screen recording request.
+ */
+interface RecordingGestureDeniedMessage {
+  readonly type: 'RECORDING_GESTURE_DENIED'
+}
+
+/**
+ * Content script requests popup open to activate activeTab for tabCapture.
+ */
+interface OpenPopupForRecordingMessage {
+  readonly type: 'GASOLINE_OPEN_POPUP_FOR_RECORDING'
+}
+
+/**
+ * Toggle chat widget message (background to content).
+ */
+interface ToggleChatMessage {
+  readonly type: 'GASOLINE_TOGGLE_CHAT'
+  readonly client_name?: string
 }
 
 // =============================================================================
@@ -345,7 +405,7 @@ export interface GetNetworkWaterfallMessage {
 /**
  * Link health check message
  */
-export interface LinkHealthMessage {
+interface LinkHealthMessage {
   readonly type: 'LINK_HEALTH_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -353,7 +413,7 @@ export interface LinkHealthMessage {
 /**
  * Computed styles query message
  */
-export interface ComputedStylesQueryMessage {
+interface ComputedStylesQueryMessage {
   readonly type: 'COMPUTED_STYLES_QUERY'
   readonly params?: string | Record<string, unknown>
 }
@@ -361,26 +421,42 @@ export interface ComputedStylesQueryMessage {
 /**
  * Form discovery query message
  */
-export interface FormDiscoveryQueryMessage {
+interface FormDiscoveryQueryMessage {
   readonly type: 'FORM_DISCOVERY_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
+ * Form state query message
+ */
+interface FormStateQueryMessage {
+  readonly type: 'FORM_STATE_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
+ * Data table query message
+ */
+interface DataTableQueryMessage {
+  readonly type: 'DATA_TABLE_QUERY'
   readonly params?: string | Record<string, unknown>
 }
 
 /**
  * Draw mode control messages (background to content)
  */
-export interface DrawModeStartMessage {
+interface DrawModeStartMessage {
   readonly type: 'GASOLINE_DRAW_MODE_START'
   readonly started_by?: string
   readonly annot_session_name?: string
   readonly correlation_id?: string
 }
 
-export interface DrawModeStopMessage {
+interface DrawModeStopMessage {
   readonly type: 'GASOLINE_DRAW_MODE_STOP'
 }
 
-export interface GetAnnotationsMessage {
+interface GetAnnotationsMessage {
   readonly type: 'GASOLINE_GET_ANNOTATIONS'
 }
 
@@ -410,7 +486,7 @@ export interface ManageStateMessage {
  * Action toast message — visual indicator for AI actions.
  * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
-export interface ActionToastMessage {
+interface ActionToastMessage {
   readonly type: 'GASOLINE_ACTION_TOAST'
   readonly text: string
   readonly detail?: string
@@ -421,7 +497,7 @@ export interface ActionToastMessage {
 /**
  * Subtitle overlay message (persistent narration text)
  */
-export interface SubtitleMessage {
+interface SubtitleMessage {
   readonly type: 'GASOLINE_SUBTITLE'
   readonly text: string
 }
@@ -429,9 +505,16 @@ export interface SubtitleMessage {
 /**
  * Recording watermark overlay message
  */
-export interface RecordingWatermarkMessage {
+interface RecordingWatermarkMessage {
   readonly type: 'GASOLINE_RECORDING_WATERMARK'
   readonly visible: boolean
+}
+
+/**
+ * Request content launcher re-show after user reopens popup.
+ */
+export interface ShowTrackedHoverLauncherMessage {
+  readonly type: typeof RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
 }
 
 /**
@@ -448,14 +531,18 @@ export type ContentMessage =
   | LinkHealthMessage
   | ComputedStylesQueryMessage
   | FormDiscoveryQueryMessage
+  | FormStateQueryMessage
+  | DataTableQueryMessage
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
   | RecordingWatermarkMessage
+  | ShowTrackedHoverLauncherMessage
   | DrawModeStartMessage
   | DrawModeStopMessage
   | GetAnnotationsMessage
   | TrackingStateChangedMessage
+  | ToggleChatMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage
@@ -481,6 +568,8 @@ export type PageMessageType =
   | 'GASOLINE_STATE_RESPONSE'
   | 'GASOLINE_WATERFALL_RESPONSE'
   | 'GASOLINE_LINK_HEALTH_RESPONSE'
+  | 'GASOLINE_FORM_STATE_RESPONSE'
+  | 'GASOLINE_DATA_TABLE_RESPONSE'
 
 /**
  * Content to page messages (postMessage types)
@@ -495,6 +584,8 @@ export type ContentToPageMessageType =
   | 'GASOLINE_STATE_COMMAND'
   | 'GASOLINE_GET_WATERFALL'
   | 'GASOLINE_LINK_HEALTH_QUERY'
+  | 'GASOLINE_FORM_STATE_QUERY'
+  | 'GASOLINE_DATA_TABLE_QUERY'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)

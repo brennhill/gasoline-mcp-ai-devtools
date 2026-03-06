@@ -1,5 +1,4 @@
-// Purpose: Validate comparison_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for session state comparison and diff output.
 // Docs: docs/features/feature/pagination/index.md
 
 // comparison_test.go — Tests for comparison.go Compare function.
@@ -10,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
 )
 
 // ============================================
@@ -157,8 +156,8 @@ func TestCompare_FullDiffStructure(t *testing.T) {
 		{Method: "GET", URL: "/api/users", Status: 200, Duration: 100},
 		{Method: "POST", URL: "/api/data", Status: 200, Duration: 50},
 	}
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 1000},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 1000},
 		Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 50000},
 	}
 	sm.Capture("a", "")
@@ -171,8 +170,8 @@ func TestCompare_FullDiffStructure(t *testing.T) {
 		{Method: "GET", URL: "/api/users", Status: 500, Duration: 300},
 		{Method: "GET", URL: "/api/new-thing", Status: 404},
 	}
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 5000},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 5000},
 		Network: performance.NetworkSummary{RequestCount: 30, TransferSize: 200000},
 	}
 	sm.Capture("b", "")
@@ -283,8 +282,8 @@ func TestCompare_IdenticalSnapshots(t *testing.T) {
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "GET", URL: "/api/health", Status: 200, Duration: 10},
 		},
-		performance: &performance.PerformanceSnapshot{
-			Timing:  performance.PerformanceTiming{Load: 800},
+		performance: &performance.Snapshot{
+			Timing:  performance.Timing{Load: 800},
 			Network: performance.NetworkSummary{RequestCount: 5, TransferSize: 10000},
 		},
 		pageURL: "http://localhost:3000",

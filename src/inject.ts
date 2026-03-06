@@ -72,6 +72,7 @@ export {
   wrapFetchWithBodies,
   wrapXHRWithBodies,
   unwrapXHR,
+  adoptEarlyBodies,
   getPerformanceMarks,
   getPerformanceMeasures,
   getCapturedMarks,
@@ -159,4 +160,4 @@ export {
   type RestoreStateResult,
   type RestoredCounts,
   type HighlightResult
-} from './inject/index'
+} from './inject/index.js'

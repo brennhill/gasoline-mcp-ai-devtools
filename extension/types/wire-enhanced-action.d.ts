@@ -22,5 +22,8 @@ export interface WireEnhancedAction {
     readonly selected_text?: string;
     readonly scroll_y?: number;
     readonly tab_id?: number;
+    readonly classification?: string;
+    readonly duration_ms?: number;
+    readonly role?: string;
 }
 //# sourceMappingURL=wire-enhanced-action.d.ts.map

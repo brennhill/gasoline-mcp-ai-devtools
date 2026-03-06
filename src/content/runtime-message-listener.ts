@@ -1,10 +1,8 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
 
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Installs the chrome.runtime.onMessage listener that routes background messages to content-script handlers with sender validation.
+ * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 
 /**
@@ -12,8 +10,8 @@
  * Handles chrome.runtime messages from background script
  */
 
-import type { ContentMessage, WebSocketCaptureMode } from '../types'
-import { SettingName } from '../lib/constants'
+import type { ContentMessage, WebSocketCaptureMode } from '../types/index.js'
+import { SettingName } from '../lib/constants.js'
 import {
   isValidBackgroundSender,
   handlePing,
@@ -27,10 +25,16 @@ import {
   handleGetNetworkWaterfall,
   handleLinkHealthQuery,
   handleComputedStylesQuery,
-  handleFormDiscoveryQuery
-} from './message-handlers'
-import { showActionToast } from './ui/toast'
-import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle'
+  handleFormDiscoveryQuery,
+  handleFormStateQuery,
+  handleDataTableQuery,
+  handleGetReadable,
+  handleGetMarkdown,
+  handlePageSummary
+} from './message-handlers.js'
+import { showActionToast } from './ui/toast.js'
+import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
+import { toggleChatWidget } from './ui/chat-widget.js'
 
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true
@@ -67,6 +71,10 @@ export function initRuntimeMessageListener(): void {
       if (m.text) showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms)
       return false
     },
+    GASOLINE_TOGGLE_CHAT: (msg) => {
+      toggleChatWidget((msg as { client_name?: string }).client_name)
+      return false
+    },
     GASOLINE_RECORDING_WATERMARK: (msg) => {
       toggleRecordingWatermark((msg as { visible?: boolean }).visible ?? false)
       return false
@@ -93,7 +101,11 @@ export function initRuntimeMessageListener(): void {
       const m = msg as { started_by?: string; annot_session_name?: string; correlation_id?: string }
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || 'user', m.annot_session_name || '', m.correlation_id || '')
+          const result = mod.activateDrawMode(
+            m.started_by || 'user',
+            m.annot_session_name || '',
+            m.correlation_id || ''
+          )
           sr(result)
         })
         .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
@@ -136,7 +148,12 @@ export function initRuntimeMessageListener(): void {
     GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
     LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}) as Record<string, unknown>, sr),
-    FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr)
+    FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
+    GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
+    GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
   }
 
   chrome.runtime.onMessage.addListener(

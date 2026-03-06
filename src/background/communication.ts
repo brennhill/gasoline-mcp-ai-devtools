@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Facade that re-exports communication primitives (circuit breaker, batchers, server HTTP) and provides log formatting and screenshot capture.
+ * Why: Single import point for communication functions, avoiding scattered imports across consumers.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 
 /**
@@ -12,7 +10,7 @@
  */
 
 // Re-export circuit breaker functions
-export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker'
+export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker.js'
 
 // Re-export batcher functions and types
 export {
@@ -23,30 +21,25 @@ export {
   type BatcherWithCircuitBreaker,
   type BatcherConfig,
   type LogBatcherOptions
-} from './batchers'
+} from './batchers.js'
 
 // Re-export server communication functions
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 export {
   sendLogsToServer,
   sendWSEventsToServer,
   sendNetworkBodiesToServer,
-  sendNetworkWaterfallToServer,
   sendEnhancedActionsToServer,
   sendPerformanceSnapshotsToServer,
   checkServerHealth,
   updateBadge,
-  postQueryResult,
-  postAsyncCommandResult,
-  postExtensionLogs,
   sendStatusPing,
-  pollPendingQueries,
   type ServerHealthResponse
-} from './server'
+} from './server.js'
 
 // Import for logging formatting functions (still in this file for now)
-import type { LogEntry } from '../types'
-import { getRequestHeaders } from './server'
+import type { LogEntry } from '../types/index.js'
+import { getRequestHeaders } from './server.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /**
  * Truncate a single argument if too large
@@ -137,6 +130,7 @@ export async function captureScreenshot(
 
   try {
     const tab = await chrome.tabs.get(tabId)
+    await chrome.tabs.update(tabId, { active: true })
 
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
@@ -149,10 +143,9 @@ export async function captureScreenshot(
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify({
-        dataUrl,
+        data_url: dataUrl,
         url: tab.url,
-        errorId: relatedErrorId || '',
-        errorType: errorType || ''
+        correlation_id: relatedErrorId || ''
       })
     })
 
@@ -183,8 +176,8 @@ export async function captureScreenshot(
     return { success: true, entry: screenshotEntry }
   } catch (error) {
     if (debugLogFn) {
-      debugLogFn('error', 'Screenshot capture failed', { error: (error as Error).message })
+      debugLogFn('error', 'Screenshot capture failed', { error: errorMessage(error) })
     }
-    return { success: false, error: (error as Error).message }
+    return { success: false, error: errorMessage(error) }
   }
 }

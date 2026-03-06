@@ -3,7 +3,9 @@ feature: test-generation
 type: competitive-analysis
 competitor: TestSprite
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Why Gasoline Beats TestSprite

@@ -1,7 +1,7 @@
 # Product Update: Issue #47
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/47
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/47
 - Title: Draw mode: boxes vanish instantly on Escape — add fade-out and 'submitted' toast
 - Last Updated: 2026-02-14T18:56:16Z
 

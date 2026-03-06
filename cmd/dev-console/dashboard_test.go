@@ -1,6 +1,5 @@
-// Purpose: Validate dashboard_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for dashboard HTML rendering.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // dashboard_test.go — Tests for dashboard helpers.
 package main
@@ -9,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestParseMCPCommand_ToolCalls(t *testing.T) {

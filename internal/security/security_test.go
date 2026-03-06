@@ -1,6 +1,5 @@
-// Purpose: Validate security_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for security audit analysis and finding generation.
+// Docs: docs/features/feature/security-hardening/index.md
 
 //go:build integration
 // +build integration

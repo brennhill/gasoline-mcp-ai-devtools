@@ -1,5 +1,4 @@
-// Purpose: Validate redaction_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Unit tests for redaction logic.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 package redaction

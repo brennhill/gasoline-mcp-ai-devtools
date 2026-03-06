@@ -1,6 +1,5 @@
-// Purpose: Validate csp_golden_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Golden-file snapshot tests for dev-console output stability.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // csp_golden_test.go — Golden file validation for CSP directive generation.
 package main
@@ -12,8 +11,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	gen "github.com/dev-console/dev-console/internal/tools/generate"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
 func TestGoldenCSPModerate(t *testing.T) {

@@ -1,8 +1,6 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Tracks whether this content script's tab is the currently tracked tab via chrome.storage change listeners.
+ * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 
 /**
@@ -10,8 +8,8 @@
  * Manages tracking status for the current tab
  */
 
-import type { StorageChange } from '../types'
-import { StorageKey } from '../lib/constants'
+import type { StorageChange } from '../types/index.js'
+import { StorageKey } from '../lib/constants.js'
 
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false

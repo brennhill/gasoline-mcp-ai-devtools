@@ -1,9 +1,8 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Wraps performance.mark/measure to capture calls and uses PerformanceObserver for error-time performance snapshots.
  * Docs: docs/features/feature/performance-audit/index.md
  */
-import type { PerformanceMark, PerformanceMeasure } from '../types/index';
+import type { PerformanceMark, PerformanceMeasure } from '../types/index.js';
 /**
  * Get performance marks
  */

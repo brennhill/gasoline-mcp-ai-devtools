@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: CRUD operations for saving, loading, listing, and deleting browser state snapshots in chrome.storage.local.
+ * Docs: docs/features/feature/state-time-travel/index.md
  */
 /**
  * @fileoverview State Snapshot Storage
@@ -11,7 +8,7 @@
  * snapshots in chrome.storage.local. Used by the interact tool's state_*
  * actions (save_state, load_state, list_states, delete_state).
  */
-import type { BrowserStateSnapshot } from '../types';
+import type { BrowserStateSnapshot } from '../types/index.js';
 interface StoredStateSnapshot extends BrowserStateSnapshot {
     name: string;
     size_bytes: number;

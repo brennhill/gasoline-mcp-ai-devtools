@@ -1,5 +1,4 @@
-// Purpose: Validate http_debug_redaction_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for capture HTTP debug logging with redaction.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture

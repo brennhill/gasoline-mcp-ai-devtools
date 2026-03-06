@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Scans page forms to extract field metadata (name, type, required, validation) and optionally runs client-side validation.
+ * Docs: docs/features/feature/form-filling/index.md
  */
 
 // form-discovery.ts — Form discovery and validation handler for inject context.
@@ -96,7 +94,9 @@ function buildFormSelector(form: HTMLFormElement): string {
 /**
  * Extract validation constraints from a form element.
  */
-function getValidationConstraints(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): Record<string, string | number | boolean> {
+function getValidationConstraints(
+  el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+): Record<string, string | number | boolean> {
   const constraints: Record<string, string | number | boolean> = {}
   if (el.required) constraints.required = true
 

@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Key-value context annotations storage that attaches metadata (user flow, feature flags, session info) to captured events.
  * Docs: docs/features/feature/observe/index.md
  */
 
@@ -12,7 +11,7 @@
 
 import { MAX_CONTEXT_SIZE, MAX_CONTEXT_VALUE_SIZE } from './constants.js'
 import { safeSerialize } from './serialize.js'
-import type { JsonValue } from '../types/index'
+import type { JsonValue } from '../types/index.js'
 
 // Context annotations storage
 const contextAnnotations: Map<string, JsonValue> = new Map()

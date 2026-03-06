@@ -1,10 +1,10 @@
-// Purpose: Implements upload command handling, validation, and OS automation wiring.
-// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Purpose: Re-exports cross-platform upload security types (UploadSecurity, PathValidationResult, PathDeniedError) from internal/upload.
+// Why: Surfaces upload security validation as package-level aliases for use by interact upload handlers.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "github.com/dev-console/dev-console/internal/upload"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 
 // ============================================
 // Type Aliases

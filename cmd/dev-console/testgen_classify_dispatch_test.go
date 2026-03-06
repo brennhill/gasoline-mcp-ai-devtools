@@ -1,5 +1,4 @@
-// Purpose: Validate testgen_classify_dispatch_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for test-generation classify dispatch routing.
 // Docs: docs/features/feature/test-generation/index.md
 
 // testgen_classify_dispatch_test.go — Tests for classify dispatch functions at 0% coverage.
@@ -29,7 +28,7 @@ func TestDispatchClassifyAction_Failure(t *testing.T) {
 		},
 	}
 
-	result, summary, errResp := h.dispatchClassifyAction(1, params)
+	result, summary, errResp := h.testGen().dispatchClassifyAction(1, params)
 	if errResp != nil {
 		t.Fatalf("dispatchClassifyAction(failure) returned error response: %v", errResp)
 	}
@@ -65,7 +64,7 @@ func TestDispatchClassifyAction_Batch(t *testing.T) {
 		},
 	}
 
-	result, summary, errResp := h.dispatchClassifyAction(1, params)
+	result, summary, errResp := h.testGen().dispatchClassifyAction(1, params)
 	if errResp != nil {
 		t.Fatalf("dispatchClassifyAction(batch) returned error response: %v", errResp)
 	}
@@ -93,7 +92,7 @@ func TestDispatchClassifyAction_UnknownAction(t *testing.T) {
 		Action: "nonexistent",
 	}
 
-	result, summary, errResp := h.dispatchClassifyAction(1, params)
+	result, summary, errResp := h.testGen().dispatchClassifyAction(1, params)
 	// Unknown action falls through without error
 	if errResp != nil {
 		t.Fatalf("unknown action should not return error; got %v", errResp)
@@ -115,7 +114,7 @@ func TestDispatchClassifyAction_FailureMissingParam(t *testing.T) {
 		Failure: nil, // missing
 	}
 
-	_, _, errResp := h.dispatchClassifyAction(42, params)
+	_, _, errResp := h.testGen().dispatchClassifyAction(42, params)
 	if errResp == nil {
 		t.Fatal("dispatchClassifyAction(failure, nil) should return error response")
 	}
@@ -134,7 +133,7 @@ func TestDispatchClassifyAction_BatchMissingParam(t *testing.T) {
 		Failures: nil, // empty
 	}
 
-	_, _, errResp := h.dispatchClassifyAction(99, params)
+	_, _, errResp := h.testGen().dispatchClassifyAction(99, params)
 	if errResp == nil {
 		t.Fatal("dispatchClassifyAction(batch, nil failures) should return error response")
 	}
@@ -158,7 +157,7 @@ func TestDispatchClassifyAction_BatchTooLarge(t *testing.T) {
 		Failures: failures,
 	}
 
-	_, _, errResp := h.dispatchClassifyAction(1, params)
+	_, _, errResp := h.testGen().dispatchClassifyAction(1, params)
 	if errResp == nil {
 		t.Fatal("dispatchClassifyAction should reject batch > maxFailuresPerBatch")
 	}
@@ -173,7 +172,7 @@ func TestClassifySingleFailure_NilFailure(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	_, _, resp, ok := h.classifySingleFailure(1, TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifySingleFailure(1, TestClassifyRequest{
 		Action:  "failure",
 		Failure: nil,
 	})
@@ -188,7 +187,7 @@ func TestClassifySingleFailure_HighConfidence(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	result, summary, _, ok := h.classifySingleFailure(1, TestClassifyRequest{
+	result, summary, _, ok := h.testGen().classifySingleFailure(1, TestClassifyRequest{
 		Action: "failure",
 		Failure: &TestFailure{
 			TestName:   "broken selector test",
@@ -232,7 +231,7 @@ func TestClassifySingleFailure_LowConfidence(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	_, _, resp, ok := h.classifySingleFailure(7, TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifySingleFailure(7, TestClassifyRequest{
 		Action: "failure",
 		Failure: &TestFailure{
 			TestName: "unknown failure",
@@ -253,7 +252,7 @@ func TestClassifySingleFailure_NoSuggestedFix(t *testing.T) {
 	h := &ToolHandler{}
 
 	// Real bug category has no suggested fix
-	result, _, _, ok := h.classifySingleFailure(1, TestClassifyRequest{
+	result, _, _, ok := h.testGen().classifySingleFailure(1, TestClassifyRequest{
 		Action: "failure",
 		Failure: &TestFailure{
 			TestName: "assertion test",
@@ -278,7 +277,7 @@ func TestClassifyBatchFailures_EmptyFailures(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	_, _, resp, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action:   "batch",
 		Failures: nil,
 	})
@@ -292,7 +291,7 @@ func TestClassifyBatchFailures_EmptySlice(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	_, _, resp, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action:   "batch",
 		Failures: []TestFailure{},
 	})
@@ -311,7 +310,7 @@ func TestClassifyBatchFailures_ExceedsMaxBatch(t *testing.T) {
 		failures[i] = TestFailure{TestName: fmt.Sprintf("t%d", i), Error: "error"}
 	}
 
-	_, _, resp, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action:   "batch",
 		Failures: failures,
 	})
@@ -331,7 +330,7 @@ func TestClassifyBatchFailures_ExactMax(t *testing.T) {
 		failures[i] = TestFailure{TestName: fmt.Sprintf("t%d", i), Error: "net::ERR_CONNECTION_REFUSED"}
 	}
 
-	result, summary, _, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	result, summary, _, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action:   "batch",
 		Failures: failures,
 	})
@@ -357,7 +356,7 @@ func TestClassifyBatchFailures_MixedResults(t *testing.T) {
 		{TestName: "t4", Error: "Element is outside viewport"},
 	}
 
-	result, summary, _, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	result, summary, _, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action:   "batch",
 		Failures: failures,
 	})
@@ -399,7 +398,7 @@ func TestClassifyBatchFailures_SingleFailure(t *testing.T) {
 	t.Parallel()
 	h := &ToolHandler{}
 
-	result, summary, _, ok := h.classifyBatchFailures(1, TestClassifyRequest{
+	result, summary, _, ok := h.testGen().classifyBatchFailures(1, TestClassifyRequest{
 		Action: "batch",
 		Failures: []TestFailure{
 			{TestName: "only", Error: "net::ERR_TIMEOUT"},
@@ -421,7 +420,7 @@ func TestClassifyBatchFailures_PreservesRequestID(t *testing.T) {
 	h := &ToolHandler{}
 
 	// Test with nil failures to trigger error response with specific ID
-	_, _, resp, ok := h.classifyBatchFailures("req-abc-123", TestClassifyRequest{
+	_, _, resp, ok := h.testGen().classifyBatchFailures("req-abc-123", TestClassifyRequest{
 		Action:   "batch",
 		Failures: nil,
 	})

@@ -1,6 +1,5 @@
-// Purpose: Validate sri_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for Subresource Integrity hash generation.
+// Docs: docs/features/feature/security-hardening/index.md
 
 // sri_test.go — Tests for SRI Hash Generator (generate_sri) MCP tool.
 // Tests hash computation, resource filtering, third-party detection, and output formats.

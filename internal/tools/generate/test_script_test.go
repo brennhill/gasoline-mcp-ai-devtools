@@ -1,6 +1,5 @@
-// Purpose: Validate test_script_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for Playwright test script generation from recordings.
+// Docs: docs/features/feature/test-generation/index.md
 
 // test_script_test.go — Tests for Playwright test script generation.
 package generate
@@ -9,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestGenerateTestScript_NoActions(t *testing.T) {

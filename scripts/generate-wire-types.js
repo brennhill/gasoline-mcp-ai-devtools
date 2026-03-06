@@ -26,7 +26,7 @@ const WIRE_PAIRS = [
   { go: 'internal/types/wire_enhanced_action.go', ts: 'src/types/wire-enhanced-action.ts' },
   { go: 'internal/types/wire_network.go', ts: 'src/types/wire-network.ts' },
   { go: 'internal/types/wire_websocket_event.go', ts: 'src/types/wire-websocket-event.ts' },
-  { go: 'internal/performance/wire_performance.go', ts: 'src/types/wire-performance-snapshot.ts' },
+  { go: 'internal/performance/wire_performance.go', ts: 'src/types/wire-performance-snapshot.ts' }
 ]
 
 /**
@@ -35,7 +35,7 @@ const WIRE_PAIRS = [
  */
 const TYPE_OVERRIDES = {
   // direction is a string in Go but a union type in TS
-  'WireWebSocketEvent.direction': "'incoming' | 'outgoing'",
+  'WireWebSocketEvent.direction': "'incoming' | 'outgoing'"
 }
 
 /**
@@ -45,7 +45,7 @@ const TYPE_OVERRIDES = {
 const OPTIONAL_OVERRIDES = {
   // Extension may omit these timing fields even though Go struct has no omitempty
   'WireNetworkWaterfallEntry.fetch_start': true,
-  'WireNetworkWaterfallEntry.response_end': true,
+  'WireNetworkWaterfallEntry.response_end': true
 }
 
 /**
@@ -55,20 +55,20 @@ const OPTIONAL_OVERRIDES = {
 const FILE_DESCRIPTIONS = {
   'wire_enhanced_action.go': {
     overview: 'Wire type for enhanced actions',
-    description: 'This is the canonical TypeScript definition for the EnhancedAction HTTP payload.',
+    description: 'This is the canonical TypeScript definition for the EnhancedAction HTTP payload.'
   },
   'wire_network.go': {
     overview: 'Wire types for network telemetry',
-    description: 'Canonical TypeScript definitions for NetworkBody and NetworkWaterfall HTTP payloads.',
+    description: 'Canonical TypeScript definitions for NetworkBody and NetworkWaterfall HTTP payloads.'
   },
   'wire_websocket_event.go': {
     overview: 'Wire type for WebSocket events',
-    description: 'Canonical TypeScript definition for the WebSocketEvent HTTP payload.',
+    description: 'Canonical TypeScript definition for the WebSocketEvent HTTP payload.'
   },
   'wire_performance.go': {
     overview: 'Wire types for performance snapshots',
-    description: 'Canonical TypeScript definitions for the PerformanceSnapshot HTTP payload.',
-  },
+    description: 'Canonical TypeScript definitions for the PerformanceSnapshot HTTP payload.'
+  }
 }
 
 /**
@@ -76,19 +76,21 @@ const FILE_DESCRIPTIONS = {
  * When present, overrides the Go comment entirely.
  */
 const STRUCT_COMMENT_OVERRIDES = {
-  'WireEnhancedAction': 'WireEnhancedAction is the JSON shape sent over HTTP between extension and Go daemon.\n * All fields use snake_case to match the Go json tags.',
-  'WireNetworkBody': 'WireNetworkBody is the JSON shape for captured network request/response bodies.',
-  'WireNetworkWaterfallEntry': 'WireNetworkWaterfallEntry is the JSON shape for a single PerformanceResourceTiming entry.',
-  'WireNetworkWaterfallPayload': 'WireNetworkWaterfallPayload is the top-level shape POSTed to /network-waterfall.',
-  'WireWebSocketEvent': 'WireWebSocketEvent is the JSON shape sent over HTTP for captured WebSocket events.',
-  'WirePerformanceTiming': 'WirePerformanceTiming holds navigation timing metrics.',
-  'WireTypeSummary': 'WireTypeSummary holds per-type resource metrics.',
-  'WireSlowRequest': 'WireSlowRequest represents one of the slowest network requests.',
-  'WireNetworkSummary': 'WireNetworkSummary holds aggregated network resource metrics.',
-  'WireLongTaskMetrics': 'WireLongTaskMetrics holds accumulated long task data.',
-  'WireUserTimingEntry': 'WireUserTimingEntry represents a single performance mark or measure.',
-  'WireUserTimingData': 'WireUserTimingData holds captured performance.mark() and performance.measure() entries.',
-  'WirePerformanceSnapshot': 'WirePerformanceSnapshot is the JSON shape sent over HTTP for performance data.',
+  WireEnhancedAction:
+    'WireEnhancedAction is the JSON shape sent over HTTP between extension and Go daemon.\n * All fields use snake_case to match the Go json tags.',
+  WireNetworkBody: 'WireNetworkBody is the JSON shape for captured network request/response bodies.',
+  WireNetworkWaterfallEntry:
+    'WireNetworkWaterfallEntry is the JSON shape for a single PerformanceResourceTiming entry.',
+  WireNetworkWaterfallPayload: 'WireNetworkWaterfallPayload is the top-level shape POSTed to /network-waterfall.',
+  WireWebSocketEvent: 'WireWebSocketEvent is the JSON shape sent over HTTP for captured WebSocket events.',
+  WirePerformanceTiming: 'WirePerformanceTiming holds navigation timing metrics.',
+  WireTypeSummary: 'WireTypeSummary holds per-type resource metrics.',
+  WireSlowRequest: 'WireSlowRequest represents one of the slowest network requests.',
+  WireNetworkSummary: 'WireNetworkSummary holds aggregated network resource metrics.',
+  WireLongTaskMetrics: 'WireLongTaskMetrics holds accumulated long task data.',
+  WireUserTimingEntry: 'WireUserTimingEntry represents a single performance mark or measure.',
+  WireUserTimingData: 'WireUserTimingData holds captured performance.mark() and performance.measure() entries.',
+  WirePerformanceSnapshot: 'WirePerformanceSnapshot is the JSON shape sent over HTTP for performance data.'
 }
 
 /**
@@ -96,20 +98,16 @@ const STRUCT_COMMENT_OVERRIDES = {
  * Values are the comment lines to append inside the interface.
  */
 const SERVER_ONLY_COMMENTS = {
-  'WireEnhancedAction': [
+  WireEnhancedAction: [
     '// server-only: test_ids — added by Go daemon for test boundary correlation',
-    '// server-only: source — added by Go daemon ("human" or "ai")',
+    '// server-only: source — added by Go daemon ("human" or "ai")'
   ],
-  'WireNetworkBody': [
+  WireNetworkBody: [
     '// server-only: ts — server-side timestamp',
-    '// server-only: response_headers, has_auth_header, binary_format, format_confidence, test_ids',
+    '// server-only: response_headers, has_auth_header, binary_format, format_confidence, test_ids'
   ],
-  'WireWebSocketEvent': [
-    '// server-only: sampled, binary_format, format_confidence, tab_id, test_ids',
-  ],
-  'WirePerformanceSnapshot': [
-    '// server-only: resources — added by Go daemon for causal diffing',
-  ],
+  WireWebSocketEvent: ['// server-only: sampled, binary_format, format_confidence, tab_id, test_ids'],
+  WirePerformanceSnapshot: ['// server-only: resources — added by Go daemon for causal diffing']
 }
 
 // ============================================
@@ -121,10 +119,7 @@ const SERVER_ONLY_COMMENTS = {
  * Returns { name, fields: [{ goName, goType, jsonTag, omitempty, comment }] }
  */
 function parseGoStruct(content, typeName) {
-  const structRegex = new RegExp(
-    `type\\s+${typeName}\\s+struct\\s*\\{([^}]*)\\}`,
-    's'
-  )
+  const structRegex = new RegExp(`type\\s+${typeName}\\s+struct\\s*\\{([^}]*)\\}`, 's')
   const match = content.match(structRegex)
   if (!match) return null
 
@@ -136,9 +131,7 @@ function parseGoStruct(content, typeName) {
     if (!trimmed || trimmed.startsWith('//')) continue
 
     // Match: FieldName  GoType  `json:"json_name,omitempty"` // optional comment
-    const fieldMatch = trimmed.match(
-      /^(\w+)\s+([\w.*[\]]+(?:[[\w.]+]\w+)?)\s+`json:"([^"]+)"`(?:\s*\/\/\s*(.*))?$/
-    )
+    const fieldMatch = trimmed.match(/^(\w+)\s+([\w.*[\]]+(?:[[\w.]+]\w+)?)\s+`json:"([^"]+)"`(?:\s*\/\/\s*(.*))?$/)
     if (!fieldMatch) continue
 
     const [, goName, goType, jsonTagRaw, comment] = fieldMatch
@@ -213,12 +206,18 @@ function mapGoTypeToTS(goType, structName, jsonTag) {
 
   // Primitive types
   switch (goType) {
-    case 'string': return { tsType: 'string', nullable: false }
-    case 'int': return { tsType: 'number', nullable: false }
-    case 'int64': return { tsType: 'number', nullable: false }
-    case 'float64': return { tsType: 'number', nullable: false }
-    case 'bool': return { tsType: 'boolean', nullable: false }
-    case 'any': return { tsType: 'unknown', nullable: false }
+    case 'string':
+      return { tsType: 'string', nullable: false }
+    case 'int':
+      return { tsType: 'number', nullable: false }
+    case 'int64':
+      return { tsType: 'number', nullable: false }
+    case 'float64':
+      return { tsType: 'number', nullable: false }
+    case 'bool':
+      return { tsType: 'boolean', nullable: false }
+    case 'any':
+      return { tsType: 'unknown', nullable: false }
     default:
       // Assume it's a struct reference (e.g., WireTypeSummary)
       return { tsType: goType, nullable: false }
@@ -251,8 +250,8 @@ function generateInterface(goStruct, goComment) {
     const isOptional = field.omitempty || overrideOptional || false
 
     // For pointer-to-struct with omitempty, the field is optional
-    const isPointerToStruct = field.goType.startsWith('*') &&
-      !['float64', 'int', 'int64', 'bool', 'string'].includes(field.goType.slice(1))
+    const isPointerToStruct =
+      field.goType.startsWith('*') && !['float64', 'int', 'int64', 'bool', 'string'].includes(field.goType.slice(1))
 
     const optMarker = isOptional || isPointerToStruct ? '?' : ''
     lines.push(`  readonly ${field.jsonTag}${optMarker}: ${tsType}`)
@@ -309,12 +308,8 @@ function generateTSFile(goContent, goPath, _tsPath) {
   // @fileoverview block
   const goBase = path.basename(goPath)
   const fileDesc = FILE_DESCRIPTIONS[goBase]
-  const overview = fileDesc
-    ? `${fileDesc.overview} — matches ${goPath}`
-    : `Wire types — matches ${goPath}`
-  const description = fileDesc
-    ? fileDesc.description
-    : 'Canonical TypeScript definitions for the wire payloads.'
+  const overview = fileDesc ? `${fileDesc.overview} — matches ${goPath}` : `Wire types — matches ${goPath}`
+  const description = fileDesc ? fileDesc.description : 'Canonical TypeScript definitions for the wire payloads.'
 
   lines.push('/**')
   lines.push(` * @fileoverview ${overview}`)

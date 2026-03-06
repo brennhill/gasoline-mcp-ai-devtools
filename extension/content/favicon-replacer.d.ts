@@ -1,8 +1,6 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Replaces the page favicon with the Gasoline flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
+ * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 /**
  * Initialize favicon replacement.

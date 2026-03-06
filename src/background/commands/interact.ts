@@ -1,42 +1,31 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches interact tool commands to extension-side handlers.
+ * Why: Routes MCP interact actions to DOM primitives, browser actions, and CDP operations.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 
 // interact.ts — Command handlers for the interact MCP tool.
 // Handles: subtitle, highlight, browser_action, dom_action, upload,
-//          execute, record_start, record_stop, state_*.
+//          execute, screen_recording_start, screen_recording_stop, state_*.
 
-import type { PendingQuery } from '../../types'
-import type { SyncClient } from '../sync-client'
-import { isAiWebPilotEnabled } from '../state'
-import { executeDOMAction } from '../dom-dispatch'
-import { executeUpload } from '../upload-handler'
-import { startRecording, stopRecording } from '../recording'
-import { executeWithWorldRouting } from '../query-execution'
-import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers'
-import { registerCommand } from './registry'
-import { sendResult, sendAsyncResult } from './helpers'
-
-function statusFromError(error?: string): 'complete' | 'error' {
-  return error ? 'error' : 'complete'
-}
+import { isAiWebPilotEnabled } from '../state.js'
+import { executeDOMAction } from '../dom-dispatch.js'
+import { executeCDPAction } from '../cdp-dispatch.js'
+import { executeUpload } from '../upload-handler.js'
+import { startRecording, stopRecording } from '../recording.js'
+import { executeWithWorldRouting } from '../query-execution.js'
+import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js'
+import { registerCommand } from './registry.js'
+import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js'
+import { errorMessage } from '../../lib/error-utils.js'
 
 // =============================================================================
 // SUBTITLE
 // =============================================================================
 
 registerCommand('subtitle', async (ctx) => {
-  let params: { text?: string }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    params = {}
-  }
+  const params = ctx.params as { text?: string }
   chrome.tabs
     .sendMessage(ctx.tabId, {
       type: 'GASOLINE_SUBTITLE',
@@ -51,24 +40,9 @@ registerCommand('subtitle', async (ctx) => {
 // =============================================================================
 
 registerCommand('highlight', async (ctx) => {
-  let params: unknown
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      error: 'invalid_params',
-      message: 'Failed to parse highlight params as JSON'
-    })
-    return
-  }
+  const params = ctx.params
   const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params, ctx.tabId)
-  if (ctx.query.correlation_id) {
-    const err =
-      result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err)
-  } else {
-    ctx.sendResult(result)
-  }
+  ctx.sendResult(result)
 })
 
 // =============================================================================
@@ -76,7 +50,7 @@ registerCommand('highlight', async (ctx) => {
 // =============================================================================
 
 registerCommand('browser_action', async (ctx) => {
-  let params: {
+  const params = ctx.params as {
     action?: string
     what?: string
     url?: string
@@ -84,16 +58,6 @@ registerCommand('browser_action', async (ctx) => {
     tab_id?: number
     tab_index?: number
     new_tab?: boolean
-  }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      success: false,
-      error: 'invalid_params',
-      message: 'Failed to parse browser_action params as JSON'
-    })
-    return
   }
   if (ctx.query.correlation_id) {
     await handleAsyncBrowserAction(ctx.query, ctx.tabId, params, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
@@ -108,11 +72,17 @@ registerCommand('browser_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('dom_action', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
+})
+
+// =============================================================================
+// CDP ACTION
+// =============================================================================
+
+registerCommand('cdp_action', async (ctx) => {
+  if (!requireAiWebPilot(ctx)) return
+  await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
 // =============================================================================
@@ -120,28 +90,17 @@ registerCommand('dom_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('upload', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
   await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
 // =============================================================================
-// RECORD START
+// SCREEN RECORDING START
 // =============================================================================
 
-registerCommand('record_start', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
-    return
-  }
-  let params: { name?: string; fps?: number; audio?: string }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    params = {}
-  }
+registerCommand('screen_recording_start', async (ctx) => {
+  if (!requireAiWebPilot(ctx)) return
+  const params = ctx.params as { name?: string; fps?: number; audio?: string }
   const result = await startRecording(
     params.name ?? 'recording',
     params.fps ?? 15,
@@ -150,22 +109,17 @@ registerCommand('record_start', async (ctx) => {
     false,
     ctx.tabId
   )
-  const error = result.error || undefined
-  ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, statusFromError(error), result, error)
+  ctx.sendResult(result)
 })
 
 // =============================================================================
-// RECORD STOP
+// SCREEN RECORDING STOP
 // =============================================================================
 
-registerCommand('record_stop', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
-    return
-  }
+registerCommand('screen_recording_stop', async (ctx) => {
+  if (!requireAiWebPilot(ctx)) return
   const result = await stopRecording()
-  const error = result.error || undefined
-  sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, statusFromError(error), result, error)
+  ctx.sendResult(result)
 })
 
 // =============================================================================
@@ -173,21 +127,9 @@ registerCommand('record_stop', async (ctx) => {
 // =============================================================================
 
 registerCommand('state_*', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-    return
-  }
+  if (!requireAiWebPilot(ctx)) return
 
-  let params: Record<string, unknown>
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    ctx.sendResult({
-      error: 'invalid_params',
-      message: 'Failed to parse state query params as JSON'
-    })
-    return
-  }
+  const params = ctx.params as Record<string, unknown>
   const action = params.action as string
 
   // Use the tracked tab from the command context instead of querying for active tab.
@@ -203,10 +145,31 @@ registerCommand('state_*', async (ctx) => {
 
     switch (action) {
       case 'capture': {
-        result = await chrome.tabs.sendMessage(tabId, {
+        const captureData = (await chrome.tabs.sendMessage(tabId, {
           type: 'GASOLINE_MANAGE_STATE',
           params: { action: 'capture' }
-        })
+        })) as Record<string, unknown>
+
+        // Enrich with chrome.cookies API for full cookie metadata (HttpOnly, Secure, etc.)
+        try {
+          const tab = await chrome.tabs.get(tabId)
+          if (tab.url) {
+            const chromeCookies = await chrome.cookies.getAll({ url: tab.url })
+            captureData.cookies = chromeCookies.map((c) => ({
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path,
+              secure: c.secure,
+              httpOnly: c.httpOnly,
+              sameSite: c.sameSite,
+              expirationDate: c.expirationDate
+            }))
+          }
+        } catch {
+          // Falls back to document.cookie string from captureState()
+        }
+        result = captureData
         break
       }
 
@@ -262,7 +225,7 @@ registerCommand('state_*', async (ctx) => {
 
     ctx.sendResult(result)
   } catch (err) {
-    ctx.sendResult({ error: (err as Error).message })
+    ctx.sendResult({ error: errorMessage(err) })
   }
 })
 
@@ -271,31 +234,28 @@ registerCommand('state_*', async (ctx) => {
 // =============================================================================
 
 registerCommand('execute', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
-    } else {
-      ctx.sendResult({
-        success: false,
-        error: 'ai_web_pilot_disabled',
-        message: 'AI Web Pilot is not enabled in the extension popup'
-      })
-    }
-    return
-  }
-
-  // Parse world param for routing
-  let execParams: { script?: string; timeout_ms?: number; world?: string }
-  try {
-    execParams = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    execParams = {}
-  }
+  const execParams = ctx.params as { script?: string; timeout_ms?: number; world?: string }
   const world = execParams.world || 'auto'
 
   if (ctx.query.correlation_id) {
+    if (!isAiWebPilotEnabled()) {
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        {
+          success: false,
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled'
+        },
+        'ai_web_pilot_disabled'
+      )
+      return
+    }
     await handleAsyncExecuteCommand(ctx.query, ctx.tabId, world, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
   } else {
+    if (!requireAiWebPilot(ctx)) return
     try {
       const result = await executeWithWorldRouting(ctx.tabId, ctx.query.params, world)
       ctx.sendResult(result)
@@ -303,7 +263,7 @@ registerCommand('execute', async (ctx) => {
       ctx.sendResult({
         success: false,
         error: 'execution_failed',
-        message: (err as Error).message || 'Execution failed'
+        message: errorMessage(err, 'Execution failed')
       })
     }
   }
@@ -312,11 +272,6 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 // PILOT COMMAND (exported for use by index.ts re-export chain)
 // =============================================================================
-
-function isContentScriptUnreachableError(err: unknown): boolean {
-  const message = (err as Error)?.message || ''
-  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
-}
 
 function buildFallbackStatusMessage(status: 'SUCCESS' | 'ERROR'): string {
   return `Error: MAIN world execution FAILED. Fallback in ISOLATED is ${status}.`
@@ -392,12 +347,16 @@ function runHighlightFallback(params: { selector?: unknown; duration_ms?: unknow
     return {
       success: false,
       error: 'highlight_fallback_failed',
-      message: (err as Error)?.message || 'Highlight fallback failed'
+      message: errorMessage(err, 'Highlight fallback failed')
     }
   }
 }
 
-async function executeHighlightFallback(tabId: number, params: unknown, mainWorldError: string): Promise<Record<string, unknown>> {
+async function executeHighlightFallback(
+  tabId: number,
+  params: unknown,
+  mainWorldError: string
+): Promise<Record<string, unknown>> {
   try {
     const execution = await chrome.scripting.executeScript({
       target: { tabId },
@@ -423,7 +382,7 @@ async function executeHighlightFallback(tabId: number, params: unknown, mainWorl
           : buildFallbackStatusMessage(fallbackStatus)
     }
   } catch (err) {
-    const fallbackError = (err as Error)?.message || 'highlight_fallback_failed'
+    const fallbackError = errorMessage(err, 'highlight_fallback_failed')
     return {
       success: false,
       error: 'highlight_fallback_failed',
@@ -446,7 +405,7 @@ async function handlePilotCommandOnTab(tabId: number, command: string, params: u
     return result || { success: true }
   } catch (err) {
     if (command === 'GASOLINE_HIGHLIGHT' && isContentScriptUnreachableError(err)) {
-      return executeHighlightFallback(tabId, params, (err as Error).message || 'command_failed')
+      return executeHighlightFallback(tabId, params, errorMessage(err, 'command_failed'))
     }
     throw err
   }
@@ -471,6 +430,6 @@ export async function handlePilotCommand(command: string, params: unknown, prefe
 
     return await handlePilotCommandOnTab(tabId, command, params)
   } catch (err) {
-    return { error: (err as Error).message || 'command_failed' }
+    return { error: errorMessage(err, 'command_failed') }
   }
 }

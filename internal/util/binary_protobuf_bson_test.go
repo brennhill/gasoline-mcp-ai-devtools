@@ -1,6 +1,4 @@
-// Purpose: Validate binary_protobuf_bson_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for protobuf and BSON binary format detection.
 
 // binary_protobuf_bson_test.go — Coverage tests for protobuf, BSON, and varint detection.
 // Targets uncovered branches in wire types, field validation, length-delimited

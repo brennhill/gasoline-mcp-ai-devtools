@@ -1,16 +1,14 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Implements debounced batching with circuit breaker integration for rate-limited server requests.
+ * Why: Prevents connection storms and provides backoff when the MCP server is unavailable.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 /**
  * @fileoverview Batchers - Batcher creation and circuit breaker integration for
  * debounced batching of server requests.
  */
-import type { MemoryPressureState } from '../types';
-import { type CircuitBreaker } from './circuit-breaker';
+import type { MemoryPressureState } from '../types/index.js';
+import { type CircuitBreaker } from './circuit-breaker.js';
 /** Rate limit configuration */
 export declare const RATE_LIMIT_CONFIG: {
     maxFailures: number;
@@ -29,8 +27,8 @@ export interface Batcher<T> {
 export interface BatcherWithCircuitBreaker<T> {
     batcher: Batcher<T>;
     circuitBreaker: {
-        getState: () => import('./circuit-breaker').CircuitBreakerState;
-        getStats: () => import('../types').CircuitBreakerStats;
+        getState: () => import('./circuit-breaker.js').CircuitBreakerState;
+        getStats: () => import('../types/index.js').CircuitBreakerStats;
         reset: () => void;
     };
     getConnectionStatus: () => {

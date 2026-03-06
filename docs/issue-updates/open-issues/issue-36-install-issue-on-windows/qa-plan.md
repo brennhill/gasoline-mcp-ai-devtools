@@ -1,7 +1,7 @@
 # QA Plan: Issue #36
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/36
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/36
 - Title: Install issue on Windows
 
 ## QA Goal

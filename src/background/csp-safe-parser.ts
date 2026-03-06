@@ -28,7 +28,8 @@
  * as structured commands and are rejected with guidance to use DOM primitives.
  */
 
-import type { StructuredCommand, StructuredValue, StructuredStep, ParseResult } from './csp-safe-types'
+import type { StructuredCommand, StructuredValue, StructuredStep, ParseResult } from './csp-safe-types.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 // Patterns that we reject outright before attempting to parse
 const REJECTED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
@@ -43,7 +44,7 @@ const REJECTED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /^\s*function\s/, reason: 'Function declarations are not supported' },
   { pattern: /^\s*class\s/, reason: 'Class declarations are not supported' },
   { pattern: /=>/, reason: 'Arrow functions are not supported' },
-  { pattern: /\.\.\.[a-zA-Z_$]/, reason: 'Spread/rest syntax is not supported' },
+  { pattern: /\.\.\.[a-zA-Z_$]/, reason: 'Spread/rest syntax is not supported' }
 ]
 
 export function parseExpression(input: string): ParseResult {
@@ -97,7 +98,7 @@ export function parseExpression(input: string): ParseResult {
 
     return { ok: true, command: { expr } }
   } catch (e) {
-    return { ok: false, reason: (e as Error).message }
+    return { ok: false, reason: errorMessage(e) }
   }
 }
 
@@ -306,16 +307,24 @@ class Parser {
     }
 
     // Check for spread
-    if (this.peek() === '.' && this.pos + 2 < this.source.length &&
-        this.source[this.pos + 1] === '.' && this.source[this.pos + 2] === '.') {
+    if (
+      this.peek() === '.' &&
+      this.pos + 2 < this.source.length &&
+      this.source[this.pos + 1] === '.' &&
+      this.source[this.pos + 2] === '.'
+    ) {
       throw new Error('Spread/rest syntax is not supported')
     }
 
     const elements: StructuredValue[] = []
     while (true) {
       this.skipWhitespace()
-      if (this.peek() === '.' && this.pos + 2 < this.source.length &&
-          this.source[this.pos + 1] === '.' && this.source[this.pos + 2] === '.') {
+      if (
+        this.peek() === '.' &&
+        this.pos + 2 < this.source.length &&
+        this.source[this.pos + 1] === '.' &&
+        this.source[this.pos + 2] === '.'
+      ) {
         throw new Error('Spread/rest syntax is not supported')
       }
       elements.push(this.parseExpression())

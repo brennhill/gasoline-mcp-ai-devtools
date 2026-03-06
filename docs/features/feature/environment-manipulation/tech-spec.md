@@ -4,10 +4,12 @@ scope: feature/environment-manipulation
 ai-priority: medium
 tags: [v7, environment-config, infrastructure]
 relates-to: [product-spec.md, ../backend-control/tech-spec.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: tech-spec
 feature_id: feature-environment-manipulation
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Environment Manipulation — Technical Specification

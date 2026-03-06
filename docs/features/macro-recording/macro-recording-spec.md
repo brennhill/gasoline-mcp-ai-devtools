@@ -7,7 +7,9 @@ version: v0.8.x
 doc_type: product-spec
 feature_id: feature-macro-recording
 issue: "#88"
-last_reviewed: 2026-02-20
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Interactive Macro Recording (Replay) — Feature Spec
@@ -379,7 +381,7 @@ Deletes a saved sequence.
 
 ### Session Store (persistence)
 
-Sequences are stored using the existing `configure(action="store")` persistence layer (`internal/ai/ai_persistence.go`). The session store supports namespaced key-value storage with Save/Load/List/Delete operations. Sequences use a dedicated namespace `"sequences"` to avoid collisions with other stored data.
+Sequences are stored using the existing `configure(action="store")` persistence layer (`internal/persistence/persistence_store.go`). The session store supports namespaced key-value storage with Save/Load/List/Delete operations. Sequences use a dedicated namespace `"sequences"` to avoid collisions with other stored data.
 
 **Storage format on disk:** `~/.gasoline/store/sequences/{name}.json`
 

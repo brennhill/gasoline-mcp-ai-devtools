@@ -8,11 +8,9 @@ package capture
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // =============================================================================
@@ -51,13 +49,15 @@ type SyncRequest struct {
 	InProgress []SyncInProgress `json:"in_progress,omitempty"`
 }
 
-// SyncSettings contains extension settings from the sync request
+// SyncSettings contains extension settings from the sync request.
 type SyncSettings struct {
 	PilotEnabled     bool   `json:"pilot_enabled"`
 	TrackingEnabled  bool   `json:"tracking_enabled"`
 	TrackedTabID     int    `json:"tracked_tab_id"`
 	TrackedTabURL    string `json:"tracked_tab_url"`
 	TrackedTabTitle  string `json:"tracked_tab_title"`
+	TabStatus        string `json:"tab_status,omitempty"`
+	TrackedTabActive *bool  `json:"tracked_tab_active,omitempty"`
 	CaptureLogs      bool   `json:"capture_logs"`
 	CaptureNetwork   bool   `json:"capture_network"`
 	CaptureWebSocket bool   `json:"capture_websocket"`
@@ -66,7 +66,7 @@ type SyncSettings struct {
 	CspLevel         string `json:"csp_level"`
 }
 
-// SyncCommandResult is a command result from the extension
+// SyncCommandResult is a command result from the extension.
 type SyncCommandResult struct {
 	ID            string          `json:"id"`
 	CorrelationID string          `json:"correlation_id,omitempty"`
@@ -90,7 +90,7 @@ type SyncInProgress struct {
 	UpdatedAt     string   `json:"updated_at,omitempty"`
 }
 
-// SyncResponse is the response body for /sync
+// SyncResponse is the response body for /sync.
 type SyncResponse struct {
 	// Server acknowledged the sync
 	Ack bool `json:"ack"`
@@ -111,7 +111,7 @@ type SyncResponse struct {
 	CaptureOverrides map[string]string `json:"capture_overrides"`
 }
 
-// SyncCommand is a command from server to extension
+// SyncCommand is a command from server to extension.
 type SyncCommand struct {
 	ID            string          `json:"id"`
 	Type          string          `json:"type"`
@@ -125,315 +125,6 @@ type SyncCommand struct {
 // Handler
 // =============================================================================
 
-// syncConnectionState is an immutable lock-scope snapshot used after releasing c.mu.
-//
-// Invariants:
-// - Values are derived from one atomic read/update cycle in updateSyncConnectionState.
-// - Safe for use in async callbacks because it does not reference mutable capture internals.
-type syncConnectionState struct {
-	wasConnected      bool
-	isReconnect       bool
-	wasDisconnected   bool
-	timeSinceLastPoll time.Duration
-	extSessionID      string
-	pilotEnabled      bool
-	inProgressCount   int
-}
-
-// updateSyncConnectionState applies heartbeat state transitions under c.mu.
-//
-// Invariants:
-// - Caller receives a detached snapshot for post-lock lifecycle emission.
-// - req.Settings/in_progress updates overwrite prior extension view atomically.
-//
-// Failure semantics:
-// - Absent settings/in_progress leaves previous values intact.
-func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, now time.Time) syncConnectionState {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	s := syncConnectionState{
-		wasConnected:      c.ext.lastExtensionConnected,
-		timeSinceLastPoll: now.Sub(c.ext.lastPollAt),
-	}
-	s.wasDisconnected = !c.ext.lastSyncSeen.IsZero() && now.Sub(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
-	// A reconnect should mean we actually crossed the disconnect threshold,
-	// not merely that polls are slower than a short interval.
-	s.isReconnect = s.wasDisconnected
-
-	c.ext.lastPollAt = now
-	c.ext.lastExtensionConnected = true
-	c.ext.lastSyncSeen = now
-	c.ext.lastSyncClientID = clientID
-
-	if req.ExtSessionID != "" && req.ExtSessionID != c.ext.extSessionID {
-		c.ext.extSessionID = req.ExtSessionID
-		c.ext.extSessionChangedAt = now
-	}
-	s.extSessionID = c.ext.extSessionID
-
-	if req.Settings != nil {
-		c.ext.pilotEnabled = req.Settings.PilotEnabled
-		c.ext.pilotStatusKnown = true
-		c.ext.pilotUpdatedAt = now
-		c.ext.pilotSource = PilotSourceExtensionSync
-		c.ext.trackingEnabled = req.Settings.TrackingEnabled
-		c.ext.trackedTabID = req.Settings.TrackedTabID
-		c.ext.trackedTabURL = req.Settings.TrackedTabURL
-		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
-		c.ext.trackingUpdated = now
-		c.ext.cspRestricted = req.Settings.CspRestricted
-		c.ext.cspLevel = req.Settings.CspLevel
-	}
-	if req.InProgress != nil {
-		c.ext.inProgress = normalizeInProgressList(req.InProgress)
-		c.ext.inProgressUpdated = now
-	}
-	s.pilotEnabled = c.ext.pilotEnabled
-	s.inProgressCount = len(c.ext.inProgress)
-	return s
-}
-
-// processSyncCommandResults applies extension result/status updates.
-//
-// Invariants:
-// - Correlated commands use status from ApplyCommandResult as source of truth.
-//
-// Failure semantics:
-// - Unknown query/command IDs are ignored to keep sync idempotent.
-// - Query results can be stored even if lifecycle completion arrives separately.
-func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
-	for _, result := range results {
-		if result.ID != "" {
-			if result.CorrelationID != "" {
-				// Correlated async commands carry explicit lifecycle status below.
-				// Do not force "complete" from query-id bookkeeping.
-				c.SetQueryResultWithClientNoCommandComplete(result.ID, result.Result, clientID)
-			} else {
-				c.SetQueryResultWithClient(result.ID, result.Result, clientID)
-			}
-		}
-		if result.CorrelationID != "" {
-			c.ApplyCommandResult(result.CorrelationID, result.Status, result.Result, result.Error)
-		}
-	}
-}
-
-// updateSyncLogs ingests extension logs and metadata under c.mu.
-//
-// Invariants:
-// - Extension log buffer uses amortized compaction (at 1.5x capacity) to avoid per-entry copying.
-// - Redaction is applied before logs enter persistent in-memory buffers.
-//
-// Failure semantics:
-// - Invalid/missing timestamps are normalized to server receive time.
-func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bool, queryCount int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.logPollingActivity(PollingLogEntry{
-		Timestamp:    now,
-		Endpoint:     "sync",
-		Method:       "POST",
-		ExtSessionID: req.ExtSessionID,
-		PilotEnabled: &pilotEnabled,
-		QueryCount:   queryCount,
-	})
-
-	for _, log := range req.ExtensionLogs {
-		if log.Timestamp.IsZero() {
-			log.Timestamp = now
-		}
-		log = c.redactExtensionLog(log)
-		c.elb.logs = append(c.elb.logs, log)
-		// Amortized eviction: only compact when buffer exceeds 1.5x capacity.
-		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
-		if len(c.elb.logs) > evictionThreshold {
-			kept := make([]ExtensionLog, MaxExtensionLogs)
-			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
-			c.elb.logs = kept
-		}
-	}
-
-	if req.ExtensionVersion != "" {
-		c.ext.extensionVersion = req.ExtensionVersion
-	}
-}
-
-// buildSyncCommands converts pending queries to sync commands.
-func buildSyncCommands(pending []queries.PendingQueryResponse) []SyncCommand {
-	commands := make([]SyncCommand, len(pending))
-	for i, q := range pending {
-		commands[i] = SyncCommand{
-			ID:            q.ID,
-			Type:          q.Type,
-			Params:        q.Params,
-			TabID:         q.TabID,
-			CorrelationID: q.CorrelationID,
-			TraceID:       q.TraceID,
-		}
-	}
-	return commands
-}
-
-func shouldEmitSyncSnapshot(req SyncRequest, state syncConnectionState, commandsOut int) bool {
-	if state.isReconnect || state.wasDisconnected || !state.wasConnected {
-		return true
-	}
-	if len(req.CommandResults) > 0 || commandsOut > 0 {
-		return true
-	}
-	if req.LastCommandAck != "" {
-		return true
-	}
-	return false
-}
-
-// normalizeInProgressList sanitizes extension heartbeat command state for reconciliation.
-//
-// Invariants:
-// - Returns nil only when caller supplied nil (distinguishes "unsupported" vs "empty list").
-// - Output is capped to maxInProgress to bound memory and CPU cost per heartbeat.
-//
-// Failure semantics:
-// - Malformed/empty entries are dropped rather than failing the whole sync request.
-func normalizeInProgressList(in []SyncInProgress) []SyncInProgress {
-	if in == nil {
-		return nil
-	}
-	if len(in) == 0 {
-		return []SyncInProgress{}
-	}
-	const maxInProgress = 100
-	limit := len(in)
-	if limit > maxInProgress {
-		limit = maxInProgress
-	}
-	out := make([]SyncInProgress, 0, limit)
-	for i := 0; i < limit; i++ {
-		entry := in[i]
-		entry.ID = strings.TrimSpace(entry.ID)
-		entry.CorrelationID = strings.TrimSpace(entry.CorrelationID)
-		entry.Type = strings.TrimSpace(entry.Type)
-		entry.Status = strings.TrimSpace(strings.ToLower(entry.Status))
-		if entry.Status == "" {
-			entry.Status = "running"
-		}
-		if entry.ProgressPct != nil {
-			p := *entry.ProgressPct
-			if p < 0 {
-				p = 0
-			}
-			if p > 100 {
-				p = 100
-			}
-			entry.ProgressPct = &p
-		}
-		if entry.ID == "" && entry.CorrelationID == "" {
-			continue
-		}
-		out = append(out, entry)
-	}
-	return out
-}
-
-// commandHasStarted returns true once trace evidence indicates extension execution began.
-//
-// Failure semantics:
-// - Missing trace context returns false, which delays desync failure until stronger evidence exists.
-func commandHasStarted(cmd *queries.CommandResult) bool {
-	if cmd == nil {
-		return false
-	}
-	for _, evt := range cmd.TraceEvents {
-		if evt.Stage == "started" || evt.Stage == "resolved" || evt.Stage == "errored" || evt.Stage == "timed_out" {
-			return true
-		}
-	}
-	return strings.Contains(cmd.TraceTimeline, "started")
-}
-
-// reconcileInProgressCommandState detects commands lost after extension acknowledgement.
-//
-// Invariants:
-// - A command is failed only after two consecutive missed heartbeats once "started" is observed.
-// - missingInProgressByCorr map is pruned for no-longer-pending commands each cycle.
-//
-// Failure semantics:
-// - nil inProgress means "client does not support heartbeat reporting" and reconciliation is skipped.
-// - Desync failures emit terminal command errors so callers do not wait for full timeout.
-func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
-	if inProgress == nil {
-		// Older extension/client that doesn't report in_progress yet.
-		return
-	}
-
-	active := make(map[string]struct{}, len(inProgress))
-	for _, entry := range inProgress {
-		if entry.CorrelationID != "" {
-			active[entry.CorrelationID] = struct{}{}
-		}
-	}
-
-	pending := c.GetPendingCommands()
-	pendingCorr := make(map[string]struct{}, len(pending))
-	toFail := make([]string, 0)
-	toFailIDs := make([]string, 0)
-
-	c.mu.Lock()
-	if c.ext.missingInProgressByCorr == nil {
-		c.ext.missingInProgressByCorr = make(map[string]int)
-	}
-	for _, cmd := range pending {
-		if cmd == nil || cmd.CorrelationID == "" {
-			continue
-		}
-		corr := cmd.CorrelationID
-		pendingCorr[corr] = struct{}{}
-
-		if _, ok := active[corr]; ok {
-			delete(c.ext.missingInProgressByCorr, corr)
-			continue
-		}
-		if !commandHasStarted(cmd) {
-			continue
-		}
-		c.ext.missingInProgressByCorr[corr]++
-		if c.ext.missingInProgressByCorr[corr] >= 2 {
-			toFail = append(toFail, corr)
-			toFailIDs = append(toFailIDs, cmd.QueryID)
-			delete(c.ext.missingInProgressByCorr, corr)
-		}
-	}
-
-	for corr := range c.ext.missingInProgressByCorr {
-		if _, stillPending := pendingCorr[corr]; !stillPending {
-			delete(c.ext.missingInProgressByCorr, corr)
-		}
-	}
-	c.mu.Unlock()
-
-	for i, corr := range toFail {
-		queryID := ""
-		if i < len(toFailIDs) {
-			queryID = toFailIDs[i]
-		}
-		c.ApplyCommandResult(
-			corr,
-			"error",
-			nil,
-			"extension_lost_command: command acknowledged by extension but missing from in_progress heartbeats",
-		)
-		util.SafeGo(func() {
-			c.emitLifecycleEvent("command_state_desync", map[string]any{
-				"correlation_id": corr,
-				"query_id":       queryID,
-				"reason":         "missing_in_progress_heartbeat",
-			})
-		})
-	}
-}
-
 // HandleSync processes extension heartbeats and command transport in one endpoint.
 //
 // Invariants:
@@ -445,19 +136,14 @@ func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
 // - Extension disconnect transitions expire pending queries to avoid indefinite LLM waits.
 // - Long-poll returns within bounded timeout even when no commands are queued.
 func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	var req SyncRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 
@@ -482,7 +168,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if state.wasDisconnected {
-		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{
 				"ext_session_id": state.extSessionID,
@@ -496,10 +182,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	// fail it fast instead of waiting for eventual timeout.
 	c.reconcileInProgressCommandState(req.InProgress)
 
-	// Long-polling: if no commands, wait for up to 5 seconds
 	pendingQueries := c.GetPendingQueries()
 	if len(pendingQueries) == 0 {
-		c.WaitForPendingQueries(5 * time.Second)
+		c.WaitForPendingQueries(syncLongPollTimeout())
 		pendingQueries = c.GetPendingQueries()
 	}
 
@@ -535,25 +220,5 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		CaptureOverrides: c.buildCaptureOverrides(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
-}
-
-func (c *Capture) buildCaptureOverrides() map[string]string {
-	mode, productionParity, rewrites := c.GetSecurityMode()
-	if mode == SecurityModeNormal {
-		return map[string]string{}
-	}
-
-	overrides := map[string]string{
-		"security_mode":     mode,
-		"production_parity": "false",
-	}
-	if productionParity {
-		overrides["production_parity"] = "true"
-	}
-	if len(rewrites) > 0 {
-		overrides["insecure_rewrites_applied"] = strings.Join(rewrites, ",")
-	}
-	return overrides
+	util.JSONResponse(w, http.StatusOK, resp)
 }

@@ -1,5 +1,4 @@
-// Purpose: Validate enhanced_actions_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for enhanced action capture with mutation tracking.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // enhanced_actions_test.go — Tests for enhanced action buffering, enrichment, and ring buffer eviction.
@@ -25,7 +24,7 @@ func TestNewAddEnhancedActions_SingleAction(t *testing.T) {
 		Timestamp: time.Now().UnixMilli(),
 		URL:       "https://example.com/page",
 		Selectors: map[string]any{"css": "#submit-btn"},
-		TabId:     1,
+		TabID:     1,
 		Source:    "human",
 	}
 
@@ -47,8 +46,8 @@ func TestNewAddEnhancedActions_SingleAction(t *testing.T) {
 	if stored.URL != "https://example.com/page" {
 		t.Errorf("URL = %q, want %q", stored.URL, "https://example.com/page")
 	}
-	if stored.TabId != 1 {
-		t.Errorf("TabId = %d, want 1", stored.TabId)
+	if stored.TabID != 1 {
+		t.Errorf("TabID = %d, want 1", stored.TabID)
 	}
 	if stored.Source != "human" {
 		t.Errorf("Source = %q, want %q", stored.Source, "human")
@@ -109,8 +108,8 @@ func TestNewAddEnhancedActions_TestIDTagging(t *testing.T) {
 
 	// Set active test IDs
 	c.mu.Lock()
-	c.ext.activeTestIDs["test-alpha"] = true
-	c.ext.activeTestIDs["test-beta"] = true
+	c.extensionState.activeTestIDs["test-alpha"] = true
+	c.extensionState.activeTestIDs["test-beta"] = true
 	c.mu.Unlock()
 
 	c.AddEnhancedActions([]EnhancedAction{
@@ -161,7 +160,7 @@ func TestNewAddEnhancedActions_IncrementsTotalAdded(t *testing.T) {
 	c.AddEnhancedActions([]EnhancedAction{{Type: "navigate"}})
 
 	c.mu.RLock()
-	total := c.actionTotalAdded
+	total := c.buffers.actionTotalAdded
 	c.mu.RUnlock()
 
 	if total != 3 {
@@ -285,12 +284,12 @@ func TestNewAddEnhancedActions_MismatchRecovery(t *testing.T) {
 
 	// Simulate a mismatch between enhancedActions and actionAddedAt
 	c.mu.Lock()
-	c.enhancedActions = []EnhancedAction{
+	c.buffers.enhancedActions = []EnhancedAction{
 		{Type: "click"},
 		{Type: "type"},
 		{Type: "navigate"},
 	}
-	c.actionAddedAt = []time.Time{time.Now()} // Only 1 timestamp for 3 actions
+	c.buffers.actionAddedAt = []time.Time{time.Now()} // Only 1 timestamp for 3 actions
 	c.mu.Unlock()
 
 	// Adding should trigger recovery, truncating to min(3,1) = 1
@@ -357,7 +356,7 @@ func TestNewAddEnhancedActions_AllFieldsPreserved(t *testing.T) {
 		SelectedValue: "option-1",
 		SelectedText:  "Option 1",
 		ScrollY:       500,
-		TabId:         42,
+		TabID:         42,
 		Source:        "ai",
 	}
 
@@ -397,8 +396,8 @@ func TestNewAddEnhancedActions_AllFieldsPreserved(t *testing.T) {
 	if stored.ScrollY != 500 {
 		t.Errorf("ScrollY = %d, want 500", stored.ScrollY)
 	}
-	if stored.TabId != 42 {
-		t.Errorf("TabId = %d, want 42", stored.TabId)
+	if stored.TabID != 42 {
+		t.Errorf("TabID = %d, want 42", stored.TabID)
 	}
 	if stored.Source != "ai" {
 		t.Errorf("Source = %q, want ai", stored.Source)

@@ -1,6 +1,5 @@
-// Purpose: Validate tools_contract_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for tool response contract compliance.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_contract_test.go — Response shape contracts for configure, generate, and interact tools.
 // Lighter coverage than observe contracts — focuses on key actions that return JSON.
@@ -11,7 +10,7 @@ package main
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================

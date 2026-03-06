@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
-// Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
+// Purpose: Compares network requests between two snapshots by endpoint key to find new, missing, and status-changed entries.
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // network-diff.go — Network diff computation.
 // diffNetwork function compares network requests between two snapshots.
@@ -10,7 +8,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // endpointKey uniquely identifies a network endpoint by method and path.

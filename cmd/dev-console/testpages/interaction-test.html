@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Web Pilot Test Page</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .test-section h2 {
+      margin-top: 0;
+    }
+    #highlight-target {
+      background: #e3f2fd;
+      padding: 20px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    #nested-container {
+      background: #f5f5f5;
+      padding: 20px;
+      margin: 10px 0;
+    }
+    #nested-target {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .action-button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .action-button:hover {
+      background: #1565c0;
+    }
+    #state-display {
+      background: #f9fbe7;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    #counter-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #388e3c;
+    }
+    input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 200px;
+    }
+    #scroll-area {
+      height: 200px;
+      overflow-y: scroll;
+      background: #fafafa;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .scroll-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #eee;
+    }
+    #scroll-target {
+      background: #c8e6c9;
+      border-color: #4caf50;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Web Pilot Test Page</h1>
+  <p>This page is used for e2e testing of AI Web Pilot features.</p>
+
+  <!-- Section 1: Highlight Testing -->
+  <div class="test-section">
+    <h2>Highlight Element Testing</h2>
+    <div id="highlight-target" data-testid="highlight-box">
+      This element can be highlighted by the AI.
+    </div>
+    <div id="nested-container">
+      <div id="nested-target" data-testid="nested-box">
+        Nested element for highlight testing.
+      </div>
+    </div>
+    <button id="dynamic-btn" class="action-button" data-testid="dynamic-button">
+      Dynamic Button
+    </button>
+  </div>
+
+  <!-- Section 2: State Management Testing -->
+  <div class="test-section">
+    <h2>State Management Testing</h2>
+    <div>
+      <label for="state-input">State Input:</label>
+      <input type="text" id="state-input" data-testid="state-input" value="initial value" />
+    </div>
+    <div style="margin-top: 10px;">
+      <span>Counter: </span>
+      <span id="counter-value">0</span>
+      <button id="increment-btn" class="action-button" onclick="incrementCounter()">+1</button>
+      <button id="decrement-btn" class="action-button" onclick="decrementCounter()">-1</button>
+    </div>
+    <div id="state-display">
+      Current state will be shown here.
+    </div>
+    <button id="update-state-btn" class="action-button" onclick="updateStateDisplay()">
+      Update State Display
+    </button>
+  </div>
+
+  <!-- Section 3: JavaScript Execution Testing -->
+  <div class="test-section">
+    <h2>JavaScript Execution Testing</h2>
+    <div id="js-result" data-testid="js-result">
+      Result will appear here.
+    </div>
+    <div style="margin-top: 10px;">
+      <button id="set-global-btn" class="action-button" onclick="setGlobalValue()">
+        Set Global Value
+      </button>
+    </div>
+  </div>
+
+  <!-- Section 4: Scroll Testing -->
+  <div class="test-section">
+    <h2>Scroll Tracking Testing</h2>
+    <div id="scroll-area">
+      <div class="scroll-item">Item 1</div>
+      <div class="scroll-item">Item 2</div>
+      <div class="scroll-item">Item 3</div>
+      <div class="scroll-item">Item 4</div>
+      <div class="scroll-item">Item 5</div>
+      <div class="scroll-item" id="scroll-target" data-testid="scroll-target">
+        Target Item (scroll to me)
+      </div>
+      <div class="scroll-item">Item 7</div>
+      <div class="scroll-item">Item 8</div>
+      <div class="scroll-item">Item 9</div>
+      <div class="scroll-item">Item 10</div>
+    </div>
+  </div>
+
+  <script>
+    // Counter state
+    let counter = 0;
+
+    function incrementCounter() {
+      counter++;
+      document.getElementById('counter-value').textContent = counter;
+    }
+
+    function decrementCounter() {
+      counter--;
+      document.getElementById('counter-value').textContent = counter;
+    }
+
+    function updateStateDisplay() {
+      const state = {
+        input: document.getElementById('state-input').value,
+        counter: counter,
+        timestamp: new Date().toISOString()
+      };
+      document.getElementById('state-display').textContent = JSON.stringify(state, null, 2);
+    }
+
+    function setGlobalValue() {
+      window.__testValue = 'global-test-value-' + Date.now();
+      document.getElementById('js-result').textContent = 'Set: ' + window.__testValue;
+    }
+
+    // Expose for testing
+    window.__testCounter = {
+      get: () => counter,
+      set: (v) => { counter = v; document.getElementById('counter-value').textContent = counter; }
+    };
+
+    // Initial state display
+    updateStateDisplay();
+  </script>
+</body>
+</html>

@@ -4,9 +4,27 @@ feature_id: feature-push-alerts
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
 code_paths:
-test_paths: []
+  - cmd/dev-console/alerts.go
+  - cmd/dev-console/streaming.go
+  - cmd/dev-console/tools_configure_runtime_impl.go
+  - cmd/dev-console/tools_observe_inbox.go
+  - cmd/dev-console/tools_configure_state_impl.go
+  - internal/streaming/stream.go
+  - internal/streaming/stream_emit.go
+  - internal/streaming/types.go
+  - internal/streaming/alerts_buffer.go
+  - internal/identity/mcp.go
+  - internal/push/inbox.go
+test_paths:
+  - internal/streaming/stream_test.go
+  - internal/streaming/alerts_test.go
+  - cmd/dev-console/alerts_unit_test.go
+  - internal/push/inbox_test.go
+  - cmd/dev-console/tools_observe_inbox_test.go
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Push Alerts
@@ -23,6 +41,12 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
+
+## Related Architecture
+
+- [Push Alert Notification Emission](../../../architecture/flow-maps/push-alert-notification-emission.md)
+- [Push Inbox Screenshot Throttle](../../../architecture/flow-maps/push-inbox-screenshot-throttle.md)
 
 ## Requirement IDs
 

@@ -1,3 +1,6 @@
+// Purpose: Best-effort stdout flush that suppresses ignorable sync errors (EINVAL/EBADF) on pipes and ptys.
+// Why: Prevents spurious warnings when MCP transport runs over non-syncable file descriptors.
+
 package main
 
 import (

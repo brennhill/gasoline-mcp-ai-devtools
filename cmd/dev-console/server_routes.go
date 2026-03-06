@@ -1,296 +1,18 @@
+// Purpose: Registers all HTTP routes (/health, /mcp, /telemetry, /shutdown, etc.) and wires handlers to the server mux.
+// Why: Centralizes route registration and client-route wiring so endpoint discovery stays simple.
+
 package main
 
 import (
-	"encoding/json"
 	"net/http"
-	"os"
-	"runtime"
 	"strings"
-	"syscall"
-	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
-// handleHealth serves the /health endpoint with server status and version info.
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	if r.Method != "GET" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	logFileSize := int64(0)
-	if fi, err := os.Stat(s.logFile); err == nil {
-		logFileSize = fi.Size()
-	}
-
-	versionCheckMu.Lock()
-	availVer := availableVersion
-	versionCheckMu.Unlock()
-
-	resp := map[string]any{
-		"status":       "ok",
-		"service-name": "gasoline",
-		"name":         "gasoline", // legacy compatibility
-		"version":      version,
-		"logs": map[string]any{
-			"entries":       s.getEntryCount(),
-			"max_entries":   s.maxEntries,
-			"log_file":      s.logFile,
-			"log_file_size": logFileSize,
-			"dropped_count": s.getLogDropCount(),
-		},
-	}
-	successReads, failedReads := snapshotFastPathResourceReadCounters()
-	resp["bridge_fastpath"] = map[string]any{
-		"resources_read_success": successReads,
-		"resources_read_failure": failedReads,
-	}
-	if availVer != "" {
-		resp["available_version"] = availVer
-	}
-	if info := buildUpgradeInfo(); info != nil {
-		resp["upgrade_pending"] = info
-	}
-	if cap != nil {
-		extStatus := cap.GetExtensionStatus()
-		pilotStatus, _ := cap.GetPilotStatus().(map[string]any)
-		pilotState, _ := pilotStatus["state"].(string)
-		securityMode, productionParity, rewrites := cap.GetSecurityMode()
-		resp["capture"] = map[string]any{
-			"available":           true,
-			"pilot_enabled":       cap.IsPilotActionAllowed(),
-			"pilot_state":         pilotState,
-			"extension_connected": cap.IsExtensionConnected(),
-			"extension_last_seen": extStatus["last_seen"],
-			"extension_client_id": extStatus["client_id"],
-			"security_mode":       securityMode,
-			"production_parity":   productionParity,
-			"insecure_rewrites":   rewrites,
-		}
-	}
-	jsonResponse(w, http.StatusOK, resp)
-}
-
-// handleShutdown initiates a graceful server shutdown via SIGTERM.
-func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	_ = s.appendToFile([]LogEntry{{
-		"type":      "lifecycle",
-		"event":     "shutdown_requested",
-		"source":    "http",
-		"pid":       os.Getpid(),
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	}})
-
-	jsonResponse(w, http.StatusOK, map[string]string{
-		"status":  "shutting_down",
-		"message": "Server shutdown initiated",
-	})
-
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
-
-	util.SafeGo(func() {
-		time.Sleep(100 * time.Millisecond)
-		p, _ := os.FindProcess(os.Getpid())
-		_ = p.Signal(syscall.SIGTERM)
-	})
-}
-
-// lastConsoleEvent returns a summary of the most recent console log entry,
-// truncating long argument strings to 100 characters.
-func (s *Server) lastConsoleEvent() map[string]any {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if len(s.entries) == 0 {
-		return nil
-	}
-	last := s.entries[len(s.entries)-1]
-	args := last["args"]
-	if argsSlice, ok := args.([]any); ok && len(argsSlice) > 0 {
-		if str, ok := argsSlice[0].(string); ok && len(str) > 100 {
-			args = str[:100] + "..."
-		} else {
-			args = argsSlice[0]
-		}
-	}
-	return map[string]any{
-		"level":   last["level"],
-		"message": args,
-		"ts":      last["ts"],
-	}
-}
-
-// handleDiagnostics serves the /diagnostics endpoint with debug information for bug reports.
-func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	if r.Method != "GET" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	now := time.Now()
-	resp := map[string]any{
-		"generated_at":   now.Format(time.RFC3339),
-		"version":        version,
-		"uptime_seconds": int(now.Sub(startTime).Seconds()),
-		"system": map[string]any{
-			"os":         runtime.GOOS,
-			"arch":       runtime.GOARCH,
-			"go_version": runtime.Version(),
-			"goroutines": runtime.NumGoroutine(),
-		},
-		"logs": map[string]any{
-			"entries":     s.getEntryCount(),
-			"max_entries": s.maxEntries,
-			"log_file":    s.logFile,
-		},
-	}
-
-	if cap != nil {
-		appendCaptureDiagnostics(resp, cap)
-	}
-
-	lastEvents := map[string]any{}
-	if evt := s.lastConsoleEvent(); evt != nil {
-		lastEvents["console"] = evt
-	}
-	resp["last_events"] = lastEvents
-
-	if cap != nil {
-		httpDebugLog := cap.GetHTTPDebugLog()
-		resp["http_debug_log"] = map[string]any{
-			"count":   len(httpDebugLog),
-			"entries": httpDebugLog,
-		}
-	}
-
-	jsonResponse(w, http.StatusOK, resp)
-}
-
-// appendCaptureDiagnostics adds capture-related diagnostic fields to the response map.
-func appendCaptureDiagnostics(resp map[string]any, cap *capture.Capture) {
-	snap := cap.GetHealthSnapshot()
-	health := cap.GetHealthStatus()
-
-	resp["buffers"] = map[string]any{
-		"websocket_events": snap.WebSocketCount,
-		"network_bodies":   snap.NetworkBodyCount,
-		"actions":          snap.ActionCount,
-		"pending_queries":  snap.PendingQueryCount,
-		"query_results":    snap.QueryResultCount,
-	}
-
-	wsStatus := cap.GetWebSocketStatus(capture.WebSocketStatusFilter{})
-	conns := make([]map[string]any, 0, len(wsStatus.Connections))
-	for _, c := range wsStatus.Connections {
-		conns = append(conns, map[string]any{
-			"id":  c.ID,
-			"url": c.URL,
-		})
-	}
-	resp["websocket_connections"] = conns
-
-	resp["config"] = map[string]any{
-		"query_timeout": snap.QueryTimeout.String(),
-	}
-
-	const defaultTraceLimit = 25
-	traces := cap.GetRecentCommandTraces(defaultTraceLimit)
-	traceEntries := make([]map[string]any, 0, len(traces))
-	for _, trace := range traces {
-		if trace == nil {
-			continue
-		}
-		traceID := trace.TraceID
-		if traceID == "" {
-			traceID = trace.CorrelationID
-		}
-		traceEntries = append(traceEntries, map[string]any{
-			"trace_id":       traceID,
-			"correlation_id": trace.CorrelationID,
-			"query_id":       trace.QueryID,
-			"status":         trace.Status,
-			"timeline":       trace.TraceTimeline,
-			"events":         trace.TraceEvents,
-			"created_at":     trace.CreatedAt.Format(time.RFC3339),
-			"updated_at":     trace.UpdatedAt.Format(time.RFC3339),
-		})
-	}
-	resp["command_traces"] = map[string]any{
-		"count":   len(traceEntries),
-		"limit":   defaultTraceLimit,
-		"entries": traceEntries,
-	}
-
-	lastPoll := any(nil)
-	if !snap.LastPollTime.IsZero() {
-		lastPoll = snap.LastPollTime.Format(time.RFC3339)
-	}
-	resp["extension"] = map[string]any{
-		"polling":       !snap.LastPollTime.IsZero(),
-		"last_poll_at":  lastPoll,
-		"ext_session":   snap.ExtSessionID,
-		"pilot_enabled": snap.PilotEnabled,
-	}
-
-	resp["circuit"] = map[string]any{
-		"open":         snap.CircuitOpen,
-		"current_rate": health.CurrentRate,
-		"reason":       snap.CircuitReason,
-	}
-}
-
-// handleLogs serves the /logs endpoint for ingesting and clearing log entries.
-// Reads go through GET /telemetry?type=logs.
-func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		s.handleLogsPost(w, r)
-
-	case "DELETE":
-		s.clearEntries()
-		jsonResponse(w, http.StatusOK, map[string]bool{"cleared": true})
-
-	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-	}
-}
-
-// handleLogsPost processes POST /logs requests to ingest new log entries.
-func (s *Server) handleLogsPost(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	var body struct {
-		Entries []LogEntry `json:"entries"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-		return
-	}
-	if body.Entries == nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing entries array"})
-		return
-	}
-
-	valid, rejected := validateLogEntries(body.Entries)
-	received := s.addEntries(valid)
-	jsonResponse(w, http.StatusOK, map[string]int{
-		"received": received,
-		"rejected": rejected,
-		"entries":  s.getEntryCount(),
-	})
-}
-
-// setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
+// setupHTTPRoutes configures the HTTP routes (extracted for reuse).
+// Returns both the mux and the MCPHandler so the caller can wire shutdown.
+func setupHTTPRoutes(server *Server, cap *capture.Store) (*http.ServeMux, *MCPHandler) {
 	mux := http.NewServeMux()
 
 	if cap != nil {
@@ -298,15 +20,15 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 	}
 
 	registerUploadRoutes(mux, server)
-	registerCoreRoutes(mux, server, cap)
+	mcpHandler := registerCoreRoutes(mux, server, cap)
 
-	return mux
+	return mux, mcpHandler
 }
 
 // registerCaptureRoutes adds capture-dependent routes to the mux.
 // NOT MCP — These are extension-to-daemon HTTP endpoints for telemetry ingestion
 // and internal state management. AI agents use the 5 MCP tools instead.
-func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
+func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) {
 	// NOT MCP — Extension telemetry ingestion (extension → daemon data pipeline)
 	mux.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
 	mux.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
@@ -320,12 +42,7 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 	mux.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
 	// NOT MCP — Multi-client registry (extension bookkeeping, not AI-facing)
-	mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleClientsList(w, r, cap)
-	})))
-	mux.HandleFunc("/clients/", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleClientByID(w, r, cap)
-	})))
+	registerClientRegistryRoutes(mux, cap)
 
 	// NOT MCP — Video recording binary upload (extension → daemon file storage)
 	mux.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
@@ -345,57 +62,6 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 	mux.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
 	mux.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
 	mux.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
-}
-
-// handleClientsList handles GET/POST on /clients for multi-client management.
-func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	switch r.Method {
-	case "GET":
-		clients := cap.GetClientRegistry().List()
-		jsonResponse(w, http.StatusOK, map[string]any{
-			"clients": clients,
-			"count":   cap.GetClientRegistry().Count(),
-		})
-	case "POST":
-		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-		var body struct {
-			CWD string `json:"cwd"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-			return
-		}
-		cs := cap.GetClientRegistry().Register(body.CWD)
-		jsonResponse(w, http.StatusOK, map[string]any{
-			"result": cs,
-		})
-	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-	}
-}
-
-// handleClientByID handles GET/DELETE on /clients/{id} for specific client operations.
-func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
-	if clientID == "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})
-		return
-	}
-
-	switch r.Method {
-	case "GET":
-		cs := cap.GetClientRegistry().Get(clientID)
-		if cs == nil {
-			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
-			return
-		}
-		jsonResponse(w, http.StatusOK, cs)
-	case "DELETE":
-		// Note: ClientRegistry interface doesn't expose Unregister method
-		jsonResponse(w, http.StatusOK, map[string]bool{"unregistered": true})
-	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-	}
 }
 
 // registerUploadRoutes adds upload automation endpoints to the mux.
@@ -426,7 +92,8 @@ func registerUploadRoutes(mux *http.ServeMux, server *Server) {
 }
 
 // registerCoreRoutes adds non-capture-dependent routes to the mux.
-func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
+// Returns the MCPHandler so the caller can wire lifecycle (shutdown, etc.).
+func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) *MCPHandler {
 	// NOT MCP — OpenAPI spec for HTTP API documentation
 	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
@@ -486,6 +153,13 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		serveEmbeddedHTML(w, r, docsHTML, "docs")
 	}))
 
+	// NOT MCP — WebSocket echo server for test harness (must be registered before /tests/ subtree).
+	// corsMiddleware sets headers on http.ResponseWriter pre-hijack; those headers are not included
+	// in the manually-written 101 response (intentional — WS upgrade bypasses HTTP CORS).
+	mux.HandleFunc("/tests/ws", corsMiddleware(handleTestHarnessWS))
+	// NOT MCP — Embedded test/demo pages for self-testing
+	mux.HandleFunc("/tests/", corsMiddleware(handleTestPages()))
+
 	// NOT MCP — Screenshot binary upload from extension (MCP reads via observe(what: "screenshot"))
 	mux.HandleFunc("/screenshots", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)
@@ -496,8 +170,31 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		server.handleDrawModeComplete(w, r, cap)
 	})))
 
+	// NOT MCP — Push pipeline endpoints (extension → daemon → AI client)
+	mux.HandleFunc("/push/screenshot", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushScreenshot(w, r)
+	})))
+	mux.HandleFunc("/push/message", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushMessage(w, r)
+	})))
+	mux.HandleFunc("/push/capabilities", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushCapabilities(w, r)
+	})))
+	// Bridge push relay: internal endpoint for the bridge process to drain push events.
+	// No extensionOnly — called by the bridge process, not the browser extension.
+	mux.HandleFunc("/push/drain", func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushDrain(w, r)
+	})
+
+	// NOT MCP — Active codebase GET/PUT — extension reads/writes the default terminal CWD.
+	mux.HandleFunc("/config/active-codebase", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		handleActiveCodebase(w, r, server)
+	})))
+
 	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDashboard(w, r)
 	}))
+
+	return mcp
 }

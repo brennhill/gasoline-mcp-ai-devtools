@@ -1,7 +1,7 @@
 # Product Update: Issue #82
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/82
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/82
 - Title: Add visual regression / screenshot comparison
 - Last Updated: 2026-02-16T14:43:40Z
 

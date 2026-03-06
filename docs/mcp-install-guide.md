@@ -7,13 +7,22 @@ Gasoline MCP supports 9 AI coding tools. Use the one-liner installer or configur
 The quickest way to install Gasoline and configure all your AI tools is via the one-liner script:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 This script:
 1.  **Downloads** the latest stable binary.
 2.  **Installs** the browser extension files to `~/.gasoline/extension`.
-3.  **Auto-configures** all detected MCP clients listed below.
+3.  **Auto-configures** all detected MCP clients listed below to run the binary directly (no `npx`).
+4.  **Displays** a polished, step-by-step install UI with progress and a final checklist card.
+
+Important:
+- The installer **cannot** click browser UI for you.
+- You must manually open `chrome://extensions` (or `brave://extensions`), enable **Developer mode**, then click **Load unpacked** and select `~/.gasoline/extension`.
+- After loading, pin the extension (recommended) and click **Track This Tab** in the popup.
+- For locked-down environments, enable strict checksum mode before install:
+  - `export GASOLINE_INSTALL_STRICT=1` (macOS/Linux)
+  - `$env:GASOLINE_INSTALL_STRICT="1"` (PowerShell)
 
 ## Per-Tool Reference
 
@@ -27,7 +36,7 @@ If you prefer to configure your tools manually, point them to the `gasoline` bin
 
 Claude Code is configured via its own CLI. Run:
 ```bash
-claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline", "args": []}'
+claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline", "args": []}'
 ```
 
 ### Claude Desktop
@@ -40,7 +49,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -57,7 +66,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -74,7 +83,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -93,7 +102,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -110,7 +119,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -129,7 +138,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcp": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "local",
       "command": ["/Users/YOUR_USER/.gasoline/bin/gasoline"],
       "enabled": true
@@ -147,7 +156,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -168,7 +177,7 @@ Zed uses the `context_servers` key:
 ```json
 {
   "context_servers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "source": "custom",
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
@@ -185,3 +194,7 @@ After installing, verify the setup:
 # Test the server is reachable
 curl http://localhost:7890/health
 ```
+
+Confirm these fields in the JSON response:
+- `service-name` (or `service_name`) is `gasoline-browser-devtools`
+- `version` matches the expected installed release

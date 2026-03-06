@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Wrapper functions for chrome.storage supporting persistent (local) and ephemeral (session) storage with graceful degradation.
+ * Why: Abstracts Chrome storage API differences and handles service worker restart detection.
  */
 // =============================================================================
 // FEATURE DETECTION

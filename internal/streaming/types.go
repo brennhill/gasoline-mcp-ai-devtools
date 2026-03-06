@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/identity"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ============================================
@@ -22,6 +23,7 @@ const (
 	MaxNotificationsPerMinute = 12
 	DedupWindow               = 30 * time.Second
 	MaxPendingBatch           = 100
+	NotificationLoggerName    = identity.MCPServerName
 )
 
 // ============================================

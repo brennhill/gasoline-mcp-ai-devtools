@@ -1,9 +1,9 @@
 # Gasoline Build Makefile
 
 VERSION := $(shell cat VERSION)
-BINARY_NAME := gasoline
+BINARY_NAME := gasoline-agentic-browser
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 
@@ -15,13 +15,14 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-cover-integration test-cover-all test-bench test-fuzz \
+.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-integration test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
-	lint lint-go lint-js format format-fix typecheck check check-wire-drift ci \
+	lint lint-go lint-js lint-dead lint-dead-go lint-dead-ts format format-fix typecheck check check-wire-drift check-ts-json-casing ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
+	verify-llm \
 	test-upgrade-guards release-gate clean-test-daemons \
 	generate-wire-types generate-dom-primitives \
 	site-dev site-build site-preview \
@@ -55,7 +56,6 @@ compile-ts: generate-wire-types generate-dom-primitives
 		echo "❌ ERROR: TypeScript compilation failed - extension/background/index.js not found"; \
 		exit 1; \
 	fi
-	@./scripts/fix-esm-imports.sh
 	@echo "=== Bundling extension scripts ==="
 	@node scripts/bundle-content.js
 	@if [ ! -f extension/content.bundled.js ]; then \
@@ -110,15 +110,19 @@ test-cover:
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
 		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
+test-integration:
+	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -tags=integration -count=1 -timeout=300s ./internal/... $(CMD_PKG)/...
+
 test-cover-integration:
 	@mkdir -p coverage/integration
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	GOCOVERDIR=coverage/integration go test -tags=integration -cover -timeout 120s $(CMD_PKG)/ -count=1
 	@go tool covdata percent -i=coverage/integration
 
 test-cover-all:
 	@mkdir -p coverage/unit coverage/integration coverage/merged
 	GOCOVERDIR=coverage/unit go test -cover ./internal/...
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	GOCOVERDIR=coverage/integration go test -tags=integration -cover -timeout 120s $(CMD_PKG)/ -count=1
 	go tool covdata merge -i=coverage/unit,coverage/integration -o=coverage/merged
 	go tool covdata textfmt -i=coverage/merged -o=coverage/coverage.txt
 	@go tool cover -func=coverage/coverage.txt | grep total
@@ -139,13 +143,13 @@ verify-zero-deps:
 	@echo "OK: Zero external dependencies verified"
 
 verify-imports:
-	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/brennhill/gasoline-agentic-browser-devtools-mcp'); \
 	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
 	@echo "OK: All imports are stdlib or internal"
 
 verify-size:
 	@make dev 2>/dev/null
-	@SIZE=$$(wc -c < dist/gasoline | tr -d ' '); \
+	@SIZE=$$(wc -c < dist/$(BINARY_NAME) | tr -d ' '); \
 	MAX=15000000; \
 	if [ $$SIZE -gt $$MAX ]; then echo "FAIL: Binary size $${SIZE} bytes exceeds $${MAX} byte limit"; exit 1; \
 	else echo "OK: Binary size $${SIZE} bytes (limit: $${MAX})"; fi
@@ -160,7 +164,7 @@ validate-semver:
 
 # Validate optionalDependencies match package version
 validate-deps-versions:
-	@node npm/gasoline-mcp/lib/validate-versions.js
+	@node npm/gasoline-agentic-browser/lib/validate-versions.js
 
 build: $(PLATFORMS)
 
@@ -193,8 +197,8 @@ npm-binaries: build compile-ts
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
 	@echo "=== Copying extension to main NPM package ==="
-	@mkdir -p npm/gasoline-mcp/extension
-	@cp -r extension/* npm/gasoline-mcp/extension/
+	@mkdir -p npm/gasoline-agentic-browser/extension
+	@cp -r extension/* npm/gasoline-agentic-browser/extension/
 	@echo "=== Verifying embedded versions ==="
 	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
 	EXPECTED=$$(cat VERSION); \
@@ -222,7 +226,41 @@ lint: lint-go lint-js
 
 lint-go:
 	go vet $(CMD_PKG)/
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run $(CMD_PKG)/... ./internal/... || echo "golangci-lint not installed (optional)"
+	@GOLANGCI=$$(command -v "$$(go env GOPATH)/bin/golangci-lint" 2>/dev/null || command -v golangci-lint 2>/dev/null || true); \
+	if [ -n "$$GOLANGCI" ]; then $$GOLANGCI run $(CMD_PKG)/... ./internal/...; else echo "golangci-lint not installed (optional)"; fi
+
+lint-dead-go:
+	@echo "=== Checking for dead Go code (advisory) ==="
+	@DEADCODE=$$(command -v "$$(go env GOPATH)/bin/deadcode" 2>/dev/null || command -v deadcode 2>/dev/null || true); \
+	if [ -z "$$DEADCODE" ]; then echo "Install: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; fi; \
+	RESULTS=$$($$DEADCODE -test $(CMD_PKG)/... ./internal/... 2>&1 | grep -v _test.go); \
+	if [ -n "$$RESULTS" ]; then \
+		COUNT=$$(echo "$$RESULTS" | wc -l | tr -d ' '); \
+		echo "$$RESULTS"; \
+		echo ""; \
+		echo "Found $$COUNT unreachable function(s). To clean up:"; \
+		echo "  1. Remove the dead function (and its doc comment)"; \
+		echo "  2. If the file has live types/vars/consts but no live funcs, move the live symbols to a neighboring file first"; \
+		echo "  3. Delete the file only when it has zero remaining symbols"; \
+		echo "  4. Run 'go build ./...' after each deletion to verify"; \
+	else \
+		echo "No dead code found"; \
+	fi
+
+lint-dead-ts:
+	@echo "=== Checking for dead TypeScript exports ==="
+	@npx knip --no-exit-code
+
+lint-dead: lint-dead-go lint-dead-ts
+
+lint-circular:
+	@bash scripts/check-circular-deps.sh
+
+lint-boundaries:
+	@bash scripts/check-import-boundaries.sh
+
+lint-json-casing:
+	@bash scripts/check-json-casing.sh
 
 lint-hardening:
 	@./scripts/lint-hardening.sh
@@ -242,12 +280,16 @@ format-fix:
 typecheck:
 	npx tsc --noEmit
 
-check: check-file-length lint format typecheck check-invariants
+check: check-file-length lint lint-boundaries lint-json-casing format typecheck check-invariants
 
 check-wire-drift:
 	@node scripts/generate-wire-types.js --check
 
-check-invariants: check-wire-drift
+check-ts-json-casing:
+	@node scripts/check-ts-json-casing.js
+
+check-invariants: check-wire-drift check-ts-json-casing
+	@./scripts/check-esm-extensions.sh
 	@./scripts/check-sync-invariants.sh
 	@./scripts/check-bridge-stdout-invariant.sh
 	@./scripts/validate-codex-skills.sh
@@ -340,14 +382,31 @@ pre-commit: lint security-check
 verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
 
+# Fast, high-signal verification loop for LLM-driven maintenance.
+# Typical runtime target: ~60-120 seconds on a warm cache.
+verify-llm:
+	@echo "Running verify-llm fast gate (schema + docs + core contracts)..."
+	@node scripts/generate-wire-types.js --check
+	@npm run docs:lint:integrity
+	@npm run docs:check:strict
+	@npm run docs:lint:content-contract
+	@npm run docs:lint:reference-schema-sync
+	@go test ./cmd/dev-console -run 'TestSchemaParity_|TestInteract_NavigateAndDocument_.*|TestNavigateAndDocument_.*|TestContractEnforcement_ErrorsHaveRetryableField|TestContractEnforcement_CommandResult_HasElapsedMs' -count=1
+	@echo "verify-llm passed"
+
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint lint-hardening typecheck security-check test test-js validate-deps-versions
+quality-gate: check-file-length lint lint-hardening lint-dead lint-circular lint-boundaries lint-json-casing typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
 	@echo "═══════════════════════════════════════════"
 	@echo "  ✓ File length limits enforced"
 	@echo "  ✓ Linting passed (ESLint + go vet)"
+	@echo "  ✓ Dead code checked (deadcode + knip)"
+	@echo "  ✓ No circular dependencies"
+	@echo "  ✓ Import boundaries enforced"
+	@echo "  ✓ JSON tags use snake_case"
+	@echo "  ✓ Go file headers present"
 	@echo "  ✓ Type safety verified (TypeScript)"
 	@echo "  ✓ Security checks passed"
 	@echo "  ✓ All Go tests passed"
@@ -359,8 +418,8 @@ quality-gate: check-file-length lint lint-hardening typecheck security-check tes
 test-upgrade-guards:
 	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
 	node --test scripts/install-upgrade-regression.contract.test.mjs
-	node --test npm/gasoline-mcp/lib/kill-daemon.test.js
-	python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'
+	node --test npm/gasoline-agentic-browser/lib/kill-daemon.test.js
+	python3 -m unittest discover -s pypi/gasoline-agentic-browser/tests -p 'test_*.py'
 	node scripts/install-upgrade-regression.mjs
 
 # Release gate for daemon cleanup/version safety.
@@ -373,32 +432,32 @@ sync-version:
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
 			extension/manifest.json extension/package.json server/package.json \
-			npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
+			npm/gasoline-agentic-browser/package.json npm/darwin-x64/package.json \
 			npm/darwin-arm64/package.json npm/linux-x64/package.json \
 			npm/linux-arm64/package.json npm/win32-x64/package.json \
 			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
-		npm/gasoline-mcp/package.json
+		npm/gasoline-agentic-browser/package.json
 	@# PyPI version fields in pyproject.toml
 	@perl -pi -e 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' \
-		pypi/gasoline-mcp/pyproject.toml \
-		pypi/gasoline-mcp-darwin-arm64/pyproject.toml \
-		pypi/gasoline-mcp-darwin-x64/pyproject.toml \
-		pypi/gasoline-mcp-linux-arm64/pyproject.toml \
-		pypi/gasoline-mcp-linux-x64/pyproject.toml \
-		pypi/gasoline-mcp-win32-x64/pyproject.toml
+		pypi/gasoline-agentic-browser/pyproject.toml \
+		pypi/gasoline-agentic-browser-darwin-arm64/pyproject.toml \
+		pypi/gasoline-agentic-browser-darwin-x64/pyproject.toml \
+		pypi/gasoline-agentic-browser-linux-arm64/pyproject.toml \
+		pypi/gasoline-agentic-browser-linux-x64/pyproject.toml \
+		pypi/gasoline-agentic-browser-win32-x64/pyproject.toml
 	@# PyPI optional dependencies versions
-	@perl -pi -e 's/(gasoline-mcp-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
-		pypi/gasoline-mcp/pyproject.toml
+	@perl -pi -e 's/(gasoline-agentic-browser-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
+		pypi/gasoline-agentic-browser/pyproject.toml
 	@# PyPI __init__.py versions
 	@perl -pi -e 's/__version__ = "[0-9]+\.[0-9]+\.[0-9]+"/__version__ = "$(VERSION)"/' \
-		pypi/gasoline-mcp/gasoline_mcp/__init__.py \
-		pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/__init__.py \
-		pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/__init__.py \
-		pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/__init__.py \
-		pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/__init__.py \
-		pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/__init__.py
+		pypi/gasoline-agentic-browser/gasoline_agentic_browser/__init__.py \
+		pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/__init__.py \
+		pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/__init__.py \
+		pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/__init__.py \
+		pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/__init__.py \
+		pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/__init__.py
 	@# JS version strings
 	@perl -pi -e "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '$(VERSION)'/g" \
 		extension/inject.js tests/extension/popup.test.js
@@ -411,7 +470,7 @@ sync-version:
 		$(CMD_DIR)/main.go
 	@# Shell wrapper version
 	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
-		npm/gasoline-mcp/bin/gasoline-mcp
+		npm/gasoline-agentic-browser/bin/gasoline-agentic-browser
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
@@ -455,11 +514,11 @@ context-size:
 
 pypi-binaries: build
 	@echo "Copying binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/gasoline.exe
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline.exe
 	@echo "Binaries copied successfully"
 
 pypi-preflight:
@@ -475,7 +534,7 @@ pypi-preflight:
 pypi-schema-check:
 	@echo "Checking PyPI main pyproject normalization..."
 	@node scripts/normalize-pypi-main-pyproject.js --check --validate
-	@python3 -c 'import sys,tomllib; p="pypi/gasoline-mcp/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
+	@python3 -c 'import sys,tomllib; p="pypi/gasoline-agentic-browser/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
 	(isinstance(scripts, dict) or (print("ERROR: [project.scripts] must be a TOML table"), sys.exit(1))); \
 	("dependencies" not in scripts or (print("ERROR: project.scripts.dependencies must not exist"), sys.exit(1))); \
 	print("PyPI schema check ok"); print("project keys:", sorted(project.keys())); print("project.scripts keys:", sorted(scripts.keys())); print("project.dependencies count:", len(project.get("dependencies", [])))'
@@ -487,12 +546,12 @@ pypi-build: pypi-preflight pypi-schema-check
 	@echo "Validating PyPI main pyproject metadata..."
 	@node scripts/normalize-pypi-main-pyproject.js --validate
 	@echo "Building PyPI wheels..."
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Building $$pkg..."; \
 		(cd "$$pkg" && python3 -m build); \
 	done
 	@echo "Building main package..."
-	@(cd pypi/gasoline-mcp && python3 -m build)
+	@(cd pypi/gasoline-agentic-browser && python3 -m build)
 	@echo "All PyPI packages built successfully"
 	@echo ""
 	@echo "Wheels created:"
@@ -501,28 +560,28 @@ pypi-build: pypi-preflight pypi-schema-check
 pypi-test-publish: pypi-build
 	@echo "Publishing to Test PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload --repository testpypi dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-mcp && python3 -m twine upload --repository testpypi dist/*)
+	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload --repository testpypi dist/*)
 	@echo "All packages published to Test PyPI"
-	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-mcp"
+	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-agentic-browser"
 
 pypi-publish: pypi-build
 	@echo "Publishing to PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read dummy
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-mcp && python3 -m twine upload dist/*)
+	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload dist/*)
 	@echo "All packages published to PyPI"
-	@echo "Installation: pip install gasoline-mcp"
+	@echo "Installation: pip install gasoline-agentic-browser"
 
 pypi-clean:
 	@echo "Cleaning PyPI build artifacts..."

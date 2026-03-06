@@ -1,7 +1,7 @@
 # QA Plan: Issue #50
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/50
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/50
 - Title: [Feature Proposal] Visual Grounding (Coordinates) in DOM Tools
 
 ## QA Goal

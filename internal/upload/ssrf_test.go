@@ -1,6 +1,5 @@
-// Purpose: Validate ssrf_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for SSRF protection in upload endpoints.
+// Docs: docs/features/feature/file-upload/index.md
 
 // ssrf_test.go — Tests for SSRF-safe transport and dialer helpers.
 package upload
@@ -317,9 +316,9 @@ func TestSSRF_SafeDial_AllowsPrivateWhenFlagSet(t *testing.T) {
 // ============================================
 
 func TestSSRF_AllowedHost_BypassesCheck(t *testing.T) {
-	origList := SSRFAllowedHostsList
-	defer func() { SSRFAllowedHostsList = origList }()
-	SSRFAllowedHostsList = []string{"127.0.0.1:19999"}
+	origList := SSRFAllowedHosts()
+	defer func() { SetSSRFAllowedHosts(origList) }()
+	SetSSRFAllowedHosts([]string{"127.0.0.1:19999"})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -333,9 +332,9 @@ func TestSSRF_AllowedHost_BypassesCheck(t *testing.T) {
 }
 
 func TestSSRF_AllowedHost_HostOnlyMatch(t *testing.T) {
-	origList := SSRFAllowedHostsList
-	defer func() { SSRFAllowedHostsList = origList }()
-	SSRFAllowedHostsList = []string{"127.0.0.1"}
+	origList := SSRFAllowedHosts()
+	defer func() { SetSSRFAllowedHosts(origList) }()
+	SetSSRFAllowedHosts([]string{"127.0.0.1"})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -349,9 +348,9 @@ func TestSSRF_AllowedHost_HostOnlyMatch(t *testing.T) {
 }
 
 func TestSSRF_AllowedHost_NoMatchStillBlocks(t *testing.T) {
-	origList := SSRFAllowedHostsList
-	defer func() { SSRFAllowedHostsList = origList }()
-	SSRFAllowedHostsList = []string{"some-other-host:8080"}
+	origList := SSRFAllowedHosts()
+	defer func() { SetSSRFAllowedHosts(origList) }()
+	SetSSRFAllowedHosts([]string{"some-other-host:8080"})
 
 	ctx := context.Background()
 	_, err := SSRFSafeDialContext(ctx, "tcp", "127.0.0.1:80", false)
@@ -364,9 +363,9 @@ func TestSSRF_AllowedHost_NoMatchStillBlocks(t *testing.T) {
 }
 
 func TestSSRF_IsSSRFAllowedHost_EmptyList(t *testing.T) {
-	origList := SSRFAllowedHostsList
-	defer func() { SSRFAllowedHostsList = origList }()
-	SSRFAllowedHostsList = nil
+	origList := SSRFAllowedHosts()
+	defer func() { SetSSRFAllowedHosts(origList) }()
+	SetSSRFAllowedHosts(nil)
 
 	if IsSSRFAllowedHost("127.0.0.1:80") {
 		t.Error("empty list should never match")
@@ -377,9 +376,9 @@ func TestSSRF_IsSSRFAllowedHost_EmptyList(t *testing.T) {
 }
 
 func TestSSRF_IsSSRFAllowedHost_ExactMatch(t *testing.T) {
-	origList := SSRFAllowedHostsList
-	defer func() { SSRFAllowedHostsList = origList }()
-	SSRFAllowedHostsList = []string{"localhost:3000", "10.0.0.1:8080"}
+	origList := SSRFAllowedHosts()
+	defer func() { SetSSRFAllowedHosts(origList) }()
+	SetSSRFAllowedHosts([]string{"localhost:3000", "10.0.0.1:8080"})
 
 	tests := []struct {
 		input string

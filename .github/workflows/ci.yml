@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, next]
+    branches: [main, UNSTABLE]
   pull_request:
-    branches: [main]
+    branches: [main, UNSTABLE]
   schedule:
     - cron: "0 6 * * *" # Daily at 6 AM UTC
   workflow_dispatch: # Manual trigger
@@ -17,6 +17,49 @@ jobs:
   versions:
     name: Version Consistency
     uses: ./.github/workflows/validate-versions.yml
+
+  verify-llm:
+    name: Verify LLM Fast Gate (Scoped PR)
+    if: github.event_name == 'pull_request'
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version: "20"
+
+      - name: Detect verify-llm scope
+        id: scope
+        shell: bash
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          CHANGED_FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD || git diff --name-only "origin/${{ github.base_ref }}" HEAD)"
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -Eq '^(cmd/dev-console/|internal/schema/|internal/types/|internal/performance/|scripts/docs/|scripts/generate-wire-types\.js|docs/features/|docs/architecture/flow-maps/|package\.json|Makefile|\.github/workflows/ci\.yml)'; then
+            echo "run_gate=true" >> "$GITHUB_OUTPUT"
+            echo "verify-llm gate enabled for this PR."
+          else
+            echo "run_gate=false" >> "$GITHUB_OUTPUT"
+            echo "verify-llm gate not required for this PR."
+          fi
+
+      - name: Run verify-llm gate
+        if: steps.scope.outputs.run_gate == 'true'
+        run: make verify-llm
+
+      - name: Skip verify-llm gate
+        if: steps.scope.outputs.run_gate != 'true'
+        run: echo "Skipping verify-llm (out of scope for this PR)."
 
   upgrade-guards:
     name: Upgrade Guards (${{ matrix.os }})
@@ -48,12 +91,12 @@ jobs:
         run: node --test scripts/install-upgrade-regression.contract.test.mjs
 
       - name: npm cleanup tests
-        run: node --test npm/gasoline-mcp/lib/kill-daemon.test.js
+        run: node --test npm/gasoline-agentic-browser/lib/kill-daemon.test.js
 
       - name: PyPI cleanup tests
         env:
-          PYTHONPATH: pypi/gasoline-mcp
-        run: python -m unittest discover -s pypi/gasoline-mcp/tests -p "test_*.py"
+          PYTHONPATH: pypi/gasoline-agentic-browser
+        run: python -m unittest discover -s pypi/gasoline-agentic-browser/tests -p "test_*.py"
 
       - name: End-to-end upgrade regression
         run: node scripts/install-upgrade-regression.mjs
@@ -73,6 +116,13 @@ jobs:
 
       - name: Validate Codex skill frontmatter
         run: ./scripts/validate-codex-skills.sh
+
+      - name: Install golangci-lint (for depguard gate)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+
+      - name: Depguard import boundary gate
+        run: |
+          golangci-lint run --enable-only depguard ./cmd/dev-console/... ./internal/...
 
       - name: Go tests with race detection
         run: go test -race -v ./cmd/dev-console/...
@@ -118,8 +168,35 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Docs integrity gate (links + code refs)
+        run: npm run docs:lint:integrity
+
+      - name: Content contract (SEO + LLM legibility)
+        run: npm run docs:lint:content-contract
+
+      - name: Style contract (tutorial structure + acronym expansion)
+        run: npm run docs:lint:style-contract
+
+      - name: Install Vale
+        run: |
+          VALE_VERSION="3.13.0"
+          curl -fsSL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o /tmp/vale.tar.gz
+          tar -xzf /tmp/vale.tar.gz -C /tmp
+          sudo mv /tmp/vale /usr/local/bin/vale
+          vale --version
+
+      - name: Vale style gate
+        run: npm run docs:lint:vale
+
+      - name: Feature docs strict gate (frontmatter + freshness)
+        run: npm run docs:check:strict
 
       - name: ESLint (errors only)
         run: |
@@ -170,7 +247,7 @@ jobs:
           CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
           CODACY_ORGANIZATION_PROVIDER: gh
           CODACY_USERNAME: brennhill
-          CODACY_PROJECT_NAME: gasoline-mcp-ai-devtools
+          CODACY_PROJECT_NAME: gasoline-agentic-browser-devtools-mcp
         run: |
           if [ -z "$CODACY_API_TOKEN" ]; then
             echo "WARNING: Codacy API token not configured (skipping scan)"

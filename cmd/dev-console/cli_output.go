@@ -1,3 +1,7 @@
+// Purpose: Formats MCP tool results for human, JSON, and CSV CLI output modes.
+// Why: Decouples output rendering from tool execution so CLI and MCP share the same result pipeline.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 package main
 
 import (

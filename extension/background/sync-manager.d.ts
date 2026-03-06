@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Manages sync client instance lifecycle (start/stop/reset) and wires dependencies to avoid circular imports with index.ts.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 type DebugLogFn = (category: string, message: string, data?: unknown) => void;
 /** Mutable connection status (same shape as index.ts) */

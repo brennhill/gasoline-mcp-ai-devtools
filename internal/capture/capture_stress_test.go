@@ -1,5 +1,4 @@
-// Purpose: Validate capture_stress_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Stress tests for capture pipeline under concurrent load.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // capture_stress_test.go — Concurrent stress tests for capture system.
@@ -11,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // TestStressCaptureSystemConcurrent verifies thread-safety of the Capture system

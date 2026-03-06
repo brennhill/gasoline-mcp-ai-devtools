@@ -1,6 +1,9 @@
 ---
-title: "analyze() — Active Analysis"
-description: "Complete reference for the analyze tool. 15 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, performance snapshots, and more."
+title: "Analyze — Active Analysis"
+description: "Complete reference for the analyze tool. 27 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, visual regression, form analysis, performance snapshots, and more."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['reference', 'analyze']
 ---
 
 The `analyze` tool triggers active analysis — DOM queries, accessibility audits, security scans, link health checks, and visual annotations. Unlike `observe` (which reads passive buffers), `analyze` dispatches work to the browser extension and returns results.
@@ -8,6 +11,8 @@ The `analyze` tool triggers active analysis — DOM queries, accessibility audit
 :::note[Synchronous Mode]
 Tools now block until the extension returns a result (up to 15s). Set `background: true` to return immediately with a `correlation_id`, then poll with `observe({what: "command_result", correlation_id: "..."})`.
 :::
+
+Need one runnable call + response shape + failure fix for every mode? See [Analyze Executable Examples](/reference/examples/analyze-examples/).
 
 ## Quick Reference
 
@@ -19,7 +24,7 @@ analyze({what: "link_health", domain: "example.com"})               // Check all
 analyze({what: "performance"})                                       // Performance snapshot
 analyze({what: "error_clusters"})                                    // Group similar errors
 analyze({what: "page_summary"})                                      // Page structure
-analyze({what: "annotations", session: "review"})                   // Draw mode results
+analyze({what: "annotations", annot_session: "review"})             // Draw mode results
 ```
 
 ## Common Parameters
@@ -108,6 +113,14 @@ Recent navigation history for the current tab.
 
 ```js
 analyze({what: "history"})
+```
+
+### `navigation_patterns`
+
+Analyze user navigation flow patterns from captured activity (common entry routes, transitions, and repeated paths).
+
+```js
+analyze({what: "navigation_patterns"})
 ```
 
 ---
@@ -259,3 +272,157 @@ analyze({what: "draw_session", file: "session-2026-02-17.json"})
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `file` | string | Session filename from `draw_history` results |
+
+---
+
+## CSS & Forms
+
+### `computed_styles`
+
+Get computed CSS styles for a specific element. Useful for debugging visual issues.
+
+```js
+analyze({what: "computed_styles", selector: ".error-banner"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector for the target element |
+
+### `forms`
+
+Analyze form elements on the page — field types, validation state, labels, required fields.
+
+```js
+analyze({what: "forms"})
+analyze({what: "forms", selector: "#checkout-form"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector to scope the analysis |
+
+### `form_state`
+
+Capture current form values, touched/dirty state, and validation metadata for debugging complex form behavior.
+
+```js
+analyze({what: "form_state"})
+analyze({what: "form_state", selector: "#checkout-form"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector to scope form-state extraction |
+
+### `form_validation`
+
+Validate form configuration — checks for missing labels, incorrect input types, accessibility issues in form structure.
+
+```js
+analyze({what: "form_validation"})
+analyze({what: "form_validation", summary: true})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `summary` | boolean | Return compact summary |
+
+### `data_table`
+
+Extract structured data-table snapshots (headers, rows, and cell mappings) for dashboard and reporting UIs.
+
+```js
+analyze({what: "data_table"})
+analyze({what: "data_table", selector: "#orders", max_rows: 100, max_cols: 20})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector for a specific table |
+| `max_rows` | number | Maximum rows to return |
+| `max_cols` | number | Maximum columns to return |
+
+---
+
+## Visual Regression
+
+### `visual_baseline`
+
+Save a named visual baseline snapshot of the current page. Used as the reference for later `visual_diff` comparisons.
+
+```js
+analyze({what: "visual_baseline", name: "homepage-v1"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string (required) | Name for this baseline |
+
+### `visual_diff`
+
+Compare the current page state against a saved visual baseline. Returns pixel differences with configurable threshold.
+
+```js
+analyze({what: "visual_diff", baseline: "homepage-v1"})
+analyze({what: "visual_diff", baseline: "homepage-v1", threshold: 50})
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `baseline` | string (required) | — | Baseline name to compare against |
+| `threshold` | number | 30 | Pixel diff threshold 0-255 |
+
+### `visual_baselines`
+
+List all saved visual baselines.
+
+```js
+analyze({what: "visual_baselines"})
+```
+
+---
+
+## Page Structure
+
+### `navigation`
+
+Analyze navigation structure — menu items, links, breadcrumbs, and routing patterns.
+
+```js
+analyze({what: "navigation"})
+```
+
+### `page_structure`
+
+Deep structural analysis of the page — heading hierarchy, landmark regions, content sections, semantic HTML usage.
+
+```js
+analyze({what: "page_structure"})
+```
+
+---
+
+## Combined Audit
+
+### `audit`
+
+Run a multi-category audit in a single call. Combines performance, accessibility, security, and best practices checks.
+
+```js
+analyze({what: "audit"})
+analyze({what: "audit", categories: ["accessibility", "security"], summary: true})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `categories` | array | Which audits to run: `performance`, `accessibility`, `security`, `best_practices` |
+| `summary` | boolean | Return compact summary |
+
+### `feature_gates`
+
+Detect feature flags and feature gates on the page — A/B test variants, feature toggles, and experiment assignments visible in the DOM or JavaScript globals.
+
+```js
+analyze({what: "feature_gates"})
+```

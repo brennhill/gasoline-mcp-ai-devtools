@@ -1,7 +1,7 @@
 # Product Update: Issue #99
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/99
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/99
 - Title: [Feature Proposal] Phase 4: WebSocket Message Inspection
 - Last Updated: 2026-02-16T16:52:12Z
 

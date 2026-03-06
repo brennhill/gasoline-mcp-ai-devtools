@@ -1,5 +1,4 @@
-// Purpose: Validate tools_interact_coverage_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Coverage-expansion tests for dev-console edge cases and branch paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_coverage_test.go — Coverage tests for interact sub-handlers.
@@ -84,7 +83,7 @@ func TestHandleSubtitle_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{invalid}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleSubtitle(req, args)
+	resp := env.handler.interactAction().handleSubtitleImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -181,7 +180,7 @@ func TestHandleListInteractive_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleListInteractive(req, args)
+	resp := env.handler.interactAction().handleListInteractive(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -193,7 +192,7 @@ func TestHandleListInteractive_InvalidJSON(t *testing.T) {
 }
 
 // ============================================
-// handlePilotHighlight — 50% → 80%+
+// handleHighlight — 50% → 80%+
 // ============================================
 
 func TestHandlePilotHighlight_Success(t *testing.T) {
@@ -281,7 +280,7 @@ func TestHandlePilotHighlight_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handlePilotHighlight(req, args)
+	resp := env.handler.interactAction().handleHighlightImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

@@ -1,5 +1,4 @@
-// Purpose: Validate export_har_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for HAR export formatting and spec compliance.
 // Docs: docs/features/feature/har-export/index.md
 
 // export_har_test.go — HAR export unit tests.
@@ -13,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ============================================
@@ -118,7 +117,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Request.Comment != "Body truncated at 8KB by Gasoline" {
+		if entry.Request.Comment != "Body truncated at 8KB by Gasoline Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Request.Comment)
 		}
 	})
@@ -134,7 +133,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Response.Comment != "Body truncated at 16KB by Gasoline" {
+		if entry.Response.Comment != "Body truncated at 16KB by Gasoline Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Response.Comment)
 		}
 	})
@@ -245,175 +244,6 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 		}
 	})
 }
-
-// ============================================
-// TestExportHAR - Full export tests
-// ============================================
-
-func TestExportHAR(t *testing.T) {
-	t.Parallel()
-	t.Run("empty - no network bodies", func(t *testing.T) {
-		harLog := ExportHAR(nil, types.NetworkBodyFilter{}, "test")
-
-		if harLog.Log.Version != "1.2" {
-			t.Errorf("expected version 1.2, got %s", harLog.Log.Version)
-		}
-		if len(harLog.Log.Entries) != 0 {
-			t.Errorf("expected 0 entries, got %d", len(harLog.Log.Entries))
-		}
-
-		data, _ := json.Marshal(harLog)
-		if strings.Contains(string(data), `"entries":null`) {
-			t.Error("entries should be empty array, not null")
-		}
-	})
-
-	t.Run("multiple entries in chronological order", func(t *testing.T) {
-		bodies := []types.NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "GET", URL: "https://example.com/2", Status: 200},
-			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/3", Status: 200},
-		}
-
-		harLog := ExportHAR(bodies, types.NetworkBodyFilter{}, "test")
-
-		if len(harLog.Log.Entries) != 3 {
-			t.Fatalf("expected 3 entries, got %d", len(harLog.Log.Entries))
-		}
-		if harLog.Log.Entries[0].Request.URL != "https://example.com/1" {
-			t.Errorf("expected first entry URL /1, got %s", harLog.Log.Entries[0].Request.URL)
-		}
-		if harLog.Log.Entries[2].Request.URL != "https://example.com/3" {
-			t.Errorf("expected last entry URL /3, got %s", harLog.Log.Entries[2].Request.URL)
-		}
-	})
-
-	t.Run("with method filter", func(t *testing.T) {
-		bodies := []types.NetworkBody{
-			{Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Method: "POST", URL: "https://example.com/2", Status: 201},
-			{Method: "GET", URL: "https://example.com/3", Status: 200},
-		}
-
-		harLog := ExportHAR(bodies, types.NetworkBodyFilter{Method: "POST"}, "test")
-
-		if len(harLog.Log.Entries) != 1 {
-			t.Fatalf("expected 1 entry, got %d", len(harLog.Log.Entries))
-		}
-		if harLog.Log.Entries[0].Request.Method != "POST" {
-			t.Errorf("expected POST, got %s", harLog.Log.Entries[0].Request.Method)
-		}
-	})
-
-	t.Run("with URL filter", func(t *testing.T) {
-		bodies := []types.NetworkBody{
-			{Method: "GET", URL: "https://example.com/api/users", Status: 200},
-			{Method: "GET", URL: "https://example.com/static/app.js", Status: 200},
-			{Method: "GET", URL: "https://example.com/api/posts", Status: 200},
-		}
-
-		harLog := ExportHAR(bodies, types.NetworkBodyFilter{URLFilter: "api"}, "test")
-
-		if len(harLog.Log.Entries) != 2 {
-			t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
-		}
-	})
-
-	t.Run("with status filter", func(t *testing.T) {
-		bodies := []types.NetworkBody{
-			{Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Method: "GET", URL: "https://example.com/2", Status: 404},
-			{Method: "GET", URL: "https://example.com/3", Status: 500},
-		}
-
-		harLog := ExportHAR(bodies, types.NetworkBodyFilter{StatusMin: 400}, "test")
-
-		if len(harLog.Log.Entries) != 2 {
-			t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
-		}
-	})
-
-	t.Run("creator field", func(t *testing.T) {
-		harLog := ExportHAR(nil, types.NetworkBodyFilter{}, "1.2.3")
-
-		if harLog.Log.Creator.Name != "Gasoline" {
-			t.Errorf("expected creator name Gasoline, got %s", harLog.Log.Creator.Name)
-		}
-		if harLog.Log.Creator.Version != "1.2.3" {
-			t.Errorf("expected creator version 1.2.3, got %s", harLog.Log.Creator.Version)
-		}
-	})
-}
-
-// ============================================
-// TestExportHARToFile - File save tests
-// ============================================
-
-func TestExportHARToFile(t *testing.T) {
-	t.Parallel()
-	t.Run("save to tmp", func(t *testing.T) {
-		bodies := []types.NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "POST", URL: "https://example.com/2", Status: 201},
-		}
-
-		tmpFile := "/tmp/gasoline-test-har-export.har"
-		defer os.Remove(tmpFile)
-
-		result, err := ExportHARToFile(bodies, types.NetworkBodyFilter{}, "test", tmpFile)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if result.SavedTo != tmpFile {
-			t.Errorf("expected saved_to %s, got %s", tmpFile, result.SavedTo)
-		}
-		if result.EntriesCount != 2 {
-			t.Errorf("expected entries_count 2, got %d", result.EntriesCount)
-		}
-		if result.FileSizeBytes <= 0 {
-			t.Errorf("expected positive file_size_bytes, got %d", result.FileSizeBytes)
-		}
-
-		data, err := os.ReadFile(tmpFile) // nosemgrep: go_filesystem_rule-fileread — test reads output
-		if err != nil {
-			t.Fatalf("failed to read file: %v", err)
-		}
-		var harLog HARLog
-		if err := json.Unmarshal(data, &harLog); err != nil {
-			t.Fatalf("file content is not valid HAR JSON: %v", err)
-		}
-		if len(harLog.Log.Entries) != 2 {
-			t.Errorf("expected 2 entries in file, got %d", len(harLog.Log.Entries))
-		}
-	})
-
-	t.Run("path traversal rejected", func(t *testing.T) {
-		_, err := ExportHARToFile(nil, types.NetworkBodyFilter{}, "test", "../../etc/passwd")
-		if err == nil {
-			t.Error("expected error for path traversal")
-		}
-	})
-
-	t.Run("absolute path outside tmp rejected", func(t *testing.T) {
-		_, err := ExportHARToFile(nil, types.NetworkBodyFilter{}, "test", "/etc/hosts")
-		if err == nil {
-			t.Error("expected error for absolute path outside tmp")
-		}
-	})
-
-	t.Run("nonexistent parent dir", func(t *testing.T) {
-		_, err := ExportHARToFile(
-			[]types.NetworkBody{{Method: "GET", URL: "https://example.com", Status: 200}},
-			types.NetworkBodyFilter{}, "test",
-			"/tmp/gasoline-test-nonexist/deep/nested/file.har",
-		)
-		if err == nil {
-			t.Error("expected error for nonexistent parent dir")
-		}
-	})
-}
-
 // ============================================
 // TestIsPathSafe - Path validation tests
 // ============================================

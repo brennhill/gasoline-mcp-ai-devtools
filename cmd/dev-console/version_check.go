@@ -1,3 +1,6 @@
+// Purpose: Periodically fetches the latest GitHub release to detect available upgrades, with TTL caching and dedup.
+// Why: Surfaces upgrade-available warnings in health and tool responses without blocking normal operation.
+
 package main
 
 import (
@@ -9,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 const (
@@ -29,21 +32,28 @@ var (
 	// githubAPIURL can be overridden via GASOLINE_RELEASES_URL env var for forked repos.
 	// Access must be protected by versionCheckMu (read via getGitHubAPIURL).
 	githubAPIURL = getEnvOrDefault("GASOLINE_RELEASES_URL",
-		"https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest")
+		"https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest")
 )
 
-// getGitHubAPIURL returns the current GitHub API URL (thread-safe).
+// getGitHubAPIURL returns the current GitHub API URL (test use only).
 func getGitHubAPIURL() string {
 	versionCheckMu.Lock()
 	defer versionCheckMu.Unlock()
 	return githubAPIURL
 }
 
-// setGitHubAPIURL sets the GitHub API URL (thread-safe). Used by tests.
+// setGitHubAPIURL overrides the GitHub API URL (test use only).
 func setGitHubAPIURL(url string) {
 	versionCheckMu.Lock()
 	defer versionCheckMu.Unlock()
 	githubAPIURL = url
+}
+
+// getAvailableVersion returns the currently known newer release version, if any.
+func getAvailableVersion() string {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	return availableVersion
 }
 
 // getEnvOrDefault returns the environment variable value or a default if not set
@@ -54,26 +64,49 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+func beginVersionFetch(now time.Time) (fetchURL string, shouldFetch bool) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+
+	// Check if cache is still valid (6 hour TTL) or fetch already in progress.
+	if (!lastVersionCheck.IsZero() && now.Sub(lastVersionCheck) < versionCheckCacheTTL) || versionFetchActive {
+		return "", false
+	}
+
+	// Mark fetch as active to prevent duplicate concurrent fetches.
+	versionFetchActive = true
+	return githubAPIURL, true
+}
+
+func endVersionFetch() {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	versionFetchActive = false
+}
+
+func updateAvailableVersion(newVersion string, now time.Time) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+
+	if isNewerVersion(newVersion, version) {
+		availableVersion = newVersion
+	} else {
+		// Do not advertise older/equal releases as available updates.
+		availableVersion = ""
+	}
+	lastVersionCheck = now
+}
+
 // checkGitHubVersion fetches the latest version from GitHub
 // Returns early if cache is still valid (within 6 hours)
 // Used to determine if a newer version is available to notify users
 func checkGitHubVersion() {
-	versionCheckMu.Lock()
-	// Check if cache is still valid (6 hour TTL) or fetch already in progress
-	if (!lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL) || versionFetchActive {
-		versionCheckMu.Unlock()
+	now := time.Now()
+	fetchURL, shouldFetch := beginVersionFetch(now)
+	if !shouldFetch {
 		return
 	}
-	// Mark fetch as active to prevent duplicate concurrent fetches
-	versionFetchActive = true
-	fetchURL := githubAPIURL
-	versionCheckMu.Unlock()
-
-	defer func() {
-		versionCheckMu.Lock()
-		versionFetchActive = false
-		versionCheckMu.Unlock()
-	}()
+	defer endVersionFetch()
 
 	// Fetch from GitHub (silent on errors - version check is optional/non-critical)
 	client := &http.Client{Timeout: httpClientTimeout}
@@ -107,15 +140,7 @@ func checkGitHubVersion() {
 		return
 	}
 
-	versionCheckMu.Lock()
-	if isNewerVersion(newVersion, version) {
-		availableVersion = newVersion
-	} else {
-		// Do not advertise older/equal releases as available updates.
-		availableVersion = ""
-	}
-	lastVersionCheck = time.Now()
-	versionCheckMu.Unlock()
+	updateAvailableVersion(newVersion, now)
 
 	// Quiet mode: Version check results are available via get_health tool
 	// No need to spam stderr - LLMs don't care about version updates

@@ -4,7 +4,7 @@
 // Docs: docs/DEVELOPMENT.md
 
 /**
- * Comprehensive version bump script for Gasoline MCP
+ * Comprehensive version bump script for Gasoline Agentic Browser
  *
  * Usage: node scripts/bump-version.js <new-version>
  * Example: node scripts/bump-version.js 6.1.0
@@ -38,7 +38,6 @@ const colors = {
 }
 
 function log(color, prefix, message) {
-   
   console.log(`${colors[color]}${prefix}${colors.reset} ${message}`)
   return
 }
@@ -76,7 +75,6 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
 
   function walk(dir) {
     try {
-       
       const entries = fs.readdirSync(dir, { withFileTypes: true })
       for (const entry of entries) {
         if (ignore.has(entry.name)) continue
@@ -86,7 +84,6 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
           walk(fullPath)
         } else if (ext.has(path.extname(entry.name))) {
           try {
-             
             const content = fs.readFileSync(fullPath, 'utf8')
             if (content.includes(oldVersion)) {
               files.push(fullPath)
@@ -110,7 +107,7 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
 const CRITICAL_FILES = [
   'VERSION',
   'cmd/dev-console/main.go',
-  'npm/gasoline-mcp/package.json',
+  'npm/gasoline-agentic-browser/package.json',
   'extension/inject.bundled.js',
   'server/package.json',
   'cmd/dev-console/openapi.json',
@@ -121,7 +118,6 @@ const CRITICAL_FILES = [
 ]
 
 function updateVersionInFile(filePath, oldVersion, newVersion) {
-   
   const content = fs.readFileSync(filePath, 'utf8')
   let updated = content
 
@@ -129,124 +125,106 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
   if (filePath.endsWith('.json')) {
     // JSON files: "version": "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`"version":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"version": "${newVersion}"`
     )
     // optionalDependencies: "@package": "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`"(@\\w+/[^"]+)":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"$1": "${newVersion}"`
     )
     // JSON example values: "example": "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`"example":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"example": "${newVersion}"`
     )
   } else if (filePath.endsWith('.go')) {
     // Go: var version = "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version = "${newVersion}"`
     )
     // Go const
     updated = updated.replace(
-       
       new RegExp(`const version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const version = "${newVersion}"`
     )
     // Go User-Agent: "Gasoline/6.0.3 ..."
-     
+
     updated = updated.replace(new RegExp(`Gasoline/${oldVersion.replace(/\./g, '\\.')}`, 'g'), `Gasoline/${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.js') || filePath.endsWith('.ts')) {
     // JavaScript/TypeScript: version: '6.0.1' or version: "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`version:\\s*'${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: '${newVersion}'`
     )
     updated = updated.replace(
-       
       new RegExp(`version:\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
     // __version__ = "7.8.0"
     updated = updated.replace(
-       
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = "${newVersion}"`
     )
     updated = updated.replace(
-       
       new RegExp(`__version__ = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = '${newVersion}'`
     )
     // const VERSION = '7.8.0' or const VERSION = "7.8.0"
     updated = updated.replace(
-       
       new RegExp(`const VERSION = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const VERSION = '${newVersion}'`
     )
     updated = updated.replace(
-       
       new RegExp(`const VERSION = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const VERSION = "${newVersion}"`
     )
   } else if (filePath.endsWith('.py')) {
     // Python: __version__ = "7.8.0"
     updated = updated.replace(
-       
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = "${newVersion}"`
     )
   } else if (filePath.endsWith('.toml')) {
     // TOML: version = "6.0.1"
     updated = updated.replace(
-       
       new RegExp(`version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version = "${newVersion}"`
     )
     // Dependencies in TOML (PEP 440: ==6.0.3)
-     
+
     updated = updated.replace(new RegExp(`==${oldVersion.replace(/\./g, '\\.')}`, 'g'), `==${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.md')) {
     // Markdown: version-6.0.1-green or just 6.0.1
-     
+
     updated = updated.replace(new RegExp(oldVersion.replace(/\./g, '\\.'), 'g'), newVersion) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
     // YAML: version: 6.0.1 or version: "6.0.1"
-     
+
     updated = updated.replace(new RegExp(`version: ${oldVersion.replace(/\./g, '\\.')}`, 'g'), `version: ${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
     updated = updated.replace(
-       
       new RegExp(`version: "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
     updated = updated.replace(
-       
       new RegExp(`version: '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: '${newVersion}'`
     )
   } else if (filePath.endsWith('.sh')) {
     // Shell: VERSION="6.0.1"
     updated = updated.replace(
-       
       new RegExp(`VERSION="${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `VERSION="${newVersion}"`
     )
     // Shell: VERSION='6.0.1'
     updated = updated.replace(
-       
       new RegExp(`VERSION='${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `VERSION='${newVersion}'`
     )
   }
 
   if (updated !== content) {
-     
     fs.writeFileSync(filePath, updated, 'utf8')
     return true
   }
@@ -256,7 +234,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
 async function main() {
   const newVersion = process.argv[2]
 
-  log('cyan', '=>', 'Gasoline MCP Version Bump Script')
+  log('cyan', '=>', 'Gasoline Agentic Browser Version Bump Script')
   log('cyan', '=>', '')
 
   // Step 1: Get current version
@@ -347,9 +325,12 @@ async function main() {
   }
 
   // Step 5b: Normalize the main PyPI pyproject structure defensively.
-  const normalizeResult = normalizeMainPyprojectFile(path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml'), {
-    write: true
-  })
+  const normalizeResult = normalizeMainPyprojectFile(
+    path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml'),
+    {
+      write: true
+    }
+  )
   if (normalizeResult.changed) {
     const normalizedRelPath = path.relative(ROOT, normalizeResult.filePath)
     if (!updated.includes(normalizedRelPath)) {
@@ -358,7 +339,7 @@ async function main() {
     log('yellow', '⚠', `Normalized ${normalizedRelPath} (moved dependencies under [project])`)
   }
 
-  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml')
+  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml')
   const mainPyprojectContent = fs.readFileSync(mainPyprojectPath, 'utf8')
   const metadataValidation = validateMainPyprojectContent(mainPyprojectContent, { expectedVersion: newVersion })
   if (!metadataValidation.valid) {
@@ -374,7 +355,7 @@ async function main() {
   log('cyan', '=>', '')
   log('cyan', 'Validating package.json dependencies...')
 
-  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/gasoline-mcp/package.json')))
+  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/gasoline-agentic-browser/package.json')))
   const optionalDeps = mainPackageJson.optionalDependencies || {}
 
   let depsMatch = true
@@ -399,7 +380,7 @@ async function main() {
 
   for (const file of CRITICAL_FILES) {
     const filePath = path.join(ROOT, file)
-     
+
     const content = fs.readFileSync(filePath, 'utf8')
     if (content.includes(newVersion)) {
       log('green', '✓', file)

@@ -1,6 +1,5 @@
-// Purpose: Validate version_compare_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for semantic version comparison logic.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

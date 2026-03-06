@@ -3,10 +3,12 @@ feature: Flow Recording & Playback
 status: proposed
 tool: interact, observe, configure
 mode: recording, playback, test-generation
-version: v6.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-flow-recording
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Product Spec: Flow Recording & Playback (Regression Testing)

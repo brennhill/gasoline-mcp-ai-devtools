@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Main background service worker hub -- owns debug logging, log handling, connection management, and batcher wiring.
+ * Why: Central export point that delegates to specialized modules while owning cross-cutting concerns.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import { getServerUrl, getConnectionStatus, getExtensionLogQueue, pushExtensionLog, capExtensionLogs, getCurrentLogLevel, isScreenshotOnError, _setDebugModeRaw, setConnectionStatus, setConnectionCheckRunning, clearExtensionLogQueue, EXTENSION_SESSION_ID, isAiControlled, isAiWebPilotEnabled, isConnectionCheckRunning as isConnectionCheckRunningFlag, isDebugMode, applyCaptureOverrides } from './state.js';
 import { addDebugLogEntry, getDebugLog as getDebugLogEntries, clearDebugLog as clearDebugLogEntries, isSourceMapEnabled, resolveStackTrace, processErrorGroup, canTakeScreenshot, recordScreenshot } from './state-manager.js';
@@ -15,6 +13,7 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';
 import { updateVersionFromHealth } from './version-check.js';
 import { createBatcherInstances } from './batcher-instances.js';
+import { errorMessage } from '../lib/error-utils.js';
 import { startSyncClient as startSyncClientImpl, resetSyncClientConnection as resetSyncClientConnectionImpl } from './sync-manager.js';
 // Re-export for consumers that already import from here
 export { DEFAULT_SERVER_URL } from '../lib/constants.js';
@@ -65,6 +64,8 @@ export function debugLog(category, message, data = null) {
         }
     }
 }
+;
+globalThis.__GASOLINE_DEBUG_LOG__ = debugLog;
 /**
  * Get all debug log entries
  */
@@ -81,7 +82,8 @@ export function clearDebugLog() {
  * Export debug log as JSON string
  */
 export function exportDebugLog() {
-    return JSON.stringify({
+    return JSON.stringify(// WIRE-OK: local debug export, not sent to server
+    {
         exportedAt: new Date().toISOString(),
         version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest().version : 'test',
         debugMode: isDebugMode(),
@@ -155,7 +157,7 @@ async function tryResolveSourceMap(entry) {
         };
     }
     catch (err) {
-        debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: err.message });
+        debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: errorMessage(err) });
         return entry;
     }
 }
@@ -208,13 +210,15 @@ async function maybeAutoScreenshot(errorEntry, sender) {
 }
 export async function handleClearLogs() {
     try {
-        await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
+        const response = await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
+        if (!response.ok)
+            return { success: false, error: `HTTP ${response.status}` };
         setConnectionStatus({ entries: 0, errorCount: 0 });
         updateBadge(getConnectionStatus());
         return { success: true };
     }
     catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: errorMessage(error) };
     }
 }
 // =============================================================================
@@ -232,7 +236,7 @@ function updateVersionFromHealthSafe(health) {
         updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog);
     }
     catch (err) {
-        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
+        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: errorMessage(err) });
     }
 }
 function applyHealthLogs(health) {

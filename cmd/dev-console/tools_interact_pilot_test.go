@@ -1,5 +1,4 @@
-// Purpose: Validate tools_interact_pilot_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for interact pilot automation.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_pilot_test.go — Coverage tests for navigate and executeJS success paths.
@@ -58,7 +57,7 @@ func TestHandleBrowserActionNavigate_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handleBrowserActionNavigate(req, args)
+	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -70,7 +69,7 @@ func TestHandleBrowserActionNavigate_InvalidJSON(t *testing.T) {
 }
 
 // ============================================
-// handlePilotExecuteJS — success + invalidJSON
+// handleExecuteJS — success + invalidJSON
 // (pilot disabled, missing script, invalid/valid worlds already covered by audit tests)
 // ============================================
 
@@ -110,7 +109,7 @@ func TestHandlePilotExecuteJS_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

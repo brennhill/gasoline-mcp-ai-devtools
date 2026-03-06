@@ -1,3 +1,6 @@
+// Purpose: Serves the embedded OpenAPI specification at /openapi.json for API documentation consumers.
+// Docs: docs/features/feature/api-schema/index.md
+
 package main
 
 import (

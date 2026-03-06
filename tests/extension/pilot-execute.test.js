@@ -9,6 +9,11 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 import { MANIFEST_VERSION } from './helpers.js'
 
+async function resetPilotCacheForTesting(value) {
+  const { _resetPilotCacheForTesting } = await import('../../extension/background/state.js')
+  _resetPilotCacheForTesting(value)
+}
+
 // Mock Chrome APIs
 const createMockChrome = () => ({
   runtime: {
@@ -534,8 +539,8 @@ describe('Background Script Pilot Command Handler', () => {
 
     mockChrome.tabs.sendMessage.mock.mockImplementation(() => Promise.resolve({ success: true, result: 'executed' }))
 
-    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
-    _resetPilotCacheForTesting(true)
+    const { handlePilotCommand } = await import('../../extension/background.js')
+    await resetPilotCacheForTesting(true)
 
     await handlePilotCommand('GASOLINE_EXECUTE_JS', {
       script: 'return 1+1',
@@ -555,8 +560,8 @@ describe('Background Script Pilot Command Handler', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
-    _resetPilotCacheForTesting(false)
+    const { handlePilotCommand } = await import('../../extension/background.js')
+    await resetPilotCacheForTesting(false)
 
     const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', {
       script: 'return 1+1'

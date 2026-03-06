@@ -1,7 +1,9 @@
 ---
 doc_type: tech-spec
 feature_id: feature-tab-recording
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Tab Recording — Technical Architecture
@@ -28,10 +30,10 @@ sequenceDiagram
     participant Ext as Extension (background)
     participant Tab as Browser Tab
 
-    AI->>Server: interact({action: "record_start", name: "checkout bug"})
+    AI->>Server: interact({action: "screen_recording_start", name: "checkout bug"})
     Server->>Server: Generate filename: checkout-bug--2026-02-07-1423
     Server->>Server: Create dir ~/.gasoline/recordings/ (if needed)
-    Server->>Ext: PendingQuery {action: "record_start", name: "checkout-bug--2026-02-07-1423"}
+    Server->>Ext: PendingQuery {action: "screen_recording_start", name: "checkout-bug--2026-02-07-1423"}
 
     Ext->>Tab: chrome.tabCapture.capture({video: true, audio: false})
     Tab-->>Ext: MediaStream
@@ -45,8 +47,8 @@ sequenceDiagram
 
     Note over AI,Tab: ... AI interacts with page, subtitles render in tab ...
 
-    AI->>Server: interact({action: "record_stop"})
-    Server->>Ext: PendingQuery {action: "record_stop"}
+    AI->>Server: interact({action: "screen_recording_stop"})
+    Server->>Ext: PendingQuery {action: "screen_recording_stop"}
 
     Ext->>Ext: recorder.stop()
     Ext->>Ext: Assemble Blob from chunks
@@ -72,7 +74,7 @@ sequenceDiagram
 
     User->>Popup: Click "Start Recording"
     Popup->>Popup: Read optional name from input
-    Popup->>BG: chrome.runtime.sendMessage({type: "record_start", name: "site demo"})
+    Popup->>BG: chrome.runtime.sendMessage({type: "screen_recording_start", name: "site demo"})
 
     BG->>BG: Generate filename: site-demo--2026-02-07-1430
     BG->>Tab: chrome.tabCapture.capture({video: true, audio: false})
@@ -85,7 +87,7 @@ sequenceDiagram
     Note over User,Tab: ... User interacts with page ...
 
     User->>Popup: Click "Stop Recording"
-    Popup->>BG: chrome.runtime.sendMessage({type: "record_stop"})
+    Popup->>BG: chrome.runtime.sendMessage({type: "screen_recording_stop"})
 
     BG->>BG: recorder.stop(), assemble blob
     BG->>BG: POST /recordings/save to Go server
@@ -293,8 +295,8 @@ New section below existing toggles:
 #### Popup logic:
 
 - On open: read `chrome.storage.local.get("gasoline_recording")` → show correct state
-- Start: send `{type: "record_start", name}` to background
-- Stop: send `{type: "record_stop"}` to background
+- Start: send `{type: "screen_recording_start", name}` to background
+- Stop: send `{type: "screen_recording_stop"}` to background
 - Timer: `setInterval` updates display every second while recording
 
 ### 4. Go Server: Recording Endpoint (`cmd/dev-console/tools_recording.go`)
@@ -393,9 +395,9 @@ func (h *Handler) handleObserveSavedVideos(req mcp.Request, args ObserveArgs) mc
 }
 ```
 
-### 6. Go Server: Name Generation on record_start
+### 6. Go Server: Name Generation on screen_recording_start
 
-When `record_start` arrives, the server generates the filename before forwarding to the extension:
+When `screen_recording_start` arrives, the server generates the filename before forwarding to the extension:
 
 ```go
 func (h *Handler) handleRecordStart(req mcp.Request, args InteractArgs) mcp.Response {
@@ -464,8 +466,8 @@ type RecordingMetadata struct {
 stateDiagram-v2
     [*] --> Idle
 
-    Idle --> Recording: record_start (MCP or popup)
-    Recording --> Stopping: record_stop (MCP or popup)
+    Idle --> Recording: screen_recording_start (MCP or popup)
+    Recording --> Stopping: screen_recording_stop (MCP or popup)
     Recording --> Error: tab closed / permission denied
     Stopping --> Saving: MediaRecorder.onstop fires
     Saving --> Idle: POST /recordings/save succeeds
@@ -530,16 +532,16 @@ sequenceDiagram
 
 **Resolution:** One retry. If still fails, buffer in `chrome.storage.local` (size limited but better than data loss). On next successful server connection, flush buffered recording.
 
-### 3. Concurrent record_start Calls
+### 3. Concurrent screen_recording_start Calls
 
 ```mermaid
 sequenceDiagram
     participant AI as AI Assistant
     participant Server as Go Server
 
-    AI->>Server: interact({action: "record_start", name: "demo 1"})
+    AI->>Server: interact({action: "screen_recording_start", name: "demo 1"})
     Note over Server: Forwards to extension, recording starts
-    AI->>Server: interact({action: "record_start", name: "demo 2"})
+    AI->>Server: interact({action: "screen_recording_start", name: "demo 2"})
     Server->>Server: Extension reports: already recording
     Server-->>AI: Error: "RECORD_START: Already recording. Stop current recording first."
 ```
@@ -603,7 +605,7 @@ sequenceDiagram
 
 ### 7. No Name Provided
 
-**Scenario:** `interact({action: "record_start"})` with no `name` parameter.
+**Scenario:** `interact({action: "screen_recording_start"})` with no `name` parameter.
 
 **Resolution:** Server uses default slug `recording`, appends timestamp: `recording--2026-02-07-1423`. Same file saved, same metadata.
 
@@ -648,11 +650,11 @@ sequenceDiagram
 
 **File permissions:** `0644` (user read/write, group/others read).
 
-### PendingQuery Flow (record_start / record_stop)
+### PendingQuery Flow (screen_recording_start / screen_recording_stop)
 
 Uses existing async command pattern:
 
-1. Server receives `interact({action: "record_start"})` from MCP
+1. Server receives `interact({action: "screen_recording_start"})` from MCP
 2. Server creates `PendingQuery` with correlation ID
 3. Extension picks up query on next `/sync` poll
 4. Extension executes recording action
@@ -666,7 +668,7 @@ No new protocol — reuses existing `PendingQuery` / `CommandResult` infrastruct
 ```text
 Extension:
   src/background/recording.ts      (NEW — ~200 LOC, recording pipeline)
-  src/background/pending-queries.ts (MODIFY — add record_start/record_stop dispatch)
+  src/background/pending-queries.ts (MODIFY — add screen_recording_start/screen_recording_stop dispatch)
   extension/manifest.json           (MODIFY — add tabCapture permission)
   extension/popup.html              (MODIFY — add recording section)
   extension/popup.js                (MODIFY — add recording UI logic)
@@ -674,7 +676,7 @@ Extension:
 Go Server:
   cmd/dev-console/tools_recording.go (NEW — ~150 LOC, save endpoint + types)
   cmd/dev-console/tools_observe.go   (MODIFY — add saved_videos case)
-  cmd/dev-console/tools_interact.go  (MODIFY — add record_start/record_stop dispatch)
+  cmd/dev-console/tools_interact.go  (MODIFY — add screen_recording_start/screen_recording_stop dispatch)
   cmd/dev-console/server.go          (MODIFY — register /recordings/save route)
 ```
 
@@ -702,9 +704,9 @@ Go Server:
 
 For recordings longer than ~10 minutes, stream chunks to server during recording:
 
-1. `record_start` → server creates file, returns handle
+1. `screen_recording_start` → server creates file, returns handle
 2. Every 30s: extension POSTs accumulated chunks → server appends to file
-3. `record_stop` → extension POSTs final chunk → server finalizes metadata
+3. `screen_recording_stop` → extension POSTs final chunk → server finalizes metadata
 
 **Benefits:** Constant memory (~30s of video), partial recovery on crash, unlimited duration.
 

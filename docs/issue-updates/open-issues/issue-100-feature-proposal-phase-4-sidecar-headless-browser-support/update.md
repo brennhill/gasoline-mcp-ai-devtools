@@ -1,7 +1,7 @@
 # Product Update: Issue #100
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/100
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/100
 - Title: [Feature Proposal] Phase 4: Sidecar Headless Browser Support
 - Last Updated: 2026-02-16T16:51:31Z
 
