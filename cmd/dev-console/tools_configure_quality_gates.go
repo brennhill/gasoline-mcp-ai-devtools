@@ -180,9 +180,9 @@ func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStand
 // Hook config uses Claude Code's naming conventions (PascalCase event names), so it's
 // returned as a pre-formatted JSON string to avoid snake_case field validation.
 func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]any {
-	standardsAbsPath := filepath.Join(projectDir, codeStandardsRef)
-
-	// Build the command hook JSON — uses Claude Code spec fields (PascalCase).
+	// The quality-gate-hook.sh script reads .gasoline.json, loads the standards doc,
+	// runs file size checks and jscpd duplicate detection, then injects all findings
+	// as additionalContext. It finds the project root by walking up from the changed file.
 	commandHook := `{
   "hooks": {
     "PostToolUse": [
@@ -191,8 +191,8 @@ func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]
         "hooks": [
           {
             "type": "command",
-            "command": "cat ` + standardsAbsPath + ` | head -200",
-            "timeout": 5
+            "command": "` + filepath.Join(projectDir, "scripts", "quality-gate-hook.sh") + `",
+            "timeout": 30
           }
         ]
       }
@@ -227,54 +227,66 @@ func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]
 }
 
 // defaultCodeStandardsContent is the starter content for gasoline-code-standards.md.
+// Rules are written to be actionable by an LLM reviewer (Haiku): each rule has a
+// specific trigger condition and a concrete action. Vague rules generate false positives.
 const defaultCodeStandardsContent = `# Code Standards
 
-> This file defines your project's coding standards. Gasoline's quality gates use this
-> file to check edits for pattern violations. Write rules the way you would explain them
-> to a new team member — plain markdown, no special format required.
+> Quality gate rules for automated code review. Each rule has a trigger (when to flag)
+> and an action (what to do instead). Only flag clear violations — not style preferences.
 
-## General Rules
+## File Structure
 
-- Keep files under 800 lines. Refactor if larger.
-- Extract repeated logic into helpers — do not inline.
-- All JSON fields use snake_case.
-- Prefer named functions over anonymous closures for readability.
+- **Max 800 lines per file.** If a file exceeds this, it must be split.
+- **One concept per file.** If a file has two unrelated concerns, split them.
+- **No orphan code.** Dead code, commented-out blocks, and unused imports must be removed.
 
-## Patterns
+## Naming Conventions
 
-### Error Handling
-- Always handle errors explicitly. Do not ignore return values.
+Functions: verb-phrase describing the action — ` + "`" + `buildResponse` + "`" + `, ` + "`" + `parseArgs` + "`" + `, ` + "`" + `validateToken` + "`" + `.
+Types/structs/classes: noun-phrase — ` + "`" + `ToolHandler` + "`" + `, ` + "`" + `QueryResult` + "`" + `, ` + "`" + `SessionStore` + "`" + `.
+Booleans: predicate-phrase — ` + "`" + `isReady` + "`" + `, ` + "`" + `hasExpired` + "`" + `, ` + "`" + `canRetry` + "`" + `.
+Constants: describe the value's purpose, not its content — ` + "`" + `maxRetries` + "`" + ` not ` + "`" + `three` + "`" + `.
+Avoid abbreviations except well-known ones (URL, ID, HTTP, JSON, API).
+
+## Error Handling
+
+- Always handle errors explicitly. Never silently ignore error return values.
 - Use structured error messages: "{OPERATION}: {ROOT_CAUSE}. {RECOVERY_ACTION}"
+- Errors should be actionable — tell the caller what went wrong and how to fix it.
 
-### Code Organization
-- One concept per file. If a file has multiple unrelated concerns, split it.
-- Group related functions together. Export only what is needed.
-- Keep public interfaces minimal and explicit.
+## Duplication & Reuse
 
-### Naming
-- Use descriptive names. Avoid abbreviations except well-known ones (e.g., URL, ID, HTTP).
-- Function names should describe what they do, not how they do it.
+- **3+ similar lines = extract a helper.** If you see the same logic repeated, it should be a function.
+- **Before writing a new utility, check if one exists.** Search the codebase for similar function signatures.
+- **Prefer composition over inheritance.** Small, focused functions composed together beat deep class hierarchies.
 
-### Testing
-- Write tests first (TDD) when adding new functions.
-- Use deterministic tests — avoid sleep-based timing.
-- Each bug fix should include a regression test.
+## Structural Patterns
 
-## Add Your Patterns Below
+- **3+ switch/case branches dispatching to similar logic** → extract to a handler map or strategy pattern.
+- **3+ sequential phases (setup, execute, cleanup)** → use a builder or command pattern if one exists in the codebase.
+- **Nested callbacks or deeply indented logic (4+ levels)** → extract inner blocks into named functions.
+- **God functions (50+ lines doing multiple things)** → split into focused sub-functions.
 
-<!-- Add project-specific patterns here. Examples:
+## Testing
 
-### Command Pattern
-Functions with 3+ sequential phases (setup, execute, cleanup) should implement
-the Command interface. See internal/cmd/base.go for the canonical implementation.
+- New functions should have tests. Bug fixes must include a regression test.
+- Use deterministic tests — no sleep-based timing, no flaky network calls.
+- Test the contract (inputs/outputs), not the implementation details.
 
-### Validation Guards
-Request validation should use validateAndRespond() from internal/util/guards.go.
-Do not write inline if/else validation chains.
+## Security
 
-### Response Builder
-All API responses must use buildResponse() helper from internal/util/response.go.
-Never construct response JSON inline.
+- Never log secrets, tokens, API keys, or credentials.
+- Validate all external input at system boundaries (user input, API responses, file reads).
+- Do not trust internal data structures to be valid — defensive checks at module boundaries.
+
+## Add Your Project Patterns Below
+
+<!-- Add project-specific patterns here. Be specific — vague rules cause false positives.
+
+Good: "Request validation must use validateAndRespond() from internal/util/guards.go.
+       Do not write inline if/else validation chains."
+
+Bad:  "Use good patterns." (too vague, will flag everything)
 
 -->
 `
