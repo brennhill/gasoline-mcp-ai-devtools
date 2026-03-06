@@ -186,6 +186,9 @@ func runNativeInstall() {
 		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom) //nolint:errcheck // best-effort per-client config
 	}
 
+	// 3b. Codex (TOML-based config)
+	installCodex(home, exe)
+
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user
 	// can verify the install with a health check.
@@ -232,6 +235,13 @@ func installClaudeCode(exePath string) {
 		return
 	}
 
+	// Remove legacy MCP server registrations before adding the canonical one.
+	for _, legacy := range installerLegacyServerKeys {
+		cmd := exec.Command("claude", "mcp", "remove", "--scope", "user", legacy)
+		cmd.Env = append(os.Environ(), "CLAUDECODE=")
+		_ = cmd.Run() //nolint:errcheck // best-effort legacy removal
+	}
+
 	entry := map[string]any{
 		"command": exePath,
 		"args":    []string{},
@@ -242,6 +252,61 @@ func installClaudeCode(exePath string) {
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
 	_ = cmd.Run() //nolint:errcheck // best-effort Claude Code MCP registration
+}
+
+// installCodex updates ~/.codex/config.toml to register the MCP server.
+// Codex uses TOML with [mcp_servers.<name>] sections.
+func installCodex(home, exePath string) {
+	configPath := filepath.Join(home, ".codex", "config.toml")
+	if _, err := os.Stat(filepath.Dir(configPath)); os.IsNotExist(err) {
+		return
+	}
+
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		return // no config file, nothing to do
+	}
+
+	// Build set of section headers to remove (legacy + canonical, we re-add canonical).
+	removeSet := map[string]bool{
+		"[mcp_servers." + mcpServerName + "]": true,
+	}
+	for _, legacy := range installerLegacyServerKeys {
+		removeSet["[mcp_servers."+legacy+"]"] = true
+	}
+
+	// Filter out old sections line by line.
+	lines := strings.Split(string(raw), "\n")
+	var out []string
+	skipping := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if removeSet[trimmed] {
+			skipping = true
+			continue
+		}
+		// A new TOML section header ends the skip.
+		if skipping && strings.HasPrefix(trimmed, "[") {
+			skipping = false
+		}
+		if !skipping {
+			out = append(out, line)
+		}
+	}
+
+	// Strip trailing blank lines before appending.
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+
+	// Append the canonical entry.
+	out = append(out, "",
+		"[mcp_servers."+mcpServerName+"]",
+		fmt.Sprintf("command = %q", exePath),
+	)
+	out = append(out, "") // trailing newline
+
+	_ = os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o600) //nolint:errcheck // best-effort
 }
 
 func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
