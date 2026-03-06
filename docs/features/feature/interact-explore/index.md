@@ -4,8 +4,9 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 code_paths:
+  - cmd/dev-console/tools_interact_command_builder.go
   - cmd/dev-console/tools_interact_action_handler.go
   - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
@@ -58,6 +59,7 @@ code_paths:
   - cmd/dev-console/tools_async_formatting.go
   - cmd/dev-console/tools_summary_pref.go
 test_paths:
+  - cmd/dev-console/tools_interact_command_builder_test.go
   - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_pending_query_enqueue_test.go
   - cmd/dev-console/tools_interact_rich_test.go

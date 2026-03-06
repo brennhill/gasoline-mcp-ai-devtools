@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleHardwareClick dispatches a coordinate-based click via CDP Input.dispatchMouseEvent.
@@ -30,36 +28,21 @@ func (h *interactActionHandler) handleHardwareClick(req JSONRPCRequest, args jso
 
 // handleCDPClick creates a cdp_action query for a hardware-level click at coordinates.
 func (h *interactActionHandler) handleCDPClick(req JSONRPCRequest, args json.RawMessage, action string, x, y float64, tabID int) JSONRPCResponse {
-	if resp, blocked := h.parent.requirePilot(req, withAction(action)); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireExtension(req, withAction(action)); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req, withAction(action)); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("cdp_click")
-	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
-
-	cdpParams := buildQueryParams(map[string]any{
-		"action": "click",
-		"x":      x,
-		"y":      y,
-	})
-
-	query := queries.PendingQuery{
-		Type:          "cdp_action",
-		Params:        cdpParams,
-		TabID:         tabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction(action, "", map[string]any{"x": x, "y": y, "method": "cdp"})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, action+" queued")
+	return h.newCommand("cdp_click").
+		correlationPrefix("cdp_click").
+		reason(action).
+		queryType("cdp_action").
+		buildParams(map[string]any{
+			"action": "click",
+			"x":      x,
+			"y":      y,
+		}).
+		tabID(tabID).
+		guardsWithOpts(
+			[]func(*StructuredError){withAction(action)},
+			h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking,
+		).
+		recordAction(action, "", map[string]any{"x": x, "y": y, "method": "cdp"}).
+		queuedMessage(action + " queued").
+		execute(req, args)
 }

@@ -7,7 +7,6 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
@@ -31,31 +30,16 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	// Queue highlight command for extension.
-	correlationID := newCorrelationID("highlight")
-	h.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "highlight",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	// Record AI action.
-	h.parent.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
+	return h.newCommand("highlight").
+		correlationPrefix("highlight").
+		reason("highlight").
+		queryType("highlight").
+		queryParams(args).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		recordAction("highlight", "", map[string]any{"selector": params.Selector}).
+		queuedMessage("Highlight queued").
+		execute(req, args)
 }
 
 func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -80,30 +64,15 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireCSPClear(req, params.World); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("exec")
-	h.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Command queued")
+	return h.newCommand("execute_js").
+		correlationPrefix("exec").
+		reason("execute_js").
+		queryType("execute").
+		queryParams(args).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		cspGuard(params.World).
+		recordAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)}).
+		queuedMessage("Command queued").
+		execute(req, args)
 }
