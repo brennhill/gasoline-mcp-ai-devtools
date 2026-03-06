@@ -1,15 +1,15 @@
 ---
-title: "Gasoline v5.7.0 Released"
+title: "Gasoline v0.5.70 Released"
 description: "New graceful shutdown, PID file management, and sync protocol for better extension connectivity"
 date: 2026-02-05T20:33:00Z
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
+normalized_tags: ['release', 'blog', 'v0.5']
 ---
 
-## What's New in v5.7.0
+## What's New in v0.5.70
 
 This release focuses on reliability and developer experience improvements, with a new graceful shutdown system and improved extension connectivity.
 
@@ -48,13 +48,7 @@ The `--persist` flag has been removed. The server now always runs as a backgroun
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.7.0
-```
-
-Or if you've installed globally:
-
-```bash
-npm install -g gasoline-mcp@5.7.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ## Full Changelog

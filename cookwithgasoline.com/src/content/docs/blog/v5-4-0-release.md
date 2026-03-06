@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v5.4.0 Released"
+title: "Gasoline v0.5.40 Released"
 description: "Redesigned interaction model and improved AI agent integration"
 date: 2026-01-17T22:18:00Z
 authors: [brennhill]
 tags: [release]
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
+normalized_tags: ['release', 'blog', 'v0.5']
 ---
 
-## What's New in v5.4.0
+## What's New in v0.5.40
 
-Gasoline v5.4.0 redesigns the interaction model for better AI agent integration and reliability.
+Gasoline v0.5.40 redesigns the interaction model for better AI agent integration and reliability.
 
 ### Features
 
@@ -36,9 +36,9 @@ Gasoline v5.4.0 redesigns the interaction model for better AI agent integration 
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.4.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ## Full Changelog
 
-[v5.4.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.0)
+[v0.5.40 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.0)

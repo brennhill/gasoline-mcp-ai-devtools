@@ -31,7 +31,7 @@ Both passed for the `v0.8.0` release cut.
 ### Upgrade
 
 ```bash
-npx gasoline-agentic-browser@0.8.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ### Full Changelog
