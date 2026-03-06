@@ -8,8 +8,8 @@
  * Manages tracking status for the current tab
  */
 
-import type { StorageChange } from '../types/index.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, onStorageChanged } from '../lib/storage-utils.js'
 
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false
@@ -22,13 +22,13 @@ let currentTabId: number | null = null
  */
 export async function updateTrackingStatus(): Promise<void> {
   try {
-    const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
 
     // Request tab ID from background script (content scripts can't access chrome.tabs)
     const response = (await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' })) as { tabId?: number } | undefined
     currentTabId = response?.tabId ?? null
 
-    isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
+    isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === trackedTabId
   } catch {
     // Graceful degradation: if we can't check, assume not tracked
     isTrackedTab = false
@@ -59,7 +59,7 @@ export function initTabTracking(onChange?: (tracked: boolean) => void): Promise<
     onChange?.(isTrackedTab)
   })
 
-  chrome.storage.onChanged.addListener(async (changes: { [key: string]: StorageChange }) => {
+  onStorageChanged(async (changes) => {
     if (changes[StorageKey.TRACKED_TAB_ID]) {
       await updateTrackingStatus()
       onChange?.(isTrackedTab)

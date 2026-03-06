@@ -48,7 +48,7 @@ interface ExecutorCommand {
   assign?: { target: ExecutorValue; steps: ExecutorStep[]; key: string }
 }
 
-export function cspSafeExecutor(command: ExecutorCommand): any {
+export function cspSafeExecutor(command: ExecutorCommand): unknown {
   /* jscpd:ignore-start */
   // --- Inline serialize (self-contained, no external refs) ---
   function serialize(value: any, depth: number, seen: WeakSet<object>): any {
@@ -218,15 +218,15 @@ export function cspSafeExecutor(command: ExecutorCommand): any {
     // Promise handling
     if (raw !== null && raw !== undefined && typeof raw.then === 'function') {
       return raw
-        .then((v: any) => ({
+        .then((v: unknown) => ({
           success: true,
           result: serialize(v, 0, new WeakSet()),
           execution_mode: 'csp_safe_structured'
         }))
-        .catch((err: any) => ({
+        .catch((err: unknown) => ({
           success: false,
           error: 'promise_rejected',
-          message: err?.message || String(err),
+          message: err instanceof Error ? err.message : String(err),
           execution_mode: 'csp_safe_structured'
         }))
     }
@@ -236,11 +236,11 @@ export function cspSafeExecutor(command: ExecutorCommand): any {
       result: serialize(raw, 0, new WeakSet()),
       execution_mode: 'csp_safe_structured'
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
       error: 'structured_execution_error',
-      message: err?.message || String(err),
+      message: err instanceof Error ? err.message : String(err),
       execution_mode: 'csp_safe_structured'
     }
   }

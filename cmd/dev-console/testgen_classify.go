@@ -19,7 +19,7 @@ func (h *testGenHandler) handleGenerateTestClassify(req JSONRPCRequest, args jso
 
 	warnings = filterGenerateDispatchWarnings(warnings)
 
-	if errResp, ok := validateClassifyParams(req.ID, params); !ok {
+	if errResp, blocked := validateClassifyParams(req, params); blocked {
 		return errResp
 	}
 
@@ -50,36 +50,16 @@ func (h *testGenHandler) dispatchClassifyAction(reqID any, params TestClassifyRe
 	return nil, "", nil
 }
 
-var validClassifyActions = map[string]bool{"failure": true, "batch": true}
+var validClassifyActions = []string{"failure", "batch"}
 
-func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCResponse, bool) {
-	if params.Action == "" {
-		return JSONRPCResponse{
-			JSONRPC: JSONRPCVersion,
-			ID:      reqID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'action' is missing",
-				"Add the 'action' parameter and call again",
-				withParam("action"),
-				withHint("Valid values: failure"),
-			),
-		}, false
+func validateClassifyParams(req JSONRPCRequest, params TestClassifyRequest) (JSONRPCResponse, bool) {
+	if resp, blocked := requireString(req, params.Action, "action", "Add the 'action' parameter and call again"); blocked {
+		return resp, true
 	}
-	if !validClassifyActions[params.Action] {
-		return JSONRPCResponse{
-			JSONRPC: JSONRPCVersion,
-			ID:      reqID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Invalid action value: "+params.Action,
-				"Use a valid action value",
-				withParam("action"),
-				withHint("Valid values: failure, batch"),
-			),
-		}, false
+	if resp, blocked := requireOneOf(req, params.Action, "action", validClassifyActions, "Use a valid action value"); blocked {
+		return resp, true
 	}
-	return JSONRPCResponse{}, true
+	return JSONRPCResponse{}, false
 }
 
 func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {

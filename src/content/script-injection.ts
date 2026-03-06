@@ -10,6 +10,7 @@
 
 import type { WebSocketCaptureMode } from '../types/index.js'
 import { SettingName } from '../lib/constants.js'
+import { getLocalValues } from '../lib/storage-utils.js'
 
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false
@@ -64,7 +65,7 @@ const SYNC_SETTINGS: readonly {
 function syncStoredSettings(): void {
   const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey)
 
-  chrome.storage.local.get(storageKeys, (result: Record<string, boolean | string | undefined>) => {
+  getLocalValues(storageKeys, (result) => {
     for (const setting of SYNC_SETTINGS) {
       const value = result[setting.storageKey]
       if (value === undefined) continue // Use default if not set

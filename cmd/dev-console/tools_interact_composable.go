@@ -51,7 +51,7 @@ func (h *interactActionHandler) handleAutoDismissOverlays(req JSONRPCRequest, ar
 // queueComposableAutoDismiss queues an auto_dismiss_overlays command as a side effect.
 // Used when auto_dismiss=true is passed as a composable param on navigate.
 func (h *interactActionHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
-	dismissArgs, _ := json.Marshal(map[string]string{"action": "auto_dismiss_overlays"})
+	dismissArgs := buildQueryParams(map[string]any{"action": "auto_dismiss_overlays"})
 	correlationID := newCorrelationID("dom_auto_dismiss_overlays")
 
 	query := queries.PendingQuery{
@@ -112,7 +112,7 @@ func (h *interactActionHandler) queueComposableWaitForStable(req JSONRPCRequest,
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.
 func (h *interactActionHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
-	subtitleArgs, _ := json.Marshal(map[string]string{"text": text})
+	subtitleArgs := buildQueryParams(map[string]any{"text": text})
 	subtitleQuery := queries.PendingQuery{
 		Type:          "subtitle",
 		Params:        subtitleArgs,

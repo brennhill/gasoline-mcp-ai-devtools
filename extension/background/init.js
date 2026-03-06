@@ -15,7 +15,7 @@ import { installPushCommandListener, installChatCommandListener } from './push-h
 import { isRecording, startRecording, stopRecording } from './recording.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
 import { captureScreenshot, updateBadge } from './communication.js';
-import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js';
+import { wasServiceWorkerRestarted, markStateVersion, setSessionAccessLevel, setLocal } from '../lib/storage-utils.js';
 /**
  * Initialize the extension on startup
  * Handles state recovery after service worker restart, loads settings, installs listeners.
@@ -48,9 +48,7 @@ async function initializeExtensionAsync() {
         await markStateVersion();
         // Allow content scripts to access chrome.storage.session (required for terminal state persistence).
         // Without this, content scripts silently fail to read/write session storage.
-        if (chrome.storage.session?.setAccessLevel) {
-            await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
-        }
+        await setSessionAccessLevel('TRUSTED_AND_UNTRUSTED_CONTEXTS');
         // ============= STEP 2: Load debug mode =============
         const debugEnabled = await loadDebugModeState();
         setDebugMode(debugEnabled);
@@ -140,13 +138,17 @@ async function initializeExtensionAsync() {
                 setDebugMode(enabled);
             },
             setAiWebPilotEnabled: (enabled, callback) => {
-                chrome.storage.local.set({ aiWebPilotEnabled: enabled }, () => {
+                setLocal('aiWebPilotEnabled', enabled).then(() => {
                     setAiWebPilotEnabledCache(enabled);
                     // Reset connection when enabling to allow immediate reconnection
                     if (enabled) {
                         resetSyncClientConnection();
                         console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled (direct)');
                     }
+                    if (callback)
+                        callback();
+                }).catch((err) => {
+                    console.error('[Gasoline] Failed to save aiWebPilotEnabled:', err);
                     if (callback)
                         callback();
                 });

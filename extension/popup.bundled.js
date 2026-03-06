@@ -89,6 +89,120 @@
     TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
   };
 
+  // extension/lib/storage-utils.js
+  function getStorageWithSession() {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return null;
+    return chrome.storage;
+  }
+  function setSessionValue(key, value, callback) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
+      if (callback)
+        callback();
+      return;
+    }
+    storage.session.set({ [key]: value }, () => {
+      if (callback)
+        callback();
+    });
+  }
+  function getSessionValue(key, callback) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
+      callback(void 0);
+      return;
+    }
+    storage.session.get([key], (result) => {
+      callback(result[key]);
+    });
+  }
+  function setLocalValue(key, value, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      if (callback)
+        callback();
+      return;
+    }
+    chrome.storage.local.set({ [key]: value }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
+      }
+      if (callback)
+        callback();
+    });
+  }
+  function setLocalValues(items, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      if (callback)
+        callback();
+      return;
+    }
+    chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("[Gasoline] Storage error setting multiple keys:", chrome.runtime.lastError.message);
+      }
+      if (callback)
+        callback();
+    });
+  }
+  function getLocalValue(key, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      callback(void 0);
+      return;
+    }
+    chrome.storage.local.get([key], (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
+        callback(void 0);
+        return;
+      }
+      callback(result[key]);
+    });
+  }
+  function getLocalValues(keys, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      callback({});
+      return;
+    }
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn("[Gasoline] Storage error getting multiple keys:", chrome.runtime.lastError.message);
+        callback({});
+        return;
+      }
+      callback(result);
+    });
+  }
+  function removeLocalValue(key, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      if (callback)
+        callback();
+      return;
+    }
+    chrome.storage.local.remove([key], () => {
+      if (callback)
+        callback();
+    });
+  }
+  function removeLocalValues(keys, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      if (callback)
+        callback();
+      return;
+    }
+    chrome.storage.local.remove(keys, () => {
+      if (callback)
+        callback();
+    });
+  }
+  function onStorageChanged(listener) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return () => {
+      };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }
+
   // extension/popup/ui-utils.js
   function formatFileSize(bytes) {
     if (bytes === 0)
@@ -246,86 +360,6 @@
     if (typeof err === "string" && err)
       return err;
     return fallback;
-  }
-
-  // extension/lib/storage-utils.js
-  function setLocalValue(key, value, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.set({ [key]: value }, () => {
-      if (chrome.runtime.lastError) {
-        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-      }
-      if (callback)
-        callback();
-    });
-  }
-  function setLocalValues(items, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.set(items, () => {
-      if (chrome.runtime.lastError) {
-        console.warn("[Gasoline] Storage error setting multiple keys:", chrome.runtime.lastError.message);
-      }
-      if (callback)
-        callback();
-    });
-  }
-  function getLocalValue(key, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback(void 0);
-      return;
-    }
-    chrome.storage.local.get([key], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-        callback(void 0);
-        return;
-      }
-      callback(result[key]);
-    });
-  }
-  function getLocalValues(keys, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback({});
-      return;
-    }
-    chrome.storage.local.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn("[Gasoline] Storage error getting multiple keys:", chrome.runtime.lastError.message);
-        callback({});
-        return;
-      }
-      callback(result);
-    });
-  }
-  function removeLocalValue(key, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.remove([key], () => {
-      if (callback)
-        callback();
-    });
-  }
-  function removeLocalValues(keys, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.remove(keys, () => {
-      if (callback)
-        callback();
-    });
   }
 
   // extension/popup/recording.js
@@ -638,7 +672,7 @@
         updatePendingRecording(pendingValue);
       });
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.RECORDING]) {
         const rec = changes[StorageKey.RECORDING].newValue;
         console.log("[Gasoline REC] Popup: gasoline_recording changed:", rec);
@@ -1102,7 +1136,7 @@
     if (trackingStorageSyncInstalled)
       return;
     trackingStorageSyncInstalled = true;
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
       if (areaName !== "local")
         return;
       if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL])
@@ -1294,14 +1328,10 @@
   }
 
   // extension/popup.js
-  try {
-    chrome.storage.local.get("theme", (r) => {
-      void chrome.runtime.lastError;
-      if (r?.["theme"] === "light")
-        document.body.classList.add("light-theme");
-    });
-  } catch {
-  }
+  getLocalValue("theme", (value) => {
+    if (value === "light")
+      document.body.classList.add("light-theme");
+  });
   var DEFAULT_MAX_ENTRIES2 = 1e3;
   var RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = {
     type: RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
@@ -1359,24 +1389,15 @@
     });
   }
   function cacheStatus(status) {
-    try {
-      chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
+    setSessionValue(StorageKey.POPUP_LAST_STATUS, status);
   }
   function initPopup() {
     requestTrackedHoverLauncherReshow();
-    try {
-      chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result) => {
-        void chrome.runtime.lastError;
-        const cached = result?.[StorageKey.POPUP_LAST_STATUS];
-        if (cached)
-          updateConnectionStatus(cached);
-      });
-    } catch {
-    }
+    getSessionValue(StorageKey.POPUP_LAST_STATUS, (value) => {
+      const cached = value;
+      if (cached)
+        updateConnectionStatus(cached);
+    });
     try {
       chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {
         if (chrome.runtime.lastError) {
@@ -1429,7 +1450,7 @@
         }
       }
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.TRACKED_TAB_URL]) {
         const urlEl = document.getElementById("tracking-bar-url");
         if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {

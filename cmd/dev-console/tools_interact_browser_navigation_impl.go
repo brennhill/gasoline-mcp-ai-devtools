@@ -45,7 +45,7 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 	actionParams["action"] = "navigate"
 	// Ensure required URL is present even if caller used alias forms.
 	actionParams["url"] = resolvedURL
-	actionPayload, _ := json.Marshal(actionParams)
+	actionPayload := buildQueryParams(actionParams)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",

@@ -5,6 +5,7 @@
  */
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+import { getLocalValue, setSessionValue, getSessionValue, removeSessions, setLocal } from '../../lib/storage-utils.js'
 import {
   state,
   getTerminalServerUrl,
@@ -21,12 +22,8 @@ import { showSandboxError } from './terminal-widget-ui.js'
 export function getServerUrl(): Promise<string> {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve(DEFAULT_SERVER_URL) // Storage read failed — fall back to default
-          return
-        }
-        const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+      getLocalValue(StorageKey.SERVER_URL, (value) => {
+        const url = (value as string) || DEFAULT_SERVER_URL
         state.serverUrl = url
         resolve(url)
       })
@@ -39,12 +36,8 @@ export function getServerUrl(): Promise<string> {
 export function getTerminalConfig(): Promise<TerminalConfig> {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve({}) // Storage read failed — use defaults
-          return
-        }
-        const config = (result[StorageKey.TERMINAL_CONFIG] as TerminalConfig) || {}
+      getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
+        const config = (value as TerminalConfig) || {}
         resolve(config)
       })
     } catch {
@@ -55,9 +48,7 @@ export function getTerminalConfig(): Promise<TerminalConfig> {
 
 export function saveTerminalConfig(config: TerminalConfig): void {
   try {
-    chrome.storage.local.set({ [StorageKey.TERMINAL_CONFIG]: config }, () => {
-      void chrome.runtime.lastError // Best-effort persistence
-    })
+    void setLocal(StorageKey.TERMINAL_CONFIG, config)
   } catch {
     // Extension context invalidated — config won't persist but session still works
   }
@@ -66,12 +57,8 @@ export function saveTerminalConfig(config: TerminalConfig): void {
 function getTerminalAICommand(): Promise<string> {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('claude')
-          return
-        }
-        const cmd = (result[StorageKey.TERMINAL_AI_COMMAND] as string) || 'claude'
+      getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
+        const cmd = (value as string) || 'claude'
         resolve(cmd)
       })
     } catch {
@@ -83,12 +70,8 @@ function getTerminalAICommand(): Promise<string> {
 function getTerminalDevRoot(): Promise<string> {
   return new Promise((resolve) => {
     try {
-      chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('')
-          return
-        }
-        resolve((result[StorageKey.TERMINAL_DEV_ROOT] as string) || '')
+      getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
+        resolve((value as string) || '')
       })
     } catch {
       resolve('')
@@ -102,43 +85,32 @@ function getTerminalDevRoot(): Promise<string> {
 
 export function persistSession(ss: TerminalSessionState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-      void chrome.runtime.lastError
-    })
+    setSessionValue(StorageKey.TERMINAL_SESSION, ss)
   } catch { /* extension context invalidated */ }
 }
 
 export function clearPersistedSession(): void {
   try {
-    chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-      void chrome.runtime.lastError
-    })
+    void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE])
   } catch { /* extension context invalidated */ }
 }
 
 export function persistUIState(uiState: TerminalUIState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-      void chrome.runtime.lastError
-    })
+    setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState)
   } catch { /* extension context invalidated */ }
 }
 
 export function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
   return new Promise((resolve) => {
     try {
-      chrome.storage.session.get(
-        [StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE],
-        (result: Record<string, unknown>) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: 'closed' })
-            return
-          }
-          const session = result[StorageKey.TERMINAL_SESSION] as TerminalSessionState | undefined
-          const uiState = (result[StorageKey.TERMINAL_UI_STATE] as TerminalUIState) || 'closed'
+      getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
+        getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
+          const session = sessionValue as TerminalSessionState | undefined
+          const uiState = (uiValue as TerminalUIState) || 'closed'
           resolve({ session: session || null, uiState })
-        }
-      )
+        })
+      })
     } catch {
       resolve({ session: null, uiState: 'closed' })
     }

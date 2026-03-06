@@ -4,6 +4,7 @@
  */
 
 import { StorageKey } from '../lib/constants.js'
+import { getLocal } from '../lib/storage-utils.js'
 import type { ScreenRecordingHandlers, RecordingShortcutHandlers } from './keyboard-shortcuts.js'
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js'
 import { errorMessage } from '../lib/error-utils.js'
@@ -52,8 +53,7 @@ async function refreshDynamicContextMenuTitles(
   recordingHandlers: ScreenRecordingHandlers,
   actionRecordingHandlers: RecordingShortcutHandlers
 ): Promise<void> {
-  const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
-  const trackedTabId = tracked[StorageKey.TRACKED_TAB_ID]
+  const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
   const drawModeActive = await isDrawModeActive(tabId)
 
   await Promise.all([
@@ -109,8 +109,8 @@ export function installContextMenus(
 
     if (info.menuItemId === MENU_ID_CONTROL) {
       try {
-        const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
-        if (tracked[StorageKey.TRACKED_TAB_ID] === tab.id) {
+        const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
+        if (trackedTabId === tab.id) {
           clearTrackedTab()
           if (logFn) logFn(`Released control for tab ${tab.id}`)
         } else {

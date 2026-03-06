@@ -96,7 +96,7 @@ func (h *interactActionHandler) queueBrowserAction(req JSONRPCRequest, args json
 
 	actionParams := opts.params
 	if actionParams == nil {
-		actionParams, _ = json.Marshal(map[string]string{"action": opts.action})
+		actionParams = buildQueryParams(map[string]any{"action": opts.action})
 	}
 
 	query := queries.PendingQuery{

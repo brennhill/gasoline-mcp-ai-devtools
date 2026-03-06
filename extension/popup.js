@@ -6,6 +6,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { RuntimeMessageName, StorageKey } from './lib/constants.js';
+import { getLocalValue, setSessionValue, getSessionValue, onStorageChanged } from './lib/storage-utils.js';
 import { updateConnectionStatus } from './popup/status-display.js';
 import { setupRecordingUI } from './popup/recording.js';
 import { setupDrawModeButton } from './popup/draw-mode.js';
@@ -25,14 +26,10 @@ export { handleWebSocketModeChange } from './popup/settings.js';
 export { initWebSocketModeSelector } from './popup/settings.js';
 export { isInternalUrl } from './popup/ui-utils.js';
 // Apply theme early to prevent flash of unstyled content (moved from inline script for CSP compliance).
-try {
-    chrome.storage.local.get('theme', (r) => {
-        void chrome.runtime.lastError;
-        if (r?.['theme'] === 'light')
-            document.body.classList.add('light-theme');
-    });
-}
-catch { /* storage unavailable — default dark theme */ }
+getLocalValue('theme', (value) => {
+    if (value === 'light')
+        document.body.classList.add('light-theme');
+});
 const DEFAULT_MAX_ENTRIES = 1000;
 const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = {
     type: RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
@@ -96,12 +93,7 @@ function requestTrackedHoverLauncherReshow() {
 }
 /** Cache status to session storage so the popup renders instantly on next open. */
 function cacheStatus(status) {
-    try {
-        chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
-            void chrome.runtime.lastError;
-        });
-    }
-    catch { /* best-effort */ }
+    setSessionValue(StorageKey.POPUP_LAST_STATUS, status);
 }
 /**
  * Initialize the popup
@@ -110,15 +102,11 @@ export function initPopup() {
     // Re-show tracked-tab quick launcher if user hid it from the page UI.
     requestTrackedHoverLauncherReshow();
     // 1) Hydrate immediately from cached status (local, no network, no IPC wait).
-    try {
-        chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result) => {
-            void chrome.runtime.lastError;
-            const cached = result?.[StorageKey.POPUP_LAST_STATUS];
-            if (cached)
-                updateConnectionStatus(cached);
-        });
-    }
-    catch { /* session storage unavailable — will show defaults until fresh data arrives */ }
+    getSessionValue(StorageKey.POPUP_LAST_STATUS, (value) => {
+        const cached = value;
+        if (cached)
+            updateConnectionStatus(cached);
+    });
     // 2) Request fresh status from background worker (async — updates UI when ready).
     try {
         chrome.runtime.sendMessage({ type: 'getStatus' }, (status) => {
@@ -180,7 +168,7 @@ export function initPopup() {
         }
     });
     // Listen for storage changes (e.g., tracked tab URL updates)
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
         if (areaName === 'local' && changes[StorageKey.TRACKED_TAB_URL]) {
             const urlEl = document.getElementById('tracking-bar-url');
             if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {

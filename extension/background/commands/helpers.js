@@ -6,6 +6,7 @@ import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { delay } from '../../lib/timeout-utils.js';
+import { setLocals } from '../../lib/storage-utils.js';
 export function debugLog(category, message, data = null) {
     const globalLogger = globalThis
         .__GASOLINE_DEBUG_LOG__;
@@ -250,7 +251,7 @@ function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
 export async function persistTrackedTab(tab) {
     if (!tab.id)
         return;
-    await chrome.storage.local.set({
+    await setLocals({
         trackedTabId: tab.id,
         trackedTabUrl: tab.url || '',
         trackedTabTitle: tab.title || ''

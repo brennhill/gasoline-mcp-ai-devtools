@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js';
+import { getLocalValue, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
 import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
@@ -21,6 +22,7 @@ let trackedEnabled = false;
 let hiddenUntilPopupOpen = false;
 let hideTimer = null;
 let recordingStorageListener = null;
+let recordingStorageUnsubscribe = null;
 let runtimeListenerInstalled = false;
 let annotationListenerInstalled = false;
 /**
@@ -32,16 +34,11 @@ async function checkTerminalReachable() {
     try {
         let baseUrl = DEFAULT_SERVER_URL;
         try {
-            const result = await new Promise((resolve) => {
-                chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-                    if (chrome.runtime.lastError) {
-                        resolve({});
-                        return;
-                    }
-                    resolve(r);
+            baseUrl = await new Promise((resolve) => {
+                getLocalValue(StorageKey.SERVER_URL, (value) => {
+                    resolve(value || DEFAULT_SERVER_URL);
                 });
             });
-            baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
         }
         catch { /* use default */ }
         const url = new URL(baseUrl);
@@ -97,10 +94,8 @@ function updateStopButtonVisibility(active) {
 }
 function syncRecordingStateFromStorage() {
     try {
-        chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-            if (chrome.runtime.lastError)
-                return;
-            const rec = result[StorageKey.RECORDING];
+        getLocalValue(StorageKey.RECORDING, (value) => {
+            const rec = value;
             const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
             updateStopButtonVisibility(active);
         });
@@ -122,22 +117,21 @@ function installRecordingStorageSync() {
         const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
         updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
 }
 function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
         return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+        recordingStorageUnsubscribe();
+        recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
 }
 function syncHiddenStateFromStorage(onSynced) {
     try {
-        chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-            if (chrome.runtime.lastError) {
-                onSynced(); // Proceed with default state on storage failure
-                return;
-            }
-            hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+        getLocalValue(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, (value) => {
+            hiddenUntilPopupOpen = Boolean(value);
             onSynced();
         });
     }
@@ -148,14 +142,10 @@ function syncHiddenStateFromStorage(onSynced) {
 function persistHiddenState(hidden) {
     try {
         if (hidden) {
-            chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-                void chrome.runtime.lastError; // Best-effort persistence — no user-visible impact on failure
-            });
+            void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
             return;
         }
-        chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-            void chrome.runtime.lastError;
-        });
+        void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     }
     catch {
         // Extension context invalidated — hidden state won't persist but functionality is unaffected

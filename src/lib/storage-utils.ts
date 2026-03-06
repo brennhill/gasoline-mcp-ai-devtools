@@ -236,6 +236,132 @@ export function removeValue(key: string, areaName?: StorageAreaName, callback?: 
 }
 
 // =============================================================================
+// ASYNC LOCAL STORAGE (Promise-based — preferred API for new code)
+// =============================================================================
+
+/**
+ * Get a persistent value from local storage (async)
+ */
+export async function getLocal(key: string): Promise<unknown> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return undefined
+  const result = await chrome.storage.local.get([key])
+  return result[key]
+}
+
+/**
+ * Get multiple persistent values from local storage (async)
+ */
+export async function getLocals(keys: string[]): Promise<Record<string, unknown>> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return {}
+  return await chrome.storage.local.get(keys)
+}
+
+/**
+ * Set a persistent value in local storage (async)
+ */
+export async function setLocal(key: string, value: unknown): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return
+  await chrome.storage.local.set({ [key]: value })
+}
+
+/**
+ * Set multiple persistent values in local storage (async)
+ */
+export async function setLocals(items: Record<string, unknown>): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return
+  await chrome.storage.local.set(items)
+}
+
+/**
+ * Remove a persistent value from local storage (async)
+ */
+export async function removeLocal(key: string): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return
+  await chrome.storage.local.remove([key])
+}
+
+/**
+ * Remove multiple persistent values from local storage (async)
+ */
+export async function removeLocals(keys: string[]): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage) return
+  await chrome.storage.local.remove(keys)
+}
+
+// =============================================================================
+// ASYNC SESSION STORAGE (Promise-based — preferred API for new code)
+// =============================================================================
+
+/**
+ * Get an ephemeral value from session storage (async)
+ */
+export async function getSession(key: string): Promise<unknown> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) return undefined
+  const result = await storage.session.get([key])
+  return result[key]
+}
+
+/**
+ * Set an ephemeral value in session storage (async)
+ */
+export async function setSession(key: string, value: unknown): Promise<void> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) return
+  await storage.session.set({ [key]: value })
+}
+
+/**
+ * Remove an ephemeral value from session storage (async)
+ */
+export async function removeSession(key: string): Promise<void> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) return
+  await storage.session.remove([key])
+}
+
+/**
+ * Remove multiple ephemeral values from session storage (async)
+ */
+export async function removeSessions(keys: string[]): Promise<void> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) return
+  await storage.session.remove(keys)
+}
+
+// =============================================================================
+// STORAGE CHANGE LISTENER
+// =============================================================================
+
+type StorageChange = { oldValue?: unknown; newValue?: unknown }
+type StorageChangeListener = (changes: { [key: string]: StorageChange }, areaName: string) => void
+
+/**
+ * Register a storage change listener. Returns an unsubscribe function.
+ */
+export function onStorageChanged(listener: StorageChangeListener): () => void {
+  if (typeof chrome === 'undefined' || !chrome.storage) return () => {}
+  chrome.storage.onChanged.addListener(listener)
+  return () => chrome.storage.onChanged.removeListener(listener)
+}
+
+// =============================================================================
+// SESSION ACCESS LEVEL
+// =============================================================================
+
+/**
+ * Set session storage access level (e.g., to allow content scripts access).
+ * Required for terminal state persistence in content scripts.
+ */
+export async function setSessionAccessLevel(
+  accessLevel: 'TRUSTED_CONTEXTS' | 'TRUSTED_AND_UNTRUSTED_CONTEXTS'
+): Promise<void> {
+  const storage = getStorageWithSession()
+  if (!storage?.session?.setAccessLevel) return
+  await storage.session.setAccessLevel({ accessLevel })
+}
+
+// =============================================================================
 // STATE RECOVERY & DIAGNOSTICS
 // =============================================================================
 

@@ -16,6 +16,7 @@
 
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js'
 import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-http.js'
+import { getLocalValue, getLocalValues, setLocals } from './lib/storage-utils.js'
 
 interface StorageResult {
   serverUrl?: string
@@ -45,8 +46,8 @@ interface ClearLogResponse {
  */
 function bootstrapTheme(): void {
   if (typeof document === 'undefined' || typeof chrome === 'undefined' || !chrome.storage?.local) return
-  chrome.storage.local.get([StorageKey.THEME], (result: Record<string, unknown>) => {
-    if (result[StorageKey.THEME] === 'light') {
+  getLocalValue(StorageKey.THEME, (value) => {
+    if (value === 'light') {
       document.body?.classList.add('light-theme')
     }
   })
@@ -97,7 +98,7 @@ function loadActiveCodebaseFromDaemon(serverUrl: string): void {
  * Load saved options
  */
 export function loadOptions(): void {
-  chrome.storage.local.get(
+  getLocalValues(
     [
       StorageKey.SERVER_URL,
       StorageKey.SCREENSHOT_ON_ERROR,
@@ -195,40 +196,37 @@ export function saveOptions(): void {
   const devRootInput = document.getElementById('terminal-dev-root') as HTMLInputElement | null
   const terminalDevRoot = devRootInput?.value.trim() || ''
 
-  chrome.storage.local.set(
-    {
-      serverUrl,
-      screenshotOnError,
-      sourceMapEnabled,
-      deferralEnabled,
-      debugMode,
-      theme,
-      [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
-      [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
-    },
-    () => {
-      // Show saved message
-      const message = document.getElementById('saved-message')
-      message?.classList.add('show')
+  setLocals({
+    serverUrl,
+    screenshotOnError,
+    sourceMapEnabled,
+    deferralEnabled,
+    debugMode,
+    theme,
+    [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
+    [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
+  }).then(() => {
+    // Show saved message
+    const message = document.getElementById('saved-message')
+    message?.classList.add('show')
 
-      // Notify background of changes so it can update its in-memory state
-      chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
-      chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-      chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-      chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
-      chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+    // Notify background of changes so it can update its in-memory state
+    chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
+    chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
+    chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+    chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
+    chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
 
-      // Sync terminal dev root to daemon so MCP and terminal use the same CWD
-      if (terminalDevRoot) {
-        syncDevRootToDaemon(serverUrl, terminalDevRoot)
-      }
-
-      // Hide message after 2 seconds
-      setTimeout(() => {
-        message?.classList.remove('show')
-      }, 2000)
+    // Sync terminal dev root to daemon so MCP and terminal use the same CWD
+    if (terminalDevRoot) {
+      syncDevRootToDaemon(serverUrl, terminalDevRoot)
     }
-  )
+
+    // Hide message after 2 seconds
+    setTimeout(() => {
+      message?.classList.remove('show')
+    }, 2000)
+  })
 }
 
 /**
@@ -389,8 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // After chrome.storage options load, also pull active_codebase from daemon
   // to sync any MCP-side changes back to the extension options UI.
-  chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
-    const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+  getLocalValue(StorageKey.SERVER_URL, (value) => {
+    const url = (value as string) || DEFAULT_SERVER_URL
     loadActiveCodebaseFromDaemon(url)
   })
 

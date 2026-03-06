@@ -11,7 +11,7 @@
 
 import { isInternalUrl } from './ui-utils.js'
 import { StorageKey } from '../lib/constants.js'
-import { getLocalValue, getLocalValues, setLocalValues, removeLocalValues } from '../lib/storage-utils.js'
+import { getLocalValue, getLocalValues, setLocalValues, removeLocalValues, onStorageChanged } from '../lib/storage-utils.js'
 
 let trackingStorageSyncInstalled = false
 
@@ -111,7 +111,7 @@ function installTrackingStorageSync(btn: HTMLButtonElement): void {
   if (trackingStorageSyncInstalled) return
   trackingStorageSyncInstalled = true
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  onStorageChanged((changes, areaName) => {
     if (areaName !== 'local') return
     if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL]) return
     syncTrackButtonState(btn)

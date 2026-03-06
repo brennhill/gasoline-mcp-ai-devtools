@@ -14,6 +14,7 @@
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js';
 import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-http.js';
+import { getLocalValue, getLocalValues, setLocals } from './lib/storage-utils.js';
 /**
  * Apply persisted theme as early as possible without inline HTML scripts.
  * Keeps options page CSP-compliant (MV3 disallows inline scripts by default).
@@ -21,8 +22,8 @@ import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-htt
 function bootstrapTheme() {
     if (typeof document === 'undefined' || typeof chrome === 'undefined' || !chrome.storage?.local)
         return;
-    chrome.storage.local.get([StorageKey.THEME], (result) => {
-        if (result[StorageKey.THEME] === 'light') {
+    getLocalValue(StorageKey.THEME, (value) => {
+        if (value === 'light') {
             document.body?.classList.add('light-theme');
         }
     });
@@ -65,7 +66,7 @@ function loadActiveCodebaseFromDaemon(serverUrl) {
  * Load saved options
  */
 export function loadOptions() {
-    chrome.storage.local.get([
+    getLocalValues([
         StorageKey.SERVER_URL,
         StorageKey.SCREENSHOT_ON_ERROR,
         StorageKey.SOURCE_MAP_ENABLED,
@@ -144,7 +145,7 @@ export function saveOptions() {
     const terminalAICommand = aiCmdInput?.value.trim() || '';
     const devRootInput = document.getElementById('terminal-dev-root');
     const terminalDevRoot = devRootInput?.value.trim() || '';
-    chrome.storage.local.set({
+    setLocals({
         serverUrl,
         screenshotOnError,
         sourceMapEnabled,
@@ -153,7 +154,7 @@ export function saveOptions() {
         theme,
         [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
         [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
-    }, () => {
+    }).then(() => {
         // Show saved message
         const message = document.getElementById('saved-message');
         message?.classList.add('show');
@@ -320,8 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
     // After chrome.storage options load, also pull active_codebase from daemon
     // to sync any MCP-side changes back to the extension options UI.
-    chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-        const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+    getLocalValue(StorageKey.SERVER_URL, (value) => {
+        const url = value || DEFAULT_SERVER_URL;
         loadActiveCodebaseFromDaemon(url);
     });
     const saveBtn = document.getElementById('save-btn');

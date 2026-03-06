@@ -12,7 +12,7 @@
 
 import { StorageKey } from '../lib/constants.js'
 import { errorMessage } from '../lib/error-utils.js'
-import { getLocalValue, setLocalValue, removeLocalValue } from '../lib/storage-utils.js'
+import { getLocalValue, setLocalValue, removeLocalValue, onStorageChanged } from '../lib/storage-utils.js'
 
 interface RecordingElements {
   row: HTMLElement
@@ -379,7 +379,7 @@ export function setupRecordingUI(): void {
     })
   })
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  onStorageChanged((changes, areaName) => {
     if (areaName === 'local' && changes[StorageKey.RECORDING]) {
       const rec = changes[StorageKey.RECORDING]!.newValue as
         | { active?: boolean; name?: string; startTime?: number }

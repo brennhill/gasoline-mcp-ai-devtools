@@ -47,6 +47,6 @@ interface ExecutorCommand {
         key: string;
     };
 }
-export declare function cspSafeExecutor(command: ExecutorCommand): any;
+export declare function cspSafeExecutor(command: ExecutorCommand): unknown;
 export {};
 //# sourceMappingURL=csp-safe-executor.d.ts.map
