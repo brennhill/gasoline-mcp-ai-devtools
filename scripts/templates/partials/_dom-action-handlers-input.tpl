@@ -1,5 +1,6 @@
   // --- PARTIAL: Input & Interaction Action Handlers ---
-  // Purpose: paste, key_press, open_composer, submit_active_composer, confirm_top_dialog, hover.
+  // Purpose: paste, key_press, hover.
+  // #502: open_composer, submit_active_composer, confirm_top_dialog extracted to dom-primitives-intent.ts.
   // Why: Separated from main template to keep each partial under 500 LOC.
 
       paste: () =>
@@ -83,36 +84,8 @@
           return mutatingSuccess(node, { value: key })
         }),
 
-      open_composer: () =>
-        withMutationTracking(() => {
-          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
-          const tag = node.tagName.toLowerCase()
-          const isInputLike =
-            node.isContentEditable ||
-            node.getAttribute('role') === 'textbox' ||
-            tag === 'textarea' ||
-            tag === 'input'
-          if (isInputLike) {
-            node.focus()
-            return mutatingSuccess(node, { reason: 'composer_ready' })
-          }
-          node.click()
-          return mutatingSuccess(node)
-        }),
-
-      submit_active_composer: () =>
-        withMutationTracking(() => {
-          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
-          node.click()
-          return mutatingSuccess(node)
-        }),
-
-      confirm_top_dialog: () =>
-        withMutationTracking(() => {
-          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
-          node.click()
-          return mutatingSuccess(node)
-        }),
+      // #502: open_composer, submit_active_composer, confirm_top_dialog removed —
+      // now in dom-primitives-intent.ts (self-contained, dispatched by dom-dispatch.ts).
 
       hover: () =>
         withMutationTracking(() => {
