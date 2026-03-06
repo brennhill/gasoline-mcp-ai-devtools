@@ -64,7 +64,7 @@ The extension icon should now show **Connected** (green indicator).
 
 You can also verify with the built-in doctor command:
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --doctor
+~/.gasoline/bin/gasoline-agentic-devtools --doctor
 ```
 
 ## What tools does Gasoline give my AI?
@@ -87,7 +87,7 @@ See [MCP Integration](/mcp-integration/) for full tool documentation.
 
 **npm** (if you prefer Node.js):
 ```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
+npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
 ```
 
 **From source** (for development):

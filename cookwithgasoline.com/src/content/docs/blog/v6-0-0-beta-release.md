@@ -72,7 +72,7 @@ Drag-drop the signed CRX into `chrome://extensions/`:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
-~/.gasoline/bin/gasoline-agentic-browser --help
+~/.gasoline/bin/gasoline-agentic-devtools --help
 ```
 
 ## Known Limitations

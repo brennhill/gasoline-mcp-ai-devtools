@@ -26,7 +26,7 @@ Important:
 
 ## Per-Tool Reference
 
-If you prefer to configure your tools manually, point them to the `gasoline` binary (usually located at `~/.gasoline/bin/gasoline`).
+If you prefer to configure your tools manually, point them to the `gasoline-agentic-devtools` binary (usually located at `~/.gasoline/bin/gasoline-agentic-devtools`; aliases `gasoline` and `gasoline-agentic-browser` also work).
 
 ### Claude Code
 
@@ -36,7 +36,7 @@ If you prefer to configure your tools manually, point them to the `gasoline` bin
 
 Claude Code is configured via its own CLI. Run:
 ```bash
-claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline", "args": []}'
+claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools", "args": []}'
 ```
 
 ### Claude Desktop
@@ -50,7 +50,7 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -67,7 +67,7 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -84,7 +84,7 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -103,7 +103,7 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -120,7 +120,7 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -140,7 +140,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
   "mcp": {
     "gasoline-browser-devtools": {
       "type": "local",
-      "command": ["/Users/YOUR_USER/.gasoline/bin/gasoline"],
+      "command": ["/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools"],
       "enabled": true
     }
   }
@@ -157,7 +157,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 {
   "mcpServers": {
     "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }
@@ -179,7 +179,7 @@ Zed uses the `context_servers` key:
   "context_servers": {
     "gasoline-browser-devtools": {
       "source": "custom",
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
+      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
       "args": []
     }
   }

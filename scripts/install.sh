@@ -136,6 +136,33 @@ stage_extension_from_source_zip() {
     return 0
 }
 
+sync_binary_compat_aliases() {
+    local source_bin="$1"
+    shift
+    local target_bin=""
+    local had_failure=0
+
+    for target_bin in "$@"; do
+        if [ -z "$target_bin" ] || [ "$target_bin" = "$source_bin" ]; then
+            continue
+        fi
+
+        rm -f "$target_bin" || true
+        if ln -s "$(basename "$source_bin")" "$target_bin" 2>/dev/null; then
+            :
+        elif cp "$source_bin" "$target_bin" 2>/dev/null; then
+            :
+        else
+            had_failure=1
+            echo -e "${YELLOW}⚠️  Could not create compatibility alias: $target_bin${NC}"
+            continue
+        fi
+        chmod 755 "$target_bin" 2>/dev/null || true
+    done
+
+    return "$had_failure"
+}
+
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -177,7 +204,9 @@ mkdir -p "$INSTALL_DIR"
 echo -e "📁 Install root: $INSTALL_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
-GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
+CANONICAL_GASOLINE_BIN="$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT"
+LEGACY_GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
+LEGACY_GASOLINE_BROWSER_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
 BINARY_NAME="gasoline-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
@@ -235,8 +264,13 @@ if [ "$STRICT_CHECKSUM" = "1" ] && [ "$CHECKSUM_VERIFIED" -ne 1 ]; then
 fi
 
 # Move the verified binary to its final path and set executable permissions.
-mv "$TEMP_ROOT/gasoline_dl" "$GASOLINE_BIN"
-chmod 755 "$GASOLINE_BIN"
+mv "$TEMP_ROOT/gasoline_dl" "$CANONICAL_GASOLINE_BIN"
+chmod 755 "$CANONICAL_GASOLINE_BIN"
+if sync_binary_compat_aliases "$CANONICAL_GASOLINE_BIN" "$LEGACY_GASOLINE_BIN" "$LEGACY_GASOLINE_BROWSER_BIN"; then
+    echo -e "✅ Installed command aliases: gasoline, gasoline-agentic-browser"
+else
+    echo -e "${YELLOW}⚠️  Core binary installed, but one or more compatibility aliases could not be created.${NC}"
+fi
 
 # 6. Extension Staging: Download and extract the browser extension.
 # We try the optimized extension-only zip first, falling back to the full source zip if needed.
@@ -281,4 +315,4 @@ fi
 #   - Safely merging JSON configuration for each client.
 #   - Displaying final success message and extension instructions.
 echo -e "⚙️  Finalizing configuration..."
-"$GASOLINE_BIN" --install
+"$CANONICAL_GASOLINE_BIN" --install
