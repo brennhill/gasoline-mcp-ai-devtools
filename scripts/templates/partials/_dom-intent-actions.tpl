@@ -135,7 +135,7 @@
       }
 
       // #444: Dismiss loop detection — check if this overlay was already attempted
-      const priorStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+      const priorStamp = readDismissStamp(overlayElement)
       if (priorStamp) {
         const elapsed = Date.now() - Number(priorStamp)
         if (elapsed < dismissStampTTL) {
@@ -153,7 +153,7 @@
           return { error: loopError }
         }
         // Stale stamp — clear it and proceed
-        overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+        clearDismissStamp(overlayElement)
       }
 
       // Strategy A: Try expanded close button selectors within the overlay
@@ -257,7 +257,7 @@
       // to prevent infinite loops when a consent banner cannot be dismissed.
       const overlayElement = findTopmostOverlay()
       if (overlayElement) {
-        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+        const priorAutoStamp = readDismissStamp(overlayElement)
         if (priorAutoStamp) {
           const elapsed = Date.now() - Number(priorAutoStamp)
           if (elapsed < dismissStampTTL) {
@@ -274,7 +274,7 @@
             loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
             return { error: loopError }
           }
-          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+          clearDismissStamp(overlayElement)
         }
       }
 

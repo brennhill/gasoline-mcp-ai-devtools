@@ -189,14 +189,22 @@ registerCommand('state_*', async (ctx) => {
 // EXECUTE
 // =============================================================================
 registerCommand('execute', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
-        return;
     const execParams = ctx.params;
     const world = execParams.world || 'auto';
     if (ctx.query.correlation_id) {
+        if (!isAiWebPilotEnabled()) {
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', {
+                success: false,
+                error: 'ai_web_pilot_disabled',
+                message: 'AI Web Pilot is not enabled'
+            }, 'ai_web_pilot_disabled');
+            return;
+        }
         await handleAsyncExecuteCommand(ctx.query, ctx.tabId, world, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
     }
     else {
+        if (!requireAiWebPilot(ctx))
+            return;
         try {
             const result = await executeWithWorldRouting(ctx.tabId, ctx.query.params, world);
             ctx.sendResult(result);

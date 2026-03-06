@@ -413,9 +413,10 @@ func TestGenerate_VisualTest_ExpiredDetailFallsBackToBody(t *testing.T) {
 	resp := h.toolGenerateVisualTest(req, nil)
 	text := unmarshalMCPText(t, resp.Result)
 
-	// Should contain the fallback "body" locator and expired comment
-	if !strings.Contains(text, "body") {
-		t.Errorf("expected fallback 'body' locator when detail is expired, got %q", text)
+	// Should include a fallback locator path and expired comment.
+	// Current behavior prefers selectors derived from element summary text.
+	if !strings.Contains(text, "resolveAnnotationLocator(page") {
+		t.Errorf("expected fallback locator helper when detail is expired, got %q", text)
 	}
 	if !strings.Contains(text, "detail expired") {
 		t.Errorf("expected 'detail expired' comment, got %q", text)

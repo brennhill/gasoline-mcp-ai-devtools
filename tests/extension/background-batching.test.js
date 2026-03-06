@@ -220,7 +220,7 @@ describe('sendLogsToServer', () => {
     )
 
     await assert.rejects(() => sendLogsToServer('http://localhost:7890', [{ msg: 'test' }]), {
-      message: /Server error: 500/
+      message: /Server error.*500/
     })
   })
 
