@@ -9,8 +9,8 @@
  * Updates connection status display in popup
  */
 
-import type { PopupConnectionStatus } from './types'
-import { formatFileSize } from './ui-utils'
+import type { PopupConnectionStatus } from './types.js'
+import { formatFileSize } from './ui-utils.js'
 
 const DEFAULT_MAX_ENTRIES = 1000
 
@@ -81,9 +81,10 @@ export function updateConnectionStatus(status: PopupConnectionStatus): void {
     if (status.securityMode === 'insecure_proxy') {
       securityWarningEl.style.display = 'block'
       if (securityDetailEl) {
-        const rewrites = status.insecureRewritesApplied && status.insecureRewritesApplied.length > 0
-          ? status.insecureRewritesApplied.join(', ')
-          : 'csp_headers'
+        const rewrites =
+          status.insecureRewritesApplied && status.insecureRewritesApplied.length > 0
+            ? status.insecureRewritesApplied.join(', ')
+            : 'csp_headers'
         securityDetailEl.textContent = `INSECURE DEBUG MODE active. production_parity=${status.productionParity === false ? 'false' : 'true'}; rewrites=${rewrites}`
       }
     } else {

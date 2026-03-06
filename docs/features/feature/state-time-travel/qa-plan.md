@@ -2,7 +2,9 @@
 feature: State Time-Travel
 doc_type: qa-plan
 feature_id: feature-state-time-travel
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # QA Plan: State Time-Travel

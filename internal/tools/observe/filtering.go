@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Filters and sorts log entries by level, source, URL, and time range for observe responses.
 // Docs: docs/features/feature/observe/index.md
 
 package observe
@@ -10,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // LogLevelRank returns the severity rank of a log level (higher = more severe).
@@ -40,17 +39,15 @@ func ContainsIgnoreCase(s, substr string) bool {
 // Network body filtering
 // ============================================
 
-const maxBodyKeyMatches = 100
-
 type jsonPathToken struct {
 	key     string
 	index   int
 	isIndex bool
 }
 
-// ApplyNetworkBodyFilter filters a network body by key or path.
-func ApplyNetworkBodyFilter(body capture.NetworkBody, bodyKey, bodyPath string) (capture.NetworkBody, bool, error) {
-	if bodyKey == "" && bodyPath == "" {
+// ApplyNetworkBodyFilter filters a network body by JSON path extraction.
+func ApplyNetworkBodyFilter(body capture.NetworkBody, bodyPath string) (capture.NetworkBody, bool, error) {
+	if bodyPath == "" {
 		return body, true, nil
 	}
 	if body.ResponseBody == "" {
@@ -62,26 +59,14 @@ func ApplyNetworkBodyFilter(body capture.NetworkBody, bodyKey, bodyPath string) 
 		return body, false, nil
 	}
 
-	if bodyPath != "" {
-		value, ok, err := extractJSONPath(decoded, bodyPath)
-		if err != nil {
-			return body, false, err
-		}
-		if !ok {
-			return body, false, nil
-		}
-		return encodeFilteredNetworkBody(body, value)
+	value, ok, err := extractJSONPath(decoded, bodyPath)
+	if err != nil {
+		return body, false, err
 	}
-
-	matches := make([]any, 0, 4)
-	collectJSONValuesByKey(decoded, bodyKey, &matches, maxBodyKeyMatches)
-	if len(matches) == 0 {
+	if !ok {
 		return body, false, nil
 	}
-	if len(matches) == 1 {
-		return encodeFilteredNetworkBody(body, matches[0])
-	}
-	return encodeFilteredNetworkBody(body, matches)
+	return encodeFilteredNetworkBody(body, value)
 }
 
 func encodeFilteredNetworkBody(body capture.NetworkBody, value any) (capture.NetworkBody, bool, error) {
@@ -131,7 +116,7 @@ func extractJSONPath(root any, path string) (any, bool, error) {
 func parseJSONPath(path string) ([]jsonPathToken, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
-		return nil, fmt.Errorf("path cannot be empty")
+		return nil, fmt.Errorf("body_path_filter: path argument cannot be empty. Provide a dot-delimited path like 'data.items'")
 	}
 
 	if strings.HasPrefix(trimmed, "$.") {
@@ -196,31 +181,3 @@ func parseJSONPath(path string) ([]jsonPathToken, error) {
 	return tokens, nil
 }
 
-func collectJSONValuesByKey(node any, key string, out *[]any, max int) {
-	if len(*out) >= max {
-		return
-	}
-
-	switch typed := node.(type) {
-	case map[string]any:
-		if value, ok := typed[key]; ok {
-			*out = append(*out, value)
-			if len(*out) >= max {
-				return
-			}
-		}
-		for _, child := range typed {
-			collectJSONValuesByKey(child, key, out, max)
-			if len(*out) >= max {
-				return
-			}
-		}
-	case []any:
-		for _, child := range typed {
-			collectJSONValuesByKey(child, key, out, max)
-			if len(*out) >= max {
-				return
-			}
-		}
-	}
-}

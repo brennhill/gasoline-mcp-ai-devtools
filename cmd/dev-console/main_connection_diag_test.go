@@ -1,6 +1,5 @@
-// Purpose: Validate main_connection_diag_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for connection diagnostic reporting.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -16,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func freePortForTest(t *testing.T) int {
@@ -52,7 +51,7 @@ func TestGatherConnectionDiagnosticsHealthyServer(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline-browser-devtools"}`)
 	})
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

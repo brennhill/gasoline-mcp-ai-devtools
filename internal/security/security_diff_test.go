@@ -1,6 +1,5 @@
-// Purpose: Validate security_diff_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for security posture diff and regression detection.
+// Docs: docs/features/feature/security-hardening/index.md
 
 package security
 
@@ -10,10 +9,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 type NetworkBody = capture.NetworkBody
+
+func mustTakeSnapshot(t *testing.T, mgr *SecurityDiffManager, name string, bodies []NetworkBody) {
+	t.Helper()
+	if _, err := mgr.TakeSnapshot(name, bodies); err != nil {
+		t.Fatalf("TakeSnapshot(%q) failed: %v", name, err)
+	}
+}
+
+func mustCompareSnapshots(t *testing.T, mgr *SecurityDiffManager, beforeBodies, afterBodies []NetworkBody) *SecurityDiffResult {
+	t.Helper()
+	mustTakeSnapshot(t, mgr, "before", beforeBodies)
+	mustTakeSnapshot(t, mgr, "after", afterBodies)
+
+	result, err := mgr.Compare("before", "after", nil)
+	if err != nil {
+		t.Fatalf("Compare(before, after) failed: %v", err)
+	}
+	return result
+}
 
 func TestSecuritySnapshotCapture(t *testing.T) {
 	t.Parallel()
@@ -227,19 +245,7 @@ func TestSecurityDiffHeaderRemoved(t *testing.T) {
 		},
 	}
 
-	_, err := mgr.TakeSnapshot("before", beforeBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mgr.TakeSnapshot("after", afterBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Verdict != "regressed" {
 		t.Errorf("expected 'regressed', got %q", result.Verdict)
@@ -294,19 +300,7 @@ func TestSecurityDiffHeaderAdded(t *testing.T) {
 		},
 	}
 
-	_, err := mgr.TakeSnapshot("before", beforeBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mgr.TakeSnapshot("after", afterBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Verdict != "improved" {
 		t.Errorf("expected 'improved', got %q", result.Verdict)
@@ -354,19 +348,7 @@ func TestSecurityDiffCookieFlagLost(t *testing.T) {
 		},
 	}
 
-	_, err := mgr.TakeSnapshot("before", beforeBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mgr.TakeSnapshot("after", afterBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Verdict != "regressed" {
 		t.Errorf("expected 'regressed', got %q", result.Verdict)
@@ -418,19 +400,7 @@ func TestSecurityDiffAuthDropped(t *testing.T) {
 		},
 	}
 
-	_, err := mgr.TakeSnapshot("before", beforeBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mgr.TakeSnapshot("after", afterBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Verdict != "regressed" {
 		t.Errorf("expected 'regressed', got %q", result.Verdict)
@@ -475,19 +445,7 @@ func TestSecurityDiffTransportDowngrade(t *testing.T) {
 		},
 	}
 
-	_, err := mgr.TakeSnapshot("before", beforeBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mgr.TakeSnapshot("after", afterBodies)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Verdict != "regressed" {
 		t.Errorf("expected 'regressed', got %q", result.Verdict)
@@ -753,13 +711,7 @@ func TestSecurityDiffSummary(t *testing.T) {
 		},
 	}
 
-	_, _ = mgr.TakeSnapshot("before", beforeBodies)
-	_, _ = mgr.TakeSnapshot("after", afterBodies)
-
-	result, err := mgr.Compare("before", "after", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := mustCompareSnapshots(t, mgr, beforeBodies, afterBodies)
 
 	if result.Summary.TotalRegressions == 0 {
 		t.Error("expected non-zero total regressions")
@@ -817,10 +769,7 @@ func TestSecurityDiffCompareWithCurrent(t *testing.T) {
 			HasAuthHeader: true},
 	}
 
-	_, err := mgr.TakeSnapshot("baseline", bodies)
-	if err != nil {
-		t.Fatalf("TakeSnapshot failed: %v", err)
-	}
+	mustTakeSnapshot(t, mgr, "baseline", bodies)
 
 	// Compare baseline vs "current" with all headers removed
 	currentBodies := []NetworkBody{
@@ -851,8 +800,8 @@ func TestSecurityDiffSnapshotOverwrite(t *testing.T) {
 			ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}},
 	}
 
-	mgr.TakeSnapshot("same", bodies)
-	mgr.TakeSnapshot("same", bodies)
+	mustTakeSnapshot(t, mgr, "same", bodies)
+	mustTakeSnapshot(t, mgr, "same", bodies)
 
 	list := mgr.ListSnapshots()
 	count := 0
@@ -871,7 +820,7 @@ func TestBuildEphemeralSnapshotCookiesAndTransport(t *testing.T) {
 	mgr := NewSecurityDiffManager()
 
 	// Baseline with cookies (HttpOnly, Secure, SameSite) and auth
-	mgr.TakeSnapshot("before", []NetworkBody{
+	mustTakeSnapshot(t, mgr, "before", []NetworkBody{
 		{URL: "https://app.com/api", ContentType: "application/json", Status: 200,
 			Method: "POST",
 			ResponseHeaders: map[string]string{
@@ -979,7 +928,7 @@ func TestSecurityDiffExpiredSnapshot(t *testing.T) {
 			ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}},
 	}
 
-	mgr.TakeSnapshot("old", bodies)
+	mustTakeSnapshot(t, mgr, "old", bodies)
 	time.Sleep(5 * time.Millisecond) // Wait for expiry
 
 	list := mgr.ListSnapshots()

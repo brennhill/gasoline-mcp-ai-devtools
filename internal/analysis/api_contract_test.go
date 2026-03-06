@@ -1,6 +1,5 @@
-// Purpose: Validate api_contract_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for API contract validation and drift detection.
+// Docs: docs/features/feature/api-schema/index.md
 
 // api_contract_test.go — Tests for API contract validation.
 // Tests schema learning, shape comparison, violation detection, and the MCP tool interface.
@@ -13,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // Type alias for convenience in tests

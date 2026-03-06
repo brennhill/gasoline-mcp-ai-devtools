@@ -1,6 +1,6 @@
 #!/bin/bash
-# cat-09-http.sh — UAT tests for HTTP endpoints (4 tests).
-# NOTE: Test 9.4 (/shutdown) must be LAST as it kills the daemon.
+# cat-09-http.sh — UAT tests for HTTP endpoints (7 tests).
+# NOTE: Test 9.7 (/shutdown) must be LAST as it kills the daemon.
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "9" "HTTP Endpoints" "4"
+begin_category "9" "HTTP Endpoints" "7"
 ensure_daemon
 
 # ── 9.1 — /health returns complete health object ──────────
@@ -99,12 +99,85 @@ run_test_9_3() {
 }
 run_test_9_3
 
-# ── 9.4 — /shutdown POST stops the server ─────────────────
+# ── 9.4 — /api/status returns valid JSON ───────────────────
+begin_test "9.4" "/api/status returns valid JSON with expected fields" \
+    "GET /api/status — verify JSON with server, capture, terminal fields" \
+    "Dashboard API status endpoint. Missing fields break the dashboard UI."
+run_test_9_4() {
+    local body
+    body=$(get_http_body "http://localhost:${PORT}/api/status")
+    if [ -z "$body" ]; then
+        fail "/api/status returned empty body."
+        return
+    fi
+    if ! echo "$body" | jq -e '.' >/dev/null 2>&1; then
+        fail "/api/status returned invalid JSON. Body: $(truncate "$body")"
+        return
+    fi
+    local has_server has_capture has_terminal
+    has_server=$(echo "$body" | jq -e '.server' 2>/dev/null)
+    has_capture=$(echo "$body" | jq -e '.capture' 2>/dev/null)
+    has_terminal=$(echo "$body" | jq -e '.terminal' 2>/dev/null)
+    if [ -z "$has_server" ] || [ "$has_server" = "null" ]; then
+        fail "/api/status missing 'server' field. Body: $(truncate "$body")"
+        return
+    fi
+    if [ -z "$has_capture" ] || [ "$has_capture" = "null" ]; then
+        fail "/api/status missing 'capture' field. Body: $(truncate "$body")"
+        return
+    fi
+    if [ -z "$has_terminal" ] || [ "$has_terminal" = "null" ]; then
+        fail "/api/status missing 'terminal' field. Body: $(truncate "$body")"
+        return
+    fi
+    pass "/api/status returned valid JSON with server, capture, and terminal fields. Body: $(truncate "$body" 200)"
+}
+run_test_9_4
+
+# ── 9.5 — /health includes terminal_port ──────────────────
+begin_test "9.5" "/health includes terminal_port field" \
+    "GET /health — verify terminal_port = PORT+1" \
+    "Terminal server isolation requires health to advertise the correct port."
+run_test_9_5() {
+    local body
+    body=$(get_http_body "http://localhost:${PORT}/health")
+    local term_port
+    term_port=$(echo "$body" | jq -r '.terminal_port // empty' 2>/dev/null)
+    if [ -z "$term_port" ]; then
+        fail "/health missing 'terminal_port' field. Body: $(truncate "$body")"
+        return
+    fi
+    local expected_port=$((PORT + 1))
+    if [ "$term_port" != "$expected_port" ]; then
+        fail "/health terminal_port=$term_port, expected $expected_port. Body: $(truncate "$body")"
+        return
+    fi
+    pass "/health includes terminal_port=$term_port (PORT+1). Body: $(truncate "$body" 200)"
+}
+run_test_9_5
+
+# ── 9.6 — Terminal server on PORT+1 responds ──────────────
+begin_test "9.6" "Terminal server on PORT+1 responds" \
+    "GET /terminal on PORT+1 — verify HTTP 200" \
+    "Terminal runs on a dedicated server (port+1). Must be reachable independently."
+run_test_9_6() {
+    local term_port=$((PORT + 1))
+    local status
+    status=$(get_http_status "http://localhost:${term_port}/terminal")
+    if [ "$status" != "200" ]; then
+        fail "GET /terminal on port $term_port returned HTTP $status (expected 200)."
+        return
+    fi
+    pass "Terminal server on port $term_port responds with HTTP 200."
+}
+run_test_9_6
+
+# ── 9.7 — /shutdown POST stops the server ─────────────────
 # NOTE: This test MUST be last since it kills the daemon.
-begin_test "9.4" "/shutdown POST stops the server" \
+begin_test "9.7" "/shutdown POST stops the server" \
     "POST to /shutdown, wait, verify port is freed" \
     "Programmatic shutdown is used by CI cleanup."
-run_test_9_4() {
+run_test_9_7() {
     local shutdown_body
     shutdown_body=$(get_http_body "http://localhost:${PORT}/shutdown" -X POST -H "X-Gasoline-Client: gasoline-extension/${VERSION}")
     # Give the server time to shut down
@@ -116,7 +189,7 @@ run_test_9_4() {
     fi
     pass "/shutdown succeeded. Port $PORT is freed after 3 second wait. Shutdown response: $(truncate "$shutdown_body" 200)"
 }
-run_test_9_4
+run_test_9_7
 
 # finish_category calls kill_server (which no-ops if daemon is already dead)
 # then writes results and exits.

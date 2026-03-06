@@ -1,20 +1,19 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Map-based command registry and dispatch loop that replaces the monolithic if-chain for routing pending queries to handlers.
+ * Why: Extensible design lets new command modules register themselves without modifying central dispatch.
  */
 
 // registry.ts — Command registry and dispatch loop.
 // Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
 
-import type { PendingQuery } from '../../types'
-import type { SyncClient } from '../sync-client'
-import { initReady } from '../state'
-import { DebugCategory } from '../debug'
-import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers'
+import type { PendingQuery } from '../../types/index.js'
+import type { SyncClient } from '../sync-client.js'
+import { initReady } from '../state.js'
+import { DebugCategory } from '../debug.js'
+import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js'
+import { errorMessage } from '../../lib/error-utils.js'
 import {
+  debugLog,
   sendResult,
   sendAsyncResult,
   requiresTargetTab,
@@ -24,18 +23,7 @@ import {
   actionToast,
   isRestrictedUrl,
   isBrowserEscapeAction
-} from './helpers'
-
-function debugLog(category: string, message: string, data: unknown = null): void {
-  // Keep registry independent from index.ts to avoid circular imports during command registration.
-  const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
-  if (!debugEnabled) return
-  if (data === null) {
-    console.debug(`[Gasoline:${category}] ${message}`)
-    return
-  }
-  console.debug(`[Gasoline:${category}] ${message}`, data)
-}
+} from './helpers.js'
 
 // =============================================================================
 // COMMAND CONTEXT
@@ -117,14 +105,17 @@ function createDispatchLifecycle(
   }
 
   const sendResultNormalized = (result: unknown): void => {
-    sendOnce(() => {
-      const wrapped = wrapResult(result)
-      if (query.correlation_id) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', wrapped)
-      } else {
-        sendResult(syncClient, query.id, wrapped)
-      }
-    }, { via: 'sendResult' })
+    sendOnce(
+      () => {
+        const wrapped = wrapResult(result)
+        if (query.correlation_id) {
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', wrapped)
+        } else {
+          sendResult(syncClient, query.id, wrapped)
+        }
+      },
+      { via: 'sendResult' }
+    )
   }
 
   const sendAsyncResultNormalized: SendAsyncResultFn = (
@@ -135,30 +126,40 @@ function createDispatchLifecycle(
     result,
     error
   ): void => {
-    sendOnce(() => {
-      const wrapped = wrapResult(result)
-      if (query.correlation_id) {
-        const effectiveCorrelationId = query.correlation_id || correlationId
-        sendAsyncResult(syncClient, query.id, effectiveCorrelationId, status, wrapped, error)
-        return
-      }
-      if (status === 'complete') {
-        sendResult(syncClient, query.id, wrapped)
-        return
-      }
-      sendResult(syncClient, query.id, {
-        success: false,
-        status,
-        error: error || pickErrorHint(wrapped, 'command_failed'),
-        message: error || pickErrorHint(wrapped, 'command_failed'),
-        result: wrapped ?? null
-      })
-    }, { via: 'sendAsyncResult', status })
+    sendOnce(
+      () => {
+        const wrapped = wrapResult(result)
+        if (query.correlation_id) {
+          const effectiveCorrelationId = query.correlation_id || correlationId
+          sendAsyncResult(syncClient, query.id, effectiveCorrelationId, status, wrapped, error)
+          return
+        }
+        if (status === 'complete') {
+          sendResult(syncClient, query.id, wrapped)
+          return
+        }
+        sendResult(syncClient, query.id, {
+          success: false,
+          status,
+          error: error || pickErrorHint(wrapped, 'command_failed'),
+          message: error || pickErrorHint(wrapped, 'command_failed'),
+          result: wrapped ?? null
+        })
+      },
+      { via: 'sendAsyncResult', status }
+    )
   }
 
   const sendError = (payload: unknown, errorHint?: string): void => {
     if (query.correlation_id) {
-      sendAsyncResultNormalized(syncClient, query.id, query.correlation_id, 'error', payload, errorHint || pickErrorHint(payload))
+      sendAsyncResultNormalized(
+        syncClient,
+        query.id,
+        query.correlation_id,
+        'error',
+        payload,
+        errorHint || pickErrorHint(payload)
+      )
       return
     }
     sendResultNormalized(payload)
@@ -202,10 +203,13 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
   const handler = handlers.get(queryType)
   if (!handler) {
     debugLog(DebugCategory.CONNECTION, 'Unknown query type', { type: query.type })
-    lifecycle.sendError({
-      error: 'unknown_query_type',
-      message: `Unknown query type: ${query.type}`
-    }, 'unknown_query_type')
+    lifecycle.sendError(
+      {
+        error: 'unknown_query_type',
+        message: `Unknown query type: ${query.type}`
+      },
+      'unknown_query_type'
+    )
     return
   }
 
@@ -218,7 +222,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       }
       target = resolved.target
     } catch (err) {
-      const targetErr = (err as Error).message || 'target_resolution_failed'
+      const targetErr = errorMessage(err, 'target_resolution_failed')
       lifecycle.sendError(
         {
           success: false,
@@ -249,7 +253,8 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       error: 'csp_blocked_page',
       csp_blocked: true,
       failure_cause: 'csp',
-      message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
+      message:
+        'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
       retryable: false
     }
     lifecycle.sendError(payload, payload.error)
@@ -279,7 +284,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       )
     }
   } catch (err) {
-    const errMsg = (err as Error).message || 'Unexpected error handling query'
+    const errMsg = errorMessage(err, 'Unexpected error handling query')
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
       type: query.type,
       id: query.id,

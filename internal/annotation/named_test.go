@@ -1,6 +1,5 @@
-// Purpose: Validate named_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for named annotation sessions and multi-page accumulation.
+// Docs: docs/features/feature/annotated-screenshots/index.md
 
 // named_test.go — Tests for named annotation sessions.
 package annotation
@@ -175,7 +174,7 @@ func TestBuildNamedSessionResult_SinglePage(t *testing.T) {
 		},
 	}
 
-	raw := BuildNamedSessionResult(ns)
+	raw := BuildNamedSessionResult(ns, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -241,7 +240,7 @@ func TestBuildNamedSessionResult_MultiplePages(t *testing.T) {
 		},
 	}
 
-	raw := BuildNamedSessionResult(ns)
+	raw := BuildNamedSessionResult(ns, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -283,7 +282,7 @@ func TestBuildNamedSessionResult_EmptyPages(t *testing.T) {
 		Pages: []*Session{},
 	}
 
-	raw := BuildNamedSessionResult(ns)
+	raw := BuildNamedSessionResult(ns, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -318,7 +317,7 @@ func TestBuildNamedSessionResult_ZeroAnnotationsPage(t *testing.T) {
 		},
 	}
 
-	raw := BuildNamedSessionResult(ns)
+	raw := BuildNamedSessionResult(ns, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -353,7 +352,7 @@ func TestBuildNamedSessionResult_SnakeCaseFields(t *testing.T) {
 		},
 	}
 
-	raw := BuildNamedSessionResult(ns)
+	raw := BuildNamedSessionResult(ns, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -393,7 +392,7 @@ func TestBuildSessionResult_WithScreenshot(t *testing.T) {
 		PageURL:        "https://example.com/page",
 	}
 
-	raw := BuildSessionResult(session)
+	raw := BuildSessionResult(session, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -424,7 +423,7 @@ func TestBuildSessionResult_WithoutScreenshot(t *testing.T) {
 		PageURL: "https://example.com",
 	}
 
-	raw := BuildSessionResult(session)
+	raw := BuildSessionResult(session, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -447,7 +446,7 @@ func TestBuildSessionResult_EmptyAnnotations(t *testing.T) {
 		PageURL:     "https://example.com",
 	}
 
-	raw := BuildSessionResult(session)
+	raw := BuildSessionResult(session, "")
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -456,5 +455,104 @@ func TestBuildSessionResult_EmptyAnnotations(t *testing.T) {
 
 	if result["count"] != float64(0) {
 		t.Errorf("expected count 0, got %v", result["count"])
+	}
+}
+
+func TestBuildSessionResult_URLFilterNoMatch_ExcludesAnnotationsAndScreenshot(t *testing.T) {
+	t.Parallel()
+	session := &Session{
+		Annotations: []Annotation{
+			{ID: "a1", Text: "scoped"},
+		},
+		ScreenshotPath: "/tmp/scoped.png",
+		PageURL:        "http://localhost:3000/page",
+	}
+
+	raw := BuildSessionResult(session, "http://localhost:4000/*")
+
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if result["count"] != float64(0) {
+		t.Errorf("expected filtered count 0, got %v", result["count"])
+	}
+	if result["filter_applied"] != "http://localhost:4000/*" {
+		t.Errorf("expected filter_applied to be retained, got %v", result["filter_applied"])
+	}
+	if _, hasScreenshot := result["screenshot"]; hasScreenshot {
+		t.Errorf("expected screenshot to be omitted when filter does not match")
+	}
+}
+
+func TestBuildSessionResult_BaseURLFilter_DoesNotCrossPortPrefix(t *testing.T) {
+	t.Parallel()
+	session := &Session{
+		Annotations: []Annotation{
+			{ID: "a1", Text: "wrong port"},
+		},
+		PageURL: "http://localhost:30001/page",
+	}
+
+	raw := BuildSessionResult(session, "http://localhost:3000")
+
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if result["count"] != float64(0) {
+		t.Errorf("expected host/port-aware base URL filter to reject non-matching origin, got %v", result["count"])
+	}
+}
+
+func TestBuildNamedSessionResult_URLFilterScopesPages(t *testing.T) {
+	t.Parallel()
+	ns := &NamedSession{
+		Name: "scoped-session",
+		Pages: []*Session{
+			{
+				Annotations: []Annotation{{ID: "a1", Text: "first"}},
+				PageURL:     "http://localhost:3000/page-a",
+				TabID:       1,
+			},
+			{
+				Annotations: []Annotation{
+					{ID: "a2", Text: "second"},
+					{ID: "a3", Text: "third"},
+				},
+				PageURL: "http://localhost:4000/page-b",
+				TabID:   2,
+			},
+		},
+	}
+
+	raw := BuildNamedSessionResult(ns, "http://localhost:3000/*")
+
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if result["page_count"] != float64(1) {
+		t.Errorf("expected filtered page_count 1, got %v", result["page_count"])
+	}
+	if result["total_count"] != float64(1) {
+		t.Errorf("expected filtered total_count 1, got %v", result["total_count"])
+	}
+	if result["filter_applied"] != "http://localhost:3000/*" {
+		t.Errorf("expected filter_applied to be retained, got %v", result["filter_applied"])
+	}
+	pages, ok := result["pages"].([]any)
+	if !ok {
+		t.Fatalf("expected pages array, got %T", result["pages"])
+	}
+	if len(pages) != 1 {
+		t.Fatalf("expected exactly one filtered page, got %d", len(pages))
+	}
+	page := pages[0].(map[string]any)
+	if page["page_url"] != "http://localhost:3000/page-a" {
+		t.Errorf("expected retained page_url to match filter, got %v", page["page_url"])
 	}
 }

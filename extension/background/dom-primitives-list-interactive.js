@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Enumerates interactive elements on a page for AI-driven automation.
+ * Why: Self-contained for chrome.scripting.executeScript (no closures allowed).
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 // dom-primitives-list-interactive.ts — Self-contained list_interactive DOM primitive for chrome.scripting.executeScript.
 // Extracted from dom-primitives.ts to keep file sizes under the 800 LOC limit.
@@ -17,26 +15,36 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
     function getElementHandleStore() {
         const root = globalThis;
         if (root.__gasolineElementHandles) {
+            // Migrate legacy stores that lack selectorByID (#361)
+            if (!root.__gasolineElementHandles.selectorByID) {
+                root.__gasolineElementHandles.selectorByID = new Map();
+            }
             return root.__gasolineElementHandles;
         }
         const created = {
             byElement: new WeakMap(),
             byID: new Map(),
+            selectorByID: new Map(),
             nextID: 1
         };
         root.__gasolineElementHandles = created;
         return created;
     }
-    function getOrCreateElementID(el) {
+    // #361: Store selector alongside element_id so stale handles can be re-resolved
+    function getOrCreateElementID(el, selector) {
         const store = getElementHandleStore();
         const existing = store.byElement.get(el);
         if (existing) {
             store.byID.set(existing, el);
+            if (selector)
+                store.selectorByID.set(existing, selector);
             return existing;
         }
         const elementID = `el_${(store.nextID++).toString(36)}`;
         store.byElement.set(el, elementID);
         store.byID.set(elementID, el);
+        if (selector)
+            store.selectorByID.set(elementID, selector);
         return elementID;
     }
     // — Shadow DOM: deep traversal utilities (duplicated from dom-primitives.ts, required for self-containment) —
@@ -62,17 +70,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         return results;
     }
     // — Selector and classification helpers —
+    function cssEscape(raw) {
+        const maybeCSS = globalThis.CSS;
+        if (maybeCSS && typeof maybeCSS.escape === 'function') {
+            return maybeCSS.escape(raw);
+        }
+        // Minimal fallback for test/non-browser environments where CSS.escape is unavailable.
+        return raw.replace(/["\\]/g, '\\$&');
+    }
     function buildUniqueSelector(el, htmlEl, fallbackSelector) {
         if (el.id)
-            return `#${el.id}`;
+            return `#${cssEscape(el.id)}`;
         if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${el.name}"]`;
+            return `input[name="${cssEscape(el.name)}"]`;
         const ariaLabel = el.getAttribute('aria-label');
+        // Use CSS attribute selectors — these resolve via querySelectorAll directly,
+        // avoiding semantic resolver ordering mismatches (#360).
         if (ariaLabel)
-            return `aria-label=${ariaLabel}`;
+            return `[aria-label="${cssEscape(ariaLabel)}"]`;
         const placeholder = el.getAttribute('placeholder');
         if (placeholder)
-            return `placeholder=${placeholder}`;
+            return `[placeholder="${cssEscape(placeholder)}"]`;
         const text = (htmlEl.textContent || '').trim().slice(0, 40);
         if (text)
             return `text=${text}`;
@@ -132,14 +150,51 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         const rect = htmlEl.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
     }
+    // #368: Detect if an element is inside an overlay (position:fixed/sticky with high z-index)
+    function isInsideOverlay(el) {
+        let node = el;
+        while (node && node !== document.documentElement) {
+            if (node instanceof HTMLElement) {
+                if (typeof getComputedStyle !== 'function')
+                    return false;
+                const style = getComputedStyle(node);
+                const position = style.position || '';
+                if (position === 'fixed' || position === 'sticky') {
+                    const zIndex = Number.parseInt(style.zIndex || '', 10);
+                    if (zIndex >= 100)
+                        return true;
+                    // Common overlay indicators
+                    const role = node.getAttribute('role') || '';
+                    if (role === 'dialog' || role === 'alertdialog' || node.getAttribute('aria-modal') === 'true')
+                        return true;
+                }
+            }
+            node = node.parentElement;
+        }
+        return false;
+    }
+    // #369: Detect if an element is inside a navigation container (nav, header, role=navigation)
+    function isInsideNavigation(el) {
+        let node = el;
+        while (node && node !== document.documentElement) {
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'nav' || tag === 'header')
+                return true;
+            const role = node.getAttribute('role');
+            if (role === 'navigation' || role === 'banner')
+                return true;
+            node = node.parentElement;
+        }
+        return false;
+    }
     function extractBoundingBox(el) {
         const htmlEl = el;
         if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
         const rect = htmlEl.getBoundingClientRect();
-        const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
-        const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const x = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0;
+        const y = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0;
         const width = Number.isFinite(rect.width) ? rect.width : 0;
         const height = Number.isFinite(rect.height) ? rect.height : 0;
         return { x, y, width, height };
@@ -175,6 +230,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             message: 'scope_rect must include finite x, y, width, and height > 0'
         };
     }
+    // #369: Extract filter options
+    const textContains = (options?.text_contains || '').toLowerCase();
+    const roleFilter = (options?.role || '').toLowerCase();
+    const visibleOnly = options?.visible_only === true;
+    const excludeNav = options?.exclude_nav === true;
     function intersectsScopeRect(el) {
         if (!scopeRect)
             return true;
@@ -182,8 +242,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function')
             return false;
         const rect = htmlEl.getBoundingClientRect();
-        const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
-        const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const left = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0;
+        const top = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0;
         const right = typeof rect.right === 'number' ? rect.right : left + rect.width;
         const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height;
         const scopeRight = scopeRect.x + scopeRect.width;
@@ -216,9 +276,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length;
             const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive);
             const rect = candidate.getBoundingClientRect?.();
-            const areaScore = rect && rect.width > 0 && rect.height > 0
-                ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
-                : 0;
+            const areaScore = rect && rect.width > 0 && rect.height > 0 ? Math.min(20, Math.round((rect.width * rect.height) / 50000)) : 0;
             // Heuristic weighting:
             // - Visible textbox strongly indicates active editor/dialog.
             // - Submit-like visible controls indicate actionable composer.
@@ -289,6 +347,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
             if (!intersectsScopeRect(el))
                 continue;
+            // #369: Apply filters early to maximize useful elements within the 100-cap
+            if (visibleOnly && !visible)
+                continue;
+            if (excludeNav && isInsideNavigation(el))
+                continue;
             const bbox = extractBoundingBox(el);
             // Use >>> selector for shadow DOM elements, regular selector otherwise
             const shadowSel = buildShadowSelector(el);
@@ -299,18 +362,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
                 el.getAttribute('placeholder') ||
                 (htmlEl.textContent || '').trim().slice(0, 60) ||
                 el.tagName.toLowerCase();
+            // #369: Apply text and role filters after label/type are computed
+            if (textContains && !label.toLowerCase().includes(textContains))
+                continue;
+            const elementType = classifyElement(el);
+            const ariaRole = el.getAttribute('role') || '';
+            if (roleFilter && elementType !== roleFilter && ariaRole.toLowerCase() !== roleFilter)
+                continue;
             rawEntries.push({
                 el,
                 htmlEl,
                 baseSelector,
+                finalSelector: baseSelector, // will be updated with :nth-match before sort
                 tag: el.tagName.toLowerCase(),
                 inputType: el instanceof HTMLInputElement ? el.type : undefined,
-                elementType: classifyElement(el),
+                elementType,
                 label,
-                role: el.getAttribute('role') || undefined,
+                role: ariaRole || undefined,
                 placeholder: el.getAttribute('placeholder') || undefined,
                 bbox,
-                visible
+                visible,
+                inOverlay: isInsideOverlay(el)
             });
             if (rawEntries.length >= 100)
                 break;
@@ -318,40 +390,131 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         if (rawEntries.length >= 100)
             break;
     }
-    // Second pass: deduplicate selectors by appending :nth-match(N)
+    // Disambiguate selectors in DOM order BEFORE dedup and spatial sort.
+    // The resolver (resolveByTextAll, querySelectorAllDeep) returns elements in DOM order,
+    // so :nth-match(N) numbering must match DOM order, not spatial order (#360).
+    // IMPORTANT: assign :nth-match on the FULL pre-dedup set so indices match the resolver (#366).
     const selectorCount = new Map();
     for (const entry of rawEntries) {
         selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1);
     }
     const selectorIndex = new Map();
-    for (let i = 0; i < rawEntries.length; i++) {
-        const entry = rawEntries[i];
-        let finalSelector = entry.baseSelector;
+    for (const entry of rawEntries) {
         const count = selectorCount.get(entry.baseSelector) || 1;
         if (count > 1) {
             const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1;
             selectorIndex.set(entry.baseSelector, nth);
-            finalSelector = `${entry.baseSelector}:nth-match(${nth})`;
+            entry.finalSelector = `${entry.baseSelector}:nth-match(${nth})`;
         }
+    }
+    // #366: Deduplicate responsive variants — when hidden and visible copies of the same
+    // element exist (e.g., mobile + desktop nav links), keep only the visible one.
+    // Use a coarse semantic key (tag + type + normalized label) so hidden responsive
+    // variants with different hrefs still collapse into the visible copy.
+    const normalizeDedupLabel = (label) => label.trim().replace(/\s+/g, ' ').toLowerCase();
+    const dedupKey = (e) => {
+        return `${e.tag}|${e.elementType}|${normalizeDedupLabel(e.label)}`;
+    };
+    const dedupGroups = new Map();
+    for (const entry of rawEntries) {
+        const key = dedupKey(entry);
+        const group = dedupGroups.get(key);
+        if (group) {
+            group.push(entry);
+        }
+        else {
+            dedupGroups.set(key, [entry]);
+        }
+    }
+    const finalEntries = [];
+    for (const group of dedupGroups.values()) {
+        if (group.length > 1) {
+            const visible = group.filter((e) => e.visible);
+            const hidden = group.filter((e) => !e.visible);
+            if (visible.length > 0 && hidden.length > 0) {
+                // Keep only visible copies when both visible and hidden exist
+                finalEntries.push(...visible);
+            }
+            else {
+                // All same visibility — keep all
+                finalEntries.push(...group);
+            }
+        }
+        else {
+            finalEntries.push(group[0]);
+        }
+    }
+    // #448: When scope_rect is provided, compute distance from center and sort by proximity.
+    // Otherwise, sort spatially in reading order (top-to-bottom, left-to-right).
+    if (scopeRect) {
+        const centerX = scopeRect.x + scopeRect.width / 2;
+        const centerY = scopeRect.y + scopeRect.height / 2;
+        for (const entry of finalEntries) {
+            const elCenterX = entry.bbox.x + entry.bbox.width / 2;
+            const elCenterY = entry.bbox.y + entry.bbox.height / 2;
+            const dx = elCenterX - centerX;
+            const dy = elCenterY - centerY;
+            entry.distance_px = Math.round(Math.sqrt(dx * dx + dy * dy));
+        }
+        finalEntries.sort((a, b) => {
+            if (a.visible && !b.visible)
+                return -1;
+            if (!a.visible && b.visible)
+                return 1;
+            return (a.distance_px || 0) - (b.distance_px || 0);
+        });
+    }
+    else {
+        // Default: spatial reading order
+        const ROW_THRESHOLD = 10;
+        finalEntries.sort((a, b) => {
+            if (a.visible && !b.visible)
+                return -1;
+            if (!a.visible && b.visible)
+                return 1;
+            if (!a.visible && !b.visible)
+                return 0;
+            const sameRow = Math.abs(a.bbox.y - b.bbox.y) <= ROW_THRESHOLD;
+            if (sameRow)
+                return a.bbox.x - b.bbox.x;
+            return a.bbox.y - b.bbox.y;
+        });
+    }
+    for (let i = 0; i < finalEntries.length; i++) {
+        const entry = finalEntries[i];
+        const distPx = entry.distance_px;
         elements.push({
             index: i,
             tag: entry.tag,
             type: entry.inputType,
             element_type: entry.elementType,
-            selector: finalSelector,
-            element_id: getOrCreateElementID(entry.el),
+            selector: entry.finalSelector,
+            element_id: getOrCreateElementID(entry.el, entry.finalSelector),
             label: entry.label,
             role: entry.role,
             placeholder: entry.placeholder,
             bbox: entry.bbox,
-            visible: entry.visible
+            visible: entry.visible,
+            ...(distPx !== undefined ? { distance_px: distPx } : {}),
+            ...(entry.inOverlay ? { in_overlay: true } : {})
         });
     }
+    // #369: Build filter metadata for the response
+    const filters = {};
+    if (textContains)
+        filters.text_contains = options.text_contains;
+    if (roleFilter)
+        filters.role = options.role;
+    if (visibleOnly)
+        filters.visible_only = true;
+    if (excludeNav)
+        filters.exclude_nav = true;
     return {
         success: true,
         elements,
         candidate_count: elements.length,
-        ...(scopeRect ? { scope_rect_used: scopeRect } : {})
+        ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
+        ...(Object.keys(filters).length > 0 ? { filters_applied: filters } : {})
     };
 }
 //# sourceMappingURL=dom-primitives-list-interactive.js.map

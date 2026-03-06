@@ -1,10 +1,8 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Applies runtime setting changes (network capture, performance marks, WebSocket mode, action replay) and handles state save/load commands in the inject context.
+ * Docs: docs/features/feature/state-time-travel/index.md
  */
-import type { BrowserStateSnapshot, StateAction } from '../types/index';
+import type { BrowserStateSnapshot, StateAction } from '../types/index.js';
 /**
  * Valid setting names from content script — imported from canonical constants.
  */

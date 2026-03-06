@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches interact tool commands to extension-side handlers.
+ * Why: Routes MCP interact actions to DOM primitives, browser actions, and CDP operations.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 export declare function handlePilotCommand(command: string, params: unknown, preferredTabId?: number): Promise<unknown>;
 //# sourceMappingURL=interact.d.ts.map

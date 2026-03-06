@@ -190,6 +190,25 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <div class="card" id="ports-card">
+    <h2>Ports &amp; Terminal</h2>
+    <div class="status-row">
+      <span class="dot gray"></span>
+      <span class="label">Main server</span>
+      <span class="value" id="main-port"></span>
+    </div>
+    <div class="status-row">
+      <span class="dot" id="term-dot"></span>
+      <span class="label">Terminal server</span>
+      <span class="value" id="term-port"></span>
+    </div>
+    <div class="status-row">
+      <span class="dot" id="term-session-dot"></span>
+      <span class="label">Terminal session</span>
+      <span class="value" id="term-session"></span>
+    </div>
+  </div>
+
   <div class="card">
     <h2>Buffers</h2>
     <div id="buffers"></div>
@@ -274,6 +293,32 @@ function render(d) {
 
   document.getElementById('last-ping').textContent = ago(d.last_poll_at);
   document.getElementById('total-calls').textContent = (d.audit && d.audit.total_calls) || 0;
+
+  // Ports & Terminal
+  document.getElementById('main-port').textContent = ':' + (d.listen_port || '?');
+
+  var term = d.terminal || {};
+  var termDot = document.getElementById('term-dot');
+  var termPort = document.getElementById('term-port');
+  if (term.running) {
+    termDot.className = 'dot green';
+    termPort.textContent = ':' + term.port;
+  } else {
+    termDot.className = 'dot red';
+    termPort.textContent = 'not running';
+  }
+
+  var termSessionDot = document.getElementById('term-session-dot');
+  var termSession = document.getElementById('term-session');
+  var sessions = term.sessions || 0;
+  var sessionIds = term.session_ids || [];
+  if (sessions > 0) {
+    termSessionDot.className = 'dot green';
+    termSession.textContent = sessions + ' active (' + sessionIds.join(', ') + ')';
+  } else {
+    termSessionDot.className = 'dot gray';
+    termSession.textContent = 'none';
+  }
 
   const b = d.buffers || {};
   document.getElementById('buffers').innerHTML =

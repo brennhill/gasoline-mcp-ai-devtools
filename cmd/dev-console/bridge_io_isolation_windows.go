@@ -1,8 +1,8 @@
 //go:build windows
 // +build windows
 
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Windows fallback for stdout duplication — reuses the existing stdout handle since Windows lacks dup2.
+// Why: Provides a no-op platform shim so bridge IO isolation compiles on Windows without syscall dependencies.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

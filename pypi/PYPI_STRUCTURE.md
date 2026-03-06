@@ -5,41 +5,41 @@
 ### Package Structure:
 ```
 pypi/
-├── gasoline-mcp/              # Main package
+├── gasoline-agentic-browser/              # Main package
 │   ├── pyproject.toml
 │   ├── setup.py
-│   ├── gasoline_mcp/
+│   ├── gasoline_agentic_browser/
 │   │   ├── __init__.py
 │   │   ├── __main__.py        # Entry point
 │   │   └── platform.py        # Platform detection
 │   └── README.md
-├── gasoline-mcp-darwin-arm64/  # Platform-specific packages
-├── gasoline-mcp-darwin-x64/
-├── gasoline-mcp-linux-arm64/
-├── gasoline-mcp-linux-x64/
-├── gasoline-mcp-win32-x64/
+├── gasoline-agentic-browser-darwin-arm64/  # Platform-specific packages
+├── gasoline-agentic-browser-darwin-x64/
+├── gasoline-agentic-browser-linux-arm64/
+├── gasoline-agentic-browser-linux-x64/
+├── gasoline-agentic-browser-win32-x64/
 └── publish.py                  # Publish script
 ```
 
 ### How it Works:
-1. **Main package** (`gasoline-mcp`):
+1. **Main package** (`gasoline-agentic-browser`):
    - No binary, just Python wrapper
    - Detects platform at runtime
    - Imports platform-specific package
-   - Entry point: `gasoline-mcp` command
+   - Entry point: `gasoline-agentic-browser` command
 
-2. **Platform packages** (e.g., `gasoline-mcp-darwin-arm64`):
+2. **Platform packages** (e.g., `gasoline-agentic-browser-darwin-arm64`):
    - Contains the Go binary for that platform
    - Listed as extras in main package
 
 3. **Installation**:
    ```bash
-   pip install gasoline-mcp
+   pip install gasoline-agentic-browser
    # Automatically installs correct platform-specific package
    ```
 
 ### Benefits:
-- Users just run `pip install gasoline-mcp`
+- Users just run `pip install gasoline-agentic-browser`
 - Same UX as NPM version
 - Automatic platform detection
 - Smaller downloads (only installs one platform)
@@ -48,28 +48,28 @@ pypi/
 ### pyproject.toml Example:
 ```toml
 [project]
-name = "gasoline-mcp"
+name = "gasoline-agentic-browser"
 version = "5.1.0"
-description = "Browser observability for AI coding agents"
+description = "Agentic Browser Devtools - rapid e2e web development"
 requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
-darwin-arm64 = ["gasoline-mcp-darwin-arm64==5.1.0"]
-darwin-x64 = ["gasoline-mcp-darwin-x64==5.1.0"]
-linux-arm64 = ["gasoline-mcp-linux-arm64==5.1.0"]
-linux-x64 = ["gasoline-mcp-linux-x64==5.1.0"]
-win32-x64 = ["gasoline-mcp-win32-x64==5.1.0"]
+darwin-arm64 = ["gasoline-agentic-browser-darwin-arm64==5.1.0"]
+darwin-x64 = ["gasoline-agentic-browser-darwin-x64==5.1.0"]
+linux-arm64 = ["gasoline-agentic-browser-linux-arm64==5.1.0"]
+linux-x64 = ["gasoline-agentic-browser-linux-x64==5.1.0"]
+win32-x64 = ["gasoline-agentic-browser-win32-x64==5.1.0"]
 
 [project.scripts]
-gasoline-mcp = "gasoline_mcp.__main__:main"
+gasoline-agentic-browser = "gasoline_agentic_browser.__main__:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 ```
 
-### Platform Detection (gasoline_mcp/platform.py):
+### Platform Detection (gasoline_agentic_browser/platform.py):
 ```python
 import sys
 import platform
@@ -96,7 +96,7 @@ def get_platform():
 
 def get_binary_path():
     platform_name = get_platform()
-    package_name = f"gasoline_mcp_{platform_name.replace('-', '_')}"
+    package_name = f"gasoline_agentic_browser_{platform_name.replace('-', '_')}"
     
     try:
         import importlib.util
@@ -109,7 +109,7 @@ def get_binary_path():
     
     raise RuntimeError(
         f"Platform-specific package not found. Install with:\n"
-        f"  pip install gasoline-mcp[{platform_name}]"
+        f"  pip install gasoline-agentic-browser[{platform_name}]"
     )
 
 def run():
@@ -134,8 +134,8 @@ if __name__ == "__main__":
 make build-all-platforms
 
 # Build Python wheels
-cd pypi/gasoline-mcp && python -m build
-cd pypi/gasoline-mcp-darwin-arm64 && python -m build
+cd pypi/gasoline-agentic-browser && python -m build
+cd pypi/gasoline-agentic-browser-darwin-arm64 && python -m build
 # ... repeat for each platform
 
 # Publish to PyPI
@@ -148,7 +148,7 @@ twine upload dist/*
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "gasoline-mcp",
+      "command": "gasoline-agentic-browser",
       "args": ["--port", "7890", "--persist"]
     }
   }
@@ -158,21 +158,21 @@ twine upload dist/*
 ### Installation Methods:
 ```bash
 # Automatic (recommended)
-pip install gasoline-mcp
+pip install gasoline-agentic-browser
 
 # Manual platform selection
-pip install gasoline-mcp[darwin-arm64]
+pip install gasoline-agentic-browser[darwin-arm64]
 
 # From source
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools
+git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 cd gasoline && make install-pypi
 ```
 
 ### Comparison:
 | Distribution | Install | Size | Users |
 |--------------|---------|------|-------|
-| NPM | `npx -y gasoline-mcp` | ~5MB | Node.js devs, Claude Code |
-| PyPI | `pip install gasoline-mcp` | ~5MB | Python devs, Claude Desktop |
+| NPM | `npx -y gasoline-agentic-browser` | ~5MB | Node.js devs, Claude Code |
+| PyPI | `pip install gasoline-agentic-browser` | ~5MB | Python devs, Claude Desktop |
 | Homebrew | `brew install gasoline` | ~5MB | macOS power users |
 | Binary | Download from releases | ~5MB | Windows users |
 

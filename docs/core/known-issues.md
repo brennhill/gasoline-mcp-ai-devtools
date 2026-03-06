@@ -2,8 +2,8 @@
 status: active
 scope: issues/blockers
 ai-priority: high
-tags: [known-issues, v5.8]
-last-verified: 2026-02-06
+tags: [known-issues, v0.7.x]
+last-verified: 2026-03-05
 canonical: true
 ---
 
@@ -17,7 +17,7 @@ canonical: true
 |---|-------|----------|---------|
 | 1 | Extension timeout on first interact() | Medium | Content script may not be fully loaded when first `interact()` command is sent after navigation. **Workaround:** Retry after 2-3 seconds. |
 | 2 | Tracking loss during cross-origin navigation | Medium | Extension can lose tab tracking state during AI-initiated cross-origin navigation via `interact({action: "navigate"})`. **Workaround:** Re-enable tracking via extension popup. |
-| 3 | Pilot test zombies | Low | `tests/extension/pilot-*.test.js` have hardcoded `version: '5.2.0'` and no exit — become zombie processes that spam the daemon with sync requests. |
+| 3 | ~~Pilot test zombies~~ | ~~Low~~ | **Resolved.** Hardcoded `version: '5.2.0'` no longer present in `tests/extension/pilot-*.test.js`. |
 
 ### Flaky Tests (Pre-existing)
 

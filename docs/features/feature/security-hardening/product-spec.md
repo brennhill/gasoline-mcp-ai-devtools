@@ -3,11 +3,14 @@ feature: security-hardening
 status: shipped
 tool: configure
 mode: security config
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-security-hardening
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
+
 # Product Spec: Security Hardening
 
 User-facing requirements, rationale, and deprecations for the Security Hardening feature.

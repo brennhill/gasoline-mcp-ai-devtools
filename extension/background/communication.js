@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Facade that re-exports communication primitives (circuit breaker, batchers, server HTTP) and provides log formatting and screenshot capture.
+ * Why: Single import point for communication functions, avoiding scattered imports across consumers.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 /**
  * @fileoverview Communication - Facade that re-exports communication functions
@@ -14,9 +12,9 @@ export { createCircuitBreaker } from './circuit-breaker.js';
 // Re-export batcher functions and types
 export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } from './batchers.js';
 // Re-export server communication functions
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries } from './server.js';
+export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, sendStatusPing } from './server.js';
 import { getRequestHeaders } from './server.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Truncate a single argument if too large
  */
@@ -86,6 +84,7 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
     }
     try {
         const tab = await chrome.tabs.get(tabId);
+        await chrome.tabs.update(tabId, { active: true });
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
             format: 'jpeg',
             quality: 80
@@ -95,10 +94,9 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
             method: 'POST',
             headers: getRequestHeaders(),
             body: JSON.stringify({
-                dataUrl,
+                data_url: dataUrl,
                 url: tab.url,
-                errorId: relatedErrorId || '',
-                errorType: errorType || ''
+                correlation_id: relatedErrorId || ''
             })
         });
         if (!response.ok) {
@@ -125,9 +123,9 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
     }
     catch (error) {
         if (debugLogFn) {
-            debugLogFn('error', 'Screenshot capture failed', { error: error.message });
+            debugLogFn('error', 'Screenshot capture failed', { error: errorMessage(error) });
         }
-        return { success: false, error: error.message };
+        return { success: false, error: errorMessage(error) };
     }
 }
 //# sourceMappingURL=communication.js.map

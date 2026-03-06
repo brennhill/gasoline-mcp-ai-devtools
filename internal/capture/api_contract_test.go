@@ -1,5 +1,4 @@
-// Purpose: Validate api_contract_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for capture API contract compliance.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // api_contract_test.go — API contract tests for Extension ↔ Server communication.
@@ -20,6 +19,19 @@ import (
 	"time"
 )
 
+func postNetworkBodies(t *testing.T, c *Capture, payload map[string]any) *httptest.ResponseRecorder {
+	t.Helper()
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("json.Marshal payload failed: %v", err)
+	}
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	c.HandleNetworkBodies(w, req)
+	return w
+}
+
 // ============================================
 // Contract: POST Endpoints (Extension → Server)
 // ============================================
@@ -33,13 +45,7 @@ func TestAPIContract_NetworkBodies_AcceptsPOST(t *testing.T) {
 			{"url": "https://api.example.com/users", "method": "GET", "status": 200},
 		},
 	}
-	body, _ := json.Marshal(payload)
-
-	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleNetworkBodies(w, req)
+	w := postNetworkBodies(t, c, payload)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("POST /network-bodies should return 200, got %d", w.Code)
@@ -386,11 +392,7 @@ func TestAPIContract_NetworkBodies_POSTThenRead(t *testing.T) {
 			{"url": "https://api.example.com/users", "method": "GET", "status": 200},
 		},
 	}
-	body, _ := json.Marshal(payload)
-	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	c.HandleNetworkBodies(w, req)
+	w := postNetworkBodies(t, c, payload)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("POST failed with %d", w.Code)

@@ -1,7 +1,7 @@
 # QA Plan: Issue #98
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/98
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/98
 - Title: [Feature Proposal] Phase 4: Network Body Filtering (JSON Path/Grep)
 
 ## QA Goal

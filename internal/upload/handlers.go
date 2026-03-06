@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Handles Stage 1 (file read with base64 encoding) and Stage 2 (file dialog injection) upload operations.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload

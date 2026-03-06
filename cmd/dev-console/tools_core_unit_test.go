@@ -1,6 +1,5 @@
-// Purpose: Validate tools_core_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for dev-console tools core logic.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_core_unit_test.go — Unit tests for ToolHandler getters.
 package main
@@ -8,14 +7,14 @@ package main
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestGetCapture(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	server, err := NewServer("/tmp/test-getters.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-getters.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
@@ -31,7 +30,7 @@ func TestGetToolCallLimiter(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	server, err := NewServer("/tmp/test-limiter.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-limiter.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
@@ -52,7 +51,7 @@ func TestGetRedactionEngine_Configured(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	server, err := NewServer("/tmp/test-redaction.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-redaction.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}

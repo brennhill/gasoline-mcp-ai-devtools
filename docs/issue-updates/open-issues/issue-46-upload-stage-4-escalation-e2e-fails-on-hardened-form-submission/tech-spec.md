@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #46
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/46
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/46
 - Title: Upload Stage 4 escalation E2E fails on hardened form submission
 
 ## Objective

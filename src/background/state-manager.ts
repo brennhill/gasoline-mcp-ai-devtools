@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Facade re-exporting state management functions from error-groups, cache-limits, and snapshots sub-modules.
+ * Why: Provides a single import point so consumers do not need to know which sub-module owns each function.
  */
 
 /**
@@ -23,7 +20,7 @@ export {
   flushErrorGroups,
   type ProcessedLogEntry,
   ERROR_GROUP_MAX_AGE_MS
-} from './error-groups'
+} from './error-groups.js'
 
 // Re-export cache and memory management
 export {
@@ -50,7 +47,7 @@ export {
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
   MAX_PENDING_BUFFER
-} from './cache-limits'
+} from './cache-limits.js'
 
 // Re-export source map and context monitoring
 export {
@@ -72,7 +69,7 @@ export {
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries
-} from './snapshots'
+} from './snapshots.js'
 
 // Debug log functions are defined and exported below
 
@@ -80,7 +77,7 @@ export {
 // DEBUG LOG BUFFER
 // =============================================================================
 
-import type { DebugLogEntry } from '../types'
+import type { DebugLogEntry } from '../types/index.js'
 
 /** Debug log buffer */
 const debugLogBuffer: DebugLogEntry[] = []
@@ -96,12 +93,14 @@ export function getDebugLog(): DebugLogEntry[] {
 }
 
 /**
- * Add entry to debug log buffer
+ * Add entry to debug log buffer.
+ * Uses batch splice (25% eviction) instead of per-entry shift() to amortize O(n) cost.
  */
 export function addDebugLogEntry(entry: DebugLogEntry): void {
   debugLogBuffer.push(entry)
   if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
-    debugLogBuffer.shift()
+    const evictCount = Math.ceil(DEBUG_LOG_MAX_ENTRIES * 0.25)
+    debugLogBuffer.splice(0, evictCount)
   }
 }
 

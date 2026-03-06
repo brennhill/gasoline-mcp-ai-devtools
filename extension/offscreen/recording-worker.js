@@ -4,6 +4,8 @@
  * Docs: docs/features/feature/playback-engine/index.md
  * Docs: docs/features/feature/tab-recording/index.md
  */
+import { errorMessage } from '../lib/error-utils.js';
+import { buildDaemonHeaders } from '../lib/daemon-http.js';
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
 const defaultState = {
@@ -174,7 +176,7 @@ async function handleStartRecording(msg) {
         });
     }
     catch (err) {
-        console.error(LOG, 'START EXCEPTION:', err.message, err.stack);
+        console.error(LOG, 'START EXCEPTION:', errorMessage(err), err.stack);
         // Clean up any acquired streams to release the tab capture
         for (const s of acquiredStreams) {
             console.log(LOG, 'Cleaning up leaked stream, stopping', s.getTracks().length, 'tracks');
@@ -185,7 +187,7 @@ async function handleStartRecording(msg) {
             target: 'background',
             type: 'OFFSCREEN_RECORDING_STARTED',
             success: false,
-            error: `RECORD_START: ${err.message || 'Failed to start recording in offscreen document.'}`
+            error: `RECORD_START: ${errorMessage(err, 'Failed to start recording in offscreen document.')}`
         });
     }
 }
@@ -266,7 +268,10 @@ function handleStopRecording(truncated = false) {
             console.log(LOG, 'POSTing to', `${serverUrl}/recordings/save`, { size: blob.size, hasAudio });
             const response = await fetch(`${serverUrl}/recordings/save`, {
                 method: 'POST',
-                headers: { 'X-Gasoline-Client': 'gasoline-extension-offscreen' },
+                headers: buildDaemonHeaders({
+                    clientName: 'gasoline-extension-offscreen',
+                    contentType: null
+                }),
                 body: formData
             });
             console.log(LOG, 'Server response:', response.status);
@@ -303,14 +308,14 @@ function handleStopRecording(truncated = false) {
             });
         }
         catch (err) {
-            console.error(LOG, 'SAVE EXCEPTION:', err.message, err.stack);
+            console.error(LOG, 'SAVE EXCEPTION:', errorMessage(err), err.stack);
             state = { ...defaultState };
             chrome.runtime.sendMessage({
                 target: 'background',
                 type: 'OFFSCREEN_RECORDING_STOPPED',
                 status: 'error',
                 name,
-                error: `RECORD_STOP: ${err.message || 'Save failed.'}`
+                error: `RECORD_STOP: ${errorMessage(err, 'Save failed.')}`
             });
         }
     };
@@ -333,5 +338,4 @@ chrome.runtime.onMessage.addListener((message, sender) => {
         handleStopRecording();
     }
 });
-export {};
 //# sourceMappingURL=recording-worker.js.map

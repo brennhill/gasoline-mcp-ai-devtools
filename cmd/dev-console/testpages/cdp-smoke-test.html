@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CDP Hardware Input Smoke Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; padding: 24px; max-width: 720px; margin: 0 auto; background: #111; color: #eee; }
+    h1 { margin-bottom: 16px; font-size: 20px; }
+    .test-section { margin-bottom: 24px; padding: 16px; border: 1px solid #333; border-radius: 8px; }
+    .test-section h2 { font-size: 15px; margin-bottom: 12px; color: #888; }
+    button, input, [contenteditable] {
+      font-size: 16px; padding: 10px 16px; border-radius: 6px;
+      border: 1px solid #444; background: #222; color: #eee;
+      cursor: pointer; outline: none; display: block; width: 100%;
+    }
+    button:hover { background: #333; }
+    input:focus, [contenteditable]:focus { border-color: #58f; }
+    [contenteditable] { min-height: 60px; cursor: text; white-space: pre-wrap; }
+    .log { margin-top: 8px; font-family: monospace; font-size: 13px; line-height: 1.6; }
+    .trusted { color: #4f4; }
+    .untrusted { color: #f44; }
+    .info { color: #888; font-size: 12px; margin-top: 4px; }
+    #summary { margin-bottom: 20px; padding: 12px; border-radius: 6px; font-weight: 600; }
+    #summary.pass { background: #143014; color: #4f4; border: 1px solid #4f4; }
+    #summary.fail { background: #301414; color: #f44; border: 1px solid #f44; }
+    #summary.waiting { background: #1a1a00; color: #ff4; border: 1px solid #ff4; }
+    .guard-section { margin-top: 12px; padding: 12px; background: #1a1014; border: 1px solid #533; border-radius: 6px; }
+    .guard-section h3 { font-size: 13px; color: #f88; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>CDP Hardware Input Smoke Test</h1>
+  <div id="summary" class="waiting">Waiting for interactions...</div>
+
+  <!-- Test 1: Click -->
+  <div class="test-section">
+    <h2>1. Click Test</h2>
+    <button id="click-target">Click Me</button>
+    <div class="guard-section">
+      <h3>isTrusted guard (rejects synthetic clicks)</h3>
+      <button id="guarded-click">Guarded Button (only responds to trusted clicks)</button>
+      <div id="guarded-click-result" class="log"></div>
+    </div>
+    <div id="click-log" class="log"></div>
+  </div>
+
+  <!-- Test 2: Type into input -->
+  <div class="test-section">
+    <h2>2. Type Test (input)</h2>
+    <input id="type-target" type="text" placeholder="Type here..." />
+    <div id="type-log" class="log"></div>
+  </div>
+
+  <!-- Test 3: Type into contenteditable -->
+  <div class="test-section">
+    <h2>3. Type Test (contenteditable)</h2>
+    <div id="ce-target" contenteditable="true" data-placeholder="Type in contenteditable..."></div>
+    <div id="ce-log" class="log"></div>
+  </div>
+
+  <!-- Test 4: Key press -->
+  <div class="test-section">
+    <h2>4. Key Press Test</h2>
+    <input id="keypress-target" type="text" placeholder="Focus here, then press Enter/Tab..." />
+    <div id="keypress-log" class="log"></div>
+  </div>
+
+  <script>
+    const results = { click: null, guarded_click: null, type: null, ce_type: null, key_press: null };
+
+    function logEvent(containerId, event, label) {
+      const container = document.getElementById(containerId);
+      const cls = event.isTrusted ? 'trusted' : 'untrusted';
+      const icon = event.isTrusted ? '\u2705' : '\u274c';
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = `${icon} ${label}: isTrusted=${event.isTrusted} | type=${event.type}` +
+        (event.key ? ` | key="${event.key}"` : '') +
+        (event.target?.value !== undefined && event.type === 'input' ? ` | value="${event.target.value}"` : '');
+      container.appendChild(line);
+      // Keep last 10 entries
+      while (container.children.length > 10) container.removeChild(container.firstChild);
+    }
+
+    function updateSummary() {
+      const el = document.getElementById('summary');
+      const entries = Object.entries(results).filter(([, v]) => v !== null);
+      if (entries.length === 0) return;
+      const allTrusted = entries.every(([, v]) => v === true);
+      const anyTrusted = entries.some(([, v]) => v === true);
+      const tested = entries.map(([k]) => k).join(', ');
+      if (allTrusted) {
+        el.className = 'pass';
+        el.textContent = `ALL PASSED (isTrusted:true) \u2014 tested: ${tested}`;
+      } else if (anyTrusted) {
+        el.className = 'fail';
+        const failed = entries.filter(([, v]) => !v).map(([k]) => k).join(', ');
+        el.textContent = `PARTIAL \u2014 trusted: ${tested} | untrusted: ${failed}`;
+      } else {
+        el.className = 'fail';
+        el.textContent = `ALL FAILED (isTrusted:false) \u2014 tested: ${tested}`;
+      }
+    }
+
+    // -- Click --
+    document.getElementById('click-target').addEventListener('click', (e) => {
+      logEvent('click-log', e, 'click');
+      results.click = e.isTrusted;
+      updateSummary();
+    });
+
+    // -- Guarded click (simulates X/Twitter pattern) --
+    document.getElementById('guarded-click').addEventListener('click', (e) => {
+      const resultEl = document.getElementById('guarded-click-result');
+      if (!e.isTrusted) {
+        resultEl.innerHTML = '<span class="untrusted">\u274c BLOCKED: Synthetic click rejected (isTrusted=false)</span>';
+        results.guarded_click = false;
+      } else {
+        resultEl.innerHTML = '<span class="trusted">\u2705 ACCEPTED: Hardware click passed guard (isTrusted=true)</span>';
+        results.guarded_click = true;
+      }
+      updateSummary();
+    });
+
+    // -- Type (input) --
+    const typeTarget = document.getElementById('type-target');
+    typeTarget.addEventListener('keydown', (e) => {
+      logEvent('type-log', e, 'keydown');
+      results.type = e.isTrusted;
+      updateSummary();
+    });
+    typeTarget.addEventListener('input', (e) => {
+      logEvent('type-log', e, 'input');
+    });
+
+    // -- Type (contenteditable) --
+    const ceTarget = document.getElementById('ce-target');
+    ceTarget.addEventListener('keydown', (e) => {
+      logEvent('ce-log', e, 'keydown');
+      results.ce_type = e.isTrusted;
+      updateSummary();
+    });
+    ceTarget.addEventListener('input', (e) => {
+      logEvent('ce-log', e, 'input');
+    });
+
+    // -- Key press --
+    const keypressTarget = document.getElementById('keypress-target');
+    keypressTarget.addEventListener('keydown', (e) => {
+      logEvent('keypress-log', e, 'keydown');
+      if (e.key === 'Enter' || e.key === 'Tab' || e.key === 'Escape') {
+        results.key_press = e.isTrusted;
+        updateSummary();
+      }
+    });
+    keypressTarget.addEventListener('keyup', (e) => {
+      logEvent('keypress-log', e, 'keyup');
+    });
+  </script>
+</body>
+</html>

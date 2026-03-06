@@ -1,6 +1,5 @@
-// Purpose: Validate validators_fuzz_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Fuzz file upload operations for edge-case inputs and panics.
+// Docs: docs/features/feature/file-upload/index.md
 
 // validators_fuzz_test.go — Fuzz tests for OS automation path validation and sanitizers.
 package upload

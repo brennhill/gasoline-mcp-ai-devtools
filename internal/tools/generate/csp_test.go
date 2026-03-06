@@ -1,6 +1,5 @@
-// Purpose: Validate csp_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for CSP policy generation from captured traffic.
+// Docs: docs/features/feature/test-generation/index.md
 
 // csp_test.go — Tests for CSP generation helpers.
 package generate

@@ -4,5 +4,5 @@
  * Docs: docs/features/feature/query-service/index.md
  */
 // Re-export type guards from utils
-export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils';
+export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils.js';
 //# sourceMappingURL=index.js.map

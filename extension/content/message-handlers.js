@@ -1,13 +1,15 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Purpose: Handles incoming chrome.runtime messages from the background script -- pings, setting toggles, highlights, JS execution, state management, and draw mode.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking.js';
-import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js';
+import { createDeferredPromise, promiseRaceWithCleanup } from '../lib/timeout-utils.js';
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
+import { extractReadable as extractReadableContent } from './extractors/readable.js';
+import { extractMarkdown as extractMarkdownContent } from './extractors/markdown.js';
+import { extractPageSummary as extractPageSummaryContent } from './extractors/page-summary.js';
+import { errorMessage } from '../lib/error-utils.js';
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1;
 /** Parse query params from string (JSON) or object form into a plain object */
@@ -302,7 +304,56 @@ export function handleComputedStylesQuery(params, sendResponse) {
 export function handleFormDiscoveryQuery(params, sendResponse) {
     return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse);
 }
+export function handleFormStateQuery(params, sendResponse) {
+    return forwardInjectQuery('GASOLINE_FORM_STATE_QUERY', 'GASOLINE_FORM_STATE_RESPONSE', 'Form state', params, sendResponse);
+}
+export function handleDataTableQuery(params, sendResponse) {
+    return forwardInjectQuery('GASOLINE_DATA_TABLE_QUERY', 'GASOLINE_DATA_TABLE_RESPONSE', 'Data table extraction', params, sendResponse);
+}
 export function handleLinkHealthQuery(params, sendResponse) {
     return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse);
+}
+// ============================================
+// Content-Script-Native Extractors (ISOLATED world, CSP-safe)
+// Issue #257: These run directly in the content script — no inject bridge needed.
+// ============================================
+/**
+ * Handle GET_READABLE message — extract readable content directly in ISOLATED world.
+ */
+export function handleGetReadable(sendResponse) {
+    try {
+        sendResponse(extractReadableContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'get_readable_failed', message: errorMessage(err, 'Readable extraction failed') });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
+}
+/**
+ * Handle GET_MARKDOWN message — extract markdown content directly in ISOLATED world.
+ */
+export function handleGetMarkdown(sendResponse) {
+    try {
+        sendResponse(extractMarkdownContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'get_markdown_failed', message: errorMessage(err, 'Markdown extraction failed') });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
+}
+/**
+ * Handle PAGE_SUMMARY message — extract page summary directly in ISOLATED world.
+ */
+export function handlePageSummary(sendResponse) {
+    try {
+        sendResponse(extractPageSummaryContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'page_summary_failed', message: errorMessage(err, 'Page summary extraction failed') });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
 }
 //# sourceMappingURL=message-handlers.js.map

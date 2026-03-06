@@ -1,6 +1,5 @@
-// Purpose: Validate upload_integration_security_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Integration tests for dev-console end-to-end flows.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_integration_security_test.go — Integration tests for upload security features.
 // Covers: OS automation path validation, path injection prevention, HTTP method validation,

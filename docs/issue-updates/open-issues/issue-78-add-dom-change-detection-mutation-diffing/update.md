@@ -1,7 +1,7 @@
 # Product Update: Issue #78
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/78
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/78
 - Title: Add DOM change detection / mutation diffing
 - Last Updated: 2026-02-16T17:42:09Z
 

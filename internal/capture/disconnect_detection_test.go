@@ -1,5 +1,4 @@
-// Purpose: Validate disconnect_detection_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for capture disconnect detection and reconnection.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // disconnect_detection_test.go — Tests for extension disconnect detection.
@@ -14,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // ============================================
@@ -37,7 +36,7 @@ func TestIsExtensionConnected_TrueAfterRecentSync(t *testing.T) {
 	defer c.Close()
 
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now()
+	c.extensionState.lastSyncSeen = time.Now()
 	c.mu.Unlock()
 
 	if !c.IsExtensionConnected() {
@@ -51,7 +50,7 @@ func TestIsExtensionConnected_FalseAfterTimeout(t *testing.T) {
 	defer c.Close()
 
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-15 * time.Second)
+	c.extensionState.lastSyncSeen = time.Now().Add(-15 * time.Second)
 	c.mu.Unlock()
 
 	if c.IsExtensionConnected() {
@@ -66,7 +65,7 @@ func TestIsExtensionConnected_TrueAtBoundary(t *testing.T) {
 
 	// Just under the threshold
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-9 * time.Second)
+	c.extensionState.lastSyncSeen = time.Now().Add(-9 * time.Second)
 	c.mu.Unlock()
 
 	if !c.IsExtensionConnected() {
@@ -85,8 +84,8 @@ func TestGetExtensionStatus_ReturnsConnectionInfo(t *testing.T) {
 
 	now := time.Now()
 	c.mu.Lock()
-	c.ext.lastSyncSeen = now
-	c.ext.lastSyncClientID = "client-abc"
+	c.extensionState.lastSyncSeen = now
+	c.extensionState.lastSyncClientID = "client-abc"
 	c.mu.Unlock()
 
 	status := c.GetExtensionStatus()
@@ -113,8 +112,8 @@ func TestGetExtensionStatus_DisconnectedWhenStale(t *testing.T) {
 	defer c.Close()
 
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-20 * time.Second)
-	c.ext.lastSyncClientID = "client-old"
+	c.extensionState.lastSyncSeen = time.Now().Add(-20 * time.Second)
+	c.extensionState.lastSyncClientID = "client-old"
 	c.mu.Unlock()
 
 	status := c.GetExtensionStatus()
@@ -189,10 +188,10 @@ func TestGetPilotStatus_IncludesExtensionLastSeen(t *testing.T) {
 
 	now := time.Now()
 	c.mu.Lock()
-	c.ext.pilotEnabled = true
-	c.ext.lastPollAt = now
-	c.ext.lastSyncSeen = now
-	c.ext.lastSyncClientID = "test-client"
+	c.extensionState.pilotEnabled = true
+	c.extensionState.lastPollAt = now
+	c.extensionState.lastSyncSeen = now
+	c.extensionState.lastSyncClientID = "test-client"
 	c.mu.Unlock()
 
 	status := c.GetPilotStatus().(map[string]any)
@@ -285,18 +284,18 @@ func TestGetPendingQueries_ExpiresOnDisconnect(t *testing.T) {
 
 	// Simulate extension was connected, then disconnected
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-15 * time.Second)
+	c.extensionState.lastSyncSeen = time.Now().Add(-15 * time.Second)
 	c.mu.Unlock()
 
 	// Create a pending query with a correlation ID
-	c.qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	c.queryDispatcher.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "query_dom",
 		Params:        json.RawMessage(`{"selector":".test"}`),
 		CorrelationID: "corr-disconnect-1",
 	}, 30*time.Second, "")
 
 	// Verify query was created
-	pending := c.qd.GetPendingQueries()
+	pending := c.queryDispatcher.GetPendingQueries()
 	if len(pending) != 1 {
 		t.Fatalf("expected 1 pending query, got %d", len(pending))
 	}
@@ -308,7 +307,7 @@ func TestGetPendingQueries_ExpiresOnDisconnect(t *testing.T) {
 	}
 
 	// Verify the command was marked as expired with disconnect reason
-	cmd, found := c.qd.GetCommandResult("corr-disconnect-1")
+	cmd, found := c.queryDispatcher.GetCommandResult("corr-disconnect-1")
 	if !found {
 		t.Fatal("expected command result to exist after disconnect expiry")
 	}
@@ -327,11 +326,11 @@ func TestGetPendingQueries_DoesNotExpireWhenConnected(t *testing.T) {
 
 	// Simulate extension recently connected
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now()
+	c.extensionState.lastSyncSeen = time.Now()
 	c.mu.Unlock()
 
 	// Create pending query
-	c.qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	c.queryDispatcher.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "query_dom",
 		Params:        json.RawMessage(`{"selector":".test"}`),
 		CorrelationID: "corr-connected-1",
@@ -351,7 +350,7 @@ func TestGetPendingQueries_DoesNotExpireWhenNeverSynced(t *testing.T) {
 
 	// lastSyncSeen is zero (never synced) — don't expire, extension might
 	// still connect for the first time
-	c.qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	c.queryDispatcher.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:   "query_dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 	}, 30*time.Second, "")
@@ -369,18 +368,18 @@ func TestHandleSync_ExpiresPendingOnDisconnect(t *testing.T) {
 
 	// Simulate a past sync (extension was connected, now stale)
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-15 * time.Second)
-	c.ext.lastPollAt = time.Now().Add(-15 * time.Second)
+	c.extensionState.lastSyncSeen = time.Now().Add(-15 * time.Second)
+	c.extensionState.lastPollAt = time.Now().Add(-15 * time.Second)
 	c.mu.Unlock()
 
 	// Create pending queries with correlation IDs
-	c.qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	c.queryDispatcher.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "execute_js",
 		Params:        json.RawMessage(`{"script":"alert(1)"}`),
 		CorrelationID: "corr-sync-expire-1",
 	}, 30*time.Second, "")
 
-	c.qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	c.queryDispatcher.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "navigate",
 		Params:        json.RawMessage(`{"url":"https://example.com"}`),
 		CorrelationID: "corr-sync-expire-2",
@@ -406,7 +405,7 @@ func TestHandleSync_ExpiresPendingOnDisconnect(t *testing.T) {
 	}
 
 	// Verify both commands were expired
-	cmd1, found := c.qd.GetCommandResult("corr-sync-expire-1")
+	cmd1, found := c.queryDispatcher.GetCommandResult("corr-sync-expire-1")
 	if !found {
 		t.Fatal("expected corr-sync-expire-1 to exist")
 	}
@@ -414,7 +413,7 @@ func TestHandleSync_ExpiresPendingOnDisconnect(t *testing.T) {
 		t.Fatalf("corr-sync-expire-1: status=%q error=%q, want expired/extension_disconnected", cmd1.Status, cmd1.Error)
 	}
 
-	cmd2, found := c.qd.GetCommandResult("corr-sync-expire-2")
+	cmd2, found := c.queryDispatcher.GetCommandResult("corr-sync-expire-2")
 	if !found {
 		t.Fatal("expected corr-sync-expire-2 to exist")
 	}

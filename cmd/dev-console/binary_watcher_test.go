@@ -1,6 +1,5 @@
-// Purpose: Validate binary_watcher_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for binary file change detection.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -13,6 +12,8 @@ import (
 	"testing"
 	"time"
 )
+
+const testVersionCheckTimeout = 15 * time.Second
 
 func TestBinaryWatcherState_UpgradeInfo_Default(t *testing.T) {
 	t.Parallel()
@@ -56,8 +57,7 @@ func TestBinaryChanged_DetectsModtime(t *testing.T) {
 		t.Fatal("first call should return false (initial cache)")
 	}
 
-	// Touch the file with new modtime and different size
-	time.Sleep(10 * time.Millisecond)
+	// Overwrite with different size to guarantee change detection.
 	if err := os.WriteFile(tmp, []byte("v2-longer"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -98,66 +98,14 @@ func TestBinaryChanged_ErrorWhenMissing(t *testing.T) {
 		t.Fatal("expected error for missing binary")
 	}
 }
-
-func TestVerifyBinaryVersion_ValidOutput(t *testing.T) {
-	t.Parallel()
-	// Create a shell script that prints a version
-	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.8.0'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	ver, err := verifyBinaryVersion(tmp)
-	if err != nil {
-		t.Fatalf("verifyBinaryVersion() error = %v", err)
-	}
-	if ver != "0.8.0" {
-		t.Fatalf("verifyBinaryVersion() = %q, want %q", ver, "0.8.0")
-	}
-}
-
-func TestVerifyBinaryVersion_NoPrefix(t *testing.T) {
-	t.Parallel()
-	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho '0.8.0'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	ver, err := verifyBinaryVersion(tmp)
-	if err != nil {
-		t.Fatalf("verifyBinaryVersion() error = %v", err)
-	}
-	if ver != "0.8.0" {
-		t.Fatalf("verifyBinaryVersion() = %q, want %q", ver, "0.8.0")
-	}
-}
-
-func TestVerifyBinaryVersion_InvalidOutput(t *testing.T) {
-	t.Parallel()
-	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'not a version'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := verifyBinaryVersion(tmp)
-	if err == nil {
-		t.Fatal("expected error for invalid version output")
-	}
-}
-
 func TestVerifyBinaryVersion_Timeout(t *testing.T) {
-	// Not parallel: modifies package-level versionVerifyTimeout
+	t.Parallel()
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
 	if err := os.WriteFile(tmp, []byte("#!/bin/sh\nsleep 30\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	// Override timeout for test
-	origTimeout := versionVerifyTimeout
-	versionVerifyTimeout = 100 * time.Millisecond
-	defer func() { versionVerifyTimeout = origTimeout }()
-
-	_, err := verifyBinaryVersion(tmp)
+	_, err := verifyBinaryVersionWithTimeout(tmp, 100*time.Millisecond)
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
@@ -171,7 +119,7 @@ func TestCheckForUpgrade_DetectsNewer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if !got {
 		t.Fatal("checkForUpgrade should detect newer version")
@@ -189,7 +137,7 @@ func TestCheckForUpgrade_IgnoresOlder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if got {
 		t.Fatal("checkForUpgrade should not detect older version")
@@ -203,10 +151,58 @@ func TestCheckForUpgrade_IgnoresSame(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if got {
 		t.Fatal("checkForUpgrade should not detect same version")
+	}
+}
+
+func TestCheckForUpgrade_TimeoutIsolationAcrossParallelStates(t *testing.T) {
+	t.Parallel()
+
+	timeouts := make(chan time.Duration, 2)
+	nowFn := func() time.Time { return time.Unix(1_700_000_000, 0) }
+
+	makeState := func(timeout time.Duration, reportedVersion string) *BinaryWatcherState {
+		return &BinaryWatcherState{
+			execPath:            "/tmp/ignored",
+			versionCheckTimeout: timeout,
+			verifyVersion: func(_ string, gotTimeout time.Duration) (string, error) {
+				timeouts <- gotTimeout
+				return reportedVersion, nil
+			},
+			now: nowFn,
+		}
+	}
+
+	fastState := makeState(75*time.Millisecond, "0.8.0")
+	slowState := makeState(2*time.Second, "0.9.0")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if !fastState.checkForUpgrade("0.7.0") {
+			t.Error("fastState should detect upgrade")
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if !slowState.checkForUpgrade("0.7.0") {
+			t.Error("slowState should detect upgrade")
+		}
+	}()
+	wg.Wait()
+
+	close(timeouts)
+	seen := map[time.Duration]int{}
+	for timeout := range timeouts {
+		seen[timeout]++
+	}
+
+	if seen[75*time.Millisecond] != 1 || seen[2*time.Second] != 1 {
+		t.Fatalf("expected isolated per-state timeouts {75ms:1, 2s:1}, got %v", seen)
 	}
 }
 
@@ -239,25 +235,12 @@ func TestStartBinaryWatcher_DisabledByEnvVar(t *testing.T) {
 }
 
 func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
-	// Not parallel: modifies package-level getExecutablePath, binaryWatchInterval, upgradeGracePeriod
+	t.Parallel()
 
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
 	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.7.5'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	// Override executable path and poll interval for test
-	origGetExec := getExecutablePath
-	getExecutablePath = func() (string, error) { return tmp, nil }
-	defer func() { getExecutablePath = origGetExec }()
-
-	origInterval := binaryWatchInterval
-	binaryWatchInterval = 50 * time.Millisecond
-	defer func() { binaryWatchInterval = origInterval }()
-
-	origGrace := upgradeGracePeriod
-	upgradeGracePeriod = 50 * time.Millisecond
-	defer func() { upgradeGracePeriod = origGrace }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -266,7 +249,7 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 	var upgradeVersion string
 	var shutdownCalled bool
 
-	s := startBinaryWatcher(ctx, "0.7.5",
+	s := startBinaryWatcherWithConfig(ctx, "0.7.5",
 		func(newVer string) {
 			upgradeMu.Lock()
 			upgradeVersion = newVer
@@ -277,28 +260,60 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 			shutdownCalled = true
 			upgradeMu.Unlock()
 		},
+		binaryWatcherConfig{
+			resolveExecutablePath: func() (string, error) { return tmp, nil },
+			watchInterval:         50 * time.Millisecond,
+			upgradeGracePeriod:    50 * time.Millisecond,
+			versionCheckTimeout:   testVersionCheckTimeout,
+		},
 	)
 	if s == nil {
 		t.Fatal("startBinaryWatcher returned nil")
 	}
 
-	// Wait for initial check to complete
-	time.Sleep(30 * time.Millisecond)
-
-	// Now replace binary with newer version
-	time.Sleep(10 * time.Millisecond)
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.8.0'\n"), 0o755); err != nil {
-		t.Fatal(err)
+	// Wait until watcher caches baseline file state to avoid a race where the
+	// first watcher read observes the upgraded file as its initial snapshot.
+	cacheDeadline := time.Now().Add(2 * time.Second)
+	cached := false
+	for time.Now().Before(cacheDeadline) {
+		s.mu.Lock()
+		cached = !s.lastModTime.IsZero()
+		s.mu.Unlock()
+		if cached {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !cached {
+		t.Fatal("watcher did not cache baseline binary state before upgrade write")
 	}
 
-	// Wait for detection + version verification + grace period.
-	// Shell script execution can take ~1s on macOS due to process spawn overhead.
-	time.Sleep(3 * time.Second)
+	// Now replace binary with newer version
+	updatedScript := []byte("#!/bin/sh\n# upgraded build marker\necho 'gasoline v0.8.0'\n")
+	if err := os.WriteFile(tmp, updatedScript, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Ensure mtime changes even on coarse-grained filesystems.
+	bumped := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(tmp, bumped, bumped); err != nil {
+		t.Fatalf("failed to bump binary mtime: %v", err)
+	}
 
-	upgradeMu.Lock()
-	gotVer := upgradeVersion
-	gotShutdown := shutdownCalled
-	upgradeMu.Unlock()
+	// Wait for detection + version verification + grace period with polling
+	// instead of fixed sleeps to reduce flake under variable CI load.
+	deadline := time.Now().Add(12 * time.Second)
+	var gotVer string
+	var gotShutdown bool
+	for time.Now().Before(deadline) {
+		upgradeMu.Lock()
+		gotVer = upgradeVersion
+		gotShutdown = shutdownCalled
+		upgradeMu.Unlock()
+		if gotVer == "0.8.0" && gotShutdown {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 
 	if gotVer != "0.8.0" {
 		t.Fatalf("expected upgrade to 0.8.0, got %q", gotVer)

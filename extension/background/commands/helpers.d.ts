@@ -1,12 +1,8 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Shared infrastructure for command dispatch -- result helpers, target tab resolution, action toast, and type aliases.
  */
-import type { PendingQuery } from '../../types';
-import type { SyncClient } from '../sync-client';
+import type { PendingQuery } from '../../types/index.js';
+import type { SyncClient } from '../sync-client.js';
 /** Callback signature for sending async command results back through /sync */
 export type SendAsyncResultFn = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout' | 'cancelled', result?: unknown, error?: string) => void;
 /** Callback signature for showing visual action toasts */
@@ -25,6 +21,7 @@ interface TargetResolutionError {
     payload: Record<string, unknown>;
     message: string;
 }
+export declare function debugLog(category: string, message: string, data?: unknown): void;
 /** Send a query result back through /sync */
 export declare function sendResult(syncClient: SyncClient, queryId: string, result: unknown): void;
 /** Send an async command result back through /sync */
@@ -35,6 +32,7 @@ export declare function parseQueryParamsObject(params: PendingQuery['params']): 
 export declare function withTargetContext(result: unknown, target: TargetResolution): Record<string, unknown>;
 export declare function requiresTargetTab(queryType: string): boolean;
 export declare function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean;
+export declare function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void>;
 export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
     target?: TargetResolution;
     error?: TargetResolutionError;
@@ -44,5 +42,20 @@ export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryPa
  * Covers internal browser pages and known CSP-restricted origins.
  */
 export declare function isRestrictedUrl(url: string | undefined): boolean;
+/** Check if an error indicates the content script is not loaded on the target page. */
+export declare function isContentScriptUnreachableError(err: unknown): boolean;
+/**
+ * Minimal context shape needed by requireAiWebPilot.
+ * Avoids circular import with registry.ts (which defines CommandContext).
+ */
+interface AiWebPilotGuardContext {
+    sendResult: (result: unknown) => void;
+}
+/**
+ * Guard that checks AI Web Pilot is enabled.
+ * Returns true if enabled and the caller should proceed.
+ * Returns false if disabled — the error response has already been sent.
+ */
+export declare function requireAiWebPilot(ctx: AiWebPilotGuardContext): boolean;
 export {};
 //# sourceMappingURL=helpers.d.ts.map

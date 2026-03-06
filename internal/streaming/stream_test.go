@@ -1,6 +1,5 @@
-// Purpose: Validate stream_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for SSE streaming connection and event delivery.
+// Docs: docs/features/feature/context-streaming/index.md
 
 // stream_test.go — Unit tests for StreamState: config, filters, throttle, dedup, emission.
 package streaming
@@ -12,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 func TestCategoryMatchesEvent(t *testing.T) {
@@ -318,8 +317,8 @@ func TestFormatMCPNotification(t *testing.T) {
 	if notif.Params.Level != "error" {
 		t.Fatalf("expected level=error, got %q", notif.Params.Level)
 	}
-	if notif.Params.Logger != "gasoline" {
-		t.Fatalf("expected logger=gasoline, got %q", notif.Params.Logger)
+	if notif.Params.Logger != NotificationLoggerName {
+		t.Fatalf("expected logger=%s, got %q", NotificationLoggerName, notif.Params.Logger)
 	}
 
 	data := notif.Params.Data.(map[string]any)

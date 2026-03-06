@@ -1,6 +1,9 @@
 ---
 title: Gasoline vs Alternatives
 description: "Compare Gasoline with Chrome DevTools MCP, BrowserTools MCP, and Cursor MCP Extension. Architecture, dependencies, and approach differences."
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['alternatives']
 ---
 
 Gasoline is an open-source browser extension + MCP server for AI coding assistant browser debugging. Here's how it compares to other MCP browser tools.

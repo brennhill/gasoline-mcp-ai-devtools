@@ -5,26 +5,33 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/circuit"
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/recording"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/circuit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
 )
 
 // Type aliases for imported packages to avoid qualifying every use.
 // These are real type aliases (= syntax), not any forward declarations.
 type (
-	PerformanceSnapshot   = performance.PerformanceSnapshot   // Alias for convenience (avoid qualifying as performance.PerformanceSnapshot everywhere)
-	PerformanceBaseline   = performance.PerformanceBaseline   // Alias for convenience
-	PerformanceRegression = performance.PerformanceRegression // Alias for convenience
-	ResourceEntry         = performance.ResourceEntry         // Alias for convenience
-	ResourceDiff          = performance.ResourceDiff          // Alias for convenience
-	CausalDiffResult      = performance.CausalDiffResult      // Alias for convenience
-	Recording             = recording.Recording               // Alias for convenience (avoid qualifying as recording.Recording everywhere)
-	RecordingAction       = recording.RecordingAction         // Alias for convenience
-	PendingQueryResponse  = queries.PendingQueryResponse      // Alias for convenience (avoid qualifying as queries.PendingQueryResponse everywhere)
-	PendingQuery          = queries.PendingQuery              // Alias for convenience
-	CommandResult         = queries.CommandResult             // Alias for convenience (avoid qualifying as queries.CommandResult everywhere)
+	// Store is the preferred non-stuttering name for the package's primary state container.
+	// Backward compatibility: Capture remains available as an alias target.
+	Store = Capture
+	// Snapshot is the preferred non-stuttering name for CaptureSnapshot.
+	// Backward compatibility: CaptureSnapshot remains available as an alias target.
+	Snapshot = CaptureSnapshot
+
+	PerformanceSnapshot   = performance.Snapshot         // Alias for convenience (avoid qualifying as performance.Snapshot everywhere)
+	PerformanceBaseline   = performance.Baseline         // Alias for convenience
+	PerformanceRegression = performance.Regression       // Alias for convenience
+	ResourceEntry         = performance.ResourceEntry    // Alias for convenience
+	ResourceDiff          = performance.ResourceDiff     // Alias for convenience
+	CausalDiffResult      = performance.CausalDiffResult // Alias for convenience
+	Recording             = recording.Item               // Alias for convenience (avoid qualifying as recording.Item everywhere)
+	RecordingAction       = recording.Action             // Alias for convenience
+	PendingQueryResponse  = queries.PendingQueryResponse // Alias for convenience (avoid qualifying as queries.PendingQueryResponse everywhere)
+	PendingQuery          = queries.PendingQuery         // Alias for convenience
+	CommandResult         = queries.CommandResult        // Alias for convenience (avoid qualifying as queries.CommandResult everywhere)
 
 	// QueryDispatcher subsystem types — moved to internal/queries package.
 	QueryDispatcher = queries.QueryDispatcher // Query lifecycle, result storage, async command tracking
@@ -36,7 +43,7 @@ type (
 	RateLimitResponse = circuit.RateLimitResponse // 429 response body
 
 	// Recording subsystem types — moved to internal/recording package.
-	RecordingManager = recording.RecordingManager // Recording lifecycle, playback, and log-diff engine
+	RecordingManager = recording.Manager          // Recording lifecycle, playback, and log-diff engine
 	StorageInfo      = recording.StorageInfo      // Recording storage usage info
 	PlaybackSession  = recording.PlaybackSession  // Active playback session state
 	PlaybackResult   = recording.PlaybackResult   // Result of executing a single recorded action
@@ -49,3 +56,4 @@ type (
 
 // NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
 var NewCircuitBreaker = circuit.NewCircuitBreaker
+

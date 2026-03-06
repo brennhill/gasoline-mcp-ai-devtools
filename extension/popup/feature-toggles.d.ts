@@ -7,7 +7,7 @@
  * @fileoverview Feature Toggles Module
  * Manages feature toggle configuration and initialization
  */
-import type { FeatureToggleConfig } from './types';
+import type { FeatureToggleConfig } from './types.js';
 /**
  * Feature toggle configuration
  */

@@ -4,6 +4,9 @@ description: "Early-patch WebSocket capture, visual action toasts, and a 106-tes
 date: 2026-02-06T22:52:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.8.0
@@ -45,4 +48,4 @@ npx gasoline-mcp@5.8.0
 
 ## Full Changelog
 
-[v5.7.5...v5.8.0](https://github.com/brennhill/gasoline-mcp-ai-devtools/compare/v5.7.5...v5.8.0)
+[v5.7.5...v5.8.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.7.5...v5.8.0)

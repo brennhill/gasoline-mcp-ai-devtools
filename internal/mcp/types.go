@@ -1,13 +1,22 @@
-// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
-// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Purpose: Declares MCPContentBlock and MCPToolResult types used across all tool responses.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp
 
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+
+// JSONRPCVersion is the JSON-RPC protocol version string. Use this constant
+// instead of the magic string "2.0" when constructing JSON-RPC responses.
+const JSONRPCVersion = "2.0"
+
 // MCPContentBlock represents a single content block in an MCP tool result.
+// Supports both text (type="text") and image (type="image") content types.
+// For text: Type + Text are used. For image: Type + Data + MimeType are used.
 type MCPContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Data     string `json:"data,omitempty"`     // SPEC:MCP — base64-encoded image data (type="image")
+	MimeType string `json:"mimeType,omitempty"` // SPEC:MCP — MIME type for image content (e.g. "image/png", "image/jpeg")
 }
 
 // MCPToolResult represents the result of an MCP tool call.
@@ -78,6 +87,5 @@ type MCPResourceTemplatesListResult struct {
 	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
 }
 
-// LogEntry represents a single log entry from the browser console.
-// Keys typically include: ts, level, message, source, url, stack_trace.
-type LogEntry = map[string]any
+// LogEntry is a type alias for the canonical definition in internal/types.
+type LogEntry = types.LogEntry

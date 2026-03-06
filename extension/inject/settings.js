@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Applies runtime setting changes (network capture, performance marks, WebSocket mode, action replay) and handles state save/load commands in the inject context.
+ * Docs: docs/features/feature/state-time-travel/index.md
  */
 import { setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl } from '../lib/network.js';
 import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
@@ -11,6 +9,7 @@ import { setWebSocketCaptureEnabled, setWebSocketCaptureMode, installWebSocketCa
 import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js';
 import { setDeferralEnabled } from './observers.js';
 import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Valid setting names from content script — imported from canonical constants.
  */
@@ -96,7 +95,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
         }
     }
     catch (err) {
-        result = { error: err.message };
+        result = { error: errorMessage(err) };
     }
     // Send response back to content script
     window.postMessage({

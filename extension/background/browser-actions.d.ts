@@ -1,14 +1,11 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Handles browser navigation actions (navigate, refresh, back, forward, tab management) with CSP probing and async timeouts.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../types';
-import type { SyncClient } from './sync-client';
-import { type CSPProbeResult } from './query-execution';
-import type { SendAsyncResultFn, ActionToastFn } from './pending-queries';
+import type { PendingQuery } from '../types/index.js';
+import type { SyncClient } from './sync-client.js';
+import { type CSPProbeResult } from './query-execution.js';
+import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js';
 export type BrowserActionResult = {
     success: boolean;
     action?: string;

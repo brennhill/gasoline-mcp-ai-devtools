@@ -1,6 +1,5 @@
-// Purpose: Validate upload_handlers_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for upload HTTP handler request processing.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_handlers_test.go — HTTP endpoint and happy-path tests for file upload.
 // Tests the HTTP layer (status codes, content types, disabled/enabled gating)
@@ -25,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
 // ============================================
@@ -115,8 +114,8 @@ func TestUploadHandler_FileRead_Base64Roundtrip(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
-	upload.SkipSSRFCheck = true
-	t.Cleanup(func() { upload.SkipSSRFCheck = false })
+	upload.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
 	testFile := createTestFile(t, "upload.txt", "file content for form submit")
 
 	var (
@@ -217,8 +216,8 @@ func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
 func newUploadHTTPServer(t *testing.T, osAutomationEnabled bool) (*httptest.Server, *Server) {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	upload.SkipSSRFCheck = true
-	t.Cleanup(func() { upload.SkipSSRFCheck = false })
+	upload.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
 	// Set permissive upload security for HTTP handler tests
 	prev := uploadSecurityConfig
 	uploadSecurityConfig = upload.NewSecurity("/", nil)

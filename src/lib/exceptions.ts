@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Captures unhandled exceptions and promise rejections via window.onerror/unhandledrejection, enriching them with AI context before posting.
  * Docs: docs/features/feature/observe/index.md
  */
 
@@ -10,8 +9,8 @@
  * enriching errors with AI context before posting via bridge.
  */
 
-import { postLog, type BridgePayload } from './bridge'
-import { enrichErrorWithAiContext } from './ai-context'
+import { postLog, type BridgePayload } from './bridge.js'
+import { enrichErrorWithAiContext } from './ai-context.js'
 
 interface ExceptionEntry extends Record<string, unknown> {
   level: 'error'

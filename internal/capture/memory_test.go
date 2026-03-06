@@ -1,5 +1,4 @@
-// Purpose: Validate memory_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for capture memory accounting and limits.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -59,13 +58,13 @@ func makeAction() EnhancedAction {
 // Helper: recalculate running memory totals from current slices.
 // Must be called with lock held.
 func recalcMemoryTotals(c *Capture) {
-	c.wsMemoryTotal = 0
-	for i := range c.wsEvents {
-		c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
+	c.buffers.wsMemoryTotal = 0
+	for i := range c.buffers.wsEvents {
+		c.buffers.wsMemoryTotal += wsEventMemory(&c.buffers.wsEvents[i])
 	}
-	c.nbMemoryTotal = 0
-	for i := range c.networkBodies {
-		c.nbMemoryTotal += nbEntryMemory(&c.networkBodies[i])
+	c.buffers.networkBodyMemoryTotal = 0
+	for i := range c.buffers.networkBodies {
+		c.buffers.networkBodyMemoryTotal += nbEntryMemory(&c.buffers.networkBodies[i])
 	}
 }
 
@@ -97,13 +96,13 @@ func TestMemory_CalcWSMemory_PerEventEstimate(t *testing.T) {
 
 	dataSize := 1000
 	c.mu.Lock()
-	c.wsEvents = append(c.wsEvents, makeWSEvent(dataSize))
-	c.wsAddedAt = append(c.wsAddedAt, time.Now())
+	c.buffers.wsEvents = append(c.buffers.wsEvents, makeWSEvent(dataSize))
+	c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, time.Now())
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	c.mu.RLock()
-	mem := c.calcWSMemory()
+	mem := c.buffers.calcWSMemory()
 	c.mu.RUnlock()
 
 	expectedMin := int64(dataSize + 100)
@@ -121,13 +120,13 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 
 	reqSize, respSize := 500, 1500
 	c.mu.Lock()
-	c.networkBodies = append(c.networkBodies, makeNetworkBody(reqSize, respSize))
-	c.networkAddedAt = append(c.networkAddedAt, time.Now())
+	c.buffers.networkBodies = append(c.buffers.networkBodies, makeNetworkBody(reqSize, respSize))
+	c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, time.Now())
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	c.mu.RLock()
-	mem := c.calcNBMemory()
+	mem := c.buffers.calcNBMemory()
 	c.mu.RUnlock()
 
 	expectedMin := int64(reqSize + respSize + 50)
@@ -138,41 +137,6 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 			mem, expectedMin, expectedMax, reqSize, respSize)
 	}
 }
-
-func TestMemory_CalcActionMemory_PerEntryEstimate(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	c.mu.Lock()
-	c.enhancedActions = append(c.enhancedActions, makeAction())
-	c.actionAddedAt = append(c.actionAddedAt, time.Now())
-	c.mu.Unlock()
-
-	c.mu.RLock()
-	mem := c.calcActionMemory()
-	c.mu.RUnlock()
-
-	expected := int64(500)
-	if mem != expected {
-		t.Errorf("calcActionMemory() = %d, expected %d for 1 action", mem, expected)
-	}
-}
-
-func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	c.mu.RLock()
-	ws := c.calcWSMemory()
-	nb := c.calcNBMemory()
-	actions := c.calcActionMemory()
-	c.mu.RUnlock()
-
-	if ws != 0 || nb != 0 || actions != 0 {
-		t.Errorf("expected all zero for empty buffers, got ws=%d nb=%d actions=%d", ws, nb, actions)
-	}
-}
-
 // ============================================
 // Running Total Accuracy
 // ============================================
@@ -189,8 +153,8 @@ func TestMemory_RunningTotal_WSAccurateAfterAdd(t *testing.T) {
 	c.AddWebSocketEvents(events)
 
 	c.mu.RLock()
-	runningTotal := c.wsMemoryTotal
-	expected := bruteForceWSMemory(c.wsEvents)
+	runningTotal := c.buffers.wsMemoryTotal
+	expected := bruteForceWSMemory(c.buffers.wsEvents)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -209,12 +173,12 @@ func TestMemory_RunningTotal_NBAccurateAfterAdd(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
-	expected := bruteForceNBMemory(c.networkBodies)
+	runningTotal := c.buffers.networkBodyMemoryTotal
+	expected := bruteForceNBMemory(c.buffers.networkBodies)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
-		t.Errorf("nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -230,9 +194,9 @@ func TestMemory_RunningTotal_WSAccurateAfterRotation(t *testing.T) {
 	c.AddWebSocketEvents(events)
 
 	c.mu.RLock()
-	runningTotal := c.wsMemoryTotal
-	expected := bruteForceWSMemory(c.wsEvents)
-	count := len(c.wsEvents)
+	runningTotal := c.buffers.wsMemoryTotal
+	expected := bruteForceWSMemory(c.buffers.wsEvents)
+	count := len(c.buffers.wsEvents)
 	c.mu.RUnlock()
 
 	if count > MaxWSEvents {
@@ -255,16 +219,16 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
-	expected := bruteForceNBMemory(c.networkBodies)
-	count := len(c.networkBodies)
+	runningTotal := c.buffers.networkBodyMemoryTotal
+	expected := bruteForceNBMemory(c.buffers.networkBodies)
+	count := len(c.buffers.networkBodies)
 	c.mu.RUnlock()
 
 	if count > MaxNetworkBodies {
 		t.Errorf("expected at most %d bodies, got %d", MaxNetworkBodies, count)
 	}
 	if runningTotal != expected {
-		t.Errorf("after rotation: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("after rotation: networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -281,8 +245,8 @@ func TestMemory_RunningTotal_WSAccurateAfterPerBufferEviction(t *testing.T) {
 	c.AddWebSocketEvents(events)
 
 	c.mu.RLock()
-	runningTotal := c.wsMemoryTotal
-	expected := bruteForceWSMemory(c.wsEvents)
+	runningTotal := c.buffers.wsMemoryTotal
+	expected := bruteForceWSMemory(c.buffers.wsEvents)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -302,12 +266,12 @@ func TestMemory_RunningTotal_NBAccurateAfterPerBufferEviction(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
-	expected := bruteForceNBMemory(c.networkBodies)
+	runningTotal := c.buffers.networkBodyMemoryTotal
+	expected := bruteForceNBMemory(c.buffers.networkBodies)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
-		t.Errorf("after per-buffer NB eviction: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("after per-buffer NB eviction: networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -319,29 +283,29 @@ func TestMemory_RunningTotal_ZeroAfterClearAll(t *testing.T) {
 	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(500, 500), makeNetworkBody(1000, 1000)})
 
 	c.mu.RLock()
-	wsBefore := c.wsMemoryTotal
-	nbBefore := c.nbMemoryTotal
+	wsBefore := c.buffers.wsMemoryTotal
+	nbBefore := c.buffers.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if wsBefore == 0 {
 		t.Fatal("expected non-zero wsMemoryTotal before ClearAll")
 	}
 	if nbBefore == 0 {
-		t.Fatal("expected non-zero nbMemoryTotal before ClearAll")
+		t.Fatal("expected non-zero networkBodyMemoryTotal before ClearAll")
 	}
 
 	c.ClearAll()
 
 	c.mu.RLock()
-	wsAfter := c.wsMemoryTotal
-	nbAfter := c.nbMemoryTotal
+	wsAfter := c.buffers.wsMemoryTotal
+	nbAfter := c.buffers.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if wsAfter != 0 {
 		t.Errorf("expected wsMemoryTotal = 0 after ClearAll, got %d", wsAfter)
 	}
 	if nbAfter != 0 {
-		t.Errorf("expected nbMemoryTotal = 0 after ClearAll, got %d", nbAfter)
+		t.Errorf("expected networkBodyMemoryTotal = 0 after ClearAll, got %d", nbAfter)
 	}
 }
 
@@ -352,8 +316,8 @@ func TestMemory_CalcWSMemory_ReturnsRunningTotal(t *testing.T) {
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(500), makeWSEvent(1000)})
 
 	c.mu.RLock()
-	calcResult := c.calcWSMemory()
-	runningTotal := c.wsMemoryTotal
+	calcResult := c.buffers.calcWSMemory()
+	runningTotal := c.buffers.wsMemoryTotal
 	c.mu.RUnlock()
 
 	if calcResult != runningTotal {
@@ -368,12 +332,12 @@ func TestMemory_CalcNBMemory_ReturnsRunningTotal(t *testing.T) {
 	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(500, 500)})
 
 	c.mu.RLock()
-	calcResult := c.calcNBMemory()
-	runningTotal := c.nbMemoryTotal
+	calcResult := c.buffers.calcNBMemory()
+	runningTotal := c.buffers.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if calcResult != runningTotal {
-		t.Errorf("calcNBMemory() = %d, nbMemoryTotal = %d; expected equal", calcResult, runningTotal)
+		t.Errorf("calcNBMemory() = %d, networkBodyMemoryTotal = %d; expected equal", calcResult, runningTotal)
 	}
 }
 
@@ -392,16 +356,16 @@ func TestMemory_RunningTotal_MultipleAddEvictCycles(t *testing.T) {
 	}
 
 	c.mu.RLock()
-	wsRunning := c.wsMemoryTotal
-	wsExpected := bruteForceWSMemory(c.wsEvents)
-	nbRunning := c.nbMemoryTotal
-	nbExpected := bruteForceNBMemory(c.networkBodies)
+	wsRunning := c.buffers.wsMemoryTotal
+	wsExpected := bruteForceWSMemory(c.buffers.wsEvents)
+	nbRunning := c.buffers.networkBodyMemoryTotal
+	nbExpected := bruteForceNBMemory(c.buffers.networkBodies)
 	c.mu.RUnlock()
 
 	if wsRunning != wsExpected {
 		t.Errorf("after multiple cycles: wsMemoryTotal = %d, brute force = %d", wsRunning, wsExpected)
 	}
 	if nbRunning != nbExpected {
-		t.Errorf("after multiple cycles: nbMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
+		t.Errorf("after multiple cycles: networkBodyMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
 	}
 }

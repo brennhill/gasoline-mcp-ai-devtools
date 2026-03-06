@@ -1,5 +1,4 @@
-// Purpose: Validate async_queue_integration_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Integration tests for capture pipeline end-to-end flows.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // async_queue_integration_test.go — Integration test for full async queue-and-poll flow
@@ -12,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // TestAsyncQueueIntegration verifies the complete async queue-and-poll architecture.

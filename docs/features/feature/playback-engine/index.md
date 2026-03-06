@@ -4,10 +4,12 @@ feature_id: feature-playback-engine
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-18
+last_reviewed: 2026-03-05
 code_paths:
   - internal/capture/playback.go
 test_paths: []
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Playback Engine

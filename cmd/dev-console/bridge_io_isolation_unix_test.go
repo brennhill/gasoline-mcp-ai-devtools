@@ -1,6 +1,5 @@
-// Purpose: Validate bridge_io_isolation_unix_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for bridge I/O isolation and file descriptor management.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 //go:build !windows
 

@@ -1,30 +1,29 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Applies runtime setting changes (network capture, performance marks, WebSocket mode, action replay) and handles state save/load commands in the inject context.
+ * Docs: docs/features/feature/state-time-travel/index.md
  */
 
 // settings.ts — Settings dispatch and state command handling for inject context.
 
-import type { BrowserStateSnapshot, StateAction, WebSocketCaptureMode } from '../types/index'
+import type { BrowserStateSnapshot, StateAction, WebSocketCaptureMode } from '../types/index.js'
 
+import { setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl } from '../lib/network.js'
 import {
-  setNetworkWaterfallEnabled,
-  setNetworkBodyCaptureEnabled,
-  setServerUrl
-} from '../lib/network'
-import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance'
-import { setActionCaptureEnabled } from '../lib/actions'
+  setPerformanceMarksEnabled,
+  installPerformanceCapture,
+  uninstallPerformanceCapture
+} from '../lib/performance.js'
+import { setActionCaptureEnabled } from '../lib/actions.js'
 import {
   setWebSocketCaptureEnabled,
   setWebSocketCaptureMode,
   installWebSocketCapture,
   uninstallWebSocketCapture
-} from '../lib/websocket'
-import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot'
-import { setDeferralEnabled } from './observers'
-import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
+} from '../lib/websocket.js'
+import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js'
+import { setDeferralEnabled } from './observers.js'
+import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js'
+import { errorMessage } from '../lib/error-utils.js'
 
 /**
  * Valid setting names from content script — imported from canonical constants.
@@ -85,7 +84,8 @@ const SETTING_HANDLERS: Record<string, SettingHandler> = {
     if (data.enabled) installWebSocketCapture()
     else uninstallWebSocketCapture()
   },
-  [SettingName.WEBSOCKET_CAPTURE_MODE]: (data) => setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode),
+  [SettingName.WEBSOCKET_CAPTURE_MODE]: (data) =>
+    setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode),
   [SettingName.PERFORMANCE_SNAPSHOT]: (data) => setPerformanceSnapshotEnabled(data.enabled!),
   [SettingName.DEFERRAL]: (data) => setDeferralEnabled(data.enabled!),
   [SettingName.NETWORK_BODY_CAPTURE]: (data) => setNetworkBodyCaptureEnabled(data.enabled!),
@@ -144,7 +144,7 @@ export function handleStateCommand(
       result = { error: `Unknown action: ${action}` }
     }
   } catch (err) {
-    result = { error: (err as Error).message }
+    result = { error: errorMessage(err) }
   }
 
   // Send response back to content script

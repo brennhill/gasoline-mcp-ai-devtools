@@ -1,3 +1,6 @@
+// Purpose: Writes structured lifecycle diagnostic entries to crash log files on server exit or panic.
+// Why: Preserves post-mortem evidence when the daemon exits unexpectedly for later troubleshooting.
+
 package main
 
 import (
@@ -8,7 +11,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // appendExitDiagnostic writes a structured exit diagnostic entry to the first

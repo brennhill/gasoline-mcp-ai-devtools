@@ -44,25 +44,31 @@ kill_pattern() {
 kill_test_ports() {
   local start="$1"
   local end="$2"
-  local pids
 
   command -v lsof >/dev/null 2>&1 || return 0
 
   for port in $(seq "$start" "$end"); do
+    local pids
     pids="$(lsof -ti :"$port" 2>/dev/null || true)"
     [[ -z "$pids" ]] && continue
     while IFS= read -r pid; do
       [[ -z "$pid" ]] && continue
+      # Only kill gasoline-test-binary processes, not production daemons
+      local cmd
+      cmd="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
+      [[ "$cmd" == *gasoline-test-binary* ]] || continue
       kill -TERM "$pid" 2>/dev/null || true
     done <<< "$pids"
     sleep 0.05
     pids="$(lsof -ti :"$port" 2>/dev/null || true)"
-    if [[ -n "$pids" ]]; then
-      while IFS= read -r pid; do
-        [[ -z "$pid" ]] && continue
-        kill -KILL "$pid" 2>/dev/null || true
-      done <<< "$pids"
-    fi
+    [[ -z "$pids" ]] && continue
+    while IFS= read -r pid; do
+      [[ -z "$pid" ]] && continue
+      local cmd
+      cmd="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
+      [[ "$cmd" == *gasoline-test-binary* ]] || continue
+      kill -KILL "$pid" 2>/dev/null || true
+    done <<< "$pids"
   done
 }
 

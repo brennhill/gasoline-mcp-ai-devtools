@@ -6,41 +6,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/dev-console/dev-console/internal/capture"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
-
-// ============================================
-// Types
-// ============================================
-
-// SnapshotResponse is the aggregated state returned by GET /snapshot.
-type SnapshotResponse struct {
-	Timestamp       string                   `json:"timestamp"`
-	TestID          string                   `json:"test_id,omitempty"`
-	Logs            []LogEntry               `json:"logs"`
-	WebSocket       []capture.WebSocketEvent `json:"websocket_events"`
-	NetworkBodies   []capture.NetworkBody    `json:"network_bodies"`
-	EnhancedActions []capture.EnhancedAction `json:"enhanced_actions,omitempty"`
-	Stats           SnapshotStats            `json:"stats"`
-}
-
-// SnapshotStats summarizes the snapshot contents.
-type SnapshotStats struct {
-	TotalLogs       int `json:"total_logs"`
-	ErrorCount      int `json:"error_count"`
-	WarningCount    int `json:"warning_count"`
-	NetworkFailures int `json:"network_failures"`
-	WSConnections   int `json:"ws_connections"`
-}
-
-// TestBoundaryRequest is the request body for POST /test-boundary.
-type TestBoundaryRequest struct {
-	TestID string `json:"test_id"`
-	Action string `json:"action"` // "start" or "end"
-}
 
 // ============================================
 // Handlers
@@ -49,7 +20,7 @@ type TestBoundaryRequest struct {
 // handleSnapshot returns an HTTP handler for GET /snapshot.
 // Returns all captured state in a single response.
 // #lizard forgives
-func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
+func handleSnapshot(server *Server, cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -108,7 +79,7 @@ func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
 
 // handleClear returns an HTTP handler for POST/DELETE /clear.
 // Resets all buffers atomically.
-func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
+func handleClear(server *Server, cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" && r.Method != "DELETE" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -128,7 +99,7 @@ func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
 
 // handleTestBoundary returns an HTTP handler for POST /test-boundary.
 // Marks test boundaries for correlation.
-func handleTestBoundary(cap *capture.Capture) http.HandlerFunc {
+func handleTestBoundary(cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -171,65 +142,3 @@ func handleTestBoundary(cap *capture.Capture) http.HandlerFunc {
 		})
 	}
 }
-
-// ============================================
-// Helpers
-// ============================================
-
-// filterLogsSince returns only log entries with timestamps after the given time.
-// Uses the server's addedAt timestamps for ordering, falling back to the "ts" field.
-func filterLogsSince(logs []LogEntry, since time.Time) []LogEntry {
-	result := make([]LogEntry, 0, len(logs))
-	for _, entry := range logs {
-		ts, ok := entry["ts"].(string)
-		if !ok {
-			continue
-		}
-		entryTime, err := time.Parse(time.RFC3339Nano, ts)
-		if err != nil {
-			continue
-		}
-		if entryTime.After(since) {
-			result = append(result, entry)
-		}
-	}
-	return result
-}
-
-// computeSnapshotStats computes summary statistics for a snapshot.
-func computeSnapshotStats(logs []LogEntry, wsEvents []capture.WebSocketEvent, networkBodies []capture.NetworkBody) SnapshotStats {
-	stats := SnapshotStats{
-		TotalLogs: len(logs),
-	}
-
-	for _, entry := range logs {
-		level, _ := entry["level"].(string)
-		switch level {
-		case "error":
-			stats.ErrorCount++
-		case "warn", "warning":
-			stats.WarningCount++
-		}
-	}
-
-	for _, body := range networkBodies {
-		if body.Status >= 400 {
-			stats.NetworkFailures++
-		}
-	}
-
-	// Count unique WS connections
-	connSeen := make(map[string]bool)
-	for _, evt := range wsEvents {
-		if evt.URL != "" {
-			connSeen[evt.URL] = true
-		}
-	}
-	stats.WSConnections = len(connSeen)
-
-	return stats
-}
-
-// ============================================
-// Capture methods for test boundary tracking
-// ============================================

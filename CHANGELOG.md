@@ -141,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Infrastructure
 - **PyPI distribution** — `pip install gasoline-mcp` now available alongside NPM
-- **Repository renamed** to `gasoline-mcp-ai-devtools` for SEO discoverability
+- **Repository renamed** to `gasoline-agentic-browser-devtools-mcp` for SEO discoverability
 - **Documentation overhaul** — Consolidated tests into `tests/`, assets into `docs/assets/`, ADRs into `docs/adrs/`, added templates, feature index, and master doc navigation
 
 ### Known Issues

@@ -1,5 +1,4 @@
-// Purpose: Validate cursor_slo_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: SLO compliance tests for pagination and cursor latency and throughput budgets.
 // Docs: docs/features/feature/pagination/index.md
 
 // cursor_slo_test.go — Performance SLO tests for cursor operations.

@@ -1,6 +1,5 @@
-// Purpose: Validate golden_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Golden-file snapshot tests for dev-console output stability.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // golden_test.go — Golden file validation for MCP tool schemas and initialize response.
 package main
@@ -9,10 +8,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"
@@ -23,20 +23,26 @@ func normalizeVersion(data []byte) []byte {
 	return re.ReplaceAll(data, []byte(`"version": "VERSION"`))
 }
 
-func TestGoldenToolsList(t *testing.T) {
-	// Create server with temp log file
-	server, err := NewServer("/tmp/test-gasoline-golden-tools.jsonl", 100)
+// newGoldenHandlers builds an MCP handler + concrete tool handler backed by an
+// isolated temp logfile so tests remain self-contained and resource-safe.
+func newGoldenHandlers(t *testing.T) (*MCPHandler, *ToolHandler) {
+	t.Helper()
+
+	logPath := filepath.Join(t.TempDir(), "golden.jsonl")
+	server, err := NewServer(logPath, 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
+	t.Cleanup(func() { server.Close() })
 
 	cap := capture.NewCapture()
-
-	// Create handler using proper constructor
 	mcpHandler := NewToolHandler(server, cap)
-
-	// Extract the ToolHandler from MCPHandler.toolHandler
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
+	return mcpHandler, toolHandler
+}
+
+func TestGoldenToolsList(t *testing.T) {
+	_, toolHandler := newGoldenHandlers(t)
 
 	tools := toolHandler.ToolsList()
 	data, err := json.MarshalIndent(tools, "", "  ")
@@ -78,16 +84,7 @@ func TestGoldenToolsList(t *testing.T) {
 }
 
 func TestGoldenInitialize(t *testing.T) {
-	// Create server with temp log file
-	server, err := NewServer("/tmp/test-gasoline-golden-init.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer failed: %v", err)
-	}
-
-	cap := capture.NewCapture()
-
-	// Create handler using proper constructor
-	mcpHandler := NewToolHandler(server, cap)
+	mcpHandler, _ := newGoldenHandlers(t)
 
 	// Create initialize request
 	req := JSONRPCRequest{

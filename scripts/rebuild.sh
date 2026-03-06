@@ -90,7 +90,22 @@ for stale_bin in /usr/local/bin/gasoline-mcp-[0-9]* /usr/local/bin/gasoline-mcp-
     fi
 done
 
-# ── Step 3: Rebuild from source ──────────────────────────
+# ── Step 3: Compile TypeScript (if src/ changed) ─────────
+if [ -d "src" ]; then
+    src_newest_ts=$(find src -name '*.ts' -newer extension/background.js 2>/dev/null | head -1)
+    if [ -n "$src_newest_ts" ]; then
+        step "TypeScript sources changed, recompiling..."
+        if make compile-ts >/dev/null 2>&1; then
+            ok "TypeScript compiled"
+        else
+            warn "TypeScript compilation failed (non-fatal)"
+        fi
+    else
+        ok "TypeScript up to date"
+    fi
+fi
+
+# ── Step 4: Rebuild from source ──────────────────────────
 step "Building from source..."
 if ! go build -o gasoline-mcp "$CMD_PKG"; then
     err "Build failed!"
@@ -104,32 +119,19 @@ ok "Created ./$VERSIONED_BIN_NAME"
 build_version=$(./gasoline-mcp --version 2>&1 || true)
 ok "Built ./gasoline-mcp — ${build_version}"
 
-# ── Step 4: Install to PATH ─────────────────────────────
+# ── Step 5: Install to PATH ─────────────────────────────
 if [ "$INSTALL" = "true" ]; then
     step "Installing to /usr/local/bin..."
-    cp "./$VERSIONED_BIN_NAME" "$VERSIONED_INSTALL_PATH"
-    ln -sfn "$VERSIONED_INSTALL_PATH" /usr/local/bin/gasoline-mcp
-    ok "Installed to $VERSIONED_INSTALL_PATH"
-    ok "Symlinked /usr/local/bin/gasoline-mcp -> $VERSIONED_INSTALL_PATH"
+    # Symlink directly to the project binary — no copy needed on rebuild.
+    ABSOLUTE_BIN="$(cd "$PROJECT_ROOT" && pwd)/$VERSIONED_BIN_NAME"
+    ln -sfn "$ABSOLUTE_BIN" /usr/local/bin/gasoline-mcp
+    ok "Symlinked /usr/local/bin/gasoline-mcp -> $ABSOLUTE_BIN"
 fi
 
-# ── Step 5: Verify single binary ────────────────────────
+# ── Step 6: Verify ──────────────────────────────────────
 step "Verifying..."
-locations=$(which -a gasoline-mcp 2>/dev/null || true)
-count=$(echo "$locations" | grep -c "gasoline-mcp" || true)
-
-if [ "$count" -gt 1 ] && [ "$INSTALL" = "true" ]; then
-    warn "Multiple binaries in PATH:"
-    echo "$locations" | while read -r loc; do
-        echo "    $loc"
-    done
-else
-    ok "Single binary: $(which gasoline-mcp 2>/dev/null || echo './gasoline-mcp')"
-fi
-
-if [ "$INSTALL" = "true" ] && command -v "$VERSIONED_BIN_NAME" >/dev/null 2>&1; then
-    ok "Versioned command: $(which "$VERSIONED_BIN_NAME")"
-fi
+ok "Binary: $(which gasoline-mcp 2>/dev/null || echo './gasoline-mcp')"
+ok "Points to: $(readlink /usr/local/bin/gasoline-mcp 2>/dev/null || echo 'direct binary')"
 
 # Source vs binary timestamp check
 src_newest=$(find "$CMD_DIR" -name '*.go' -newer ./gasoline-mcp 2>/dev/null | head -1)
@@ -139,10 +141,17 @@ else
     ok "Binary is up to date with source"
 fi
 
-echo ""
-echo -e "${G}Done.${X} Binary ready. Run smoke tests with:"
-echo "  ./scripts/smoke-tests/framework-smoke.sh"
-if [ "$INSTALL" = "true" ]; then
-    echo "Versioned command available: $VERSIONED_INSTALL_PATH"
-    echo "Use this in MCP config if you want explicit process names in Activity Monitor."
+# ── Step 7: Restart daemon ──────────────────────────────
+step "Restarting daemon..."
+gasoline-mcp --stop 2>/dev/null || true
+sleep 0.5
+gasoline-mcp --daemon &
+sleep 1
+if pgrep -f "gasoline-mcp" >/dev/null 2>&1; then
+    ok "Daemon running (PID $(pgrep -f 'gasoline-mcp' | head -1))"
+else
+    warn "Daemon may not have started — check logs"
 fi
+
+echo ""
+echo -e "${G}Done.${X} Rebuilt, installed, and restarted."

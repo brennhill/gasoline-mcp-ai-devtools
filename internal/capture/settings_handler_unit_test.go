@@ -1,5 +1,4 @@
-// Purpose: Validate settings_handler_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Unit tests for capture pipeline settings handler logic.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -11,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func TestLoadSettingsFromDiskStaleAndMalformedAreIgnored(t *testing.T) {

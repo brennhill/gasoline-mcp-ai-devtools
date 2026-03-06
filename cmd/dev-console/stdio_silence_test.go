@@ -1,6 +1,5 @@
-// Purpose: Validate stdio_silence_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for stdio silence enforcement in MCP mode.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -125,7 +124,7 @@ func TestStdioSilence_NormalConnection(t *testing.T) {
 		}
 
 		// Must be valid JSON
-		var msg map[string]interface{}
+		var msg map[string]any
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
 			t.Errorf("INVARIANT VIOLATION: Stdout line %d is not valid JSON: %q", lineNum, line)
 			continue

@@ -1,0 +1,14 @@
+extends: substitution
+message: "Use plain language instead of '%s'."
+link: https://www.plainlanguage.gov/
+level: error
+ignorecase: true
+swap:
+  leverage: use
+  utilize: use
+  game[- ]changing: major improvement
+  best[- ]in[- ]class: strong
+  world[- ]class: strong
+  revolutionary: new
+  synerg(?:y|ies|istic|ize): coordination
+

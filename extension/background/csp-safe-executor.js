@@ -1,5 +1,6 @@
 // csp-safe-executor.ts — Pre-compiled executor for structured commands in MAIN world.
 export function cspSafeExecutor(command) {
+    /* jscpd:ignore-start */
     // --- Inline serialize (self-contained, no external refs) ---
     function serialize(value, depth, seen) {
         if (depth > 10)
@@ -29,8 +30,52 @@ export function cspSafeExecutor(command) {
             if ('nodeType' in value && 'nodeName' in value) {
                 return `[${value.nodeName}${value.id ? '#' + value.id : ''}]`;
             }
-            const result = {};
+            // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
+            // that Object.keys() misses. Their toJSON() returns a plain object.
+            if (typeof value.toJSON === 'function') {
+                try {
+                    return serialize(value.toJSON(), depth + 1, seen);
+                }
+                catch {
+                    // Fall through to Object.keys() enumeration
+                }
+            }
             const keys = Object.keys(value).slice(0, 50);
+            // #389: Host objects may expose values only via prototype getters.
+            // Capture primitive getter values when enumerable keys are absent.
+            if (keys.length === 0) {
+                try {
+                    const proto = Object.getPrototypeOf(value);
+                    if (proto && proto !== Object.prototype) {
+                        const hostResult = {};
+                        const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
+                        for (const key of propNames) {
+                            if (key === 'constructor')
+                                continue;
+                            try {
+                                const propValue = value[key];
+                                const valueType = typeof propValue;
+                                if (propValue === undefined || valueType === 'function')
+                                    continue;
+                                if (valueType === 'string' || valueType === 'number' || valueType === 'boolean' || propValue === null) {
+                                    hostResult[key] = propValue;
+                                }
+                            }
+                            catch {
+                                // Ignore getter access errors.
+                            }
+                            if (Object.keys(hostResult).length >= 50)
+                                break;
+                        }
+                        if (Object.keys(hostResult).length > 0)
+                            return hostResult;
+                    }
+                }
+                catch {
+                    // Fall through to default object key enumeration.
+                }
+            }
+            const result = {};
             for (const key of keys) {
                 try {
                     result[key] = serialize(value[key], depth + 1, seen);
@@ -43,6 +88,7 @@ export function cspSafeExecutor(command) {
         }
         return String(value);
     }
+    /* jscpd:ignore-end */
     // --- Resolve a StructuredValue to an actual JS value ---
     function resolveValue(val) {
         switch (val.type) {

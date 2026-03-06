@@ -1,6 +1,5 @@
-// Purpose: Validate lint_hardening_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for lint-hardening rules and static checks.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // lint_hardening_test.go — Go test wrapper for custom lint rules.
 // Runs scripts/lint-hardening.sh as a Go test so violations are caught

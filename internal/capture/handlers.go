@@ -10,13 +10,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // HandleNetworkBodies handles POST /network-bodies from the extension.
 // Reads go through GET /telemetry?type=network_bodies.
 func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
@@ -25,14 +26,11 @@ func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleNetworkBodies: Invalid JSON - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 	c.AddNetworkBodies(payload.Bodies)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	util.JSONResponse(w, http.StatusOK, map[string]any{
 		"status": "ok",
 		"count":  len(payload.Bodies),
 	})
@@ -41,22 +39,18 @@ func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 // HandleNetworkWaterfall handles POST /network-waterfall from the extension.
 // Reads go through GET /telemetry?type=network_waterfall.
 func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	var payload NetworkWaterfallPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleNetworkWaterfall: Invalid JSON - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 	c.AddNetworkWaterfallEntries(payload.Entries, payload.PageURL)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	util.JSONResponse(w, http.StatusOK, map[string]any{
 		"status": "ok",
 		"count":  len(payload.Entries),
 	})
@@ -66,8 +60,7 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 // Unified handler replacing separate dom-result, a11y-result, state-result,
 // execute-result, and highlight-result endpoints.
 func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 
@@ -83,9 +76,7 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleQueryResult: Invalid JSON - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 
@@ -105,8 +96,7 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 		c.ApplyCommandResult(body.CorrelationID, body.Status, body.Result, body.Error)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	util.JSONResponse(w, http.StatusOK, map[string]any{
 		"status": "ok",
 	})
 }
@@ -114,8 +104,7 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 // HandleEnhancedActions handles POST /enhanced-actions from the extension.
 // Reads go through GET /telemetry?type=actions.
 func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
@@ -124,14 +113,11 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleEnhancedActions: Invalid JSON - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 	c.AddEnhancedActions(payload.Actions)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	util.JSONResponse(w, http.StatusOK, map[string]any{
 		"status": "ok",
 		"count":  len(payload.Actions),
 	})
@@ -150,67 +136,53 @@ func (c *Capture) HandleRecordingStorage(w http.ResponseWriter, r *http.Request)
 	case "POST":
 		c.handleStorageRecalculate(w)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		util.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 	}
 }
 
 func (c *Capture) handleStorageGet(w http.ResponseWriter) {
 	info, err := c.GetStorageInfo()
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		util.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(info)
+	util.JSONResponse(w, http.StatusOK, info)
 }
 
 func (c *Capture) handleStorageDelete(w http.ResponseWriter, r *http.Request) {
 	recordingID := r.URL.Query().Get("recording_id")
 	if recordingID == "" {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Missing recording_id query parameter\n")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Missing recording_id query parameter"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing recording_id query parameter"})
 		return
 	}
 	if err := c.DeleteRecording(recordingID); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to delete recording %s - %v\n", recordingID, err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		util.JSONResponse(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "deleted": recordingID})
+	util.JSONResponse(w, http.StatusOK, map[string]any{"status": "ok", "deleted": recordingID})
 }
 
 func (c *Capture) handleStorageRecalculate(w http.ResponseWriter) {
 	if err := c.RecalculateStorageUsed(); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to recalculate storage - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		util.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	info, err := c.GetStorageInfo()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to get storage info - %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		util.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "storage": info})
+	util.JSONResponse(w, http.StatusOK, map[string]any{"status": "ok", "storage": info})
 }
 
 // HandlePerformanceSnapshots handles POST /performance-snapshots from the extension.
 // Reads go through GET /telemetry?type=performance_snapshots.
 func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !util.RequireMethod(w, r, "POST") {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
@@ -218,14 +190,11 @@ func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Requ
 		Snapshots []PerformanceSnapshot `json:"snapshots"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 	c.AddPerformanceSnapshots(payload.Snapshots)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	util.JSONResponse(w, http.StatusOK, map[string]any{
 		"status": "ok",
 		"count":  len(payload.Snapshots),
 	})

@@ -4,6 +4,9 @@ description: "Redesigned interaction model and improved AI agent integration"
 date: 2026-01-17T22:18:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.4.0
@@ -38,4 +41,4 @@ npm install -g gasoline-mcp@5.4.0
 
 ## Full Changelog
 
-[v5.4.0 Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.4.0)
+[v5.4.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.0)

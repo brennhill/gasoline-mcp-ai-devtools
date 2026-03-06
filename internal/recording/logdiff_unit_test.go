@@ -1,6 +1,5 @@
-// Purpose: Validate logdiff_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for recording and playback logdiff logic.
+// Docs: docs/features/feature/playback-engine/index.md
 
 // logdiff_unit_test.go — Unit tests for log diff internals.
 package recording
@@ -10,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func persistRecordingForLogDiff(t *testing.T, mgr *RecordingManager, id string, actions []RecordingAction) {

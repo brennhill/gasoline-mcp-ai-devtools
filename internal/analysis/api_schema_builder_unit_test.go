@@ -1,6 +1,5 @@
-// Purpose: Validate api_schema_builder_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for error clustering and API schema analysis api schema builder logic.
+// Docs: docs/features/feature/api-schema/index.md
 
 package analysis
 
@@ -9,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func almostEqual(got, want float64) bool {

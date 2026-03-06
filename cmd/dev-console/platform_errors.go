@@ -1,3 +1,6 @@
+// Purpose: Provides platform-specific port-kill hints, process lookup, and PID extraction for error recovery messages.
+// Why: Generates actionable OS-native commands (lsof, netstat, taskkill) in error output across macOS/Linux/Windows.
+
 package main
 
 import (

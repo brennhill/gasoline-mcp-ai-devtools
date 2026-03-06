@@ -1,3 +1,6 @@
+// Purpose: Appends passive telemetry summaries (error/network/action deltas since last call) to MCP tool responses.
+// Why: Gives agents ambient situational awareness without requiring explicit observe calls between actions.
+
 package main
 
 import (

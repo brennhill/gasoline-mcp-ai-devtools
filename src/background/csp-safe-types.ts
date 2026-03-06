@@ -25,6 +25,4 @@ export interface StructuredCommand {
 }
 
 /** Result of parsing: either success with a command, or failure with a reason */
-export type ParseResult =
-  | { ok: true; command: StructuredCommand }
-  | { ok: false; reason: string }
+export type ParseResult = { ok: true; command: StructuredCommand } | { ok: false; reason: string }

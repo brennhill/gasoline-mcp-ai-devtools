@@ -4,6 +4,9 @@ description: "Stability and MCP reliability improvements"
 date: 2026-02-07T22:56:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.7.4
@@ -37,4 +40,4 @@ npm install -g gasoline-mcp@5.7.4
 
 ## Full Changelog
 
-[v5.7.4 Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.7.4)
+[v5.7.4 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.4)

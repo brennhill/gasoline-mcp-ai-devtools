@@ -1,5 +1,4 @@
-// Purpose: Validate tools_generate_audit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for generate tool audit trail integration.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_audit_test.go — Behavioral tests for generate tool
@@ -26,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -36,12 +35,12 @@ import (
 type generateTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newGenerateTestEnv(t *testing.T) *generateTestEnv {
 	t.Helper()
-	server, err := NewServer("/tmp/test-generate-audit.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-generate-audit.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

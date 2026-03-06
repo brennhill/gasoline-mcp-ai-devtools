@@ -1,5 +1,4 @@
-// Purpose: Validate tools_interact_dom_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for interact DOM query operations.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_dom_test.go — Tests for DOM interaction primitives.
@@ -40,7 +39,7 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 		{"focus", `{"what":"focus"}`},
 		{"scroll_to", `{"what":"scroll_to"}`},
 		{"wait_for", `{"what":"wait_for"}`},
-		{"key_press", `{"what":"key_press","text":"Enter"}`},
+		{"hover", `{"what":"hover"}`},
 	}
 
 	for _, tc := range actions {
@@ -178,6 +177,8 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
+		{"hover", `{"what":"hover","selector":"#el"}`},
+		{"activate_tab", `{"what":"activate_tab"}`},
 	}
 
 	for _, tc := range actions {
@@ -237,6 +238,28 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 	}
 }
 
+// ============================================
+// key_press: No selector required (#321)
+// ============================================
+
+func TestDOMPrimitive_KeyPress_NoSelectorRequired(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// key_press without selector should NOT get a "selector missing" error.
+	// It should reach the pilot check instead (pilot is disabled in test env).
+	result, ok := env.callInteract(t, `{"what":"key_press","text":"Escape"}`)
+	if !ok {
+		t.Fatal("key_press without selector should return result")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if strings.Contains(text, "selector") {
+			t.Errorf("key_press should NOT require selector (#321)\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
 func TestDOMPrimitive_IntentActions_NoSelectorNeeded(t *testing.T) {
 	env := newInteractTestEnv(t)
 
@@ -245,6 +268,7 @@ func TestDOMPrimitive_IntentActions_NoSelectorNeeded(t *testing.T) {
 		"submit_active_composer",
 		"confirm_top_dialog",
 		"dismiss_top_overlay",
+		"activate_tab",
 	}
 
 	for _, action := range actions {
@@ -332,6 +356,136 @@ func TestDOMPrimitive_Paste_PilotDisabled(t *testing.T) {
 // Safety Net: All DOM actions don't panic
 // ============================================
 
+// ============================================
+// wait_for: Enhanced condition validation (#371)
+// ============================================
+
+func TestDOMPrimitive_WaitFor_TextOnly_NoSelectorRequired(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// wait_for with text (no selector) should NOT get a "selector missing" error.
+	// It should reach the pilot check instead.
+	result, ok := env.callInteract(t, `{"what":"wait_for","text":"Welcome"}`)
+	if !ok {
+		t.Fatal("wait_for with text should return result")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if strings.Contains(text, "selector") {
+			t.Errorf("wait_for with text should NOT require selector\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_WaitFor_URLContainsOnly_NoSelectorRequired(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// wait_for with url_contains (no selector) should NOT get a "selector missing" error.
+	result, ok := env.callInteract(t, `{"what":"wait_for","url_contains":"/dashboard"}`)
+	if !ok {
+		t.Fatal("wait_for with url_contains should return result")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if strings.Contains(text, "selector") {
+			t.Errorf("wait_for with url_contains should NOT require selector\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_WaitFor_MutualExclusivity(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	cases := []struct {
+		name string
+		args string
+	}{
+		{"selector_and_text", `{"what":"wait_for","selector":"#el","text":"hello"}`},
+		{"selector_and_url_contains", `{"what":"wait_for","selector":"#el","url_contains":"/page"}`},
+		{"text_and_url_contains", `{"what":"wait_for","text":"hello","url_contains":"/page"}`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, ok := env.callInteract(t, tc.args)
+			if !ok {
+				t.Fatalf("wait_for %s should return result", tc.name)
+			}
+
+			if !result.IsError {
+				t.Errorf("wait_for %s MUST return isError:true", tc.name)
+			}
+
+			if len(result.Content) > 0 {
+				text := strings.ToLower(result.Content[0].Text)
+				if !strings.Contains(text, "mutually exclusive") {
+					t.Errorf("wait_for %s error should mention 'mutually exclusive'\nGot: %s", tc.name, result.Content[0].Text)
+				}
+			}
+		})
+	}
+}
+
+func TestDOMPrimitive_WaitFor_AbsentRequiresSelector(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"what":"wait_for","absent":true}`)
+	if !ok {
+		t.Fatal("wait_for with absent but no selector should return result")
+	}
+
+	if !result.IsError {
+		t.Error("wait_for with absent but no selector MUST return isError:true")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if !strings.Contains(text, "selector") {
+			t.Errorf("error should mention selector requirement\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_WaitFor_AbsentWithSelector_PassesValidation(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// wait_for with absent + selector should pass validation and reach the pilot check
+	result, ok := env.callInteract(t, `{"what":"wait_for","selector":"#spinner","absent":true}`)
+	if !ok {
+		t.Fatal("wait_for with absent+selector should return result")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		// Should NOT fail on condition validation — should reach pilot check instead
+		if strings.Contains(text, "mutually exclusive") || strings.Contains(text, "requires") {
+			t.Errorf("wait_for with absent+selector should pass validation\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_WaitFor_NoCondition(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"what":"wait_for"}`)
+	if !ok {
+		t.Fatal("wait_for with no conditions should return result")
+	}
+
+	if !result.IsError {
+		t.Error("wait_for with no conditions MUST return isError:true")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if !strings.Contains(text, "condition") && !strings.Contains(text, "selector") {
+			t.Errorf("error should mention missing condition\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
 func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 	env := newInteractTestEnv(t)
 
@@ -357,6 +511,8 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
+		{"hover", `{"what":"hover","selector":"#el"}`},
+		{"activate_tab", `{"what":"activate_tab"}`},
 	}
 
 	for _, tc := range allActions {

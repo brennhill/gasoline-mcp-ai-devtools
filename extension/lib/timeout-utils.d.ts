@@ -1,7 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Reusable Promise patterns -- timeout races, message-based request/response with cleanup, and deferred promises for external resolution.
  */
 /**
  * @fileoverview Timeout and Promise utilities - Reusable patterns for handling timeouts,
@@ -268,4 +266,14 @@ export declare function racePromises<T>(promises: Promise<T>[]): Promise<T>;
  * );
  */
 export declare function executeWithTimeoutAndCleanup<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T, cleanup?: () => void): Promise<T>;
+/**
+ * Fetch a URL with an AbortController-based timeout.
+ * Consolidates the recurring AbortController + setTimeout + clearTimeout pattern.
+ *
+ * @param url URL to fetch
+ * @param options Standard RequestInit (headers, method, body, etc.)
+ * @param timeoutMs Timeout in milliseconds before aborting
+ * @returns The fetch Response
+ */
+export declare function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response>;
 //# sourceMappingURL=timeout-utils.d.ts.map

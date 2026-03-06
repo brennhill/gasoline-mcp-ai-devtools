@@ -4,7 +4,9 @@ priority: tier-1
 phase: v6.0-sprint-1
 relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
 last-updated: 2026-01-31
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Browser Extension Enhancement — QA Plan

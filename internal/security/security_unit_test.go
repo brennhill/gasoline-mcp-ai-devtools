@@ -1,6 +1,5 @@
-// Purpose: Validate security_unit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Unit tests for security logic.
+// Docs: docs/features/feature/security-hardening/index.md
 
 package security
 
@@ -9,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func TestParseCookies_MultipleLinesAndAttributes(t *testing.T) {

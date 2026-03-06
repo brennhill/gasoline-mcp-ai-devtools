@@ -1,5 +1,4 @@
-// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
-// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Purpose: Defines structured error codes, ToolError type, and error response builders for MCP tool results.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp
@@ -41,24 +40,36 @@ const (
 // StructuredError is embedded in MCP text content. Every field is
 // self-describing so an LLM can act on it without a lookup table.
 type StructuredError struct {
-	Error        string `json:"error"`
-	Message      string `json:"message"`
-	Retry        string `json:"retry"`
+	// Canonical contract fields.
+	ErrorCode        string `json:"error_code"`
+	Message          string `json:"message"`
+	RecoveryPlaybook string `json:"recovery_playbook"`
+
 	Retryable    bool   `json:"retryable"`
 	RetryAfterMs int    `json:"retry_after_ms,omitempty"`
 	Final        bool   `json:"final,omitempty"`
 	Param        string `json:"param,omitempty"`
 	Hint         string `json:"hint,omitempty"`
+	Action       string `json:"action,omitempty"`
+	Selector     string `json:"selector,omitempty"`
+
+	// RecoveryToolCall is a copy-pasteable MCP tool call the LLM can use to recover.
+	// Keys: "tool" (string), "arguments" (map[string]any).
+	RecoveryToolCall map[string]any `json:"recovery_tool_call,omitempty"`
 }
 
 // StructuredErrorResponse constructs an MCP error response. Format:
 //
 //	Error: missing_param — Add the 'what' parameter and call again
-//	{"error":"missing_param","message":"...","retry":"Add the 'what' parameter and call again","hint":"..."}
+//	{"error_code":"missing_param","message":"...","recovery_playbook":"Add the 'what' parameter and call again",...}
 //
 // The retry string is a plain-English instruction the LLM can follow directly.
-func StructuredErrorResponse(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
-	se := StructuredError{Error: code, Message: message, Retry: retry}
+func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...func(*StructuredError)) json.RawMessage {
+	se := StructuredError{
+		ErrorCode:        code,
+		Message:          message,
+		RecoveryPlaybook: recoveryPlaybook,
+	}
 	// Apply retryable defaults based on error code first, then user opts can override
 	for _, defaultOpt := range RetryDefaultsForCode(code) {
 		defaultOpt(&se)
@@ -69,7 +80,7 @@ func StructuredErrorResponse(code, message, retry string, opts ...func(*Structur
 
 	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
 	seJSON, _ := json.Marshal(se)
-	text := fmt.Sprintf("Error: %s — %s\n%s", code, retry, string(seJSON))
+	text := fmt.Sprintf("Error: %s — %s\n%s", se.ErrorCode, se.RecoveryPlaybook, string(seJSON))
 
 	result := MCPToolResult{
 		Content: []MCPContentBlock{{Type: "text", Text: text}},
@@ -88,6 +99,16 @@ func WithHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
 }
 
+// WithAction sets the action that triggered the error.
+func WithAction(a string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Action = a }
+}
+
+// WithSelector sets the selector that was being targeted when the error occurred.
+func WithSelector(s string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Selector = s }
+}
+
 // WithRetryable marks whether the error is retryable by the LLM.
 func WithRetryable(retryable bool) func(*StructuredError) {
 	return func(se *StructuredError) { se.Retryable = retryable }
@@ -101,6 +122,12 @@ func WithRetryAfterMs(ms int) func(*StructuredError) {
 // WithFinal marks a structured error as terminal/non-terminal for async command flows.
 func WithFinal(final bool) func(*StructuredError) {
 	return func(se *StructuredError) { se.Final = final }
+}
+
+// WithRecoveryToolCall attaches a copy-pasteable MCP tool call for LLM recovery.
+// toolCall should have keys "tool" (string) and "arguments" (map[string]any).
+func WithRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
+	return func(se *StructuredError) { se.RecoveryToolCall = toolCall }
 }
 
 // RetryDefaultsForCode returns option functions that set retryable and retry_after_ms

@@ -1,6 +1,5 @@
-// Purpose: Validate connect_mode_run_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for connect-mode daemon run lifecycle.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

@@ -3,11 +3,14 @@ feature: reproduction-enhancements
 status: shipped
 tool: generate
 mode: reproduction, test
-version: 5.0.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-reproduction-enhancements
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
+
 # Product Spec: Reproduction Enhancements
 
 User-facing requirements, rationale, and deprecations for the Reproduction Enhancements feature.
