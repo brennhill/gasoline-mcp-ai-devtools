@@ -28,6 +28,7 @@ last_verified_date: 2026-03-05
 ## TL;DR
 - Status: shipped
 - In-browser terminal widget that embeds a PTY-backed shell via iframe
+- Availability: macOS + Linux only (Windows currently reports terminal unavailable / `terminal_port: 0`)
 - Runs on a **dedicated HTTP server** at `main_port + 1` (e.g., 7891) for isolation
 - Singleton session shared across all tabs via `chrome.storage.session`
 - Three UI states: **open**, **minimized**, **closed** — all persisted across page refreshes

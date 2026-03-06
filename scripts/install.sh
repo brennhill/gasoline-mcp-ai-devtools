@@ -1,6 +1,6 @@
 #!/bin/bash
 # Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This script provides a zero-dependency, platform-aware installation flow for Gasoline.
@@ -152,11 +152,23 @@ prepare_extension_stage() {
 
 validate_extension_stage() {
     local base_dir="${1:-$EXT_DIR}"
-    [ -f "$base_dir/manifest.json" ] &&
-    [ -f "$base_dir/background/init.js" ] &&
-    [ -f "$base_dir/content/script-injection.js" ] &&
-    [ -f "$base_dir/inject/index.js" ] &&
-    [ -f "$base_dir/theme-bootstrap.js" ]
+    [ -f "$base_dir/manifest.json" ] || return 1
+
+    # Support both modern bundled extension layout and legacy modular layout.
+    local has_background=0
+    local has_content=0
+    local has_inject=0
+    local has_bootstrap=0
+
+    [ -f "$base_dir/background.js" ] || [ -f "$base_dir/background/init.js" ] && has_background=1
+    [ -f "$base_dir/content.bundled.js" ] || [ -f "$base_dir/content/script-injection.js" ] && has_content=1
+    [ -f "$base_dir/inject.bundled.js" ] || [ -f "$base_dir/inject/index.js" ] && has_inject=1
+    [ -f "$base_dir/early-patch.bundled.js" ] || [ -f "$base_dir/theme-bootstrap.js" ] && has_bootstrap=1
+
+    [ "$has_background" -eq 1 ] &&
+    [ "$has_content" -eq 1 ] &&
+    [ "$has_inject" -eq 1 ] &&
+    [ "$has_bootstrap" -eq 1 ]
 }
 
 promote_extension_stage() {

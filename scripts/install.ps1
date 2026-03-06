@@ -1,5 +1,5 @@
 # Gasoline - Ultimate Windows Installer (PowerShell)
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This PowerShell script provides a native, one-liner installation for Windows users.
@@ -281,19 +281,13 @@ function Test-ExtensionStage {
         [string]$BaseDir = $EXT_DIR
     )
 
-    $required = @(
-        (Join-Path $BaseDir "manifest.json"),
-        (Join-Path $BaseDir "background\init.js"),
-        (Join-Path $BaseDir "content\script-injection.js"),
-        (Join-Path $BaseDir "inject\index.js"),
-        (Join-Path $BaseDir "theme-bootstrap.js")
-    )
-    foreach ($path in $required) {
-        if (-not (Test-Path $path)) {
-            return $false
-        }
-    }
-    return $true
+    $hasManifest = Test-Path (Join-Path $BaseDir "manifest.json")
+    $hasBackground = (Test-Path (Join-Path $BaseDir "background.js")) -or (Test-Path (Join-Path $BaseDir "background\init.js"))
+    $hasContent = (Test-Path (Join-Path $BaseDir "content.bundled.js")) -or (Test-Path (Join-Path $BaseDir "content\script-injection.js"))
+    $hasInject = (Test-Path (Join-Path $BaseDir "inject.bundled.js")) -or (Test-Path (Join-Path $BaseDir "inject\index.js"))
+    $hasBootstrap = (Test-Path (Join-Path $BaseDir "early-patch.bundled.js")) -or (Test-Path (Join-Path $BaseDir "theme-bootstrap.js"))
+
+    return ($hasManifest -and $hasBackground -and $hasContent -and $hasInject -and $hasBootstrap)
 }
 
 function Promote-ExtensionStage {
@@ -405,7 +399,7 @@ Write-Host "Install root: $INSTALL_DIR"
 # ─────────────────────────────────────────────────────────────
 
 $INSTALL_BIN = $GASOLINE_BIN
-$BINARY_NAME = "gasoline-win32-x64.exe"
+$BINARY_NAME = "gasoline-agentic-browser-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 $STAGED_BIN = "$GASOLINE_BIN.tmp.$TEMP_TOKEN"
@@ -673,3 +667,4 @@ if ($IS_UPGRADE -and $PREVIOUS_VERSION) {
 } else {
     Write-Host "Gasoline v$VERSION installed successfully." -ForegroundColor Green
 }
+Write-Host "Note: In-page xterm terminal support is currently disabled on Windows." -ForegroundColor Yellow

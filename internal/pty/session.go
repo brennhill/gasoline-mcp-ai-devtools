@@ -1,3 +1,5 @@
+//go:build darwin || linux
+
 // session.go — PTY session: spawns a CLI subprocess in a pseudo-terminal.
 // Why: Isolates PTY lifecycle (open, I/O, resize, close) from session management and HTTP transport.
 // Docs: docs/features/feature/terminal/index.md
@@ -26,8 +28,8 @@ type Session struct {
 	mu         sync.Mutex
 	closed     bool
 	done       chan struct{} // closed before ptmx.Close to signal in-flight I/O
-	scrollback []byte       // ring buffer of recent PTY output for reconnect replay
-	scrollMu   sync.Mutex   // protects scrollback
+	scrollback []byte        // ring buffer of recent PTY output for reconnect replay
+	scrollMu   sync.Mutex    // protects scrollback
 }
 
 // winsize matches the C struct winsize for TIOCSWINSZ.
@@ -40,49 +42,6 @@ type winsize struct {
 
 // ErrSessionClosed is returned when operating on a closed session.
 var ErrSessionClosed = errors.New("pty: session closed")
-
-// ptsname returns the slave PTY path for a master fd.
-// On macOS, TIOCPTYGNAME writes a null-terminated C string into a 128-byte buffer.
-func ptsname(f *os.File) (string, error) {
-	buf := make([]byte, 128)
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), syscall.TIOCPTYGNAME, uintptr(unsafe.Pointer(&buf[0])))
-	if errno != 0 {
-		return "", fmt.Errorf("ptsname: %w", errno)
-	}
-	for i, b := range buf {
-		if b == 0 {
-			return string(buf[:i]), nil
-		}
-	}
-	return string(buf), nil
-}
-
-// openPTY opens a new PTY master/slave pair. Returns (master, slavePath, error).
-func openPTY() (*os.File, string, error) {
-	ptmx, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
-	if err != nil {
-		return nil, "", fmt.Errorf("open /dev/ptmx: %w", err)
-	}
-
-	// Grant and unlock the slave.
-	fd := ptmx.Fd()
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCPTYGRANT, 0); errno != 0 {
-		ptmx.Close()
-		return nil, "", fmt.Errorf("grantpt: %w", errno)
-	}
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCPTYUNLK, 0); errno != 0 {
-		ptmx.Close()
-		return nil, "", fmt.Errorf("unlockpt: %w", errno)
-	}
-
-	slavePath, err := ptsname(ptmx)
-	if err != nil {
-		ptmx.Close()
-		return nil, "", err
-	}
-
-	return ptmx, slavePath, nil
-}
 
 // SpawnConfig configures a new PTY session.
 type SpawnConfig struct {
