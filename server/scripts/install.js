@@ -503,7 +503,7 @@ async function main() {
   await autoStartServer(binaryPath)
 
   console.log('gasoline installed successfully!')
-  const extensionDir = path.join(os.homedir(), '.gasoline', 'extension')
+  const extensionDir = process.env.GASOLINE_EXTENSION_DIR || path.join(os.homedir(), 'GasolineAgenticDevtoolExtension')
   printPanel('MANUAL BROWSER CHECKLIST', [
     'The installer cannot click browser UI controls for you.',
     '',

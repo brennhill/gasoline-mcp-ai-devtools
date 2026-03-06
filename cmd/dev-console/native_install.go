@@ -22,6 +22,13 @@ var installerLegacyServerKeys = []string{
 	"gasoline",
 }
 
+func extensionInstallDir(home string) string {
+	if override := strings.TrimSpace(os.Getenv("GASOLINE_EXTENSION_DIR")); override != "" {
+		return override
+	}
+	return filepath.Join(home, "GasolineAgenticDevtoolExtension")
+}
+
 func manualExtensionSetupChecklist(extDir string) []string {
 	return []string{
 		"BROWSER EXTENSION (MANUAL STEP REQUIRED):",
@@ -71,7 +78,7 @@ func runNativeInstall() {
 	}
 
 	home, _ := os.UserHomeDir()
-	extDir := filepath.Join(home, ".gasoline", "extension")
+	extDir := extensionInstallDir(home)
 
 	// 2. Claude Code
 	installClaudeCode(exe)
