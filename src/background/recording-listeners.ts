@@ -10,6 +10,7 @@
 
 import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, getLocalValue } from '../lib/storage-utils.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
@@ -20,8 +21,7 @@ import { stopRecordingBadgeTimer } from './recording-badge.js'
 const LOG = '[Gasoline REC]'
 
 async function resolvePopupRecordingTargetTab(): Promise<chrome.tabs.Tab | undefined> {
-  const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)) as { trackedTabId?: number }
-  const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID]
+  const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
   if (trackedTabId) {
     try {
       return await chrome.tabs.get(trackedTabId)
@@ -137,14 +137,13 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
     console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id)
 
     // Read the stored return tab before closing the permission tab
-    chrome.storage.local.get(
-      StorageKey.PENDING_MIC_RECORDING,
-      (result: Record<string, { returnTabId?: number } | undefined>) => {
-        const returnTabId = result[StorageKey.PENDING_MIC_RECORDING]?.returnTabId
+    getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value: unknown) => {
+        const pending = value as { returnTabId?: number } | undefined
+        const returnTabId = pending?.returnTabId
         console.log(
           LOG,
           'Pending mic recording intent:',
-          result[StorageKey.PENDING_MIC_RECORDING],
+          pending,
           'returnTabId:',
           returnTabId
         )

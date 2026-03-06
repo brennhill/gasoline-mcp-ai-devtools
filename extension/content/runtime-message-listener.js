@@ -1,6 +1,7 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
 import { SettingName } from '../lib/constants.js';
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleFormStateQuery, handleDataTableQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
+import { getLocalValues } from '../lib/storage-utils.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 import { toggleChatWidget } from './ui/chat-widget.js';
@@ -13,7 +14,7 @@ let subtitlesEnabled = true;
  */
 export function initRuntimeMessageListener() {
     // Load overlay toggle states from storage
-    chrome.storage.local.get(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
+    getLocalValues(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
         if (result.actionToastsEnabled !== undefined)
             actionToastsEnabled = result.actionToastsEnabled;
         if (result.subtitlesEnabled !== undefined)

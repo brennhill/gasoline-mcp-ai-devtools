@@ -54,9 +54,17 @@ var interactRegistry = toolRegistry{
 	// after dispatchTool returns, since PostDispatch doesn't receive args.
 }
 
-// buildInteractHandlers returns the unified handler map for interact actions.
+// cachedInteractHandlers is the lazily-initialized handler map for interact actions.
+// Populated once on first call to getInteractHandlers() and reused thereafter.
+var cachedInteractHandlers map[string]ModeHandler
+
+// getInteractHandlers returns the cached unified handler map for interact actions.
 // Merges both named handlers and DOM primitive actions into a single map[string]ModeHandler.
-func (h *interactActionHandler) buildInteractHandlers() map[string]ModeHandler {
+// The map is built once and cached for the process lifetime.
+func getInteractHandlers() map[string]ModeHandler {
+	if cachedInteractHandlers != nil {
+		return cachedInteractHandlers
+	}
 	handlers := map[string]ModeHandler{
 		"highlight": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.interactAction().handleHighlightImpl(req, args)
@@ -209,13 +217,13 @@ func (h *interactActionHandler) buildInteractHandlers() map[string]ModeHandler {
 		}
 	}
 
+	cachedInteractHandlers = handlers
 	return handlers
 }
 
-
 // getValidInteractActions returns a sorted, comma-separated list of valid interact actions.
 func (h *interactActionHandler) getValidInteractActions() string {
-	handlers := h.buildInteractHandlers()
+	handlers := getInteractHandlers()
 	sorted := make([]string, 0, len(handlers))
 	for action := range handlers {
 		sorted = append(sorted, action)

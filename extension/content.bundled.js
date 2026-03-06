@@ -90,15 +90,101 @@
     TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
   };
 
+  // extension/lib/storage-utils.js
+  function getStorageWithSession() {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return null;
+    return chrome.storage;
+  }
+  function setSessionValue(key, value, callback) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
+      if (callback)
+        callback();
+      return;
+    }
+    storage.session.set({ [key]: value }, () => {
+      if (callback)
+        callback();
+    });
+  }
+  function getSessionValue(key, callback) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
+      callback(void 0);
+      return;
+    }
+    storage.session.get([key], (result) => {
+      callback(result[key]);
+    });
+  }
+  function getLocalValue(key, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      callback(void 0);
+      return;
+    }
+    chrome.storage.local.get([key], (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
+        callback(void 0);
+        return;
+      }
+      callback(result[key]);
+    });
+  }
+  function getLocalValues(keys, callback) {
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      callback({});
+      return;
+    }
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn("[Gasoline] Storage error getting multiple keys:", chrome.runtime.lastError.message);
+        callback({});
+        return;
+      }
+      callback(result);
+    });
+  }
+  async function getLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return void 0;
+    const result = await chrome.storage.local.get([key]);
+    return result[key];
+  }
+  async function setLocal(key, value) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.set({ [key]: value });
+  }
+  async function removeLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.remove([key]);
+  }
+  async function removeSessions(keys) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return;
+    await storage.session.remove(keys);
+  }
+  function onStorageChanged(listener) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return () => {
+      };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }
+
   // extension/content/tab-tracking.js
   var isTrackedTab = false;
   var currentTabId = null;
   async function updateTrackingStatus() {
     try {
-      const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
+      const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
       const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
       currentTabId = response?.tabId ?? null;
-      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === storage.trackedTabId;
+      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === trackedTabId;
     } catch {
       isTrackedTab = false;
     }
@@ -113,7 +199,7 @@
     const ready = updateTrackingStatus().then(() => {
       onChange?.(isTrackedTab);
     });
-    chrome.storage.onChanged.addListener(async (changes) => {
+    onStorageChanged(async (changes) => {
       if (changes[StorageKey.TRACKED_TAB_ID]) {
         await updateTrackingStatus();
         onChange?.(isTrackedTab);
@@ -146,7 +232,7 @@
   ];
   function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    chrome.storage.local.get(storageKeys, (result) => {
+    getLocalValues(storageKeys, (result) => {
       for (const setting of SYNC_SETTINGS) {
         const value = result[setting.storageKey];
         if (value === void 0)
@@ -1745,7 +1831,7 @@
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
   function initRuntimeMessageListener() {
-    chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
+    getLocalValues(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
       if (result.actionToastsEnabled !== void 0)
         actionToastsEnabled = result.actionToastsEnabled;
       if (result.subtitlesEnabled !== void 0)
@@ -2537,12 +2623,8 @@
   function getServerUrl() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve(DEFAULT_SERVER_URL);
-            return;
-          }
-          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+        getLocalValue(StorageKey.SERVER_URL, (value) => {
+          const url = value || DEFAULT_SERVER_URL;
           state.serverUrl = url;
           resolve(url);
         });
@@ -2554,12 +2636,8 @@
   function getTerminalConfig() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({});
-            return;
-          }
-          const config = result[StorageKey.TERMINAL_CONFIG] || {};
+        getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
+          const config = value || {};
           resolve(config);
         });
       } catch {
@@ -2570,12 +2648,8 @@
   function getTerminalAICommand() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("claude");
-            return;
-          }
-          const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || "claude";
+        getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
+          const cmd = value || "claude";
           resolve(cmd);
         });
       } catch {
@@ -2586,12 +2660,8 @@
   function getTerminalDevRoot() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("");
-            return;
-          }
-          resolve(result[StorageKey.TERMINAL_DEV_ROOT] || "");
+        getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
+          resolve(value || "");
         });
       } catch {
         resolve("");
@@ -2600,39 +2670,31 @@
   }
   function persistSession(ss) {
     try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-        void chrome.runtime.lastError;
-      });
+      setSessionValue(StorageKey.TERMINAL_SESSION, ss);
     } catch {
     }
   }
   function clearPersistedSession() {
     try {
-      chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-        void chrome.runtime.lastError;
-      });
+      void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE]);
     } catch {
     }
   }
   function persistUIState(uiState) {
     try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-        void chrome.runtime.lastError;
-      });
+      setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState);
     } catch {
     }
   }
   function loadPersistedSession() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: "closed" });
-            return;
-          }
-          const session = result[StorageKey.TERMINAL_SESSION];
-          const uiState = result[StorageKey.TERMINAL_UI_STATE] || "closed";
-          resolve({ session: session || null, uiState });
+        getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
+          getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
+            const session = sessionValue;
+            const uiState = uiValue || "closed";
+            resolve({ session: session || null, uiState });
+          });
         });
       } catch {
         resolve({ session: null, uiState: "closed" });
@@ -2943,22 +3005,18 @@
   var hiddenUntilPopupOpen = false;
   var hideTimer = null;
   var recordingStorageListener = null;
+  var recordingStorageUnsubscribe = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
   async function checkTerminalReachable() {
     try {
       let baseUrl = DEFAULT_SERVER_URL;
       try {
-        const result = await new Promise((resolve) => {
-          chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-            if (chrome.runtime.lastError) {
-              resolve({});
-              return;
-            }
-            resolve(r);
+        baseUrl = await new Promise((resolve) => {
+          getLocalValue(StorageKey.SERVER_URL, (value) => {
+            resolve(value || DEFAULT_SERVER_URL);
           });
         });
-        baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
       } catch {
       }
       const url = new URL(baseUrl);
@@ -3011,10 +3069,8 @@
   }
   function syncRecordingStateFromStorage() {
     try {
-      chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-        if (chrome.runtime.lastError)
-          return;
-        const rec = result[StorageKey.RECORDING];
+      getLocalValue(StorageKey.RECORDING, (value) => {
+        const rec = value;
         const active = rec != null && typeof rec === "object" && Boolean(rec.active);
         updateStopButtonVisibility(active);
       });
@@ -3034,22 +3090,21 @@
       const active = rec != null && typeof rec === "object" && Boolean(rec.active);
       updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
   }
   function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
       return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+      recordingStorageUnsubscribe();
+      recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
   }
   function syncHiddenStateFromStorage(onSynced) {
     try {
-      chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-        if (chrome.runtime.lastError) {
-          onSynced();
-          return;
-        }
-        hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+      getLocalValue(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, (value) => {
+        hiddenUntilPopupOpen = Boolean(value);
         onSynced();
       });
     } catch {
@@ -3059,14 +3114,10 @@
   function persistHiddenState(hidden) {
     try {
       if (hidden) {
-        chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-          void chrome.runtime.lastError;
-        });
+        void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
         return;
       }
-      chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-        void chrome.runtime.lastError;
-      });
+      void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     } catch {
     }
   }

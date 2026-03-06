@@ -33,7 +33,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// Build the registry with lazily-populated handlers and valid modes.
 	reg := interactRegistry
-	handlers := h.interactAction().buildInteractHandlers()
+	handlers := getInteractHandlers()
 	reg.Handlers = handlers
 	reg.Resolution.ValidModes = h.interactAction().getValidInteractActions()
 

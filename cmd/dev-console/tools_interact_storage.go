@@ -42,8 +42,8 @@ func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.R
 	if !ok {
 		return errResp
 	}
-	if params.Key == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for set_storage action", "Add the 'key' parameter and call again", withParam("key"))
+	if resp, blocked := requireString(req, params.Key, "key", "Add the 'key' parameter and call again"); blocked {
+		return resp
 	}
 	if params.Value == nil {
 		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_storage action", "Add the 'value' parameter and call again", withParam("value"))
@@ -70,8 +70,8 @@ func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args jso
 	if !ok {
 		return errResp
 	}
-	if params.Key == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for delete_storage action", "Add the 'key' parameter and call again", withParam("key"))
+	if resp, blocked := requireString(req, params.Key, "key", "Add the 'key' parameter and call again"); blocked {
+		return resp
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.removeItem(%s); return { ok: true, action: "delete_storage", storage_type: %s, key: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,
@@ -113,8 +113,8 @@ func (h *interactActionHandler) handleSetCookie(req JSONRPCRequest, args json.Ra
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for set_cookie action", "Add the 'name' parameter and call again", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter and call again"); blocked {
+		return resp
 	}
 	if params.Value == nil {
 		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_cookie action", "Add the 'value' parameter and call again", withParam("value"))
@@ -147,8 +147,8 @@ func (h *interactActionHandler) handleDeleteCookie(req JSONRPCRequest, args json
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for delete_cookie action", "Add the 'name' parameter and call again", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter and call again"); blocked {
+		return resp
 	}
 
 	cookie := params.Name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT"

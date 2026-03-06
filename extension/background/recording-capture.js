@@ -10,6 +10,7 @@ import { sendTabToast } from './event-listeners.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { delay } from '../lib/timeout-utils.js';
 import { buildRecordingToastLabel } from './recording-utils.js';
+import { setLocal, removeLocal } from '../lib/storage-utils.js';
 const LOG = '[Gasoline REC]';
 const AWAITING_APPROVAL_BADGE_TEXT = '?';
 const AWAITING_APPROVAL_BADGE_COLOR = '#d29922';
@@ -106,7 +107,7 @@ function getStreamId(tabId) {
 export async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
     chrome.tabs.update(tab.id, { active: true });
     sendTabToast(tab.id, `\u2191 Open Gasoline Popup`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
-    await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } });
+    await setLocal(StorageKey.PENDING_RECORDING, { name, fps, audio, tabId: tab.id, url: tab.url });
     startAwaitingApprovalBadge();
     let gestureResult;
     try {
@@ -114,7 +115,7 @@ export async function requestRecordingGesture(tab, name, fps, audio, mediaType) 
     }
     finally {
         stopAwaitingApprovalBadge();
-        await chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+        await removeLocal(StorageKey.PENDING_RECORDING);
     }
     if (gestureResult === 'denied') {
         console.log(LOG, 'GESTURE_DENIED: User denied recording request from popup');

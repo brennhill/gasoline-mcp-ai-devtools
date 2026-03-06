@@ -42,7 +42,7 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	if resolvedURL != "" {
 		actionParams["url"] = resolvedURL
 	}
-	actionPayload, _ := json.Marshal(actionParams)
+	actionPayload := buildQueryParams(actionParams)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -99,7 +99,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "switch_tab"
-	actionPayload, _ := json.Marshal(actionParams)
+	actionPayload := buildQueryParams(actionParams)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -150,7 +150,7 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "close_tab"
-	actionPayload, _ := json.Marshal(actionParams)
+	actionPayload := buildQueryParams(actionParams)
 
 	// NOTE: close_tab is gated even with explicit tab_id.
 	// Future: allow bypass when tab_id is explicitly provided.

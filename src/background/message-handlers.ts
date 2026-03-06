@@ -27,6 +27,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
+import { getLocal, getLocals, setLocal, getLocalValue } from '../lib/storage-utils.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -365,8 +366,7 @@ async function handleGetTrackingState(
   senderTabId?: number
 ): Promise<void> {
   try {
-    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
-    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
     const aiPilotEnabled = deps.getAiWebPilotEnabled()
 
     sendResponse({
@@ -389,7 +389,7 @@ async function handleGetTrackingState(
  */
 export async function broadcastTrackingState(untrackedTabId?: number | null): Promise<void> {
   try {
-    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
+    const result = await getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
     const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
     const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true
 
@@ -437,10 +437,10 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     return
   }
 
-  chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
+  getLocalValue(StorageKey.AI_WEB_PILOT_ENABLED, (value) => {
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
-      storage: result.aiWebPilotEnabled,
+      storage: value as boolean | undefined,
       timestamp: new Date().toISOString()
     })
   })
@@ -593,42 +593,27 @@ interface StateSnapshotStorage {
 }
 
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export async function saveStateSnapshot(
   name: string,
   state: BrowserStateSnapshot
 ): Promise<{ success: boolean; snapshot_name: string; size_bytes: number }> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
-      snapshots[name] = {
-        ...state,
-        name,
-        size_bytes: sizeBytes
-      }
-      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-        resolve({
-          success: true,
-          snapshot_name: name,
-          size_bytes: sizeBytes
-        })
-      })
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
+  snapshots[name] = { ...state, name, size_bytes: sizeBytes }
+  await setLocal(SNAPSHOT_KEY, snapshots)
+  return { success: true, snapshot_name: name, size_bytes: sizeBytes }
 }
 
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export async function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      resolve(snapshots[name] || null)
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  return snapshots[name] || null
 }
 
 /**
@@ -637,31 +622,23 @@ export async function loadStateSnapshot(name: string): Promise<StoredStateSnapsh
 export async function listStateSnapshots(): Promise<
   Array<{ name: string; url: string; timestamp: number; size_bytes: number }>
 > {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      const list = Object.values(snapshots).map((s) => ({
-        name: s.name,
-        url: s.url,
-        timestamp: s.timestamp,
-        size_bytes: s.size_bytes
-      }))
-      resolve(list)
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  return Object.values(snapshots).map((s) => ({
+    name: s.name,
+    url: s.url,
+    timestamp: s.timestamp,
+    size_bytes: s.size_bytes
+  }))
 }
 
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export async function deleteStateSnapshot(name: string): Promise<{ success: boolean; deleted: string }> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      delete snapshots[name]
-      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-        resolve({ success: true, deleted: name })
-      })
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  delete snapshots[name]
+  await setLocal(SNAPSHOT_KEY, snapshots)
+  return { success: true, deleted: name }
 }

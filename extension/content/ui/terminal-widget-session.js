@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js';
+import { getLocalValue, setSessionValue, getSessionValue, removeSessions, setLocal } from '../../lib/storage-utils.js';
 import { state, getTerminalServerUrl } from './terminal-widget-types.js';
 import { showSandboxError } from './terminal-widget-ui.js';
 // =============================================================================
@@ -12,12 +13,8 @@ import { showSandboxError } from './terminal-widget-ui.js';
 export function getServerUrl() {
     return new Promise((resolve) => {
         try {
-            chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-                if (chrome.runtime.lastError) {
-                    resolve(DEFAULT_SERVER_URL); // Storage read failed — fall back to default
-                    return;
-                }
-                const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+            getLocalValue(StorageKey.SERVER_URL, (value) => {
+                const url = value || DEFAULT_SERVER_URL;
                 state.serverUrl = url;
                 resolve(url);
             });
@@ -30,12 +27,8 @@ export function getServerUrl() {
 export function getTerminalConfig() {
     return new Promise((resolve) => {
         try {
-            chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
-                if (chrome.runtime.lastError) {
-                    resolve({}); // Storage read failed — use defaults
-                    return;
-                }
-                const config = result[StorageKey.TERMINAL_CONFIG] || {};
+            getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
+                const config = value || {};
                 resolve(config);
             });
         }
@@ -46,9 +39,7 @@ export function getTerminalConfig() {
 }
 export function saveTerminalConfig(config) {
     try {
-        chrome.storage.local.set({ [StorageKey.TERMINAL_CONFIG]: config }, () => {
-            void chrome.runtime.lastError; // Best-effort persistence
-        });
+        void setLocal(StorageKey.TERMINAL_CONFIG, config);
     }
     catch {
         // Extension context invalidated — config won't persist but session still works
@@ -57,12 +48,8 @@ export function saveTerminalConfig(config) {
 function getTerminalAICommand() {
     return new Promise((resolve) => {
         try {
-            chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
-                if (chrome.runtime.lastError) {
-                    resolve('claude');
-                    return;
-                }
-                const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || 'claude';
+            getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
+                const cmd = value || 'claude';
                 resolve(cmd);
             });
         }
@@ -74,12 +61,8 @@ function getTerminalAICommand() {
 function getTerminalDevRoot() {
     return new Promise((resolve) => {
         try {
-            chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
-                if (chrome.runtime.lastError) {
-                    resolve('');
-                    return;
-                }
-                resolve(result[StorageKey.TERMINAL_DEV_ROOT] || '');
+            getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
+                resolve(value || '');
             });
         }
         catch {
@@ -92,39 +75,31 @@ function getTerminalDevRoot() {
 // =============================================================================
 export function persistSession(ss) {
     try {
-        chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-            void chrome.runtime.lastError;
-        });
+        setSessionValue(StorageKey.TERMINAL_SESSION, ss);
     }
     catch { /* extension context invalidated */ }
 }
 export function clearPersistedSession() {
     try {
-        chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-            void chrome.runtime.lastError;
-        });
+        void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE]);
     }
     catch { /* extension context invalidated */ }
 }
 export function persistUIState(uiState) {
     try {
-        chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-            void chrome.runtime.lastError;
-        });
+        setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState);
     }
     catch { /* extension context invalidated */ }
 }
 export function loadPersistedSession() {
     return new Promise((resolve) => {
         try {
-            chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
-                if (chrome.runtime.lastError) {
-                    resolve({ session: null, uiState: 'closed' });
-                    return;
-                }
-                const session = result[StorageKey.TERMINAL_SESSION];
-                const uiState = result[StorageKey.TERMINAL_UI_STATE] || 'closed';
-                resolve({ session: session || null, uiState });
+            getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
+                getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
+                    const session = sessionValue;
+                    const uiState = uiValue || 'closed';
+                    resolve({ session: session || null, uiState });
+                });
             });
         }
         catch {

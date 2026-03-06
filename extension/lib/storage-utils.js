@@ -237,6 +237,120 @@ export function removeValue(key, areaName, callback) {
     }
 }
 // =============================================================================
+// ASYNC LOCAL STORAGE (Promise-based — preferred API for new code)
+// =============================================================================
+/**
+ * Get a persistent value from local storage (async)
+ */
+export async function getLocal(key) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return undefined;
+    const result = await chrome.storage.local.get([key]);
+    return result[key];
+}
+/**
+ * Get multiple persistent values from local storage (async)
+ */
+export async function getLocals(keys) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return {};
+    return await chrome.storage.local.get(keys);
+}
+/**
+ * Set a persistent value in local storage (async)
+ */
+export async function setLocal(key, value) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    await chrome.storage.local.set({ [key]: value });
+}
+/**
+ * Set multiple persistent values in local storage (async)
+ */
+export async function setLocals(items) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    await chrome.storage.local.set(items);
+}
+/**
+ * Remove a persistent value from local storage (async)
+ */
+export async function removeLocal(key) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    await chrome.storage.local.remove([key]);
+}
+/**
+ * Remove multiple persistent values from local storage (async)
+ */
+export async function removeLocals(keys) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    await chrome.storage.local.remove(keys);
+}
+// =============================================================================
+// ASYNC SESSION STORAGE (Promise-based — preferred API for new code)
+// =============================================================================
+/**
+ * Get an ephemeral value from session storage (async)
+ */
+export async function getSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+        return undefined;
+    const result = await storage.session.get([key]);
+    return result[key];
+}
+/**
+ * Set an ephemeral value in session storage (async)
+ */
+export async function setSession(key, value) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+        return;
+    await storage.session.set({ [key]: value });
+}
+/**
+ * Remove an ephemeral value from session storage (async)
+ */
+export async function removeSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+        return;
+    await storage.session.remove([key]);
+}
+/**
+ * Remove multiple ephemeral values from session storage (async)
+ */
+export async function removeSessions(keys) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+        return;
+    await storage.session.remove(keys);
+}
+/**
+ * Register a storage change listener. Returns an unsubscribe function.
+ */
+export function onStorageChanged(listener) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return () => { };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+}
+// =============================================================================
+// SESSION ACCESS LEVEL
+// =============================================================================
+/**
+ * Set session storage access level (e.g., to allow content scripts access).
+ * Required for terminal state persistence in content scripts.
+ */
+export async function setSessionAccessLevel(accessLevel) {
+    const storage = getStorageWithSession();
+    if (!storage?.session?.setAccessLevel)
+        return;
+    await storage.session.setAccessLevel({ accessLevel });
+}
+// =============================================================================
 // STATE RECOVERY & DIAGNOSTICS
 // =============================================================================
 /**

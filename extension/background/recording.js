@@ -12,6 +12,7 @@ import { StorageKey } from '../lib/constants.js';
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js';
 import { installRecordingListeners } from './recording-listeners.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { getLocal, setLocals, removeLocal } from '../lib/storage-utils.js';
 import { delay } from '../lib/timeout-utils.js';
 import { buildRecordingToastLabel } from './recording-utils.js';
 import { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-badge.js';
@@ -31,10 +32,8 @@ const LOG = '[Gasoline REC]';
 /** Listener to re-send watermark when recording tab navigates or content script re-injects. */
 let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
-if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
-    console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
-    chrome.storage.local.remove(StorageKey.RECORDING).catch(() => { });
-}
+console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
+removeLocal(StorageKey.RECORDING).catch(() => { });
 // =============================================================================
 // STATE QUERIES
 // =============================================================================
@@ -60,7 +59,7 @@ async function clearRecordingState() {
         chrome.tabs.onUpdated.removeListener(tabUpdateListener);
         tabUpdateListener = null;
     }
-    await chrome.storage.local.remove(StorageKey.RECORDING);
+    await removeLocal(StorageKey.RECORDING);
 }
 // =============================================================================
 // LIFECYCLE — START
@@ -121,12 +120,12 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             return { status: 'error', name: '', error: 'RECORD_START: No active tab found.' };
         }
         // Auto-enable tab tracking if not already tracked
-        const storage = await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID);
+        const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
         console.log(LOG, 'Tracked tab:', {
-            trackedTabId: storage[StorageKey.TRACKED_TAB_ID],
-            willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID]
+            trackedTabId,
+            willAutoTrack: !trackedTabId
         });
-        if (!storage[StorageKey.TRACKED_TAB_ID]) {
+        if (!trackedTabId) {
             await setTrackedTab(tab);
         }
         // Ensure content script is responsive (needed for toasts + watermark).
@@ -187,6 +186,13 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         console.log(LOG, 'Offscreen document ready, sending START command');
         // Send start command to offscreen document and wait for confirmation (10s timeout)
         const startResult = await new Promise((resolve) => {
+            const listener = (message) => {
+                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STARTED') {
+                    clearTimeout(timeout);
+                    chrome.runtime.onMessage.removeListener(listener);
+                    resolve(message);
+                }
+            };
             const timeout = setTimeout(() => {
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve({
@@ -196,13 +202,6 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
                     error: 'RECORD_START: Offscreen document timed out.'
                 });
             }, scaleTimeout(10000));
-            const listener = (message) => {
-                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STARTED') {
-                    clearTimeout(timeout);
-                    chrome.runtime.onMessage.removeListener(listener);
-                    resolve(message);
-                }
-            };
             chrome.runtime.onMessage.addListener(listener);
             chrome.runtime.sendMessage({
                 target: 'offscreen',
@@ -239,7 +238,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         };
         /* eslint-enable require-atomic-updates */
         // Persist state flag for popup sync
-        await chrome.storage.local.set({
+        await setLocals({
             [StorageKey.RECORDING]: { active: true, name, startTime: Date.now() }
         });
         startRecordingBadgeTimer(recordingState.startTime);
@@ -281,7 +280,7 @@ export async function stopRecording(truncated = false) {
         // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
         console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage');
         stopRecordingBadgeTimer();
-        chrome.storage.local.remove(StorageKey.RECORDING).catch(() => { });
+        removeLocal(StorageKey.RECORDING).catch(() => { });
         return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' };
     }
     const { tabId } = recordingState;
@@ -292,6 +291,13 @@ export async function stopRecording(truncated = false) {
     try {
         // Send stop command to offscreen document and wait for result (30s timeout for upload)
         const stopResult = await new Promise((resolve) => {
+            const listener = (message) => {
+                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STOPPED') {
+                    clearTimeout(timeout);
+                    chrome.runtime.onMessage.removeListener(listener);
+                    resolve(message);
+                }
+            };
             const timeout = setTimeout(() => {
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve({
@@ -302,13 +308,6 @@ export async function stopRecording(truncated = false) {
                     error: 'RECORD_STOP: Offscreen document timed out during save.'
                 });
             }, scaleTimeout(30000));
-            const listener = (message) => {
-                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STOPPED') {
-                    clearTimeout(timeout);
-                    chrome.runtime.onMessage.removeListener(listener);
-                    resolve(message);
-                }
-            };
             chrome.runtime.onMessage.addListener(listener);
             chrome.runtime.sendMessage({
                 target: 'offscreen',

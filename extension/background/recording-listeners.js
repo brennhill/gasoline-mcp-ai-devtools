@@ -8,14 +8,14 @@
 // Deps are injected to avoid circular imports with recording.ts.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
+import { getLocal, getLocalValue } from '../lib/storage-utils.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
 import { stopRecordingBadgeTimer } from './recording-badge.js';
 const LOG = '[Gasoline REC]';
 async function resolvePopupRecordingTargetTab() {
-    const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-    const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID];
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     if (trackedTabId) {
         try {
             return await chrome.tabs.get(trackedTabId);
@@ -116,9 +116,10 @@ export function installRecordingListeners(deps) {
             return false;
         console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
         // Read the stored return tab before closing the permission tab
-        chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
-            const returnTabId = result[StorageKey.PENDING_MIC_RECORDING]?.returnTabId;
-            console.log(LOG, 'Pending mic recording intent:', result[StorageKey.PENDING_MIC_RECORDING], 'returnTabId:', returnTabId);
+        getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value) => {
+            const pending = value;
+            const returnTabId = pending?.returnTabId;
+            console.log(LOG, 'Pending mic recording intent:', pending, 'returnTabId:', returnTabId);
             // Close the permission tab
             if (sender.tab?.id) {
                 console.log(LOG, 'Closing permission tab', sender.tab.id);

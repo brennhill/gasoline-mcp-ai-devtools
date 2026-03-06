@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 import { SettingName } from '../lib/constants.js';
+import { getLocalValues } from '../lib/storage-utils.js';
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
 /** Whether inject.js has responded to a bridge ping for this page load */
@@ -45,7 +46,7 @@ const SYNC_SETTINGS = [
  */
 function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    chrome.storage.local.get(storageKeys, (result) => {
+    getLocalValues(storageKeys, (result) => {
         for (const setting of SYNC_SETTINGS) {
             const value = result[setting.storageKey];
             if (value === undefined)

@@ -32,6 +32,7 @@ import {
   handleGetMarkdown,
   handlePageSummary
 } from './message-handlers.js'
+import { getLocalValues } from '../lib/storage-utils.js'
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
@@ -46,13 +47,10 @@ let subtitlesEnabled = true
  */
 export function initRuntimeMessageListener(): void {
   // Load overlay toggle states from storage
-  chrome.storage.local.get(
-    ['actionToastsEnabled', 'subtitlesEnabled'],
-    (result: Record<string, boolean | undefined>) => {
-      if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled
-      if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled
-    }
-  )
+  getLocalValues(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
+    if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled as boolean
+    if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled as boolean
+  })
 
   /** Sync message handlers — return false (no async response needed) */
   type SyncMsg = ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string; params?: unknown }

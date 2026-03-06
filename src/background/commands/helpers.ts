@@ -12,6 +12,7 @@ import { DebugCategory } from '../debug.js'
 import { isAiWebPilotEnabled } from '../state.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { delay } from '../../lib/timeout-utils.js'
+import { setLocals } from '../../lib/storage-utils.js'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -349,7 +350,7 @@ function buildMissingTargetError(
 
 export async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.id) return
-  await chrome.storage.local.set({
+  await setLocals({
     trackedTabId: tab.id,
     trackedTabUrl: tab.url || '',
     trackedTabTitle: tab.title || ''

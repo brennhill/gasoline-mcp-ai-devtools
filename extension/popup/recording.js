@@ -10,7 +10,7 @@
  */
 import { StorageKey } from '../lib/constants.js';
 import { errorMessage } from '../lib/error-utils.js';
-import { getLocalValue, setLocalValue, removeLocalValue } from '../lib/storage-utils.js';
+import { getLocalValue, setLocalValue, removeLocalValue, onStorageChanged } from '../lib/storage-utils.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
@@ -330,7 +330,7 @@ export function setupRecordingUI() {
             updatePendingRecording(pendingValue);
         });
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
         if (areaName === 'local' && changes[StorageKey.RECORDING]) {
             const rec = changes[StorageKey.RECORDING].newValue;
             console.log('[Gasoline REC] Popup: gasoline_recording changed:', rec);

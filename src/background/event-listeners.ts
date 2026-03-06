@@ -12,6 +12,7 @@
 
 import type { StorageChange } from '../types/index.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js'
 import { clearTrackedTab as clearTrackedTabState } from './tab-state.js'
 
 // Re-export split modules so existing consumers keep working
@@ -183,22 +184,20 @@ export async function handleTrackedTabUrlChange(
   newUrl: string,
   logFn?: (message: string) => void
 ): Promise<void> {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-
-  const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])) as { trackedTabId?: number }
-  if (result.trackedTabId === updatedTabId) {
+  const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
+  if (trackedTabId === updatedTabId) {
     // Update URL immediately, then refresh title from the tab
     try {
       const tab = await chrome.tabs.get(updatedTabId)
-      const updates: Record<string, string> = { [StorageKey.TRACKED_TAB_URL]: newUrl }
+      const updates: Record<string, unknown> = { [StorageKey.TRACKED_TAB_URL]: newUrl }
       if (tab?.title) updates[StorageKey.TRACKED_TAB_TITLE] = tab.title
-      await chrome.storage.local.set(updates)
+      await setLocals(updates)
       if (logFn) {
         logFn('[Gasoline] Tracked tab updated: ' + newUrl)
       }
     } catch {
       // Tab may have been closed -- update URL only
-      chrome.storage.local.set({ [StorageKey.TRACKED_TAB_URL]: newUrl })
+      setLocal(StorageKey.TRACKED_TAB_URL, newUrl)
     }
   }
 }
@@ -212,10 +211,8 @@ export async function handleTrackedTabClosed(
   closedTabId: number,
   logFn?: (message: string, data?: unknown) => void
 ): Promise<void> {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-
-  const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])) as { trackedTabId?: number }
-  if (result.trackedTabId === closedTabId) {
+  const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
+  if (trackedTabId === closedTabId) {
     if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
     clearTrackedTabState()
   }
@@ -232,9 +229,7 @@ export function installStorageChangeListener(handlers: {
   onAiWebPilotChanged?: (newValue: boolean) => void
   onTrackedTabChanged?: (newTabId: number | null, oldTabId: number | null) => void
 }): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-
-  chrome.storage.onChanged.addListener((changes: { [key: string]: StorageChange<unknown> }, areaName: string) => {
+  onStorageChanged((changes: { [key: string]: StorageChange<unknown> }, areaName: string) => {
     if (areaName === 'local') {
       if (changes[StorageKey.AI_WEB_PILOT_ENABLED] && handlers.onAiWebPilotChanged) {
         handlers.onAiWebPilotChanged(changes[StorageKey.AI_WEB_PILOT_ENABLED]!.newValue === true)
@@ -260,8 +255,7 @@ export function installStartupListener(logFn?: (message: string) => void): void 
 
   chrome.runtime.onStartup.addListener(async () => {
     try {
-      const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
-      const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+      const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
       if (trackedTabId) {
         try {
           await chrome.tabs.get(trackedTabId)

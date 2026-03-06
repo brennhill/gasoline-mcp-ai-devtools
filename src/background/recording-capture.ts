@@ -12,6 +12,7 @@ import { sendTabToast } from './event-listeners.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { delay } from '../lib/timeout-utils.js'
 import { buildRecordingToastLabel } from './recording-utils.js'
+import { setLocal, removeLocal } from '../lib/storage-utils.js'
 
 const LOG = '[Gasoline REC]'
 const AWAITING_APPROVAL_BADGE_TEXT = '?'
@@ -123,14 +124,14 @@ export async function requestRecordingGesture(
     scaleTimeout(30000)
   )
 
-  await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } })
+  await setLocal(StorageKey.PENDING_RECORDING, { name, fps, audio, tabId: tab.id, url: tab.url })
   startAwaitingApprovalBadge()
   let gestureResult: 'granted' | 'denied' | 'timeout'
   try {
     gestureResult = await waitForRecordingGesture(scaleTimeout(30000))
   } finally {
     stopAwaitingApprovalBadge()
-    await chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
+    await removeLocal(StorageKey.PENDING_RECORDING)
   }
 
   if (gestureResult === 'denied') {
