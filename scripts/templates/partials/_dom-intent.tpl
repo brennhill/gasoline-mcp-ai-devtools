@@ -142,16 +142,11 @@
   function matchedTarget(node: Element): NonNullable<DOMResult['matched']> {
     const htmlEl = node as HTMLElement
     const textPreview = (htmlEl.textContent || '').trim().slice(0, 80)
-    // #388: Include class list for selector diagnostics
-    const classList = typeof htmlEl.className === 'string' && htmlEl.className
-      ? htmlEl.className.split(/\s+/).filter(Boolean).slice(0, 5)
-      : undefined
     return {
       tag: node.tagName.toLowerCase(),
       role: node.getAttribute('role') || undefined,
       aria_label: node.getAttribute('aria-label') || undefined,
       text_preview: textPreview || undefined,
-      classes: classList && classList.length > 0 ? classList : undefined,
       selector,
       element_id: getOrCreateElementID(node),
       bbox: extractBoundingBox(node),
@@ -165,27 +160,7 @@
     const rect = typeof el.getBoundingClientRect === 'function'
       ? el.getBoundingClientRect()
       : ({ width: 0, height: 0 } as DOMRect)
-    if (!(rect.width > 0 && rect.height > 0)) return false
-    if (el.offsetParent === null) {
-      const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null
-      const position = style?.position || ''
-      if (position !== 'fixed' && position !== 'sticky') return false
-    }
-
-    // #384: Prefer in-viewport actionable targets for disambiguation.
-    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
-      ? window.innerHeight
-      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0)
-    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
-      ? window.innerWidth
-      : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0)
-    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
-    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
-    const right = typeof rect.right === 'number' ? rect.right : left + rect.width
-    const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
-    const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth)
-    const intersectsY = viewHeight <= 0 || (bottom > 0 && top < viewHeight)
-    return intersectsX && intersectsY
+    return rect.width > 0 && rect.height > 0 && el.offsetParent !== null
   }
 
   function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
@@ -221,12 +196,7 @@
     'open_composer',
     'submit_active_composer',
     'confirm_top_dialog',
-    'dismiss_top_overlay',
-    'auto_dismiss_overlays',
-    'wait_for_stable',
-    'wait_for_text',
-    'wait_for_absent',
-    'action_diff'
+    'dismiss_top_overlay'
   ])
 
   type RankedIntentCandidate = { element: Element; score: number }
@@ -281,7 +251,7 @@
           action,
           selector,
           error: 'ambiguous_target',
-          message: `Multiple candidates tie for ${action}. Use nth, scope_selector/scope_rect, or list_interactive element_id.`,
+          message: `Multiple candidates tie for ${action}. Use scope_selector/scope_rect or list_interactive element_id.`,
           match_count: tiedTop.length,
           match_strategy: matchStrategy,
           ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
@@ -315,4 +285,156 @@
       }))
       .sort((a, b) => b.score - a.score)
     return ranked[0]?.element || null
+  }
+
+  function resolveIntentTarget(
+    requestedScope: string,
+    activeScope: ParentNode
+  ): { element?: Element; error?: DOMResult; match_count?: number; match_strategy?: string; scope_selector_used?: string } {
+    const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply|confirm|yes|allow|accept)/i
+    const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i
+    const composerVerb = /(start( a)? post|create post|write (a )?post|what'?s on your mind|share( an)? update|compose|new post)/i
+
+    if (action === 'open_composer') {
+      const selectors = [
+        'button',
+        '[role="button"]',
+        'a[href]',
+        '[role="link"]',
+        '[contenteditable="true"]',
+        '[role="textbox"]',
+        'textarea',
+        'input[type="text"]',
+        'input:not([type])'
+      ]
+      const candidates: Element[] = []
+      for (const candidateSelector of selectors) {
+        candidates.push(...querySelectorAllDeep(candidateSelector, activeScope))
+      }
+
+      const ranked = uniqueElements(candidates).map((candidate) => {
+        const label = extractElementLabel(candidate).toLowerCase()
+        const tag = candidate.tagName.toLowerCase()
+        const role = candidate.getAttribute('role') || ''
+        const contentEditable = candidate.getAttribute('contenteditable') === 'true'
+        let score = 0
+        if (composerVerb.test(label)) score += 700
+        if (/\b(post|share|publish|compose|write|update)\b/i.test(label)) score += 280
+        if (contentEditable || role === 'textbox' || tag === 'textarea' || tag === 'input') score += 220
+        if (tag === 'button' || role === 'button') score += 80
+        score += areaScore(candidate, 50)
+        score += elementZIndexScore(candidate)
+        return { element: candidate, score }
+      })
+
+      const best = pickBestIntentTarget(
+        ranked,
+        'intent_open_composer',
+        'composer_not_found',
+        'No composer trigger was found. Try a tighter scope_selector.'
+      )
+      return { ...best, scope_selector_used: requestedScope || undefined }
+    }
+
+    if (action === 'submit_active_composer') {
+      let scopeRoot: ParentNode = activeScope
+      let scopeUsed: string | undefined = requestedScope || undefined
+      if (!requestedScope) {
+        const dialogs = collectDialogs()
+        const rankedDialogs = dialogs
+          .map((dialog) => {
+            const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', dialog).filter(isActionableVisible).length
+            const buttons = querySelectorAllDeep('button, [role="button"], input[type="submit"]', dialog)
+            const submitLikeButtons = buttons.filter((button) => isActionableVisible(button) && submitVerb.test(extractElementLabel(button))).length
+            return {
+              element: dialog,
+              score: textboxes * 1200 + submitLikeButtons * 300 + elementZIndexScore(dialog) * 2 + areaScore(dialog, 80)
+            }
+          })
+          .sort((a, b) => b.score - a.score)
+
+        if ((rankedDialogs[0]?.score || 0) > 0) {
+          scopeRoot = rankedDialogs[0]!.element
+          scopeUsed = 'intent:auto_composer_scope'
+        }
+      }
+
+      const candidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', scopeRoot)
+      const ranked = uniqueElements(candidates).map((candidate) => {
+        const label = extractElementLabel(candidate)
+        let score = 0
+        if (submitVerb.test(label)) score += 700
+        if (dismissVerb.test(label)) score -= 500
+        score += areaScore(candidate, 30)
+        score += elementZIndexScore(candidate)
+        return { element: candidate, score }
+      })
+      const best = pickBestIntentTarget(
+        ranked,
+        'intent_submit_active_composer',
+        'composer_submit_not_found',
+        'No submit control found in active composer scope.'
+      )
+      return { ...best, scope_selector_used: scopeUsed }
+    }
+
+    if (action === 'confirm_top_dialog') {
+      const scopeRoot = requestedScope ? activeScope : pickTopDialog(collectDialogs())
+      if (!scopeRoot) {
+        return {
+          error: domError('dialog_not_found', 'No visible dialog/overlay found to confirm.')
+        }
+      }
+      const candidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', scopeRoot)
+      const ranked = uniqueElements(candidates).map((candidate) => {
+        const label = extractElementLabel(candidate)
+        let score = 0
+        if (submitVerb.test(label)) score += 700
+        if (dismissVerb.test(label)) score -= 500
+        score += areaScore(candidate, 30)
+        score += elementZIndexScore(candidate)
+        return { element: candidate, score }
+      })
+      const best = pickBestIntentTarget(
+        ranked,
+        'intent_confirm_top_dialog',
+        'confirm_action_not_found',
+        'No confirm control found in the top dialog.'
+      )
+      return {
+        ...best,
+        scope_selector_used: requestedScope || 'intent:auto_top_dialog'
+      }
+    }
+
+    if (action === 'dismiss_top_overlay') {
+      const scopeRoot = requestedScope ? activeScope : pickTopDialog(collectDialogs())
+      if (!scopeRoot) {
+        return {
+          error: domError('overlay_not_found', 'No visible dialog/overlay found to dismiss.')
+        }
+      }
+      const candidates = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', scopeRoot)
+      const ranked = uniqueElements(candidates).map((candidate) => {
+        const label = extractElementLabel(candidate)
+        let score = 0
+        if (dismissVerb.test(label)) score += 800
+        if (submitVerb.test(label)) score -= 550
+        score += areaScore(candidate, 30)
+        score += elementZIndexScore(candidate)
+        return { element: candidate, score }
+      })
+      const best = pickBestIntentTarget(
+        ranked,
+        'intent_dismiss_top_overlay',
+        'dismiss_action_not_found',
+        'No dismiss control found in the top overlay.'
+      )
+      return {
+        ...best,
+        scope_selector_used: requestedScope || 'intent:auto_top_dialog'
+      }
+    }
+
+    return { error: domError('unknown_action', `Unknown DOM action: ${action}`) }
   }

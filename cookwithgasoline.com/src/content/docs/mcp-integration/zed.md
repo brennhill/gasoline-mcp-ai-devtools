@@ -1,9 +1,6 @@
 ---
 title: Gasoline + Zed
 description: "Configure Gasoline as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['mcp', 'integration', 'zed']
 ---
 
 Gasoline is an open-source MCP server that gives Zed's AI assistant access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.

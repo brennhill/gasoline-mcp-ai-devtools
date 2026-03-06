@@ -1,5 +1,6 @@
-// Purpose: Tests for upload security constraints and file validation.
-// Docs: docs/features/feature/file-upload/index.md
+// Purpose: Validate security_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // security_test.go — Tests for folder-scoped permissions and sensitive path denylist.
 package upload

@@ -27,16 +27,12 @@ let currentY = 0
 let rafId = null
 let saveTimeout = null
 let isDeactivating = false // Re-entry guard for deactivateAndSendResults
-let recentActions = []
 
 const MIN_RECT_SIZE = 5
 const OVERLAY_Z_INDEX = 2147483644
 const ANNOTATION_COLOR = '#ef4444'
 const ANNOTATION_FILL = 'rgba(239, 68, 68, 0.15)'
 const ANNOTATION_STROKE_WIDTH = 2
-const COORD_SPACE_DOCUMENT = 'document'
-const ACTION_TRAIL_LIMIT = 5
-const ACTION_BUFFER_LIMIT = 40
 
 // ============================================================================
 // PUBLIC API
@@ -55,7 +51,6 @@ export function activateDrawMode(source = 'user', session = '', correlationId = 
   startedBy = source
   sessionName = session
   sessionCorrelationId = correlationId
-  recentActions = []
   active = true
   createOverlay()
   loadAnnotations()
@@ -79,7 +74,6 @@ export function deactivateDrawMode() {
   // Clear state to prevent leaks across activate/deactivate cycles
   annotations = []
   elementDetails.clear()
-  recentActions = []
   sessionName = ''
   sessionCorrelationId = ''
   destroyOverlay()
@@ -254,15 +248,9 @@ function createOverlay() {
   overlay.addEventListener('mousemove', onMouseMove)
   overlay.addEventListener('mouseup', onMouseUp)
   document.addEventListener('keydown', onKeyDown)
-  document.addEventListener('click', onActionClick, true)
-  document.addEventListener('input', onActionInput, true)
-  document.addEventListener('change', onActionChange, true)
 
   // Resize observer
   window.addEventListener('resize', onResize)
-  window.addEventListener('scroll', onScroll, { passive: true })
-  window.addEventListener('popstate', onActionNavigation)
-  window.addEventListener('hashchange', onActionNavigation)
 
   // Warn before navigating away with unsaved annotations
   window.addEventListener('beforeunload', onBeforeUnload)
@@ -289,17 +277,8 @@ function destroyOverlay() {
     overlay.remove()
     overlay = null
   }
-  // Safety: remove any orphaned overlay left by a failed deactivation cycle
-  const orphan = document.getElementById('gasoline-draw-overlay')
-  if (orphan) orphan.remove()
   document.removeEventListener('keydown', onKeyDown)
-  document.removeEventListener('click', onActionClick, true)
-  document.removeEventListener('input', onActionInput, true)
-  document.removeEventListener('change', onActionChange, true)
   window.removeEventListener('resize', onResize)
-  window.removeEventListener('scroll', onScroll)
-  window.removeEventListener('popstate', onActionNavigation)
-  window.removeEventListener('hashchange', onActionNavigation)
   window.removeEventListener('beforeunload', onBeforeUnload)
   canvas = null
   ctx = null
@@ -333,7 +312,6 @@ function removeStyles() {
 function onMouseDown(e) {
   if (textInput) return // Don't start new rect while typing
   if (e.button !== 0) return // Left click only
-  recordRecentAction('click', e.target || overlay)
   drawing = true
   startX = e.clientX
   startY = e.clientY
@@ -393,33 +371,6 @@ function onResize() {
   renderAnnotations()
 }
 
-function onScroll() {
-  recordRecentAction('scroll', document.activeElement, { scroll_x: Math.round(window.scrollX || 0), scroll_y: Math.round(window.scrollY || 0) })
-  if (!canvas) return
-  renderAnnotations()
-}
-
-function onActionClick(e) {
-  recordRecentAction('click', e.target)
-}
-
-function onActionInput(e) {
-  recordRecentAction('type', e.target)
-}
-
-function onActionChange(e) {
-  const tag = e.target?.tagName?.toLowerCase?.() || ''
-  if (tag === 'select') {
-    recordRecentAction('select', e.target)
-    return
-  }
-  recordRecentAction('change', e.target)
-}
-
-function onActionNavigation() {
-  recordRecentAction('navigation', document.activeElement, { url: window.location.href })
-}
-
 function onBeforeUnload(e) {
   if (active && annotations.length > 0) {
     e.preventDefault()
@@ -454,91 +405,46 @@ function renderAnnotations() {
   drawExistingAnnotations()
 }
 
-function drawRoundRect(x, y, w, h, radius) {
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + w - radius, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
-  ctx.lineTo(x + w, y + h - radius)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
-  ctx.lineTo(x + radius, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
-  ctx.lineTo(x, y + radius)
-  ctx.quadraticCurveTo(x, y, x + radius, y)
-  ctx.closePath()
-}
-
 function drawExistingAnnotations() {
   if (!ctx) return
   for (let i = 0; i < annotations.length; i++) {
     const ann = annotations[i]
-    const r = toViewportRect(ann.rect, ann.coord_space)
-    if (!Number.isFinite(r.x) || !Number.isFinite(r.y) || !Number.isFinite(r.width) || !Number.isFinite(r.height)) {
-      continue
-    }
+    const r = ann.rect
 
-    // Semi-transparent fill with rounded corners
-    ctx.save()
-    drawRoundRect(r.x, r.y, r.width, r.height, 4)
+    // Semi-transparent fill
     ctx.fillStyle = ANNOTATION_FILL
-    ctx.fill()
+    ctx.fillRect(r.x, r.y, r.width, r.height)
+
+    // Solid stroke
     ctx.strokeStyle = ANNOTATION_COLOR
     ctx.lineWidth = ANNOTATION_STROKE_WIDTH
     ctx.setLineDash([])
-    ctx.stroke()
-    ctx.restore()
+    ctx.strokeRect(r.x, r.y, r.width, r.height)
 
-    // Number badge (top-left, offset outward)
-    const badgeSize = 22
-    const badgeX = r.x - 4
-    const badgeY = r.y - 4
+    // Number badge (top-left corner)
+    const badgeSize = 20
     ctx.fillStyle = ANNOTATION_COLOR
     ctx.beginPath()
-    ctx.arc(badgeX, badgeY, badgeSize / 2, 0, Math.PI * 2)
+    ctx.arc(r.x, r.y, badgeSize / 2, 0, Math.PI * 2)
     ctx.fill()
-    // White ring
-    ctx.strokeStyle = '#fff'
-    ctx.lineWidth = 2
-    ctx.stroke()
     ctx.fillStyle = '#fff'
     ctx.font = 'bold 11px -apple-system, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(String(i + 1), badgeX, badgeY)
+    ctx.fillText(String(i + 1), r.x, r.y)
 
-    // Text label pill (below rectangle)
+    // Text label (below rectangle)
     if (ann.text) {
-      ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      const labelY = r.y + r.height + 16
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
       const textWidth = ctx.measureText(ann.text).width
-      const padX = 10
-      const padY = 6
-      const pillH = 26
-      const pillW = textWidth + padX * 2
-      const pillX = r.x
-      const pillY = r.y + r.height + 8
-      const pillR = 6
-
-      // Shadow
-      ctx.save()
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
-      ctx.shadowBlur = 8
-      ctx.shadowOffsetY = 2
-      drawRoundRect(pillX, pillY, pillW, pillH, pillR)
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)'
-      ctx.fill()
-      ctx.restore()
-
-      // Border
-      drawRoundRect(pillX, pillY, pillW, pillH, pillR)
-      ctx.strokeStyle = ANNOTATION_COLOR
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-
-      // Text
-      ctx.fillStyle = '#f1f5f9'
+      const padding = 6
+      ctx.fillRect(r.x - padding, labelY - 12, textWidth + padding * 2, 18)
+      ctx.fillStyle = '#fff'
+      ctx.font = '12px -apple-system, sans-serif'
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
-      ctx.fillText(ann.text, pillX + padX, pillY + pillH / 2)
+      ctx.fillText(ann.text, r.x, labelY)
     }
   }
 }
@@ -552,7 +458,7 @@ function showTextInput(rect, elementData) {
 
   const input = document.createElement('input')
   input.type = 'text'
-  input.placeholder = "Don't just tell the AI what's wrong, tell it what you want instead..."
+  input.placeholder = 'What should the AI change here?'
   input.dataset.rectJson = JSON.stringify(rect)
   input.dataset.elementJson = JSON.stringify(elementData)
 
@@ -592,8 +498,7 @@ function showTextInput(rect, elementData) {
 
   overlay.appendChild(input)
 
-  // Hint below input: enter submits current annotation. Re-pressing the
-  // draw-mode shortcut while editing also submits and exits draw mode.
+  // Hint below input: "Enter to confirm · Esc to exit annotation mode"
   const inputHint = document.createElement('div')
   inputHint.id = 'gasoline-draw-input-hint'
   const hintTop = parseInt(input.style.top) + 42
@@ -607,7 +512,7 @@ function showTextInput(rect, elementData) {
     pointerEvents: 'none',
     zIndex: String(OVERLAY_Z_INDEX + 2)
   })
-  inputHint.textContent = 'Enter to submit \u00b7 Draw shortcut again submits + exits \u00b7 Esc cancels'
+  inputHint.textContent = 'Enter to confirm \u00b7 Esc to exit annotation mode'
   overlay.appendChild(inputHint)
 
   textInput = input
@@ -645,8 +550,7 @@ function confirmTextInput() {
   textInput = null
 
   const text = input.value.trim()
-  const viewportRect = JSON.parse(input.dataset.rectJson)
-  const rect = toDocumentRect(viewportRect)
+  const rect = JSON.parse(input.dataset.rectJson)
   const elementData = JSON.parse(input.dataset.elementJson)
 
   // Remove input element and hint
@@ -664,29 +568,20 @@ function confirmTextInput() {
   // Create annotation
   const id = `ann_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
   const correlationId = `ann_detail_${Math.random().toString(36).slice(2, 8)}`
-  const actionTrail = snapshotActionTrail(ACTION_TRAIL_LIMIT)
-  const uiContext = collectUIContextMetadata()
 
   const annotation = {
     id,
     rect,
-    coord_space: COORD_SPACE_DOCUMENT,
     text,
     timestamp: Date.now(),
     page_url: window.location.href,
     element_summary: elementData.summary || '',
-    correlation_id: correlationId,
-    action_trail: actionTrail,
-    ui_context: uiContext
+    correlation_id: correlationId
   }
   annotations.push(annotation)
 
   // Store full detail for lazy retrieval
-  elementDetails.set(correlationId, {
-    ...elementData.detail,
-    action_trail: actionTrail,
-    ui_context: uiContext
-  })
+  elementDetails.set(correlationId, elementData.detail)
 
   renderAnnotations()
   persistAnnotations()
@@ -807,7 +702,7 @@ function captureElementsUnderRect(rect) {
       tag: el.tagName.toLowerCase(),
       selector: buildCSSSelector(el),
       text: (el.textContent || '').trim().slice(0, 100),
-      classes: Array.from(el.classList).slice(0, 10)
+      classes: Array.from(el.classList).slice(0, 5)
     }))
 
     const detail = {
@@ -894,14 +789,9 @@ function refreshElementDetails() {
   for (const ann of annotations) {
     if (!ann.rect || !ann.correlation_id) continue
     try {
-      const freshData = captureElementsUnderRect(toViewportRect(ann.rect, ann.coord_space))
+      const freshData = captureElementsUnderRect(ann.rect)
       if (freshData.detail && Object.keys(freshData.detail).length > 0) {
-        const existing = elementDetails.get(ann.correlation_id) || {}
-        elementDetails.set(ann.correlation_id, {
-          ...freshData.detail,
-          action_trail: existing.action_trail || ann.action_trail || [],
-          ui_context: existing.ui_context || ann.ui_context || collectUIContextMetadata()
-        })
+        elementDetails.set(ann.correlation_id, freshData.detail)
         ann.element_summary = freshData.summary || ann.element_summary
       }
     } catch {
@@ -1044,65 +934,6 @@ function buildElementDetail(el) {
     // Shadow DOM access may fail
   }
 
-  // Build parent_context: structured 2-level ancestry
-  let parentContext = null
-  try {
-    const parent = el.parentElement
-    if (parent && parent !== document.body && parent !== document.documentElement) {
-      const parentInfo = {
-        tag: parent.tagName.toLowerCase(),
-        classes: Array.from(parent.classList).slice(0, 5),
-        id: parent.id || '',
-        role: (parent.getAttribute && parent.getAttribute('role')) || ''
-      }
-      const grandparent = parent.parentElement
-      let grandparentInfo = null
-      if (grandparent && grandparent !== document.body && grandparent !== document.documentElement) {
-        grandparentInfo = {
-          tag: grandparent.tagName.toLowerCase(),
-          classes: Array.from(grandparent.classList).slice(0, 5),
-          id: grandparent.id || '',
-          role: (grandparent.getAttribute && grandparent.getAttribute('role')) || ''
-        }
-      }
-      parentContext = { parent: parentInfo, grandparent: grandparentInfo }
-    }
-  } catch {
-    // Ignore parent context build errors
-  }
-
-  // Build siblings: up to 2 before and 2 after the target element
-  let siblings = []
-  try {
-    const parent = el.parentElement
-    if (parent) {
-      const children = Array.from(parent.children)
-      const idx = children.indexOf(el)
-      if (idx >= 0) {
-        const before = children.slice(Math.max(0, idx - 2), idx)
-        const after = children.slice(idx + 1, idx + 3)
-        for (const sib of before) {
-          siblings.push({
-            tag: sib.tagName.toLowerCase(),
-            classes: Array.from(sib.classList).slice(0, 5),
-            text: (sib.textContent || '').trim().slice(0, 60),
-            position: 'before'
-          })
-        }
-        for (const sib of after) {
-          siblings.push({
-            tag: sib.tagName.toLowerCase(),
-            classes: Array.from(sib.classList).slice(0, 5),
-            text: (sib.textContent || '').trim().slice(0, 60),
-            position: 'after'
-          })
-        }
-      }
-    }
-  } catch {
-    // Ignore sibling capture errors
-  }
-
   const detail = {
     selector: buildCSSSelector(el),
     tag: el.tagName.toLowerCase(),
@@ -1121,22 +952,6 @@ function buildElementDetail(el) {
     a11y_flags: runA11yChecks(el, computed)
   }
 
-  const selectorCandidates = collectSelectorCandidates(el)
-  if (selectorCandidates.length > 0) {
-    detail.selector_candidates = selectorCandidates
-  }
-
-  if (parentContext) {
-    detail.parent_context = parentContext
-  }
-  if (siblings.length > 0) {
-    detail.siblings = siblings
-  }
-  const cssFramework = detectCSSFramework(el)
-  if (cssFramework) {
-    detail.css_framework = cssFramework
-  }
-
   if (shadowInfo) {
     detail.shadow_dom = shadowInfo
   }
@@ -1150,63 +965,10 @@ function buildElementDetail(el) {
   // Framework component detection
   const componentInfo = detectComponentSource(el)
   if (componentInfo) {
-    if (componentInfo.framework) {
-      detail.js_framework = componentInfo.framework
-    }
     detail.component = componentInfo
   }
 
   return detail
-}
-
-/**
- * Detect CSS framework from element class names.
- * Returns framework name string or empty string if no confident match.
- */
-function detectCSSFramework(el) {
-  try {
-    const classes = Array.from(el.classList)
-    if (classes.length === 0) return ''
-
-    // Tailwind: utility class patterns (require at least 1 dash-pattern for confidence)
-    const tailwindSpecific = /^(p-\d|m-\d|px-\d|py-\d|mx-\d|my-\d|pt-\d|pb-\d|pl-\d|pr-\d|mt-\d|mb-\d|ml-\d|mr-\d|text-(xs|sm|base|lg|xl|2xl|3xl)|font-(thin|light|normal|medium|semibold|bold)|bg-[a-z]+-\d{2,3}|w-\d|h-\d|gap-\d|space-[xy]-\d|max-w-[\w-]+|min-w-[\w-]+|max-h-[\w-]+|min-h-[\w-]+|justify-[\w-]+|items-[\w-]+|self-[\w-]+|z-\d|opacity-[\w]+|duration-[\w]+|ease-[\w-]+|translate-[\w-]+|scale-[\w-]+|rotate-[\w-]+|skew-[\w-]+|origin-[\w-]+|delay-[\w]+)$/
-    const tailwindGeneric = /^(flex|grid|block|inline|hidden|rounded|border|shadow|overflow-|transition)$/
-    let tailwindHits = 0
-    let tailwindSpecificHits = 0
-    for (const cls of classes) {
-      if (tailwindSpecific.test(cls)) { tailwindHits++; tailwindSpecificHits++ }
-      else if (tailwindGeneric.test(cls)) tailwindHits++
-    }
-    if (tailwindHits >= 3 && tailwindSpecificHits >= 1) return 'tailwind'
-
-    // Bootstrap: component/grid patterns
-    const bootstrapPatterns = /^(col-(xs|sm|md|lg|xl)-\d+|col-\d+|btn-[a-z]+|form-control|form-group|form-check|input-group|card|container|row|navbar|nav-[a-z]+|modal|badge|alert|dropdown|table|pagination)$/
-    let bootstrapHits = 0
-    for (const cls of classes) {
-      if (bootstrapPatterns.test(cls)) bootstrapHits++
-    }
-    if (bootstrapHits >= 2) return 'bootstrap'
-
-    // CSS Modules: hash-suffixed classes like Component_name__hash
-    const cssModulesPattern = /^[A-Z][a-zA-Z]*_[a-zA-Z]+__[a-zA-Z0-9]{5,}$/
-    let modulesHits = 0
-    for (const cls of classes) {
-      if (cssModulesPattern.test(cls)) modulesHits++
-    }
-    if (modulesHits >= 1) return 'css-modules'
-
-    // Styled-components/Emotion: css-* or sc-* prefixed classes
-    const styledPattern = /^(css-[a-z0-9]+|sc-[a-zA-Z]+)$/
-    let styledHits = 0
-    for (const cls of classes) {
-      if (styledPattern.test(cls)) styledHits++
-    }
-    if (styledHits >= 2) return 'styled-components'
-
-    return ''
-  } catch {
-    return ''
-  }
 }
 
 /**
@@ -1370,102 +1132,6 @@ function buildCSSSelector(el) {
   return tag
 }
 
-const MAX_SELECTOR_CANDIDATES = 8
-
-function collectSelectorCandidates(el) {
-  const candidates = []
-  if (!el || !el.tagName) {
-    return candidates
-  }
-
-  const safeAdd = (candidate) => {
-    if (!candidate || typeof candidate !== 'string') return
-    const normalized = candidate.trim()
-    if (!normalized || candidates.includes(normalized)) return
-    if (candidates.length >= MAX_SELECTOR_CANDIDATES) return
-    candidates.push(normalized)
-  }
-  const getAttribute = (name) => (typeof el.getAttribute === 'function' ? el.getAttribute(name) : null)
-  const normalizeText = (value, max) =>
-    String(value || '')
-      .replace(/\s+/g, ' ')
-      .replace(/\|/g, '/')
-      .trim()
-      .slice(0, max)
-  const escapeAttr = (value) => {
-    const raw = String(value || '')
-    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(raw)
-    return raw.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-  }
-  const tag = el.tagName.toLowerCase()
-  const text = normalizeText(el.textContent || '', 80)
-
-  if (el.id) {
-    safeAdd(`css=#${escapeAttr(el.id)}`)
-  }
-
-  const testID = getAttribute('data-testid') || getAttribute('data-test-id') || getAttribute('data-cy')
-  if (testID) {
-    safeAdd(`testid=${normalizeText(testID, 120)}`)
-  }
-
-  const ariaLabel = getAttribute('aria-label')
-  if (ariaLabel) {
-    safeAdd(`label=${normalizeText(ariaLabel, 120)}`)
-  }
-
-  const placeholder = getAttribute('placeholder')
-  if (placeholder) {
-    safeAdd(`placeholder=${normalizeText(placeholder, 120)}`)
-  }
-
-  const explicitRole = getAttribute('role')
-  const implicitRole = inferImplicitRole(el)
-  const role = explicitRole || implicitRole
-  if (role && text) {
-    safeAdd(`role=${normalizeText(role, 60)}|${text}`)
-  } else if (role) {
-    safeAdd(`role=${normalizeText(role, 60)}`)
-  }
-
-  if (text) {
-    safeAdd(`text=${text}`)
-  }
-
-  const nameAttr = getAttribute('name')
-  if (nameAttr) {
-    safeAdd(`css=${tag}[name="${escapeAttr(nameAttr)}"]`)
-  }
-
-  safeAdd(`css=${buildCSSSelector(el)}`)
-  return candidates
-}
-
-function inferImplicitRole(el) {
-  if (!el || !el.tagName) return ''
-  const tag = el.tagName.toLowerCase()
-  if (tag === 'button') return 'button'
-  if (tag === 'a' && typeof el.getAttribute === 'function' && el.getAttribute('href')) return 'link'
-  if (tag === 'select') return 'combobox'
-  if (tag === 'textarea') return 'textbox'
-  if (tag === 'input') {
-    const inputType = (typeof el.getAttribute === 'function' ? el.getAttribute('type') : '') || 'text'
-    switch (inputType.toLowerCase()) {
-      case 'button':
-      case 'submit':
-      case 'reset':
-        return 'button'
-      case 'checkbox':
-        return 'checkbox'
-      case 'radio':
-        return 'radio'
-      default:
-        return 'textbox'
-    }
-  }
-  return ''
-}
-
 /**
  * Trace CSS rules that match an element using document.styleSheets.
  * Returns matched rules with selector, properties, and source stylesheet.
@@ -1620,70 +1286,62 @@ function detectComponentSource(el) {
 
 const MAX_PERSISTED_ANNOTATIONS = 50
 
-// Guard: detect if chrome.storage.session is accessible in this execution context.
-// In web_accessible_resource contexts the API object exists but every call throws
-// "Access to storage is not allowed from this context". We disable persistence
-// permanently on the first failure to avoid noisy console errors.
-let storageAvailable = (typeof chrome !== 'undefined' && !!chrome.storage?.session)
-
 function persistAnnotations() {
   if (saveTimeout) clearTimeout(saveTimeout)
   saveTimeout = setTimeout(() => {
-    if (!storageAvailable) return
-    try {
-      const key = 'gasoline_draw_annotations'
-      const toStore =
-        annotations.length > MAX_PERSISTED_ANNOTATIONS ? annotations.slice(-MAX_PERSISTED_ANNOTATIONS) : annotations
-      chrome.storage.session.set(
-        {
-          [key]: {
-            annotations: toStore,
-            page_url: window.location.href,
-            timestamp: Date.now()
+    if (typeof chrome !== 'undefined' && chrome.storage?.session) {
+      try {
+        const key = 'gasoline_draw_annotations'
+        // Cap stored annotations to prevent quota overflow
+        const toStore =
+          annotations.length > MAX_PERSISTED_ANNOTATIONS ? annotations.slice(-MAX_PERSISTED_ANNOTATIONS) : annotations
+        chrome.storage.session.set(
+          {
+            [key]: {
+              annotations: toStore,
+              page_url: window.location.href,
+              timestamp: Date.now()
+            }
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.warn('[gasoline] Draw mode storage error:', chrome.runtime.lastError.message)
+            }
           }
-        },
-        () => {
-          if (chrome.runtime?.lastError) {
-            storageAvailable = false
-          }
-        }
-      )
-    } catch {
-      storageAvailable = false
+        )
+      } catch {
+        // Storage may not be available in all contexts
+      }
     }
   }, 500) // Debounce 500ms
 }
 
 function clearPersistedAnnotations() {
-  if (!storageAvailable) return
+  if (typeof chrome === 'undefined' || !chrome.storage?.session) return
   try {
-    chrome.storage.session.remove('gasoline_draw_annotations', () => {
-      if (chrome.runtime?.lastError) {
-        storageAvailable = false
-      }
-    })
+    chrome.storage.session.remove('gasoline_draw_annotations')
   } catch {
-    storageAvailable = false
+    // Storage may not be available
   }
 }
 
 function loadAnnotations() {
-  if (!storageAvailable) return
+  if (typeof chrome === 'undefined' || !chrome.storage?.session) return
   try {
     const key = 'gasoline_draw_annotations'
     chrome.storage.session.get([key], (result) => {
-      if (chrome.runtime?.lastError) {
-        storageAvailable = false
+      if (chrome.runtime.lastError) {
+        console.warn('[gasoline] Draw mode load error:', chrome.runtime.lastError.message)
         return
       }
       const data = result?.[key]
       if (data?.annotations && data.page_url === window.location.href) {
-        annotations = data.annotations.map(normalizeLoadedAnnotation)
+        annotations = data.annotations
         renderAnnotations()
       }
     })
   } catch {
-    storageAvailable = false
+    // Ignore storage read errors
   }
 }
 
@@ -1700,18 +1358,6 @@ function loadAnnotations() {
 export function deactivateAndSendResults() {
   if (!active || isDeactivating) return
   isDeactivating = true
-
-  // Shortcut/popup stop while an editor is open should behave like submit, not cancel.
-  if (textInput) {
-    if (!submitActiveTextInputBeforeExit()) {
-      isDeactivating = false
-      return {
-        status: 'validation_error',
-        message: 'Annotation text is required before exiting draw mode.'
-      }
-    }
-  }
-
   const pageUrl = window.location.href
   const currentSessionName = sessionName // capture before deactivate clears it
   const currentCorrelationId = sessionCorrelationId // capture before deactivate clears it
@@ -1742,8 +1388,8 @@ export function deactivateAndSendResults() {
 
     // Delay teardown to let fade complete
     setTimeout(() => {
-      isDeactivating = false
       const result = deactivateDrawMode()
+      isDeactivating = false
       // Clear persisted annotations from storage after successful deactivation
       clearPersistedAnnotations()
       try {
@@ -1764,19 +1410,6 @@ export function deactivateAndSendResults() {
       } catch {
         // Extension context may be invalidated
       }
-
-      // Dispatch CustomEvent so content-script peers (e.g. terminal launcher)
-      // can auto-send annotation summaries without round-tripping through background.
-      try {
-        window.dispatchEvent(new CustomEvent('gasoline-annotations-ready', {
-          detail: {
-            annotations: result.annotations,
-            page_url: pageUrl
-          }
-        }))
-      } catch {
-        // CustomEvent dispatch failed — non-critical
-      }
     }, 300)
   }
 
@@ -1789,13 +1422,13 @@ export function deactivateAndSendResults() {
   if (typeof chrome !== 'undefined' && chrome.runtime) {
     let screenshotHandled = false
     // Timeout fallback: if screenshot callback never fires (extension context
-    // invalidated, background unresponsive), proceed without screenshot after 1s.
+    // invalidated, background unresponsive), proceed without screenshot after 3s.
     const fallbackTimer = setTimeout(() => {
       if (!screenshotHandled) {
         screenshotHandled = true
         finishDeactivation('')
       }
-    }, 1000)
+    }, 3000)
 
     try {
       chrome.runtime.sendMessage({ type: 'GASOLINE_CAPTURE_SCREENSHOT' }, (screenshotResponse) => {
@@ -1818,32 +1451,6 @@ export function deactivateAndSendResults() {
   }
 }
 
-function submitActiveTextInputBeforeExit() {
-  if (!textInput) return true
-  const text = textInput.value.trim()
-  if (!text) {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage({
-          type: 'GASOLINE_ACTION_TOAST',
-          text: 'Annotation text required',
-          detail: 'Type feedback, then press the shortcut again to submit.',
-          state: 'error',
-          duration_ms: 2500
-        })
-      }
-    } catch {
-      // Extension context may be invalidated
-    }
-    textInput.focus()
-    return false
-  }
-
-  // Reuse Enter-submit path so payload matches explicit submit behavior.
-  confirmTextInput()
-  return true
-}
-
 // ============================================================================
 // UTILITY
 // ============================================================================
@@ -1854,179 +1461,5 @@ function normalizeRect(x1, y1, x2, y2) {
     y: Math.min(y1, y2),
     width: Math.abs(x2 - x1),
     height: Math.abs(y2 - y1)
-  }
-}
-
-function scrollOffsets() {
-  return {
-    x: window.scrollX || window.pageXOffset || 0,
-    y: window.scrollY || window.pageYOffset || 0
-  }
-}
-
-function toDocumentRect(rect) {
-  const scroll = scrollOffsets()
-  return {
-    x: rect.x + scroll.x,
-    y: rect.y + scroll.y,
-    width: rect.width,
-    height: rect.height
-  }
-}
-
-function toViewportRect(rect, coordSpace) {
-  if (!rect) {
-    return { x: 0, y: 0, width: 0, height: 0 }
-  }
-  if (coordSpace === COORD_SPACE_DOCUMENT || coordSpace === undefined || coordSpace === null || coordSpace === '') {
-    const scroll = scrollOffsets()
-    return {
-      x: rect.x - scroll.x,
-      y: rect.y - scroll.y,
-      width: rect.width,
-      height: rect.height
-    }
-  }
-  return {
-    x: rect.x,
-    y: rect.y,
-    width: rect.width,
-    height: rect.height
-  }
-}
-
-function normalizeLoadedAnnotation(annotation) {
-  if (!annotation || !annotation.rect) return annotation
-  if (annotation.coord_space === COORD_SPACE_DOCUMENT) {
-    if (!Array.isArray(annotation.action_trail)) annotation.action_trail = []
-    if (!annotation.ui_context) annotation.ui_context = collectUIContextMetadata()
-    return annotation
-  }
-  return {
-    ...annotation,
-    rect: toDocumentRect(annotation.rect),
-    coord_space: COORD_SPACE_DOCUMENT,
-    action_trail: Array.isArray(annotation.action_trail) ? annotation.action_trail : [],
-    ui_context: annotation.ui_context || collectUIContextMetadata()
-  }
-}
-
-function recordRecentAction(type, target, extra = {}) {
-  const entry = {
-    type,
-    target_summary: summarizeActionTarget(target),
-    timestamp: Date.now(),
-    ...extra
-  }
-  recentActions.push(entry)
-  if (recentActions.length > ACTION_BUFFER_LIMIT) {
-    recentActions = recentActions.slice(recentActions.length - ACTION_BUFFER_LIMIT)
-  }
-}
-
-function snapshotActionTrail(limit) {
-  const max = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : ACTION_TRAIL_LIMIT
-  const selected = recentActions.slice(-max)
-  const now = Date.now()
-  return selected.map((entry, index) => ({
-    type: entry.type,
-    target_summary: entry.target_summary,
-    timestamp: entry.timestamp,
-    delta_ms: Math.max(0, now - entry.timestamp),
-    order: index + 1
-  }))
-}
-
-function summarizeActionTarget(target) {
-  if (!target || !target.tagName) return 'unknown'
-  const tag = target.tagName.toLowerCase()
-  const selector = safeBuildSelector(target)
-  const role = typeof target.getAttribute === 'function' ? target.getAttribute('role') || '' : ''
-  const text = (target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60)
-  const parts = [selector || tag]
-  if (role) parts.push(`role=${role}`)
-  if (text) parts.push(`text="${text}"`)
-  return parts.join(' ')
-}
-
-function collectUIContextMetadata() {
-  return {
-    theme: detectTheme(),
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight
-    },
-    sidebars: {
-      left_open: isSidebarOpen([
-        '[data-sidebar="left"]',
-        '#left-sidebar',
-        '.left-sidebar',
-        '.sidebar-left',
-        'aside.left'
-      ]),
-      right_open: isSidebarOpen([
-        '[data-sidebar="right"]',
-        '#right-sidebar',
-        '.right-sidebar',
-        '.sidebar-right',
-        'aside.right'
-      ])
-    },
-    focused_element: summarizeFocusedElement()
-  }
-}
-
-function detectTheme() {
-  try {
-    const html = document.documentElement
-    const dataTheme = html?.dataset?.theme
-    if (dataTheme === 'dark' || dataTheme === 'light') return dataTheme
-    if (html?.classList?.contains('dark')) return 'dark'
-    if (html?.classList?.contains('light')) return 'light'
-    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-  } catch {
-    // fallback below
-  }
-  return 'light'
-}
-
-function isSidebarOpen(selectors) {
-  for (const selector of selectors) {
-    let el = null
-    try {
-      el = document.querySelector(selector)
-    } catch {
-      el = null
-    }
-    if (!el) continue
-    const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null
-    const width = rect?.width || 0
-    const height = rect?.height || 0
-    if (width <= 0 || height <= 0) continue
-    const computed = window.getComputedStyle?.(el)
-    if (computed?.display === 'none' || computed?.visibility === 'hidden') continue
-    return true
-  }
-  return false
-}
-
-function summarizeFocusedElement() {
-  const el = document.activeElement
-  if (!el || el === document.body || el === document.documentElement) return null
-  return {
-    selector: safeBuildSelector(el),
-    tag: el.tagName?.toLowerCase?.() || '',
-    role: typeof el.getAttribute === 'function' ? el.getAttribute('role') || '' : '',
-    text: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-  }
-}
-
-function safeBuildSelector(el) {
-  try {
-    return buildCSSSelector(el)
-  } catch {
-    return el?.tagName?.toLowerCase?.() || 'unknown'
   }
 }

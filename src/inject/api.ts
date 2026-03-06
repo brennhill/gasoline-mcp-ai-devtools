@@ -1,6 +1,8 @@
 /**
- * Purpose: Exposes the window.__gasoline developer API for programmatic access to capture capabilities, context annotations, and event buffers.
- * Docs: docs/features/feature/custom-event-api/index.md
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 
 /**
@@ -18,25 +20,25 @@ import type {
   WaterfallEntry,
   PerformanceMark,
   PerformanceMeasure
-} from '../types/index.js'
+} from '../types/index'
 
 import {
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations,
   getContextAnnotations
-} from '../lib/context.js'
+} from '../lib/context'
 import {
   computeSelectors,
   recordEnhancedAction,
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript
-} from '../lib/reproduction.js'
-import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions.js'
-import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network.js'
-import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance.js'
-import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context.js'
+} from '../lib/reproduction'
+import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions'
+import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network'
+import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance'
+import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context'
 
 /**
  * GasolineAPI interface exposed on window.__gasoline

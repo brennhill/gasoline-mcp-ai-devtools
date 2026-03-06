@@ -46,19 +46,15 @@ register_cleanup() {
 
 # Master cleanup: runs all registered handlers, then base cleanup.
 _smoke_master_cleanup() {
-    _smoke_kill_harness 2>/dev/null || true
     for handler in $_smoke_cleanup_handlers; do
         "$handler" 2>/dev/null || true
     done
-    # Keep daemon alive by default so developers can continue working after smoke.
-    # Set SMOKE_KEEP_DAEMON_ON_EXIT=0 for strict cleanup mode in automation.
-    if [ "${SMOKE_KEEP_DAEMON_ON_EXIT:-1}" != "1" ]; then
-        kill_server 2>/dev/null || true
-        if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
-            bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
-        fi
-    fi
+    # Base cleanup: kill daemon, remove temp dir
+    kill_server 2>/dev/null || true
     pkill -f "upload-server.py" 2>/dev/null || true
+    if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
+        bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+    fi
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null || true
 }
 
@@ -69,88 +65,6 @@ SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
 mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
-
-_smoke_abs_dir() {
-    local dir="$1"
-    (cd "$dir" >/dev/null 2>&1 && pwd -P)
-}
-
-_resolve_harness_root() {
-    if [ -n "${SMOKE_HARNESS_ROOT:-}" ]; then
-        if [ -d "$SMOKE_HARNESS_ROOT" ]; then
-            _smoke_abs_dir "$SMOKE_HARNESS_ROOT"
-            return 0
-        fi
-        echo "FATAL: SMOKE_HARNESS_ROOT is set but invalid: $SMOKE_HARNESS_ROOT" >&2
-        return 1
-    fi
-
-    local candidates=(
-        "$SMOKE_FRAMEWORK_DIR/../../tests/pages"
-        "$SMOKE_FRAMEWORK_DIR/../../cmd/dev-console/testpages"
-    )
-    local candidate
-    for candidate in "${candidates[@]}"; do
-        if [ -d "$candidate" ]; then
-            _smoke_abs_dir "$candidate"
-            return 0
-        fi
-    done
-
-    echo "FATAL: unable to resolve harness root directory." >&2
-    echo "  Tried:" >&2
-    for candidate in "${candidates[@]}"; do
-        echo "    - $candidate" >&2
-    done
-    echo "  Override with: SMOKE_HARNESS_ROOT=/absolute/path/to/testpages" >&2
-    return 1
-}
-
-SMOKE_HARNESS_PORT="${SMOKE_HARNESS_PORT:-8787}"
-SMOKE_HARNESS_ROOT="$(_resolve_harness_root)"
-SMOKE_HARNESS_PID=""
-SMOKE_BASE_URL="http://127.0.0.1:${SMOKE_HARNESS_PORT}"
-SMOKE_EXAMPLE_URL="${SMOKE_BASE_URL}/example.com"
-SMOKE_INTERACT_URL="${SMOKE_BASE_URL}/interact.html"
-SMOKE_PERFORMANCE_URL="${SMOKE_BASE_URL}/performance.html"
-SMOKE_TELEMETRY_URL="${SMOKE_BASE_URL}/telemetry.html"
-SMOKE_A11Y_URL="${SMOKE_BASE_URL}/a11y.html"
-
-_smoke_kill_harness() {
-    if [ -n "${SMOKE_HARNESS_PID:-}" ]; then
-        kill "$SMOKE_HARNESS_PID" 2>/dev/null || true
-        sleep 0.1
-        kill -0 "$SMOKE_HARNESS_PID" 2>/dev/null && kill -9 "$SMOKE_HARNESS_PID" 2>/dev/null || true
-        SMOKE_HARNESS_PID=""
-    fi
-}
-
-start_local_harness() {
-    _smoke_kill_harness
-    local harness_log="$SMOKE_OUTPUT_DIR/harness.log"
-    python3 "$SMOKE_FRAMEWORK_DIR/harness-server.py" \
-        --root "$SMOKE_HARNESS_ROOT" \
-        --port "$SMOKE_HARNESS_PORT" >"$harness_log" 2>&1 &
-    SMOKE_HARNESS_PID=$!
-
-    local ok=false
-    for _i in $(seq 1 30); do
-        if curl -s --connect-timeout 1 --max-time 2 "${SMOKE_BASE_URL}/healthz" >/dev/null 2>&1; then
-            ok=true
-            break
-        fi
-        sleep 0.2
-    done
-
-    if [ "$ok" != "true" ]; then
-        echo "FATAL: local harness failed to start on ${SMOKE_BASE_URL}" >&2
-        echo "  Harness root: $SMOKE_HARNESS_ROOT" >&2
-        echo "  Harness log: $harness_log" >&2
-        tail -n 20 "$harness_log" >&2 || true
-        return 1
-    fi
-    return 0
-}
 
 wait_for_extension() {
     local timeout_s="${1:-10}"
@@ -177,14 +91,12 @@ init_smoke() {
     echo "Smoke Test Output — $(date)" > "$OUTPUT_FILE"
     echo "Smoke Test Diagnostics — $(date)" > "$DIAGNOSTICS_FILE"
     echo "Port: $port" >> "$DIAGNOSTICS_FILE"
-    echo "Harness: $SMOKE_BASE_URL" >> "$DIAGNOSTICS_FILE"
     echo "======================================" >> "$DIAGNOSTICS_FILE"
 
     # Print file locations and mode upfront so they're always visible
     echo ""
     echo "  Output:      $OUTPUT_FILE"
     echo "  Diagnostics: $DIAGNOSTICS_FILE"
-    echo "  Harness:     $SMOKE_BASE_URL"
     if [ "$_INTERACTIVE" = "true" ]; then
         echo "  Mode:        interactive (pauses between tests)"
     else
@@ -199,58 +111,6 @@ init_smoke() {
     # Trap ERR so crashes under set -e are immediately visible.
     # Logs the failing command, line, and function to both stderr and diagnostics.
     trap '_smoke_on_error $LINENO "${FUNCNAME[0]:-main}" "${BASH_COMMAND}"' ERR
-
-    start_local_harness
-}
-
-rewrite_smoke_urls() {
-    local payload="$1"
-    local rewritten
-    rewritten=$(
-        printf '%s' "$payload" | \
-            SMOKE_EXAMPLE_URL="$SMOKE_EXAMPLE_URL" SMOKE_BASE_URL="$SMOKE_BASE_URL" \
-            jq -c '
-                def rewrite_example_domain_url:
-                    if type != "string" then .
-                    elif test("^https?://(www\\.)?example\\.com(/|$)") then
-                        sub("^https?://(www\\.)?example\\.com"; env.SMOKE_EXAMPLE_URL)
-                    elif test("^https?://example\\.org(/|$)") then
-                        sub("^https?://example\\.org"; (env.SMOKE_BASE_URL + "/example.org"))
-                    else .
-                    end;
-
-                def rewrite_url_fields:
-                    if type == "object" then
-                        with_entries(
-                            if (.key == "url" or .key == "base_url" or .key == "from_url" or .key == "to_url")
-                            then .value |= rewrite_example_domain_url
-                            else .value |= rewrite_url_fields
-                            end
-                        )
-                    elif type == "array" then map(rewrite_url_fields)
-                    else .
-                    end;
-
-                rewrite_url_fields
-            ' 2>/dev/null
-    )
-
-    if [ -n "$rewritten" ]; then
-        echo "$rewritten"
-    else
-        # Non-JSON payloads should pass through unchanged.
-        echo "$payload"
-    fi
-}
-
-# Override base framework call_tool so smoke runs stay on local harness pages.
-call_tool() {
-    local tool_name="$1"
-    local arguments="${2:-\{\}}"
-    local rewritten
-    rewritten="$(rewrite_smoke_urls "$arguments")"
-    local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/call\",\"params\":{\"name\":\"${tool_name}\",\"arguments\":${rewritten}}}"
-    send_mcp "$request" "call_${tool_name}"
 }
 
 _smoke_on_error() {
@@ -347,80 +207,6 @@ log_diagnostic() {
     } >> "$DIAGNOSTICS_FILE"
 }
 
-extract_embedded_json() {
-    local text="$1"
-    local suffix="${text#*\{}"
-    if [ "$suffix" = "$text" ]; then
-        return 1
-    fi
-    printf '{%s' "$suffix"
-}
-
-content_json_query() {
-    local text="$1"
-    local expr="$2"
-    local fallback="${3:-}"
-    local payload
-    if ! payload=$(extract_embedded_json "$text"); then
-        printf '%s' "$fallback"
-        return 0
-    fi
-    local out
-    out="$(printf '%s' "$payload" | jq -r "$expr" 2>/dev/null || true)"
-    if [ -z "$out" ]; then
-        printf '%s' "$fallback"
-    else
-        printf '%s' "$out"
-    fi
-}
-
-content_json_cursor() {
-    content_json_query "$1" '.metadata.cursor // .metadata.after_cursor // .metadata.next_cursor // empty' ""
-}
-
-content_json_entry_count() {
-    content_json_query "$1" '(.entries // .logs // []) | if type=="array" then length else 0 end' "0"
-}
-
-content_json_count() {
-    content_json_query "$1" '.count // ((.entries // .logs // []) | if type=="array" then length else 0 end)' "0"
-}
-
-pending_status_for_correlation() {
-    local text="$1"
-    local corr="$2"
-    local payload
-    if ! payload=$(extract_embedded_json "$text"); then
-        return 0
-    fi
-    printf '%s' "$payload" | jq -r --arg corr "$corr" '
-        def normalize_status($bucket; $raw):
-            ($raw // "" | tostring | ascii_downcase | gsub("^\\s+|\\s+$"; "")) as $s |
-            if ($s == "queued" or $s == "running" or $s == "still_processing") then "pending"
-            elif $s != "" then $s
-            elif $bucket == "completed" then "complete"
-            elif $bucket == "failed" then "error"
-            else "pending"
-            end;
-
-        [
-            "pending", "completed", "failed"
-        ] as $buckets |
-        [
-            $buckets[] as $bucket |
-            (.[$bucket] // []) |
-            if type == "array" then .[] else empty end |
-            select((.correlation_id // "" | tostring) == $corr) |
-            (normalize_status($bucket; .status)) as $status |
-            (
-                $status + "|" +
-                ("fallback pending_commands bucket=" + $bucket + " status=" + $status) +
-                (if .error then " error=" + (.error | tostring) else "" end)
-            )
-        ][0] // empty
-    ' 2>/dev/null || true
-}
-
 # ── Interact helper ──────────────────────────────────────
 # Fires an interact command and waits for completion via polling.
 # Sets INTERACT_RESULT to the command result text (or empty on timeout).
@@ -432,7 +218,7 @@ interact_and_wait() {
     local max_polls="${3:-}"
     if [ -z "$max_polls" ]; then
         case "$action" in
-            navigate|refresh|back|forward|new_tab|upload|record_start|record_stop|screen_recording_start|screen_recording_stop)
+            navigate|refresh|back|forward|new_tab|upload|record_start|record_stop)
                 max_polls=120 ;; # up to 60s at 0.5s interval for slower async browser actions
             *)
                 max_polls=20 ;;
@@ -512,7 +298,36 @@ interact_and_wait() {
             fi
             if [ -n "$pending_text" ]; then
                 local pending_hit
-                pending_hit=$(pending_status_for_correlation "$pending_text" "$corr_id")
+                pending_hit=$(echo "$pending_text" | python3 - "$corr_id" -c "
+import sys, json
+corr = sys.argv[1]
+text = sys.stdin.read()
+i = text.find('{')
+if i < 0:
+    sys.exit(0)
+try:
+    data = json.loads(text[i:])
+except Exception:
+    sys.exit(0)
+for bucket in ('pending', 'completed', 'failed'):
+    items = data.get(bucket, [])
+    if not isinstance(items, list):
+        continue
+    for item in items:
+        if str(item.get('correlation_id', '')) != corr:
+            continue
+        status = str(item.get('status', '')).strip().lower()
+        if status in ('queued', 'running', 'still_processing'):
+            status = 'pending'
+        if not status:
+            status = 'complete' if bucket == 'completed' else ('error' if bucket == 'failed' else 'pending')
+        detail = f'fallback pending_commands bucket={bucket} status={status}'
+        err = item.get('error')
+        if err:
+            detail += f' error={err}'
+        print(f'{status}|{detail}')
+        sys.exit(0)
+" 2>/dev/null || true)
                 if [ -n "$pending_hit" ]; then
                     local pending_status pending_detail
                     pending_status="${pending_hit%%|*}"

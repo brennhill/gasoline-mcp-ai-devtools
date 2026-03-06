@@ -1,15 +1,18 @@
 /**
- * Purpose: Owns all mutable module-level state (connection status, settings, flags) for the background service worker.
- * Why: Separates state ownership from business logic so mutations are explicit and testable.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 /**
  * @fileoverview Mutable module-level state for the background service worker.
- * Owns getter/setter functions so that state ownership is explicit and
- * separated from business logic in index.ts.
+ * Owns all `let` variables and their setter functions so that state ownership
+ * is explicit and separated from business logic in index.ts.
  */
 
-import { DEFAULT_SERVER_URL } from '../lib/constants.js'
+import { DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // MODULE STATE
@@ -80,6 +83,37 @@ const state: BackgroundStateStore = {
   aiWebPilotCacheInitialized: false,
   pilotInitCallback: null,
   extensionLogQueue: []
+}
+
+/**
+ * Compatibility mirrors for legacy imports.
+ * New code should prefer getters/setters below.
+ */
+export let serverUrl = state.serverUrl
+export let debugMode = state.debugMode
+export let connectionStatus: MutableConnectionStatus = state.connectionStatus
+export let currentLogLevel = state.currentLogLevel
+export let screenshotOnError = state.screenshotOnError
+export let _captureOverrides: Record<string, string> = state.captureOverrides
+export let aiControlled = state.aiControlled
+export let _connectionCheckRunning = state.connectionCheckRunning
+export let __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache
+export let __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized
+export let __pilotInitCallback: (() => void) | null = state.pilotInitCallback
+export const extensionLogQueue = state.extensionLogQueue
+
+function syncLegacyExports(): void {
+  serverUrl = state.serverUrl
+  debugMode = state.debugMode
+  connectionStatus = state.connectionStatus
+  currentLogLevel = state.currentLogLevel
+  screenshotOnError = state.screenshotOnError
+  _captureOverrides = state.captureOverrides
+  aiControlled = state.aiControlled
+  _connectionCheckRunning = state.connectionCheckRunning
+  __aiWebPilotEnabledCache = state.aiWebPilotEnabledCache
+  __aiWebPilotCacheInitialized = state.aiWebPilotCacheInitialized
+  __pilotInitCallback = state.pilotInitCallback
 }
 
 export function getServerUrl(): string {
@@ -172,39 +206,48 @@ export function markInitComplete(): void {
 
 export function setServerUrl(url: string): void {
   state.serverUrl = url
+  syncLegacyExports()
 }
 
 /** Low-level flag setter. Use index.setDebugMode for the version that also logs. */
 export function _setDebugModeRaw(enabled: boolean): void {
   state.debugMode = enabled
+  syncLegacyExports()
 }
 
 export function setCurrentLogLevel(level: string): void {
   state.currentLogLevel = level
+  syncLegacyExports()
 }
 
 export function setScreenshotOnError(enabled: boolean): void {
   state.screenshotOnError = enabled
+  syncLegacyExports()
 }
 
 export function setConnectionStatus(patch: Partial<MutableConnectionStatus>): void {
   state.connectionStatus = { ...state.connectionStatus, ...patch }
+  syncLegacyExports()
 }
 
 export function setConnectionCheckRunning(running: boolean): void {
   state.connectionCheckRunning = running
+  syncLegacyExports()
 }
 
 export function setAiWebPilotEnabledCache(enabled: boolean): void {
   state.aiWebPilotEnabledCache = enabled
+  syncLegacyExports()
 }
 
 export function setAiWebPilotCacheInitialized(initialized: boolean): void {
   state.aiWebPilotCacheInitialized = initialized
+  syncLegacyExports()
 }
 
 export function setPilotInitCallback(callback: (() => void) | null): void {
   state.pilotInitCallback = callback
+  syncLegacyExports()
 }
 
 export function applyCaptureOverrides(overrides: Record<string, string>): void {
@@ -232,6 +275,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
     productionParity,
     insecureRewritesApplied: rewrites
   }
+  syncLegacyExports()
 }
 
 /**
@@ -239,6 +283,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
  */
 export function _resetPilotCacheForTesting(value?: boolean): void {
   state.aiWebPilotEnabledCache = value !== undefined ? value : false
+  syncLegacyExports()
 }
 
 /**
@@ -248,7 +293,7 @@ export function isAiWebPilotEnabled(): boolean {
   return state.aiWebPilotEnabledCache === true
 }
 
-function resetStateForTesting(): void {
+export function resetStateForTesting(): void {
   state.serverUrl = DEFAULT_SERVER_URL
   state.debugMode = false
   state.connectionStatus = { ...defaultConnectionStatus }
@@ -261,4 +306,5 @@ function resetStateForTesting(): void {
   state.aiWebPilotCacheInitialized = false
   state.pilotInitCallback = null
   state.extensionLogQueue.length = 0
+  syncLegacyExports()
 }

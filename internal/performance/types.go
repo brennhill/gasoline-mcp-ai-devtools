@@ -1,4 +1,5 @@
-// Purpose: Declares PerformanceSnapshot, budget threshold, and baseline types for performance monitoring.
+// Purpose: Implements performance metric diffing and threshold evaluation.
+// Why: Makes regressions measurable and comparable across baseline runs.
 // Docs: docs/features/feature/performance-audit/index.md
 
 // types.go — Performance monitoring types

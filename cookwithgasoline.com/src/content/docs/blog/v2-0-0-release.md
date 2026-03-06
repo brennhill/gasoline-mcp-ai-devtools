@@ -4,9 +4,6 @@ description: "First MCP implementation - proof of concept, not production-ready"
 date: 2025-12-14T23:47:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v2']
 ---
 
 ## What's New in v2.0.0
@@ -50,4 +47,4 @@ This version taught us that:
 
 **Lesson learned:** HTTP polling doesn't work for a telemetry system. Next version will use WebSockets.
 
-See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
+See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.

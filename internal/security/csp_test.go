@@ -1,5 +1,6 @@
-// Purpose: Tests for CSP policy generation and directive validation.
-// Docs: docs/features/feature/security-hardening/index.md
+// Purpose: Validate csp_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package security
 

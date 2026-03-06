@@ -1,4 +1,5 @@
-// Purpose: Converts semantic selector strings (text=, role=, etc.) into structured selector maps for reproduction.
+// Purpose: Provides interact tool implementation helpers for selectors and workflows.
+// Why: Centralizes selector/workflow logic so browser actions remain repeatable and debuggable.
 // Docs: docs/features/feature/interact-explore/index.md
 
 package interact
@@ -52,8 +53,6 @@ var DOMPrimitiveActions = map[string]bool{
 	"wait_for": true, "key_press": true, "paste": true,
 	"open_composer": true, "submit_active_composer": true,
 	"confirm_top_dialog": true, "dismiss_top_overlay": true,
-	"hover": true,
-	"query": true,
 }
 
 // DOMActionToReproType maps interact DOM action names to reproduction-compatible types.
@@ -66,7 +65,6 @@ var DOMActionToReproType = map[string]string{
 	"key_press": "keypress",
 	"scroll_to": "scroll_element",
 	"focus":     "focus",
-	"hover":     "hover",
 }
 
 // ValidWorldValues is the set of accepted values for the execute_js 'world' parameter.

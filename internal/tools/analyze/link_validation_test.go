@@ -1,5 +1,6 @@
-// Purpose: Tests for link validation and health checking.
-// Docs: docs/features/feature/analyze-tool/index.md
+// Purpose: Validate link_validation_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // link_validation_test.go — Tests for link validation pure functions.
 package analyze

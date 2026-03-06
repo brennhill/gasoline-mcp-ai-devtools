@@ -1,5 +1,6 @@
-// Purpose: Tests for ring buffer append, eviction, and iteration correctness.
-// Docs: docs/features/feature/ring-buffer/index.md
+// Purpose: Validate ring_buffer_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package buffers
 

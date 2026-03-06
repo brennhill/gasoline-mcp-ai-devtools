@@ -1,5 +1,5 @@
-// Purpose: Handles HTTP file read requests and upload route dispatch, delegating core logic to internal/upload.
-// Why: Provides the HTTP-facing upload endpoints while keeping validation and streaming in a testable internal package.
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // handleFileReadInternal is the core logic for file read, delegating to internal/upload.
@@ -57,6 +57,11 @@ func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleFileReadInternalMethod adapts ToolHandler security config into shared stage-1 implementation.
+func (h *ToolHandler) handleFileReadInternal(req FileReadRequest) FileReadResponse {
+	return handleFileReadInternal(req, h.uploadSecurity, false)
+}
+
 // ============================================
 // Stage 2: File Dialog Injection (POST /api/file/dialog/inject)
 // ============================================
@@ -87,6 +92,11 @@ func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request) 
 	} else {
 		jsonResponse(w, http.StatusBadRequest, resp)
 	}
+}
+
+// handleDialogInjectInternalMethod adapts ToolHandler security config into shared stage-2 implementation.
+func (h *ToolHandler) handleDialogInjectInternal(req FileDialogInjectRequest) UploadStageResponse {
+	return handleDialogInjectInternal(req, h.uploadSecurity)
 }
 
 // ============================================

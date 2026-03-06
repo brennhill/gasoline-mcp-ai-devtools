@@ -1,7 +1,7 @@
 # Product Update: Issue #49
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/49
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/49
 - Title: [Feature Proposal] Passive Telemetry in every Tool Response
 - Last Updated: 2026-02-16T13:16:55Z
 

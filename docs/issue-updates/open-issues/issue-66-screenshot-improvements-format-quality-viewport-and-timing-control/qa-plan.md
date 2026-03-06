@@ -1,7 +1,7 @@
 # QA Plan: Issue #66
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/66
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/66
 - Title: Screenshot improvements: format, quality, viewport, and timing control
 
 ## QA Goal

@@ -2,14 +2,10 @@
 doc_type: product_spec
 feature_id: feature-bridge-restart
 status: implemented
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-18
 ---
 
 # Bridge Restart — Product Spec
-
-Related startup flow map: [Bridge Startup Contention and Convergence](../../../architecture/flow-maps/bridge-startup-contention-and-convergence.md)
 
 ## Problem
 

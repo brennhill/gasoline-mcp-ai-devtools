@@ -1,22 +1,22 @@
-// Purpose: Returns the MCP tool definition (name, description, input schema) for the observe tool.
-// Docs: docs/features/feature/api-schema/index.md
+// Purpose: Defines JSON schema contracts for tool arguments and responses.
+// Why: Keeps tool interfaces strict and synchronized across server, extension, and clients.
+// Docs: docs/features/feature/observe/index.md
 
 package schema
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/dev-console/dev-console/internal/mcp"
 
 // ObserveToolSchema returns the MCP tool definition for the observe tool.
 func ObserveToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "observe",
-		Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
+		Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_key/body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
-					"type":        "string",
-					"description": "Data mode to read from extension buffers",
-					"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients", "inbox"},
+					"type": "string",
+					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -29,11 +29,11 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"after_cursor": map[string]any{
 					"type":        "string",
-					"description": "Cursor for older entries (from response metadata)",
+					"description": "Backward pagination cursor from response metadata",
 				},
 				"before_cursor": map[string]any{
 					"type":        "string",
-					"description": "Cursor for newer entries (from response metadata)",
+					"description": "Forward pagination cursor",
 				},
 				"since_cursor": map[string]any{
 					"type":        "string",
@@ -46,6 +46,11 @@ func ObserveToolSchema() mcp.MCPTool {
 				"min_level": map[string]any{
 					"type":        "string",
 					"description": "Min log level (logs)",
+					"enum":        []string{"debug", "log", "info", "warn", "error"},
+				},
+				"level": map[string]any{
+					"type":        "string",
+					"description": "Exact log level filter (logs)",
 					"enum":        []string{"debug", "log", "info", "warn", "error"},
 				},
 				"source": map[string]any{
@@ -66,7 +71,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"url": map[string]any{
 					"type":        "string",
-					"description": "Filter by URL substring (errors, logs, network_waterfall, network_bodies, websocket_events, actions, transients, error_bundles)",
+					"description": "Filter by URL substring",
 				},
 				"database": map[string]any{
 					"type":        "string",
@@ -76,26 +81,21 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "IndexedDB object store name (indexeddb)",
 				},
-				"storage_type": map[string]any{
-					"type":        "string",
-					"description": "Storage type filter: local, session, or cookies (storage)",
-					"enum":        []string{"local", "session", "cookies"},
-				},
-				"key": map[string]any{
-					"type":        "string",
-					"description": "Filter by specific storage key or cookie name (storage)",
-				},
 				"method": map[string]any{
 					"type":        "string",
-					"description": "HTTP method filter (network_bodies)",
+					"description": "HTTP method filter",
 				},
 				"status_min": map[string]any{
 					"type":        "number",
-					"description": "Min HTTP status code (network_bodies)",
+					"description": "Min HTTP status code",
 				},
 				"status_max": map[string]any{
 					"type":        "number",
-					"description": "Max HTTP status code (network_bodies)",
+					"description": "Max HTTP status code",
+				},
+				"body_key": map[string]any{
+					"type":        "string",
+					"description": "Extract values for a JSON key from response_body (network_bodies)",
 				},
 				"body_path": map[string]any{
 					"type":        "string",
@@ -103,16 +103,15 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"connection_id": map[string]any{
 					"type":        "string",
-					"description": "WebSocket connection ID filter (websocket_events, websocket_status)",
+					"description": "WebSocket connection ID filter",
 				},
 				"direction": map[string]any{
-					"type":        "string",
-					"description": "WebSocket message direction filter (websocket_events)",
-					"enum":        []string{"incoming", "outgoing"},
+					"type": "string",
+					"enum": []string{"incoming", "outgoing"},
 				},
 				"last_n": map[string]any{
 					"type":        "number",
-					"description": "Return last N items only (actions)",
+					"description": "Return last N items only",
 				},
 				"include": map[string]any{
 					"type":        "array",
@@ -121,7 +120,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"correlation_id": map[string]any{
 					"type":        "string",
-					"description": "Async command correlation ID (command_result)",
+					"description": "Async command correlation ID",
 				},
 				"recording_id": map[string]any{
 					"type":        "string",
@@ -129,7 +128,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"scope": map[string]any{
 					"type":        "string",
-					"description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs, error_bundles)",
+					"description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs)",
 					"enum":        []string{"current_page", "all"},
 				},
 				"window_seconds": map[string]any{
@@ -151,7 +150,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				},
 				"quality": map[string]any{
 					"type":        "number",
-					"description": "Screenshot JPEG quality 1-100, default 80 (screenshot). Only applies when format is jpeg.",
+					"description": "Screenshot JPEG quality 1-100 (screenshot)",
 				},
 				"full_page": map[string]any{
 					"type":        "boolean",
@@ -165,26 +164,9 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Wait for layout to stabilize before capture (screenshot)",
 				},
-				"save_to": map[string]any{
-					"type":        "string",
-					"description": "File path to save screenshot to disk (screenshot)",
-				},
 				"min_group_size": map[string]any{
 					"type":        "number",
 					"description": "Minimum occurrences to form a group (summarized_logs, default 2)",
-				},
-				"classification": map[string]any{
-					"type":        "string",
-					"description": "Transient element classification filter (transients)",
-					"enum":        []string{"alert", "toast", "snackbar", "notification", "tooltip", "banner", "flash"},
-				},
-				"summary": map[string]any{
-					"type":        "boolean",
-					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients, storage)",
-				},
-				"visible_only": map[string]any{
-					"type":        "boolean",
-					"description": "Only return visible elements (page_inventory)",
 				},
 			},
 			"required": []string{"what"},

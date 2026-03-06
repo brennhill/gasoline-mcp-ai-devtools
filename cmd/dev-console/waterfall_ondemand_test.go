@@ -1,5 +1,6 @@
-// Purpose: Tests for on-demand waterfall data retrieval.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate waterfall_ondemand_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // waterfall_ondemand_test.go — Tests for on-demand network waterfall fetching.
 // These tests ensure the on-demand waterfall feature never regresses.
@@ -14,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // ============================================
@@ -28,7 +29,7 @@ import (
 func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-fresh.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-fresh.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 	}
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-stale.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-stale.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-empty.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-empty.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -225,7 +226,7 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 	}
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-timeout.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-timeout.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -267,7 +268,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 	}
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-concurrent.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-concurrent.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -377,7 +378,7 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 	}
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/test-waterfall-threshold.jsonl", 1000)
+	server, err := NewServer("/tmp/test-waterfall-threshold.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

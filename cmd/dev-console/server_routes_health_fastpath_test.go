@@ -1,5 +1,6 @@
-// Purpose: Tests for health endpoint fast-path response.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate server_routes_health_fastpath_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -10,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/dev-console/dev-console/internal/state"
 )
 
 func TestHandleHealthIncludesBridgeFastPathCounters(t *testing.T) {

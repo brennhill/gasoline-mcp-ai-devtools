@@ -1,4 +1,5 @@
-// Purpose: Benchmark pagination and cursor throughput and latency.
+// Purpose: Validate pagination_bench_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 package pagination
@@ -6,7 +7,7 @@ package pagination
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // BenchmarkParseCursor measures cursor parsing performance

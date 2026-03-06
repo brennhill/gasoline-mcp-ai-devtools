@@ -1,7 +1,7 @@
 # QA Plan: Issue #54
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/54
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/54
 - Title: Transport resilience: automatic retries and reconnect-safe command execution
 
 ## QA Goal

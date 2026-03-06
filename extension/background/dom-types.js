@@ -1,5 +1,6 @@
 /**
- * Purpose: Shared type definitions for DOM action parameters and results used by dispatch and injected primitives.
+ * Purpose: Shared DOM action contracts used by background dispatch and injected primitives.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/interact-explore/index.md
  */
 export {};

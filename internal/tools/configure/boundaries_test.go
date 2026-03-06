@@ -1,5 +1,6 @@
-// Purpose: Tests for configure test boundary markers.
-// Docs: docs/features/feature/enhanced-cli-config/index.md
+// Purpose: Validate boundaries_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // boundaries_test.go — Tests for test boundary start/end pure functions.
 package configure

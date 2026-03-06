@@ -1,5 +1,6 @@
-// Purpose: Tests for dev-console tools.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_test.go — Tests for MCP tool handlers.
 // Covers core functionality: tool dispatch, error handling, and response formatting.
@@ -11,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -20,7 +21,7 @@ import (
 
 func TestNewToolHandler(t *testing.T) {
 	// Create minimal dependencies
-	server, err := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, err := NewServer("/tmp/test-gasoline.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestNewToolHandler(t *testing.T) {
 // ============================================
 
 func TestHandleToolCall_UnknownTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 
@@ -83,7 +84,7 @@ func TestHandleToolCall_UnknownTool(t *testing.T) {
 }
 
 func TestHandleToolCall_ObserveTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -121,7 +122,7 @@ func TestHandleToolCall_ObserveTool(t *testing.T) {
 }
 
 func TestHandleToolCall_GenerateTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -155,7 +156,7 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 }
 
 func TestHandleToolCall_ConfigureTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -189,7 +190,7 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 }
 
 func TestHandleToolCall_InteractTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -228,7 +229,7 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 // ============================================
 
 func TestToolObserve_MissingWhat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -257,7 +258,7 @@ func TestToolObserve_MissingWhat(t *testing.T) {
 }
 
 func TestToolObserve_UnknownMode(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -289,7 +290,7 @@ func TestToolObserve_UnknownMode(t *testing.T) {
 }
 
 func TestToolObserve_NetworkBodies(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -322,7 +323,7 @@ func TestToolObserve_NetworkBodies(t *testing.T) {
 // ============================================
 
 func TestToolGenerate_MissingFormat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -348,7 +349,7 @@ func TestToolGenerate_MissingFormat(t *testing.T) {
 }
 
 func TestToolGenerate_UnknownFormat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -381,7 +382,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 // ============================================
 
 func TestToolConfigure_MissingAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -407,7 +408,7 @@ func TestToolConfigure_MissingAction(t *testing.T) {
 }
 
 func TestToolConfigure_UnknownAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -436,7 +437,7 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 }
 
 func TestToolConfigure_Health(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -473,7 +474,7 @@ func TestToolConfigure_Health(t *testing.T) {
 // ============================================
 
 func TestToolInteract_MissingAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -499,7 +500,7 @@ func TestToolInteract_MissingAction(t *testing.T) {
 }
 
 func TestToolInteract_UnknownAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -532,7 +533,7 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 // ============================================
 
 func TestToolsList(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -592,6 +593,23 @@ func TestMcpTextResponse(t *testing.T) {
 
 	if result.IsError {
 		t.Error("Expected IsError to be false")
+	}
+}
+
+func TestMcpErrorResponse(t *testing.T) {
+	resp := mcpErrorResponse("Something went wrong")
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp, &result); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	if !result.IsError {
+		t.Error("Expected IsError to be true")
+	}
+
+	if result.Content[0].Text != "Something went wrong" {
+		t.Errorf("Expected error text, got '%s'", result.Content[0].Text)
 	}
 }
 
@@ -693,20 +711,11 @@ func TestMcpStructuredError(t *testing.T) {
 		if err := json.Unmarshal([]byte(text[jsonStart:]), &se); err != nil {
 			t.Fatalf("Expected valid JSON in structured error, got error: %v", err)
 		}
-		if se["error_code"] != "missing_param" {
-			t.Errorf("Expected canonical error_code 'missing_param', got %v", se["error_code"])
+		if se["error"] != "missing_param" {
+			t.Errorf("Expected error code 'missing_param', got %v", se["error"])
 		}
 		if se["param"] != "what" {
 			t.Errorf("Expected param 'what', got %v", se["param"])
-		}
-		if se["recovery_playbook"] != "Add the 'what' parameter" {
-			t.Errorf("Expected canonical recovery_playbook, got %v", se["recovery_playbook"])
-		}
-		if _, exists := se["error"]; exists {
-			t.Errorf("Legacy field 'error' should not be present: %v", se["error"])
-		}
-		if _, exists := se["retry"]; exists {
-			t.Errorf("Legacy field 'retry' should not be present: %v", se["retry"])
 		}
 
 		// Verify snake_case in the structured error JSON

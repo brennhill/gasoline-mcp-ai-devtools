@@ -1,5 +1,6 @@
-// Purpose: Coverage-expansion tests for state management edge cases and branch paths.
-// Docs: docs/features/feature/state-time-travel/index.md
+// Purpose: Validate paths_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.
 // Covers InRoot error propagation, ProjectDir error paths, Legacy* function
@@ -372,6 +373,25 @@ func TestPIDFile_Ports(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// LogsDir, RecordingsDir, ScreenshotsDir, SecurityConfigFile — verify paths
+// ---------------------------------------------------------------------------
+
+func TestLogsDirPath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := LogsDir()
+	if err != nil {
+		t.Fatalf("LogsDir() error = %v", err)
+	}
+	if got != filepath.Join(root, "logs") {
+		t.Fatalf("LogsDir() = %q, want %q", got, filepath.Join(root, "logs"))
+	}
+}
+
 func TestRecordingsDirPath(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(StateDirEnv, root)
@@ -500,8 +520,8 @@ func TestNormalizePath_EmptyReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("normalizePath(\"\") should return error")
 	}
-	if !strings.Contains(err.Error(), "resolve_path: path argument is empty") {
-		t.Fatalf("normalizePath(\"\") error = %q, want 'resolve_path: path argument is empty'", err.Error())
+	if !strings.Contains(err.Error(), "empty path") {
+		t.Fatalf("normalizePath(\"\") error = %q, want 'empty path'", err.Error())
 	}
 }
 
@@ -654,6 +674,23 @@ func TestProjectDir_ErrorWhenRootDirFails(t *testing.T) {
 		t.Fatal("ProjectDir() expected error when RootDir fails, got nil")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Functions that delegate to InRoot — error propagation when RootDir fails
+// ---------------------------------------------------------------------------
+
+func TestLogsDir_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LogsDir()
+	if err == nil {
+		t.Fatal("LogsDir() expected error when RootDir fails, got nil")
+	}
+}
+
 func TestDefaultLogFile_ErrorPropagation(t *testing.T) {
 	t.Setenv(StateDirEnv, "")
 	t.Setenv(xdgStateHomeEnv, "")

@@ -1,5 +1,6 @@
 /**
- * Purpose: Shared type definitions for DOM action parameters and results used by dispatch and injected primitives.
+ * Purpose: Shared DOM action contracts used by background dispatch and injected primitives.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/interact-explore/index.md
  */
 
@@ -42,7 +43,6 @@ export interface DOMResult {
     role?: string
     aria_label?: string
     text_preview?: string
-    classes?: string[]
     selector?: string
     element_id?: string
     bbox?: BoundingBox
@@ -60,16 +60,6 @@ export interface DOMResult {
     bbox?: BoundingBox
     visible?: boolean
   }>
-  auto_scrolled?: boolean
-  ambiguous_matches?: {
-    total_count: number
-    warning: string
-    candidates: Array<{
-      tag: string
-      element_id: string
-      text_preview?: string
-    }>
-  }
   reason?: string
   error?: string
   message?: string
@@ -77,71 +67,23 @@ export interface DOMResult {
   timing?: { total_ms: number }
   dom_changes?: { added: number; removed: number; modified: number; summary: string }
   dom_mutations?: DOMMutationEntry[]
-  viewport?: {
-    scroll_x: number
-    scroll_y: number
-    viewport_width: number
-    viewport_height: number
-    page_height: number
-  }
   analysis?: string
   insertion_strategy?: string
-  ranked_candidates?: Array<{
-    element_id: string
-    tag: string
-    text_preview?: string
-    score: number
-  }>
-  suggested_element_id?: string
-  strategy?: string
-  selector_used?: string
-  overlay_type?: string
-  overlay_selector?: string
-  overlay_text_preview?: string
-  overlay_warning?: string
-  // #445: extension vs page overlay source
-  overlay_source?: 'extension' | 'page'
-  // wait_for_stable fields (#344)
-  stable?: boolean
-  timed_out?: boolean
-  waited_ms?: number
-  mutations_observed?: number
-  stability_ms?: number
-  // wait_for enhanced fields (#371)
-  matched_text?: string
-  absent?: boolean
-  // auto_dismiss_overlays fields (#342)
-  dismissed_count?: number
-  // get_text structured mode fields (#390)
-  sections?: Array<{
-    header?: string
-    content: string
-    expanded?: boolean
-    tag: string
-  }>
-  section_count?: number
 }
 
 export interface DOMPrimitiveOptions {
   text?: string
-  key?: string
   value?: string
-  direction?: string
   clear?: boolean
   checked?: boolean
   name?: string
   timeout_ms?: number
-  stability_ms?: number
   analyze?: boolean
   observe_mutations?: boolean
   element_id?: string
   scope_selector?: string
   scope_rect?: ScopeRect
-  nth?: number
   new_tab?: boolean
-  url_contains?: string
-  absent?: boolean
-  structured?: boolean
 }
 
 export interface DOMActionParams extends DOMPrimitiveOptions {
@@ -149,12 +91,4 @@ export interface DOMActionParams extends DOMPrimitiveOptions {
   selector?: string
   reason?: string
   frame?: string | number
-  // list_interactive filters (#369)
-  text_contains?: string
-  role?: string
-  exclude_nav?: boolean
-  visible_only?: boolean
-  // query action (#370)
-  query_type?: string
-  attribute_names?: string[]
 }

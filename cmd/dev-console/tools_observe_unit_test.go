@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console tools observe logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_observe_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_observe_unit_test.go — Unit tests for observe tool helpers.
 package main
@@ -9,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func TestAppendAlertsToResponse(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	server, err := NewServer(t.TempDir()+"/test-observe-alerts.jsonl", 100)
+	server, err := NewServer("/tmp/test-observe-alerts.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}

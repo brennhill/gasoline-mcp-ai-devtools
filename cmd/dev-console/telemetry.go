@@ -1,18 +1,15 @@
-// Purpose: Serves the HTTP /telemetry endpoint, dispatching to capture buffer getters by type query parameter.
-// Why: Provides a REST-accessible view of captured telemetry (logs, network, WebSocket, actions) for non-MCP consumers.
-
 package main
 
 import (
 	"net/http"
 	"strconv"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // handleTelemetry returns an http.HandlerFunc that serves GET /telemetry.
 // Dispatches to the appropriate buffer getter based on the type query param.
-func handleTelemetry(server *Server, cap *capture.Store) http.HandlerFunc {
+func handleTelemetry(server *Server, cap *capture.Capture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)

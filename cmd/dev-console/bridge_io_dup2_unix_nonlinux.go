@@ -1,8 +1,8 @@
 //go:build !linux && !windows
 // +build !linux,!windows
 
-// Purpose: Provides macOS/BSD dup2 syscall wrapper for file descriptor duplication in bridge IO isolation.
-// Why: Non-Linux Unix platforms use the standard dup2 syscall rather than Linux dup3.
+// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

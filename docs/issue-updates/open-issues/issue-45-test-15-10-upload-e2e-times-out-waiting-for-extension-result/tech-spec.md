@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #45
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/45
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/45
 - Title: Test 15.10: Upload E2E times out waiting for extension result
 
 ## Objective

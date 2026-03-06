@@ -1,6 +1,9 @@
 /**
- * Purpose: Installs Chrome runtime message listeners for recording start/stop, auto-stop from offscreen memory guard, and mic permission flow.
- * Docs: docs/features/feature/flow-recording/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 // recording-listeners.ts — Chrome runtime message listeners for recording.
 // Handles popup-initiated record start/stop, auto-stop from offscreen memory guard,
@@ -8,28 +11,7 @@
 // Deps are injected to avoid circular imports with recording.ts.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
-import { errorMessage } from '../lib/error-utils.js';
-import { postDaemonJSON } from '../lib/daemon-http.js';
-import { buildScreenRecordingSlug } from './recording-utils.js';
-import { stopRecordingBadgeTimer } from './recording-badge.js';
 const LOG = '[Gasoline REC]';
-async function resolvePopupRecordingTargetTab() {
-    const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-    const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID];
-    if (trackedTabId) {
-        try {
-            return await chrome.tabs.get(trackedTabId);
-        }
-        catch (err) {
-            console.warn(LOG, 'Tracked tab unavailable for popup recording start, falling back to active tab', {
-                trackedTabId,
-                error: errorMessage(err)
-            });
-        }
-    }
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    return tabs[0];
-}
 /**
  * Install all chrome.runtime.onMessage listeners for recording.
  * Must be called once at module load time, guarded by chrome runtime availability.
@@ -51,52 +33,67 @@ export function installRecordingListeners(deps) {
             status: message.status,
             name: message.name
         });
-        stopRecordingBadgeTimer();
         deps.setInactive();
+        const tabId = deps.getTabId();
+        if (tabId) {
+            chrome.tabs
+                .sendMessage(tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false })
+                .catch(() => { });
+        }
         deps.clearRecordingState().catch(() => { });
     });
     /**
-     * Handle popup-initiated screen_recording_start / screen_recording_stop messages.
+     * Handle popup-initiated record_start / record_stop messages.
      * These are direct chrome.runtime messages from the popup, not MCP pending queries.
      */
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only accept messages from the extension itself (popup)
         if (sender.id !== chrome.runtime.id)
             return false;
-        if (message.type === 'screen_recording_start') {
-            console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio });
-            resolvePopupRecordingTargetTab().then((targetTab) => {
-                const slug = buildScreenRecordingSlug(targetTab?.url);
+        if (message.type === 'record_start') {
+            console.log(LOG, 'Popup record_start received', { audio: message.audio });
+            chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+                let slug = 'recording';
+                try {
+                    const hostname = new URL(tabs[0]?.url ?? '').hostname.replace(/^www\./, '');
+                    slug =
+                        hostname
+                            .replace(/[^a-z0-9]/gi, '-')
+                            .replace(/-+/g, '-')
+                            .replace(/^-|-$/g, '') || 'recording';
+                }
+                catch {
+                    /* use default */
+                }
                 const audio = message.audio ?? '';
-                console.log(LOG, 'Popup screen_recording_start \u2192 startRecording', {
+                console.log(LOG, 'Popup record_start \u2192 startRecording', {
                     slug,
                     audio,
-                    targetTabId: targetTab?.id,
-                    tabUrl: targetTab?.url?.substring(0, 60)
+                    tabUrl: tabs[0]?.url?.substring(0, 60)
                 });
                 deps
-                    .startRecording(slug, 15, '', audio, true, targetTab?.id)
+                    .startRecording(slug, 15, '', audio, true)
                     .then((result) => {
-                    console.log(LOG, 'Popup screen_recording_start result:', result);
+                    console.log(LOG, 'Popup record_start result:', result);
                     sendResponse(result);
                 })
                     .catch((err) => {
-                    console.error(LOG, 'Popup screen_recording_start EXCEPTION:', err);
+                    console.error(LOG, 'Popup record_start EXCEPTION:', err);
                     sendResponse({ status: 'error' });
                 });
             });
             return true; // async response
         }
-        if (message.type === 'screen_recording_stop') {
-            console.log(LOG, 'Popup screen_recording_stop received');
+        if (message.type === 'record_stop') {
+            console.log(LOG, 'Popup record_stop received');
             deps
                 .stopRecording()
                 .then((result) => {
-                console.log(LOG, 'Popup screen_recording_stop result:', result);
+                console.log(LOG, 'Popup record_stop result:', result);
                 sendResponse(result);
             })
                 .catch((err) => {
-                console.error(LOG, 'Popup screen_recording_stop EXCEPTION:', err);
+                console.error(LOG, 'Popup record_stop EXCEPTION:', err);
                 sendResponse({ status: 'error' });
             });
             return true; // async response
@@ -143,12 +140,12 @@ export function installRecordingListeners(deps) {
                             duration_ms: scaleTimeout(8000)
                         })
                             .catch((err) => {
-                            console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', errorMessage(err));
+                            console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', err.message);
                         });
                     }, scaleTimeout(300));
                 })
                     .catch((err) => {
-                    console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', errorMessage(err));
+                    console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', err.message);
                 });
             }
             else {
@@ -166,14 +163,14 @@ export function installRecordingListeners(deps) {
             return false;
         if (message.type !== 'REVEAL_FILE' || !message.path)
             return false;
-        postDaemonJSON(`${deps.getServerUrl()}/recordings/reveal`, { path: message.path })
-            .then((r) => {
-            if (!r.ok)
-                throw new Error(`HTTP ${r.status}`);
-            return r.json();
+        fetch(`${deps.getServerUrl()}/recordings/reveal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify({ path: message.path })
         })
+            .then((r) => r.json())
             .then((result) => sendResponse(result))
-            .catch((err) => sendResponse({ error: errorMessage(err) }));
+            .catch((err) => sendResponse({ error: err.message }));
         return true; // async response
     });
 }

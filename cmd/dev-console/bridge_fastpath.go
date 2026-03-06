@@ -1,14 +1,150 @@
-// Purpose: Handles bridge fast-path responses for MCP resource reads and tools/list without round-tripping to the daemon.
-// Why: Reduces latency for high-frequency read-only MCP calls by serving them directly from the bridge process.
+// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/dev-console/dev-console/internal/bridge"
+	statecfg "github.com/dev-console/dev-console/internal/state"
 )
+
+type bridgeFastPathResourceReadCounters struct {
+	mu      sync.Mutex
+	success int64
+	failure int64
+}
+
+var fastPathResourceReadCounters bridgeFastPathResourceReadCounters
+
+func recordFastPathResourceRead(uri string, success bool, errorCode int) {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	if success {
+		fastPathResourceReadCounters.success++
+	} else {
+		fastPathResourceReadCounters.failure++
+	}
+	appendFastPathResourceReadTelemetry(uri, success, errorCode, fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure)
+}
+
+func snapshotFastPathResourceReadCounters() (success int64, failure int64) {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	return fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure
+}
+
+func resetFastPathResourceReadCounters() {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	fastPathResourceReadCounters.success = 0
+	fastPathResourceReadCounters.failure = 0
+}
+
+func fastPathResourceReadLogPath() (string, error) {
+	return statecfg.InRoot("logs", "bridge-fastpath-resource-read.jsonl")
+}
+
+func appendFastPathResourceReadTelemetry(uri string, success bool, errorCode int, successCount int64, failureCount int64) {
+	path, err := fastPathResourceReadLogPath()
+	if err != nil {
+		return
+	}
+	if mkErr := os.MkdirAll(filepath.Dir(path), 0o750); mkErr != nil {
+		return
+	}
+	entry := map[string]any{
+		"timestamp":      time.Now().UTC().Format(time.RFC3339Nano),
+		"event":          "bridge_fastpath_resources_read",
+		"uri":            uri,
+		"success":        success,
+		"error_code":     errorCode,
+		"success_count":  successCount,
+		"failure_count":  failureCount,
+		"pid":            os.Getpid(),
+		"bridge_version": version,
+	}
+	line, marshalErr := json.Marshal(entry)
+	if marshalErr != nil {
+		return
+	}
+	// #nosec G304 -- path is deterministic under state root
+	f, openErr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if openErr != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(line)
+	_, _ = f.Write([]byte("\n"))
+}
+
+type bridgeFastPathCounters struct {
+	mu      sync.Mutex
+	success int
+	failure int
+}
+
+var fastPathCounters bridgeFastPathCounters
+
+func resetFastPathCounters() {
+	fastPathCounters.mu.Lock()
+	fastPathCounters.success = 0
+	fastPathCounters.failure = 0
+	fastPathCounters.mu.Unlock()
+}
+
+func fastPathTelemetryLogPath() (string, error) {
+	return statecfg.InRoot("logs", "bridge-fastpath-events.jsonl")
+}
+
+func recordFastPathEvent(method string, success bool, errorCode int) {
+	fastPathCounters.mu.Lock()
+	if success {
+		fastPathCounters.success++
+	} else {
+		fastPathCounters.failure++
+	}
+	successCount := fastPathCounters.success
+	failureCount := fastPathCounters.failure
+	fastPathCounters.mu.Unlock()
+
+	path, err := fastPathTelemetryLogPath()
+	if err != nil {
+		return
+	}
+	// #nosec G301 -- runtime state directory for local diagnostics.
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return
+	}
+	event := map[string]any{
+		"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		"event":         "bridge_fastpath_method",
+		"method":        method,
+		"success":       success,
+		"error_code":    errorCode,
+		"success_count": successCount,
+		"failure_count": failureCount,
+		"pid":           os.Getpid(),
+		"version":       version,
+	}
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+	// #nosec G304 -- deterministic diagnostics path rooted in runtime state directory.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // nosemgrep: go_filesystem_rule-fileread -- local diagnostics log append
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(payload, '\n'))
+}
 
 // fastPathResponses maps MCP methods to their static JSON result bodies.
 // Methods in this map are handled without waiting for the daemon.
@@ -19,7 +155,7 @@ var fastPathResponses = map[string]string{
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.
 func sendFastResponse(id any, result json.RawMessage, framing bridge.StdioFraming) {
-	resp := JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: id, Result: result}
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
 	writeMCPPayload(respJSON, framing)
@@ -27,7 +163,7 @@ func sendFastResponse(id any, result json.RawMessage, framing bridge.StdioFramin
 
 func sendFastError(id any, code int, message string, framing bridge.StdioFraming) {
 	resp := JSONRPCResponse{
-		JSONRPC: JSONRPCVersion,
+		JSONRPC: "2.0",
 		ID:      id,
 		Error:   &JSONRPCError{Code: code, Message: message},
 	}
@@ -50,14 +186,9 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool, framing bridge.Stdi
 
 	switch req.Method {
 	case "initialize":
-		// Extract client capabilities for push delivery pipeline
-		caps := extractClientCapabilities(req.Params)
-		setPushClientCapabilities(caps)
-		storeBridgeFraming(framing)
-
 		result := map[string]any{
 			"protocolVersion": negotiateProtocolVersion(req.Params),
-			"serverInfo":      map[string]any{"name": mcpServerName, "version": version},
+			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
 			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
 			"instructions":    serverInstructions,
 		}

@@ -1,4 +1,5 @@
-// Purpose: Tests for capture query command dispatch and response routing.
+// Purpose: Validate query_commands_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // query_commands_test.go — Tests for Capture delegation of command methods and disconnect detection.
@@ -9,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // ============================================
@@ -92,7 +93,7 @@ func TestNewCapture_GetPendingQueriesDisconnectAware_RecentSync(t *testing.T) {
 	t.Cleanup(c.Close)
 
 	c.mu.Lock()
-	c.extensionState.lastSyncSeen = time.Now()
+	c.ext.lastSyncSeen = time.Now()
 	c.mu.Unlock()
 
 	c.CreatePendingQuery(queries.PendingQuery{Type: "dom", Params: json.RawMessage(`{}`)})
@@ -110,7 +111,7 @@ func TestNewCapture_GetPendingQueriesDisconnectAware_Disconnected(t *testing.T) 
 	t.Cleanup(c.Close)
 
 	c.mu.Lock()
-	c.extensionState.lastSyncSeen = time.Now().Add(-20 * time.Second)
+	c.ext.lastSyncSeen = time.Now().Add(-20 * time.Second)
 	c.mu.Unlock()
 
 	c.CreatePendingQuery(queries.PendingQuery{

@@ -1,14 +1,10 @@
-// Purpose: Wires reproduction script generation into the MCP generate tool, delegating to internal/reproduction.
-// Why: Keeps the cmd layer as a thin adapter while reproduction logic lives in a testable internal package.
-// Docs: docs/features/feature/reproduction-scripts/index.md
-
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
+	"github.com/dev-console/dev-console/internal/reproduction"
 )
 
 // Type aliases — keep existing code compiling without changes.
@@ -27,12 +23,14 @@ var (
 	describeElement   = reproduction.DescribeElement
 )
 
-// toolGetReproductionScript generates a reproduction script from captured actions.
-func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// toolGetReproductionScriptImpl generates a reproduction script from captured actions.
+func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	params := reproduction.ParseParams(args)
 
 	if err := reproduction.ValidateOutputFormat(params.OutputFormat); err != "" {
-		return fail(req, ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"))
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"),
+		)}
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()
@@ -42,5 +40,5 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	result := reproduction.BuildResult(script, params, actions, allActions)
 
 	summary := fmt.Sprintf("Reproduction script (%s, %d actions)", params.OutputFormat, len(actions))
-	return succeed(req, summary, result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
 }

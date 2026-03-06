@@ -1,10 +1,13 @@
 /**
- * Purpose: Handles file upload queries by fetching file data from the Go server and injecting it into DOM file inputs via DataTransfer or OS automation escalation.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../types/queries.js';
-import type { SyncClient } from './sync-client.js';
-import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js';
+import type { PendingQuery } from '../types/queries';
+import type { SyncClient } from './sync-client';
+import type { SendAsyncResultFn, ActionToastFn } from './pending-queries';
 interface VerifyResult {
     has_file: boolean;
     file_name?: string;

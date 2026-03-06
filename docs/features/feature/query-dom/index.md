@@ -4,7 +4,7 @@ feature_id: feature-query-dom
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-17
 code_paths:
   - cmd/dev-console/tools_analyze.go
   - src/background/pending-queries.ts
@@ -14,8 +14,6 @@ code_paths:
 test_paths:
   - cmd/dev-console/tools_analyze_handler_test.go
   - cmd/dev-console/tools_analyze_route_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Query DOM

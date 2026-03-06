@@ -1,6 +1,7 @@
 /**
- * Purpose: Barrel re-export for the AI error context enrichment pipeline (parsing and enrichment sub-modules).
- * Docs: docs/features/feature/error-bundling/index.md
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview AI-preprocessed error enrichment pipeline.

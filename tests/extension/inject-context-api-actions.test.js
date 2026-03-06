@@ -4,7 +4,7 @@
  * the window.__gasoline API, and user action replay in inject.js.
  */
 
-import { test, describe, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 

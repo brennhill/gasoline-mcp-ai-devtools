@@ -1,7 +1,7 @@
 # Product Update: Issue #57
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/57
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/57
 - Title: Normalize generate API: strict mode-specific params and deterministic output diagnostics
 - Last Updated: 2026-02-16T13:19:35Z
 

@@ -1,6 +1,9 @@
 /**
- * Purpose: Implements the circuit breaker pattern with exponential backoff to protect server communication from cascading failures.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 /**
@@ -8,7 +11,7 @@
  * exponential backoff for protecting server communication.
  */
 
-import type { CircuitBreakerState, CircuitBreakerStats } from '../types/index.js'
+import type { CircuitBreakerState, CircuitBreakerStats } from '../types'
 
 // Re-export types for external use
 export type { CircuitBreakerState, CircuitBreakerStats }

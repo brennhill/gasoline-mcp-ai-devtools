@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console health logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate health_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // health_unit_test.go — Unit tests for HealthMetrics counters.
 package main
@@ -8,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func TestHealthMetrics_IncrementAndGet(t *testing.T) {
@@ -165,8 +166,8 @@ func TestBuildPilotInfo_ExplicitDisableState(t *testing.T) {
 	if info.Enabled {
 		t.Fatalf("enabled = true, want false for explicit disable")
 	}
-	if info.Source != "test_helper" {
-		t.Fatalf("source = %q, want test_helper", info.Source)
+	if info.Source != "explicitly_disabled" {
+		t.Fatalf("source = %q, want explicitly_disabled", info.Source)
 	}
 }
 
@@ -227,27 +228,5 @@ func TestHealthMetrics_ConcurrentAccess(t *testing.T) {
 	}
 	if got := hm.GetTotalErrors(); got != 100 {
 		t.Fatalf("GetTotalErrors() after 100 concurrent increments = %d, want 100", got)
-	}
-}
-
-func TestBuildServerInfo_IncludesLaunchModeMetadata(t *testing.T) {
-	previous := getCurrentLaunchMode()
-	setCurrentLaunchMode(launchModeInfo{
-		Mode:          launchModeLikelyTransient,
-		Reason:        "interactive_shell_parent",
-		ParentProcess: "zsh",
-	})
-	t.Cleanup(func() { setCurrentLaunchMode(previous) })
-
-	hm := NewHealthMetrics()
-	info := hm.buildServerInfo("test-version")
-	if info.LaunchMode != launchModeLikelyTransient {
-		t.Fatalf("launch_mode = %q, want %q", info.LaunchMode, launchModeLikelyTransient)
-	}
-	if info.LaunchModeReason != "interactive_shell_parent" {
-		t.Fatalf("launch_mode_reason = %q, want interactive_shell_parent", info.LaunchModeReason)
-	}
-	if info.ParentProcess != "zsh" {
-		t.Fatalf("parent_process = %q, want zsh", info.ParentProcess)
 	}
 }

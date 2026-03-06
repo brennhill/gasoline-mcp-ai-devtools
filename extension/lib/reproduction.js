@@ -1,5 +1,6 @@
 /**
- * Purpose: Records user interactions with multi-strategy selectors (testId, role, aria, text, CSS path) and generates Playwright reproduction scripts.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/reproduction-scripts/index.md
  */
 /**
@@ -210,15 +211,6 @@ const ACTION_DATA_ENRICHERS = {
     },
     scroll: (a, _el, o) => {
         a.scroll_y = o.scroll_y || 0;
-    },
-    transient: (a, _el, o) => {
-        a.classification = o.classification || 'unknown';
-        if (o.duration_ms !== undefined)
-            a.duration_ms = o.duration_ms;
-        if (o.role)
-            a.role = o.role;
-        if (o.value)
-            a.value = o.value;
     }
 };
 /**
@@ -280,8 +272,7 @@ const ACTION_STEP_GENERATORS = {
     keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || '')}');`,
     navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || '', baseUrl))}');`,
     select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
-    scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`,
-    transient: (action) => `  // [${action.classification || 'transient'}] "${(action.value || '').slice(0, 80)}"`
+    scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
 };
 // #lizard forgives
 function actionToPlaywrightStep(action, baseUrl) {

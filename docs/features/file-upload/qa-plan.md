@@ -4,12 +4,10 @@ scope: feature/file-upload/qa
 ai-priority: high
 tags: [testing, qa, security]
 relates-to: [tech-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-02-10
 doc_type: qa-plan
 feature_id: file-upload
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: File Upload (4-Stage Escalation)

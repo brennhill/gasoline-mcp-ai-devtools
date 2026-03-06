@@ -1,5 +1,6 @@
-// Purpose: Tests for typed buffer operations and capacity management.
-// Docs: docs/features/feature/normalized-event-schema/index.md
+// Purpose: Validate buffer_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package types
 

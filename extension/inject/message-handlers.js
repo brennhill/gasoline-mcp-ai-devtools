@@ -1,15 +1,15 @@
 /**
- * Purpose: Dispatches window.postMessage commands from the content script to specialized inject-context handlers (settings, state, JS execution, DOM/a11y queries).
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries.js';
 import { checkLinkHealth } from '../lib/link-health.js';
 import { queryComputedStyles } from './computed-styles.js';
 import { discoverForms } from './form-discovery.js';
-import { extractDataTables } from './data-table.js';
 import { getNetworkWaterfall } from '../lib/network.js';
 import { executeJavaScript } from './execute-js.js';
-import { errorMessage } from '../lib/error-utils.js';
 import { isValidSettingPayload, handleSetting, handleStateCommand } from './settings.js';
 // Re-export for barrel (src/inject/index.ts)
 export { executeJavaScript, safeSerializeForExecute } from './execute-js.js';
@@ -37,7 +37,7 @@ export async function handleLinkHealthQuery(data) {
     catch (err) {
         return {
             error: 'link_health_error',
-            message: errorMessage(err, 'Failed to check link health')
+            message: err.message || 'Failed to check link health'
         };
     }
 }
@@ -74,8 +74,6 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
         GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
         GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
-        GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data),
-        GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data),
         GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
     };
     window.addEventListener('message', (event) => {
@@ -114,7 +112,7 @@ function handleComputedStylesMessage(data) {
         postResponse({
             type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
             requestId: data.requestId,
-            result: { error: 'computed_styles_error', message: errorMessage(err, 'Failed to query computed styles') }
+            result: { error: 'computed_styles_error', message: err.message || 'Failed to query computed styles' }
         });
     }
 }
@@ -135,50 +133,7 @@ function handleFormDiscoveryMessage(data) {
         postResponse({
             type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
             requestId: data.requestId,
-            result: { error: 'form_discovery_error', message: errorMessage(err, 'Failed to discover forms') }
-        });
-    }
-}
-function handleFormStateMessage(data) {
-    try {
-        const params = (data.params || {});
-        const forms = discoverForms({
-            selector: params.selector,
-            mode: 'discover'
-        });
-        postResponse({
-            type: 'GASOLINE_FORM_STATE_RESPONSE',
-            requestId: data.requestId,
-            result: { forms, count: forms.length }
-        });
-    }
-    catch (err) {
-        postResponse({
-            type: 'GASOLINE_FORM_STATE_RESPONSE',
-            requestId: data.requestId,
-            result: { error: 'form_state_error', message: errorMessage(err, 'Failed to extract form state') }
-        });
-    }
-}
-function handleDataTableMessage(data) {
-    try {
-        const params = (data.params || {});
-        const result = extractDataTables({
-            selector: params.selector,
-            max_rows: params.max_rows,
-            max_cols: params.max_cols
-        });
-        postResponse({
-            type: 'GASOLINE_DATA_TABLE_RESPONSE',
-            requestId: data.requestId,
-            result
-        });
-    }
-    catch (err) {
-        postResponse({
-            type: 'GASOLINE_DATA_TABLE_RESPONSE',
-            requestId: data.requestId,
-            result: { error: 'data_table_error', message: errorMessage(err, 'Failed to extract table data') }
+            result: { error: 'form_discovery_error', message: err.message || 'Failed to discover forms' }
         });
     }
 }
@@ -250,7 +205,7 @@ function handleA11yQuery(data) {
         postResponse({
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
-            result: { error: errorMessage(err, 'Failed to run accessibility audit') }
+            result: { error: err.message || 'Failed to run accessibility audit' }
         });
     }
 }
@@ -289,7 +244,7 @@ function handleDomQuery(data) {
         postResponse({
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
-            result: { error: errorMessage(err, 'Failed to run DOM query') }
+            result: { error: err.message || 'Failed to run DOM query' }
         });
     }
 }

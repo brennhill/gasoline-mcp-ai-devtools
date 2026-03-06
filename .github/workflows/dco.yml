@@ -2,7 +2,7 @@ name: DCO
 
 on:
   pull_request:
-    branches: [main, UNSTABLE]
+    branches: [main, next]
 
 permissions:
   contents: read

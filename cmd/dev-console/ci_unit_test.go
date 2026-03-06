@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console ci logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate ci_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func newTestServerForHandlers(t *testing.T) *Server {

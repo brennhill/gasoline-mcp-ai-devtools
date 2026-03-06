@@ -1,11 +1,14 @@
 /**
- * Purpose: Map-based command registry and dispatch loop that replaces the monolithic if-chain for routing pending queries to handlers.
- * Why: Extensible design lets new command modules register themselves without modifying central dispatch.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../../types/index.js';
-import type { SyncClient } from '../sync-client.js';
-import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js';
-import { actionToast } from './helpers.js';
+import type { PendingQuery } from '../../types';
+import type { SyncClient } from '../sync-client';
+import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers';
+import { actionToast } from './helpers';
 export interface CommandContext {
     query: PendingQuery;
     syncClient: SyncClient;

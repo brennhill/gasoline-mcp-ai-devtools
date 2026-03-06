@@ -1,5 +1,6 @@
-// Purpose: Tests for configure rule rewrite logic.
-// Docs: docs/features/feature/enhanced-cli-config/index.md
+// Purpose: Validate rewrite_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // rewrite_test.go — Tests for argument rewriting functions.
 package configure

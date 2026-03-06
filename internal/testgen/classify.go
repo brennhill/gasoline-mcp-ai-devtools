@@ -1,4 +1,5 @@
-// Purpose: Classifies test failures by pattern-matching error messages into categories (selector, timing, network, real bug).
+// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
+// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
 // Docs: docs/features/feature/test-generation/index.md
 
 package testgen

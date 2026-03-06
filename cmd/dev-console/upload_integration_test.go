@@ -1,5 +1,6 @@
-// Purpose: Integration tests for dev-console end-to-end flows.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate upload_integration_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // upload_integration_test.go — Integration and edge case tests for upload feature.
 // Covers: concurrency, middleware integration, pending query payload, Content-Disposition
@@ -22,14 +23,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).
 func allowTestSSRF(t *testing.T) {
 	t.Helper()
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 }
 
 // testUploadSecurity returns a permissive UploadSecurity config for tests.
@@ -113,7 +114,7 @@ func TestUploadInteg_ExtensionOnlyMiddleware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
-	mux, _ := setupHTTPRoutes(server, nil)
+	mux := setupHTTPRoutes(server, nil)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -501,6 +502,37 @@ func TestUploadInteg_HTTP_OSAutomation_SuccessPath(t *testing.T) {
 	}
 	if result.Stage != 4 {
 		t.Errorf("stage should be 4, got %d", result.Stage)
+	}
+}
+
+// ============================================
+// 10. truncate() helper
+// ============================================
+
+func TestUploadInteg_Truncate(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		maxLen int
+		want   string
+	}{
+		{"shorter", "hello", 10, "hello"},
+		{"exact", "hello", 5, "hello"},
+		{"over", "hello world", 8, "hello..."},
+		{"empty", "", 5, ""},
+		{"maxLen 3", "hello", 3, "..."},
+		{"maxLen 2", "hello", 2, ".."},
+		{"maxLen 1", "hello", 1, "."},
+		{"maxLen 0", "hello", 0, ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := truncate(tc.input, tc.maxLen)
+			if got != tc.want {
+				t.Errorf("truncate(%q, %d) = %q, want %q", tc.input, tc.maxLen, got, tc.want)
+			}
+		})
 	}
 }
 

@@ -1,4 +1,6 @@
-// Purpose: Tests for time formatting and duration utilities.
+// Purpose: Validate time_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // time_test.go — Tests for timestamp parsing utilities.
 package util

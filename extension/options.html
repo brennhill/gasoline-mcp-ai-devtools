@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gasoline Agentic Browser Options</title>
+    <title>Gasoline Options</title>
     <style>
       * {
         box-sizing: border-box;
@@ -388,6 +388,7 @@
     </style>
   </head>
   <body>
+    <script src="theme-bootstrap.js"></script>
     <a href="popup.html" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
         <path
@@ -395,16 +396,16 @@
           d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"
         />
       </svg>
-      Back to Gasoline Devtools
+      Back to Gasoline
     </a>
 
     <h1>Options</h1>
-    <p class="subtitle">Configure your Gasoline Devtools extension</p>
+    <p class="subtitle">Configure your Gasoline extension</p>
 
     <div class="section">
       <div class="section-title">Server Connection</div>
       <div class="section-description">
-        Configure the server URL. Change the port if you're running the server on a different port.
+        Configure the Gasoline server URL. Change the port if you're running the server on a different port.
       </div>
 
       <div style="display: flex; gap: 8px; align-items: stretch">
@@ -493,27 +494,6 @@
           </div>
           <div id="debug-mode-toggle" class="toggle"></div>
         </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Terminal</div>
-      <div class="section-description">
-        Configure the in-browser terminal. The AI command launches automatically when the terminal opens.
-      </div>
-      <div style="margin-bottom: 8px">
-        <label for="terminal-ai-command" style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px">AI Command</label>
-        <input type="text" id="terminal-ai-command" placeholder="claude" value="claude" />
-      </div>
-      <div class="help-text" style="margin-bottom: 12px">
-        The command to auto-launch in the terminal. Examples: <code>claude</code>, <code>codex</code>, <code>aider</code>. Leave empty to open a plain shell.
-      </div>
-      <div style="margin-bottom: 8px">
-        <label for="terminal-dev-root" style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px">Dev Root (optional)</label>
-        <input type="text" id="terminal-dev-root" placeholder="/Users/you/dev/my-project" value="" />
-      </div>
-      <div class="help-text">
-        Default working directory for the terminal. If empty, uses the directory detected from the connected MCP client.
       </div>
     </div>
 

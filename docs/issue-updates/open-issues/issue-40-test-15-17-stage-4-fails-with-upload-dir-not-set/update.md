@@ -1,7 +1,7 @@
 # Product Update: Issue #40
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/40
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/40
 - Title: Test 15.17: Stage 4 fails with --upload-dir not set
 - Last Updated: 2026-02-14T13:23:54Z
 

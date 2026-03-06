@@ -1,6 +1,3 @@
-// Purpose: Assesses async command execution reliability by analyzing recent success/failure/timeout rates.
-// Why: Surfaces command queue health in doctor and health endpoints to diagnose extension responsiveness.
-
 package main
 
 import (
@@ -8,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 const (
@@ -39,11 +36,11 @@ type CommandExecutionInfo struct {
 	LastSuccessAgeMs     int64   `json:"last_success_age_ms,omitempty"`
 }
 
-func buildCommandExecutionInfo(cap *capture.Store) CommandExecutionInfo {
+func buildCommandExecutionInfo(cap *capture.Capture) CommandExecutionInfo {
 	return buildCommandExecutionInfoAt(cap, time.Now())
 }
 
-func buildCommandExecutionInfoAt(cap *capture.Store, now time.Time) CommandExecutionInfo {
+func buildCommandExecutionInfoAt(cap *capture.Capture, now time.Time) CommandExecutionInfo {
 	info := CommandExecutionInfo{
 		Ready:         true,
 		Status:        "pass",

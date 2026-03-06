@@ -1,10 +1,8 @@
 ---
 doc_type: architecture_interfaces
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-24
 owners: []
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Interfaces

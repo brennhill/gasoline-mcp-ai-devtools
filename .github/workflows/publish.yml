@@ -123,9 +123,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish gasoline-agentic-browser (main package)
+      - name: Publish gasoline-mcp (main package)
         run: |
-          cd npm/gasoline-agentic-browser
+          cd npm/gasoline-mcp
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -133,15 +133,15 @@ jobs:
       - name: Summary
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Published v${{ steps.version.outputs.VERSION }} to NPM"
+          echo "✅ Published v${{ steps.version.outputs.VERSION }} to NPM"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
           echo "Packages published:"
-          echo "  - @brennhill/gasoline-agentic-browser-darwin-arm64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-darwin-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-linux-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-linux-arm64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-win32-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - gasoline-agentic-browser@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-darwin-arm64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-darwin-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-linux-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-linux-arm64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-win32-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • gasoline-mcp@${{ steps.version.outputs.VERSION }}"
           echo ""
-          echo "Install with: npx gasoline-agentic-browser@${{ steps.version.outputs.VERSION }}"
+          echo "Install with: npx gasoline-mcp@${{ steps.version.outputs.VERSION }}"

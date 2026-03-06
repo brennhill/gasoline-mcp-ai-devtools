@@ -1,4 +1,5 @@
-// Purpose: Tests for session state verification and integrity checks.
+// Purpose: Validate verify_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // verify_test.go — Tests for the verify_fix MCP tool.
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // ============================================
@@ -25,7 +26,7 @@ type mockVerifyState struct {
 	consoleWarnings []SnapshotError
 	networkRequests []SnapshotNetworkRequest
 	wsConnections   []SnapshotWSConnection
-	performance     *performance.Snapshot
+	performance     *performance.PerformanceSnapshot
 	pageURL         string
 }
 
@@ -57,7 +58,7 @@ func (m *mockVerifyState) GetWSConnections() []SnapshotWSConnection {
 	return m.wsConnections
 }
 
-func (m *mockVerifyState) GetPerformance() *performance.Snapshot {
+func (m *mockVerifyState) GetPerformance() *performance.PerformanceSnapshot {
 	return m.performance
 }
 
@@ -80,9 +81,9 @@ func TestVerificationManager_Start(t *testing.T) {
 			{Method: "POST", URL: "/api/login", Status: 500, Duration: 150},
 			{Method: "GET", URL: "/api/users", Status: 200, Duration: 50},
 		},
-		performance: &performance.Snapshot{
+		performance: &performance.PerformanceSnapshot{
 			URL: "http://localhost:3000/login",
-			Timing: performance.Timing{
+			Timing: performance.PerformanceTiming{
 				Load: 3200,
 			},
 		},
@@ -401,7 +402,7 @@ func TestVerificationManager_Compare_Regressed(t *testing.T) {
 func TestVerificationManager_Compare_NoIssuesDetected(t *testing.T) {
 	t.Parallel()
 	mock := &mockVerifyState{
-		consoleErrors: nil, // No errors
+		consoleErrors:   nil, // No errors
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "GET", URL: "/api/users", Status: 200},
 		},
@@ -678,9 +679,9 @@ func TestVerificationManager_NetworkStatusChange(t *testing.T) {
 func TestVerificationManager_PerformanceDiff(t *testing.T) {
 	t.Parallel()
 	mock := &mockVerifyState{
-		performance: &performance.Snapshot{
+		performance: &performance.PerformanceSnapshot{
 			URL: "http://localhost:3000",
-			Timing: performance.Timing{
+			Timing: performance.PerformanceTiming{
 				Load: 3200,
 			},
 		},
@@ -691,9 +692,9 @@ func TestVerificationManager_PerformanceDiff(t *testing.T) {
 	startResult, _ := vm.Start("perf-test", "")
 
 	// Performance improved
-	mock.performance = &performance.Snapshot{
+	mock.performance = &performance.PerformanceSnapshot{
 		URL: "http://localhost:3000",
-		Timing: performance.Timing{
+		Timing: performance.PerformanceTiming{
 			Load: 1100,
 		},
 	}

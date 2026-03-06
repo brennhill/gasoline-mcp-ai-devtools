@@ -1,7 +1,7 @@
 # Product Update: Issue #41
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/41
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/41
 - Title: Implement configure(audit_log) — tool invocation history
 - Last Updated: 2026-02-14T14:06:33Z
 

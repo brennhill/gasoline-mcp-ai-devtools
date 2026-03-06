@@ -33,7 +33,7 @@ wait_for_saved_recording() {
 
 # Best-effort preflight: ensure no stale active recording from previous tests/runs.
 preflight_stop_recording_if_needed() {
-    interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Preflight cleanup: ensure no active recording"}' 20
+    interact_and_wait "record_stop" '{"action":"record_stop","reason":"Preflight cleanup: ensure no active recording"}' 20
 
     if is_interact_timeout "$INTERACT_RESULT"; then
         return 0
@@ -50,7 +50,7 @@ preflight_stop_recording_if_needed() {
     fi
 
     # Best effort only: do not fail the test here, but emit diagnostic context.
-    echo "  [preflight] screen_recording_stop returned: $(truncate "$INTERACT_RESULT" 180)"
+    echo "  [preflight] record_stop returned: $(truncate "$INTERACT_RESULT" 180)"
     return 0
 }
 
@@ -71,28 +71,28 @@ run_test_10_1() {
 
     preflight_stop_recording_if_needed
 
-    interact_and_wait "screen_recording_start" '{"action":"screen_recording_start","name":"smoke-video-test","reason":"Record tab video"}'
+    interact_and_wait "record_start" '{"action":"record_start","name":"smoke-video-test","reason":"Record tab video"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
-        fail "screen_recording_start returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fail "record_start returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_start timed out waiting for user gesture. Open the Gasoline popup and click Approve when prompted, then rerun 10.1."
+        skip "record_start timed out waiting for user gesture. Click the Gasoline icon when prompted, then rerun 10.1."
         return
     fi
 
     echo "  Recording... waiting 5 seconds"
     sleep 5
 
-    interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop recording"}' 20
+    interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop recording"}' 20
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
-        fail "screen_recording_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fail "record_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_stop timed out (recording never started or permission not granted)."
+        skip "record_stop timed out (recording never started or permission not granted)."
         return
     fi
 
@@ -158,14 +158,14 @@ run_test_10_2() {
 
     preflight_stop_recording_if_needed
 
-    interact_and_wait "screen_recording_start" '{"action":"screen_recording_start","name":"smoke-audio-test","audio":"tab","reason":"Record tab with audio"}'
+    interact_and_wait "record_start" '{"action":"record_start","name":"smoke-audio-test","audio":"tab","reason":"Record tab with audio"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
-        fail "screen_recording_start with audio:tab returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fail "record_start with audio:tab returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_start with audio:tab timed out waiting for user gesture. Open the Gasoline popup and click Approve when prompted, then rerun 10.2."
+        skip "record_start with audio:tab timed out waiting for user gesture. Click the Gasoline icon when prompted, then rerun 10.2."
         return
     fi
 
@@ -173,19 +173,19 @@ run_test_10_2() {
     echo "  (play sound in the tracked tab now if you want to verify audio)"
     sleep 5
 
-    interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop audio recording"}' 20
+    interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop audio recording"}' 20
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         # Check specifically for 403 errors — indicates server auth issue
         if echo "$INTERACT_RESULT" | grep -qi "403"; then
-            fail "screen_recording_stop returned 403 Forbidden. Server requires X-Gasoline-Client header for /recordings/save endpoint. Check extension upload headers. Result: $(truncate "$INTERACT_RESULT" 200)"
+            fail "record_stop returned 403 Forbidden. Server requires X-Gasoline-Client header for /recordings/save endpoint. Check extension upload headers. Result: $(truncate "$INTERACT_RESULT" 200)"
         else
-            fail "screen_recording_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+            fail "record_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         fi
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_stop timed out (recording never started or permission not granted)."
+        skip "record_stop timed out (recording never started or permission not granted)."
         return
     fi
 
@@ -264,10 +264,10 @@ run_test_10_3() {
 
     preflight_stop_recording_if_needed
 
-    interact_and_wait "screen_recording_start" '{"action":"screen_recording_start","name":"smoke-watermark-test","reason":"Test watermark persistence"}'
+    interact_and_wait "record_start" '{"action":"record_start","name":"smoke-watermark-test","reason":"Test watermark persistence"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
-        fail "screen_recording_start returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fail "record_start returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
 
@@ -277,7 +277,7 @@ run_test_10_3() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local before_refresh="$INTERACT_RESULT"
     if echo "$before_refresh" | grep -q "csp_blocked_all_worlds"; then
-        interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop watermark test recording after CSP block"}' 20
+        interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording after CSP block"}' 20
         skip "Watermark DOM check blocked by page CSP (execute_js unavailable)."
         return
     fi
@@ -288,12 +288,12 @@ run_test_10_3() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local after_refresh="$INTERACT_RESULT"
     if echo "$after_refresh" | grep -q "csp_blocked_all_worlds"; then
-        interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop watermark test recording after CSP block"}' 20
+        interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording after CSP block"}' 20
         skip "Watermark DOM check blocked by page CSP after refresh."
         return
     fi
 
-    interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop watermark test recording"}' 20
+    interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording"}' 20
     sleep 1
 
     local before_ok=false

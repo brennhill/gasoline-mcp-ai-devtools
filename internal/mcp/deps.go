@@ -1,4 +1,5 @@
-// Purpose: Declares provider interfaces (DiagnosticProvider, CaptureProvider, etc.) that tools require from the host server.
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp
@@ -7,7 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // DiagnosticProvider supplies system state snapshots for error messages.
@@ -27,7 +28,7 @@ type AsyncCommandDispatcher interface {
 // CaptureProvider gives access to the capture instance for buffer reads.
 // Used by all 5 tools.
 type CaptureProvider interface {
-	GetCapture() *capture.Store
+	GetCapture() *capture.Capture
 }
 
 // LogBufferReader provides read-only access to server log entries.

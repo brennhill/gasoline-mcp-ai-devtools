@@ -1,5 +1,6 @@
-// Purpose: Extended tests for bridge fast-start client compatibility.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate bridge_faststart_extended_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // bridge_faststart_extended_test.go — Extended fast-start tests for MCP bridge mode.
 // Covers: client compatibility matrix, resource workflow soak, retry-when-booting,
@@ -154,9 +155,9 @@ func TestFastStart_ResourceWorkflowSoak(t *testing.T) {
 	t.Logf("soak completed: %d iterations in %v", iterations, elapsed.Round(time.Millisecond))
 }
 
-// TestFastStart_ToolsCallWaitsForDaemonBoot verifies that tools/call converges
-// through daemon startup instead of surfacing transient startup retry envelopes.
-func TestFastStart_ToolsCallWaitsForDaemonBoot(t *testing.T) {
+// TestFastStart_ToolsCallReturnsRetryWhenBooting verifies that tools/call
+// returns a "retry" message instead of blocking when daemon isn't ready.
+func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skips server spawn in short mode")
 	}
@@ -198,7 +199,7 @@ func TestFastStart_ToolsCallWaitsForDaemonBoot(t *testing.T) {
 	}
 	reader.ReadString('\n') // consume initialize response
 
-	// Immediately send tools/call while daemon startup is still in-flight.
+	// Immediately send tools/call - daemon won't be ready yet
 	toolsCallReq := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`
 
 	start := time.Now()
@@ -213,11 +214,11 @@ func TestFastStart_ToolsCallWaitsForDaemonBoot(t *testing.T) {
 		t.Fatalf("Failed to read response: %v", err)
 	}
 
-	// Should converge within startup budget and avoid long hangs.
-	if elapsed > 3*time.Second {
-		t.Errorf("tools/call took %v, expected <= 3s while daemon starts", elapsed)
+	// CRITICAL: Should respond quickly (< 500ms), not block for 15s
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("tools/call took %v, expected < 500ms (should return retry, not block)", elapsed)
 	} else {
-		t.Logf("tools/call responded in %v (<= 3s)", elapsed)
+		t.Logf("tools/call responded in %v (< 500ms)", elapsed)
 	}
 
 	// Verify response structure - should be a result, not an error
@@ -226,9 +227,11 @@ func TestFastStart_ToolsCallWaitsForDaemonBoot(t *testing.T) {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
-	// Response should be a tool result (either successful data or a true failure).
+	// Could be either:
+	// 1. A retry message (if daemon not ready)
+	// 2. Actual data (if daemon started fast enough)
 	if rpcResp.Error != nil {
-		t.Errorf("expected tool result, got protocol error: %v", rpcResp.Error.Message)
+		t.Errorf("Expected result (possibly with retry message), got protocol error: %v", rpcResp.Error.Message)
 	}
 
 	if rpcResp.Result != nil {
@@ -237,14 +240,15 @@ func TestFastStart_ToolsCallWaitsForDaemonBoot(t *testing.T) {
 			t.Fatalf("Failed to parse result: %v", err)
 		}
 
+		// Check if it's a retry message
 		if content, ok := result["content"].([]any); ok && len(content) > 0 {
 			if textObj, ok := content[0].(map[string]any); ok {
 				if text, ok := textObj["text"].(string); ok {
-					normalized := strings.ToLower(text)
-					if strings.Contains(normalized, "retry this tool call") || strings.Contains(normalized, "server is starting up") {
-						t.Fatalf("unexpected startup retry envelope: %q", text)
+					if strings.Contains(text, "retry") || strings.Contains(text, "starting") {
+						t.Logf("Got retry message: %s", text)
+					} else {
+						t.Logf("Got actual data (daemon started quickly): %s...", text[:min(50, len(text))])
 					}
-					t.Logf("tools/call content: %s...", text[:min(50, len(text))])
 				}
 			}
 		}
@@ -404,9 +408,9 @@ func TestFastStart_ResourceWorkflowBeforeDaemonReady(t *testing.T) {
 		t.Fatalf("playbook result = %+v, want canonical security/quick content", playbookResult)
 	}
 
-	// tools/call should not surface protocol errors during startup.
+	// tools/call may return either real data or startup retry text, but must not be protocol error.
 	writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`)
-	toolResp := readJSONRPCLine(t, reader, 3*time.Second)
+	toolResp := readJSONRPCLine(t, reader, 1*time.Second)
 	if toolResp.Error != nil {
 		t.Fatalf("tools/call returned protocol error: %+v", toolResp.Error)
 	}

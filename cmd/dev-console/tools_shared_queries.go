@@ -1,20 +1,10 @@
-// Purpose: Builds and executes shared query patterns (accessibility audits) used by both observe and generate tools.
-// Why: Prevents duplicated query construction logic when multiple tools need the same extension query type.
-// Docs: docs/features/feature/enhanced-wcag-audit/index.md
-
 package main
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-)
-
-const (
-	// a11yQueryTimeout is the timeout for creating and waiting for accessibility
-	// audit queries sent to the extension.
-	a11yQueryTimeout = 30 * time.Second
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // buildA11yQueryParams constructs query params for an accessibility audit.
@@ -48,11 +38,24 @@ func (h *ToolHandler) ExecuteA11yQuery(scope string, tags []string, frame any, f
 			Type:   "a11y",
 			Params: paramsJSON,
 		},
-		a11yQueryTimeout,
+		30*time.Second,
 		"",
 	)
 	if qerr != nil {
 		return nil, qerr
 	}
-	return h.capture.WaitForResult(queryID, a11yQueryTimeout)
+	return h.capture.WaitForResult(queryID, 30*time.Second)
+}
+
+// ensureA11ySummary adds a summary section to a11y audit results if not already present.
+func ensureA11ySummary(auditResult map[string]any) {
+	if _, ok := auditResult["summary"]; ok {
+		return
+	}
+	violations, _ := auditResult["violations"].([]any)
+	passes, _ := auditResult["passes"].([]any)
+	auditResult["summary"] = map[string]any{
+		"violation_count": len(violations),
+		"pass_count":      len(passes),
+	}
 }

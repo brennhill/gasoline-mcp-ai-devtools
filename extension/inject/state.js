@@ -1,6 +1,8 @@
 /**
- * Purpose: Captures and restores browser state snapshots (localStorage, cookies, scroll position) and manages element highlighting for the AI Web Pilot.
- * Docs: docs/features/feature/state-time-travel/index.md
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 /** Read the page nonce set by the content script on the inject script element */

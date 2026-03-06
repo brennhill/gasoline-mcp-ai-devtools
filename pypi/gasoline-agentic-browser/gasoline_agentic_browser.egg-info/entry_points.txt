@@ -1,2 +1,0 @@
-[console_scripts]
-gasoline-agentic-browser = gasoline_agentic_browser.__main__:main

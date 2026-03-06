@@ -41,7 +41,7 @@ check_version "npm/linux-arm64/package.json" '"version":'
 check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
-check_version "npm/gasoline-agentic-browser/package.json" '"version":'
+check_version "npm/gasoline-mcp/package.json" '"version":'
 check_version "packages/gasoline-ci/package.json" '"version":'
 check_version "packages/gasoline-playwright/package.json" '"version":'
 
@@ -78,10 +78,10 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Special check: optionalDependencies in gasoline-agentic-browser
+# Special check: optionalDependencies in gasoline-mcp
 echo ""
-echo "Checking optionalDependencies in npm/gasoline-agentic-browser/package.json..."
-DEPS=$(grep -A 5 '"optionalDependencies"' npm/gasoline-agentic-browser/package.json | grep '@brennhill' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+echo "Checking optionalDependencies in npm/gasoline-mcp/package.json..."
+DEPS=$(grep -A 5 '"optionalDependencies"' npm/gasoline-mcp/package.json | grep '@brennhill' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
 DEP_COUNT=$(echo "$DEPS" | wc -l | tr -d ' ')
 
 if [ "$DEP_COUNT" != "1" ]; then

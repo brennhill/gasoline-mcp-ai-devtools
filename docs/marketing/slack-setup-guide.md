@@ -53,7 +53,7 @@ It gives your AI assistant real-time visibility into browser activity.
 🚀 Get Started:
 • Documentation: https://cookwithgasoline.com
 • Quick Start: https://cookwithgasoline.com/getting-started/
-• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• GitHub: https://github.com/brennhill/gasoline-mcp-ai-devtools
 
 ❓ Need Help?
 • Ask in #help
@@ -104,7 +104,7 @@ Set channel topics for clarity:
 
 1. Go to [Slack App Directory](https://slack.com/apps)
 2. Install "GitHub" app
-3. Connect to your repo: brennhill/gasoline-agentic-browser-devtools-mcp
+3. Connect to your repo: brennhill/gasoline-mcp-ai-devtools
 4. Configure which channels receive notifications
 
 ---

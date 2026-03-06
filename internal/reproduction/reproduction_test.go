@@ -1,4 +1,5 @@
-// Purpose: Tests for reproduction script generation from captured actions.
+// Purpose: Validate reproduction_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/reproduction-scripts/index.md
 
 // reproduction_test.go — Tests for reproduction script generation.
@@ -10,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -469,14 +470,14 @@ func TestReproduction_LastN(t *testing.T) {
 
 func TestReproduction_DefaultFormat(t *testing.T) {
 	t.Parallel()
-	// When output_format is empty, should default to "gasoline-agentic-browser"
+	// When output_format is empty, should default to "gasoline"
 	params := Params{}
 	format := params.OutputFormat
 	if format == "" {
-		format = "gasoline-agentic-browser" // default
+		format = "gasoline" // default
 	}
-	if format != "gasoline-agentic-browser" {
-		t.Errorf("expected default format 'gasoline-agentic-browser', got %q", format)
+	if format != "gasoline" {
+		t.Errorf("expected default format 'gasoline', got %q", format)
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // Constants for circuit breaker behavior.

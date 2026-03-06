@@ -1,4 +1,5 @@
-// Purpose: Tests for capture synchronization protocol and data delivery.
+// Purpose: Validate async_queue_reliability_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // async_queue_reliability_test.go — Test async queue under various timing conditions
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // TestAsyncQueueReliability tests that commands survive timing jitter
@@ -137,7 +138,7 @@ func TestAsyncQueueReliability(t *testing.T) {
 			<-pollingDone
 
 			// Check for expired commands
-			commandsExpired = capture.queryDispatcher.QueueDepth()
+			commandsExpired = capture.qd.QueueDepth()
 
 			mu.Lock()
 			sent := commandsSent

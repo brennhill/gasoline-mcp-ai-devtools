@@ -1,9 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Gasoline Feature Test Plans — Summary Report
@@ -169,7 +167,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 **Location:** `/Users/brenn/dev/gasoline/docs/features/feature/test-generation/test-plan.md`
 
-**UAT Tests:** 6 tests in `cat-29-reproduction.sh`
+**UAT Tests:** 6 tests in `cat-17-reproduction.sh`
 - Test 17.1: Seed actions via HTTP POST (5 actions)
 - Test 17.2: Export gasoline format (natural language)
 - Test 17.3-17.6: Playwright export, Vitest export, round-trip validation, error handling
@@ -463,4 +461,5 @@ All test-plans follow the standard template in `/docs/features/_template/templat
 | **noise-filtering** | ✅ [product-spec.md](feature/noise-filtering/product-spec.md) | ✅ [tech-spec.md](feature/noise-filtering/tech-spec.md) | ✅ [test-plan.md](feature/noise-filtering/test-plan.md) | ✅ [cat-20-noise-persistence.sh](../../scripts/tests/cat-20-noise-persistence.sh) | ❌ None |
 | **ai-web-pilot** | ✅ [product-spec.md](feature/ai-web-pilot/product-spec.md) | ✅ [tech-spec.md](feature/ai-web-pilot/tech-spec.md) | ✅ [test-plan.md](feature/ai-web-pilot/test-plan.md) | ✅ cat-13/14/15 (12 tests) | ❌ None |
 | **flow-recording** | ✅ [product-spec.md](feature/flow-recording/product-spec.md) | ✅ [tech-spec.md](feature/flow-recording/tech-spec.md) | ✅ [test-plan.md](feature/flow-recording/test-plan.md) | ✅ [cat-18-recording.sh](../../scripts/tests/cat-18-recording.sh) | ❌ None |
-| **test-generation** | ✅ [product-spec.md](feature/test-generation/product-spec.md) | ✅ [tech-spec.md](feature/test-generation/tech-spec.md) | ✅ [test-plan.md](feature/test-generation/test-plan.md) | ✅ [cat-29-reproduction.sh](../../scripts/tests/cat-29-reproduction.sh) | ❌ None |
+| **test-generation** | ✅ [product-spec.md](feature/test-generation/product-spec.md) | ✅ [tech-spec.md](feature/test-generation/tech-spec.md) | ✅ [test-plan.md](feature/test-generation/test-plan.md) | ✅ [cat-17-reproduction.sh](../../scripts/tests/cat-17-reproduction.sh) | ❌ None |
+

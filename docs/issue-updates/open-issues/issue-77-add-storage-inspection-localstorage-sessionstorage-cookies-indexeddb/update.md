@@ -1,7 +1,7 @@
 # Product Update: Issue #77
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/77
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/77
 - Title: Add storage inspection (localStorage, sessionStorage, cookies, IndexedDB)
 - Last Updated: 2026-02-16T14:42:31Z
 

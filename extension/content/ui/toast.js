@@ -1,6 +1,8 @@
 /**
- * Purpose: Renders action toast overlays showing real-time status (trying/success/error) for AI-driven browser actions.
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 // toast.ts — Action toast overlay rendering for AI-driven browser actions.
 /** Color themes for each toast state */

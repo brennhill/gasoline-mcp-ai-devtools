@@ -5,11 +5,8 @@ scope: features/core/target-architecture
 ai-priority: high
 tags: [core, architecture, target, canonical]
 relates-to: [../../core/product-spec.md, ../../core/tech-spec.md, ../../core/qa-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-02-17
 canonical: true
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Target Architecture (Canonical Pointers)

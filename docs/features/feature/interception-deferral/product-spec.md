@@ -5,11 +5,8 @@ tool: observe, configure
 mode: network buffering
 doc_type: product-spec
 feature_id: feature-interception-deferral
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
-
 # Product Spec: Interception Deferral
 
 User-facing requirements, rationale, and deprecations for the Interception Deferral feature.

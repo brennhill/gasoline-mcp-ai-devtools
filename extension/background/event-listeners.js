@@ -1,13 +1,12 @@
 /**
- * Purpose: Installs Chrome extension event listeners (alarms, tab lifecycle, storage changes, runtime startup) and re-exports keyboard shortcuts, context menus, and tab-state accessors.
- * Docs: docs/features/feature/tab-tracking-ux/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
+import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
-import { clearTrackedTab as clearTrackedTabState } from './tab-state.js';
-// Re-export split modules so existing consumers keep working
-export { installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener } from './keyboard-shortcuts.js';
-export { installContextMenus } from './context-menus.js';
-export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, setTrackedTab, clearTrackedTab, getAllConfigSettings, getActiveTab, sendTabToast } from './tab-state.js';
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
@@ -72,7 +71,7 @@ export function setupChromeAlarms() {
 }
 /**
  * Install Chrome alarm listener.
- * Handlers may be async -- the listener awaits them to keep the SW alive
+ * Handlers may be async — the listener awaits them to keep the SW alive
  * until the work completes (prevents badge updates from being lost).
  */
 export function installAlarmListener(handlers) {
@@ -142,7 +141,7 @@ export async function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
             }
         }
         catch {
-            // Tab may have been closed -- update URL only
+            // Tab may have been closed — update URL only
             chrome.storage.local.set({ [StorageKey.TRACKED_TAB_URL]: newUrl });
         }
     }
@@ -159,7 +158,7 @@ export async function handleTrackedTabClosed(closedTabId, logFn) {
     if (result.trackedTabId === closedTabId) {
         if (logFn)
             logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-        clearTrackedTabState();
+        chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
     }
 }
 // =============================================================================
@@ -206,14 +205,242 @@ export function installStartupListener(logFn) {
                 catch {
                     if (logFn)
                         logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
-                    clearTrackedTabState();
+                    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
                 }
             }
         }
         catch {
             // Safety fallback: clear if we can't check
-            clearTrackedTabState();
+            chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
         }
     });
+}
+// =============================================================================
+// KEYBOARD SHORTCUT LISTENER
+// =============================================================================
+/**
+ * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
+ * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ */
+export function installDrawModeCommandListener(logFn) {
+    if (typeof chrome === 'undefined' || !chrome.commands)
+        return;
+    chrome.commands.onCommand.addListener(async (command) => {
+        if (command !== 'toggle_draw_mode')
+            return;
+        try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const tab = tabs[0];
+            if (!tab?.id)
+                return;
+            try {
+                const result = (await chrome.tabs.sendMessage(tab.id, {
+                    type: 'GASOLINE_GET_ANNOTATIONS'
+                }));
+                if (result?.draw_mode_active) {
+                    await chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' });
+                }
+                else {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GASOLINE_DRAW_MODE_START',
+                        started_by: 'user'
+                    });
+                }
+            }
+            catch {
+                // Content script not loaded — try activating anyway
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GASOLINE_DRAW_MODE_START',
+                        started_by: 'user'
+                    });
+                }
+                catch {
+                    if (logFn)
+                        logFn('Cannot reach content script for draw mode toggle');
+                    try {
+                        await chrome.tabs.sendMessage(tab.id, {
+                            type: 'GASOLINE_ACTION_TOAST',
+                            text: 'Draw mode unavailable',
+                            detail: 'Refresh the page and try again',
+                            state: 'error',
+                            duration_ms: 3000
+                        });
+                    }
+                    catch {
+                        // Tab truly unreachable
+                    }
+                }
+            }
+        }
+        catch (err) {
+            if (logFn)
+                logFn(`Draw mode keyboard shortcut error: ${err.message}`);
+        }
+    });
+}
+// =============================================================================
+// CONTENT SCRIPT HELPERS
+// =============================================================================
+/**
+ * Ping content script to check if it's loaded
+ */
+export async function pingContentScript(tabId, timeoutMs = scaleTimeout(500)) {
+    try {
+        const response = (await Promise.race([
+            chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+            new Promise((_, reject) => {
+                setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs);
+            })
+        ]));
+        return response?.status === 'alive';
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Wait for tab to finish loading
+ */
+export async function waitForTabLoad(tabId, timeoutMs = scaleTimeout(5000)) {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            if (tab.status === 'complete')
+                return true;
+        }
+        catch {
+            return false;
+        }
+        await new Promise((r) => {
+            setTimeout(r, scaleTimeout(100));
+        });
+    }
+    return false;
+}
+/**
+ * Forward a message to all content scripts
+ */
+export async function forwardToAllContentScripts(message, debugLogFn) {
+    if (typeof chrome === 'undefined' || !chrome.tabs)
+        return;
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        if (tab.id) {
+            chrome.tabs.sendMessage(tab.id, message).catch((err) => {
+                if (!err.message?.includes('Receiving end does not exist') &&
+                    !err.message?.includes('Could not establish connection')) {
+                    if (debugLogFn) {
+                        debugLogFn('error', 'Unexpected error forwarding setting to tab', {
+                            tabId: tab.id,
+                            error: err.message
+                        });
+                    }
+                }
+            });
+        }
+    }
+}
+/**
+ * Load saved settings from chrome.storage.local
+ */
+export async function loadSavedSettings() {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        return {};
+    }
+    try {
+        const result = (await chrome.storage.local.get([
+            StorageKey.SERVER_URL,
+            StorageKey.LOG_LEVEL,
+            StorageKey.SCREENSHOT_ON_ERROR,
+            StorageKey.SOURCE_MAP_ENABLED,
+            StorageKey.DEBUG_MODE
+        ]));
+        return result;
+    }
+    catch {
+        console.warn('[Gasoline] Could not load saved settings - using defaults');
+        return {};
+    }
+}
+/**
+ * Load AI Web Pilot enabled state from storage
+ */
+export async function loadAiWebPilotState(logFn) {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        return false;
+    }
+    const startTime = performance.now();
+    const result = (await chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED]));
+    const wasLoaded = result.aiWebPilotEnabled !== false;
+    const loadTime = performance.now() - startTime;
+    if (logFn) {
+        logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);
+    }
+    return wasLoaded;
+}
+/**
+ * Load debug mode state from storage
+ */
+export async function loadDebugModeState() {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        return false;
+    }
+    const result = (await chrome.storage.local.get([StorageKey.DEBUG_MODE]));
+    return result.debugMode === true;
+}
+/**
+ * Save setting to chrome.storage.local
+ */
+export function saveSetting(key, value) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    chrome.storage.local.set({ [key]: value });
+}
+/**
+ * Get tracked tab information.
+ */
+export async function getTrackedTabInfo() {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null };
+    }
+    const result = (await chrome.storage.local.get([
+        StorageKey.TRACKED_TAB_ID,
+        StorageKey.TRACKED_TAB_URL,
+        StorageKey.TRACKED_TAB_TITLE
+    ]));
+    return {
+        trackedTabId: result.trackedTabId || null,
+        trackedTabUrl: result.trackedTabUrl || null,
+        trackedTabTitle: result.trackedTabTitle || null
+    };
+}
+/**
+ * Clear tracked tab state
+ */
+export function clearTrackedTab() {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+}
+/**
+ * Get all extension config settings.
+ */
+export async function getAllConfigSettings() {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        return {};
+    }
+    const result = (await chrome.storage.local.get([
+        StorageKey.AI_WEB_PILOT_ENABLED,
+        StorageKey.WEBSOCKET_CAPTURE_ENABLED,
+        StorageKey.NETWORK_WATERFALL_ENABLED,
+        StorageKey.PERFORMANCE_MARKS_ENABLED,
+        StorageKey.ACTION_REPLAY_ENABLED,
+        StorageKey.SCREENSHOT_ON_ERROR,
+        StorageKey.SOURCE_MAP_ENABLED,
+        StorageKey.NETWORK_BODY_CAPTURE_ENABLED
+    ]));
+    return result;
 }
 //# sourceMappingURL=event-listeners.js.map

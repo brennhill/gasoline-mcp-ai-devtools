@@ -4,15 +4,9 @@ feature_id: feature-historical-snapshots
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-16
 code_paths:
-  - internal/types/snapshot.go
-  - internal/session/types.go
-  - internal/session/snapshot-manager.go
-test_paths:
-  - internal/session/snapshot_manager_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+test_paths: []
 ---
 
 # Historical Snapshots
@@ -29,7 +23,6 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
-- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -39,9 +32,4 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-- Snapshot contract types:
-  - `internal/types/snapshot.go`
-  - `internal/session/types.go`
-  - `internal/session/snapshot-manager.go`
-- Tests:
-  - `internal/session/snapshot_manager_test.go`
+Add concrete implementation and test links here as this feature evolves.

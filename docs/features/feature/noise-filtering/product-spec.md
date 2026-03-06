@@ -3,14 +3,11 @@ feature: noise-filtering
 status: shipped
 tool: configure
 mode: noise_rule, dismiss
-version: 0.7.12
+version: 5.0.0
 doc_type: product-spec
 feature_id: feature-noise-filtering
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
-
 # Product Spec: Noise Filtering
 
 Describes the user-facing requirements, rationale, and deprecations for the Noise Filtering feature.

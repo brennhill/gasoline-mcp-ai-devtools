@@ -1,5 +1,7 @@
-// Purpose: Declares diff result structs: SessionDiffResult, ErrorDiff, NetworkDiff, PerformanceDiff, DiffSummary.
-// Docs: docs/features/feature/request-session-correlation/index.md
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Why: Maintains reliable state snapshots and diffs for investigations.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
 
 // diff-types.go — Diff computation types.
 // SessionDiffResult, ErrorDiff, SessionNetworkDiff, PerformanceDiff, etc.

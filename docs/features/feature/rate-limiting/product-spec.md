@@ -3,14 +3,11 @@ feature: rate-limiting
 status: shipped
 tool: configure
 mode: throttling
-version: 0.7.12
+version: 5.0.0
 doc_type: product-spec
 feature_id: feature-rate-limiting
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
-
 # Product Spec: Rate Limiting
 
 User-facing requirements, rationale, and deprecations for the Rate Limiting feature.

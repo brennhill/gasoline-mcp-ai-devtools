@@ -1,4 +1,5 @@
-// Purpose: Tests for capture connection status reporting.
+// Purpose: Validate status_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // status_test.go — Tests for ExtensionStatus types and UpdateExtensionStatus method.
@@ -155,16 +156,16 @@ func TestNewUpdateExtensionStatus_SetsTrackingState(t *testing.T) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if !c.extensionState.trackingEnabled {
+	if !c.ext.trackingEnabled {
 		t.Error("trackingEnabled should be true after update")
 	}
-	if c.extensionState.trackedTabID != 42 {
-		t.Errorf("trackedTabID = %d, want 42", c.extensionState.trackedTabID)
+	if c.ext.trackedTabID != 42 {
+		t.Errorf("trackedTabID = %d, want 42", c.ext.trackedTabID)
 	}
-	if c.extensionState.trackedTabURL != "https://example.com/page" {
-		t.Errorf("trackedTabURL = %q, want https://example.com/page", c.extensionState.trackedTabURL)
+	if c.ext.trackedTabURL != "https://example.com/page" {
+		t.Errorf("trackedTabURL = %q, want https://example.com/page", c.ext.trackedTabURL)
 	}
-	if c.extensionState.trackingUpdated.Before(beforeUpdate) || c.extensionState.trackingUpdated.After(afterUpdate) {
+	if c.ext.trackingUpdated.Before(beforeUpdate) || c.ext.trackingUpdated.After(afterUpdate) {
 		t.Error("trackingUpdated timestamp out of range")
 	}
 }
@@ -192,14 +193,14 @@ func TestNewUpdateExtensionStatus_DisablesTracking(t *testing.T) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if c.extensionState.trackingEnabled {
+	if c.ext.trackingEnabled {
 		t.Error("trackingEnabled should be false after disabling")
 	}
-	if c.extensionState.trackedTabID != 0 {
-		t.Errorf("trackedTabID = %d, want 0", c.extensionState.trackedTabID)
+	if c.ext.trackedTabID != 0 {
+		t.Errorf("trackedTabID = %d, want 0", c.ext.trackedTabID)
 	}
-	if c.extensionState.trackedTabURL != "" {
-		t.Errorf("trackedTabURL = %q, want empty", c.extensionState.trackedTabURL)
+	if c.ext.trackedTabURL != "" {
+		t.Errorf("trackedTabURL = %q, want empty", c.ext.trackedTabURL)
 	}
 }
 
@@ -226,11 +227,11 @@ func TestNewUpdateExtensionStatus_OverwritesPreviousState(t *testing.T) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if c.extensionState.trackedTabID != 20 {
-		t.Errorf("trackedTabID = %d, want 20 (overwritten)", c.extensionState.trackedTabID)
+	if c.ext.trackedTabID != 20 {
+		t.Errorf("trackedTabID = %d, want 20 (overwritten)", c.ext.trackedTabID)
 	}
-	if c.extensionState.trackedTabURL != "https://second.com" {
-		t.Errorf("trackedTabURL = %q, want https://second.com", c.extensionState.trackedTabURL)
+	if c.ext.trackedTabURL != "https://second.com" {
+		t.Errorf("trackedTabURL = %q, want https://second.com", c.ext.trackedTabURL)
 	}
 }
 
@@ -246,16 +247,16 @@ func TestNewUpdateExtensionStatus_ZeroValues(t *testing.T) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if c.extensionState.trackingEnabled {
+	if c.ext.trackingEnabled {
 		t.Error("trackingEnabled should be false (zero value)")
 	}
-	if c.extensionState.trackedTabID != 0 {
-		t.Errorf("trackedTabID = %d, want 0", c.extensionState.trackedTabID)
+	if c.ext.trackedTabID != 0 {
+		t.Errorf("trackedTabID = %d, want 0", c.ext.trackedTabID)
 	}
-	if c.extensionState.trackedTabURL != "" {
-		t.Errorf("trackedTabURL = %q, want empty", c.extensionState.trackedTabURL)
+	if c.ext.trackedTabURL != "" {
+		t.Errorf("trackedTabURL = %q, want empty", c.ext.trackedTabURL)
 	}
-	if c.extensionState.trackingUpdated.IsZero() {
+	if c.ext.trackingUpdated.IsZero() {
 		t.Error("trackingUpdated should be set even with zero-value status")
 	}
 }
@@ -269,7 +270,7 @@ func TestNewUpdateExtensionStatus_UpdatesTimestampOnEachCall(t *testing.T) {
 	c.UpdateExtensionStatus(ExtensionStatus{TrackingEnabled: true, TrackedTabID: 1})
 
 	c.mu.RLock()
-	firstUpdate := c.extensionState.trackingUpdated
+	firstUpdate := c.ext.trackingUpdated
 	c.mu.RUnlock()
 
 	// Small delay to ensure different timestamp
@@ -278,7 +279,7 @@ func TestNewUpdateExtensionStatus_UpdatesTimestampOnEachCall(t *testing.T) {
 	c.UpdateExtensionStatus(ExtensionStatus{TrackingEnabled: true, TrackedTabID: 2})
 
 	c.mu.RLock()
-	secondUpdate := c.extensionState.trackingUpdated
+	secondUpdate := c.ext.trackingUpdated
 	c.mu.RUnlock()
 
 	if !secondUpdate.After(firstUpdate) {

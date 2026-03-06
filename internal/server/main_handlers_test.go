@@ -1,5 +1,6 @@
-// Purpose: Tests for HTTP server request routing and response formatting.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Validate main_handlers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package server
 
@@ -15,8 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func newTestServer(t *testing.T, maxEntries int) (*Server, string) {
@@ -131,15 +131,12 @@ func TestSanitizeForFilename(t *testing.T) {
 	t.Parallel()
 
 	input := "unsafe /:*?<>| name " + strings.Repeat("x", 80)
-	got := util.SanitizeForFilename(input)
+	got := sanitizeForFilename(input)
 	if len(got) > 50 {
 		t.Fatalf("sanitized filename length = %d, want <= 50", len(got))
 	}
-	// Verify no unsafe characters remain (only a-zA-Z0-9._- are allowed).
-	for _, c := range got {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') {
-			t.Fatalf("sanitized filename still has unsafe char %q in: %q", string(c), got)
-		}
+	if unsafeChars.MatchString(got) {
+		t.Fatalf("sanitized filename still has unsafe chars: %q", got)
 	}
 }
 

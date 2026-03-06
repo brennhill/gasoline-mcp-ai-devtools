@@ -1,4 +1,5 @@
-// Purpose: Coverage-expansion tests for capture pipeline edge cases and branch paths.
+// Purpose: Validate coverage_boost_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -14,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func newCoverageCapture(t *testing.T) *Capture {
@@ -24,6 +25,7 @@ func newCoverageCapture(t *testing.T) *Capture {
 	t.Cleanup(c.Close)
 	return c
 }
+
 
 func TestCoverageBoost_SetupHelpers(t *testing.T) {
 	c := setupTestCapture(t)
@@ -112,9 +114,9 @@ func TestCoverageBoost_EnhancedActionsBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
 	c.mu.Lock()
-	c.buffers.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
-	c.buffers.actionAddedAt = []time.Time{time.Now()}
-	c.extensionState.activeTestIDs["test-1"] = true
+	c.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
+	c.actionAddedAt = []time.Time{time.Now()}
+	c.ext.activeTestIDs["test-1"] = true
 	c.mu.Unlock()
 
 	c.AddEnhancedActions([]EnhancedAction{{Type: "type", Value: "hello"}})
@@ -145,12 +147,12 @@ func TestCoverageBoost_NetworkBodiesBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
 	c.mu.Lock()
-	c.buffers.networkBodies = []NetworkBody{
+	c.networkBodies = []NetworkBody{
 		{Method: "GET", URL: "https://a.example", RequestBody: "a", ResponseBody: "a"},
 		{Method: "GET", URL: "https://b.example", RequestBody: "b", ResponseBody: "b"},
 	}
-	c.buffers.networkAddedAt = []time.Time{time.Now()}
-	c.extensionState.activeTestIDs["tid"] = true
+	c.networkAddedAt = []time.Time{time.Now()}
+	c.ext.activeTestIDs["tid"] = true
 	c.mu.Unlock()
 
 	c.AddNetworkBodies([]NetworkBody{{
@@ -193,7 +195,7 @@ func TestCoverageBoost_NetworkWaterfallGetters(t *testing.T) {
 	}
 
 	c.mu.Lock()
-	c.networkWaterfall.capacity = 1
+	c.nw.capacity = 1
 	c.mu.Unlock()
 
 	c.AddNetworkWaterfallEntries([]NetworkWaterfallEntry{

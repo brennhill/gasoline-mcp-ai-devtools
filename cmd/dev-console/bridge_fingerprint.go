@@ -1,5 +1,5 @@
-// Purpose: Computes an immutable binary fingerprint (SHA-256, Go build ID, path) for bridge launch diagnostics.
-// Why: Enables version-mismatch detection between bridge and daemon when troubleshooting upgrade issues.
+// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

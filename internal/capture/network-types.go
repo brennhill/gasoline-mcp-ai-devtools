@@ -4,7 +4,7 @@
 
 package capture
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+import "github.com/dev-console/dev-console/internal/types"
 
 // NetworkWaterfallEntry is an alias to canonical definition in internal/types/network.go
 type NetworkWaterfallEntry = types.NetworkWaterfallEntry

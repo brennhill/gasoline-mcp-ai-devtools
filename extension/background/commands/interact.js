@@ -1,27 +1,33 @@
 /**
- * Purpose: Dispatches interact tool commands to extension-side handlers.
- * Why: Routes MCP interact actions to DOM primitives, browser actions, and CDP operations.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
-// interact.ts — Command handlers for the interact MCP tool.
-// Handles: subtitle, highlight, browser_action, dom_action, upload,
-//          execute, screen_recording_start, screen_recording_stop, state_*.
 import { isAiWebPilotEnabled } from '../state.js';
 import { executeDOMAction } from '../dom-dispatch.js';
-import { executeCDPAction } from '../cdp-dispatch.js';
 import { executeUpload } from '../upload-handler.js';
 import { startRecording, stopRecording } from '../recording.js';
 import { executeWithWorldRouting } from '../query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
-import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js';
-import { errorMessage } from '../../lib/error-utils.js';
+import { sendAsyncResult } from './helpers.js';
+function statusFromError(error) {
+    return error ? 'error' : 'complete';
+}
 // =============================================================================
 // SUBTITLE
 // =============================================================================
 registerCommand('subtitle', async (ctx) => {
-    const params = ctx.params;
+    let params;
+    try {
+        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        params = {};
+    }
     chrome.tabs
         .sendMessage(ctx.tabId, {
         type: 'GASOLINE_SUBTITLE',
@@ -34,15 +40,42 @@ registerCommand('subtitle', async (ctx) => {
 // HIGHLIGHT
 // =============================================================================
 registerCommand('highlight', async (ctx) => {
-    const params = ctx.params;
+    let params;
+    try {
+        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        ctx.sendResult({
+            error: 'invalid_params',
+            message: 'Failed to parse highlight params as JSON'
+        });
+        return;
+    }
     const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params, ctx.tabId);
-    ctx.sendResult(result);
+    if (ctx.query.correlation_id) {
+        const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined;
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err);
+    }
+    else {
+        ctx.sendResult(result);
+    }
 });
 // =============================================================================
 // BROWSER ACTION
 // =============================================================================
 registerCommand('browser_action', async (ctx) => {
-    const params = ctx.params;
+    let params;
+    try {
+        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        ctx.sendResult({
+            success: false,
+            error: 'invalid_params',
+            message: 'Failed to parse browser_action params as JSON'
+        });
+        return;
+    }
     if (ctx.query.correlation_id) {
         await handleAsyncBrowserAction(ctx.query, ctx.tabId, params, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
     }
@@ -55,52 +88,72 @@ registerCommand('browser_action', async (ctx) => {
 // DOM ACTION
 // =============================================================================
 registerCommand('dom_action', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
+    if (!isAiWebPilotEnabled()) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
         return;
+    }
     await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
-});
-// =============================================================================
-// CDP ACTION
-// =============================================================================
-registerCommand('cdp_action', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
-        return;
-    await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
 // UPLOAD
 // =============================================================================
 registerCommand('upload', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
+    if (!isAiWebPilotEnabled()) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
         return;
+    }
     await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
-// SCREEN RECORDING START
+// RECORD START
 // =============================================================================
-registerCommand('screen_recording_start', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
+registerCommand('record_start', async (ctx) => {
+    if (!isAiWebPilotEnabled()) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
         return;
-    const params = ctx.params;
+    }
+    let params;
+    try {
+        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        params = {};
+    }
     const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, ctx.query.id, params.audio ?? '', false, ctx.tabId);
-    ctx.sendResult(result);
+    const error = result.error || undefined;
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
 });
 // =============================================================================
-// SCREEN RECORDING STOP
+// RECORD STOP
 // =============================================================================
-registerCommand('screen_recording_stop', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
+registerCommand('record_stop', async (ctx) => {
+    if (!isAiWebPilotEnabled()) {
+        sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
         return;
+    }
     const result = await stopRecording();
-    ctx.sendResult(result);
+    const error = result.error || undefined;
+    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
 });
 // =============================================================================
 // STATE QUERIES (state_capture, state_save, state_load, state_list, state_delete)
 // =============================================================================
 registerCommand('state_*', async (ctx) => {
-    if (!requireAiWebPilot(ctx))
+    if (!isAiWebPilotEnabled()) {
+        ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
-    const params = ctx.params;
+    }
+    let params;
+    try {
+        params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        ctx.sendResult({
+            error: 'invalid_params',
+            message: 'Failed to parse state query params as JSON'
+        });
+        return;
+    }
     const action = params.action;
     // Use the tracked tab from the command context instead of querying for active tab.
     // chrome.tabs.query({ active: true, currentWindow: true }) is unreliable from a service worker.
@@ -113,31 +166,10 @@ registerCommand('state_*', async (ctx) => {
         let result;
         switch (action) {
             case 'capture': {
-                const captureData = (await chrome.tabs.sendMessage(tabId, {
+                result = await chrome.tabs.sendMessage(tabId, {
                     type: 'GASOLINE_MANAGE_STATE',
                     params: { action: 'capture' }
-                }));
-                // Enrich with chrome.cookies API for full cookie metadata (HttpOnly, Secure, etc.)
-                try {
-                    const tab = await chrome.tabs.get(tabId);
-                    if (tab.url) {
-                        const chromeCookies = await chrome.cookies.getAll({ url: tab.url });
-                        captureData.cookies = chromeCookies.map((c) => ({
-                            name: c.name,
-                            value: c.value,
-                            domain: c.domain,
-                            path: c.path,
-                            secure: c.secure,
-                            httpOnly: c.httpOnly,
-                            sameSite: c.sameSite,
-                            expirationDate: c.expirationDate
-                        }));
-                    }
-                }
-                catch {
-                    // Falls back to document.cookie string from captureState()
-                }
-                result = captureData;
+                });
                 break;
             }
             case 'save': {
@@ -182,29 +214,39 @@ registerCommand('state_*', async (ctx) => {
         ctx.sendResult(result);
     }
     catch (err) {
-        ctx.sendResult({ error: errorMessage(err) });
+        ctx.sendResult({ error: err.message });
     }
 });
 // =============================================================================
 // EXECUTE
 // =============================================================================
 registerCommand('execute', async (ctx) => {
-    const execParams = ctx.params;
-    const world = execParams.world || 'auto';
-    if (ctx.query.correlation_id) {
-        if (!isAiWebPilotEnabled()) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', {
+    if (!isAiWebPilotEnabled()) {
+        if (ctx.query.correlation_id) {
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        }
+        else {
+            ctx.sendResult({
                 success: false,
                 error: 'ai_web_pilot_disabled',
-                message: 'AI Web Pilot is not enabled'
-            }, 'ai_web_pilot_disabled');
-            return;
+                message: 'AI Web Pilot is not enabled in the extension popup'
+            });
         }
+        return;
+    }
+    // Parse world param for routing
+    let execParams;
+    try {
+        execParams = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
+    }
+    catch {
+        execParams = {};
+    }
+    const world = execParams.world || 'auto';
+    if (ctx.query.correlation_id) {
         await handleAsyncExecuteCommand(ctx.query, ctx.tabId, world, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
     }
     else {
-        if (!requireAiWebPilot(ctx))
-            return;
         try {
             const result = await executeWithWorldRouting(ctx.tabId, ctx.query.params, world);
             ctx.sendResult(result);
@@ -213,7 +255,7 @@ registerCommand('execute', async (ctx) => {
             ctx.sendResult({
                 success: false,
                 error: 'execution_failed',
-                message: errorMessage(err, 'Execution failed')
+                message: err.message || 'Execution failed'
             });
         }
     }
@@ -221,6 +263,10 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 // PILOT COMMAND (exported for use by index.ts re-export chain)
 // =============================================================================
+function isContentScriptUnreachableError(err) {
+    const message = err?.message || '';
+    return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
+}
 function buildFallbackStatusMessage(status) {
     return `Error: MAIN world execution FAILED. Fallback in ISOLATED is ${status}.`;
 }
@@ -289,7 +335,7 @@ function runHighlightFallback(params) {
         return {
             success: false,
             error: 'highlight_fallback_failed',
-            message: errorMessage(err, 'Highlight fallback failed')
+            message: err?.message || 'Highlight fallback failed'
         };
     }
 }
@@ -317,7 +363,7 @@ async function executeHighlightFallback(tabId, params, mainWorldError) {
         };
     }
     catch (err) {
-        const fallbackError = errorMessage(err, 'highlight_fallback_failed');
+        const fallbackError = err?.message || 'highlight_fallback_failed';
         return {
             success: false,
             error: 'highlight_fallback_failed',
@@ -340,7 +386,7 @@ async function handlePilotCommandOnTab(tabId, command, params) {
     }
     catch (err) {
         if (command === 'GASOLINE_HIGHLIGHT' && isContentScriptUnreachableError(err)) {
-            return executeHighlightFallback(tabId, params, errorMessage(err, 'command_failed'));
+            return executeHighlightFallback(tabId, params, err.message || 'command_failed');
         }
         throw err;
     }
@@ -362,7 +408,7 @@ export async function handlePilotCommand(command, params, preferredTabId) {
         return await handlePilotCommandOnTab(tabId, command, params);
     }
     catch (err) {
-        return { error: errorMessage(err, 'command_failed') };
+        return { error: err.message || 'command_failed' };
     }
 }
 //# sourceMappingURL=interact.js.map

@@ -1,9 +1,6 @@
 ---
 title: Fuel Any Agent
 description: "Connect Gasoline to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, and VS Code with Continue."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['mcp', 'integration']
 ---
 
 Gasoline is an open-source MCP server that implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state. Zero dependencies. Localhost only.

@@ -1,11 +1,11 @@
 /**
- * Purpose: Routes all chrome.runtime.onMessage events to type-safe handlers for logs, settings, screenshots, and state management.
- * Why: Centralizes message validation and sender security checks in one place.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
-import { pushChatMessage } from './push-handler.js';
-import { errorMessage } from '../lib/error-utils.js';
-import { postDaemonJSON } from '../lib/daemon-http.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -173,16 +173,12 @@ function handleMessage(message, sender, sendResponse, deps) {
             // Content script requests screenshot capture (while draw mode overlay is still visible)
             handleDrawModeCaptureScreenshot(sender, sendResponse);
             return true;
-        case 'GASOLINE_PUSH_CHAT':
-            handlePushChatAsync(message, sender, sendResponse);
-            return true;
         case 'DRAW_MODE_COMPLETED':
             // Fire-and-forget: content script sends draw mode results
             handleDrawModeCompletedAsync(message, sender, deps);
             return false;
         default:
-            // screen_recording_start/stop, OFFSCREEN_*, MIC_GRANTED_CLOSE_TAB, REVEAL_FILE
-            // are handled by recording-listeners.ts — return false so they can handle it.
+            // Unknown message type
             return false;
     }
 }
@@ -205,7 +201,7 @@ async function handleClearLogsAsync(sendResponse, deps) {
     }
     catch (err) {
         console.error('[Gasoline] Failed to clear logs:', err);
-        sendResponse({ error: errorMessage(err) });
+        sendResponse({ error: err.message });
     }
 }
 function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
@@ -303,30 +299,19 @@ function handleGetDiagnosticState(sendResponse, deps) {
     });
 }
 function handleCaptureScreenshot(sendResponse, deps) {
-    deps.debugLog('capture', 'handleCaptureScreenshot ENTER');
     if (typeof chrome === 'undefined' || !chrome.tabs) {
-        deps.debugLog('capture', 'handleCaptureScreenshot: no chrome.tabs');
         sendResponse({ success: false, error: 'Chrome tabs API not available' });
         return;
     }
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-        deps.debugLog('capture', 'handleCaptureScreenshot: tabs.query', { count: tabs.length, tabId: tabs[0]?.id });
         if (tabs[0]?.id) {
-            try {
-                const result = await deps.captureScreenshot(tabs[0].id, null);
-                deps.debugLog('capture', 'handleCaptureScreenshot: result', { success: result.success, error: result.error });
-                if (result.success && result.entry) {
-                    deps.addToLogBatcher(result.entry);
-                }
-                sendResponse(result);
+            const result = await deps.captureScreenshot(tabs[0].id, null);
+            if (result.success && result.entry) {
+                deps.addToLogBatcher(result.entry);
             }
-            catch (err) {
-                deps.debugLog('error', 'handleCaptureScreenshot: EXCEPTION', { error: errorMessage(err) });
-                sendResponse({ success: false, error: errorMessage(err) });
-            }
+            sendResponse(result);
         }
         else {
-            deps.debugLog('capture', 'handleCaptureScreenshot: no active tab');
             sendResponse({ success: false, error: 'No active tab' });
         }
     });
@@ -352,7 +337,7 @@ async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
         sendResponse({ dataUrl });
     }
     catch (err) {
-        console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err));
+        console.error('[Gasoline] Draw mode screenshot capture failed:', err.message);
         sendResponse({ dataUrl: '' });
     }
 }
@@ -377,7 +362,11 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
         if (message.annot_session_name) {
             body.annot_session_name = message.annot_session_name;
         }
-        const response = await postDaemonJSON(`${serverUrl}/draw-mode/complete`, body);
+        const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify(body)
+        });
         if (!response.ok) {
             const respBody = await response.text().catch(() => '');
             deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`);
@@ -387,26 +376,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
         }
     }
     catch (err) {
-        deps.debugLog('error', `Draw mode completion error: ${errorMessage(err)}. Server may be unreachable.`);
-    }
-}
-/**
- * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
- * Pushes a text message to the daemon's push pipeline.
- */
-async function handlePushChatAsync(message, sender, sendResponse) {
-    try {
-        const tabId = sender.tab?.id ?? 0;
-        const result = await pushChatMessage(message.message, message.page_url, tabId);
-        if (result) {
-            sendResponse({ success: true, status: result.status, event_id: result.event_id });
-        }
-        else {
-            sendResponse({ success: false, error: 'Failed to push message' });
-        }
-    }
-    catch (err) {
-        sendResponse({ success: false, error: errorMessage(err) });
+        deps.debugLog('error', `Draw mode completion error: ${err.message}. Server may be unreachable.`);
     }
 }
 function handleSetServerUrl(url, sendResponse, deps) {

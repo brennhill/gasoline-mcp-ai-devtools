@@ -27,12 +27,31 @@ run_test_12_1() {
     local page1_text
     page1_text=$(extract_content_text "$page1_response")
 
-    # Extract cursor from response
+    # Extract cursor from response (use buffer.read to handle Unicode safely)
     local cursor
-    cursor=$(content_json_cursor "$page1_text")
+    cursor=$(echo "$page1_text" | python3 -c "
+import sys, json
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i < 0:
+    sys.exit(0)
+data = json.loads(t[i:])
+meta = data.get('metadata', {})
+cursor = meta.get('cursor', meta.get('after_cursor', meta.get('next_cursor', '')))
+if cursor:
+    print(cursor)
+" 2>/dev/null)
 
     echo "  [page 1]"
-    echo "    entries: $(content_json_entry_count "$page1_text")"
+    echo "$page1_text" | python3 -c "
+import sys, json
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i >= 0:
+    data = json.loads(t[i:])
+    entries = data.get('entries', data.get('logs', []))
+    print(f'    entries: {len(entries) if isinstance(entries, list) else \"?\"}')
+" 2>/dev/null || true
 
     if [ -z "$cursor" ]; then
         # We seeded 8 entries with limit 3 — there SHOULD be a cursor
@@ -47,7 +66,15 @@ run_test_12_1() {
     page2_text=$(extract_content_text "$page2_response")
 
     echo "  [page 2]"
-    echo "    entries: $(content_json_entry_count "$page2_text")"
+    echo "$page2_text" | python3 -c "
+import sys, json
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i >= 0:
+    data = json.loads(t[i:])
+    entries = data.get('entries', data.get('logs', []))
+    print(f'    entries: {len(entries) if isinstance(entries, list) else \"?\"}')
+" 2>/dev/null || true
 
     # Verify pages are different (simple check: page2 text differs from page1)
     if [ "$page1_text" != "$page2_text" ] && [ -n "$page2_text" ]; then
@@ -133,7 +160,16 @@ run_test_12_3() {
     content_text=$(extract_content_text "$response")
 
     local count
-    count=$(content_json_count "$content_text")
+    count=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    entries = data.get('entries', data.get('logs', []))
+    count = data.get('count', len(entries) if isinstance(entries, list) else 0)
+    print(count)
+except:
+    print(0)
+" 2>/dev/null || echo "0")
 
     echo "  [buffer after flood]"
     echo "    log count: $count"

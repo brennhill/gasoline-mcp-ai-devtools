@@ -5,6 +5,8 @@
 package capture
 
 import (
+	"fmt"
+	"os"
 	"sync"
 )
 
@@ -31,17 +33,17 @@ func NewDebugLogger() DebugLogger {
 // LogPollingActivity adds an entry to the circular polling log buffer.
 func (dl *DebugLogger) LogPollingActivity(entry PollingLogEntry) {
 	dl.mu.Lock()
-	defer dl.mu.Unlock()
 	dl.pollingLog[dl.pollingLogIndex] = entry
 	dl.pollingLogIndex = (dl.pollingLogIndex + 1) % debugLogSize
+	dl.mu.Unlock()
 }
 
 // LogHTTPDebugEntry adds an entry to the circular HTTP debug log buffer.
 func (dl *DebugLogger) LogHTTPDebugEntry(entry HTTPDebugEntry) {
 	dl.mu.Lock()
-	defer dl.mu.Unlock()
 	dl.httpDebugLog[dl.httpDebugLogIndex] = entry
 	dl.httpDebugLogIndex = (dl.httpDebugLogIndex + 1) % debugLogSize
+	dl.mu.Unlock()
 }
 
 // GetPollingLog returns a copy of the polling activity log.
@@ -60,4 +62,17 @@ func (dl *DebugLogger) GetHTTPDebugLog() []HTTPDebugEntry {
 	result := make([]HTTPDebugEntry, len(dl.httpDebugLog))
 	copy(result, dl.httpDebugLog)
 	return result
+}
+
+// PrintHTTPDebug prints an HTTP debug entry to stderr.
+// Must be called WITHOUT holding any lock.
+// Quiet mode: only errors (non-2xx status codes) are printed.
+func PrintHTTPDebug(entry HTTPDebugEntry) {
+	if entry.ResponseStatus >= 400 {
+		fmt.Fprintf(os.Stderr, "[gasoline] HTTP %s %s | status=%d\n",
+			entry.Method, entry.Endpoint, entry.ResponseStatus)
+		if entry.Error != "" {
+			fmt.Fprintf(os.Stderr, "[gasoline]   Error: %s\n", entry.Error)
+		}
+	}
 }

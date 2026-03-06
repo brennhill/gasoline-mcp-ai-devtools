@@ -70,8 +70,6 @@ else:
     payload = data
 pd = payload.get('perf_diff')
 if not isinstance(pd, dict):
-    pd = data.get('perf_diff')
-if not isinstance(pd, dict):
     print('VERDICT:NO_PERF_DIFF')
     sys.exit(0)
 metrics = pd.get('metrics')
@@ -113,8 +111,6 @@ else:
     payload = data
 pd = payload.get('perf_diff')
 if not isinstance(pd, dict):
-    pd = data.get('perf_diff')
-if not isinstance(pd, dict):
     print('VERDICT:NO_PERF_DIFF')
     sys.exit(0)
 metrics = pd.get('metrics')
@@ -138,8 +134,6 @@ else:
 
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "Refresh returns perf_diff with structured metrics + summary. $(echo "$validation" | head -1)"
-    elif echo "$validation" | grep -q "VERDICT:NO_PERF_DIFF"; then
-        skip "Refresh succeeded but perf_diff is absent in current response contract."
     else
         fail "Refresh perf_diff validation failed. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
@@ -194,13 +188,6 @@ result = data.get('result', {})
 if isinstance(result, dict):
     timing = timing or result.get('timing_ms')
     dom = dom or result.get('dom_summary')
-    if not dom:
-        matched = result.get('matched', {})
-        insertion = result.get('insertion_strategy')
-        if isinstance(matched, dict) and (matched.get('selector') or matched.get('tag')):
-            dom = 'matched-element'
-        elif isinstance(insertion, str) and insertion:
-            dom = f'insertion_strategy={insertion}'
 has_timing = timing is not None and isinstance(timing, (int, float)) and timing > 0
 has_dom = dom is not None and isinstance(dom, str) and len(dom) > 0
 if has_timing and has_dom:
@@ -214,9 +201,9 @@ else:
 " 2>/dev/null || echo "PARSE_ERROR")
 
     if echo "$validation" | grep -q "^PASS"; then
-        pass "Click result includes timing and DOM interaction signal. $validation"
+        pass "Click result includes timing_ms and dom_summary. $validation"
     else
-        fail "Click result missing required timing/DOM fields. $validation. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "Click result missing required fields. $validation. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_9_2
@@ -283,10 +270,10 @@ except Exception:
     print('VERDICT:BAD_JSON')
     sys.exit(0)
 payload = data.get('result', data) if isinstance(data, dict) else {}
-timing = payload.get('timing', data.get('timing'))
+timing = payload.get('timing')
 dom_changes = payload.get('dom_changes')
 analysis = payload.get('analysis')
-timing_ms = payload.get('timing_ms', data.get('timing_ms'))
+timing_ms = payload.get('timing_ms')
 has_timing = False
 if isinstance(timing, dict):
     total = timing.get('total_ms')
@@ -312,22 +299,14 @@ if not has_dom:
     has_dom = isinstance(dom_summary, str) and len(dom_summary.strip()) > 0
 
 has_analysis = isinstance(analysis, str) and len(analysis.strip()) > 0
-has_success = payload.get('success') is True or data.get('status') == 'complete'
-matched = payload.get('matched', {})
-has_matched = isinstance(matched, dict) and (matched.get('selector') or matched.get('tag'))
-
 if has_timing and has_dom and has_analysis:
-    print('VERDICT:PASS_FULL')
-elif has_timing and has_success and has_matched:
-    print('VERDICT:PASS_COMPACT')
+    print('VERDICT:PASS')
 else:
-    print(f'VERDICT:FAIL timing={int(has_timing)} dom_changes={int(has_dom)} analysis={int(has_analysis)} success={int(has_success)} matched={int(has_matched)} keys={list(payload.keys())[:10]}')
+    print(f'VERDICT:FAIL timing={int(has_timing)} dom_changes={int(has_dom)} analysis={int(has_analysis)} keys={list(payload.keys())[:10]}')
 " 2>/dev/null || echo "VERDICT:PARSE_ERROR")
 
-    if echo "$validation" | grep -q "VERDICT:PASS_FULL"; then
-        pass "analyze:true returned full breakdown: timing, dom_changes, and analysis."
-    elif echo "$validation" | grep -q "VERDICT:PASS_COMPACT"; then
-        pass "analyze:true accepted and returned compact timing+match profiling fields."
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "analyze:true returns full breakdown: timing, dom_changes, and analysis."
     else
         fail "analyze:true missing required fields. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
@@ -455,8 +434,6 @@ except Exception:
 payload = data.get('result', data) if isinstance(data, dict) else {}
 pd = payload.get('perf_diff')
 if not isinstance(pd, dict):
-    pd = data.get('perf_diff')
-if not isinstance(pd, dict):
     print('VERDICT:NO_PERF_DIFF')
     sys.exit(0)
 
@@ -503,8 +480,6 @@ except Exception:
 payload = data.get('result', data) if isinstance(data, dict) else {}
 pd = payload.get('perf_diff')
 if not isinstance(pd, dict):
-    pd = data.get('perf_diff')
-if not isinstance(pd, dict):
     print('VERDICT:NO_PERF_DIFF')
     sys.exit(0)
 
@@ -536,8 +511,6 @@ else:
 
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "perf_diff has LLM fields: verdict, unit, rating, clean summary."
-    elif echo "$validation" | grep -q "VERDICT:NO_PERF_DIFF"; then
-        skip "Refresh succeeded but perf_diff LLM fields are absent in current response contract."
     else
         fail "perf_diff LLM-field validation failed. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi

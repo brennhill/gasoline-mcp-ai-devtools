@@ -5,19 +5,19 @@
  * Docs: docs/features/feature/tab-recording/index.md
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
-import { updateConnectionStatus } from './popup/status-display.js';
-import { handleClearLogs, resetClearConfirm } from './popup/settings.js';
+import { updateConnectionStatus } from './popup/status-display';
+import { handleClearLogs, resetClearConfirm } from './popup/settings';
 export { resetClearConfirm, handleClearLogs };
 export { updateConnectionStatus };
-export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles.js';
-export { handleFeatureToggle } from './popup/feature-toggles.js';
-export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot.js';
-export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking.js';
-export { handleWebSocketModeChange } from './popup/settings.js';
-export { initWebSocketModeSelector } from './popup/settings.js';
-export { isInternalUrl } from './popup/ui-utils.js';
+export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles';
+export { handleFeatureToggle } from './popup/feature-toggles';
+export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot';
+export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking';
+export { handleWebSocketModeChange } from './popup/settings';
+export { initWebSocketModeSelector } from './popup/settings';
+export { isInternalUrl } from './popup/ui-utils';
 /**
  * Initialize the popup
  */
-export declare function initPopup(): void;
+export declare function initPopup(): Promise<void>;
 //# sourceMappingURL=popup.d.ts.map

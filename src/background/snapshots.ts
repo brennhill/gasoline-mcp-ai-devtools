@@ -1,5 +1,8 @@
 /**
- * Purpose: Fetches and caches source maps, parses stack frames with VLQ decoding, and resolves stack traces for better error messages.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
 
@@ -14,10 +17,8 @@ import {
   setSourceMapCacheEntry,
   SOURCE_MAP_CACHE_SIZE,
   isSourceMapEnabled
-} from './cache-limits.js'
-import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types/index.js'
-import { errorMessage } from '../lib/error-utils.js'
-import { fetchWithTimeout } from '../lib/timeout-utils.js'
+} from './cache-limits'
+import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types'
 
 // =============================================================================
 // CONSTANTS
@@ -30,6 +31,9 @@ const SOURCE_MAP_FETCH_TIMEOUT = 5000
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024
 const CONTEXT_WARNING_WINDOW_MS = 60000
 const CONTEXT_WARNING_COUNT = 3
+
+/** Debug log buffer size */
+const DEBUG_LOG_MAX_ENTRIES = 200
 
 /** Processing query TTL */
 const PROCESSING_QUERY_TTL_MS = 60000
@@ -322,6 +326,16 @@ function cacheNullAndReturn(scriptUrl: string): null {
   return null
 }
 
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), SOURCE_MAP_FETCH_TIMEOUT)
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    return response
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 function parseInlineSourceMap(dataUrl: string, scriptUrl: string, debugLogFn?: DebugLogFn): ParsedSourceMap | null {
   const base64Match = dataUrl.match(/^data:application\/json;base64,(.+)$/)
@@ -359,7 +373,7 @@ async function fetchExternalSourceMap(
     resolvedUrl = new URL(resolvedUrl, base).href
   }
 
-  const mapResponse = await fetchWithTimeout(resolvedUrl, {}, SOURCE_MAP_FETCH_TIMEOUT)
+  const mapResponse = await fetchWithTimeout(resolvedUrl)
   if (!mapResponse.ok) return cacheNullAndReturn(scriptUrl)
 
   let sourceMap: SourceMapJSON
@@ -382,7 +396,7 @@ export async function fetchSourceMap(scriptUrl: string, debugLogFn?: DebugLogFn)
   }
 
   try {
-    const scriptResponse = await fetchWithTimeout(scriptUrl, {}, SOURCE_MAP_FETCH_TIMEOUT)
+    const scriptResponse = await fetchWithTimeout(scriptUrl)
     if (!scriptResponse.ok) return cacheNullAndReturn(scriptUrl)
 
     const scriptContent = await scriptResponse.text()
@@ -398,7 +412,7 @@ export async function fetchSourceMap(scriptUrl: string, debugLogFn?: DebugLogFn)
     if (debugLogFn) {
       debugLogFn('sourcemap', 'Source map fetch failed', {
         scriptUrl,
-        error: errorMessage(err)
+        error: (err as Error).message
       })
     }
     return cacheNullAndReturn(scriptUrl)

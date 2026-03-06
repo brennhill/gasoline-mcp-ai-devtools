@@ -1,6 +1,8 @@
 /**
- * Purpose: Registers and manages runtime observers for DOM mutations, network requests, performance entries, and WebSocket events in the page context.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 
 /**
@@ -8,22 +10,33 @@
  * performance, and WebSocket events.
  */
 
-import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js'
-import { installPerfObservers } from '../lib/perf-snapshot.js'
-import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js'
-import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies, sanitizeHeaders } from '../lib/network.js'
-import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js'
-import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js'
+import { installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from '../lib/performance'
+import { installPerfObservers } from '../lib/perf-snapshot'
+import {
+  installWebSocketCapture,
+  setWebSocketCaptureMode,
+  setWebSocketCaptureEnabled,
+  uninstallWebSocketCapture
+} from '../lib/websocket'
+import {
+  setNetworkWaterfallEnabled,
+  setNetworkBodyCaptureEnabled,
+  setServerUrl,
+  wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR
+} from '../lib/network'
+import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
+import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
 import {
   installActionCapture,
   uninstallActionCapture,
   installNavigationCapture,
   uninstallNavigationCapture
-} from '../lib/actions.js'
-import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js'
-import { postLog } from '../lib/bridge.js'
-import { MAX_RESPONSE_LENGTH, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js'
-import { errorMessage } from '../lib/error-utils.js'
+} from '../lib/actions'
+import { postLog } from '../lib/bridge'
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants'
+import { createDeferredPromise } from '../lib/timeout-utils'
 
 // Store original fetch for restoration
 let originalFetch: typeof fetch | null = null
@@ -81,9 +94,19 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
         }
 
         // Filter sensitive headers (check both init.headers and Request object headers)
+        const safeHeaders: Record<string, string> = {}
         const rawHeaders =
           init?.headers || (typeof input === 'object' && 'headers' in input ? (input as Request).headers : null)
-        const safeHeaders = sanitizeHeaders(rawHeaders)
+        if (rawHeaders) {
+          const headers: Record<string, string> =
+            rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : (rawHeaders as Record<string, string>)
+          Object.keys(headers).forEach((key) => {
+            const value = headers[key]
+            if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+              safeHeaders[key] = value
+            }
+          })
+        }
 
         const logPayload: NetworkErrorLog = {
           level: 'error',
@@ -105,16 +128,26 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
       const duration = Date.now() - startTime
 
       // Filter sensitive headers for the error path
+      const safeHeaders: Record<string, string> = {}
       const rawHeaders =
         init?.headers || (typeof input === 'object' && 'headers' in input ? (input as Request).headers : null)
-      const safeHeaders = sanitizeHeaders(rawHeaders)
+      if (rawHeaders) {
+        const headers: Record<string, string> =
+          rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : (rawHeaders as Record<string, string>)
+        Object.keys(headers).forEach((key) => {
+          const value = headers[key]
+          if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            safeHeaders[key] = value
+          }
+        })
+      }
 
       const logPayload: NetworkErrorLog = {
         level: 'error',
         type: 'network',
         method: method.toUpperCase(),
         url,
-        error: errorMessage(error),
+        error: (error as Error).message,
         duration,
         ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
       }
@@ -130,12 +163,9 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
  * Install fetch capture.
  * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
  * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
- * If the early-patch script ran first, uses the saved original fetch (not the early wrapper).
  */
 export function installFetchCapture(): void {
-  // Check for early-patch: use the saved original, not the early-patch wrapper
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__
-  originalFetch = earlyOriginal || window.fetch
+  originalFetch = window.fetch
   // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
   // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
   // Use unknown intermediate cast to handle TypeScript's strict fetch overload types
@@ -181,7 +211,6 @@ export function install(): void {
   installNavigationCapture()
   installWebSocketCapture()
   installPerformanceCapture()
-  installTransientCapture()
 }
 
 /**
@@ -196,7 +225,6 @@ export function uninstall(): void {
   uninstallNavigationCapture()
   uninstallWebSocketCapture()
   uninstallPerformanceCapture()
-  uninstallTransientCapture()
 }
 
 /**
@@ -287,9 +315,6 @@ export function installPhase2(): void {
 
   // Install all heavy interceptors
   install()
-
-  // Adopt fetch/XHR bodies buffered by the early-patch script
-  adoptEarlyBodies()
 
   // FCP/LCP/CLS/INP/long-task observers (buffered: true replays pre-Phase-2 entries)
   installPerfObservers()

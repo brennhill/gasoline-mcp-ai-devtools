@@ -1,4 +1,5 @@
-// Purpose: Tests for interact draw-mode annotation.
+// Purpose: Validate tools_interact_draw_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_draw_test.go — Tests for draw_mode_start interact handler.
@@ -6,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -17,7 +19,7 @@ func TestHandleDrawModeStart_PilotDisabled(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.handleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "disabled") || !strings.Contains(text, "Pilot") {
@@ -30,12 +32,14 @@ func TestHandleDrawModeStart_Success(t *testing.T) {
 
 	// Enable pilot
 	h.capture.SetPilotEnabled(true)
-	mockConnectedTrackedTab(t, h.capture)
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	h.capture.HandleSync(httptest.NewRecorder(), syncReq)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.handleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "queued") || !strings.Contains(text, "correlation_id") {
@@ -46,12 +50,14 @@ func TestHandleDrawModeStart_Success(t *testing.T) {
 func TestHandleDrawModeStart_WithSession(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.capture.SetPilotEnabled(true)
-	mockConnectedTrackedTab(t, h.capture)
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	h.capture.HandleSync(httptest.NewRecorder(), syncReq)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{"annot_session":"my-review"}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.handleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "queued") {

@@ -3,14 +3,11 @@ feature: push-alerts
 status: shipped
 tool: observe
 mode: alert system
-version: 0.7.12
+version: 5.0.0
 doc_type: product-spec
 feature_id: feature-push-alerts
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
-
 # Product Spec: Push Alerts
 
 User-facing requirements, rationale, and deprecations for the Push Alerts feature.

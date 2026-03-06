@@ -1,7 +1,3 @@
-// Purpose: Defines structured recovery playbooks for interact action failures (element_not_found, ambiguous_target, stale handle, etc.).
-// Why: Enables deterministic agent self-recovery by embedding ordered retry steps and stop conditions in error responses.
-// Docs: docs/features/feature/interact-explore/index.md
-
 package main
 
 import "strings"
@@ -53,16 +49,6 @@ var interactFailurePlaybooks = map[string]interactFailurePlaybook{
 		},
 		StopAndReportCondition: "If selector scope, scope_rect, and frame fallback all fail, stop and report evidence (page screenshot + available frames/selectors).",
 		RetrySuggestion:        `Recovery: adjust scope_selector, then try scope_rect/frame fallback, then rerun list_interactive before retrying action.`,
-	},
-	"blocked_by_overlay": {
-		DetectionSignal: "error=blocked_by_overlay (element obscured by a modal/dialog/overlay)",
-		OrderedRecoverySteps: []string{
-			`Run interact({what:"dismiss_top_overlay"}) to close the topmost modal/dialog.`,
-			`If dismiss_top_overlay fails, try interact({what:"key_press", text:"Escape"}) as a fallback.`,
-			`Retry the original action after the overlay is dismissed.`,
-		},
-		StopAndReportCondition: "If dismiss_top_overlay and Escape both fail, take a screenshot and report the overlay. The page may require manual intervention.",
-		RetrySuggestion:        `Recovery: run interact({what:"dismiss_top_overlay"}) first, then retry the original action.`,
 	},
 }
 

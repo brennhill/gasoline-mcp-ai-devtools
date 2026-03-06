@@ -1,18 +1,17 @@
-// Purpose: Tests for observe analysis sub-handler dispatch.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_observe_analysis_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
-// tools_observe_analysis_test.go — Tests for a11ysummary.EnsureAuditSummary function.
+// tools_observe_analysis_test.go — Tests for ensureA11ySummary function.
 // Note: executeA11yQuery is tested indirectly (requires live capture + extension).
 package main
 
 import (
 	"testing"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/a11ysummary"
 )
 
 // ============================================
-// a11ysummary.EnsureAuditSummary
+// ensureA11ySummary
 // ============================================
 
 func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
@@ -27,7 +26,7 @@ func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
 		},
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -36,14 +35,8 @@ func TestEnsureA11ySummary_AddsSummaryWhenMissing(t *testing.T) {
 	if summary["violation_count"] != 2 {
 		t.Errorf("expected violation_count 2, got %v", summary["violation_count"])
 	}
-	if summary["violations"] != 2 {
-		t.Errorf("expected violations 2, got %v", summary["violations"])
-	}
 	if summary["pass_count"] != 1 {
 		t.Errorf("expected pass_count 1, got %v", summary["pass_count"])
-	}
-	if summary["passes"] != 1 {
-		t.Errorf("expected passes 1, got %v", summary["passes"])
 	}
 }
 
@@ -62,7 +55,7 @@ func TestEnsureA11ySummary_PreservesExistingSummary(t *testing.T) {
 		"summary": existingSummary,
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -72,14 +65,8 @@ func TestEnsureA11ySummary_PreservesExistingSummary(t *testing.T) {
 	if summary["violation_count"] != 99 {
 		t.Errorf("expected existing violation_count 99 to be preserved, got %v", summary["violation_count"])
 	}
-	if summary["violations"] != 99 {
-		t.Errorf("expected canonical violations 99 to be backfilled, got %v", summary["violations"])
-	}
 	if summary["pass_count"] != 88 {
 		t.Errorf("expected existing pass_count 88 to be preserved, got %v", summary["pass_count"])
-	}
-	if summary["passes"] != 88 {
-		t.Errorf("expected canonical passes 88 to be backfilled, got %v", summary["passes"])
 	}
 	if summary["custom_field"] != "preserved" {
 		t.Errorf("expected custom_field to be preserved, got %v", summary["custom_field"])
@@ -90,7 +77,7 @@ func TestEnsureA11ySummary_NoViolationsNoPassses(t *testing.T) {
 	t.Parallel()
 	auditResult := map[string]any{}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -99,14 +86,8 @@ func TestEnsureA11ySummary_NoViolationsNoPassses(t *testing.T) {
 	if summary["violation_count"] != 0 {
 		t.Errorf("expected violation_count 0, got %v", summary["violation_count"])
 	}
-	if summary["violations"] != 0 {
-		t.Errorf("expected violations 0, got %v", summary["violations"])
-	}
 	if summary["pass_count"] != 0 {
 		t.Errorf("expected pass_count 0, got %v", summary["pass_count"])
-	}
-	if summary["passes"] != 0 {
-		t.Errorf("expected passes 0, got %v", summary["passes"])
 	}
 }
 
@@ -117,7 +98,7 @@ func TestEnsureA11ySummary_ViolationsNotArray(t *testing.T) {
 		"passes":     42,
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -142,7 +123,7 @@ func TestEnsureA11ySummary_OnlyViolations(t *testing.T) {
 		},
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -165,7 +146,7 @@ func TestEnsureA11ySummary_OnlyPasses(t *testing.T) {
 		},
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -186,7 +167,7 @@ func TestEnsureA11ySummary_EmptyArrays(t *testing.T) {
 		"passes":     []any{},
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {
@@ -207,7 +188,7 @@ func TestEnsureA11ySummary_NilViolationsKey(t *testing.T) {
 		"passes":     nil,
 	}
 
-	a11ysummary.EnsureAuditSummary(auditResult)
+	ensureA11ySummary(auditResult)
 
 	summary, ok := auditResult["summary"].(map[string]any)
 	if !ok {

@@ -1,4 +1,5 @@
-// Purpose: Validates batches of URLs concurrently via HEAD requests with SSRF-safe transport and timeout controls.
+// Purpose: Provides analyze tool implementation helpers shared by command handlers.
+// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package analyze
@@ -11,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // MaxLinkValidationURLs is the upper bound on URLs accepted per validation request.
@@ -102,7 +103,7 @@ func DoLinkRequest(client *http.Client, linkURL string, version string) (*http.R
 
 	if err != nil || (resp != nil && resp.StatusCode == http.StatusMethodNotAllowed) {
 		if resp != nil {
-			_ = resp.Body.Close() // lint:body-close-ok close HEAD response before GET retry
+			_ = resp.Body.Close()
 		}
 		req, err = http.NewRequest("GET", linkURL, nil)
 		if err != nil {

@@ -1,4 +1,5 @@
-// Purpose: Parses and validates test_boundary_start/end parameters for scoped test isolation.
+// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
+// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package configure
@@ -6,41 +7,8 @@ package configure
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/dev-console/dev-console/internal/mcp"
 )
-
-func unmarshalBoundaryArgs(reqID any, args json.RawMessage, target any) *mcp.JSONRPCResponse {
-	if len(args) == 0 {
-		return nil
-	}
-	if err := json.Unmarshal(args, target); err != nil {
-		resp := mcp.JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      reqID,
-			Result: mcp.StructuredErrorResponse(
-				mcp.ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			),
-		}
-		return &resp
-	}
-	return nil
-}
-
-func missingTestIDResponse(reqID any) *mcp.JSONRPCResponse {
-	resp := mcp.JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      reqID,
-		Result: mcp.StructuredErrorResponse(
-			mcp.ErrMissingParam,
-			"Required parameter 'test_id' is missing",
-			"Add the 'test_id' parameter",
-			mcp.WithParam("test_id"),
-		),
-	}
-	return &resp
-}
 
 // TestBoundaryStartResult holds the validated parameters for a test_boundary_start request.
 type TestBoundaryStartResult struct {
@@ -56,12 +24,16 @@ func ParseTestBoundaryStart(reqID any, args json.RawMessage) (*TestBoundaryStart
 		TestID string `json:"test_id"`
 		Label  string `json:"label"`
 	}
-	if resp := unmarshalBoundaryArgs(reqID, args, &params); resp != nil {
-		return nil, resp
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: reqID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+			return nil, &resp
+		}
 	}
 
 	if params.TestID == "" {
-		return nil, missingTestIDResponse(reqID)
+		resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: reqID, Result: mcp.StructuredErrorResponse(mcp.ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", mcp.WithParam("test_id"))}
+		return nil, &resp
 	}
 
 	label := params.Label
@@ -93,12 +65,16 @@ func ParseTestBoundaryEnd(reqID any, args json.RawMessage) (*TestBoundaryEndResu
 	var params struct {
 		TestID string `json:"test_id"`
 	}
-	if resp := unmarshalBoundaryArgs(reqID, args, &params); resp != nil {
-		return nil, resp
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: reqID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+			return nil, &resp
+		}
 	}
 
 	if params.TestID == "" {
-		return nil, missingTestIDResponse(reqID)
+		resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: reqID, Result: mcp.StructuredErrorResponse(mcp.ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", mcp.WithParam("test_id"))}
+		return nil, &resp
 	}
 
 	return &TestBoundaryEndResult{TestID: params.TestID}, nil

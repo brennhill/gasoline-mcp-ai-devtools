@@ -5,9 +5,7 @@ ai-priority: critical
 tags: [performance, dom-diffing, interaction, closed-loop, extension]
 doc_type: tech-spec
 feature_id: feature-perf-experimentation
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Rich Action Results

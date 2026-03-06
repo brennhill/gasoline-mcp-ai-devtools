@@ -1,7 +1,7 @@
 # Product Update: Issue #76
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/76
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/76
 - Title: Add network request interception and mocking
 - Last Updated: 2026-02-16T17:42:32Z
 

@@ -4,7 +4,7 @@
 // Docs: docs/features/npm-preinstall-fix/tech-spec.md
 
 /**
- * Normalize pypi/gasoline-agentic-browser/pyproject.toml so dependency metadata is under
+ * Normalize pypi/gasoline-mcp/pyproject.toml so dependency metadata is under
  * [project] (PEP 621) and never nested under [project.scripts].
  */
 
@@ -14,17 +14,17 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
-const MAIN_PYPROJECT = path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml')
+const MAIN_PYPROJECT = path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml')
 const VERSION_FILE = path.join(ROOT, 'VERSION')
-const MAIN_SCRIPT_ENTRYPOINT = 'gasoline_agentic_browser.__main__:main'
+const MAIN_SCRIPT_ENTRYPOINT = 'gasoline_mcp.__main__:main'
 
 function getExpectedDependencyEntries(version) {
   return [
-    `gasoline-agentic-browser-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'`,
-    `gasoline-agentic-browser-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'`,
-    `gasoline-agentic-browser-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'`,
-    `gasoline-agentic-browser-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'`,
-    `gasoline-agentic-browser-win32-x64==${version}; sys_platform == 'win32'`
+    `gasoline-mcp-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'`,
+    `gasoline-mcp-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'`,
+    `gasoline-mcp-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'`,
+    `gasoline-mcp-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'`,
+    `gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'`
   ]
 }
 
@@ -179,11 +179,11 @@ export function validateMainPyprojectContent(content, { expectedVersion } = {}) 
     errors.push('[project.scripts] must not define dependencies')
   }
 
-  const scriptEntrypoint = extractScriptEntry(lines, scriptsSection, 'gasoline-agentic-browser')
+  const scriptEntrypoint = extractScriptEntry(lines, scriptsSection, 'gasoline-mcp')
   if (!scriptEntrypoint) {
-    errors.push('Missing gasoline-agentic-browser entry under [project.scripts]')
+    errors.push('Missing gasoline-mcp entry under [project.scripts]')
   } else if (scriptEntrypoint !== MAIN_SCRIPT_ENTRYPOINT) {
-    errors.push(`Unexpected gasoline-agentic-browser entrypoint: ${scriptEntrypoint}`)
+    errors.push(`Unexpected gasoline-mcp entrypoint: ${scriptEntrypoint}`)
   }
 
   if (projectDeps) {
@@ -235,7 +235,7 @@ function main() {
   if (checkOnly) {
     const checkResult = normalizeMainPyprojectFile(MAIN_PYPROJECT, { write: false })
     if (checkResult.changed) {
-      console.error('pypi/gasoline-agentic-browser/pyproject.toml needs normalization')
+      console.error('pypi/gasoline-mcp/pyproject.toml needs normalization')
       process.exit(1)
     }
   }
@@ -249,16 +249,16 @@ function main() {
       }
       process.exit(1)
     }
-    console.log('pypi/gasoline-agentic-browser/pyproject.toml metadata is valid')
+    console.log('pypi/gasoline-mcp/pyproject.toml metadata is valid')
     return
   }
 
   const result = normalizeMainPyprojectFile(MAIN_PYPROJECT, { write: true })
 
   if (result.changed) {
-    console.log('Normalized pypi/gasoline-agentic-browser/pyproject.toml')
+    console.log('Normalized pypi/gasoline-mcp/pyproject.toml')
   } else {
-    console.log('pypi/gasoline-agentic-browser/pyproject.toml is already normalized')
+    console.log('pypi/gasoline-mcp/pyproject.toml is already normalized')
   }
 }
 

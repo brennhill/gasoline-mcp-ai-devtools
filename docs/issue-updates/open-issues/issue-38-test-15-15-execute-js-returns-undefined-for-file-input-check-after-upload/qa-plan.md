@@ -1,7 +1,7 @@
 # QA Plan: Issue #38
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/38
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/38
 - Title: Test 15.15: execute_js returns undefined for file input check after upload
 
 ## QA Goal

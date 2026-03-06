@@ -1,11 +1,24 @@
 /**
- * Purpose: Map-based command registry and dispatch loop that replaces the monolithic if-chain for routing pending queries to handlers.
- * Why: Extensible design lets new command modules register themselves without modifying central dispatch.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
-import { errorMessage } from '../../lib/error-utils.js';
-import { debugLog, sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
+import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
+function debugLog(category, message, data = null) {
+    // Keep registry independent from index.ts to avoid circular imports during command registration.
+    const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
+    if (!debugEnabled)
+        return;
+    if (data === null) {
+        console.debug(`[Gasoline:${category}] ${message}`);
+        return;
+    }
+    console.debug(`[Gasoline:${category}] ${message}`, data);
+}
 // =============================================================================
 // REGISTRY
 // =============================================================================
@@ -134,7 +147,7 @@ export async function dispatch(query, syncClient) {
             target = resolved.target;
         }
         catch (err) {
-            const targetErr = errorMessage(err, 'target_resolution_failed');
+            const targetErr = err.message || 'target_resolution_failed';
             lifecycle.sendError({
                 success: false,
                 error: 'target_resolution_failed',
@@ -186,7 +199,7 @@ export async function dispatch(query, syncClient) {
         }
     }
     catch (err) {
-        const errMsg = errorMessage(err, 'Unexpected error handling query');
+        const errMsg = err.message || 'Unexpected error handling query';
         debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
             type: query.type,
             id: query.id,

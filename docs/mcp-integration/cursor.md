@@ -20,7 +20,7 @@ Add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "npx",
       "args": ["gasoline-mcp"]
     }
@@ -32,7 +32,7 @@ Or use Cursor's UI: **Settings → MCP Servers → Add Server**:
 
 ```json
 {
-  "gasoline-browser-devtools": {
+  "gasoline": {
     "command": "npx",
     "args": ["gasoline-mcp"]
   }

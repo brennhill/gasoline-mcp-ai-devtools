@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: gasoline-agentic-browser-win32-x64
-Version: 0.7.2
-Summary: Gasoline Agentic Browser binary for win32-x64
-Author-email: Brennan Hill <noreply@cookwithgasoline.com>
-License: AGPL-3.0-only
-Project-URL: Homepage, https://cookwithgasoline.com
-Project-URL: Repository, https://github.com/brennhill/gasoline-agentic-browser-ai-devtools
-Requires-Python: >=3.8

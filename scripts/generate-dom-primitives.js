@@ -9,15 +9,7 @@
  * Generates src/background/dom-primitives.ts from the main template plus partials:
  *   scripts/templates/dom-primitives.ts.tpl
  *   scripts/templates/partials/_dom-selectors.tpl
- *   scripts/templates/partials/_dom-semantic-resolvers.tpl
- *   scripts/templates/partials/_dom-overlay-helpers.tpl
  *   scripts/templates/partials/_dom-intent.tpl
- *   scripts/templates/partials/_dom-intent-actions.tpl
- *   scripts/templates/partials/_dom-ranking.tpl
- *   scripts/templates/partials/_dom-action-helpers.tpl
- *   scripts/templates/partials/_dom-action-handlers-core.tpl
- *   scripts/templates/partials/_dom-action-handlers-input.tpl
- *   scripts/templates/partials/_dom-action-handlers-overlay.tpl
  *
  * The main template may contain `// @include <filename>` directives.
  * Each directive is replaced with the contents of scripts/templates/partials/<filename>.
@@ -40,11 +32,7 @@ const OUTPUT_PATH = path.join(ROOT, 'src', 'background', 'dom-primitives.ts')
 const CHECK_ONLY = process.argv.includes('--check')
 
 const GENERATED_BANNER = `// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source: scripts/templates/dom-primitives.ts.tpl + partials/
-//   _dom-selectors.tpl, _dom-semantic-resolvers.tpl, _dom-overlay-helpers.tpl,
-//   _dom-intent.tpl, _dom-intent-actions.tpl, _dom-ranking.tpl,
-//   _dom-action-helpers.tpl, _dom-action-handlers-core.tpl,
-//   _dom-action-handlers-input.tpl, _dom-action-handlers-overlay.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl
 // Generator: scripts/generate-dom-primitives.js
 
 `

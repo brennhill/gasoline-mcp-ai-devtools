@@ -148,6 +148,162 @@ process.on('unhandledRejection', (reason, _promise) => {
   throw reason
 })
 
+describe('Pending Query Polling', () => {
+  beforeEach(() => {
+    mock.reset()
+    originalChrome = globalThis.chrome
+    globalThis.chrome = createMockChrome()
+  })
+
+  afterEach(async () => {
+    globalThis.chrome = originalChrome
+    // Wait for any pending async operations to settle
+    await new Promise((resolve) => setTimeout(resolve, 1))
+  })
+
+  test('should poll server for pending queries', async () => {
+    const { pollPendingQueries } = await import('../../extension/background.js')
+
+    const mockFetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [] })
+      })
+    )
+
+    globalThis.fetch = mockFetch
+
+    await pollPendingQueries('http://localhost:7890')
+
+    assert.strictEqual(mockFetch.mock.calls.length, 1)
+    assert.ok(mockFetch.mock.calls[0].arguments[0].includes('/pending-queries'))
+  })
+
+  test(
+    'should execute DOM query when pending query found',
+    { skip: 'pollPendingQueries returns queries, does not call tabs.sendMessage' },
+    async () => {
+      const { pollPendingQueries } = await import('../../extension/background.js')
+
+      const query = {
+        id: 'query-123',
+        type: 'dom',
+        params: { selector: '.user-list' }
+      }
+
+      const mockFetch = mock.fn((url) => {
+        if (url.includes('/pending-queries')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ queries: [query] })
+          })
+        }
+        // POST result back
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      globalThis.fetch = mockFetch
+
+      await pollPendingQueries('http://localhost:7890')
+
+      // Should have sent message to content script
+      const tabCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+      assert.ok(tabCalls.length > 0, 'Expected message sent to tab')
+    }
+  )
+
+  test('should execute a11y query when pending query found', { skip: 'handlePendingQuery requires full sync-client infrastructure not available in unit test' }, async () => {
+    const { handlePendingQuery } = await import('../../extension/background.js')
+
+    const query = {
+      id: 'query-456',
+      type: 'a11y',
+      params: { scope: '#main', tags: ['wcag2a'] }
+    }
+
+    await handlePendingQuery(query, 'http://localhost:7890')
+
+    // Should have sent a11y message to content script
+    const tabCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+    assert.ok(tabCalls.length > 0, 'Expected a11y message sent to tab')
+
+    const lastCall = tabCalls[tabCalls.length - 1]
+    assert.strictEqual(lastCall.arguments[1].type, 'A11Y_QUERY')
+  })
+
+  test('should post result back to server', async () => {
+    const { postQueryResult } = await import('../../extension/background.js')
+
+    const mockFetch = mock.fn(() => Promise.resolve({ ok: true }))
+    globalThis.fetch = mockFetch
+
+    await postQueryResult('http://localhost:7890', 'query-123', 'dom', { matches: [] })
+
+    const postCall = mockFetch.mock.calls.find((c) => {
+      const url = c.arguments[0]
+      return url.includes('/query-result')
+    })
+
+    assert.ok(postCall, 'Expected POST to /query-result endpoint')
+    const body = JSON.parse(postCall.arguments[1].body)
+    assert.strictEqual(body.id, 'query-123')
+  })
+
+  test('should handle server unavailable gracefully', async () => {
+    const { pollPendingQueries } = await import('../../extension/background.js')
+
+    const mockFetch = mock.fn(() => Promise.reject(new Error('Connection refused')))
+    globalThis.fetch = mockFetch
+
+    // Should not throw
+    await assert.doesNotReject(async () => {
+      await pollPendingQueries('http://localhost:7890')
+    })
+  })
+
+  test(
+    'should poll at 1-second intervals',
+    { skip: 'startQueryPolling/stopQueryPolling not yet implemented' },
+    async () => {
+      const { startQueryPolling, stopQueryPolling } = await import('../../extension/background.js')
+
+      const mockFetch = mock.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ queries: [] })
+        })
+      )
+      globalThis.fetch = mockFetch
+
+      // Mock setInterval to capture callback and call it synchronously
+      let intervalCallback
+      const originalSetInterval = globalThis.setInterval
+      const originalClearInterval = globalThis.clearInterval
+      globalThis.setInterval = (cb, _ms) => {
+        intervalCallback = cb
+        return 999
+      }
+      globalThis.clearInterval = mock.fn()
+
+      startQueryPolling('http://localhost:7890')
+
+      // Invoke the polling callback multiple times to simulate interval ticks
+      await intervalCallback()
+      await intervalCallback()
+      await intervalCallback()
+
+      stopQueryPolling()
+
+      // Restore originals
+      globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
+
+      // Should have polled at least 2 times
+      assert.ok(mockFetch.mock.calls.length >= 2, `Expected >= 2 polls, got ${mockFetch.mock.calls.length}`)
+    }
+  )
+})
+
 describe('DOM Query Execution', () => {
   beforeEach(() => {
     originalDocument = globalThis.document

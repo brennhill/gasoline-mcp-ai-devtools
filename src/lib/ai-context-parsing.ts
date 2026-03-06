@@ -1,6 +1,7 @@
 /**
- * Purpose: Parses Chrome/Firefox stack traces into structured frames, resolves inline source maps, and extracts code snippets around error lines.
- * Docs: docs/features/feature/error-bundling/index.md
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // ai-context-parsing.ts — Stack trace parsing, source map resolution, and code snippet extraction.
@@ -12,7 +13,7 @@
  * an LRU source map cache.
  */
 
-import type { StackFrame, SourceSnippet, ParsedSourceMap } from '../types/index.js'
+import type { StackFrame, SourceSnippet, ParsedSourceMap } from '../types/index'
 
 import {
   AI_CONTEXT_SNIPPET_LINES,

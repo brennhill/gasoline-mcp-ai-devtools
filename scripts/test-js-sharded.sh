@@ -75,8 +75,7 @@ for i in $(seq 0 $((SHARDS - 1))); do
   if [[ -z "$files" ]]; then
     continue
   fi
-  # Keep XXXXXX at the end for BSD/macOS mktemp compatibility.
-  outfile=$(mktemp "/tmp/js-shard-${i}-XXXXXX")
+  outfile=$(mktemp "/tmp/js-shard-${i}-XXXXXX.txt")
   OUTPUTS+=("$outfile")
 
   # shellcheck disable=SC2086

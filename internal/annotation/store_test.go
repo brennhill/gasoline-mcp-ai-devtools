@@ -1,5 +1,6 @@
-// Purpose: Tests for annotation store CRUD operations.
-// Docs: docs/features/feature/annotated-screenshots/index.md
+// Purpose: Validate store_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // store_test.go — Tests for the annotation store.
 package annotation
@@ -264,8 +265,8 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 		go func(tabID int) {
 			defer wg.Done()
 			store.StoreSession(tabID, &Session{
-				TabID:       tabID,
-				Timestamp:   time.Now().UnixMilli(),
+				TabID:     tabID,
+				Timestamp: time.Now().UnixMilli(),
 				Annotations: []Annotation{{Text: fmt.Sprintf("tab%d", tabID)}},
 			})
 		}(i)
@@ -334,8 +335,8 @@ func TestStore_SessionEvictionCap(t *testing.T) {
 	// Store more sessions than MaxSessions (100)
 	for i := 1; i <= 110; i++ {
 		store.StoreSession(i, &Session{
-			TabID:       i,
-			Timestamp:   int64(i),
+			TabID:     i,
+			Timestamp: int64(i),
 			Annotations: []Annotation{{Text: fmt.Sprintf("session_%d", i)}},
 		})
 	}
@@ -1450,209 +1451,5 @@ func TestStore_DetailEvictionCap(t *testing.T) {
 	_, found := store.GetDetail(fmt.Sprintf("detail-%d", MaxDetails+9))
 	if !found {
 		t.Error("expected latest detail entry to exist")
-	}
-}
-
-func TestStore_TakeWaiter_RemovesAndReturnsSessionName(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	store.RegisterWaiter("ann_1", "qa", "")
-	store.RegisterWaiter("ann_2", "", "")
-
-	sessionName, urlFilter, found := store.TakeWaiter("ann_1")
-	if !found {
-		t.Fatal("expected waiter ann_1 to be found")
-	}
-	if sessionName != "qa" {
-		t.Fatalf("sessionName = %q, want qa", sessionName)
-	}
-	if urlFilter != "" {
-		t.Fatalf("urlFilter = %q, want empty", urlFilter)
-	}
-
-	_, _, found = store.TakeWaiter("ann_1")
-	if found {
-		t.Fatal("expected waiter ann_1 to be removed after first take")
-	}
-
-	store.mu.RLock()
-	remaining := len(store.waiters)
-	remainingID := ""
-	if remaining > 0 {
-		remainingID = store.waiters[0].CorrelationID
-	}
-	store.mu.RUnlock()
-	if remaining != 1 {
-		t.Fatalf("remaining waiters = %d, want 1", remaining)
-	}
-	if remainingID != "ann_2" {
-		t.Fatalf("remaining waiter = %q, want ann_2", remainingID)
-	}
-}
-
-func TestStore_SessionTTL_Is2Hours(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	// Verify the default TTL is 2 hours
-	if store.sessionTTL != 2*time.Hour {
-		t.Fatalf("expected sessionTTL = 2h, got %v", store.sessionTTL)
-	}
-
-	// Session stored with a manually backdated expiry at 90 minutes should still be live
-	store.StoreSession(1, &Session{
-		TabID:     1,
-		Timestamp: time.Now().UnixMilli(),
-		PageURL:   "https://example.com",
-	})
-
-	// Simulate 90 minutes elapsed by adjusting the session entry's ExpiresAt
-	store.mu.Lock()
-	entry := store.sessions[1]
-	entry.ExpiresAt = time.Now().Add(30 * time.Minute) // 120min TTL - 90min elapsed = 30min remaining
-	store.mu.Unlock()
-
-	got := store.GetSession(1)
-	if got == nil {
-		t.Error("expected session to still be retrievable after 90 minutes (within 2h TTL)")
-	}
-}
-
-func TestStore_FindAnnotationTimestamp_Anonymous(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	store.StoreSession(1, &Session{
-		TabID: 1, Timestamp: 1000, PageURL: "https://a.com",
-		Annotations: []Annotation{
-			{ID: "a1", CorrelationID: "corr_1", Timestamp: 111},
-			{ID: "a2", CorrelationID: "corr_2", Timestamp: 222},
-		},
-	})
-	store.StoreSession(2, &Session{
-		TabID: 2, Timestamp: 2000, PageURL: "https://b.com",
-		Annotations: []Annotation{
-			{ID: "b1", CorrelationID: "corr_3", Timestamp: 333},
-		},
-	})
-
-	// Found in first session
-	if ts := store.FindAnnotationTimestamp("corr_1"); ts != 111 {
-		t.Errorf("expected 111, got %d", ts)
-	}
-	// Found in second session
-	if ts := store.FindAnnotationTimestamp("corr_3"); ts != 333 {
-		t.Errorf("expected 333, got %d", ts)
-	}
-	// Not found
-	if ts := store.FindAnnotationTimestamp("nonexistent"); ts != 0 {
-		t.Errorf("expected 0, got %d", ts)
-	}
-}
-
-func TestStore_FindAnnotationTimestamp_Named(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	store.AppendToNamedSession("review", &Session{
-		TabID: 3, PageURL: "https://c.com", Timestamp: 3000,
-		Annotations: []Annotation{
-			{ID: "n1", CorrelationID: "named_corr_1", Timestamp: 444},
-		},
-	})
-
-	if ts := store.FindAnnotationTimestamp("named_corr_1"); ts != 444 {
-		t.Errorf("expected 444, got %d", ts)
-	}
-	// Not found in named
-	if ts := store.FindAnnotationTimestamp("wrong_id"); ts != 0 {
-		t.Errorf("expected 0, got %d", ts)
-	}
-}
-
-func TestStore_FindAnnotationTimestamp_SkipsExpired(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	store.StoreSession(1, &Session{
-		TabID: 1, Timestamp: 1000, PageURL: "https://expired.com",
-		Annotations: []Annotation{
-			{ID: "e1", CorrelationID: "exp_corr", Timestamp: 555},
-		},
-	})
-
-	// Expire the session
-	store.mu.Lock()
-	store.sessions[1].ExpiresAt = time.Now().Add(-1 * time.Second)
-	store.mu.Unlock()
-
-	if ts := store.FindAnnotationTimestamp("exp_corr"); ts != 0 {
-		t.Errorf("expected 0 for expired session, got %d", ts)
-	}
-
-	// Named session expired
-	store.AppendToNamedSession("old", &Session{
-		TabID: 4, PageURL: "https://old.com", Timestamp: 4000,
-		Annotations: []Annotation{
-			{ID: "n_exp", CorrelationID: "named_exp_corr", Timestamp: 666},
-		},
-	})
-	store.mu.Lock()
-	store.named["old"].ExpiresAt = time.Now().Add(-1 * time.Second)
-	store.mu.Unlock()
-
-	if ts := store.FindAnnotationTimestamp("named_exp_corr"); ts != 0 {
-		t.Errorf("expected 0 for expired named session, got %d", ts)
-	}
-}
-
-func TestStore_ClearAll_ClearsAllAnnotationState(t *testing.T) {
-	store := NewStore(10 * time.Minute)
-	defer store.Close()
-
-	now := time.Now().UnixMilli()
-	store.StoreSession(1, &Session{
-		TabID:     1,
-		Timestamp: now,
-		Annotations: []Annotation{
-			{ID: "ann_1", CorrelationID: "detail_1", Timestamp: now},
-		},
-	})
-	store.StoreDetail("detail_1", Detail{CorrelationID: "detail_1", Selector: "#target"})
-	store.AppendToNamedSession("qa", &Session{
-		TabID:     1,
-		Timestamp: now,
-		Annotations: []Annotation{
-			{ID: "ann_named", CorrelationID: "detail_named", Timestamp: now},
-		},
-	})
-	store.RegisterWaiter("ann_wait", "", "")
-
-	counts := store.ClearAll()
-	if counts.Sessions != 1 {
-		t.Fatalf("cleared sessions = %d, want 1", counts.Sessions)
-	}
-	if counts.Details != 1 {
-		t.Fatalf("cleared details = %d, want 1", counts.Details)
-	}
-	if counts.NamedSessions != 1 {
-		t.Fatalf("cleared named sessions = %d, want 1", counts.NamedSessions)
-	}
-	if counts.Waiters != 1 {
-		t.Fatalf("cleared waiters = %d, want 1", counts.Waiters)
-	}
-
-	if got := store.GetLatestSession(); got != nil {
-		t.Fatalf("expected latest session cleared, got %+v", got)
-	}
-	if got := store.GetNamedSession("qa"); got != nil {
-		t.Fatalf("expected named session cleared, got %+v", got)
-	}
-	if _, found := store.GetDetail("detail_1"); found {
-		t.Fatal("expected detail cleared")
-	}
-	if _, _, found := store.TakeWaiter("ann_wait"); found {
-		t.Fatal("expected waiter cleared")
 	}
 }

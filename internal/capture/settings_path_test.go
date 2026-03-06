@@ -1,4 +1,5 @@
-// Purpose: Tests for capture settings path resolution.
+// Purpose: Validate settings_path_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -10,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestGetSettingsPathUsesStateDirectory(t *testing.T) {
@@ -59,7 +60,7 @@ func TestLoadSettingsFromDiskFallsBackToLegacyPath(t *testing.T) {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if !c.extensionState.pilotEnabled {
+	if !c.ext.pilotEnabled {
 		t.Fatalf("pilotEnabled = false, want true from legacy settings")
 	}
 }
@@ -72,28 +73,12 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 	now := time.Now().UTC()
 
 	c.mu.Lock()
-	c.extensionState.pilotEnabled = true
-	c.extensionState.pilotStatusKnown = true
-	c.extensionState.pilotUpdatedAt = now
-	c.extensionState.extSessionID = "session-123"
+	c.ext.pilotEnabled = true
+	c.ext.pilotStatusKnown = true
+	c.ext.pilotUpdatedAt = now
+	c.ext.extSessionID = "session-123"
 	c.mu.Unlock()
 
-	persisted := saveAndLoadPersistedSettings(t, c)
-
-	if persisted.AIWebPilotEnabled == nil || !*persisted.AIWebPilotEnabled {
-		t.Fatalf("AIWebPilotEnabled = %v, want true", persisted.AIWebPilotEnabled)
-	}
-	if persisted.ExtSessionID != "session-123" {
-		t.Fatalf("SessionID = %q, want %q", persisted.ExtSessionID, "session-123")
-	}
-}
-
-func boolPtr(v bool) *bool {
-	return &v
-}
-
-func saveAndLoadPersistedSettings(t *testing.T, c *Capture) PersistedSettings {
-	t.Helper()
 	if err := c.SaveSettingsToDisk(); err != nil {
 		t.Fatalf("SaveSettingsToDisk() error = %v", err)
 	}
@@ -112,7 +97,17 @@ func saveAndLoadPersistedSettings(t *testing.T, c *Capture) PersistedSettings {
 	if err := json.Unmarshal(data, &persisted); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
-	return persisted
+
+	if persisted.AIWebPilotEnabled == nil || !*persisted.AIWebPilotEnabled {
+		t.Fatalf("AIWebPilotEnabled = %v, want true", persisted.AIWebPilotEnabled)
+	}
+	if persisted.ExtSessionID != "session-123" {
+		t.Fatalf("SessionID = %q, want %q", persisted.ExtSessionID, "session-123")
+	}
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
 
 func TestSaveSettingsToDiskOmitsUnknownPilotState(t *testing.T) {
@@ -121,10 +116,26 @@ func TestSaveSettingsToDiskOmitsUnknownPilotState(t *testing.T) {
 
 	c := NewCapture()
 	c.mu.Lock()
-	c.extensionState.extSessionID = "session-unknown"
+	c.ext.extSessionID = "session-unknown"
 	c.mu.Unlock()
 
-	persisted := saveAndLoadPersistedSettings(t, c)
+	if err := c.SaveSettingsToDisk(); err != nil {
+		t.Fatalf("SaveSettingsToDisk() error = %v", err)
+	}
+
+	path, err := getSettingsPath()
+	if err != nil {
+		t.Fatalf("getSettingsPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+
+	var persisted PersistedSettings
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
 	if persisted.AIWebPilotEnabled != nil {
 		t.Fatalf("AIWebPilotEnabled = %v, want nil when pilot state is unknown", persisted.AIWebPilotEnabled)
 	}

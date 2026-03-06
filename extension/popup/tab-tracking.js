@@ -119,7 +119,7 @@ function handleStopTracking() {
             if (btn)
                 showIdleState(btn);
             // Stop recording if active
-            chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
+            chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
                 if (chrome.runtime.lastError) {
                     /* no recording active — expected */
                 }
@@ -137,7 +137,7 @@ function handleStopTracking() {
         });
     });
 }
-export function initTrackPageButton() {
+export async function initTrackPageButton() {
     const btn = document.getElementById('track-page-btn');
     if (!btn)
         return;

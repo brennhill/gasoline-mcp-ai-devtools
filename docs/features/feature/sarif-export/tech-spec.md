@@ -4,12 +4,10 @@ scope: feature/sarif-export/implementation
 ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: tech-spec
 feature_id: feature-sarif-export
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -144,7 +142,7 @@ The agent can do this as part of the PR creation workflow (see workflow integrat
       "driver": {
         "name": "Gasoline",
         "version": "4.0.0",
-        "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
+        "informationUri": "https://github.com/anthropics/gasoline",
         "rules": [
           {
             "id": "color-contrast",

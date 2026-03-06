@@ -1,7 +1,7 @@
 # QA Plan: Issue #69
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/69
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/69
 - Title: Add tab management and navigation history
 
 ## QA Goal

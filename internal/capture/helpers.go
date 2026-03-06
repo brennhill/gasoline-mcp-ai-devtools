@@ -8,12 +8,24 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
-// ExtractURLPath delegates to util.ExtractURLPath for cross-package callers.
+// extractURLPath delegates to util.ExtractURLPath for URL path extraction.
+func extractURLPath(rawURL string) string {
+	return util.ExtractURLPath(rawURL)
+}
+
+// ExtractURLPath is the exported version for cross-package callers.
 func ExtractURLPath(rawURL string) string {
 	return util.ExtractURLPath(rawURL)
+}
+
+// reverseSlice reverses a slice in place.
+func reverseSlice[T any](s []T) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
 
 // removeFromSlice removes the first occurrence of item from a string slice,

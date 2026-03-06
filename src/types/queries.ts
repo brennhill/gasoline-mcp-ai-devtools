@@ -29,16 +29,11 @@ export type QueryType =
   | 'state_delete'
   | 'subtitle'
   | 'screenshot'
-  | 'screen_recording_start'
-  | 'screen_recording_stop'
+  | 'record_start'
+  | 'record_stop'
   | 'link_health'
   | 'draw_mode'
   | 'upload'
-  | 'cdp_action'
-  | 'explore_page'
-  | 'get_readable'
-  | 'get_markdown'
-  | 'page_summary'
 
 /**
  * Pending query from server

@@ -1,4 +1,5 @@
-// Purpose: Generates Playwright/Vitest test scripts from captured actions and reproduction data.
+// Purpose: Provides generate tool implementation helpers for emitted artifacts.
+// Why: Centralizes artifact generation logic to avoid drift across output formats.
 // Docs: docs/features/feature/test-generation/index.md
 
 package generate
@@ -7,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/reproduction"
 )
 
 // TestGenParams are the parsed arguments for generate({format: "test"}).

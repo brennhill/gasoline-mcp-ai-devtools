@@ -3,12 +3,10 @@ feature: cpu-network-emulation
 status: proposed
 tool: configure
 mode: emulation
-version: 0.7.12
+version: v6.2
 doc_type: product-spec
 feature_id: feature-cpu-network-emulation
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: CPU/Network Emulation

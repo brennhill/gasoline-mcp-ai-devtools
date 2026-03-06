@@ -1,7 +1,7 @@
 ---
 feature: query-dom
 status: shipped
-version: 0.7.12
+version: v7.0
 tool: analyze
 mode: dom
 authors: []
@@ -9,9 +9,7 @@ created: 2026-01-28
 updated: 2026-02-17
 doc_type: product-spec
 feature_id: feature-query-dom
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-17
 ---
 
 # Query DOM Product Spec (TARGET)

@@ -188,7 +188,7 @@ lsof -i -n -P | grep gasoline
 
 ### 4. Transparency
 **Open source:**
-- Full source code: <https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp>
+- Full source code: <https://github.com/brennhill/gasoline-mcp-ai-devtools>
 - License: AGPL-3.0
 - All code is readable (no obfuscation)
 - Community can audit and verify privacy claims
@@ -285,7 +285,7 @@ You decide:
 You can uninstall anytime to stop all collection.
 
 ## Open Source
-Full source code: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+Full source code: https://github.com/brennhill/gasoline-mcp-ai-devtools
 License: AGPL-3.0
 Community can audit our privacy claims.
 

@@ -31,14 +31,19 @@ func nbEntryMemory(b *NetworkBody) int64 {
 
 // calcWSMemory returns the running total of WS buffer memory (caller must hold lock).
 // O(1) — maintained incrementally by add/evict/clear operations.
-func (s *BufferStore) calcWSMemory() int64 {
-	return s.wsMemoryTotal
+func (c *Capture) calcWSMemory() int64 {
+	return c.wsMemoryTotal
 }
 
 // calcNBMemory returns the running total of network bodies buffer memory (caller must hold lock).
 // O(1) — maintained incrementally by add/evict/clear operations.
-func (s *BufferStore) calcNBMemory() int64 {
-	return s.networkBodyMemoryTotal
+func (c *Capture) calcNBMemory() int64 {
+	return c.nbMemoryTotal
+}
+
+// calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock)
+func (c *Capture) calcActionMemory() int64 {
+	return int64(len(c.enhancedActions)) * actionMemoryFixed
 }
 
 // ============================================
@@ -49,12 +54,12 @@ func (s *BufferStore) calcNBMemory() int64 {
 func (c *Capture) GetWebSocketBufferMemory() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.buffers.calcWSMemory()
+	return c.calcWSMemory()
 }
 
 // GetNetworkBodiesBufferMemory returns approximate memory usage of network bodies buffer
 func (c *Capture) GetNetworkBodiesBufferMemory() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.buffers.calcNBMemory()
+	return c.calcNBMemory()
 }

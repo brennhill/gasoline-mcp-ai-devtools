@@ -1,6 +1,7 @@
 /**
- * Purpose: Detects UI frameworks (React/Vue/Svelte), captures state snapshots, and generates AI-friendly error summaries with timeout guards.
- * Docs: docs/features/feature/error-bundling/index.md
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // ai-context-enrichment.ts — Framework detection, state capture, and AI error enrichment pipeline.
@@ -12,7 +13,7 @@
  * the full error enrichment pipeline with timeout guards.
  */
 
-import type { LogEntry, AiContextData } from '../types/index.js'
+import type { LogEntry, AiContextData } from '../types/index'
 
 import {
   AI_CONTEXT_MAX_ANCESTRY_DEPTH,
@@ -23,7 +24,11 @@ import {
   AI_CONTEXT_PIPELINE_TIMEOUT_MS
 } from './constants.js'
 
-import { parseStackFrames, extractSourceSnippets, getSourceMapCache } from './ai-context-parsing.js'
+import {
+  parseStackFrames,
+  extractSourceSnippets,
+  getSourceMapCache
+} from './ai-context-parsing.js'
 
 // =============================================================================
 // TYPE DEFINITIONS

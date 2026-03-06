@@ -162,6 +162,9 @@ describe('analyze frame routing', () => {
       return {}
     }
 
+    // Frame probe for resolveAnalyzeFrameSelection(mode=main)
+    executeScriptReturn.push([{ frameId: 0, result: { matches: true } }])
+    // DOM fallback execution result
     executeScriptReturn.push([
       {
         frameId: 0,
@@ -185,7 +188,7 @@ describe('analyze frame routing', () => {
     await handlePendingQuery(query, makeSyncClient())
 
     assert.strictEqual(sendMessageCalls.length, 1, 'should try DOM_QUERY once via content script')
-    assert.strictEqual(executeScriptCalls.length, 1, 'should fallback via chrome.scripting once')
+    assert.strictEqual(executeScriptCalls.length, 2, 'should probe frames, then fallback via chrome.scripting')
 
     assert.strictEqual(queuedResults.length, 1)
     const cmd = queuedResults[0]

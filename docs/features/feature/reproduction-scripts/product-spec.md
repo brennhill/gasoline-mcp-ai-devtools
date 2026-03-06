@@ -3,12 +3,10 @@ feature: Reproduction Scripts
 status: proposed
 tool: generate
 format: reproduction
-version: 0.7.12
+version: v5.9
 doc_type: product-spec
 feature_id: feature-reproduction-scripts
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Reproduction Scripts

@@ -52,14 +52,8 @@ export interface A11yAuditResult {
         description: string;
     }[];
     readonly summary?: {
-        readonly violations: number;
-        readonly passes: number;
-        readonly incomplete?: number;
-        readonly inapplicable?: number;
-        readonly violation_count?: number;
-        readonly pass_count?: number;
-        readonly incomplete_count?: number;
-        readonly inapplicable_count?: number;
+        readonly violationCount: number;
+        readonly passCount: number;
     };
     readonly error?: string;
 }

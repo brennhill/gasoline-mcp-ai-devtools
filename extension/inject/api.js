@@ -1,6 +1,8 @@
 /**
- * Purpose: Exposes the window.__gasoline developer API for programmatic access to capture capabilities, context annotations, and event buffers.
- * Docs: docs/features/feature/custom-event-api/index.md
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 import { setContextAnnotation, removeContextAnnotation, clearContextAnnotations, getContextAnnotations } from '../lib/context.js';
 import { computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction.js';

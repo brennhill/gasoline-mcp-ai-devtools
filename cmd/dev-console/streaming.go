@@ -1,14 +1,9 @@
-// Purpose: Re-exports streaming types/functions and implements the configure_streaming MCP handler for push notifications.
-// Why: Bridges internal/streaming into the cmd package while keeping the configure tool dispatch surface unified.
-// Docs: docs/features/feature/push-alerts/index.md
-
 package main
 
 import (
 	"encoding/json"
 
-	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
+	"github.com/dev-console/dev-console/internal/streaming"
 )
 
 // ============================================
@@ -45,13 +40,7 @@ var (
 // ============================================
 
 // toolConfigureStreaming handles the configure_streaming MCP tool call.
-// Accepts both action and streaming_action (legacy alias rewritten for backward compatibility).
 func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	rewritten, err := cfg.RewriteStreamingArgs(args)
-	if err != nil {
-		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
-	}
-
 	var params struct {
 		Action          string   `json:"action"`
 		Events          []string `json:"events"`
@@ -59,14 +48,14 @@ func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMe
 		URLFilter       string   `json:"url"`
 		SeverityMin     string   `json:"severity_min"`
 	}
-	if resp, stop := parseArgs(req, rewritten, &params); stop {
-		return resp
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	if params.Action == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"))
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"))}
 	}
 
 	result := h.alertBuffer.Stream.Configure(params.Action, params.Events, params.ThrottleSeconds, params.URLFilter, params.SeverityMin)
-	return succeed(req, "Streaming configuration", result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Streaming configuration", result)}
 }

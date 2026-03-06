@@ -1,4 +1,5 @@
-// Purpose: Tests for interact rich command-result formatting.
+// Purpose: Validate tools_interact_rich_cmdresult_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_rich_cmdresult_test.go — TDD tests for Rich Action command result handling.
@@ -14,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // ============================================
@@ -592,8 +593,8 @@ func TestCommandResult_NotFoundHasFinalTrue(t *testing.T) {
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
-	if responseData["error_code"] != ErrNoData {
-		t.Fatalf("missing command should return error_code=%s, got %v", ErrNoData, responseData["error_code"])
+	if responseData["error"] != "no_data" {
+		t.Fatalf("missing command should return error=no_data, got %v", responseData["error"])
 	}
 	if finalVal, ok := responseData["final"].(bool); !ok || !finalVal {
 		t.Fatalf("missing command should have final=true, got %v", responseData["final"])
@@ -619,8 +620,8 @@ func TestCommandResult_AnnotationNotFoundHasFinalTrue(t *testing.T) {
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
-	if responseData["error_code"] != ErrNoData {
-		t.Fatalf("missing annotation command should return error_code=%s, got %v", ErrNoData, responseData["error_code"])
+	if responseData["error"] != "no_data" {
+		t.Fatalf("missing annotation command should return error=no_data, got %v", responseData["error"])
 	}
 	if finalVal, ok := responseData["final"].(bool); !ok || !finalVal {
 		t.Fatalf("missing annotation command should have final=true, got %v", responseData["final"])

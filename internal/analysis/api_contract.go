@@ -1,10 +1,16 @@
-// Purpose: Defines API contract validator state and shared contract result types.
-// Why: Keeps core model definitions stable while behavior is split into focused files.
+// Purpose: Implements API contract tracking and violation detection over observed endpoint behavior.
+// Why: Detects breaking backend response changes early by comparing live traffic against learned shapes.
 // Docs: docs/features/feature/api-schema/index.md
 
 package analysis
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/dev-console/dev-console/internal/capture"
+	"net/url"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -143,4 +149,321 @@ func NewAPIContractValidator() *APIContractValidator {
 	return &APIContractValidator{
 		trackers: make(map[string]*EndpointTracker),
 	}
+}
+
+// ============================================
+// Endpoint Normalization
+// ============================================
+
+var (
+	contractUUIDPattern    = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+	contractNumericPattern = regexp.MustCompile(`^\d+$`)
+	contractHexPattern     = regexp.MustCompile(`^[0-9a-fA-F]{16,}$`)
+)
+
+// normalizeEndpoint converts a METHOD + URL into a normalized endpoint key.
+// Dynamic segments (numeric IDs, UUIDs, hex hashes) are replaced with {id}.
+// Query parameters are stripped.
+func normalizeEndpoint(method, rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return method + " " + rawURL
+	}
+
+	path := parsed.Path
+	if path == "" {
+		path = "/"
+	}
+
+	// Normalize dynamic path segments
+	segments := strings.Split(path, "/")
+	for i, seg := range segments {
+		if seg == "" {
+			continue
+		}
+		// Replace UUIDs
+		if contractUUIDPattern.MatchString(seg) {
+			segments[i] = "{id}"
+		} else if contractNumericPattern.MatchString(seg) {
+			// Replace pure numeric IDs
+			segments[i] = "{id}"
+		} else if contractHexPattern.MatchString(seg) {
+			// Replace long hex strings
+			segments[i] = "{id}"
+		}
+	}
+
+	normalizedPath := strings.Join(segments, "/")
+	return method + " " + normalizedPath
+}
+
+// ============================================
+// Learning
+// ============================================
+
+// Learn records a network body observation for contract tracking.
+func (v *APIContractValidator) Learn(body capture.NetworkBody) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	endpoint := normalizeEndpoint(body.Method, body.URL)
+
+	// Check endpoint limit
+	if _, exists := v.trackers[endpoint]; !exists {
+		if len(v.trackers) >= maxContractEndpoints {
+			return
+		}
+	}
+
+	tracker := v.getOrCreateTracker(endpoint)
+	tracker.CallCount++
+	now := time.Now()
+	if tracker.FirstCalled.IsZero() {
+		tracker.FirstCalled = now
+	}
+	tracker.LastCalled = now
+
+	// Track status code
+	tracker.StatusHistory = append(tracker.StatusHistory, body.Status)
+	if len(tracker.StatusHistory) > maxStatusHistory {
+		newHistory := make([]int, len(tracker.StatusHistory)-1)
+		copy(newHistory, tracker.StatusHistory[1:])
+		tracker.StatusHistory = newHistory
+	}
+
+	// Only learn shape from successful responses
+	if body.Status >= 200 && body.Status < 300 {
+		tracker.SuccessCount++
+		v.learnShape(tracker, body)
+	}
+}
+
+func (v *APIContractValidator) getOrCreateTracker(endpoint string) *EndpointTracker {
+	tracker, exists := v.trackers[endpoint]
+	if !exists {
+		tracker = &EndpointTracker{
+			Endpoint:      endpoint,
+			FieldPresence: make(map[string]int),
+			FieldTypes:    make(map[string]string),
+			StatusHistory: make([]int, 0),
+			Violations:    make([]APIContractViolation, 0),
+		}
+		v.trackers[endpoint] = tracker
+	}
+	return tracker
+}
+
+func (v *APIContractValidator) learnShape(tracker *EndpointTracker, body capture.NetworkBody) {
+	// Skip non-JSON or empty responses
+	if body.ResponseBody == "" {
+		return
+	}
+	if body.ContentType != "" && !strings.Contains(body.ContentType, "json") {
+		return
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(body.ResponseBody), &parsed); err != nil {
+		return
+	}
+
+	// Extract shape from parsed JSON
+	shape := v.extractShape(parsed, 0)
+
+	// Merge into established shape
+	if tracker.EstablishedShape == nil {
+		tracker.EstablishedShape = shape
+		tracker.ConsistentCount++ // First response is by definition consistent
+	} else {
+		// Check if this response is consistent with established shape before merging
+		shapeViolations := v.compareShapes(tracker.Endpoint, tracker.EstablishedShape, shape, parsed)
+		if len(shapeViolations) == 0 {
+			tracker.ConsistentCount++
+		}
+		tracker.EstablishedShape = v.mergeShapes(tracker.EstablishedShape, shape)
+	}
+
+	// Track field presence for objects
+	if objShape, ok := shape.(map[string]any); ok {
+		for field, fieldType := range objShape {
+			tracker.FieldPresence[field]++
+			if typeStr, ok := fieldType.(string); ok {
+				tracker.FieldTypes[field] = typeStr
+			}
+		}
+	}
+}
+
+// extractShape extracts a type-only shape from a JSON value.
+func (v *APIContractValidator) extractShape(value any, depth int) any {
+	if depth > maxShapeComparisonDepth {
+		return "object" // Truncate deep nesting
+	}
+
+	switch val := value.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case float64:
+		return "number"
+	case string:
+		return "string"
+	case []any:
+		if len(val) > 0 {
+			// Use first element to infer array element type
+			elemShape := v.extractShape(val[0], depth+1)
+			return map[string]any{"$array": elemShape}
+		}
+		return "array"
+	case map[string]any:
+		shape := make(map[string]any)
+		for k, fieldVal := range val {
+			shape[k] = v.extractShape(fieldVal, depth+1)
+		}
+		return shape
+	default:
+		return "unknown"
+	}
+}
+
+// mergeShapes combines two shapes, keeping all observed fields.
+func (v *APIContractValidator) mergeShapes(existing, incoming any) any {
+	existingMap, eOK := existing.(map[string]any)
+	incomingMap, iOK := incoming.(map[string]any)
+
+	if !eOK || !iOK {
+		// If types differ, prefer the existing (already established)
+		return existing
+	}
+
+	// Merge all fields from both
+	merged := make(map[string]any)
+	for k, val := range existingMap {
+		merged[k] = val
+	}
+	for k, val := range incomingMap {
+		if existingVal, exists := merged[k]; !exists {
+			merged[k] = val
+		} else {
+			// Recursively merge nested objects
+			merged[k] = v.mergeShapes(existingVal, val)
+		}
+	}
+	return merged
+}
+
+// ============================================
+// Validation
+// ============================================
+
+// Validate checks a network body against the learned schema and returns violations.
+func (v *APIContractValidator) Validate(body capture.NetworkBody) []APIContractViolation {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	endpoint := normalizeEndpoint(body.Method, body.URL)
+	tracker := v.getOrCreateTracker(endpoint)
+	v.recordObservation(tracker, body.Status)
+
+	// Check for error spike on error responses
+	if body.Status >= 400 {
+		return v.validateErrorResponse(tracker, body)
+	}
+
+	// Still learning — not enough samples to validate
+	if tracker.SuccessCount < minCallsToEstablishShape {
+		tracker.SuccessCount++
+		v.learnShape(tracker, body)
+		return nil
+	}
+
+	return v.validateShapeConsistency(tracker, endpoint, body)
+}
+
+// recordObservation updates tracker counters and status history for a new observation.
+func (v *APIContractValidator) recordObservation(tracker *EndpointTracker, status int) {
+	tracker.CallCount++
+	now := time.Now()
+	if tracker.FirstCalled.IsZero() {
+		tracker.FirstCalled = now
+	}
+	tracker.LastCalled = now
+
+	tracker.StatusHistory = append(tracker.StatusHistory, status)
+	if len(tracker.StatusHistory) > maxStatusHistory {
+		newHistory := make([]int, len(tracker.StatusHistory)-1)
+		copy(newHistory, tracker.StatusHistory[1:])
+		tracker.StatusHistory = newHistory
+	}
+}
+
+// validateErrorResponse checks for error spikes in error responses.
+func (v *APIContractValidator) validateErrorResponse(tracker *EndpointTracker, body capture.NetworkBody) []APIContractViolation {
+	spike := v.detectErrorSpike(tracker, body)
+	if spike == nil {
+		return nil
+	}
+	v.addViolation(tracker, *spike)
+	return []APIContractViolation{*spike}
+}
+
+// validateShapeConsistency compares a successful response shape against the established schema.
+func (v *APIContractValidator) validateShapeConsistency(tracker *EndpointTracker, endpoint string, body capture.NetworkBody) []APIContractViolation {
+	if body.ResponseBody == "" {
+		return nil
+	}
+	if body.ContentType != "" && !strings.Contains(body.ContentType, "json") {
+		return nil
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(body.ResponseBody), &parsed); err != nil {
+		return nil
+	}
+
+	actualShape := v.extractShape(parsed, 0)
+	shapeViolations := v.compareShapes(endpoint, tracker.EstablishedShape, actualShape, parsed)
+	for _, viol := range shapeViolations {
+		v.addViolation(tracker, viol)
+	}
+	if len(shapeViolations) == 0 {
+		tracker.ConsistentCount++
+	}
+	return shapeViolations
+}
+
+// ============================================
+// Helpers
+// ============================================
+
+func describeType(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return "null"
+	case string:
+		return v // Already a type string
+	case map[string]any:
+		if _, hasArray := v["$array"]; hasArray {
+			return "array"
+		}
+		return "object"
+	default:
+		return fmt.Sprintf("%T", value)
+	}
+}
+
+func toStringMap(m map[string]any) map[string]any {
+	result := make(map[string]any)
+	for k, v := range m {
+		switch val := v.(type) {
+		case string:
+			result[k] = val
+		case map[string]any:
+			result[k] = toStringMap(val)
+		default:
+			result[k] = describeType(v)
+		}
+	}
+	return result
 }

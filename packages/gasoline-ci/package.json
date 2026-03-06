@@ -1,6 +1,6 @@
 {
   "name": "@anthropic/gasoline-ci",
-  "version": "0.7.12",
+  "version": "0.7.9",
   "description": "Gasoline CI - Standalone browser capture for CI/CD pipelines",
   "main": "gasoline-ci.js",
   "files": [
@@ -17,10 +17,10 @@
   "homepage": "https://cookwithgasoline.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
+    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools"
   },
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
+    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
   },
   "license": "MIT"
 }

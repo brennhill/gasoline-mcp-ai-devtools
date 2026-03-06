@@ -1,4 +1,5 @@
-// Purpose: Declares request/response types for all upload stages, MIME detection, progress tiers, and size constants.
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload

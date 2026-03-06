@@ -1,4 +1,5 @@
-// Purpose: Contract tests for analyze link-health response format.
+// Purpose: Validate tools_analyze_link_health_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // tools_analyze_link_health_contract_test.go — Response shape contracts for analyze/link_health.

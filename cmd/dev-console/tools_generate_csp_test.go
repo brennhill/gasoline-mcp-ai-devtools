@@ -1,4 +1,5 @@
-// Purpose: Tests for generate CSP policy output.
+// Purpose: Validate tools_generate_csp_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_csp_test.go — Coverage tests for toolGenerateCSP handler.
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================

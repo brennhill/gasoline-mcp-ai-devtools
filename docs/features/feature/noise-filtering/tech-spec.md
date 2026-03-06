@@ -4,12 +4,10 @@ scope: feature/noise-filtering/implementation
 ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: tech-spec
 feature_id: feature-noise-filtering
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -248,4 +246,4 @@ These are non-negotiable safety rules:
 
 ## File Location
 
-Implementation lives in `internal/noise/*.go` and tool integration is in `cmd/dev-console/tools_configure_noise_actions.go` with tests in `internal/noise/*_test.go` and `cmd/dev-console/tools_configure_noise_actions_test.go`.
+Implementation goes in `cmd/dev-console/ai_noise.go` with tests in `cmd/dev-console/ai_noise_test.go`.

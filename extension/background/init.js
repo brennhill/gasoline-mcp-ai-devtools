@@ -1,6 +1,9 @@
 /**
- * Purpose: Extension startup initialization -- loads settings, installs listeners, recovers state after service worker restart, and initiates first connection.
- * Docs: docs/features/feature/cold-start-queuing/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview Extension Initialization
@@ -10,9 +13,7 @@
 import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
-import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener, installContextMenus, saveSetting, forwardToAllContentScripts, getActiveTab, sendTabToast, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
-import { installPushCommandListener, installChatCommandListener } from './push-handler.js';
-import { isRecording, startRecording, stopRecording } from './recording.js';
+import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
 import { captureScreenshot, updateBadge } from './communication.js';
 import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js';
@@ -46,11 +47,6 @@ async function initializeExtensionAsync() {
         }
         // Mark the current state version
         await markStateVersion();
-        // Allow content scripts to access chrome.storage.session (required for terminal state persistence).
-        // Without this, content scripts silently fail to read/write session storage.
-        if (chrome.storage.session?.setAccessLevel) {
-            await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
-        }
         // ============= STEP 2: Load debug mode =============
         const debugEnabled = await loadDebugModeState();
         setDebugMode(debugEnabled);
@@ -99,10 +95,19 @@ async function initializeExtensionAsync() {
                 else if (oldTabId !== null) {
                     // Tracking was lost — notify user on active tab
                     console.log('[Gasoline] Tracking lost for tab', oldTabId);
-                    getActiveTab()
-                        .then((tab) => {
-                        if (tab?.id) {
-                            sendTabToast(tab.id, 'Tab tracking lost', 'Re-enable in Gasoline popup', 'warning', 5000);
+                    chrome.tabs
+                        .query({ active: true, currentWindow: true })
+                        .then((tabs) => {
+                        if (tabs[0]?.id) {
+                            chrome.tabs
+                                .sendMessage(tabs[0].id, {
+                                type: 'GASOLINE_ACTION_TOAST',
+                                text: 'Tab tracking lost',
+                                detail: 'Re-enable in Gasoline popup',
+                                state: 'warning',
+                                duration_ms: 5000
+                            })
+                                .catch(() => { });
                         }
                     })
                         .catch(() => { });
@@ -194,20 +199,6 @@ async function initializeExtensionAsync() {
         });
         // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
         installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
-        // ============= STEP 9.7: Install push keyboard shortcut listeners =============
-        installPushCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
-        installChatCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
-        // ============= STEP 9.8: Install recording keyboard shortcut listener =============
-        installRecordingShortcutCommandListener({
-            isRecording,
-            startRecording,
-            stopRecording
-        }, (msg) => console.log(`[Gasoline] ${msg}`));
-        // ============= STEP 9.9: Install screen recording shortcut + context menus =============
-        const screenRecHandlers = { isRecording, startRecording, stopRecording };
-        const actionRecHandlers = { isRecording, startRecording, stopRecording };
-        installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`));
-        installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`));
         // ============= STEP 10: Set disconnected badge immediately =============
         // Badge must reflect disconnected state BEFORE the async health check.
         // Without this, a stale "connected" badge persists from a previous SW session

@@ -1,5 +1,6 @@
-// Purpose: Tests for upload OS dialog dismissal.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate upload_os_dismiss_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // upload_os_dismiss_test.go — Tests for handleOSAutomationDismiss HTTP handler.
 //

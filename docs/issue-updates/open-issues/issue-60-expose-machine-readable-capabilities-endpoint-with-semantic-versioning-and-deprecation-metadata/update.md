@@ -1,7 +1,7 @@
 # Product Update: Issue #60
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/60
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/60
 - Title: Expose machine-readable capabilities endpoint with semantic versioning and deprecation metadata
 - Last Updated: 2026-02-16T13:19:38Z
 

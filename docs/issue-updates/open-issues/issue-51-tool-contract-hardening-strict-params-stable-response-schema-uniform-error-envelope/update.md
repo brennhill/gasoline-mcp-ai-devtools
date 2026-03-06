@@ -1,7 +1,7 @@
 # Product Update: Issue #51
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/51
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/51
 - Title: Tool contract hardening: strict params, stable response schema, uniform error envelope
 - Last Updated: 2026-02-16T13:19:29Z
 

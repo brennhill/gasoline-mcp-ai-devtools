@@ -27,9 +27,6 @@ export interface WireEnhancedAction {
   readonly selected_text?: string
   readonly scroll_y?: number
   readonly tab_id?: number
-  readonly classification?: string
-  readonly duration_ms?: number
-  readonly role?: string
   // server-only: test_ids — added by Go daemon for test boundary correlation
   // server-only: source — added by Go daemon ("human" or "ai")
 }

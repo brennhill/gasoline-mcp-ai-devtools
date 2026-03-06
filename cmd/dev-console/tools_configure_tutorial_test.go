@@ -1,5 +1,6 @@
-// Purpose: Tests for configure tutorial content delivery.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_configure_tutorial_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_configure_tutorial_test.go — Tests for configure tutorial/examples mode.
 package main
@@ -298,7 +299,7 @@ func TestToolsConfigureTutorial_IncludesFailureRecoveryPlaybooks(t *testing.T) {
 		t.Fatalf("failure_recovery_playbooks type = %T, want map[string]any", data["failure_recovery_playbooks"])
 	}
 
-	required := []string{"element_not_found", "ambiguous_target", "stale_element_id", "scope_not_found", "blocked_by_overlay"}
+	required := []string{"element_not_found", "ambiguous_target", "stale_element_id", "scope_not_found"}
 	for _, code := range required {
 		raw, ok := playbooks[code]
 		if !ok {

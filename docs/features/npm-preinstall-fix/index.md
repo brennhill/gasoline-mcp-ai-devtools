@@ -4,11 +4,9 @@ feature_id: npm-preinstall-fix
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-16
 code_paths: []
 test_paths: []
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Npm Preinstall Fix

@@ -1,6 +1,9 @@
 /**
- * Purpose: Facade re-exporting state management functions from error-groups, cache-limits, and snapshots sub-modules.
- * Why: Provides a single import point so consumers do not need to know which sub-module owns each function.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 /**
@@ -20,7 +23,7 @@ export {
   flushErrorGroups,
   type ProcessedLogEntry,
   ERROR_GROUP_MAX_AGE_MS
-} from './error-groups.js'
+} from './error-groups'
 
 // Re-export cache and memory management
 export {
@@ -47,7 +50,7 @@ export {
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
   MAX_PENDING_BUFFER
-} from './cache-limits.js'
+} from './cache-limits'
 
 // Re-export source map and context monitoring
 export {
@@ -69,7 +72,7 @@ export {
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries
-} from './snapshots.js'
+} from './snapshots'
 
 // Debug log functions are defined and exported below
 
@@ -77,7 +80,7 @@ export {
 // DEBUG LOG BUFFER
 // =============================================================================
 
-import type { DebugLogEntry } from '../types/index.js'
+import type { DebugLogEntry } from '../types'
 
 /** Debug log buffer */
 const debugLogBuffer: DebugLogEntry[] = []
@@ -93,14 +96,12 @@ export function getDebugLog(): DebugLogEntry[] {
 }
 
 /**
- * Add entry to debug log buffer.
- * Uses batch splice (25% eviction) instead of per-entry shift() to amortize O(n) cost.
+ * Add entry to debug log buffer
  */
 export function addDebugLogEntry(entry: DebugLogEntry): void {
   debugLogBuffer.push(entry)
   if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
-    const evictCount = Math.ceil(DEBUG_LOG_MAX_ENTRIES * 0.25)
-    debugLogBuffer.splice(0, evictCount)
+    debugLogBuffer.shift()
   }
 }
 

@@ -9,8 +9,8 @@
  * Handles log level, WebSocket mode, and clear logs functionality
  */
 
-import type { WebSocketCaptureMode } from '../types/index.js'
-import { SettingName } from '../lib/constants.js'
+import type { WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 
 /**
  * Handle WebSocket mode change

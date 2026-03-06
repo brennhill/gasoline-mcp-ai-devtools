@@ -1,7 +1,7 @@
 # Product Update: Issue #58
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/58
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/58
 - Title: Add high-level workflow primitives to reduce multi-step orchestration overhead
 - Last Updated: 2026-02-16T17:41:23Z
 

@@ -4,9 +4,6 @@ description: "Initial proof of concept - Go server with Chrome extension communi
 date: 2025-12-11T22:34:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v1']
 ---
 
 ## What's New in v1.0.0
@@ -48,4 +45,4 @@ This is early. Very early. But it works.
 
 **Next steps:** Add network request capture, implement MCP protocol, persistent storage.
 
-See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
+See [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools for source.

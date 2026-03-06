@@ -1,5 +1,6 @@
-// Purpose: Edge-case tests for dev-console boundary conditions.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate upload_handlers_edge_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // upload_handlers_edge_test.go — Security, sanitization, MIME, and edge-case tests for file upload.
 //
@@ -16,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // ============================================
@@ -364,8 +365,8 @@ func TestUploadHandler_FileRead_RelativePathRejected(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 	}))
@@ -389,8 +390,8 @@ func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(403)
 	}))
@@ -414,8 +415,8 @@ func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP422Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(422)
 	}))

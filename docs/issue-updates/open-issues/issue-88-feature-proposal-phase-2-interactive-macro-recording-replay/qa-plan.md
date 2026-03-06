@@ -1,7 +1,7 @@
 # QA Plan: Issue #88
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/88
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/88
 - Title: [Feature Proposal] Phase 2: Interactive Macro Recording (Replay)
 
 ## QA Goal

@@ -1,5 +1,6 @@
 /**
- * Purpose: Posts log events from the inject context to the content script via window.postMessage, enriching errors with context annotations and action replay.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/observe/index.md
  */
 
@@ -8,8 +9,8 @@
  * Enriches error-level messages with context annotations and user action replay.
  */
 
-import { getContextAnnotations } from './context.js'
-import { getActionBuffer } from './actions.js'
+import { getContextAnnotations } from './context'
+import { getActionBuffer } from './actions'
 
 export interface BridgePayload {
   level?: string

@@ -1,5 +1,6 @@
-// Purpose: Tests for ring buffer cursor resolution and entry lookup.
-// Docs: docs/features/feature/ring-buffer/index.md
+// Purpose: Validate ring_buffer_resolve_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // ring_buffer_resolve_test.go — Branch coverage tests for resolveStartPosition.
 package buffers

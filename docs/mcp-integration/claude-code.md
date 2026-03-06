@@ -20,7 +20,7 @@ Create `.mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp"]
@@ -38,7 +38,7 @@ Available in all projects — add to `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp"]

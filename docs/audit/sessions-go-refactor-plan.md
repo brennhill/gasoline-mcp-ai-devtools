@@ -253,21 +253,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 	// Import from new type files
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/diff-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/network-diff"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/actions-diff"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/performance-diff"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/dev-console/internal/session/dom-diff"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/fragile-selectors"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/playback"
+	"github.com/dev-console/dev-console/internal/session/types"
+	"github.com/dev-console/dev-console/internal/session/diff-types"
+	"github.com/dev-console/dev-console/internal/session/network-diff"
+	"github.com/dev-console/dev-console/internal/session/actions-diff"
+	"github.com/dev-console/dev-console/internal/session/performance-diff"
+	"github.com/dev-console/dev-console/dev-console/internal/session/dom-diff"
+	"github.com/dev-console/dev-console/internal/session/fragile-selectors"
+	"github.com/dev-console/dev-console/internal/session/playback"
 )
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/types"
+	"github.com/dev-console/dev-console/internal/session/types"
 )
 )
 ```

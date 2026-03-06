@@ -1,4 +1,5 @@
-// Purpose: Tests for session performance diff computation.
+// Purpose: Validate performance_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // performance_diff_test.go — Tests for performance-diff.go.
@@ -8,7 +9,7 @@ package session
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // ============================================
@@ -235,8 +236,8 @@ func TestDiffPerformance_AIsNil(t *testing.T) {
 
 	snapA := &NamedSnapshot{Performance: nil}
 	snapB := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 1000},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 1000},
 			Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 50000},
 		},
 	}
@@ -253,8 +254,8 @@ func TestDiffPerformance_BIsNil(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	snapA := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 1000},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 1000},
 			Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 50000},
 		},
 	}
@@ -272,14 +273,14 @@ func TestDiffPerformance_AllMetrics(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	snapA := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 1000},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 1000},
 			Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 50000},
 		},
 	}
 	snapB := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 2000},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 2000},
 			Network: performance.NetworkSummary{RequestCount: 20, TransferSize: 100000},
 		},
 	}
@@ -338,14 +339,14 @@ func TestDiffPerformance_ZeroMetrics(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	snapA := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 0},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 0},
 			Network: performance.NetworkSummary{RequestCount: 0, TransferSize: 0},
 		},
 	}
 	snapB := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 0},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 0},
 			Network: performance.NetworkSummary{RequestCount: 0, TransferSize: 0},
 		},
 	}
@@ -370,14 +371,14 @@ func TestDiffPerformance_Improvement(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	snapA := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 3000},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 3000},
 			Network: performance.NetworkSummary{RequestCount: 50, TransferSize: 500000},
 		},
 	}
 	snapB := &NamedSnapshot{
-		Performance: &performance.Snapshot{
-			Timing:  performance.Timing{Load: 800},
+		Performance: &performance.PerformanceSnapshot{
+			Timing:  performance.PerformanceTiming{Load: 800},
 			Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 50000},
 		},
 	}

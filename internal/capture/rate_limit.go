@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // RecordEvents delegates to CircuitBreaker.

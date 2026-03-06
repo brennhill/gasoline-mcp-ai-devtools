@@ -1,4 +1,5 @@
-// Purpose: Tests for generate HAR export output.
+// Purpose: Validate tools_generate_har_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_har_test.go — MCP integration tests for HAR export.
@@ -7,18 +8,17 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/export"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 func setupHARTestHandler(t *testing.T) *ToolHandler {
 	t.Helper()
-	srv, err := NewServer(t.TempDir()+"/test-har-export.jsonl", 10)
+	srv, err := NewServer("/tmp/test-har-export.jsonl", 10)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -71,14 +71,8 @@ func TestToolExportHAR_SaveToFile(t *testing.T) {
 		{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200},
 	})
 
-	tmpDir := filepath.Join(".tmp-har-export", strings.ReplaceAll(t.Name(), "/", "_"))
-	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.RemoveAll(tmpDir)
-	})
-	tmpFile := filepath.Join(tmpDir, "test-tool-export.har")
+	tmpFile := os.TempDir() + "/test-tool-export.har"
+	defer os.Remove(tmpFile)
 
 	args, _ := json.Marshal(map[string]any{"save_to": tmpFile})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}

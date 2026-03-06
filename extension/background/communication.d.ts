@@ -1,16 +1,18 @@
 /**
- * Purpose: Facade that re-exports communication primitives (circuit breaker, batchers, server HTTP) and provides log formatting and screenshot capture.
- * Why: Single import point for communication functions, avoiding scattered imports across consumers.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview Communication - Facade that re-exports communication functions
  * from modular subcomponents: circuit-breaker.ts, batchers.ts, and server.ts
  */
-export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker.js';
-export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, type Batcher, type BatcherWithCircuitBreaker, type BatcherConfig, type LogBatcherOptions } from './batchers.js';
-export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, sendStatusPing, type ServerHealthResponse } from './server.js';
-import type { LogEntry } from '../types/index.js';
+export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker';
+export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, type Batcher, type BatcherWithCircuitBreaker, type BatcherConfig, type LogBatcherOptions } from './batchers';
+export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries, type ServerHealthResponse } from './server';
+import type { LogEntry } from '../types';
 /**
  * Format a log entry with timestamp and truncation
  */

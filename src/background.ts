@@ -21,8 +21,8 @@
  * - background/polling.ts: Polling loops (internal)
  */
 
-import { initializeExtension } from './background/init.js'
-import { EXTENSION_SESSION_ID } from './background/state.js'
+import { initializeExtension } from './background/init'
+import { EXTENSION_SESSION_ID } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: CONSTANTS (Test & Init)
@@ -37,10 +37,10 @@ export {
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE
-} from './background/state-manager.js'
+} from './background/state-manager'
 
 // Rate limiting constants
-export { RATE_LIMIT_CONFIG } from './background/communication.js'
+export { RATE_LIMIT_CONFIG } from './background/communication'
 
 // =============================================================================
 // === PUBLIC API: CORE STATE
@@ -48,21 +48,21 @@ export { RATE_LIMIT_CONFIG } from './background/communication.js'
 
 export {
   EXTENSION_SESSION_ID,
-  getServerUrl,
-  isDebugMode,
-  getConnectionStatus,
-  getCurrentLogLevel,
-  isScreenshotOnError,
-  getExtensionLogQueue
-} from './background/state.js'
+  serverUrl,
+  debugMode,
+  connectionStatus,
+  currentLogLevel,
+  screenshotOnError,
+  extensionLogQueue
+} from './background/state'
 
-export { DebugCategory } from './background/index.js'
+export { DebugCategory } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING
 // =============================================================================
 
-export { debugLog, getDebugLog, clearDebugLog, exportDebugLog } from './background/index.js'
+export { debugLog, getDebugLog, clearDebugLog, exportDebugLog } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: BATCHERS & CIRCUIT BREAKER
@@ -75,7 +75,7 @@ export {
   enhancedActionBatcher,
   networkBodyBatcher,
   perfBatcher
-} from './background/index.js'
+} from './background/index'
 
 // =============================================================================
 // === PUBLIC API: CORE HANDLERS
@@ -86,15 +86,15 @@ export {
   handleClearLogs,
   isConnectionCheckRunning,
   checkConnectionAndUpdate
-} from './background/index.js'
+} from './background/index'
 
-export { applyCaptureOverrides } from './background/state.js'
+export { applyCaptureOverrides } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
 // =============================================================================
 
-export { sendStatusPingWrapper } from './background/index.js'
+export { sendStatusPingWrapper } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: VERSION CHECKING
@@ -108,14 +108,14 @@ export {
   updateVersionBadge,
   getUpdateInfo,
   resetVersionCheck
-} from './background/version-check.js'
+} from './background/version-check'
 
 // =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 
-export { handlePendingQuery, handlePilotCommand } from './background/index.js'
-export { isAiWebPilotEnabled, markInitComplete } from './background/state.js'
+export { handlePendingQuery, handlePilotCommand } from './background/index'
+export { isAiWebPilotEnabled, markInitComplete } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
@@ -135,7 +135,7 @@ export {
   resetMemoryPressureState,
   getProcessingQueriesState,
   cleanupStaleProcessingQueries
-} from './background/state-manager.js'
+} from './background/state-manager'
 
 // Context and annotations
 export {
@@ -143,10 +143,10 @@ export {
   checkContextAnnotations,
   getContextWarning,
   resetContextWarning
-} from './background/state-manager.js'
+} from './background/state-manager'
 
 // Source map management
-export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager.js'
+export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager'
 
 // Cache limits and source map cache
 export {
@@ -154,7 +154,7 @@ export {
   setSourceMapCacheEntry,
   getSourceMapCacheEntry,
   getSourceMapCacheSize
-} from './background/cache-limits.js'
+} from './background/cache-limits'
 
 // =============================================================================
 // === PUBLIC API: COMMUNICATION (Tests)
@@ -170,7 +170,9 @@ export {
   updateBadge,
   formatLogEntry,
   shouldCaptureLog
-} from './background/communication.js'
+} from './background/communication'
+
+export { postQueryResult, pollPendingQueries } from './background/server'
 
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
@@ -181,8 +183,20 @@ export {
   loadStateSnapshot,
   listStateSnapshots,
   deleteStateSnapshot
-} from './background/message-handlers.js'
+} from './background/message-handlers'
 
+// =============================================================================
+// === INTERNAL USE (Underscore Prefix)
+// =============================================================================
+
+export {
+  _captureOverrides,
+  _connectionCheckRunning,
+  __aiWebPilotEnabledCache,
+  __aiWebPilotCacheInitialized,
+  __pilotInitCallback,
+  _resetPilotCacheForTesting
+} from './background/state'
 
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment

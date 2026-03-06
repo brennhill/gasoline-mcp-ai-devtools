@@ -1,6 +1,7 @@
 /**
- * Purpose: WebSocket connection statistics, adaptive message sampling, schema inference, and message formatting primitives.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 
 // websocket-tracking.ts — WebSocket connection tracking, adaptive sampling, and schema detection.
@@ -12,7 +13,7 @@
  */
 
 import { WS_MAX_BODY_SIZE, WS_PREVIEW_LIMIT } from './constants.js'
-import type { WebSocketCaptureMode } from '../types/index.js'
+import type { WebSocketCaptureMode } from '../types/index'
 
 // =============================================================================
 // TYPE DEFINITIONS

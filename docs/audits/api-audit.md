@@ -237,13 +237,13 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 ---
 
-### MEDIUM-10: Missing `recording_id` parameter in schema for `configure({action: "event_recording_stop"})`
+### MEDIUM-10: Missing `recording_id` parameter in schema for `configure({action: "recording_stop"})`
 
 **Severity**: MEDIUM
 
 **Location**: `/Users/brenn/dev/gasoline/cmd/dev-console/tools_schema.go` (configure schema) vs `/Users/brenn/dev/gasoline/cmd/dev-console/recording_handlers.go` (line 98)
 
-**Description**: The `event_recording_stop` handler expects a `recording_id` parameter, but the schema for the `configure` tool does not explicitly include `recording_id` in its properties. While it could be passed as a generic `session_id`, the mapping is unclear.
+**Description**: The `recording_stop` handler expects a `recording_id` parameter, but the schema for the `configure` tool does not explicitly include `recording_id` in its properties. While it could be passed as a generic `session_id`, the mapping is unclear.
 
 **Recommendation**: Add `recording_id` to the configure tool schema properties.
 

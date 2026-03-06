@@ -355,15 +355,6 @@ var ACTION_DATA_ENRICHERS = {
   },
   scroll: (a, _el, o) => {
     a.scroll_y = o.scroll_y || 0;
-  },
-  transient: (a, _el, o) => {
-    a.classification = o.classification || "unknown";
-    if (o.duration_ms !== void 0)
-      a.duration_ms = o.duration_ms;
-    if (o.role)
-      a.role = o.role;
-    if (o.value)
-      a.value = o.value;
   }
 };
 function recordEnhancedAction(type, element, opts = {}) {
@@ -413,8 +404,7 @@ var ACTION_STEP_GENERATORS = {
   keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || "")}');`,
   navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || "", baseUrl))}');`,
   select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || "")}');` : null,
-  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`,
-  transient: (action) => `  // [${action.classification || "transient"}] "${(action.value || "").slice(0, 80)}"`
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
 };
 function actionToPlaywrightStep(action, baseUrl) {
   const locator = getPlaywrightLocator(action.selectors || { cssPath: "" });
@@ -422,7 +412,7 @@ function actionToPlaywrightStep(action, baseUrl) {
   return generator ? generator(action, locator, baseUrl) : null;
 }
 function generatePlaywrightScript(actions, opts = {}) {
-  const { errorMessage: errorMessage2, baseUrl, lastNActions } = opts;
+  const { errorMessage, baseUrl, lastNActions } = opts;
   let filteredActions = actions;
   if (lastNActions && lastNActions > 0 && actions.length > lastNActions) {
     filteredActions = actions.slice(-lastNActions);
@@ -442,7 +432,7 @@ function generatePlaywrightScript(actions, opts = {}) {
       startUrl = baseUrl;
     }
   }
-  const testName = errorMessage2 ? `reproduction: ${errorMessage2.slice(0, 80)}` : "reproduction: captured user actions";
+  const testName = errorMessage ? `reproduction: ${errorMessage.slice(0, 80)}` : "reproduction: captured user actions";
   const steps = [];
   let prevTimestamp = null;
   for (const action of filteredActions) {
@@ -468,9 +458,9 @@ function generatePlaywrightScript(actions, opts = {}) {
   script += steps.join("\n");
   if (steps.length > 0)
     script += "\n";
-  if (errorMessage2) {
+  if (errorMessage) {
     script += `
-  // Error occurred here: ${errorMessage2}
+  // Error occurred here: ${errorMessage}
 `;
   }
   script += `});
@@ -898,10 +888,8 @@ var originalXHRSend = null;
 function wrapXHRWithBodies() {
   if (typeof XMLHttpRequest === "undefined")
     return;
-  const earlyOpen = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : void 0;
-  const earlySend = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : void 0;
-  originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open;
-  originalXHRSend = earlySend || XMLHttpRequest.prototype.send;
+  originalXHROpen = XMLHttpRequest.prototype.open;
+  originalXHRSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     ;
     this.__gasolineMethod = method;
@@ -954,48 +942,6 @@ function unwrapXHR() {
     XMLHttpRequest.prototype.send = originalXHRSend;
   originalXHROpen = null;
   originalXHRSend = null;
-}
-function adoptEarlyBodies() {
-  if (typeof window === "undefined")
-    return;
-  const earlyBodies = window.__GASOLINE_EARLY_BODIES__;
-  if (!earlyBodies || earlyBodies.length === 0) {
-    delete window.__GASOLINE_ORIGINAL_FETCH__;
-    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-    delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-    delete window.__GASOLINE_EARLY_BODIES__;
-    return;
-  }
-  let adopted = 0;
-  for (const entry of earlyBodies) {
-    if (!shouldCaptureUrl(entry.url))
-      continue;
-    if (!networkBodyCaptureEnabled)
-      continue;
-    adopted++;
-    const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
-    const message = {
-      type: "GASOLINE_NETWORK_BODY",
-      payload: {
-        url: entry.url,
-        method: entry.method,
-        status: entry.status,
-        content_type: entry.content_type,
-        response_body: truncResp || "",
-        ...respTruncated ? { response_truncated: true } : {},
-        duration: 0
-        // Duration unknown for early-captured bodies
-      }
-    };
-    window.postMessage(message, window.location.origin);
-  }
-  if (adopted > 0) {
-    console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`);
-  }
-  delete window.__GASOLINE_ORIGINAL_FETCH__;
-  delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-  delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-  delete window.__GASOLINE_EARLY_BODIES__;
 }
 function wrapFetchWithBodies(fetchFn) {
   return async function(input, init) {
@@ -1710,7 +1656,7 @@ function buildRelevantSlice(state, errorWords) {
   }
   return relevantSlice;
 }
-function captureStateSnapshot(errorMessage2) {
+function captureStateSnapshot(errorMessage) {
   if (typeof window === "undefined")
     return null;
   try {
@@ -1724,7 +1670,7 @@ function captureStateSnapshot(errorMessage2) {
     for (const [key, value] of Object.entries(state)) {
       keys[key] = { type: classifyValueType(value) };
     }
-    const errorWords = (errorMessage2 || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+    const errorWords = (errorMessage || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
     const relevantSlice = buildRelevantSlice(state, errorWords);
     return { source: "redux", keys, relevantSlice };
   } catch {
@@ -2447,32 +2393,19 @@ async function getPageInfo() {
 }
 function loadAxeCore() {
   return new Promise((resolve, reject) => {
-    const hasAxe = () => typeof window !== "undefined" && !!window.axe;
-    if (hasAxe()) {
+    if (window.axe) {
       resolve();
       return;
     }
-    let settled = false;
-    const finish = (fn) => {
-      if (settled)
-        return;
-      settled = true;
-      fn();
-    };
     const checkInterval = setInterval(() => {
-      if (hasAxe()) {
-        finish(() => {
-          clearInterval(checkInterval);
-          clearTimeout(loadTimeout);
-          resolve();
-        });
+      if (window.axe) {
+        clearInterval(checkInterval);
+        resolve();
       }
     }, scaleTimeout(100));
-    const loadTimeout = setTimeout(() => {
-      finish(() => {
-        clearInterval(checkInterval);
-        reject(new Error("Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit."));
-      });
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      reject(new Error("Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit."));
     }, scaleTimeout(5e3));
   });
 }
@@ -2491,28 +2424,17 @@ async function runAxeAudit(params) {
   const results = await window.axe.run(context, config);
   return formatAxeResults(results);
 }
-function emptyPartialResult(errorMessage2) {
-  return {
-    violations: [],
-    passes: [],
-    incomplete: [],
-    inapplicable: [],
-    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-    partial: true,
-    error: errorMessage2
-  };
-}
 async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-  try {
-    return await Promise.race([
-      runAxeAudit(params),
-      new Promise((resolve) => {
-        setTimeout(() => resolve(emptyPartialResult("Accessibility audit timeout")), timeoutMs);
-      })
-    ]);
-  } catch (err) {
-    return emptyPartialResult(err instanceof Error ? err.message : String(err));
-  }
+  return Promise.race([
+    runAxeAudit(params),
+    new Promise((resolve) => {
+      setTimeout(() => resolve({
+        violations: [],
+        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+        error: "Accessibility audit timeout"
+      }), timeoutMs);
+    })
+  ]);
 }
 function formatAxeResults(axeResult) {
   const formatViolation = (v) => {
@@ -2773,171 +2695,13 @@ function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: "0.8.0"
+    version: "0.7.10"
   };
 }
 function uninstallGasolineAPI() {
   if (typeof window !== "undefined" && window.__gasoline) {
     delete window.__gasoline;
   }
-}
-
-// extension/lib/transient-capture.js
-var SKIP_TAGS = /* @__PURE__ */ new Set(["SCRIPT", "STYLE", "LINK", "META", "NOSCRIPT", "BR", "HR"]);
-var CLASS_FINGERPRINTS = [
-  [/toast/i, "toast"],
-  [/snackbar/i, "snackbar"],
-  [/notification/i, "notification"],
-  [/tooltip/i, "tooltip"],
-  [/alert/i, "alert"],
-  [/banner/i, "banner"],
-  [/flash/i, "flash"]
-];
-var DEDUP_WINDOW_MS = 2e3;
-var DEDUP_MAP_CAP = 100;
-var MAX_TEXT_LENGTH = 500;
-var DEDUP_KEY_TEXT_LENGTH = 100;
-var observer = null;
-var dedupMap = /* @__PURE__ */ new Map();
-function classifyTransient(el) {
-  const tag = el.tagName;
-  if (!tag || SKIP_TAGS.has(tag))
-    return null;
-  const text = extractText(el);
-  if (!text)
-    return null;
-  const role = el.getAttribute("role");
-  const ariaLive = el.getAttribute("aria-live");
-  if (role === "alert" || ariaLive === "assertive") {
-    return { classification: "alert", role: role || "alert", text };
-  }
-  if (role === "status" || ariaLive === "polite") {
-    return { classification: "toast", role: role || "status", text };
-  }
-  const className = el.className;
-  if (className && typeof className === "string") {
-    for (const [pattern, classification] of CLASS_FINGERPRINTS) {
-      if (pattern.test(className)) {
-        return { classification, role: role || "", text };
-      }
-    }
-  }
-  if (typeof window !== "undefined" && window.getComputedStyle) {
-    try {
-      const style = window.getComputedStyle(el);
-      const position = style.position;
-      if (position === "fixed" || position === "absolute") {
-        const zIndex = parseInt(style.zIndex, 10);
-        const height = el.getBoundingClientRect().height;
-        if (zIndex > 1e3 && height > 0 && height < 200) {
-          return { classification: "flash", role: role || "", text };
-        }
-      }
-    } catch {
-    }
-  }
-  return null;
-}
-function extractText(el) {
-  const raw = (el.textContent || "").trim();
-  return raw.slice(0, MAX_TEXT_LENGTH);
-}
-function dedupKey(classification, text) {
-  return `${classification}:${text.slice(0, DEDUP_KEY_TEXT_LENGTH)}`;
-}
-function isDuplicate(key, now) {
-  const entry = dedupMap.get(key);
-  return entry !== void 0 && now - entry.timestamp < DEDUP_WINDOW_MS;
-}
-function recordDedup(key, now) {
-  dedupMap.set(key, { timestamp: now });
-  if (dedupMap.size > DEDUP_MAP_CAP) {
-    for (const [k, v] of dedupMap) {
-      if (now - v.timestamp > DEDUP_WINDOW_MS) {
-        dedupMap.delete(k);
-      }
-    }
-  }
-}
-function classifyCandidates(el) {
-  const info = classifyTransient(el);
-  if (info)
-    return info;
-  for (let i = 0; i < el.children.length; i++) {
-    const child = el.children[i];
-    if (child) {
-      const childInfo = classifyTransient(child);
-      if (childInfo)
-        return childInfo;
-    }
-  }
-  return null;
-}
-function recordPendingTransients(pending) {
-  const now = Date.now();
-  for (const { element, info } of pending) {
-    const key = dedupKey(info.classification, info.text);
-    if (isDuplicate(key, now))
-      continue;
-    recordDedup(key, now);
-    recordEnhancedAction("transient", null, {
-      classification: info.classification,
-      duration_ms: 0,
-      // MVP: capture moment only; removal tracking not yet implemented
-      role: info.role,
-      value: info.text
-    });
-  }
-}
-function mutationCallback(mutations) {
-  const pending = [];
-  for (const mutation of mutations) {
-    if (mutation.type !== "childList")
-      continue;
-    for (let i = 0; i < mutation.addedNodes.length; i++) {
-      const node = mutation.addedNodes[i];
-      if (node.nodeType !== Node.ELEMENT_NODE)
-        continue;
-      const el = node;
-      const info = classifyCandidates(el);
-      if (info) {
-        pending.push({ element: el, info });
-      }
-    }
-  }
-  if (pending.length === 0)
-    return;
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(() => recordPendingTransients(pending));
-  } else {
-    setTimeout(() => recordPendingTransients(pending), 0);
-  }
-}
-function installTransientCapture() {
-  if (observer)
-    return;
-  if (typeof document === "undefined" || !document.body)
-    return;
-  if (typeof MutationObserver === "undefined")
-    return;
-  observer = new MutationObserver(mutationCallback);
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-function uninstallTransientCapture() {
-  if (observer) {
-    observer.disconnect();
-    observer = null;
-  }
-  dedupMap.clear();
-}
-
-// extension/lib/error-utils.js
-function errorMessage(err, fallback = "Unknown error") {
-  if (err instanceof Error && err.message)
-    return err.message;
-  if (typeof err === "string" && err)
-    return err;
-  return fallback;
 }
 
 // extension/inject/observers.js
@@ -2965,8 +2729,17 @@ function wrapFetch(originalFetchFn) {
         } catch {
           responseBody = "[Could not read response]";
         }
+        const safeHeaders = {};
         const rawHeaders = init?.headers || (typeof input === "object" && "headers" in input ? input.headers : null);
-        const safeHeaders = sanitizeHeaders(rawHeaders);
+        if (rawHeaders) {
+          const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
+          Object.keys(headers).forEach((key) => {
+            const value = headers[key];
+            if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+              safeHeaders[key] = value;
+            }
+          });
+        }
         const logPayload = {
           level: "error",
           type: "network",
@@ -2983,14 +2756,23 @@ function wrapFetch(originalFetchFn) {
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
+      const safeHeaders = {};
       const rawHeaders = init?.headers || (typeof input === "object" && "headers" in input ? input.headers : null);
-      const safeHeaders = sanitizeHeaders(rawHeaders);
+      if (rawHeaders) {
+        const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
+        Object.keys(headers).forEach((key) => {
+          const value = headers[key];
+          if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            safeHeaders[key] = value;
+          }
+        });
+      }
       const logPayload = {
         level: "error",
         type: "network",
         method: method.toUpperCase(),
         url,
-        error: errorMessage(error),
+        error: error.message,
         duration,
         ...Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}
       };
@@ -3000,8 +2782,7 @@ function wrapFetch(originalFetchFn) {
   };
 }
 function installFetchCapture() {
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__;
-  originalFetch = earlyOriginal || window.fetch;
+  originalFetch = window.fetch;
   const wrappedWithBodies = wrapFetchWithBodies(originalFetch);
   window.fetch = wrapFetch(wrappedWithBodies);
 }
@@ -3026,7 +2807,6 @@ function install() {
   installNavigationCapture();
   installWebSocketCapture();
   installPerformanceCapture();
-  installTransientCapture();
 }
 function uninstall() {
   uninstallConsoleCapture();
@@ -3037,7 +2817,6 @@ function uninstall() {
   uninstallNavigationCapture();
   uninstallWebSocketCapture();
   uninstallPerformanceCapture();
-  uninstallTransientCapture();
 }
 function shouldDeferIntercepts() {
   if (typeof document === "undefined")
@@ -3089,7 +2868,6 @@ function installPhase2() {
   phase2Timestamp = performance.now();
   phase2Installed = true;
   install();
-  adoptEarlyBodies();
   installPerfObservers();
 }
 function getDeferralState() {
@@ -3258,13 +3036,7 @@ async function checkLink(url, timeout_ms) {
     };
   }
 }
-var FAILED_RESPONSE = {
-  status: 0,
-  ok: false,
-  redirected: false,
-  url: "",
-  headers: new Headers()
-};
+var FAILED_RESPONSE = { status: 0, ok: false, redirected: false, url: "", headers: new Headers() };
 async function tryFetch(url, method, signal) {
   try {
     const response = await fetch(url, { method, signal, redirect: "follow" });
@@ -3551,108 +3323,6 @@ function discoverForms(params) {
   return results;
 }
 
-// extension/inject/data-table.js
-var MAX_TABLES = 20;
-var DEFAULT_MAX_ROWS = 100;
-var DEFAULT_MAX_COLS = 30;
-function normalizeText(input) {
-  return (input || "").replace(/\s+/g, " ").trim();
-}
-function buildTableSelector(table, index) {
-  if (table.id)
-    return `table#${table.id}`;
-  const name = table.getAttribute("name");
-  if (name)
-    return `table[name="${name}"]`;
-  const cls = normalizeText(table.className || "");
-  if (cls)
-    return `table.${cls.split(/\s+/)[0]}`;
-  return `table:nth-of-type(${index + 1})`;
-}
-function collectHeaders(table, maxCols) {
-  const headerCells = table.querySelectorAll("thead th");
-  const headers = [];
-  const seen = /* @__PURE__ */ new Set();
-  if (headerCells.length > 0) {
-    for (let i = 0; i < headerCells.length && headers.length < maxCols; i++) {
-      const label = normalizeText(headerCells[i]?.textContent || "") || `col_${headers.length + 1}`;
-      if (!seen.has(label)) {
-        seen.add(label);
-        headers.push(label);
-      }
-    }
-    return headers;
-  }
-  const firstRow = table.querySelector("tr");
-  if (!firstRow)
-    return headers;
-  const firstRowCells = firstRow.querySelectorAll("th,td");
-  for (let i = 0; i < firstRowCells.length && headers.length < maxCols; i++) {
-    const cell = firstRowCells[i];
-    const isHeader = cell?.tagName === "TH";
-    const label = isHeader ? normalizeText(cell?.textContent || "") || `col_${headers.length + 1}` : `col_${headers.length + 1}`;
-    if (!seen.has(label)) {
-      seen.add(label);
-      headers.push(label);
-    }
-  }
-  return headers;
-}
-function collectRows(table, headers, maxRows, maxCols) {
-  const rows = table.querySelectorAll("tbody tr, tr");
-  const out = [];
-  let skippedHeaderLikeRow = false;
-  for (let i = 0; i < rows.length && out.length < maxRows; i++) {
-    const row = rows[i];
-    if (!row)
-      continue;
-    const cells = row.querySelectorAll("th,td");
-    if (cells.length === 0)
-      continue;
-    const allHeaders = Array.from(cells).every((cell) => cell?.tagName === "TH");
-    if (!skippedHeaderLikeRow && allHeaders) {
-      skippedHeaderLikeRow = true;
-      continue;
-    }
-    const record = {};
-    let hasValue = false;
-    for (let col = 0; col < cells.length && col < maxCols; col++) {
-      const header = headers[col] || `col_${col + 1}`;
-      const value = normalizeText(cells[col]?.textContent || "");
-      record[header] = value;
-      if (value)
-        hasValue = true;
-    }
-    if (hasValue)
-      out.push(record);
-  }
-  return out;
-}
-function extractDataTables(params = {}) {
-  const selector = params.selector || "table";
-  const maxRows = Math.max(1, Math.min(params.max_rows || DEFAULT_MAX_ROWS, DEFAULT_MAX_ROWS));
-  const maxCols = Math.max(1, Math.min(params.max_cols || DEFAULT_MAX_COLS, DEFAULT_MAX_COLS));
-  const tables = document.querySelectorAll(selector);
-  const result = [];
-  for (let i = 0; i < tables.length && result.length < MAX_TABLES; i++) {
-    const el = tables[i];
-    if (!(el instanceof HTMLTableElement))
-      continue;
-    const headers = collectHeaders(el, maxCols);
-    const rows = collectRows(el, headers, maxRows, maxCols);
-    const caption = normalizeText(el.caption?.textContent || "");
-    result.push({
-      selector: buildTableSelector(el, i),
-      ...caption ? { caption } : {},
-      headers,
-      rows,
-      row_count: rows.length,
-      column_count: headers.length
-    });
-  }
-  return { tables: result, count: result.length };
-}
-
 // extension/lib/timeout-utils.js
 function createDeferredPromise() {
   let resolve;
@@ -3681,42 +3351,8 @@ function serializeObject2(obj, depth, seen) {
     const node = obj;
     return `[${node.nodeName}${node.id ? "#" + node.id : ""}]`;
   }
-  if (typeof obj.toJSON === "function") {
-    try {
-      return safeSerializeForExecute(obj.toJSON(), depth + 1, seen);
-    } catch {
-    }
-  }
   const result = {};
   const keys = Object.keys(obj).slice(0, 50);
-  if (keys.length === 0) {
-    try {
-      const proto = Object.getPrototypeOf(obj);
-      if (proto && proto !== Object.prototype) {
-        const hostResult = {};
-        const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
-        for (const key of propNames) {
-          if (key === "constructor")
-            continue;
-          try {
-            const hostValue = obj[key];
-            const hostType = typeof hostValue;
-            if (hostValue === void 0 || hostType === "function")
-              continue;
-            if (hostType === "string" || hostType === "number" || hostType === "boolean" || hostValue === null) {
-              hostResult[key] = hostValue;
-            }
-          } catch {
-          }
-          if (Object.keys(hostResult).length >= 50)
-            break;
-        }
-        if (Object.keys(hostResult).length > 0)
-          return hostResult;
-      }
-    } catch {
-    }
-  }
   for (const key of keys) {
     try {
       result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
@@ -3895,7 +3531,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
       result = { error: `Unknown action: ${action}` };
     }
   } catch (err) {
-    result = { error: errorMessage(err) };
+    result = { error: err.message };
   }
   window.postMessage({
     type: "GASOLINE_STATE_RESPONSE",
@@ -3923,7 +3559,7 @@ async function handleLinkHealthQuery(data) {
   } catch (err) {
     return {
       error: "link_health_error",
-      message: errorMessage(err, "Failed to check link health")
+      message: err.message || "Failed to check link health"
     };
   }
 }
@@ -3955,8 +3591,6 @@ function installMessageListener(captureStateFn, restoreStateFn) {
     GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
     GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
     GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
-    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data),
-    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data),
     GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
   };
   window.addEventListener("message", (event) => {
@@ -3994,7 +3628,7 @@ function handleComputedStylesMessage(data) {
     postResponse({
       type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
       requestId: data.requestId,
-      result: { error: "computed_styles_error", message: errorMessage(err, "Failed to query computed styles") }
+      result: { error: "computed_styles_error", message: err.message || "Failed to query computed styles" }
     });
   }
 }
@@ -4014,48 +3648,7 @@ function handleFormDiscoveryMessage(data) {
     postResponse({
       type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
       requestId: data.requestId,
-      result: { error: "form_discovery_error", message: errorMessage(err, "Failed to discover forms") }
-    });
-  }
-}
-function handleFormStateMessage(data) {
-  try {
-    const params = data.params || {};
-    const forms = discoverForms({
-      selector: params.selector,
-      mode: "discover"
-    });
-    postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
-      requestId: data.requestId,
-      result: { forms, count: forms.length }
-    });
-  } catch (err) {
-    postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
-      requestId: data.requestId,
-      result: { error: "form_state_error", message: errorMessage(err, "Failed to extract form state") }
-    });
-  }
-}
-function handleDataTableMessage(data) {
-  try {
-    const params = data.params || {};
-    const result = extractDataTables({
-      selector: params.selector,
-      max_rows: params.max_rows,
-      max_cols: params.max_cols
-    });
-    postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
-      requestId: data.requestId,
-      result
-    });
-  } catch (err) {
-    postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
-      requestId: data.requestId,
-      result: { error: "data_table_error", message: errorMessage(err, "Failed to extract table data") }
+      result: { error: "form_discovery_error", message: err.message || "Failed to discover forms" }
     });
   }
 }
@@ -4121,7 +3714,7 @@ function handleA11yQuery(data) {
     postResponse({
       type: "GASOLINE_A11Y_QUERY_RESPONSE",
       requestId,
-      result: { error: errorMessage(err, "Failed to run accessibility audit") }
+      result: { error: err.message || "Failed to run accessibility audit" }
     });
   }
 }
@@ -4157,7 +3750,7 @@ function handleDomQuery(data) {
     postResponse({
       type: "GASOLINE_DOM_QUERY_RESPONSE",
       requestId,
-      result: { error: errorMessage(err, "Failed to run DOM query") }
+      result: { error: err.message || "Failed to run DOM query" }
     });
   }
 }
@@ -4419,7 +4012,6 @@ export {
   MAX_PERFORMANCE_ENTRIES,
   MAX_WATERFALL_ENTRIES,
   SENSITIVE_HEADERS,
-  adoptEarlyBodies,
   aggregateResourceTiming,
   capturePerformanceSnapshot,
   captureState,

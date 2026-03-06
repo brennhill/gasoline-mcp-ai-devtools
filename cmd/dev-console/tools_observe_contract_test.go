@@ -1,5 +1,6 @@
-// Purpose: Tests for observe tool response contract compliance.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_observe_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_observe_contract_test.go — Response shape contracts for observe tool.
 // Each test verifies that an observe mode returns the correct JSON fields with
@@ -353,6 +354,7 @@ func TestObserveContract_FailedCommands(t *testing.T) {
 	}
 
 	assertResponseShape(t, "failed_commands", result, []fieldSpec{
+		required("status", "string"),
 		required("commands", "array"),
 		required("count", "number"),
 	})

@@ -1,4 +1,5 @@
-// Purpose: Tests for capture buffer clearing and reset behavior.
+// Purpose: Validate buffer_clear_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -15,7 +16,7 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Add network data directly to buffers
 	capture.mu.Lock()
-	capture.networkWaterfall.entries = []NetworkWaterfallEntry{
+	capture.nw.entries = []NetworkWaterfallEntry{
 		{URL: "https://example.com/1"},
 		{URL: "https://example.com/2"},
 	}
@@ -27,8 +28,8 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify data exists
 	capture.mu.RLock()
-	initialWaterfall := len(capture.networkWaterfall.entries)
-	initialBodies := len(capture.buffers.networkBodies)
+	initialWaterfall := len(capture.nw.entries)
+	initialBodies := len(capture.networkBodies)
 	capture.mu.RUnlock()
 
 	if initialWaterfall != 2 {
@@ -54,14 +55,14 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify buffers empty
 	capture.mu.RLock()
-	if len(capture.networkWaterfall.entries) != 0 {
-		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.networkWaterfall.entries))
+	if len(capture.nw.entries) != 0 {
+		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.nw.entries))
 	}
-	if len(capture.buffers.networkBodies) != 0 {
-		t.Errorf("Expected networkBodies to be empty, got %d entries", len(capture.buffers.networkBodies))
+	if len(capture.networkBodies) != 0 {
+		t.Errorf("Expected networkBodies to be empty, got %d entries", len(capture.networkBodies))
 	}
-	if capture.buffers.networkTotalAdded != 0 {
-		t.Errorf("Expected networkTotalAdded = 0, got %d", capture.buffers.networkTotalAdded)
+	if capture.networkTotalAdded != 0 {
+		t.Errorf("Expected networkTotalAdded = 0, got %d", capture.networkTotalAdded)
 	}
 	capture.mu.RUnlock()
 }
@@ -79,7 +80,7 @@ func TestClearWebSocketBuffers(t *testing.T) {
 
 	// Add WS connections
 	capture.mu.Lock()
-	capture.wsConnections.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
+	capture.ws.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
 	capture.mu.Unlock()
 
 	// Clear
@@ -95,11 +96,11 @@ func TestClearWebSocketBuffers(t *testing.T) {
 
 	// Verify buffers empty
 	capture.mu.RLock()
-	if len(capture.buffers.wsEvents) != 0 {
-		t.Errorf("Expected wsEvents to be empty, got %d entries", len(capture.buffers.wsEvents))
+	if len(capture.wsEvents) != 0 {
+		t.Errorf("Expected wsEvents to be empty, got %d entries", len(capture.wsEvents))
 	}
-	if len(capture.wsConnections.connections) != 0 {
-		t.Errorf("Expected connections to be empty, got %d entries", len(capture.wsConnections.connections))
+	if len(capture.ws.connections) != 0 {
+		t.Errorf("Expected connections to be empty, got %d entries", len(capture.ws.connections))
 	}
 	capture.mu.RUnlock()
 }
@@ -125,8 +126,8 @@ func TestClearActionBuffer(t *testing.T) {
 
 	// Verify buffer empty
 	capture.mu.RLock()
-	if len(capture.buffers.enhancedActions) != 0 {
-		t.Errorf("Expected enhancedActions to be empty, got %d entries", len(capture.buffers.enhancedActions))
+	if len(capture.enhancedActions) != 0 {
+		t.Errorf("Expected enhancedActions to be empty, got %d entries", len(capture.enhancedActions))
 	}
 	capture.mu.RUnlock()
 }
@@ -138,7 +139,7 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Add extension logs
 	capture.mu.Lock()
-	capture.extensionLogs.logs = append(capture.extensionLogs.logs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
+	capture.elb.logs = append(capture.elb.logs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
 	capture.mu.Unlock()
 
 	// Clear
@@ -151,8 +152,8 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Verify buffer empty
 	capture.mu.RLock()
-	if len(capture.extensionLogs.logs) != 0 {
-		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.extensionLogs.logs))
+	if len(capture.elb.logs) != 0 {
+		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.elb.logs))
 	}
 	capture.mu.RUnlock()
 }
@@ -164,7 +165,7 @@ func TestClearAllCapture(t *testing.T) {
 
 	// Add data to all capture buffers
 	capture.mu.Lock()
-	capture.networkWaterfall.entries = []NetworkWaterfallEntry{{URL: "test"}}
+	capture.nw.entries = []NetworkWaterfallEntry{{URL: "test"}}
 	capture.mu.Unlock()
 
 	capture.AddWebSocketEvents([]WebSocketEvent{{ID: "conn1", Data: "test"}})
@@ -177,13 +178,13 @@ func TestClearAllCapture(t *testing.T) {
 	capture.mu.RLock()
 	defer capture.mu.RUnlock()
 
-	if len(capture.networkWaterfall.entries) != 0 {
+	if len(capture.nw.entries) != 0 {
 		t.Error("Expected networkWaterfall to be empty")
 	}
-	if len(capture.buffers.wsEvents) != 0 {
+	if len(capture.wsEvents) != 0 {
 		t.Error("Expected wsEvents to be empty")
 	}
-	if len(capture.buffers.enhancedActions) != 0 {
+	if len(capture.enhancedActions) != 0 {
 		t.Error("Expected enhancedActions to be empty")
 	}
 }

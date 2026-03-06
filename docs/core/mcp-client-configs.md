@@ -34,7 +34,7 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "npx",
       "args": ["-y", "gasoline-mcp@VERSION"]
     }
@@ -49,7 +49,7 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "npx",
       "args": ["-y", "gasoline-mcp@VERSION"]
     }
@@ -65,7 +65,7 @@ All clients should use the same configuration pattern for consistency:
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "type": "local",
       "command": [
         "npx",
@@ -82,7 +82,7 @@ All clients should use the same configuration pattern for consistency:
 Update all configs to a new version:
 
 ```bash
-VERSION="0.7.12"
+VERSION="7.8.0"
 
 # Claude Desktop
 sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \

@@ -1,9 +1,6 @@
 ---
 title: "API Contract Validation"
 description: "Use Gasoline to infer API schemas from live traffic, detect breaking changes, validate response consistency, and catch contract violations during development."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['guides', 'api', 'validation']
 ---
 
 Gasoline watches your API traffic and infers schemas automatically. No OpenAPI spec required — the `api_validation` mode learns your API's structure from real requests and flags inconsistencies, breaking changes, and unexpected responses.

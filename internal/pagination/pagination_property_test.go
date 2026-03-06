@@ -1,4 +1,5 @@
-// Purpose: Property-based tests for pagination and cursor invariants.
+// Purpose: Validate pagination_property_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_property_test.go — Property-based tests for pagination cursors.

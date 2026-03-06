@@ -1,4 +1,5 @@
-// Purpose: Generates Playwright test scripts from captured errors, interactions, or regression baselines.
+// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
+// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
 // Docs: docs/features/feature/test-generation/index.md
 
 package testgen
@@ -8,8 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // DataProvider abstracts access to captured browser data for test generation.
@@ -70,10 +70,7 @@ func GenerateTestFromError(dp DataProvider, req TestFromContextRequest) (*Genera
 		return nil, err
 	}
 
-	script := reproduction.GeneratePlaywrightScript(relevantActions, reproduction.Params{
-		ErrorMessage: errorMessage,
-		BaseURL:      req.BaseURL,
-	})
+	script := GeneratePlaywrightScript(relevantActions, errorMessage, req.BaseURL)
 	assertionCount := strings.Count(script, "expect(") + 1
 	filenameBase := errorMessage
 	if req.TestName != "" {
@@ -108,9 +105,7 @@ func GenerateTestFromInteraction(dp DataProvider, req TestFromContextRequest) (*
 		return nil, errors.New(ErrNoActionsCaptured)
 	}
 
-	script := reproduction.GeneratePlaywrightScript(allActions, reproduction.Params{
-		BaseURL: req.BaseURL,
-	})
+	script := GeneratePlaywrightScript(allActions, "", req.BaseURL)
 	assertionCount := strings.Count(script, "expect(")
 
 	if req.IncludeMocks {
@@ -159,9 +154,7 @@ func GenerateTestFromRegression(dp DataProvider, req TestFromContextRequest) (*G
 
 	assertions, assertionCount := BuildRegressionAssertions(errorMessages, networkBodies)
 
-	script := reproduction.GeneratePlaywrightScript(allActions, reproduction.Params{
-		BaseURL: req.BaseURL,
-	})
+	script := GeneratePlaywrightScript(allActions, "", req.BaseURL)
 	script = InsertAssertionsBeforeClose(script, assertions)
 
 	return &GeneratedTest{

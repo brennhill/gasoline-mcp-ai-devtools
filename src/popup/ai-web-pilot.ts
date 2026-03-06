@@ -9,7 +9,7 @@
  * Manages the AI Web Pilot feature toggle
  */
 
-import { StorageKey } from '../lib/constants.js'
+import { StorageKey } from '../lib/constants'
 
 /**
  * Initialize the AI Web Pilot toggle.

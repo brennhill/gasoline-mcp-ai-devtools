@@ -4,12 +4,10 @@ scope: feature/historical-snapshots
 ai-priority: medium
 tags: [v7, persistence]
 relates-to: [product-spec.md, ../normalized-log-schema/tech-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: tech-spec
 feature_id: feature-historical-snapshots
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Historical Snapshots — Technical Specification

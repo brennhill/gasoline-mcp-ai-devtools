@@ -175,30 +175,6 @@ describe('safeSerializeForExecute', () => {
     if (OrigNode) globalThis.Node = OrigNode
     else delete globalThis.Node
   })
-
-  test('serializes DOMRect-like host objects with prototype getters', () => {
-    class MockDOMRect {}
-    Object.defineProperty(MockDOMRect.prototype, 'x', { get: () => 100, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'y', { get: () => 200, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'width', { get: () => 80, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'height', { get: () => 32, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'top', { get: () => 200, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'right', { get: () => 180, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'bottom', { get: () => 232, enumerable: false })
-    Object.defineProperty(MockDOMRect.prototype, 'left', { get: () => 100, enumerable: false })
-
-    const result = safeSerializeForExecute(new MockDOMRect())
-    assert.deepStrictEqual(result, {
-      x: 100,
-      y: 200,
-      width: 80,
-      height: 32,
-      top: 200,
-      right: 180,
-      bottom: 232,
-      left: 100
-    })
-  })
 })
 
 // --------------------------------------------------------------------------

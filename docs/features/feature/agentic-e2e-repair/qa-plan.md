@@ -4,12 +4,10 @@ scope: feature/agentic-e2e-repair/qa
 ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: qa-plan
 feature_id: feature-agentic-e2e-repair
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Agentic E2E Repair

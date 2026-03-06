@@ -23,7 +23,7 @@ Edit the Claude Desktop config file:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "npx",
       "args": ["gasoline-mcp"]
     }

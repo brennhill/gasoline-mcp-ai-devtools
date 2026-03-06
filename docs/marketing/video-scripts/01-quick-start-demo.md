@@ -195,7 +195,7 @@ In this video, you'll learn:
 
 📦 Download: https://cookwithgasoline.com/downloads/
 📖 Docs: https://cookwithgasoline.com
-💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+💻 GitHub: https://github.com/brennhill/gasoline-mcp-ai-devtools
 💬 Discord: [LINK]
 
 Timestamps:

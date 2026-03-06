@@ -5,8 +5,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,60 +14,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
-const (
-	defaultBinaryWatchInterval  = 30 * time.Second
-	defaultUpgradeGracePeriod   = 5 * time.Second
-	defaultVersionVerifyTimeout = 5 * time.Second
+// Tunable intervals — overridden in tests.
+var (
+	binaryWatchInterval  = 30 * time.Second
+	upgradeGracePeriod   = 5 * time.Second
+	versionVerifyTimeout = 5 * time.Second
 )
 
-type binaryVersionVerifier func(path string, timeout time.Duration) (string, error)
-
-type binaryWatcherConfig struct {
-	resolveExecutablePath func() (string, error)
-	watchInterval         time.Duration
-	upgradeGracePeriod    time.Duration
-	versionCheckTimeout   time.Duration
-	verifyVersion         binaryVersionVerifier
-	now                   func() time.Time
-}
-
-func normalizedBinaryWatcherConfig(cfg binaryWatcherConfig) binaryWatcherConfig {
-	if cfg.resolveExecutablePath == nil {
-		cfg.resolveExecutablePath = os.Executable
-	}
-	if cfg.watchInterval <= 0 {
-		cfg.watchInterval = defaultBinaryWatchInterval
-	}
-	if cfg.upgradeGracePeriod <= 0 {
-		cfg.upgradeGracePeriod = defaultUpgradeGracePeriod
-	}
-	if cfg.versionCheckTimeout <= 0 {
-		cfg.versionCheckTimeout = defaultVersionVerifyTimeout
-	}
-	if cfg.verifyVersion == nil {
-		cfg.verifyVersion = verifyBinaryVersionWithTimeout
-	}
-	if cfg.now == nil {
-		cfg.now = time.Now
-	}
-	return cfg
-}
+// getExecutablePath returns the path to the current binary. Overridable for tests.
+var getExecutablePath = os.Executable
 
 // BinaryWatcherState tracks the on-disk binary state for upgrade detection.
 type BinaryWatcherState struct {
-	mu                  sync.Mutex
-	execPath            string
-	lastModTime         time.Time
-	lastSize            int64
-	upgradePending      bool
-	detectedVersion     string
-	detectedAt          time.Time
-	versionCheckTimeout time.Duration
-	verifyVersion       binaryVersionVerifier
-	now                 func() time.Time
+	mu              sync.Mutex
+	execPath        string
+	lastModTime     time.Time
+	lastSize        int64
+	upgradePending  bool
+	detectedVersion string
+	detectedAt      time.Time
 }
 
 // UpgradeInfo returns the current upgrade detection state (thread-safe).
@@ -109,11 +77,7 @@ func (s *BinaryWatcherState) binaryChanged() (bool, error) {
 // checkForUpgrade verifies whether the binary reports a newer version than current.
 // Returns true if an upgrade is detected and sets the upgrade-pending state.
 func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
-	verifyVersion := s.verifyVersion
-	if verifyVersion == nil {
-		verifyVersion = verifyBinaryVersionWithTimeout
-	}
-	newVer, err := verifyVersion(s.execPath, s.versionCheckTimeout)
+	newVer, err := verifyBinaryVersion(s.execPath)
 	if err != nil {
 		return false
 	}
@@ -123,39 +87,27 @@ func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.upgradePending = true
 	s.detectedVersion = newVer
-	now := s.now
-	if now == nil {
-		now = time.Now
-	}
-	s.detectedAt = now()
+	s.detectedAt = time.Now()
+	s.mu.Unlock()
 	return true
 }
 
-// verifyBinaryVersionWithTimeout executes the binary with --version and parses the output.
-// Timeout is injected for deterministic tests that should not mutate package globals.
-func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string, error) {
-	if timeout <= 0 {
-		timeout = defaultVersionVerifyTimeout
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+// verifyBinaryVersion executes the binary with --version and parses the output.
+// Expects output like "gasoline v0.8.0" or just "0.8.0".
+func verifyBinaryVersion(path string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), versionVerifyTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, "--version") // #nosec G204 -- path is a verified binary from resolveCanonicalBinary
 	cmd.Env = append(os.Environ(), "GASOLINE_VERSION_CHECK=1")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("exec --version: %w", err)
 	}
 
-	return parseVersionCommandOutput(stdout.String(), stderr.String())
+	return parseVersionOutput(strings.TrimSpace(string(out)))
 }
 
 // parseVersionOutput extracts a version string from --version output.
@@ -174,32 +126,62 @@ func parseVersionOutput(output string) (string, error) {
 	return output, nil
 }
 
-func parseVersionCommandOutput(stdout string, stderr string) (string, error) {
-	candidates := make([]string, 0, 6)
-	appendLines := func(raw string) {
-		for _, line := range strings.Split(raw, "\n") {
-			trimmed := strings.TrimSpace(line)
-			if trimmed != "" {
-				candidates = append(candidates, trimmed)
-			}
+// upgradeMarker is persisted to disk so the new daemon can report the completed upgrade.
+type upgradeMarker struct {
+	FromVersion string `json:"from_version"`
+	ToVersion   string `json:"to_version"`
+	Timestamp   string `json:"timestamp"`
+}
+
+// writeUpgradeMarker writes the upgrade marker file.
+func writeUpgradeMarker(fromVersion, toVersion, path string) error {
+	marker := upgradeMarker{
+		FromVersion: fromVersion,
+		ToVersion:   toVersion,
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+	}
+	data, err := json.Marshal(marker)
+	if err != nil {
+		return fmt.Errorf("marshal upgrade marker: %w", err)
+	}
+	if err := os.MkdirAll(parentDir(path), 0o755); err != nil {
+		return fmt.Errorf("create marker dir: %w", err)
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+// readAndClearUpgradeMarker reads the marker file and removes it.
+// Returns nil if the file doesn't exist or contains invalid JSON.
+func readAndClearUpgradeMarker(path string) (*upgradeMarker, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read upgrade marker: %w", err)
+	}
+
+	// Always remove the file, even if JSON is invalid
+	_ = os.Remove(path)
+
+	var marker upgradeMarker
+	if err := json.Unmarshal(data, &marker); err != nil {
+		return nil, nil // invalid JSON, treat as no marker
+	}
+	if marker.FromVersion == "" || marker.ToVersion == "" {
+		return nil, nil
+	}
+	return &marker, nil
+}
+
+// parentDir returns the parent directory of a path.
+func parentDir(path string) string {
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '/' || path[i] == '\\' {
+			return path[:i]
 		}
 	}
-
-	appendLines(stdout)
-	appendLines(stderr)
-
-	for _, candidate := range candidates {
-		if versionValue, err := parseVersionOutput(candidate); err == nil {
-			return versionValue, nil
-		}
-	}
-
-	trimmedStdout := strings.TrimSpace(stdout)
-	trimmedStderr := strings.TrimSpace(stderr)
-	if trimmedStdout == "" && trimmedStderr == "" {
-		return "", fmt.Errorf("empty version output")
-	}
-	return "", fmt.Errorf("invalid version output: stdout=%q stderr=%q", trimmedStdout, trimmedStderr)
+	return "."
 }
 
 // startBinaryWatcher starts a background goroutine that watches the daemon binary for changes.
@@ -211,33 +193,16 @@ func parseVersionCommandOutput(stdout string, stderr string) (string, error) {
 //  3. If newer: set upgrade_pending, call onUpgrade
 //  4. After grace period: call triggerShutdown
 func startBinaryWatcher(ctx context.Context, currentVersion string, onUpgrade func(string), triggerShutdown func()) *BinaryWatcherState {
-	return startBinaryWatcherWithConfig(ctx, currentVersion, onUpgrade, triggerShutdown, binaryWatcherConfig{})
-}
-
-func startBinaryWatcherWithConfig(
-	ctx context.Context,
-	currentVersion string,
-	onUpgrade func(string),
-	triggerShutdown func(),
-	cfg binaryWatcherConfig,
-) *BinaryWatcherState {
 	if os.Getenv("GASOLINE_NO_AUTO_UPGRADE") == "1" {
 		return nil
 	}
 
-	cfg = normalizedBinaryWatcherConfig(cfg)
-
-	execPath, err := cfg.resolveExecutablePath()
+	execPath, err := getExecutablePath()
 	if err != nil {
 		return nil
 	}
 
-	state := &BinaryWatcherState{
-		execPath:            execPath,
-		versionCheckTimeout: cfg.versionCheckTimeout,
-		verifyVersion:       cfg.verifyVersion,
-		now:                 cfg.now,
-	}
+	state := &BinaryWatcherState{execPath: execPath}
 
 	util.SafeGo(func() {
 		// Cache initial binary state
@@ -245,7 +210,7 @@ func startBinaryWatcherWithConfig(
 			return
 		}
 
-		ticker := time.NewTicker(cfg.watchInterval)
+		ticker := time.NewTicker(binaryWatchInterval)
 		defer ticker.Stop()
 
 		for {
@@ -265,7 +230,7 @@ func startBinaryWatcherWithConfig(
 
 				// Grace period before shutdown
 				select {
-				case <-time.After(cfg.upgradeGracePeriod):
+				case <-time.After(upgradeGracePeriod):
 					triggerShutdown()
 					return
 				case <-ctx.Done():

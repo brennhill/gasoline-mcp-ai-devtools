@@ -1,5 +1,6 @@
-// Purpose: TDD wave tests for configure tool features.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_configure_wave_abc_tdd_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -8,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func configureSchemaPropertiesForTest(t *testing.T) map[string]any {

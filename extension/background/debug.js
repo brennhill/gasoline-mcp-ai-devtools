@@ -1,6 +1,9 @@
 /**
- * Purpose: Defines debug log category constants used across background modules.
- * Why: Standalone module to break circular dependencies between index.ts and its consumers.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview Debug Logging Utilities

@@ -623,7 +623,7 @@ describe('iframe support: explicit frame targeting', () => {
 
     assert.strictEqual(executeScriptCalls.length, 1, 'should stop after probe when no frame matches')
     assert.strictEqual(res.calls[0].status, 'error')
-    assert.ok(res.calls[0].error.startsWith('frame_not_found'), `expected error to start with 'frame_not_found', got: ${res.calls[0].error}`)
+    assert.strictEqual(res.calls[0].error, 'frame_not_found')
   })
 
   test('frame="all" keeps allFrames execution without probe', async () => {

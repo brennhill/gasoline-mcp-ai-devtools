@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console bridge fastpath logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate bridge_fastpath_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -16,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/dev-console/dev-console/internal/state"
 )
 
 func contentLengthFrame(payload string) string {
@@ -604,6 +605,20 @@ func TestBridgeFastPathFailedDaemonMessage(t *testing.T) {
 	}
 }
 
+func TestSendJSONResponseFallbackOnMarshalError(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	output := captureBridgeIO(t, "", func() {
+		sendJSONResponse(map[string]any{"bad": make(chan int)}, 11)
+	})
+	responses := parseJSONLines(t, output)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want 1", len(responses))
+	}
+	if responses[0].Error == nil || responses[0].Error.Code != -32603 {
+		t.Fatalf("sendJSONResponse fallback = %+v, want -32603 bridge error", responses[0])
+	}
+}
+
 func TestBridgeServerHealthHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -644,7 +659,7 @@ func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-browser-devtools","version":"1.0.0"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"1.0.0"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -687,6 +702,8 @@ func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
 }
 
 func TestRunningServerVersionCompatible(t *testing.T) {
+	t.Parallel()
+
 	oldVersion := version
 	version = "9.9.9"
 	t.Cleanup(func() { version = oldVersion })
@@ -695,7 +712,7 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-browser-devtools","version":"`+healthVersion+`"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"`+healthVersion+`"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -710,14 +727,14 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	})
 
 	compatible, gotVersion, gotService := runningServerVersionCompatible(port)
-	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline-browser-devtools" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline-browser-devtools")
+	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline")
 	}
 
 	healthVersion = "1.0.0"
 	compatible, gotVersion, gotService = runningServerVersionCompatible(port)
-	if compatible || gotVersion != "1.0.0" || gotService != "gasoline-browser-devtools" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline-browser-devtools")
+	if compatible || gotVersion != "1.0.0" || gotService != "gasoline" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline")
 	}
 }
 
@@ -736,4 +753,57 @@ func TestFlushStdoutNoPanic(t *testing.T) {
 	}()
 
 	flushStdout()
+}
+
+func TestSendJSONResponseSuccess(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	output := captureBridgeIO(t, "", func() {
+		sendJSONResponse(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      1,
+			Result:  json.RawMessage(`{"ok":true}`),
+		}, 1)
+	})
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		t.Fatal("expected JSON response line")
+	}
+	if !json.Valid([]byte(lines[0])) {
+		t.Fatalf("invalid JSON output: %q", lines[0])
+	}
+}
+
+func TestBridgeStdioLegacyParseError(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	output := captureBridgeIO(t, `{"jsonrpc":"2.0","id":1,`+"\n", func() {
+		bridgeStdioToHTTP("http://127.0.0.1:1/mcp")
+	})
+	if !strings.Contains(output, `"code":-32700`) {
+		t.Fatalf("legacy bridge output missing parse error: %q", output)
+	}
+}
+
+func TestBridgeStdioLegacyHTTPError(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, "boom")
+	})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	defer func() { _ = srv.Close() }()
+
+	input := `{"jsonrpc":"2.0","id":9,"method":"ping","params":{}}` + "\n"
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTP("http://127.0.0.1:" + strconv.Itoa(port) + "/mcp")
+	})
+	if !strings.Contains(output, `"code":-32603`) {
+		t.Fatalf("expected bridge protocol error in output, got %q", output)
+	}
 }

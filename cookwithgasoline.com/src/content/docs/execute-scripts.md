@@ -1,9 +1,6 @@
 ---
 title: How Gasoline Executes Page Scripts
 description: A deep dive into how Gasoline runs JavaScript in the browser — three execution worlds, CSP auto-fallback, and why it works on sites that block eval().
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['execute', 'scripts']
 ---
 
 ## The Problem: Pages Fight Back

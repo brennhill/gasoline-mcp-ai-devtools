@@ -119,11 +119,6 @@ const createMockElement = (id) => ({
 
 let mockDocument
 
-async function resetPilotCacheForTesting(value) {
-  const { _resetPilotCacheForTesting } = await import('../../extension/background/state.js')
-  _resetPilotCacheForTesting(value)
-}
-
 describe('AI Web Pilot Toggle Default State', () => {
   beforeEach(() => {
     mock.reset()
@@ -213,8 +208,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is off')
   })
@@ -224,8 +220,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({}) // No value set
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is undefined')
   })
@@ -235,9 +232,10 @@ describe('AI Web Pilot Command Gating', () => {
       callback({ aiWebPilotEnabled: true })
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+
     // Reset module-level cache (persists across Node.js cached imports)
-    await resetPilotCacheForTesting(true)
+    _resetPilotCacheForTesting(true)
 
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, true, 'Should return true when toggle is on')
@@ -260,8 +258,8 @@ describe('Pilot Commands Rejection When Disabled', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(false)
 
     const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', { selector: '.test' })
 
@@ -277,8 +275,8 @@ describe('Pilot Commands Rejection When Disabled', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(false)
 
     const result = await handlePilotCommand('GASOLINE_MANAGE_STATE', { action: 'save' })
 
@@ -294,8 +292,8 @@ describe('Pilot Commands Rejection When Disabled', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(false)
 
     const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', { script: 'console.log("test")' })
 
@@ -324,8 +322,8 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     // Mock tabs.sendMessage to simulate successful forwarding
     mockChrome.tabs.sendMessage.mock.mockImplementation(() => Promise.resolve({ success: true }))
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(true)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(true)
 
     const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', { selector: '.test' })
 
@@ -342,8 +340,8 @@ describe('Pilot Commands Acceptance When Enabled', () => {
 
     mockChrome.tabs.sendMessage.mock.mockImplementation(() => Promise.resolve({ success: true }))
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(true)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(true)
 
     const result = await handlePilotCommand('GASOLINE_MANAGE_STATE', { action: 'list' })
 
@@ -360,8 +358,8 @@ describe('Pilot Commands Acceptance When Enabled', () => {
 
     mockChrome.tabs.sendMessage.mock.mockImplementation(() => Promise.resolve({ result: 'executed' }))
 
-    const { handlePilotCommand } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(true)
+    const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
+    _resetPilotCacheForTesting(true)
 
     const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', { script: 'return 1+1' })
 
@@ -425,14 +423,15 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
   })
 
   test('background should receive setAiWebPilotEnabled message and update cache', async () => {
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
-    await resetPilotCacheForTesting(false)
+    const { _resetPilotCacheForTesting, isAiWebPilotEnabled } =
+      await import('../../extension/background.js')
+    _resetPilotCacheForTesting(false)
 
     // Verify cache starts as false
     assert.strictEqual(isAiWebPilotEnabled(), false, 'Cache should start as false after reset')
 
     // Set cache to true and verify
-    await resetPilotCacheForTesting(true)
+    _resetPilotCacheForTesting(true)
     assert.strictEqual(isAiWebPilotEnabled(), true, 'Cache should reflect updated value')
   })
 

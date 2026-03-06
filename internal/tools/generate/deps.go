@@ -1,11 +1,12 @@
-// Purpose: Declares the Deps interface that generate handlers require from the host server.
+// Purpose: Provides generate tool implementation helpers for emitted artifacts.
+// Why: Centralizes artifact generation logic to avoid drift across output formats.
 // Docs: docs/features/feature/test-generation/index.md
 
 package generate
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/annotation"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/dev-console/dev-console/internal/annotation"
+	"github.com/dev-console/dev-console/internal/mcp"
 )
 
 // Deps provides all dependencies the generate handlers need.

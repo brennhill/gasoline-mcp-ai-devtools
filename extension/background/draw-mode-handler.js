@@ -106,8 +106,7 @@ export async function handleDrawModeCompleted(message, sender, syncClient) {
       annotations,
       element_details: elementDetails,
       page_url: pageUrl,
-      tab_id: tabId,
-      correlation_id: message.correlation_id || ''
+      tab_id: tabId
     }
     if (sessionName) {
       body.annot_session_name = sessionName

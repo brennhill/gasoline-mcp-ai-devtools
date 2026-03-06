@@ -1,9 +1,10 @@
-// Purpose: Declares the Deps interface that observe handlers require from the host server.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
 // Docs: docs/features/feature/observe/index.md
 
 package observe
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/dev-console/dev-console/internal/mcp"
 
 // Deps provides all dependencies the observe handlers need.
 // *ToolHandler in cmd/dev-console/ satisfies this interface.
