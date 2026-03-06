@@ -10,6 +10,35 @@ last_reviewed: 2026-02-16
 
 Host the CRX file and serve it as a direct download. Users drag-and-drop to install.
 
+## Pages Deployment Branch Strategy (`site`)
+
+Use a dedicated `site` branch for continuous website updates so `STABLE` history stays focused on product releases.
+
+### Initial setup
+
+```bash
+git checkout -B site
+git push -u origin site
+```
+
+Then in Cloudflare Pages:
+
+1. Open **Workers & Pages** and select the project.
+2. Go to **Settings -> Builds & deployments**.
+3. Set **Production branch** to `site`.
+4. Save and trigger a deploy.
+
+### Ongoing workflow
+
+- Commit and push website/docs changes to `site`.
+- Cloudflare auto-deploys from `site`.
+- Merge into `STABLE` only at explicit sync/release checkpoints.
+
+### Recommended branch protection
+
+- `STABLE`: require PRs, block direct pushes.
+- `site`: allow faster iteration (optional PR gate depending on team preference).
+
 ## Directory Structure
 
 ```
