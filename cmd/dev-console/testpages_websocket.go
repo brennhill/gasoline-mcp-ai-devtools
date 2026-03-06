@@ -6,7 +6,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -135,7 +134,7 @@ func wsEchoLoop(conn net.Conn, rw *bufio.ReadWriter) {
 		// Dispatch complete (possibly reassembled) message.
 		switch opcode {
 		case 0x1: // Text → echo as JSON envelope
-			reply, _ := json.Marshal(map[string]any{
+			reply := buildQueryParams(map[string]any{
 				"type":   "echo",
 				"echo":   string(payload),
 				"server": "gasoline-test-harness",

@@ -43,7 +43,7 @@ func (h *interactActionHandler) handleCDPClick(req JSONRPCRequest, args json.Raw
 	correlationID := newCorrelationID("cdp_click")
 	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
 
-	cdpParams, _ := json.Marshal(map[string]any{
+	cdpParams := buildQueryParams(map[string]any{
 		"action": "click",
 		"x":      x,
 		"y":      y,

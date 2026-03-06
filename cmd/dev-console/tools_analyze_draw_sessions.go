@@ -71,8 +71,8 @@ func (h *ToolHandler) toolGetDrawSession(req JSONRPCRequest, args json.RawMessag
 		}
 	}
 
-	if params.File == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'file' is missing", "Provide the session filename from draw_history results", withParam("file"))
+	if resp, blocked := requireString(req, params.File, "file", "Provide the session filename from draw_history results"); blocked {
+		return resp
 	}
 
 	// Validate filename to prevent path traversal.

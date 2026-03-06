@@ -27,8 +27,8 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 		}
 	}
 
-	if params.RecordingID == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide a recording_id from a previous recording", withParam("recording_id"))
+	if resp, blocked := requireString(req, params.RecordingID, "recording_id", "Provide a recording_id from a previous recording"); blocked {
+		return resp
 	}
 
 	// Execute playback
@@ -77,8 +77,8 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 		}
 	}
 
-	if params.RecordingID == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from playback", withParam("recording_id"))
+	if resp, blocked := requireString(req, params.RecordingID, "recording_id", "Provide the recording_id from playback"); blocked {
+		return resp
 	}
 
 	// Look up stored playback session

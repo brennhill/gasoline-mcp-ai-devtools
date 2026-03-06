@@ -63,8 +63,8 @@ func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMe
 		return resp
 	}
 
-	if params.Action == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"))
+	if resp, blocked := requireString(req, params.Action, "action", "Add the 'action' parameter and call again"); blocked {
+		return resp
 	}
 
 	result := h.alertBuffer.Stream.Configure(params.Action, params.Events, params.ThrottleSeconds, params.URLFilter, params.SeverityMin)

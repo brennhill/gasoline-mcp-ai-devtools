@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking.js';
-import { createDeferredPromise, promiseRaceWithCleanup } from '../lib/timeout-utils.js';
+import { createDeferredPromise, withTimeoutAndCleanup } from '../lib/timeout-utils.js';
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
 import { extractReadable as extractReadableContent } from './extractors/readable.js';
@@ -60,9 +60,12 @@ export function forwardHighlightMessage(message) {
             params: message.params
         });
         // Timeout fallback + cleanup stale entries after 30 seconds
-        return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
-            if (hasHighlightRequest(requestId)) {
-                deleteHighlightRequest(requestId);
+        return withTimeoutAndCleanup(deferred.promise, 30000, {
+            fallback: { success: false, error: 'timeout' },
+            cleanup: () => {
+                if (hasHighlightRequest(requestId)) {
+                    deleteHighlightRequest(requestId);
+                }
             }
         });
     });
@@ -95,7 +98,10 @@ export async function handleStateCommand(params) {
         include_url
     });
     // Timeout after 5 seconds with cleanup
-    return promiseRaceWithCleanup(deferred.promise, 5000, { error: 'State command timeout' }, () => window.removeEventListener('message', responseHandler));
+    return withTimeoutAndCleanup(deferred.promise, 5000, {
+        fallback: { error: 'State command timeout' },
+        cleanup: () => window.removeEventListener('message', responseHandler)
+    });
 }
 /**
  * Handle GASOLINE_PING message
@@ -261,8 +267,9 @@ export function handleGetNetworkWaterfall(sendResponse) {
         requestId
     });
     // Timeout fallback: respond with empty array after 5 seconds
-    promiseRaceWithCleanup(deferred.promise, 5000, { entries: [] }, () => {
-        window.removeEventListener('message', responseHandler);
+    withTimeoutAndCleanup(deferred.promise, 5000, {
+        fallback: { entries: [] },
+        cleanup: () => window.removeEventListener('message', responseHandler)
     }).then((result) => {
         sendResponse(result);
     }, () => {
@@ -293,8 +300,9 @@ function forwardInjectQuery(queryType, responseType, label, params, sendResponse
     };
     window.addEventListener('message', responseHandler);
     postToInject({ type: queryType, requestId, params: parsedParams });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
-        window.removeEventListener('message', responseHandler);
+    withTimeoutAndCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, {
+        fallback: { error: `${label} timeout` },
+        cleanup: () => window.removeEventListener('message', responseHandler)
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
 }

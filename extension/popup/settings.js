@@ -4,11 +4,12 @@
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { SettingName } from '../lib/constants.js';
+import { setLocalValue, getLocalValue } from '../lib/storage-utils.js';
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
-    chrome.storage.local.set({ webSocketCaptureMode: mode });
+    setLocalValue('webSocketCaptureMode', mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
@@ -19,8 +20,8 @@ export async function initWebSocketModeSelector() {
     if (!modeSelect)
         return;
     return new Promise((resolve) => {
-        chrome.storage.local.get(['webSocketCaptureMode'], (result) => {
-            modeSelect.value = result.webSocketCaptureMode || 'medium';
+        getLocalValue('webSocketCaptureMode', (value) => {
+            modeSelect.value = value || 'medium';
             resolve();
         });
     });

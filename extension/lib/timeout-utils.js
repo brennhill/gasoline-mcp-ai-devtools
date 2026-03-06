@@ -1,5 +1,5 @@
 /**
- * Purpose: Reusable Promise patterns -- timeout races, message-based request/response with cleanup, and deferred promises for external resolution.
+ * Purpose: Reusable Promise patterns -- timeout races, cleanup on timeout, and deferred promises for external resolution.
  */
 /**
  * Create a deferred promise
@@ -21,9 +21,22 @@ export function createDeferredPromise() {
     return { promise, resolve, reject };
 }
 /**
+ * Custom error for timeout operations that optionally carries a fallback value
+ */
+export class TimeoutError extends Error {
+    fallback;
+    constructor(message, fallback) {
+        super(message);
+        this.fallback = fallback;
+        this.name = 'TimeoutError';
+    }
+}
+/**
  * Wrap a promise with a timeout fallback
  * Returns the result of the promise if it resolves before timeout,
  * otherwise returns the fallback value (or rejects if no fallback)
+ *
+ * Subsumes the former promiseWithTimeout (no fallback) and executeWithTimeout (callback variant).
  *
  * @template T The type of the promise value
  * @param promise The promise to wrap
@@ -64,123 +77,45 @@ export async function withTimeout(promise, timeoutMs, fallback) {
     });
 }
 /**
- * Custom error for timeout operations that optionally carries a fallback value
- */
-export class TimeoutError extends Error {
-    fallback;
-    constructor(message, fallback) {
-        super(message);
-        this.fallback = fallback;
-        this.name = 'TimeoutError';
-    }
-}
-/**
- * Wrap a promise with a timeout that rejects on timeout
- * This is a stricter version of withTimeout - no fallback allowed
+ * Race a promise against a timeout with cleanup on timeout.
+ * Merges the former messageWithTimeout, promiseRaceWithCleanup, and executeWithTimeoutAndCleanup.
  *
- * @template T The type of the promise value
- * @param promise The promise to wrap
- * @param timeoutMs Timeout in milliseconds
- * @returns Promise that resolves to the result or rejects on timeout
- *
- * @example
- * try {
- *   const data = await promiseWithTimeout(fetchData(), 5000);
- * } catch (err) {
- *   if (err instanceof TimeoutError) {
- *     console.error('Request timed out');
- *   }
- * }
- */
-export async function promiseWithTimeout(promise, timeoutMs) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-            }, timeoutMs);
-        })
-    ]);
-}
-/**
- * Message-based async operation with timeout and cleanup
- * Manages request/response correlation using a Map and IDs, with automatic cleanup
- *
- * This pattern is used extensively in content.ts for:
- * - Highlight requests (30s timeout)
- * - Execute JS requests (30s timeout)
- * - A11y audit requests (30s timeout)
- * - DOM query requests (30s timeout)
- * - Network waterfall requests (5s timeout)
- *
- * @template T The type of the response value
- * @param sender Function that sends the message/request
- * @param timeoutMs Timeout in milliseconds
- * @param cleanup Optional cleanup function called on timeout (e.g., to remove event listeners)
- * @returns Promise that resolves to the response or rejects on timeout
- *
- * @example
- * // Simple message send with timeout
- * const response = await messageWithTimeout(
- *   async () => chrome.runtime.sendMessage({ type: 'PING' }),
- *   5000
- * );
- *
- * @example
- * // With event listener cleanup
- * const response = await messageWithTimeout(
- *   async () => {
- *     const requestId = ++requestIdCounter;
- *     pendingRequests.set(requestId, (result) => deferred.resolve(result));
- *     window.postMessage({ type: 'REQUEST', requestId }, origin);
- *     return deferred.promise;
- *   },
- *   30000,
- *   () => {
- *     pendingRequests.delete(requestId);
- *     window.removeEventListener('message', handler);
- *   }
- * );
- */
-export async function messageWithTimeout(sender, timeoutMs, cleanup) {
-    const timeoutHandle = setTimeout(() => {
-        cleanup?.();
-    }, timeoutMs);
-    try {
-        return await promiseWithTimeout(sender(), timeoutMs);
-    }
-    finally {
-        clearTimeout(timeoutHandle);
-    }
-}
-/**
- * Race a promise against a timeout, calling a cleanup function if timeout wins
- * Used for operations that set up listeners or other resources that need cleanup
+ * When the timeout fires, the cleanup callback runs and either the fallback is returned
+ * (if provided) or a TimeoutError is thrown.
  *
  * @template T The type of the promise value
  * @param promise The promise to race against timeout
  * @param timeoutMs Timeout in milliseconds
- * @param timeoutFallback Value to return on timeout (if provided, doesn't throw)
- * @param cleanup Function to call if timeout occurs
- * @returns Promise that resolves to result, fallback (if provided), or rejects
+ * @param options Optional fallback and cleanup callbacks
+ * @returns Promise that resolves to result, fallback, or rejects on timeout
  *
  * @example
- * const result = await promiseRaceWithCleanup(
- *   waitForResponse(),
+ * // With fallback and cleanup
+ * const result = await withTimeoutAndCleanup(
+ *   deferred.promise,
  *   5000,
- *   { entries: [] }, // fallback for timeout
- *   () => removeEventListener('message', handler) // cleanup
+ *   { fallback: { entries: [] }, cleanup: () => removeEventListener('message', handler) }
+ * );
+ *
+ * @example
+ * // Cleanup only, no fallback (rejects on timeout)
+ * const result = await withTimeoutAndCleanup(
+ *   deferred.promise,
+ *   30000,
+ *   { cleanup: () => pendingRequests.delete(requestId) }
  * );
  */
-export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback, cleanup) {
+export async function withTimeoutAndCleanup(promise, timeoutMs, options) {
+    const fallback = options?.fallback;
+    const cleanup = options?.cleanup;
     try {
         return await Promise.race([
             promise,
             new Promise((_, reject) => {
                 setTimeout(() => {
                     cleanup?.();
-                    if (timeoutFallback !== undefined) {
-                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+                    if (fallback !== undefined) {
+                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
                     }
                     else {
                         reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
@@ -195,26 +130,6 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
         }
         throw err;
     }
-}
-/**
- * Execute a callback with automatic timeout and fallback
- * The callback should return a promise that resolves with the result
- *
- * @template T The type of the result
- * @param callback Function that returns a promise
- * @param timeoutMs Timeout in milliseconds
- * @param fallback Optional fallback value to return on timeout
- * @returns Promise that resolves to the result, fallback, or rejects
- *
- * @example
- * const result = await executeWithTimeout(
- *   () => fetch('/api/data'),
- *   5000,
- *   { ok: false, status: 408 } // fallback
- * );
- */
-export async function executeWithTimeout(callback, timeoutMs, fallback) {
-    return withTimeout(callback(), timeoutMs, fallback);
 }
 /**
  * Create a promise that resolves after a delay
@@ -263,159 +178,6 @@ export async function retryWithBackoff(fn, maxAttempts = 3, initialDelayMs = 100
         }
     }
     throw lastError;
-}
-/**
- * Create a cancellable promise that can be aborted
- * @template T The type of the result
- * @param promise The promise to wrap
- * @param operationName Optional human-readable name of the operation for error messages
- * @returns Object with the promise and a cancel function
- *
- * @example
- * const { promise, cancel } = makeCancellable(fetch('/api/data'), 'fetch user data');
- * setTimeout(() => cancel(), 5000);
- * try {
- *   const result = await promise;
- * } catch (err) {
- *   if (err.message.includes('cancelled')) {
- *     console.log('Operation was cancelled:', err.message);
- *   }
- * }
- */
-export function makeCancellable(promise, operationName) {
-    let cancelled = false;
-    let rejectFn;
-    const wrappedPromise = new Promise((resolve, reject) => {
-        rejectFn = reject;
-        promise
-            .then((value) => {
-            if (!cancelled) {
-                resolve(value);
-            }
-        })
-            .catch((err) => {
-            if (!cancelled) {
-                reject(err);
-            }
-        });
-    });
-    return {
-        promise: wrappedPromise,
-        cancel: () => {
-            cancelled = true;
-            const msg = operationName ? `Operation cancelled: ${operationName}` : 'cancelled';
-            rejectFn(new Error(msg));
-        }
-    };
-}
-/**
- * Wait for a condition to become true or timeout
- * Polls at regular intervals until condition is true or timeout occurs
- *
- * @param condition Function that returns true when condition is met
- * @param timeoutMs Maximum time to wait in milliseconds
- * @param pollIntervalMs How often to check the condition (default 100ms)
- * @returns Promise that resolves if condition becomes true, rejects on timeout
- *
- * @example
- * await waitFor(() => element.classList.contains('visible'), 5000);
- */
-export async function waitFor(condition, timeoutMs, pollIntervalMs = 100) {
-    const startTime = Date.now();
-    return new Promise((resolve, reject) => {
-        const check = () => {
-            if (condition()) {
-                resolve();
-            }
-            else if (Date.now() - startTime > timeoutMs) {
-                reject(new TimeoutError(`Condition not met within ${timeoutMs}ms`));
-            }
-            else {
-                setTimeout(check, pollIntervalMs);
-            }
-        };
-        check();
-    });
-}
-/**
- * Race multiple promises and return the result of the first one that settles
- * (resolves or rejects). This differs from Promise.race in that it includes
- * rejection reasons.
- *
- * @template T The type of the result
- * @param promises Promises to race
- * @returns Promise that settles with the result of the first settling promise
- *
- * @example
- * const result = await racePromises([
- *   fetch('/api/data'),
- *   delay(5000).then(() => { throw new TimeoutError('Too slow'); })
- * ]);
- */
-export async function racePromises(promises) {
-    if (promises.length === 0) {
-        throw new Error('racePromises requires at least one promise');
-    }
-    return Promise.race(promises);
-}
-/**
- * Combine multiple timeout utilities: execute a callback with timeout,
- * automatic cleanup on timeout, and optional fallback
- *
- * @template T The type of the result
- * @param callback Callback that returns a promise
- * @param timeoutMs Timeout in milliseconds
- * @param fallback Optional fallback value on timeout
- * @param cleanup Optional cleanup function called on timeout
- * @returns Promise that resolves to result, fallback, or rejects
- *
- * @example
- * const result = await executeWithTimeoutAndCleanup(
- *   async () => {
- *     const requestId = generateId();
- *     window.addEventListener('message', handler);
- *     window.postMessage({ type: 'REQUEST', requestId });
- *     return deferred.promise;
- *   },
- *   5000,
- *   { success: false },
- *   () => window.removeEventListener('message', handler)
- * );
- */
-export async function executeWithTimeoutAndCleanup(callback, timeoutMs, fallback, cleanup) {
-    let timeoutHandle = null;
-    try {
-        return await new Promise((resolve, reject) => {
-            timeoutHandle = setTimeout(() => {
-                cleanup?.();
-                if (fallback !== undefined) {
-                    resolve(fallback);
-                }
-                else {
-                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-                }
-            }, timeoutMs);
-            callback()
-                .then((result) => {
-                if (timeoutHandle !== null) {
-                    clearTimeout(timeoutHandle);
-                }
-                resolve(result);
-            })
-                .catch((err) => {
-                if (timeoutHandle !== null) {
-                    clearTimeout(timeoutHandle);
-                }
-                reject(err);
-            });
-        });
-    }
-    catch (err) {
-        if (timeoutHandle !== null) {
-            clearTimeout(timeoutHandle);
-        }
-        throw err;
-    }
 }
 /**
  * Fetch a URL with an AbortController-based timeout.

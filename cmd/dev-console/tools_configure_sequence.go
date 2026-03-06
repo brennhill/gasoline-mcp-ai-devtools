@@ -26,8 +26,8 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 	}
 
 	// Validate name
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter"); blocked {
+		return resp
 	}
 	if len(params.Name) > maxSequenceNameLen {
 		return fail(req, ErrInvalidParam, fmt.Sprintf("Name exceeds maximum length of %d characters", maxSequenceNameLen), "Use a shorter name", withParam("name"))
@@ -97,8 +97,8 @@ func (h *ToolHandler) toolConfigureGetSequence(req JSONRPCRequest, args json.Raw
 	}
 	lenientUnmarshal(args, &params)
 
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter"); blocked {
+		return resp
 	}
 
 	seq, errResp := h.loadSequence(req, params.Name)
@@ -182,8 +182,8 @@ func (h *ToolHandler) toolConfigureDeleteSequence(req JSONRPCRequest, args json.
 	}
 	lenientUnmarshal(args, &params)
 
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter"); blocked {
+		return resp
 	}
 
 	if resp, blocked := h.requireSessionStore(req); blocked {

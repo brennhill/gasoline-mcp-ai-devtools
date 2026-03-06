@@ -23,11 +23,11 @@ func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, arg
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.URL == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'url' is missing", "Add 'url' to navigate to", withParam("url"))
+	if resp, blocked := requireString(req, params.URL, "url", "Add 'url' to navigate to"); blocked {
+		return resp
 	}
-	if params.WaitFor == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'wait_for' is missing", "Add a CSS selector to wait for after navigation", withParam("wait_for"))
+	if resp, blocked := requireString(req, params.WaitFor, "wait_for", "Add a CSS selector to wait for after navigation"); blocked {
+		return resp
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000
@@ -37,7 +37,7 @@ func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, arg
 	workflowStart := time.Now()
 
 	// Step 1: Navigate.
-	navArgs, _ := json.Marshal(map[string]any{
+	navArgs := buildQueryParams(map[string]any{
 		"action": "navigate",
 		"url":    params.URL,
 		"tab_id": params.TabID,
@@ -60,7 +60,7 @@ func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, arg
 	if waitTimeout < 1000 {
 		waitTimeout = 1000
 	}
-	waitArgs, _ := json.Marshal(map[string]any{
+	waitArgs := buildQueryParams(map[string]any{
 		"action":     "wait_for",
 		"selector":   params.WaitFor,
 		"timeout_ms": waitTimeout,
