@@ -1,6 +1,6 @@
-// Purpose: Implements test generation, classification, and healing command handlers.
-// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
-// Docs: docs/features/feature/test-generation/index.md
+// Purpose: Handles test_heal mode — analyzes broken selectors and repairs test files with updated locators.
+// Why: Automates test maintenance by detecting stale selectors and applying high-confidence fixes.
+// Docs: docs/features/feature/self-healing-tests/index.md
 
 package main
 
@@ -10,20 +10,12 @@ import (
 	"strings"
 )
 
-func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *testGenHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestHealRequest
 
 	warnings, err := unmarshalWithWarnings(args, &params)
 	if err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			),
-		}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	warnings = filterGenerateDispatchWarnings(warnings)
@@ -41,11 +33,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 
 	summary := formatHealSummary(params, result)
 	data := map[string]any{"result": result}
-	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  mcpJSONResponse(summary, data),
-	}
+	resp := succeed(req, summary, data)
 	return appendWarningsToResponse(resp, warnings)
 }
 
@@ -53,35 +41,25 @@ var validHealActions = map[string]bool{"analyze": true, "repair": true, "batch":
 
 func validateHealParams(req JSONRPCRequest, params TestHealRequest) (JSONRPCResponse, bool) {
 	if params.Action == "" {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'action' is missing",
-				"Add the 'action' parameter and call again",
-				withParam("action"),
-				withHint("Valid values: analyze, repair"),
-			),
-		}, true
+		return fail(req, ErrMissingParam,
+			"Required parameter 'action' is missing",
+			"Add the 'action' parameter and call again",
+			withParam("action"),
+			withHint("Valid values: analyze, repair"),
+		), true
 	}
 	if !validHealActions[params.Action] {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Invalid action value: "+params.Action,
-				"Use a valid action value",
-				withParam("action"),
-				withHint("Valid values: analyze, repair, batch"),
-			),
-		}, true
+		return fail(req, ErrInvalidParam,
+			"Invalid action value: "+params.Action,
+			"Use a valid action value",
+			withParam("action"),
+			withHint("Valid values: analyze, repair, batch"),
+		), true
 	}
 	return JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	switch params.Action {
 	case "analyze":
 		return h.handleHealAnalyze(req, params, projectDir)
@@ -93,18 +71,13 @@ func (h *ToolHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequ
 	return nil, JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if params.TestFile == "" {
-		return nil, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'test_file' is missing for analyze action",
-				"Add the 'test_file' parameter and call again",
-				withParam("test_file"),
-			),
-		}, true
+		return nil, fail(req, ErrMissingParam,
+			"Required parameter 'test_file' is missing for analyze action",
+			"Add the 'test_file' parameter and call again",
+			withParam("test_file"),
+		), true
 	}
 	selectors, err := h.analyzeTestFile(params, projectDir)
 	if err != nil {
@@ -120,70 +93,36 @@ func (h *ToolHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealReque
 func mapAnalyzeError(req JSONRPCRequest, params TestHealRequest, err error) JSONRPCResponse {
 	errMsg := err.Error()
 	if strings.Contains(errMsg, ErrTestFileNotFound) {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrTestFileNotFound,
-				"Test file not found: "+params.TestFile,
-				"Check the file path and try again",
-			),
-		}
+		return fail(req, ErrTestFileNotFound, "Test file not found: "+params.TestFile, "Check the file path and try again")
 	}
 	if strings.Contains(errMsg, ErrPathNotAllowed) {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrPathNotAllowed,
-				errMsg,
-				"Use a path within the project directory",
-			),
-		}
+		return fail(req, ErrPathNotAllowed, errMsg, "Use a path within the project directory")
 	}
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  mcpStructuredError(ErrInternal, "Failed to analyze test file: "+errMsg, "Check that the test file path is valid and readable"),
-	}
+	return fail(req, ErrInternal, "Failed to analyze test file: "+errMsg, "Check that the test file path is valid and readable")
 }
 
-func (h *ToolHandler) handleHealRepair(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealRepair(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if len(params.BrokenSelectors) == 0 {
-		return nil, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'broken_selectors' is missing for repair action",
-				"Add the 'broken_selectors' parameter and call again",
-				withParam("broken_selectors"),
-			),
-		}, true
+		return nil, fail(req, ErrMissingParam,
+			"Required parameter 'broken_selectors' is missing for repair action",
+			"Add the 'broken_selectors' parameter and call again",
+			withParam("broken_selectors"),
+		), true
 	}
 	healResult, err := h.repairSelectors(params, projectDir)
 	if err != nil {
-		return nil, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  mcpStructuredError(ErrInternal, "Failed to repair selectors: "+err.Error(), "Check the broken_selectors input and retry"),
-		}, true
+		return nil, fail(req, ErrInternal, "Failed to repair selectors: "+err.Error(), "Check the broken_selectors input and retry"), true
 	}
 	return healResult, JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if params.TestDir == "" {
-		return nil, JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'test_dir' is missing for batch action",
-				"Add the 'test_dir' parameter and call again",
-				withParam("test_dir"),
-			),
-		}, true
+		return nil, fail(req, ErrMissingParam,
+			"Required parameter 'test_dir' is missing for batch action",
+			"Add the 'test_dir' parameter and call again",
+			withParam("test_dir"),
+		), true
 	}
 	batchResult, err := h.healTestBatch(params, projectDir)
 	if err != nil {
@@ -195,30 +134,10 @@ func (h *ToolHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest
 func mapBatchError(req JSONRPCRequest, err error) JSONRPCResponse {
 	errMsg := err.Error()
 	if strings.Contains(errMsg, ErrPathNotAllowed) {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrPathNotAllowed,
-				errMsg,
-				"Use a path within the project directory",
-			),
-		}
+		return fail(req, ErrPathNotAllowed, errMsg, "Use a path within the project directory")
 	}
 	if strings.Contains(errMsg, ErrBatchTooLarge) {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrBatchTooLarge,
-				errMsg,
-				"Reduce the number or size of test files",
-			),
-		}
+		return fail(req, ErrBatchTooLarge, errMsg, "Reduce the number or size of test files")
 	}
-	return JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  mcpStructuredError(ErrInternal, "Failed to heal test batch: "+errMsg, "Check the test_dir path and file permissions, then retry"),
-	}
+	return fail(req, ErrInternal, "Failed to heal test batch: "+errMsg, "Check the test_dir path and file permissions, then retry")
 }

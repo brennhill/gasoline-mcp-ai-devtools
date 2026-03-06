@@ -5,11 +5,13 @@ ai-priority: medium
 tags: [qa, testing, advanced-filtering, placeholder]
 relates-to: [feature-proposal.md, tech-spec.md]
 version-applies-to: v6.0+
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 incomplete: true
 doc_type: qa-plan
 feature_id: feature-advanced-filtering
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # QA Plan: Advanced Filtering for Signal-to-Noise

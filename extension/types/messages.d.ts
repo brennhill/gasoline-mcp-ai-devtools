@@ -16,18 +16,18 @@
  * NOTE: This file now re-exports types from focused modules for backward compatibility.
  * New code should import from the specific modules directly.
  */
-export * from './telemetry';
-export * from './websocket';
-export * from './network';
-export * from './performance';
-export * from './actions';
-export * from './ai-context';
-export * from './accessibility';
-export * from './dom';
-export * from './state';
-export * from './queries';
-export * from './sourcemap';
-export * from './chrome';
-export * from './debug';
-export * from './runtime-messages';
+export * from './telemetry.js';
+export * from './websocket.js';
+export * from './network.js';
+export * from './performance.js';
+export * from './actions.js';
+export * from './ai-context.js';
+export * from './accessibility.js';
+export * from './dom.js';
+export * from './state.js';
+export * from './queries.js';
+export * from './sourcemap.js';
+export * from './chrome.js';
+export * from './debug.js';
+export * from './runtime-messages.js';
 //# sourceMappingURL=messages.d.ts.map

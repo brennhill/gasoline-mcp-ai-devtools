@@ -98,8 +98,11 @@ fi
 # ─────────────────────────────────────────────
 bold "4. Checking route ↔ OpenAPI sync..."
 
+# Route registration is intentionally split across server_routes*.go modules.
+SERVER_ROUTE_FILES=$(find cmd/dev-console -maxdepth 1 -type f -name 'server_routes*.go' ! -name '*_test.go' | sort)
+
 # Extract registered routes from Go source
-GO_ROUTES=$(grep -o 'HandleFunc("[^"]*"' cmd/dev-console/server_routes.go \
+GO_ROUTES=$(grep -h -o 'HandleFunc("[^"]*"' $SERVER_ROUTE_FILES \
   | sed 's/HandleFunc("//;s/"//' \
   | sort -u)
 
@@ -137,7 +140,7 @@ for path in $OPENAPI_PATHS; do
     continue
   fi
   if ! echo "$GO_ROUTES" | grep -qx "$path"; then
-    fail "OpenAPI path $path not registered in Go server_routes.go"
+    fail "OpenAPI path $path not registered in Go server_routes*.go"
     ROUTE_SYNC_OK=false
   fi
 done
@@ -175,7 +178,7 @@ MUST_HAVE_EXTENSION_ONLY=(
 EXT_ONLY_OK=true
 for ep in "${MUST_HAVE_EXTENSION_ONLY[@]}"; do
   # Find the HandleFunc line for this endpoint
-  line=$(grep "HandleFunc(\"${ep}\"" cmd/dev-console/server_routes.go || true)
+  line=$(grep -h "HandleFunc(\"${ep}\"" $SERVER_ROUTE_FILES || true)
   if [ -z "$line" ]; then
     continue  # Route not found (might be registered differently)
   fi
@@ -425,7 +428,8 @@ bold "14. Checking for forbidden stdout writes in production code..."
 #   cli.go / cli_output.go — CLI mode (not MCP)
 #   main.go            — startup / background spawn
 #   main_connection.go — MCP pipe writes
-STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_output\.go|config\.go|main\.go|main_connection\.go|main_connection_stop\.go|main_helpers\.go|doctor\.go"
+#   main_connection_stop*.go — CLI stop/force command output
+STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_output\.go|config\.go|main(_.*)?\.go|main_connection\.go|main_connection_stop(_.*)?\.go|main_helpers\.go|doctor(_.*)?\.go"
 
 # Pattern: fmt.Print/Println/Printf (writes to stdout), or direct os.Stdout usage
 # Excludes: fmt.Fprintf(os.Stderr, ...) which is safe, and fmt.Sprintf which returns a string

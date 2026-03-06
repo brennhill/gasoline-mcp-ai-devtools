@@ -1,3 +1,6 @@
+// Purpose: Declares MCP resource URIs (capabilities, guide, quickstart) and URI templates (playbooks, demos) for client discovery.
+// Why: Exposes token-efficient documentation resources that MCP clients can read on demand.
+
 package main
 
 func mcpResources() []MCPResource {

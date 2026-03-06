@@ -8,6 +8,9 @@ tags:
   - releases
   - mcp
   - stability
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v5', 'release']
 ---
 
 Gasoline v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
@@ -91,4 +94,4 @@ Or update your MCP configuration:
 
 ## Full Changelog
 
-[GitHub Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.5.0)
+[GitHub Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.5.0)

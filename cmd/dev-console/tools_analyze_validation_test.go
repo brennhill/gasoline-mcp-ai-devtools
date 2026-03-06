@@ -1,5 +1,4 @@
-// Purpose: Validate tools_analyze_validation_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for analyze tool input validation.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package main
@@ -11,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	az "github.com/dev-console/dev-console/internal/tools/analyze"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
 )
 
 func newAnalyzeValidationHandler(t *testing.T) *ToolHandler {

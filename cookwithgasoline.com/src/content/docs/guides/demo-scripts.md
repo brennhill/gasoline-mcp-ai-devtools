@@ -1,6 +1,9 @@
 ---
 title: Create and Replay a Natural Language Demo Script
 description: Write a demo in plain English, run it with AI, replay it perfectly every time. A step-by-step guide to reusable demo scripts.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['guides', 'demo', 'scripts']
 ---
 
 ## What Is a Natural Language Demo Script?

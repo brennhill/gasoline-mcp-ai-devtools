@@ -1,27 +1,41 @@
-// Purpose: Defines JSON schema contracts for tool arguments and responses.
-// Why: Keeps tool interfaces strict and synchronized across server, extension, and clients.
+// Purpose: Returns the MCP tool definition (name, description, input schema) for the generate tool.
 // Docs: docs/features/feature/test-generation/index.md
 
 package schema
 
-import "github.com/dev-console/dev-console/internal/mcp"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+
+func testFailureSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
+			"error":       map[string]any{"type": "string", "description": "Error message"},
+			"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
+			"trace":       map[string]any{"type": "string", "description": "Stack trace"},
+			"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
+		},
+		"required": []string{"error"},
+	}
+}
 
 // GenerateToolSchema returns the MCP tool definition for the generate tool.
 func GenerateToolSchema() mcp.MCPTool {
+	failureSchema := testFailureSchema()
 	return mcp.MCPTool{
 		Name:        "generate",
-		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
+		Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.\n\nPrerequisites: Most modes require captured data first — use observe to verify data exists before generating. reproduction needs captured actions (observe what='actions'). har needs network bodies (observe what='network_bodies'). Use save_to param to write output directly to a file path.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
-					"type": "string",
-					"enum": []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+					"type":        "string",
+					"description": "Artifact type to generate from captured data",
+					"enum":        []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
 				},
 				"format": map[string]any{
 					"type":        "string",
-					"description": "Deprecated alias for 'what'",
-					"enum":        []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+					"description": "Deprecated alias for 'what'. Prefer 'what'.",
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -97,8 +111,9 @@ func GenerateToolSchema() mcp.MCPTool {
 					"description": "Max status code (har)",
 				},
 				"mode": map[string]any{
-					"type": "string",
-					"enum": []string{"strict", "moderate", "report_only"},
+					"type":        "string",
+					"description": "CSP strictness: strict (default), moderate, or report_only (csp)",
+					"enum":        []string{"strict", "moderate", "report_only"},
 				},
 				"include_report_uri": map[string]any{
 					"type":        "boolean",
@@ -152,29 +167,13 @@ func GenerateToolSchema() mcp.MCPTool {
 				"failure": map[string]any{
 					"type":        "object",
 					"description": "Single test failure (test_classify failure)",
-					"properties": map[string]any{
-						"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
-						"error":       map[string]any{"type": "string", "description": "Error message"},
-						"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
-						"trace":       map[string]any{"type": "string", "description": "Stack trace"},
-						"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
-					},
-					"required": []string{"error"},
+					"properties":  failureSchema["properties"],
+					"required":    failureSchema["required"],
 				},
 				"failures": map[string]any{
 					"type":        "array",
 					"description": "Multiple test failures (test_classify batch)",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
-							"error":       map[string]any{"type": "string", "description": "Error message"},
-							"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
-							"trace":       map[string]any{"type": "string", "description": "Stack trace"},
-							"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
-						},
-						"required": []string{"error"},
-					},
+					"items":       failureSchema,
 				},
 				"error_id": map[string]any{
 					"type":        "string",
@@ -186,7 +185,7 @@ func GenerateToolSchema() mcp.MCPTool {
 				},
 				"output_format": map[string]any{
 					"type":        "string",
-					"description": "Output format: file or inline (test_from_context)",
+					"description": "Output format. reproduction: 'gasoline-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
 				},
 			},
 			"required": []string{"what"},

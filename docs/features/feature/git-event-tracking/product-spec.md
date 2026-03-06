@@ -4,10 +4,12 @@ scope: feature/git-event-tracking
 ai-priority: high
 tags: [v7, developer-workflows, context, ears]
 relates-to: [../test-execution-capture.md, ../../core/architecture.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: product-spec
 feature_id: feature-git-event-tracking
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Git Event Tracking

@@ -1,0 +1,98 @@
+// Purpose: Owns daemon lock-file persistence and ownership marker helpers.
+// Why: Isolates filesystem metadata operations from startup/takeover policy logic.
+
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+)
+
+func daemonLockFilePath() (string, error) {
+	return state.InRoot("run", "daemon.lock.json")
+}
+
+func daemonLockFilePathForError() string {
+	path, err := daemonLockFilePath()
+	if err != nil {
+		return "<unknown>"
+	}
+	return path
+}
+
+func readDaemonLockFile() (*daemonLockRecord, error) {
+	path, err := daemonLockFilePath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var rec daemonLockRecord
+	if err := json.Unmarshal(data, &rec); err != nil {
+		return nil, fmt.Errorf("invalid daemon lock metadata at %s: %w", path, err)
+	}
+	return &rec, nil
+}
+
+func writeDaemonLockFile(rec daemonLockRecord) error {
+	path, err := daemonLockFilePath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
+	}
+	if rec.UpdatedAt == "" {
+		rec.UpdatedAt = daemonNow().UTC().Format(time.RFC3339)
+	}
+	data, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func removeDaemonLockFile() error {
+	path, err := daemonLockFilePath()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func removeDaemonLockIfOwned(pid int) {
+	rec, err := readDaemonLockFile()
+	if err != nil || rec == nil {
+		return
+	}
+	if rec.PID == pid {
+		_ = removeDaemonLockFile()
+	}
+}
+
+func persistCurrentDaemonLock(port int) error {
+	stateDir, err := state.RootDir()
+	if err != nil {
+		return err
+	}
+	return writeDaemonLockFile(daemonLockRecord{
+		PID:       os.Getpid(),
+		Port:      port,
+		StateDir:  stateDir,
+		Version:   version,
+		UpdatedAt: daemonNow().UTC().Format(time.RFC3339),
+	})
+}

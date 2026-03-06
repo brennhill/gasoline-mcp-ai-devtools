@@ -1,6 +1,5 @@
-// Purpose: Validate command_execution_readiness_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for command execution readiness gating.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -8,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
-func addCommandResultForTest(cap *capture.Capture, correlationID string, status string) {
+func addCommandResultForTest(cap *capture.Store, correlationID string, status string) {
 	cap.RegisterCommand(correlationID, "query-"+correlationID, time.Minute)
 	errText := ""
 	if status != "complete" {

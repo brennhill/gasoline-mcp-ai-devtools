@@ -1,6 +1,5 @@
-// Purpose: Validate manager_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for recording manager start, stop, and session lifecycle.
+// Docs: docs/features/feature/playback-engine/index.md
 
 // manager_test.go — Tests for RecordingManager lifecycle, validation, and actions.
 package recording
@@ -11,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // ============================================

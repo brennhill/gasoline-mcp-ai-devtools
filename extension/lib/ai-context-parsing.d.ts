@@ -1,7 +1,6 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Parses Chrome/Firefox stack traces into structured frames, resolves inline source maps, and extracts code snippets around error lines.
+ * Docs: docs/features/feature/error-bundling/index.md
  */
 /**
  * @fileoverview AI context foundation layer.
@@ -9,7 +8,7 @@
  * base64 source maps, extracts code snippets around error lines, and manages
  * an LRU source map cache.
  */
-import type { ParsedSourceMap } from '../types/index';
+import type { ParsedSourceMap } from '../types/index.js';
 /**
  * Parsed stack frame (internal representation with nullable functionName)
  */

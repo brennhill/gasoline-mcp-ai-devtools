@@ -1,5 +1,4 @@
-// Purpose: Validate correlation_tracking_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for capture request correlation tracking.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // correlation_tracking_test.go — Test correlation ID tracking for async commands
@@ -11,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // TestCorrelationIDTracking verifies command lifecycle tracking

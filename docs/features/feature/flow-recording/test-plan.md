@@ -3,9 +3,11 @@ feature: flow-recording
 status: proposed
 tool: [interact, observe, configure]
 mode: [record_start, record_stop, playback]
-version: v6.0
+version: 0.7.12
 last-updated: 2026-02-09
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Flow Recording & Playback — Test Plan

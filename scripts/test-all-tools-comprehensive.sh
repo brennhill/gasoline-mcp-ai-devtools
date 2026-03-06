@@ -3,6 +3,11 @@
 # Launches 8 groups of category tests, collects results, prints summary.
 # Compatible with bash 3.2+ (macOS default).
 # NO set -e: we need to collect all results even if some groups fail.
+#
+# NOTE: cat-27-interactive-overlays.sh is NOT included here — it requires
+# a human operator to visually verify browser overlays (subtitle, draw mode,
+# recording watermark, action toast, tracked hover launcher island).
+# Run it standalone: bash scripts/tests/cat-27-interactive-overlays.sh <port>
 
 # ── Dependency Checks ─────────────────────────────────────
 check_deps() {
@@ -182,9 +187,11 @@ PORT_GROUP16=7905 # cat-19-link-health
 PORT_GROUP18=7907 # cat-23-draw-mode
 PORT_GROUP19=7908 # cat-24-upload
 PORT_GROUP20=7909 # cat-25-annotations
+PORT_GROUP21=7910 # cat-26-dynamic-upgrade
+PORT_GROUP22=7911 # cat-28-terminal
 
 # All ports used by this runner
-ALL_UAT_PORTS="$PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20"
+ALL_UAT_PORTS="$PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20 $PORT_GROUP21 $PORT_GROUP22"
 # NOTE: PORT_GROUP17 is defined later (line ~303) and added to cleanup below
 
 # Safety-net trap: kill daemons on all ports if runner exits abnormally
@@ -376,8 +383,24 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 21: Dynamic Binary Upgrade (single script)
+(
+    cd "$PROJECT_ROOT" || exit
+    "$TIMEOUT_CMD" 180 bash "$TESTS_DIR/cat-26-dynamic-upgrade.sh" "$PORT_GROUP21" "$RESULTS_DIR/results-26.txt" \
+        > "$RESULTS_DIR/output-26.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 22: Terminal HTTP Endpoints (single script)
+(
+    cd "$PROJECT_ROOT" || exit
+    "$TIMEOUT_CMD" 120 bash "$TESTS_DIR/cat-28-terminal.sh" "$PORT_GROUP22" "$RESULTS_DIR/results-28.txt" \
+        > "$RESULTS_DIR/output-28.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 20 parallel groups..."
+echo "Running 22 parallel groups..."
 echo ""
 
 # Master watchdog: kill all groups if UAT exceeds 5 minutes total
@@ -407,7 +430,7 @@ wait "$WATCHDOG_PID" 2>/dev/null || true
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19 20 23 24 25"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19 20 23 24 25 26 28"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -432,6 +455,8 @@ get_default_name() {
         23) echo "Draw Mode" ;;
         24) echo "File Upload" ;;
         25) echo "Annotation Integration" ;;
+        26) echo "Dynamic Binary Upgrade" ;;
+        28) echo "Terminal HTTP Endpoints" ;;
         *)  echo "Unknown" ;;
     esac
 }

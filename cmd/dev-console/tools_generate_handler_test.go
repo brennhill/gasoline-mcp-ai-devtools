@@ -1,5 +1,4 @@
-// Purpose: Validate tools_generate_handler_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for generate tool handler dispatch.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_handler_test.go — Comprehensive unit tests for generate tool dispatch and response fields.
@@ -11,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -73,6 +72,27 @@ func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsGenerateDispatch_UnknownFormatAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"format":"nonexistent_format"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown format alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
@@ -82,6 +102,45 @@ func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("nil args (no 'format') should return isError:true")
+	}
+}
+
+func TestToolsGenerateDispatch_FormatAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("format alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsGenerateDispatch_ConflictingWhatAndFormat(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"what":"test","format":"har"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/format should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
 	}
 }
 

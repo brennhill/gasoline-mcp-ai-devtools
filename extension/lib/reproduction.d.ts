@@ -1,9 +1,8 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Records user interactions with multi-strategy selectors (testId, role, aria, text, CSS path) and generates Playwright reproduction scripts.
  * Docs: docs/features/feature/reproduction-scripts/index.md
  */
-type EnhancedActionType = 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll';
+type EnhancedActionType = 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll' | 'transient';
 interface RoleSelector {
     role: string;
     name?: string;
@@ -29,6 +28,9 @@ interface EnhancedActionRecord {
     selected_value?: string;
     selected_text?: string;
     scroll_y?: number;
+    classification?: string;
+    duration_ms?: number;
+    role?: string;
 }
 interface ScriptOptions {
     errorMessage?: string;
@@ -56,6 +58,9 @@ interface RecordActionOptions {
     selected_value?: string;
     selected_text?: string;
     scroll_y?: number;
+    classification?: string;
+    duration_ms?: number;
+    role?: string;
 }
 /**
  * Record an enhanced action with multi-strategy selectors

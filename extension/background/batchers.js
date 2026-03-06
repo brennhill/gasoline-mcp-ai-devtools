@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Implements debounced batching with circuit breaker integration for rate-limited server requests.
+ * Why: Prevents connection storms and provides backoff when the MCP server is unavailable.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import { createCircuitBreaker } from './circuit-breaker.js';
 import { MAX_PENDING_BUFFER } from './state-manager.js';

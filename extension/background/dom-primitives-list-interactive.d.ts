@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Enumerates interactive elements on a page for AI-driven automation.
+ * Why: Self-contained for chrome.scripting.executeScript (no closures allowed).
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 /**
  * Self-contained function that scans a page for interactive elements.
@@ -17,6 +15,10 @@ export declare function domPrimitiveListInteractive(scopeSelector?: string, opti
         width?: unknown;
         height?: unknown;
     };
+    text_contains?: string;
+    role?: string;
+    visible_only?: boolean;
+    exclude_nav?: boolean;
 }): {
     success: boolean;
     elements: unknown[];
@@ -27,6 +29,7 @@ export declare function domPrimitiveListInteractive(scopeSelector?: string, opti
         width: number;
         height: number;
     };
+    filters_applied?: Record<string, unknown>;
     error?: string;
     message?: string;
 };

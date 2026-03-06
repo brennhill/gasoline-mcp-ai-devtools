@@ -1,7 +1,6 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Detects UI frameworks (React/Vue/Svelte), captures state snapshots, and generates AI-friendly error summaries with timeout guards.
+ * Docs: docs/features/feature/error-bundling/index.md
  */
 /**
  * @fileoverview Runtime introspection for AI error context.
@@ -9,7 +8,7 @@
  * captures Redux state snapshots, generates AI summaries, and orchestrates
  * the full error enrichment pipeline with timeout guards.
  */
-import type { LogEntry, AiContextData } from '../types/index';
+import type { LogEntry, AiContextData } from '../types/index.js';
 /**
  * Framework detection result
  */

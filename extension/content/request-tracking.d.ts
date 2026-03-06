@@ -1,16 +1,14 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Purpose: Manages pending request/response pairs (highlight, execute_js, a11y, DOM queries) with timeout cleanup for AI Web Pilot features.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * @fileoverview Request Tracking Module
  * Manages pending requests for AI Web Pilot features
  * Includes periodic cleanup timer to handle edge cases where pagehide/beforeunload don't fire.
  */
-import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types';
-import type { PendingRequestStats } from './types';
+import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types/index.js';
+import type { PendingRequestStats } from './types.js';
 /**
  * Clear all pending request Maps on page unload (Issue 2 fix).
  * Prevents memory leaks and stale request accumulation across navigations.

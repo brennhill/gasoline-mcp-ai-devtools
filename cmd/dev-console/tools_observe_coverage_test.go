@@ -1,6 +1,5 @@
-// Purpose: Validate tools_observe_coverage_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Coverage-expansion tests for dev-console edge cases and branch paths.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_coverage_test.go — Coverage tests for observe sub-handlers.
 package main
@@ -10,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/tools/observe"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
 // ============================================
@@ -52,7 +51,7 @@ func TestToolGetWebVitals_WithData(t *testing.T) {
 		{
 			URL:       "https://example.com",
 			Timestamp: "2024-01-01T00:00:00Z",
-			Timing: performance.PerformanceTiming{
+			Timing: performance.Timing{
 				LargestContentfulPaint: &lcp,
 				FirstContentfulPaint:   &fcp,
 				DomContentLoaded:       800,

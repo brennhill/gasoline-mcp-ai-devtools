@@ -1,3 +1,6 @@
+// Purpose: Generates versioned process titles (e.g., gasoline-mcp-079) for daemon child processes.
+// Why: Makes daemon instances identifiable in process listings when multiple versions coexist.
+
 package main
 
 import (

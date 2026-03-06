@@ -3,12 +3,14 @@ doc_type: product-spec
 feature_id: feature-link-health
 status: shipped
 owners: []
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-05
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
   qa: ./qa-plan.md
   feature_index: ./index.md
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Link Health Product Spec (TARGET)

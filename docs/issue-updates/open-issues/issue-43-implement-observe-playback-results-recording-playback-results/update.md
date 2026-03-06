@@ -1,7 +1,7 @@
 # Product Update: Issue #43
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/43
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/43
 - Title: Implement observe(playback_results) — recording playback results
 - Last Updated: 2026-02-14T14:06:44Z
 

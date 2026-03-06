@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
-// Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
+// Purpose: Provides snapshot name validation, insertion-order removal, and URL path extraction helpers.
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // helpers.go — Helper functions for session package.
 // validateName, removeFromOrder, extractPath functions.
@@ -9,8 +7,6 @@ package session
 
 import (
 	"fmt"
-
-	"github.com/dev-console/dev-console/internal/util"
 )
 
 // validateName checks snapshot name constraints.
@@ -38,9 +34,4 @@ func (sm *SessionManager) removeFromOrder(name string) {
 			return
 		}
 	}
-}
-
-// ExtractURLPath delegates to util.ExtractURLPath for URL path extraction.
-func ExtractURLPath(rawURL string) string {
-	return util.ExtractURLPath(rawURL)
 }

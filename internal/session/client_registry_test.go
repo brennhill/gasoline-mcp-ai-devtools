@@ -1,5 +1,4 @@
-// Purpose: Validate client_registry_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for session client registry tracking.
 // Docs: docs/features/feature/pagination/index.md
 
 package session

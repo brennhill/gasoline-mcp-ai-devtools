@@ -1,8 +1,9 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
 import { SettingName } from '../lib/constants.js';
-import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery } from './message-handlers.js';
+import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleFormStateQuery, handleDataTableQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
+import { toggleChatWidget } from './ui/chat-widget.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;
@@ -28,6 +29,10 @@ export function initRuntimeMessageListener() {
             const m = msg;
             if (m.text)
                 showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms);
+            return false;
+        },
+        GASOLINE_TOGGLE_CHAT: (msg) => {
+            toggleChatWidget(msg.client_name);
             return false;
         },
         GASOLINE_RECORDING_WATERMARK: (msg) => {
@@ -96,7 +101,12 @@ export function initRuntimeMessageListener() {
         GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
         LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}), sr),
         COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}), sr),
-        FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr)
+        FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr),
+        FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery((msg.params ?? {}), sr),
+        DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery((msg.params ?? {}), sr),
+        GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
+        GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
+        GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!isValidBackgroundSender(sender)) {

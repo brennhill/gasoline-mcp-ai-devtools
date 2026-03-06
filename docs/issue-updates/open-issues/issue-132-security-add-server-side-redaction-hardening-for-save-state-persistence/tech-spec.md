@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #132
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/132
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/132
 - Title: Security: add server-side redaction hardening for save_state persistence
 
 ## Objective

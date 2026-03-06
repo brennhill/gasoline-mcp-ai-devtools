@@ -1,72 +1,56 @@
 ---
 title: Fire It Up
 description: Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command.
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['getting', 'started']
 ---
 
 Gasoline is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.
 
-## 1. Install the Extension
+## 1. Install Everything
 
-The extension captures logs from your browser and sends them to the local Gasoline server.
+One command downloads the binary, stages the extension, and auto-configures all detected AI tools:
 
+**macOS / Linux:**
 ```bash
-# 1. Clone the repo for the extension
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
-
-# 2. Load the extension:
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+```
+
+This automatically:
+- Downloads the latest stable binary to `~/.gasoline/bin/`
+- Verifies SHA-256 checksum
+- Extracts the Chrome extension to `~/.gasoline/extension/`
+- Auto-configures all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Claude Desktop, VS Code)
+
+## 2. Load the Chrome Extension
+
+This is the one step that requires human interaction — Chrome doesn't allow programmatic extension installation.
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right toggle)
 3. Click **Load unpacked**
-4. Select the `extension/` folder from the cloned repository
+4. Select the folder: **`~/.gasoline/extension`**
 
-You'll see the Gasoline icon in your toolbar. It will show "Not Connected" until you complete step 2.
+You'll see the Gasoline icon in your toolbar. It will show "Not Connected" until you complete step 3.
 
-## 2. Connect Your AI Tool
-
-Add this config to your AI tool and it will start Gasoline automatically:
-
-**Claude Code** — `.mcp.json` in your project root:
-
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
-    }
-  }
-}
-```
-
-**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
-
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
-    }
-  }
-}
-```
-
-Or auto-install to any supported tool:
-
+:::tip[Skip the UI clicks]
+If you're willing to restart Chrome, you can pre-load the extension via CLI flag:
 ```bash
-gasoline-mcp --install          # all detected clients
-gasoline-mcp --install gemini   # just Gemini CLI
-gasoline-mcp --install cursor   # just Cursor
+# macOS
+open -a "Google Chrome" --args --load-extension="$HOME/.gasoline/extension"
 ```
-
-See [MCP Integration](/mcp-integration/) for Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, and more.
-
-**Restart your AI tool.** The server will start automatically when your AI connects.
+This only applies to that Chrome session. For persistent installation, use the Load Unpacked flow above.
+:::
 
 ## 3. Verify It Works
+
+**Restart your AI tool** (quit and reopen Claude Code, Cursor, etc.) to activate the MCP server.
 
 Open your web app in Chrome. Trigger a test error:
 
@@ -77,6 +61,11 @@ console.error("Gasoline test — is the fire lit?")
 Ask your AI: _"What browser errors do you see?"_
 
 The extension icon should now show **Connected** (green indicator).
+
+You can also verify with the built-in doctor command:
+```bash
+~/.gasoline/bin/gasoline-agentic-browser --doctor
+```
 
 ## What tools does Gasoline give my AI?
 
@@ -94,28 +83,20 @@ Each tool has sub-modes. For example, `observe` with `what: "errors"` returns co
 
 See [MCP Integration](/mcp-integration/) for full tool documentation.
 
-## Alternative: Run from Source
+## Alternative Install Methods
 
-For development or if you prefer building from source:
-
+**npm** (if you prefer Node.js):
 ```bash
-# Clone and run
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
-go run ./cmd/dev-console
-
-# MCP config for source install
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "go",
-      "args": ["run", "./cmd/dev-console"]
-    }
-  }
-}
+npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
 ```
 
-Requires [Go 1.21+](https://go.dev/).
+**From source** (for development):
+```bash
+git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
+cd gasoline-agentic-browser-devtools-mcp
+go run ./cmd/dev-console
+```
+Requires [Go 1.24+](https://go.dev/).
 
 ## Next Steps
 

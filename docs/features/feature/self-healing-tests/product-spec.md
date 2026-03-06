@@ -3,10 +3,12 @@ feature: Self-Healing Tests
 status: shipped
 tool: observe, generate, interact
 mode: test-automation, autonomous-repair
-version: v6.0
+version: 0.7.12
 doc_type: product-spec
 feature_id: feature-self-healing-tests
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Product Spec: Self-Healing Tests

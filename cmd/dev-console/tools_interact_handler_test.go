@@ -1,5 +1,4 @@
-// Purpose: Validate tools_interact_handler_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Tests for interact tool handler dispatch.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_handler_test.go — Comprehensive unit tests for interact tool dispatch and response fields.
@@ -9,7 +8,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -73,6 +71,27 @@ func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractDispatch_UnknownActionAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"nonexistent_action"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown action alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
@@ -108,6 +127,22 @@ func TestToolsInteractDispatch_StateActionAliases(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDispatch_RecordingActionAliases(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	for _, action := range []string{"record_start", "record_stop"} {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, fmt.Sprintf(`{"action":"%s"}`, action))
+			result := parseToolResult(t, resp)
+			text := result.Content[0].Text
+			if strings.Contains(text, "unknown_mode") {
+				t.Fatalf("%s should be recognized alias, got unknown_mode: %s", action, text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
@@ -117,6 +152,63 @@ func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("nil args (no 'action') should return isError:true")
+	}
+}
+
+func TestToolsInteractDispatch_ActionAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"list_states"}`)
+	result := parseToolResult(t, resp)
+	if len(result.Content) == 0 {
+		t.Fatal("expected content blocks in alias response")
+	}
+	if strings.Contains(result.Content[0].Text, "unknown_mode") {
+		t.Fatalf("action alias should not route to unknown_mode, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "deprecated") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsInteractDispatch_ConflictingWhatAndAction(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"what":"list_states","action":"navigate"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/action should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
+	}
+}
+
+// TestToolsInteractDispatch_SameWhatAndActionAllowed verifies that providing
+// the same value for both 'what' and the deprecated 'action' alias is not
+// treated as a conflict — it is a no-op redundancy the server should tolerate.
+func TestToolsInteractDispatch_SameWhatAndActionAllowed(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"what":"list_states","action":"list_states"}`)
+	result := parseToolResult(t, resp)
+	// Should not return an invalid_param conflict error — same value is not a conflict.
+	if result.IsError && strings.Contains(result.Content[0].Text, "Conflicting parameters") {
+		t.Fatalf("same what+action value should not trigger conflict error, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -161,9 +253,7 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	cap.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"highlight","selector":".btn"}`)
 	result := parseToolResult(t, resp)
@@ -278,6 +368,7 @@ func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"execute_js","script":"document.title"}`)
 	result := parseToolResult(t, resp)
@@ -325,6 +416,7 @@ func TestToolsInteractNavigate_AssumedEnabledWhenPilotStatusUncertain(t *testing
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotUnknownForTest()
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
@@ -342,9 +434,7 @@ func TestToolsInteractNavigate_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	cap.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
@@ -400,6 +490,7 @@ func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	actions := []struct {
 		name   string
@@ -510,7 +601,7 @@ func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	actions := []string{"click", "type", "select", "check", "get_text", "get_value",
-		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press"}
+		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for"}
 
 	for _, action := range actions {
 		t.Run(action, func(t *testing.T) {
@@ -583,8 +674,6 @@ func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeToolHandler(t)
-	cap.SetPilotEnabled(true)
 
 	cases := []struct {
 		action string
@@ -610,6 +699,10 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.action, func(t *testing.T) {
+			h, _, cap := makeToolHandler(t)
+			cap.SetPilotEnabled(true)
+			mockConnectedTrackedTab(t, cap)
+
 			resp := callInteractRaw(h, tc.args)
 			result := parseToolResult(t, resp)
 			if result.IsError {
@@ -641,6 +734,7 @@ func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"click","selector":".compose","annotation_rect":{"x":120,"y":240,"width":300,"height":180}}`)
 	result := parseToolResult(t, resp)
@@ -668,6 +762,78 @@ func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing
 		if _, exists := scopeRect[k]; !exists {
 			t.Fatalf("scope_rect missing key %q in payload: %s", k, string(pq.Params))
 		}
+	}
+}
+
+// ============================================
+// interact(action:"list_interactive") — near_x/near_y/near_radius → scope_rect conversion (#448)
+// ============================================
+
+func TestToolsInteractDOMPrimitive_NearParamsConvertToScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	resp := callInteractRaw(h, `{"what":"list_interactive","near_x":500,"near_y":300,"near_radius":150}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("list_interactive with near params should queue, got error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for list_interactive")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	scopeRect, ok := payload["scope_rect"].(map[string]any)
+	if !ok {
+		t.Fatalf("scope_rect missing from payload — near_x/near_y/near_radius should convert to scope_rect: %s", string(pq.Params))
+	}
+	// near_x=500, near_y=300, near_radius=150 → scope_rect={x:350, y:150, width:300, height:300}
+	if x, _ := scopeRect["x"].(float64); x != 350 {
+		t.Errorf("scope_rect.x = %v, want 350", x)
+	}
+	if y, _ := scopeRect["y"].(float64); y != 150 {
+		t.Errorf("scope_rect.y = %v, want 150", y)
+	}
+	if w, _ := scopeRect["width"].(float64); w != 300 {
+		t.Errorf("scope_rect.width = %v, want 300", w)
+	}
+	if h, _ := scopeRect["height"].(float64); h != 300 {
+		t.Errorf("scope_rect.height = %v, want 300", h)
+	}
+}
+
+func TestToolsInteractDOMPrimitive_NearParamsDoNotOverrideScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	// Explicit scope_rect takes precedence over near params
+	resp := callInteractRaw(h, `{"what":"list_interactive","near_x":500,"near_y":300,"near_radius":150,"scope_rect":{"x":0,"y":0,"width":100,"height":100}}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("unexpected error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	scopeRect := payload["scope_rect"].(map[string]any)
+	if x, _ := scopeRect["x"].(float64); x != 0 {
+		t.Errorf("explicit scope_rect.x should be preserved, got %v", x)
 	}
 }
 
@@ -748,6 +914,7 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"list_interactive"}`)
 	result := parseToolResult(t, resp)
@@ -773,6 +940,47 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"get_text", structured:true) — Regression (#390)
+// ============================================
+
+func TestToolsInteractGetText_StructuredPassthrough(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	resp := callInteractRaw(h, `{"what":"get_text","selector":".accordion","structured":true}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("get_text should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "dom_get_text_") {
+		t.Errorf("correlation_id should start with 'dom_get_text_', got: %s", corr)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for get_text")
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("pending query params should be valid JSON: %v", err)
+	}
+	if got, _ := params["action"].(string); got != "get_text" {
+		t.Fatalf("pending query action = %#v, want get_text", params["action"])
+	}
+	if got, _ := params["structured"].(bool); !got {
+		t.Fatalf("pending query should include structured=true, got: %#v", params["structured"])
+	}
 }
 
 // ============================================

@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Executes JavaScript in page context with world-aware routing (content script relay, chrome.scripting, or CSP-safe structured executor).
+ * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 // query-execution.ts — JavaScript execution with world-aware routing and CSP fallback.
 // Handles execute_js queries via content script relay, chrome.scripting API, or structured executor.
@@ -12,6 +9,7 @@ import { DebugCategory } from './debug.js';
 import { scaleTimeout } from '../lib/timeouts.js';
 import { parseExpression } from './csp-safe-parser.js';
 import { cspSafeExecutor } from './csp-safe-executor.js';
+import { errorMessage } from '../lib/error-utils.js';
 /**
  * Probe whether a tab's CSP blocks dynamic script execution (new Function).
  * Returns one of three levels:
@@ -128,8 +126,54 @@ export async function executeViaScriptingAPI(tabId, script, timeoutMs, world = '
                         const node = obj;
                         return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
                     }
+                    // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
+                    // that Object.keys() misses. Their toJSON() returns a plain object.
+                    if (typeof obj.toJSON === 'function') {
+                        try {
+                            return serialize(obj.toJSON(), depth + 1, seen);
+                        }
+                        catch {
+                            // Fall through to Object.keys() enumeration
+                        }
+                    }
+                    const keys = Object.keys(obj).slice(0, 50);
+                    // #389: Some host objects expose data only via prototype getters
+                    // (DOMRect/CSSStyleDeclaration-like values). If no enumerable keys exist,
+                    // introspect prototype property names and capture primitive getter values.
+                    if (keys.length === 0) {
+                        try {
+                            const proto = Object.getPrototypeOf(obj);
+                            if (proto && proto !== Object.prototype) {
+                                const hostResult = {};
+                                const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
+                                for (const key of propNames) {
+                                    if (key === 'constructor')
+                                        continue;
+                                    try {
+                                        const value = obj[key];
+                                        const valueType = typeof value;
+                                        if (value === undefined || valueType === 'function')
+                                            continue;
+                                        if (valueType === 'string' || valueType === 'number' || valueType === 'boolean' || value === null) {
+                                            hostResult[key] = value;
+                                        }
+                                    }
+                                    catch {
+                                        // Ignore getter access errors.
+                                    }
+                                    if (Object.keys(hostResult).length >= 50)
+                                        break;
+                                }
+                                if (Object.keys(hostResult).length > 0)
+                                    return hostResult;
+                            }
+                        }
+                        catch {
+                            // Fall through to default object key enumeration.
+                        }
+                    }
                     const result = {};
-                    for (const key of Object.keys(obj).slice(0, 50)) {
+                    for (const key of keys) {
                         try {
                             result[key] = serialize(obj[key], depth + 1, seen);
                         }
@@ -153,7 +197,7 @@ export async function executeViaScriptingAPI(tabId, script, timeoutMs, world = '
         return { success: false, error: 'no_result', message: 'chrome.scripting.executeScript produced no result' };
     }
     catch (err) {
-        const msg = err.message || '';
+        const msg = errorMessage(err) || '';
         if (msg.includes('timeout')) {
             return { success: false, error: 'execution_timeout', message: msg };
         }
@@ -205,7 +249,7 @@ async function executeViaStructuredCommand(tabId, script, timeoutMs, world = 'MA
         };
     }
     catch (err) {
-        const msg = err.message || '';
+        const msg = errorMessage(err) || '';
         if (msg.includes('timeout')) {
             return { success: false, error: 'execution_timeout', message: msg, execution_mode: modeTag };
         }
@@ -258,7 +302,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
         return result;
     }
     catch (err) {
-        let message = err.message || 'Tab communication failed';
+        let message = errorMessage(err, 'Tab communication failed');
         // Auto-fallback: content script not reachable — try scripting API MAIN, then structured
         if (world === 'auto' && message.includes('Receiving end does not exist')) {
             debugLog(DebugCategory.CONNECTION, 'Auto-fallback (content script unreachable)', { tabId });

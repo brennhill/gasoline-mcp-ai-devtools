@@ -4,10 +4,12 @@ scope: feature/backend-control
 ai-priority: high
 tags: [v7, backend-integration, control, hands]
 relates-to: [../backend-log-streaming/product-spec.md, ../git-event-tracking/product-spec.md, ../../core/architecture.md]
-last-verified: 2026-01-31
+last-verified: 2026-03-05
 doc_type: product-spec
 feature_id: feature-backend-control
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-05
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 ---
 
 # Backend Control

@@ -1,5 +1,4 @@
-// Purpose: Validate race_enabled_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
+// Purpose: Race-detector-enabled concurrency tests for pagination and cursor.
 // Docs: docs/features/feature/pagination/index.md
 
 //go:build race

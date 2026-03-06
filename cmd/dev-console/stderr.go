@@ -1,3 +1,6 @@
+// Purpose: Provides a swappable stderr writer (stderrf) so diagnostic output can be redirected during tests or bridge mode.
+// Why: Prevents stderr writes from corrupting MCP stdout transport while keeping diagnostic output accessible.
+
 package main
 
 import (

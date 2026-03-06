@@ -4,6 +4,9 @@ description: "AI agents can now check all links on your page, automate your brow
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]
 tags: [release]
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+normalized_tags: ['release', 'blog', 'v6', 'beta']
 ---
 
 ## What's New in v6.0.0
@@ -91,4 +94,4 @@ pip install gasoline-mcp==6.0.0
 
 ## Full Changelog
 
-[v5.8.0...v6.0.0](https://github.com/brennhill/gasoline-mcp-ai-devtools/compare/v5.8.0...v6.0.0)
+[v5.8.0...v6.0.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.8.0...v6.0.0)

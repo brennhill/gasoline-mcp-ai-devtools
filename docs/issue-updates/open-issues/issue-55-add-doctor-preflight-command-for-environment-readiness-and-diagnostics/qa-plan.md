@@ -1,7 +1,7 @@
 # QA Plan: Issue #55
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/55
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/55
 - Title: Add doctor preflight command for environment readiness and diagnostics
 
 ## QA Goal

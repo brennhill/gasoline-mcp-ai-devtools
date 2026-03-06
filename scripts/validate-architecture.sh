@@ -105,7 +105,7 @@ MCP_TOOL_HANDLERS=(
     "toolObserveCommandResult"
     "toolObservePendingCommands"
     "toolObserveFailedCommands"
-    "handlePilotExecuteJS"
+    "handleExecuteJS"
     "handleBrowserActionNavigate"
 )
 
@@ -212,12 +212,15 @@ else
     echo "   ✅ AsyncCommandTimeout = ${ASYNC_TIMEOUT_SECONDS}s"
 fi
 
-if grep -q 'MaxPendingQueries[[:space:]]*=[[:space:]]*5' internal/queries/dispatcher_queries.go; then
-    echo "   ✅ MaxPendingQueries = 5"
-elif grep -q 'maxPendingQueries[[:space:]]*=[[:space:]]*5' internal/capture/constants.go; then
-    echo "   ✅ maxPendingQueries = 5"
+MAX_PENDING_QUERIES_VALUE=$(grep -E 'MaxPendingQueries[[:space:]]*=' internal/queries/dispatcher_queries.go | head -1 | grep -oE '[0-9]+' | head -1 || true)
+if [ -n "${MAX_PENDING_QUERIES_VALUE:-}" ]; then
+    if [ "$MAX_PENDING_QUERIES_VALUE" -lt 5 ]; then
+        echo "   ⚠️  WARNING: MaxPendingQueries = ${MAX_PENDING_QUERIES_VALUE} (expected >= 5 for queue durability)"
+    else
+        echo "   ✅ MaxPendingQueries = ${MAX_PENDING_QUERIES_VALUE}"
+    fi
 else
-    echo "   ⚠️  WARNING: MaxPendingQueries not found or not set to 5"
+    echo "   ⚠️  WARNING: MaxPendingQueries constant not found in internal/queries/dispatcher_queries.go"
 fi
 
 # ============================================

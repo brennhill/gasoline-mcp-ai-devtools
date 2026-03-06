@@ -58,6 +58,36 @@ _navigate_to_upload_form() {
     sleep 2
 }
 
+# ── Shared helper: poll observe(page) until URL marker appears ──
+# Sets PAGE_POLL_OK to "true"/"false", plus PAGE_POLL_RESPONSE/TEXT from the last poll.
+_poll_page_until_url() {
+    local expected_fragment="$1"
+    local max_polls="${2:-10}"
+    local interval_secs="${3:-0.5}"
+
+    PAGE_POLL_OK="false"
+    PAGE_POLL_RESPONSE=""
+    PAGE_POLL_TEXT=""
+
+    local page_resp page_text
+    for _poll_i in $(seq 1 "$max_polls"); do
+        page_resp=$(call_tool "observe" '{"what":"page"}')
+        page_text=$(extract_content_text "$page_resp")
+        if [ -z "$page_text" ] && [ -n "$page_resp" ]; then
+            page_text="$page_resp"
+        fi
+
+        PAGE_POLL_RESPONSE="$page_resp"
+        PAGE_POLL_TEXT="$page_text"
+
+        if echo "$page_text" | grep -q "$expected_fragment"; then
+            PAGE_POLL_OK="true"
+            return
+        fi
+        sleep "$interval_secs"
+    done
+}
+
 # ── Shared helper: inspect command state via observe fallbacks ──
 # Sets COMMAND_LOOKUP_STATUS, COMMAND_LOOKUP_TEXT, COMMAND_LOOKUP_NOTE.
 _lookup_command_state() {
@@ -276,8 +306,9 @@ _fetch_last_upload_via_browser() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fetch last upload from server API","script":"fetch(\"/api/last-upload\").then(r=>r.json()).then(d=>JSON.stringify(d)).catch(e=>JSON.stringify({error:e.message}))"}'
     LAST_UPLOAD_RAW="$INTERACT_RESULT"
 
-    # Extract fields from nested command result JSON:
-    # INTERACT_RESULT = "Command ...: complete\n{...result:{result:\"<inner JSON string>\"...}...}"
+    # Extract fields from command result JSON.
+    # Newer responses expose execute_js return data under top-level return_value.
+    # Older responses may nest it under result.return_value or result.result.
     local parsed
     parsed=$(echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
@@ -287,14 +318,33 @@ if idx < 0:
     print('{}')
     sys.exit(0)
 data = json.loads(text[idx:])
-r = data.get('result', {})
-inner = r.get('result', '') if isinstance(r, dict) else ''
-if isinstance(inner, str) and inner.startswith('{'):
-    print(inner)
-elif isinstance(inner, dict):
-    print(json.dumps(inner))
-else:
-    print('{}')
+def emit_candidate(value):
+    if isinstance(value, dict):
+        print(json.dumps(value))
+        return True
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return False
+        try:
+            inner = json.loads(s)
+        except Exception:
+            return False
+        if isinstance(inner, dict):
+            print(json.dumps(inner))
+            return True
+    return False
+
+r = data.get('result', {}) if isinstance(data, dict) else {}
+candidates = [
+    data.get('return_value') if isinstance(data, dict) else None,
+    r.get('return_value') if isinstance(r, dict) else None,
+    r.get('result') if isinstance(r, dict) else None,
+]
+for candidate in candidates:
+    if emit_candidate(candidate):
+        sys.exit(0)
+print('{}')
 " 2>/dev/null || echo "{}")
 
     LAST_UPLOAD_MD5=$(echo "$parsed" | jq -r '.md5 // empty' 2>/dev/null)
@@ -349,18 +399,22 @@ run_test_15_0() {
 }
 run_test_15_0
 
-# ── Test 15.1: Schema — upload in interact action enum ───
-begin_test "15.1" "[DAEMON ONLY] Schema: upload in interact action enum" \
-    "Verify tools/list includes upload as a valid interact action" \
+# ── Test 15.1: Schema — upload in interact enum ───
+begin_test "15.1" "[DAEMON ONLY] Schema: upload in interact what enum" \
+    "Verify tools/list includes upload as a valid interact action (canonical what enum)" \
     "Tests: schema registration for file upload"
 
 run_test_15_1() {
     local tools_resp
     tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
-    if echo "$tools_resp" | jq -e '.result.tools[] | select(.name=="interact") | .inputSchema.properties.action.enum[] | select(.=="upload")' >/dev/null 2>&1; then
-        pass "upload in interact action enum."
+    if echo "$tools_resp" | jq -e '
+        .result.tools[] | select(.name=="interact")
+        | ((.inputSchema.properties.what.enum // .inputSchema.properties.action.enum // []))
+        | .[] | select(.=="upload")
+    ' >/dev/null 2>&1; then
+        pass "upload in interact enum (what/action)."
     else
-        fail "upload NOT in interact action enum."
+        fail "upload NOT in interact enum (checked what/action)."
     fi
 }
 run_test_15_1
@@ -614,16 +668,12 @@ run_test_15_10() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
     sleep 3
 
-    # Observe result page — should be /upload/success after redirect
-    local response
-    response=$(call_tool "observe" '{"what":"page"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Observe result page — should reach /upload/success after redirect settles.
+    _poll_page_until_url "/upload/success" 12 0.5
+    log_diagnostic "15.10" "observe success page" "$PAGE_POLL_RESPONSE" "$PAGE_POLL_TEXT"
 
-    log_diagnostic "15.10" "observe success page" "$response" "$content_text"
-
-    if ! echo "$content_text" | grep -q '/upload/success'; then
-        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
+    if [ "$PAGE_POLL_OK" != "true" ]; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$PAGE_POLL_TEXT" 300)"
         return
     fi
 
@@ -727,16 +777,12 @@ run_test_15_12() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
     sleep 3
 
-    # Observe success page first
-    local response
-    response=$(call_tool "observe" '{"what":"page"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Observe success page and tolerate redirect/load latency.
+    _poll_page_until_url "/upload/success" 12 0.5
+    log_diagnostic "15.12" "observe success page" "$PAGE_POLL_RESPONSE" "$PAGE_POLL_TEXT"
 
-    log_diagnostic "15.12" "observe success page" "$response" "$content_text"
-
-    if ! echo "$content_text" | grep -q '/upload/success'; then
-        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
+    if [ "$PAGE_POLL_OK" != "true" ]; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$PAGE_POLL_TEXT" 300)"
         return
     fi
 
@@ -763,18 +809,14 @@ run_test_15_13() {
         return
     fi
 
-    # Browser should be on /upload/success from 15.12
-    local response
-    response=$(call_tool "observe" '{"what":"page"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Browser should be on /upload/success from 15.12, but allow residual loading.
+    _poll_page_until_url "/upload/success" 10 0.5
+    log_diagnostic "15.13" "observe page" "$PAGE_POLL_RESPONSE" "$PAGE_POLL_TEXT"
 
-    log_diagnostic "15.13" "observe page" "$response" "$content_text"
-
-    if echo "$content_text" | grep -q '/upload/success'; then
+    if [ "$PAGE_POLL_OK" = "true" ]; then
         pass "Confirmation page visible via observe(page) — URL contains /upload/success."
     else
-        fail "Browser not on upload success page after 15.10/15.12. Page metadata: $(truncate "$content_text" 300)"
+        fail "Browser not on upload success page after 15.10/15.12. Page metadata: $(truncate "$PAGE_POLL_TEXT" 300)"
     fi
 }
 run_test_15_13

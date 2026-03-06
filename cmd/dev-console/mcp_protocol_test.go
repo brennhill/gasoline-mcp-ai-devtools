@@ -1,6 +1,5 @@
-// Purpose: Validate mcp_protocol_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for MCP JSON-RPC protocol compliance.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -17,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // ⚠️ CRITICAL MCP PROTOCOL COMPLIANCE TESTS - DO NOT MODIFY WITHOUT PRINCIPAL REVIEW

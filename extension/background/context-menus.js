@@ -1,0 +1,149 @@
+/**
+ * Purpose: Chrome context menu installation and click handlers for Gasoline actions.
+ * Split from event-listeners.ts to keep files under 800 LOC.
+ */
+import { StorageKey } from '../lib/constants.js';
+import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { toggleDrawModeForTab } from './draw-mode-toggle.js';
+import { setTrackedTab, clearTrackedTab } from './tab-state.js';
+// =============================================================================
+// CONTEXT MENU IDS
+// =============================================================================
+const MENU_ID_CONTROL = 'gasoline-control-page';
+const MENU_ID_SCREENSHOT = 'gasoline-screenshot';
+const MENU_ID_ANNOTATE = 'gasoline-annotate-page';
+const MENU_ID_RECORD = 'gasoline-record-screen';
+const MENU_ID_ACTION_RECORD = 'gasoline-action-record';
+const CONTROL_TAB_TITLE = 'Control Tab';
+const RELEASE_CONTROL_TITLE = 'Release Control';
+const ANNOTATE_START_TITLE = 'Annotate Page';
+const ANNOTATE_STOP_TITLE = 'Stop Annotation';
+const RECORD_START_TITLE = 'Record Screen';
+const RECORD_STOP_TITLE = 'Stop Screen Recording';
+const ACTION_RECORD_START_TITLE = 'Record User Actions';
+const ACTION_RECORD_STOP_TITLE = 'Stop User Action Recording';
+function updateContextMenuTitle(menuId, title) {
+    return new Promise((resolve) => {
+        chrome.contextMenus.update(menuId, { title }, () => resolve());
+    });
+}
+async function isDrawModeActive(tabId) {
+    if (!tabId)
+        return false;
+    try {
+        const result = (await chrome.tabs.sendMessage(tabId, {
+            type: 'GASOLINE_GET_ANNOTATIONS'
+        }));
+        return result?.draw_mode_active === true;
+    }
+    catch {
+        return false;
+    }
+}
+async function refreshDynamicContextMenuTitles(tabId, recordingHandlers, actionRecordingHandlers) {
+    const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
+    const trackedTabId = tracked[StorageKey.TRACKED_TAB_ID];
+    const drawModeActive = await isDrawModeActive(tabId);
+    await Promise.all([
+        updateContextMenuTitle(MENU_ID_CONTROL, trackedTabId && tabId === trackedTabId ? RELEASE_CONTROL_TITLE : CONTROL_TAB_TITLE),
+        updateContextMenuTitle(MENU_ID_ANNOTATE, drawModeActive ? ANNOTATE_STOP_TITLE : ANNOTATE_START_TITLE),
+        updateContextMenuTitle(MENU_ID_RECORD, recordingHandlers.isRecording() ? RECORD_STOP_TITLE : RECORD_START_TITLE),
+        updateContextMenuTitle(MENU_ID_ACTION_RECORD, actionRecordingHandlers.isRecording() ? ACTION_RECORD_STOP_TITLE : ACTION_RECORD_START_TITLE)
+    ]);
+    const contextMenusWithRefresh = chrome.contextMenus;
+    contextMenusWithRefresh.refresh?.();
+}
+// =============================================================================
+// CONTEXT MENU INSTALLATION
+// =============================================================================
+/**
+ * Create context menu items for Gasoline actions.
+ * Chrome auto-groups multiple items under a parent with the extension icon.
+ */
+export function installContextMenus(recordingHandlers, actionRecordingHandlers, logFn) {
+    if (typeof chrome === 'undefined' || !chrome.contextMenus)
+        return;
+    chrome.contextMenus.removeAll(() => {
+        const ctx = ['page'];
+        chrome.contextMenus.create({ id: MENU_ID_CONTROL, title: CONTROL_TAB_TITLE, contexts: ctx });
+        chrome.contextMenus.create({ id: MENU_ID_SCREENSHOT, title: 'Take Screenshot', contexts: ctx });
+        chrome.contextMenus.create({ id: MENU_ID_ANNOTATE, title: ANNOTATE_START_TITLE, contexts: ctx });
+        chrome.contextMenus.create({ id: MENU_ID_RECORD, title: RECORD_START_TITLE, contexts: ctx });
+        chrome.contextMenus.create({ id: MENU_ID_ACTION_RECORD, title: ACTION_RECORD_START_TITLE, contexts: ctx });
+    });
+    const contextMenusWithShown = chrome.contextMenus;
+    contextMenusWithShown.onShown?.addListener((_info, tab) => {
+        refreshDynamicContextMenuTitles(tab?.id, recordingHandlers, actionRecordingHandlers).catch((err) => {
+            if (logFn)
+                logFn(`Context menu title refresh error: ${errorMessage(err)}`);
+        });
+    });
+    chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+        if (!tab?.id)
+            return;
+        if (info.menuItemId === MENU_ID_CONTROL) {
+            try {
+                const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
+                if (tracked[StorageKey.TRACKED_TAB_ID] === tab.id) {
+                    clearTrackedTab();
+                    if (logFn)
+                        logFn(`Released control for tab ${tab.id}`);
+                }
+                else {
+                    await setTrackedTab(tab);
+                    if (logFn)
+                        logFn(`Now controlling tab ${tab.id}: ${tab.url}`);
+                }
+            }
+            catch (err) {
+                if (logFn)
+                    logFn(`Control page error: ${errorMessage(err)}`);
+            }
+        }
+        else if (info.menuItemId === MENU_ID_SCREENSHOT) {
+            try {
+                chrome.tabs.sendMessage(tab.id, { type: 'captureScreenshot' });
+            }
+            catch {
+                if (logFn)
+                    logFn('Cannot reach content script for screenshot via context menu');
+            }
+        }
+        else if (info.menuItemId === MENU_ID_RECORD) {
+            try {
+                await toggleScreenRecording(recordingHandlers, tab, logFn);
+            }
+            catch (err) {
+                if (logFn)
+                    logFn(`Context menu recording error: ${errorMessage(err)}`);
+            }
+        }
+        else if (info.menuItemId === MENU_ID_ACTION_RECORD) {
+            try {
+                if (actionRecordingHandlers.isRecording()) {
+                    await actionRecordingHandlers.stopRecording(false);
+                }
+                else {
+                    const name = buildActionSequenceRecordingName();
+                    await actionRecordingHandlers.startRecording(name, 15, '', '', true, tab.id);
+                }
+            }
+            catch (err) {
+                if (logFn)
+                    logFn(`Context menu action recording error: ${errorMessage(err)}`);
+            }
+        }
+        else if (info.menuItemId === MENU_ID_ANNOTATE) {
+            try {
+                await toggleDrawModeForTab(tab.id);
+            }
+            catch {
+                if (logFn)
+                    logFn('Cannot reach content script for annotation via context menu');
+            }
+        }
+        refreshDynamicContextMenuTitles(tab.id, recordingHandlers, actionRecordingHandlers).catch(() => { });
+    });
+}
+//# sourceMappingURL=context-menus.js.map

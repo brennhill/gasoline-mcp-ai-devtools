@@ -68,8 +68,15 @@ init_framework() {
     trap framework_cleanup EXIT INT TERM
     START_TIME="$(date +%s)"
 
-    # Resolve binary: local build > PATH
-    if [ -x "./gasoline-mcp" ]; then
+    # Resolve binary: explicit override > local build > PATH
+    if [ -n "${GASOLINE_UAT_WRAPPER:-}" ]; then
+        if [ -x "${GASOLINE_UAT_WRAPPER}" ]; then
+            WRAPPER="${GASOLINE_UAT_WRAPPER}"
+        else
+            echo "FATAL: GASOLINE_UAT_WRAPPER is not executable: ${GASOLINE_UAT_WRAPPER}" >&2
+            exit 1
+        fi
+    elif [ -x "./gasoline-mcp" ]; then
         WRAPPER="./gasoline-mcp"
     elif command -v gasoline-mcp >/dev/null 2>&1; then
         WRAPPER="gasoline-mcp"
@@ -408,7 +415,12 @@ wait_for_health() {
 start_daemon() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
-    "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
+    if [ -n "${GASOLINE_UAT_GOCOVERDIR:-}" ]; then
+        mkdir -p "${GASOLINE_UAT_GOCOVERDIR}"
+        nohup env GOCOVERDIR="${GASOLINE_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
+    else
+        nohup "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
+    fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then
         echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
@@ -423,7 +435,12 @@ start_daemon() {
 start_daemon_with_flags() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
-    "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
+    if [ -n "${GASOLINE_UAT_GOCOVERDIR:-}" ]; then
+        mkdir -p "${GASOLINE_UAT_GOCOVERDIR}"
+        nohup env GOCOVERDIR="${GASOLINE_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+    else
+        nohup "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+    fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then
         echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2

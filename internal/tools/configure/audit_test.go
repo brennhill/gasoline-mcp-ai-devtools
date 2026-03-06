@@ -1,6 +1,5 @@
-// Purpose: Validate audit_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for configure audit log handler.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // audit_test.go — Tests for audit log summarization.
 package configure
@@ -8,7 +7,7 @@ package configure
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/audit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 )
 
 func TestSummarizeAuditEntries_Empty(t *testing.T) {
@@ -39,7 +38,7 @@ func TestSummarizeAuditEntries_Empty(t *testing.T) {
 func TestSummarizeAuditEntries_MixedEntries(t *testing.T) {
 	t.Parallel()
 
-	entries := []audit.AuditEntry{
+	entries := []audit.Entry{
 		{ToolName: "observe", AuditSessionID: "s1", Success: true},
 		{ToolName: "observe", AuditSessionID: "s1", Success: true},
 		{ToolName: "configure", AuditSessionID: "s2", Success: false},
@@ -75,7 +74,7 @@ func TestSummarizeAuditEntries_MixedEntries(t *testing.T) {
 func TestSummarizeAuditEntries_AllFailures(t *testing.T) {
 	t.Parallel()
 
-	entries := []audit.AuditEntry{
+	entries := []audit.Entry{
 		{ToolName: "interact", AuditSessionID: "s1", Success: false},
 		{ToolName: "interact", AuditSessionID: "s1", Success: false},
 	}

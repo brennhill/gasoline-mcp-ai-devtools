@@ -1,3 +1,6 @@
+// Purpose: Provides opt-in file-based debug logging controlled by GASOLINE_MCP_DEBUG_FILE environment variable.
+// Why: Enables append-only diagnostic tracing without polluting stderr or stdout MCP transport.
+
 package main
 
 import (

@@ -1,0 +1,16 @@
+{
+  "name": "gasoline-workflows",
+  "version": "0.1.0",
+  "description": "Workflow commands that compose Gasoline MCP's 5 browser telemetry tools into complete, opinionated workflows for debugging, auditing, recording, and interactive development.",
+  "author": "Gasoline",
+  "homepage": "https://github.com/anthropics/gasoline",
+  "commands": [
+    "commands/debug-ui.md",
+    "commands/seo-audit.md",
+    "commands/record-workflow.md",
+    "commands/interactive-dev.md"
+  ],
+  "skills": [
+    "skills/gasoline-connection-guard/SKILL.md"
+  ]
+}

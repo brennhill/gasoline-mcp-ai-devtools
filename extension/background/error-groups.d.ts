@@ -1,16 +1,13 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Deduplicates and groups identical errors within configurable time windows to reduce server traffic.
+ * Docs: docs/features/feature/error-clustering/index.md
  */
 /**
  * @fileoverview Error Grouping and Deduplication
  * Manages error group tracking, deduplication within configurable windows,
  * and cleanup of stale error groups.
  */
-import type { LogEntry } from '../types';
+import type { LogEntry } from '../types/index.js';
 /** Error group max age - cleanup after 1 hour */
 export declare const ERROR_GROUP_MAX_AGE_MS = 3600000;
 /** Internal error group structure */

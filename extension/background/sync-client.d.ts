@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Unified sync client that replaces multiple polling loops with a single /sync endpoint, handling settings, commands, and extension logs.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 /** Settings to send to server */
 export interface SyncSettings {
@@ -12,6 +9,8 @@ export interface SyncSettings {
     tracked_tab_id: number;
     tracked_tab_url: string;
     tracked_tab_title: string;
+    tab_status?: 'loading' | 'complete';
+    tracked_tab_active?: boolean;
     capture_logs: boolean;
     capture_network: boolean;
     capture_websocket: boolean;

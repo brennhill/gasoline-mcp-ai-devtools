@@ -1,6 +1,5 @@
-// Purpose: Validate tools_observe_commands_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for observe command query execution.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_commands_test.go — Coverage tests for toolObserveFailedCommands.
 package main
@@ -10,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // ============================================
@@ -31,8 +30,8 @@ func TestToolObserveFailedCommands_NoFailed(t *testing.T) {
 	}
 
 	data := parseResponseJSON(t, result)
-	if status, _ := data["status"].(string); status != "ok" {
-		t.Fatalf("status = %q, want ok", status)
+	if _, hasStatus := data["status"]; hasStatus {
+		t.Fatal("failed_commands response should not include 'status' field")
 	}
 	count, _ := data["count"].(float64)
 	if count != 0 {

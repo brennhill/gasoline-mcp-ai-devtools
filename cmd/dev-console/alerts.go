@@ -5,14 +5,8 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"time"
-
-	"github.com/dev-console/dev-console/internal/streaming"
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ============================================
@@ -59,76 +53,7 @@ var (
 // ToolHandler Delegation
 // ============================================
 
-// addAlert delegates to the AlertBuffer.
-func (h *ToolHandler) addAlert(a Alert) {
-	h.alertBuffer.AddAlert(a)
-}
-
 // drainAlerts delegates to the AlertBuffer.
 func (h *ToolHandler) drainAlerts() []Alert {
 	return h.alertBuffer.DrainAlerts()
-}
-
-// recordErrorForAnomaly delegates to the AlertBuffer.
-func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
-	h.alertBuffer.RecordErrorForAnomaly(t)
-}
-
-// buildCIAlert delegates to the streaming package.
-func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
-	return streaming.BuildCIAlert(ci)
-}
-
-// ============================================
-// CI/CD Webhook Handler
-// ============================================
-
-func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
-		return
-	}
-
-	ciResult, err := parseCIWebhookBody(r)
-	if err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-
-	ciResult.ReceivedAt = time.Now().UTC()
-
-	newAlert := h.alertBuffer.ProcessCIResult(ciResult)
-
-	// Emit to streaming outside the lock
-	if newAlert != nil && h.alertBuffer.Stream != nil {
-		h.alertBuffer.Stream.EmitAlert(*newAlert)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"ok":true}`))
-}
-
-// parseCIWebhookBody reads and validates the CI webhook request body.
-func parseCIWebhookBody(r *http.Request) (CIResult, error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, 1024*1024)
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return CIResult{}, fmt.Errorf(`{"error":"request body too large"}`)
-	}
-
-	var ciResult CIResult
-	if err := json.Unmarshal(body, &ciResult); err != nil {
-		return CIResult{}, fmt.Errorf(`{"error":"invalid JSON"}`)
-	}
-
-	if ciResult.Status == "" {
-		return CIResult{}, fmt.Errorf(`{"error":"missing required field: status"}`)
-	}
-	if ciResult.Source == "" {
-		return CIResult{}, fmt.Errorf(`{"error":"missing required field: source"}`)
-	}
-
-	return ciResult, nil
 }

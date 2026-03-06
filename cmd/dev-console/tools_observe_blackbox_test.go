@@ -1,6 +1,5 @@
-// Purpose: Validate tools_observe_blackbox_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Black-box tests for observe tool end-to-end behavior.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_blackbox_test.go — Black box tests for observe tool data flow.
 // These tests simulate the full browser extension → server → MCP tool flow.
@@ -18,10 +17,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/tools/observe"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // ============================================
@@ -94,7 +93,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 	t.Parallel()
 
 	// Setup server with capture
-	server, err := NewServer("/tmp/test-errors-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-errors-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -170,7 +169,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 func TestObserveLogs_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-logs-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-logs-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -207,7 +206,7 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 func TestObserveLogs_LevelFilter(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-logs-filter.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-logs-filter.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -218,7 +217,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	server.entries = append(server.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
 	server.mu.Unlock()
 
-	// Filter by level=warn
+	// "level" is a quiet alias for "min_level" (threshold): warn returns warn+error.
 	th := handler.toolHandler.(*ToolHandler)
 	resp := observe.GetBrowserLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
 
@@ -230,8 +229,8 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
 
 	logs := data["logs"].([]any)
-	if len(logs) != 1 {
-		t.Errorf("Expected 1 warning log, got %d", len(logs))
+	if len(logs) != 2 {
+		t.Errorf("Expected 2 logs (warn+error via min_level threshold), got %d", len(logs))
 	}
 
 	t.Logf("✅ observe logs level filter returned %d entries", len(logs))
@@ -241,7 +240,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-waterfall-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-waterfall-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -281,7 +280,7 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-waterfall-filter.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-waterfall-filter.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -319,7 +318,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-extlogs-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-extlogs-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -359,7 +358,7 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-page-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-page-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -395,7 +394,7 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-page-priority.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-page-priority.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -460,7 +459,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-bodies-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-bodies-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -502,7 +501,7 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-ws-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-ws-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -556,7 +555,7 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 func TestMCPToolsCall_ObserveErrors_FullFlow(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-mcp-flow.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-mcp-flow.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

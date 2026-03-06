@@ -1,6 +1,4 @@
-// Purpose: Validate safego_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for safe goroutine launch and panic recovery.
 
 // safego_test.go — Tests for SafeGo panic recovery wrapper.
 package util

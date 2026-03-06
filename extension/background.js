@@ -31,7 +31,7 @@ export { RATE_LIMIT_CONFIG } from './background/communication.js';
 // =============================================================================
 // === PUBLIC API: CORE STATE
 // =============================================================================
-export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, extensionLogQueue } from './background/state.js';
+export { EXTENSION_SESSION_ID, getServerUrl, isDebugMode, getConnectionStatus, getCurrentLogLevel, isScreenshotOnError, getExtensionLogQueue } from './background/state.js';
 export { DebugCategory } from './background/index.js';
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING
@@ -74,15 +74,10 @@ export { SOURCE_MAP_CACHE_SIZE, setSourceMapCacheEntry, getSourceMapCacheEntry, 
 // === PUBLIC API: COMMUNICATION (Tests)
 // =============================================================================
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog } from './background/communication.js';
-export { postQueryResult, pollPendingQueries } from './background/server.js';
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './background/message-handlers.js';
-// =============================================================================
-// === INTERNAL USE (Underscore Prefix)
-// =============================================================================
-export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting } from './background/state.js';
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================

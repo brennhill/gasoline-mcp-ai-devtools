@@ -20,7 +20,7 @@ Add to `~/.config/zed/settings.json`:
 ```json
 {
   "context_servers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": {
         "path": "npx",
         "args": ["gasoline-mcp"]

@@ -1,7 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Semver parsing and comparison utilities for checking whether a newer version is available.
  */
 /**
  * @fileoverview Version - Utilities for semver comparison and version checking
@@ -54,21 +52,5 @@ export function compareVersions(versionA, versionB) {
 export function isVersionNewer(newer, older) {
     const result = compareVersions(newer, older);
     return result === 1;
-}
-/**
- * Check if a version is same or newer than another
- * @param version - Version to check
- * @param minimum - Minimum required version
- * @returns true if version >= minimum
- */
-export function isVersionSameOrNewer(version, minimum) {
-    const result = compareVersions(version, minimum);
-    return result === 1 || result === 0;
-}
-/**
- * Format version for display (e.g., "v5.2.5")
- */
-export function formatVersionDisplay(version) {
-    return `v${version}`;
 }
 //# sourceMappingURL=version.js.map

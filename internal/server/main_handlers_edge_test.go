@@ -1,6 +1,5 @@
-// Purpose: Validate main_handlers_edge_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Edge-case tests for HTTP server handlers boundary conditions.
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
 package server
 
@@ -15,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func TestNewServerLoadsEntriesAndBoundsFromDisk(t *testing.T) {

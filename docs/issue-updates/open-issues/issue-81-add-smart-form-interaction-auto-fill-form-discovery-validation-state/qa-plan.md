@@ -1,7 +1,7 @@
 # QA Plan: Issue #81
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/81
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/81
 - Title: Add smart form interaction (auto-fill, form discovery, validation state)
 
 ## QA Goal

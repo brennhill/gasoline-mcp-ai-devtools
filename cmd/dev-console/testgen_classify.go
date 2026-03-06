@@ -1,6 +1,6 @@
-// Purpose: Implements test generation, classification, and healing command handlers.
-// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
-// Docs: docs/features/feature/test-generation/index.md
+// Purpose: Handles test_classify mode — classifies test failures as flaky, environment, assertion, or crash using failure signatures.
+// Why: Enables agents to triage failing tests automatically without manual inspection.
+// Docs: docs/features/feature/self-healing-tests/index.md
 
 package main
 
@@ -9,20 +9,12 @@ import (
 	"fmt"
 )
 
-func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *testGenHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestClassifyRequest
 
 	warnings, err := unmarshalWithWarnings(args, &params)
 	if err != nil {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			),
-		}
+		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	warnings = filterGenerateDispatchWarnings(warnings)
@@ -36,15 +28,11 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 		return *errResp
 	}
 
-	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  mcpJSONResponse(summary, result),
-	}
+	resp := succeed(req, summary, result)
 	return appendWarningsToResponse(resp, warnings)
 }
 
-func (h *ToolHandler) dispatchClassifyAction(reqID any, params TestClassifyRequest) (any, string, *JSONRPCResponse) {
+func (h *testGenHandler) dispatchClassifyAction(reqID any, params TestClassifyRequest) (any, string, *JSONRPCResponse) {
 	switch params.Action {
 	case "failure":
 		result, summary, errResp, ok := h.classifySingleFailure(reqID, params)
@@ -67,7 +55,7 @@ var validClassifyActions = map[string]bool{"failure": true, "batch": true}
 func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCResponse, bool) {
 	if params.Action == "" {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -80,7 +68,7 @@ func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCRespo
 	}
 	if !validClassifyActions[params.Action] {
 		return JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrInvalidParam,
@@ -94,10 +82,10 @@ func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCRespo
 	return JSONRPCResponse{}, true
 }
 
-func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if params.Failure == nil {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -112,7 +100,7 @@ func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyReques
 
 	if classification.Confidence < 0.5 {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrClassificationUncertain,
@@ -135,10 +123,10 @@ func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyReques
 	return data, summary, JSONRPCResponse{}, true
 }
 
-func (h *ToolHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+func (h *testGenHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if len(params.Failures) == 0 {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrMissingParam,
@@ -151,7 +139,7 @@ func (h *ToolHandler) classifyBatchFailures(reqID any, params TestClassifyReques
 
 	if len(params.Failures) > maxFailuresPerBatch {
 		return nil, "", JSONRPCResponse{
-			JSONRPC: "2.0",
+			JSONRPC: JSONRPCVersion,
 			ID:      reqID,
 			Result: mcpStructuredError(
 				ErrBatchTooLarge,

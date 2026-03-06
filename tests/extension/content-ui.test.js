@@ -392,7 +392,7 @@ describe('subtitle auto-timeout', () => {
     const origSetTimeout = globalThis.setTimeout
     const origClearTimeout = globalThis.clearTimeout
     let lastTimerId = 0
-    globalThis.setTimeout = mock.fn((cb, ms) => {
+    globalThis.setTimeout = mock.fn((_cb, _ms) => {
       lastTimerId++
       return lastTimerId
     })

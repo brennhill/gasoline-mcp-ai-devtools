@@ -133,6 +133,8 @@ process.on('unhandledRejection', (reason, _promise) => {
 // Bug #5: Missing await on handleAsyncExecuteCommand
 // =============================================================================
 
+let resetPilotCacheForTesting
+
 describe('Bug #5: Async Execute Command Await', () => {
   let bgModule
 
@@ -147,8 +149,9 @@ describe('Bug #5: Async Execute Command Await', () => {
     )
 
     bgModule = await import('../../extension/background.js')
+    ;({ _resetPilotCacheForTesting: resetPilotCacheForTesting } = await import('../../extension/background/state.js'))
     bgModule.markInitComplete()
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('handlePendingQuery should await handleAsyncExecuteCommand for correlation_id queries', async () => {
@@ -220,7 +223,7 @@ describe('Bug #5: Async Execute Command Await', () => {
   })
 
   test('execute with pilot disabled should post async status=error', async () => {
-    bgModule._resetPilotCacheForTesting(false)
+    resetPilotCacheForTesting(false)
 
     const query = {
       id: 'query-disabled-1',
@@ -305,7 +308,7 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
     bgModule = await import('../../extension/background.js')
     bgModule.markInitComplete()
     // Enable pilot cache so browser_action paths don't short-circuit
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('handlePendingQuery should await handleAsyncBrowserAction for browser_action queries', async () => {
@@ -368,7 +371,7 @@ describe('Bug #5: Extension Stability Under Load', () => {
     bgModule = await import('../../extension/background.js')
     bgModule.markInitComplete()
     // Enable pilot cache so execute/browser_action paths don't short-circuit
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('should handle 5+ consecutive operations without timeout', async () => {
@@ -467,7 +470,7 @@ describe('Bug #5: Error Handling Robustness', () => {
     bgModule = await import('../../extension/background.js')
     bgModule.markInitComplete()
     // Enable pilot cache so execute paths don't short-circuit
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('error in one operation should not affect subsequent operations', async () => {

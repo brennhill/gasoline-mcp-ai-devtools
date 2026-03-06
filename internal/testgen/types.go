@@ -1,5 +1,4 @@
-// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
-// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
+// Purpose: Declares all request/response types, constants, and error codes for test generation, healing, and classification.
 // Docs: docs/features/feature/test-generation/index.md
 
 package testgen

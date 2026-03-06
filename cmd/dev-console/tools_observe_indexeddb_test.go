@@ -1,6 +1,5 @@
-// Purpose: Validate tools_observe_indexeddb_test.go behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Tests for observe IndexedDB data retrieval.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_indexeddb_test.go — TDD coverage for IndexedDB observe flows.
 package main
