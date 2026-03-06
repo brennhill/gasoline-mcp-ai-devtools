@@ -23,19 +23,19 @@ const quickLinks = [
   <div class="title-wrapper sl-flex">
     <SiteTitle />
   </div>
-  <div class="sl-flex print:hidden">
+  <nav class="sl-hidden md:sl-flex print:hidden quick-links" aria-label="Quick links">
+    {
+      quickLinks.map((link) => (
+        <a href={link.href} class="quick-link">
+          {link.label}
+        </a>
+      ))
+    }
+  </nav>
+  <div class="sl-flex print:hidden search-group">
     {shouldRenderSearch && <Search />}
   </div>
   <div class="sl-hidden md:sl-flex print:hidden right-group">
-    <nav class="quick-links" aria-label="Quick links">
-      {
-        quickLinks.map((link) => (
-          <a href={link.href} class="quick-link">
-            {link.label}
-          </a>
-        ))
-      }
-    </nav>
     <div class="sl-flex social-icons">
       <SocialIcons />
     </div>
@@ -64,15 +64,20 @@ const quickLinks = [
     }
 
     .right-group,
+    .search-group,
     .social-icons,
     .quick-links {
       gap: 1rem;
       align-items: center;
     }
 
+    .search-group {
+      min-width: 0;
+    }
+
     .quick-links {
       display: flex;
-      margin-inline-end: 0.25rem;
+      margin-inline-start: 0.25rem;
       font-size: 0.92rem;
       font-weight: 600;
     }
@@ -118,6 +123,7 @@ const quickLinks = [
             calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))),
             auto
           )
+          auto
           1fr
           auto;
         align-content: center;
