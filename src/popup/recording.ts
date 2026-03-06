@@ -57,14 +57,20 @@ const AUDIO_LABELS: Record<string, string> = {
 
 let topNoticeTimer: ReturnType<typeof setTimeout> | null = null
 
+function getRecordSection(els: RecordingElements): Element | null {
+  const closest = (els.row as { closest?: unknown }).closest
+  if (typeof closest !== 'function') return null
+  return closest.call(els.row, '.section') as Element | null
+}
+
 function applyRecordHighlight(els: RecordingElements): void {
-  const section = els.row.closest('.section')
+  const section = getRecordSection(els)
   if (section) section.classList.add('record-highlight')
   els.label.textContent = HIGHLIGHT_LABEL
 }
 
 function removeRecordHighlight(els: RecordingElements): void {
-  const section = els.row.closest('.section')
+  const section = getRecordSection(els)
   if (section) section.classList.remove('record-highlight')
   if (els.label.textContent === HIGHLIGHT_LABEL) {
     els.label.textContent = START_LABEL
@@ -122,19 +128,29 @@ function setApprovalPendingState(
   state: RecordingState,
   pending: PendingRecordingIntent | null
 ): void {
+  const setRowAriaDisabled = (value: string | null): void => {
+    const setAttr = (els.row as { setAttribute?: unknown }).setAttribute
+    const removeAttr = (els.row as { removeAttribute?: unknown }).removeAttribute
+    if (value !== null) {
+      if (typeof setAttr === 'function') setAttr.call(els.row, 'aria-disabled', value)
+      return
+    }
+    if (typeof removeAttr === 'function') removeAttr.call(els.row, 'aria-disabled')
+  }
+
   const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording)
   if (approvalPending) {
     if (approvalEls.detail && pending) approvalEls.detail.textContent = describePendingRecording(pending)
     if (approvalEls.card) approvalEls.card.style.display = 'block'
     els.row.classList.add('is-disabled')
-    els.row.setAttribute('aria-disabled', 'true')
+    setRowAriaDisabled('true')
     if (els.optionsEl) els.optionsEl.style.display = 'none'
     return
   }
   if (approvalEls.detail) approvalEls.detail.textContent = ''
   if (approvalEls.card) approvalEls.card.style.display = 'none'
   els.row.classList.remove('is-disabled')
-  els.row.removeAttribute('aria-disabled')
+  setRowAriaDisabled(null)
   if (!state.isRecording && els.optionsEl) els.optionsEl.style.display = 'block'
 }
 

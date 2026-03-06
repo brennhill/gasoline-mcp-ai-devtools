@@ -1,6 +1,6 @@
 {
   "name": "gasoline-agentic-browser",
-  "version": "0.7.12",
+  "version": "0.8.0",
   "description": "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",

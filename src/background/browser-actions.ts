@@ -363,6 +363,15 @@ export async function handleAsyncExecuteCommand(
 ): Promise<void> {
   const startTime = Date.now()
 
+  if (!isAiWebPilotEnabled()) {
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', {
+      success: false,
+      error: 'ai_web_pilot_disabled',
+      message: 'AI Web Pilot is not enabled'
+    }, 'ai_web_pilot_disabled')
+    return
+  }
+
   // Extract reason for toast display
   let reason: string | undefined
   try {

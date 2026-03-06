@@ -1208,7 +1208,7 @@ export function domPrimitive(
       }
 
       // #444: Dismiss loop detection — check if this overlay was already attempted
-      const priorStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+      const priorStamp = readDismissStamp(overlayElement)
       if (priorStamp) {
         const elapsed = Date.now() - Number(priorStamp)
         if (elapsed < dismissStampTTL) {
@@ -1226,7 +1226,7 @@ export function domPrimitive(
           return { error: loopError }
         }
         // Stale stamp — clear it and proceed
-        overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+        clearDismissStamp(overlayElement)
       }
 
       // Strategy A: Try expanded close button selectors within the overlay
@@ -1330,7 +1330,7 @@ export function domPrimitive(
       // to prevent infinite loops when a consent banner cannot be dismissed.
       const overlayElement = findTopmostOverlay()
       if (overlayElement) {
-        const priorAutoStamp = overlayElement.getAttribute('data-gasoline-dismiss-ts')
+        const priorAutoStamp = readDismissStamp(overlayElement)
         if (priorAutoStamp) {
           const elapsed = Date.now() - Number(priorAutoStamp)
           if (elapsed < dismissStampTTL) {
@@ -1347,7 +1347,7 @@ export function domPrimitive(
             loopError.overlay_source = detectExtensionOverlay(overlayElement) ? 'extension' : 'page'
             return { error: loopError }
           }
-          overlayElement.removeAttribute('data-gasoline-dismiss-ts')
+          clearDismissStamp(overlayElement)
         }
       }
 
@@ -1809,6 +1809,28 @@ export function domPrimitive(
     const dispatch = (target as { dispatchEvent?: unknown }).dispatchEvent
     if (typeof dispatch !== 'function') return
     dispatch.call(target, event)
+  }
+
+  function readDismissStamp(element: Element | null | undefined): string | null {
+    if (!element) return null
+    const getAttr = (element as { getAttribute?: unknown }).getAttribute
+    if (typeof getAttr !== 'function') return null
+    const value = getAttr.call(element, 'data-gasoline-dismiss-ts')
+    return typeof value === 'string' && value.length > 0 ? value : null
+  }
+
+  function writeDismissStamp(element: Element | null | undefined): void {
+    if (!element) return
+    const setAttr = (element as { setAttribute?: unknown }).setAttribute
+    if (typeof setAttr !== 'function') return
+    setAttr.call(element, 'data-gasoline-dismiss-ts', String(Date.now()))
+  }
+
+  function clearDismissStamp(element: Element | null | undefined): void {
+    if (!element) return
+    const removeAttr = (element as { removeAttribute?: unknown }).removeAttribute
+    if (typeof removeAttr !== 'function') return
+    removeAttr.call(element, 'data-gasoline-dismiss-ts')
   }
 
   // #368: Check if an overlay might be obscuring the target element
@@ -2657,9 +2679,7 @@ export function domPrimitive(
           const overlayInfo = describeOverlay(overlayEl)
 
           // #444: Stamp overlay with dismiss timestamp for loop detection
-          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
-            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
-          }
+          writeDismissStamp(overlayEl)
 
           // #445: Detect extension-sourced overlays
           const extSource = detectExtensionOverlay(overlayEl)
@@ -2676,8 +2696,8 @@ export function domPrimitive(
             // Also try the overlay element directly
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
-            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+            // Clear dismiss stamp only when overlay is actually gone.
+            if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo,
@@ -2697,8 +2717,8 @@ export function domPrimitive(
           })()
 
           node.click()
-          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+          // Clear dismiss stamp only when overlay is actually gone.
+          if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
           return mutatingSuccess(node, {
             strategy,
             selector_used: selector || resolvedMatchStrategy,
@@ -2721,9 +2741,7 @@ export function domPrimitive(
           const overlayInfo = describeOverlay(overlayEl)
 
           // #444: Stamp overlay with dismiss timestamp for loop detection
-          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
-            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
-          }
+          writeDismissStamp(overlayEl)
 
           // #445: Detect extension-sourced overlays
           const extSource = detectExtensionOverlay(overlayEl)
@@ -2739,8 +2757,8 @@ export function domPrimitive(
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
-            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+            // Clear dismiss stamp only when overlay is actually gone.
+            if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',
@@ -2758,8 +2776,8 @@ export function domPrimitive(
           })()
 
           node.click()
-          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+          // Clear dismiss stamp only when overlay is actually gone.
+          if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
           return mutatingSuccess(node, {
             dismissed_count: 1,
             strategy,

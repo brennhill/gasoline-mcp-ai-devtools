@@ -5,4 +5,4 @@ Why: Keeps version identity centralized for diagnostics and packaging checks.
 Docs: docs/features/feature/enhanced-cli-config/index.md
 """
 
-__version__ = "0.7.12"
+__version__ = "0.8.0"

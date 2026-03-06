@@ -101,6 +101,7 @@ function createMockChrome(trackedTabId = 1830196419) {
 
 describe('page_structure target resolution', () => {
   let bgModule
+  let resetPilotCacheForTesting
   const trackedTabId = 1830196419
 
   beforeEach(async () => {
@@ -114,8 +115,9 @@ describe('page_structure target resolution', () => {
     )
 
     bgModule = await import('../../extension/background.js')
+    ;({ _resetPilotCacheForTesting: resetPilotCacheForTesting } = await import('../../extension/background/state.js'))
     bgModule.markInitComplete()
-    bgModule._resetPilotCacheForTesting(true)
+    resetPilotCacheForTesting(true)
   })
 
   test('analyze page_structure runs against tracked tab, not tab 0', async () => {

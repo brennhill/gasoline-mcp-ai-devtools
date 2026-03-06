@@ -14,9 +14,7 @@
           const overlayInfo = describeOverlay(overlayEl)
 
           // #444: Stamp overlay with dismiss timestamp for loop detection
-          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
-            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
-          }
+          writeDismissStamp(overlayEl)
 
           // #445: Detect extension-sourced overlays
           const extSource = detectExtensionOverlay(overlayEl)
@@ -33,8 +31,8 @@
             // Also try the overlay element directly
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
-            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+            // Clear dismiss stamp only when overlay is actually gone.
+            if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo,
@@ -54,8 +52,8 @@
           })()
 
           node.click()
-          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+          // Clear dismiss stamp only when overlay is actually gone.
+          if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
           return mutatingSuccess(node, {
             strategy,
             selector_used: selector || resolvedMatchStrategy,
@@ -78,9 +76,7 @@
           const overlayInfo = describeOverlay(overlayEl)
 
           // #444: Stamp overlay with dismiss timestamp for loop detection
-          if (overlayEl instanceof HTMLElement && typeof overlayEl.setAttribute === 'function') {
-            overlayEl.setAttribute('data-gasoline-dismiss-ts', String(Date.now()))
-          }
+          writeDismissStamp(overlayEl)
 
           // #445: Detect extension-sourced overlays
           const extSource = detectExtensionOverlay(overlayEl)
@@ -96,8 +92,8 @@
             dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
             dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
-            // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-            if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+            // Clear dismiss stamp only when overlay is actually gone.
+            if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',
@@ -115,8 +111,8 @@
           })()
 
           node.click()
-          // #449: Clear dismiss stamp on successful dismissal to prevent stale loop detection
-          if (overlayEl instanceof HTMLElement) overlayEl.removeAttribute('data-gasoline-dismiss-ts')
+          // Clear dismiss stamp only when overlay is actually gone.
+          if (!isActionableVisible(overlayEl)) clearDismissStamp(overlayEl)
           return mutatingSuccess(node, {
             dismissed_count: 1,
             strategy,

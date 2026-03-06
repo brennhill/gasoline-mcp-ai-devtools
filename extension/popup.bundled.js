@@ -261,14 +261,20 @@
     both: "Video + tab + mic"
   };
   var topNoticeTimer = null;
+  function getRecordSection(els) {
+    const closest = els.row.closest;
+    if (typeof closest !== "function")
+      return null;
+    return closest.call(els.row, ".section");
+  }
   function applyRecordHighlight(els) {
-    const section = els.row.closest(".section");
+    const section = getRecordSection(els);
     if (section)
       section.classList.add("record-highlight");
     els.label.textContent = HIGHLIGHT_LABEL;
   }
   function removeRecordHighlight(els) {
-    const section = els.row.closest(".section");
+    const section = getRecordSection(els);
     if (section)
       section.classList.remove("record-highlight");
     if (els.label.textContent === HIGHLIGHT_LABEL) {
@@ -320,6 +326,17 @@
     return parts.join(" \xB7 ");
   }
   function setApprovalPendingState(els, approvalEls, state, pending) {
+    const setRowAriaDisabled = (value) => {
+      const setAttr = els.row.setAttribute;
+      const removeAttr = els.row.removeAttribute;
+      if (value !== null) {
+        if (typeof setAttr === "function")
+          setAttr.call(els.row, "aria-disabled", value);
+        return;
+      }
+      if (typeof removeAttr === "function")
+        removeAttr.call(els.row, "aria-disabled");
+    };
     const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording);
     if (approvalPending) {
       if (approvalEls.detail && pending)
@@ -327,7 +344,7 @@
       if (approvalEls.card)
         approvalEls.card.style.display = "block";
       els.row.classList.add("is-disabled");
-      els.row.setAttribute("aria-disabled", "true");
+      setRowAriaDisabled("true");
       if (els.optionsEl)
         els.optionsEl.style.display = "none";
       return;
@@ -337,7 +354,7 @@
     if (approvalEls.card)
       approvalEls.card.style.display = "none";
     els.row.classList.remove("is-disabled");
-    els.row.removeAttribute("aria-disabled");
+    setRowAriaDisabled(null);
     if (!state.isRecording && els.optionsEl)
       els.optionsEl.style.display = "block";
   }

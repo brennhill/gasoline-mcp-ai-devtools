@@ -28,7 +28,7 @@ func TestToolGetAnnotations_NoSession(t *testing.T) {
 	h := createTestToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations"}`)
+	args := json.RawMessage(`{"what":"annotations","wait":false}`)
 
 	resp := h.toolGetAnnotations(req, args)
 
@@ -806,7 +806,7 @@ func TestToolGetAnnotations_NamedSession_NotFound(t *testing.T) {
 	defer h.annotationStore.Close()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "annot_session": "nonexistent"}`)
+	args := json.RawMessage(`{"what":"annotations","annot_session":"nonexistent","wait":false}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)

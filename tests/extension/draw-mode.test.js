@@ -603,12 +603,9 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const onScroll = scrollCall.arguments[1]
     onScroll()
 
-    const drawCall = canvasEl._context2d.strokeRect.mock.calls[0]
-    assert.ok(drawCall, 'expected annotation redraw on scroll')
-    assert.strictEqual(drawCall.arguments[0], 80) // 100 docX - 20 scrollX
-    assert.strictEqual(drawCall.arguments[1], 60) // 100 docY - 40 scrollY
-    assert.strictEqual(drawCall.arguments[2], 150)
-    assert.strictEqual(drawCall.arguments[3], 100)
+    assert.ok(canvasEl._context2d.stroke.mock.calls.length > 0, 'expected annotation redraw on scroll')
+    const roundedRectMoveTo = canvasEl._context2d.moveTo.mock.calls.find((c) => c.arguments[0] === 84 && c.arguments[1] === 60)
+    assert.ok(roundedRectMoveTo, 'expected viewport-adjusted rounded-rect path on scroll')
   })
 
   test('resize after scrolling preserves annotation alignment', () => {
@@ -636,12 +633,9 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const onResize = resizeCall.arguments[1]
     onResize()
 
-    const drawCall = canvasEl._context2d.strokeRect.mock.calls[0]
-    assert.ok(drawCall, 'expected redraw on resize')
-    assert.strictEqual(drawCall.arguments[0], 85) // 100 docX - 15 scrollX
-    assert.strictEqual(drawCall.arguments[1], 70) // 100 docY - 30 scrollY
-    assert.strictEqual(drawCall.arguments[2], 150)
-    assert.strictEqual(drawCall.arguments[3], 100)
+    assert.ok(canvasEl._context2d.stroke.mock.calls.length > 0, 'expected redraw on resize')
+    const roundedRectMoveTo = canvasEl._context2d.moveTo.mock.calls.find((c) => c.arguments[0] === 89 && c.arguments[1] === 70)
+    assert.ok(roundedRectMoveTo, 'expected viewport-adjusted rounded-rect path on resize')
   })
 
   test('second shortcut submit path commits active annotation text before exit', async () => {

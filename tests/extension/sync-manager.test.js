@@ -76,6 +76,7 @@ mock.module('../../extension/background/state-manager.js', {
 
 mock.module('../../extension/background/event-listeners.js', {
   namedExports: {
+    getActiveTab: mock.fn(() => Promise.resolve({ id: 1, windowId: 1, url: 'http://localhost:3000' })),
     getTrackedTabInfo: mock.fn(() => Promise.resolve({
       trackedTabId: 0, trackedTabUrl: '', trackedTabTitle: ''
     })),
