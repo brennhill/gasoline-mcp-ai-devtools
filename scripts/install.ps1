@@ -168,19 +168,13 @@ function Test-ExtensionStage {
         [string]$BaseDir = $EXT_DIR
     )
 
-    $required = @(
-        (Join-Path $BaseDir "manifest.json"),
-        (Join-Path $BaseDir "background\init.js"),
-        (Join-Path $BaseDir "content\script-injection.js"),
-        (Join-Path $BaseDir "inject\index.js"),
-        (Join-Path $BaseDir "theme-bootstrap.js")
-    )
-    foreach ($path in $required) {
-        if (-not (Test-Path $path)) {
-            return $false
-        }
-    }
-    return $true
+    $hasManifest = Test-Path (Join-Path $BaseDir "manifest.json")
+    $hasBackground = (Test-Path (Join-Path $BaseDir "background.js")) -or (Test-Path (Join-Path $BaseDir "background\init.js"))
+    $hasContent = (Test-Path (Join-Path $BaseDir "content.bundled.js")) -or (Test-Path (Join-Path $BaseDir "content\script-injection.js"))
+    $hasInject = (Test-Path (Join-Path $BaseDir "inject.bundled.js")) -or (Test-Path (Join-Path $BaseDir "inject\index.js"))
+    $hasBootstrap = (Test-Path (Join-Path $BaseDir "early-patch.bundled.js")) -or (Test-Path (Join-Path $BaseDir "theme-bootstrap.js"))
+
+    return ($hasManifest -and $hasBackground -and $hasContent -and $hasInject -and $hasBootstrap)
 }
 
 function Promote-ExtensionStage {
