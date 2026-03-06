@@ -249,7 +249,7 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
 // =============================================================================
 
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Send a gasoline_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(

@@ -71,7 +71,7 @@ export declare function getAllConfigSettings(): Promise<Record<string, boolean |
  */
 export declare function getActiveTab(): Promise<chrome.tabs.Tab | null>;
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Send a gasoline_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export declare function sendTabToast(tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error' | 'audio', duration_ms?: number): void;

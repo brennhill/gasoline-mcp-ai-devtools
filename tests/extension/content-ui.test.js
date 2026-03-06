@@ -293,7 +293,7 @@ describe('showSubtitle', () => {
   })
 })
 
-describe('clearSubtitle', () => {
+describe('clear_subtitle', () => {
   let clearSubtitle, showSubtitle
 
   beforeEach(async () => {

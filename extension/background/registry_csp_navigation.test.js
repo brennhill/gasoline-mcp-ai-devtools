@@ -115,7 +115,7 @@ globalThis.chrome = {
     goForward: async () => {},
     sendMessage: async (tabId, message) => {
       sendMessageCalls.push({ tabId, message })
-      if (message?.type === 'GASOLINE_PING') {
+      if (message?.type === 'gasoline_ping') {
         return { status: 'alive' }
       }
       return {}

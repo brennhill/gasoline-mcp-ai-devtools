@@ -45,7 +45,7 @@ function installWindowMocks() {
       windowMessageHandlers = windowMessageHandlers.filter((h) => h !== handler)
     },
     postMessage(payload) {
-      if (payload?.type === 'GASOLINE_INJECT_BRIDGE_PING') {
+      if (payload?.type === 'gasoline_inject_bridge_ping') {
         pingPostCount += 1
         if (!autoBridgePong) return
         const requestId = payload.requestId
@@ -55,7 +55,7 @@ function installWindowMocks() {
               source: globalThis.window,
               origin: globalThis.window.location.origin,
               data: {
-                type: 'GASOLINE_INJECT_BRIDGE_PONG',
+                type: 'gasoline_inject_bridge_pong',
                 requestId,
                 _nonce: payload._nonce
               }

@@ -176,13 +176,13 @@ describe('Favicon Replacer', () => {
 
   describe('Message Handling', () => {
     it('should listen for trackingStateChanged', () => {
-      const messageType = 'trackingStateChanged'
-      assert.strictEqual(messageType, 'trackingStateChanged')
+      const messageType = 'tracking_state_changed'
+      assert.strictEqual(messageType, 'tracking_state_changed')
     })
 
     it('should request initial state with getTrackingState', () => {
-      const messageType = 'getTrackingState'
-      assert.strictEqual(messageType, 'getTrackingState')
+      const messageType = 'get_tracking_state'
+      assert.strictEqual(messageType, 'get_tracking_state')
     })
 
     it('should receive state with isTracked and aiPilotEnabled', () => {

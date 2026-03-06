@@ -105,18 +105,18 @@
   // Replaces window.postMessage with server POST
   function emit(type, payload) {
     switch (type) {
-      case 'GASOLINE_LOG':
+      case 'gasoline_log':
         if (logBatch.length < MAX_BATCH_BUFFER) logBatch.push(payload)
         break
-      case 'GASOLINE_WS':
+      case 'gasoline_ws':
         if (wsBatch.length < MAX_BATCH_BUFFER) wsBatch.push(payload)
         break
-      case 'GASOLINE_NETWORK_BODY':
+      case 'gasoline_network_body':
         if (networkBatch.length < MAX_BATCH_BUFFER) networkBatch.push(payload)
         break
       // Enhanced actions and web vitals go to logs
-      case 'GASOLINE_ENHANCED_ACTION':
-      case 'GASOLINE_WEB_VITALS':
+      case 'gasoline_enhanced_action':
+      case 'gasoline_web_vitals':
         if (logBatch.length < MAX_BATCH_BUFFER) logBatch.push({ type: type, ...payload })
         break
     }
@@ -186,7 +186,7 @@
 
           originals[capturedLevel].apply(console, args)
 
-          emit('GASOLINE_LOG', {
+          emit('gasoline_log', {
             level: capturedLevel,
             message: args
               .map(function (a) {
@@ -211,7 +211,7 @@
   // === Exception Capture ===
   function installExceptionCapture() {
     window.addEventListener('error', function (event) {
-      emit('GASOLINE_LOG', {
+      emit('gasoline_log', {
         level: 'error',
         message: event.message || 'Unknown error',
         args: [safeSerialize(event.error)],
@@ -227,7 +227,7 @@
 
     window.addEventListener('unhandledrejection', function (event) {
       var reason = event.reason
-      emit('GASOLINE_LOG', {
+      emit('gasoline_log', {
         level: 'error',
         message: (reason && reason.message) || String(reason) || 'Unhandled Promise rejection',
         args: [safeSerialize(reason)],
@@ -274,7 +274,7 @@
             clone
               .text()
               .then(function (text) {
-                emit('GASOLINE_NETWORK_BODY', {
+                emit('gasoline_network_body', {
                   url: url,
                   method: method.toUpperCase(),
                   status: response.status,
@@ -292,7 +292,7 @@
 
           // Always log errors to console stream
           if (response.status >= 400) {
-            emit('GASOLINE_LOG', {
+            emit('gasoline_log', {
               level: response.status >= 500 ? 'error' : 'warn',
               message: method.toUpperCase() + ' ' + url + ' \u2192 ' + response.status,
               timestamp: new Date().toISOString(),
@@ -305,7 +305,7 @@
           return response
         },
         function (error) {
-          emit('GASOLINE_LOG', {
+          emit('gasoline_log', {
             level: 'error',
             message: method.toUpperCase() + ' ' + url + ' \u2192 Network Error: ' + error.message,
             timestamp: new Date().toISOString(),
@@ -334,7 +334,7 @@
           ? crypto.randomUUID()
           : 'ws_' + Date.now() + '_' + Math.random().toString(36).slice(2) // nosemgrep: rules_lgpl_javascript_crypto_rule-node-insecure-random-generator -- non-cryptographic use: generating unique WebSocket connection tracking ID
 
-      emit('GASOLINE_WS', {
+      emit('gasoline_ws', {
         event: 'connecting',
         id: id,
         url: url,
@@ -342,7 +342,7 @@
       })
 
       ws.addEventListener('open', function () {
-        emit('GASOLINE_WS', {
+        emit('gasoline_ws', {
           event: 'open',
           id: id,
           url: url,
@@ -352,7 +352,7 @@
 
       ws.addEventListener('message', function (event) {
         var data = typeof event.data === 'string' ? event.data : '[binary]'
-        emit('GASOLINE_WS', {
+        emit('gasoline_ws', {
           event: 'message',
           id: id,
           url: url,
@@ -364,7 +364,7 @@
       })
 
       ws.addEventListener('close', function (event) {
-        emit('GASOLINE_WS', {
+        emit('gasoline_ws', {
           event: 'close',
           id: id,
           url: url,
@@ -375,7 +375,7 @@
       })
 
       ws.addEventListener('error', function () {
-        emit('GASOLINE_WS', {
+        emit('gasoline_ws', {
           event: 'error',
           id: id,
           url: url,
@@ -387,7 +387,7 @@
       var originalSend = ws.send.bind(ws)
       ws.send = function (data) {
         var payload = typeof data === 'string' ? data : '[binary]'
-        emit('GASOLINE_WS', {
+        emit('gasoline_ws', {
           event: 'message',
           id: id,
           url: url,

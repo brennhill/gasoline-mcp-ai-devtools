@@ -59,11 +59,11 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setNetworkWaterfallEnabled', enabled: true }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled', enabled: true }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setActionReplayEnabled', enabled: false }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_action_replay_enabled', enabled: false }),
       true
     )
   })
@@ -72,7 +72,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setUnknownThing', enabled: true }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'setUnknownThing', enabled: true }),
       false
     )
   })
@@ -81,7 +81,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setNetworkWaterfallEnabled' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled' }),
       false
     )
   })
@@ -90,7 +90,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setNetworkWaterfallEnabled', enabled: 'yes' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled', enabled: 'yes' }),
       false
     )
   })
@@ -99,15 +99,15 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode', mode: 'high' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode', mode: 'high' }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode', mode: 123 }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode', mode: 123 }),
       false
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode' }),
       false
     )
   })
@@ -116,15 +116,15 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setServerUrl', url: 'http://localhost:9999' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url', url: 'http://localhost:9999' }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setServerUrl', url: 123 }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url', url: 123 }),
       false
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'GASOLINE_SETTING', setting: 'setServerUrl' }),
+      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url' }),
       false
     )
   })
@@ -140,10 +140,10 @@ describe('handleSetting', () => {
     const { isNetworkWaterfallEnabled, setNetworkWaterfallEnabled } = await import('../../extension/lib/network.js')
 
     setNetworkWaterfallEnabled(false) // reset
-    handleSetting({ setting: 'setNetworkWaterfallEnabled', enabled: true })
+    handleSetting({ setting: 'set_network_waterfall_enabled', enabled: true })
     assert.strictEqual(isNetworkWaterfallEnabled(), true, 'Should have enabled network waterfall')
 
-    handleSetting({ setting: 'setNetworkWaterfallEnabled', enabled: false })
+    handleSetting({ setting: 'set_network_waterfall_enabled', enabled: false })
     assert.strictEqual(isNetworkWaterfallEnabled(), false, 'Should have disabled network waterfall')
   })
 
@@ -152,7 +152,7 @@ describe('handleSetting', () => {
     const { isNetworkBodyCaptureEnabled, setNetworkBodyCaptureEnabled } = await import('../../extension/lib/network.js')
 
     setNetworkBodyCaptureEnabled(false) // reset
-    handleSetting({ setting: 'setNetworkBodyCaptureEnabled', enabled: true })
+    handleSetting({ setting: 'set_network_body_capture_enabled', enabled: true })
     assert.strictEqual(isNetworkBodyCaptureEnabled(), true, 'Should have enabled network body capture')
   })
 
@@ -161,7 +161,7 @@ describe('handleSetting', () => {
     const { isPerformanceMarksEnabled, setPerformanceMarksEnabled } = await import('../../extension/lib/performance.js')
 
     setPerformanceMarksEnabled(false) // reset
-    handleSetting({ setting: 'setPerformanceMarksEnabled', enabled: true })
+    handleSetting({ setting: 'set_performance_marks_enabled', enabled: true })
     assert.strictEqual(isPerformanceMarksEnabled(), true, 'Should have enabled performance marks')
   })
 
@@ -169,10 +169,10 @@ describe('handleSetting', () => {
     const { handleSetting } = await import('../../extension/inject/settings.js')
     const { isPerformanceSnapshotEnabled } = await import('../../extension/lib/perf-snapshot.js')
 
-    handleSetting({ setting: 'setPerformanceSnapshotEnabled', enabled: true })
+    handleSetting({ setting: 'set_performance_snapshot_enabled', enabled: true })
     assert.strictEqual(isPerformanceSnapshotEnabled(), true)
 
-    handleSetting({ setting: 'setPerformanceSnapshotEnabled', enabled: false })
+    handleSetting({ setting: 'set_performance_snapshot_enabled', enabled: false })
     assert.strictEqual(isPerformanceSnapshotEnabled(), false)
   })
 
@@ -180,10 +180,10 @@ describe('handleSetting', () => {
     const { handleSetting } = await import('../../extension/inject/settings.js')
     const { getWebSocketCaptureMode } = await import('../../extension/lib/websocket.js')
 
-    handleSetting({ setting: 'setWebSocketCaptureMode', mode: 'high' })
+    handleSetting({ setting: 'set_web_socket_capture_mode', mode: 'high' })
     assert.strictEqual(getWebSocketCaptureMode(), 'high')
 
-    handleSetting({ setting: 'setWebSocketCaptureMode', mode: 'low' })
+    handleSetting({ setting: 'set_web_socket_capture_mode', mode: 'low' })
     assert.strictEqual(getWebSocketCaptureMode(), 'low')
   })
 
@@ -191,7 +191,7 @@ describe('handleSetting', () => {
     const { handleSetting } = await import('../../extension/inject/settings.js')
     const { getWebSocketCaptureMode } = await import('../../extension/lib/websocket.js')
 
-    handleSetting({ setting: 'setWebSocketCaptureMode' })
+    handleSetting({ setting: 'set_web_socket_capture_mode' })
     assert.strictEqual(getWebSocketCaptureMode(), 'medium')
   })
 
@@ -199,10 +199,10 @@ describe('handleSetting', () => {
     const { handleSetting } = await import('../../extension/inject/settings.js')
     const { getDeferralState } = await import('../../extension/inject/observers.js')
 
-    handleSetting({ setting: 'setDeferralEnabled', enabled: true })
+    handleSetting({ setting: 'set_deferral_enabled', enabled: true })
     assert.strictEqual(getDeferralState().deferralEnabled, true)
 
-    handleSetting({ setting: 'setDeferralEnabled', enabled: false })
+    handleSetting({ setting: 'set_deferral_enabled', enabled: false })
     assert.strictEqual(getDeferralState().deferralEnabled, false)
   })
 
@@ -238,7 +238,7 @@ describe('handleStateCommand', () => {
     const restoreFn = mock.fn()
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-1', action: 'capture' },
+      { type: 'gasoline_state_command', messageId: 'msg-1', action: 'capture' },
       captureFn,
       restoreFn
     )
@@ -249,7 +249,7 @@ describe('handleStateCommand', () => {
     const postCalls = globalThis.window.postMessage.mock.calls
     assert.strictEqual(postCalls.length, 1)
     const msg = postCalls[0].arguments[0]
-    assert.strictEqual(msg.type, 'GASOLINE_STATE_RESPONSE')
+    assert.strictEqual(msg.type, 'gasoline_state_response')
     assert.strictEqual(msg.messageId, 'msg-1')
     assert.deepStrictEqual(msg.result, capturedState)
   })
@@ -262,7 +262,7 @@ describe('handleStateCommand', () => {
     const restoreFn = mock.fn(() => ({ success: true }))
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-2', action: 'restore', state: stateToRestore, include_url: true },
+      { type: 'gasoline_state_command', messageId: 'msg-2', action: 'restore', state: stateToRestore, include_url: true },
       captureFn,
       restoreFn
     )
@@ -273,7 +273,7 @@ describe('handleStateCommand', () => {
     assert.strictEqual(restoreFn.mock.calls[0].arguments[1], true, 'include_url should be true')
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'GASOLINE_STATE_RESPONSE')
+    assert.strictEqual(msg.type, 'gasoline_state_response')
     assert.strictEqual(msg.messageId, 'msg-2')
     assert.deepStrictEqual(msg.result, { success: true })
   })
@@ -283,7 +283,7 @@ describe('handleStateCommand', () => {
 
     const restoreFn = mock.fn()
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-3', action: 'restore', state: { url: '/' } },
+      { type: 'gasoline_state_command', messageId: 'msg-3', action: 'restore', state: { url: '/' } },
       mock.fn(),
       restoreFn
     )
@@ -295,13 +295,13 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-4', action: 'delete' },
+      { type: 'gasoline_state_command', messageId: 'msg-4', action: 'delete' },
       mock.fn(),
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'GASOLINE_STATE_RESPONSE')
+    assert.strictEqual(msg.type, 'gasoline_state_response')
     assert.strictEqual(msg.messageId, 'msg-4')
     assert.ok(msg.result.error.includes('Invalid action'))
   })
@@ -310,13 +310,13 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-5', action: 'restore' },
+      { type: 'gasoline_state_command', messageId: 'msg-5', action: 'restore' },
       mock.fn(),
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'GASOLINE_STATE_RESPONSE')
+    assert.strictEqual(msg.type, 'gasoline_state_response')
     assert.ok(msg.result.error.includes('Invalid state object'))
   })
 
@@ -326,13 +326,13 @@ describe('handleStateCommand', () => {
     const captureFn = mock.fn(() => { throw new Error('DOM not ready') })
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-6', action: 'capture' },
+      { type: 'gasoline_state_command', messageId: 'msg-6', action: 'capture' },
       captureFn,
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'GASOLINE_STATE_RESPONSE')
+    assert.strictEqual(msg.type, 'gasoline_state_response')
     assert.strictEqual(msg.result.error, 'DOM not ready')
   })
 
@@ -340,7 +340,7 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'GASOLINE_STATE_COMMAND', messageId: 'msg-7', action: 'capture' },
+      { type: 'gasoline_state_command', messageId: 'msg-7', action: 'capture' },
       mock.fn(() => ({})),
       mock.fn()
     )

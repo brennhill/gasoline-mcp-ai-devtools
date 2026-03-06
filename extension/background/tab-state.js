@@ -195,7 +195,7 @@ export async function getActiveTab() {
 // TAB TOAST
 // =============================================================================
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Send a gasoline_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(tabId, text, detail = '', state = 'success', duration_ms = 3000) {

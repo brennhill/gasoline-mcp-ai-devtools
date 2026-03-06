@@ -20,7 +20,7 @@ async function setLogLevel(context, extensionId, level) {
   await page.goto(`chrome-extension://${extensionId}/options.html`)
   await page.evaluate((lvl) => {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'setLogLevel', level: lvl }, () => resolve())
+      chrome.runtime.sendMessage({ type: 'set_log_level', level: lvl }, () => resolve())
     })
   }, level)
   await page.waitForTimeout(300)
@@ -51,7 +51,7 @@ async function setBackgroundToggle(context, extensionId, messageType, enabled) {
 async function setPageFeature(page, setting, enabled) {
   await page.evaluate(
     ({ setting, enabled }) => {
-      window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, window.location.origin)
+      window.postMessage({ type: 'gasoline_setting', setting, enabled }, window.location.origin)
     },
     { setting, enabled }
   )
@@ -235,7 +235,7 @@ test.describe('User Action Replay Toggle', () => {
     await page.waitForTimeout(1000)
 
     // Action replay is ON by default, ensure it's enabled
-    await setPageFeature(page, 'setActionReplayEnabled', true)
+    await setPageFeature(page, 'set_action_replay_enabled', true)
 
     // Perform some user actions
     await page.click('#action-btn-1')
@@ -266,7 +266,7 @@ test.describe('User Action Replay Toggle', () => {
     await page.waitForTimeout(1000)
 
     // Disable action replay
-    await setPageFeature(page, 'setActionReplayEnabled', false)
+    await setPageFeature(page, 'set_action_replay_enabled', false)
 
     // Perform some user actions
     await page.click('#action-btn-1')
@@ -297,7 +297,7 @@ test.describe('Performance Marks Toggle', () => {
     await page.waitForTimeout(1000)
 
     // Enable performance marks capture
-    await setPageFeature(page, 'setPerformanceMarksEnabled', true)
+    await setPageFeature(page, 'set_performance_marks_enabled', true)
     await page.waitForTimeout(500)
 
     // Create a performance mark
@@ -328,7 +328,7 @@ test.describe('Performance Marks Toggle', () => {
     await page.waitForTimeout(1000)
 
     // First enable to install the wrapper
-    await setPageFeature(page, 'setPerformanceMarksEnabled', true)
+    await setPageFeature(page, 'set_performance_marks_enabled', true)
     await page.waitForTimeout(500)
 
     // Verify wrapper is installed (not native code)
@@ -338,7 +338,7 @@ test.describe('Performance Marks Toggle', () => {
     expect(isWrappedBefore).toBe(true)
 
     // Now disable - should uninstall the wrapper
-    await setPageFeature(page, 'setPerformanceMarksEnabled', false)
+    await setPageFeature(page, 'set_performance_marks_enabled', false)
     await page.waitForTimeout(500)
 
     // Verify performance.mark is now the native function
@@ -353,7 +353,7 @@ test.describe('Performance Marks Toggle', () => {
     await page.waitForTimeout(1000)
 
     // Enable performance marks capture
-    await setPageFeature(page, 'setPerformanceMarksEnabled', true)
+    await setPageFeature(page, 'set_performance_marks_enabled', true)
     await page.waitForTimeout(500)
 
     // Create marks and a measure
@@ -387,7 +387,7 @@ test.describe('Network Waterfall Toggle', () => {
     await page.waitForTimeout(1000)
 
     // Enable network waterfall
-    await setPageFeature(page, 'setNetworkWaterfallEnabled', true)
+    await setPageFeature(page, 'set_network_waterfall_enabled', true)
     await page.waitForTimeout(500)
 
     // Trigger a fetch to generate resource timing (use the server health endpoint)
@@ -417,11 +417,11 @@ test.describe('Network Waterfall Toggle', () => {
     await page.waitForTimeout(1000)
 
     // First enable waterfall
-    await setPageFeature(page, 'setNetworkWaterfallEnabled', true)
+    await setPageFeature(page, 'set_network_waterfall_enabled', true)
     await page.waitForTimeout(500)
 
     // Now disable waterfall
-    await setPageFeature(page, 'setNetworkWaterfallEnabled', false)
+    await setPageFeature(page, 'set_network_waterfall_enabled', false)
     await page.waitForTimeout(500)
 
     // Trigger a fetch to generate resource timing
@@ -458,7 +458,7 @@ test.describe('Screenshot on Error Toggle', () => {
     serverUrl
   }) => {
     // Enable screenshot on error via background
-    await setBackgroundToggle(context, extensionId, 'setScreenshotOnError', true)
+    await setBackgroundToggle(context, extensionId, 'set_screenshot_on_error', true)
     await clearServerLogs(serverUrl)
 
     await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}`)
@@ -484,7 +484,7 @@ test.describe('Screenshot on Error Toggle', () => {
 
   test('when disabled, exception should NOT trigger screenshot', async ({ page, context, extensionId, serverUrl }) => {
     // Disable screenshot on error
-    await setBackgroundToggle(context, extensionId, 'setScreenshotOnError', false)
+    await setBackgroundToggle(context, extensionId, 'set_screenshot_on_error', false)
     await clearServerLogs(serverUrl)
 
     await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}`)

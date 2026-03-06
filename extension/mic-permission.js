@@ -13,7 +13,7 @@ function onPermissionGranted() {
   statusEl.textContent = 'Granted! Closing...'
   btn.textContent = 'Granted'
   btn.disabled = true
-  chrome.runtime.sendMessage({ type: 'MIC_GRANTED_CLOSE_TAB' })
+  chrome.runtime.sendMessage({ type: 'mic_granted_close_tab' })
 }
 
 // Check current permission state on load

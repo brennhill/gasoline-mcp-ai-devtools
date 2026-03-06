@@ -154,7 +154,7 @@ describe('Popup State Display', () => {
     await initPopup()
 
     // Should have sent getStatus message
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'getStatus'))
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'get_status'))
   })
 })
 
@@ -190,7 +190,7 @@ describe('Clear Logs Button', () => {
     assert.strictEqual(clearBtn.textContent, 'Confirm Clear?')
 
     // No clearLogs message sent yet
-    assert.ok(!mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs'))
+    assert.ok(!mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clear_logs'))
   })
 
   test('should send clearLogs message on second click', async () => {
@@ -201,12 +201,12 @@ describe('Clear Logs Button', () => {
     // Second click: actually clears
     await handleClearLogs()
 
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs'))
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clear_logs'))
   })
 
   test('should update UI after clearing logs', async () => {
     mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
-      if (msg.type === 'clearLogs') {
+      if (msg.type === 'clear_logs') {
         callback({ success: true })
       }
     })
@@ -224,7 +224,7 @@ describe('Clear Logs Button', () => {
   test('should disable button while clearing', async () => {
     let resolvePromise
     mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
-      if (msg.type === 'clearLogs') {
+      if (msg.type === 'clear_logs') {
         return new Promise((resolve) => {
           resolvePromise = () => {
             callback({ success: true })
@@ -255,7 +255,7 @@ describe('Clear Logs Button', () => {
 
   test('should show error if clear fails', async () => {
     mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
-      if (msg.type === 'clearLogs') {
+      if (msg.type === 'clear_logs') {
         callback({ success: false, error: 'Server not responding' })
       }
     })

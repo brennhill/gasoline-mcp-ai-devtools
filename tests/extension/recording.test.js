@@ -138,7 +138,7 @@ function createRecordingChromeMock(overrides = {}) {
 function simulateOffscreenStarted(success, error) {
   const message = {
     target: 'background',
-    type: 'OFFSCREEN_RECORDING_STARTED',
+    type: 'offscreen_recording_started',
     success,
     error: error || undefined
   }
@@ -153,7 +153,7 @@ function simulateOffscreenStarted(success, error) {
 function simulateOffscreenStopped(overrides = {}) {
   const message = {
     target: 'background',
-    type: 'OFFSCREEN_RECORDING_STOPPED',
+    type: 'offscreen_recording_stopped',
     status: overrides.status ?? 'saved',
     name: overrides.name ?? 'test-recording',
     duration_seconds: overrides.duration_seconds ?? 10,
@@ -170,7 +170,7 @@ function simulateOffscreenStopped(overrides = {}) {
 
 // Simulate popup gesture grant that unblocks MCP-initiated recording start.
 function simulateRecordingGestureGranted() {
-  const message = { type: 'RECORDING_GESTURE_GRANTED' }
+  const message = { type: 'recording_gesture_granted' }
   const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
     listener(message, sender)
@@ -179,7 +179,7 @@ function simulateRecordingGestureGranted() {
 
 // Simulate popup denial for MCP-initiated recording start.
 function simulateRecordingGestureDenied() {
-  const message = { type: 'RECORDING_GESTURE_DENIED' }
+  const message = { type: 'recording_gesture_denied' }
   const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
     listener(message, sender)
@@ -387,7 +387,7 @@ describe('MCP-initiated recording flow', () => {
     const permissionToastOnTarget = toastCalls.some(
       (c) =>
         c.arguments[0] === 77 &&
-        c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' &&
+        c.arguments[1]?.type === 'gasoline_action_toast' &&
         String(c.arguments[1]?.text || '').includes('Open Gasoline Popup')
     )
     assert.ok(permissionToastOnTarget, 'Should show popup-approval permission toast on target tab')
@@ -444,7 +444,7 @@ describe('FPS Clamping', () => {
       // Verify the sendMessage call to offscreen included clamped fps
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 5)
@@ -467,7 +467,7 @@ describe('FPS Clamping', () => {
     if (result.status === 'recording') {
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 60)
@@ -489,7 +489,7 @@ describe('FPS Clamping', () => {
     if (result.status === 'recording') {
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 30)
@@ -694,7 +694,7 @@ describe('Successful Recording Lifecycle', () => {
 
     const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
     const startCmd = sendCalls.find(
-      (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+      (c) => c.arguments[0]?.type === 'offscreen_start_recording'
     )
     assert.ok(startCmd, 'Should send OFFSCREEN_START_RECORDING message')
     const msg = startCmd.arguments[0]
@@ -934,7 +934,7 @@ describe('stopRecording save toast', () => {
 
     const sendCalls = globalThis.chrome.tabs.sendMessage.mock.calls
     const toastCall = sendCalls.find(
-      (c) => c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' && c.arguments[1]?.text === 'Recording saved'
+      (c) => c.arguments[1]?.type === 'gasoline_action_toast' && c.arguments[1]?.text === 'Recording saved'
     )
     assert.ok(toastCall, 'Should show "Recording saved" toast')
     assert.ok(toastCall.arguments[1].detail.includes('5.0 MB'), 'Toast should include file size')
@@ -1083,7 +1083,7 @@ describe('Stop command to offscreen', () => {
     // Verify the stop command was sent
     const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
     const stopCmd = sendCalls.find(
-      (c) => c.arguments[0]?.type === 'OFFSCREEN_STOP_RECORDING'
+      (c) => c.arguments[0]?.type === 'offscreen_stop_recording'
     )
     assert.ok(stopCmd, 'Should send OFFSCREEN_STOP_RECORDING message')
     assert.strictEqual(stopCmd.arguments[0].target, 'offscreen')
