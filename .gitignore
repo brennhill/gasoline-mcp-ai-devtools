@@ -1,9 +1,11 @@
 # Build artifacts
 dist/
 /dev-console
-/gasoline-mcp
+/gasoline-mcp*
+/verify-bin
 *.test
 *.zip
+*.crx
 
 # Local config
 .mcp.json
@@ -59,6 +61,10 @@ docs/benchmarks/*.txt
 # Runtime state
 .gasoline/
 .claude/
+server/bin/gasoline-*
+pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline
+pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline.exe
+cookwithgasoline.com/public/downloads/*.crx
 
 
 #Ignore vscode AI rules
