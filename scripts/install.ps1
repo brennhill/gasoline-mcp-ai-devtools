@@ -230,7 +230,7 @@ Write-Host "📁 Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
 $INSTALL_BIN = $GASOLINE_BIN
-$BINARY_NAME = "gasoline-win32-x64.exe"
+$BINARY_NAME = "gasoline-agentic-browser-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 $STAGED_BIN = "$GASOLINE_BIN.tmp.$TEMP_TOKEN"
