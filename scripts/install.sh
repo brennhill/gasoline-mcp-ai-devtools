@@ -393,7 +393,7 @@ kill_stale_gasoline_processes
 # 6. Binary Installation
 # ─────────────────────────────────────────────────────────────
 
-BINARY_NAME="gasoline-$PLATFORM-$E_ARCH$BINARY_EXT"
+BINARY_NAME="gasoline-agentic-browser-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 
