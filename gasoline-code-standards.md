@@ -36,7 +36,7 @@
 
 - 3+ similar lines = extract a helper. If you see the same logic repeated, it should be a function.
 - Before writing a new utility, check if one exists. Search the codebase for similar function signatures.
-- Run `npx jscpd src/background src/popup --min-lines 8 --min-tokens 60` for TS duplication.
+- Run `npx jscpd src/background src/popup --min-lines 3 --min-tokens 60` for TS duplication.
 
 ## Structural Patterns
 
