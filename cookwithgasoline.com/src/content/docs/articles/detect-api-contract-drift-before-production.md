@@ -4,8 +4,8 @@ description: "A beginner-friendly, step-by-step guide to catching API contract d
 date: 2026-03-03
 authors: [brenn]
 tags: [api, validation, debugging, how-to]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['api', 'validation', 'debugging', 'how-to', 'articles', 'detect', 'contract', 'drift', 'before', 'production']
 ---
 

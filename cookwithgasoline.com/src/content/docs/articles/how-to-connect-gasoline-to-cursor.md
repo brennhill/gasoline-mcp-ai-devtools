@@ -4,8 +4,8 @@ description: "Beginner guide to connect Cursor with Gasoline Agentic Devtools an
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, cursor, mcp, setup]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'cursor', 'mcp', 'setup', 'articles', 'connect', 'gasoline']
 ---
 

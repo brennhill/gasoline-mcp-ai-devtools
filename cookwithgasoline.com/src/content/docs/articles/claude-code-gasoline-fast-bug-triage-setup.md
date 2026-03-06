@@ -4,8 +4,8 @@ description: "A beginner-friendly setup guide for using Claude Code with Gasolin
 date: 2026-03-03
 authors: [brenn]
 tags: [claude-code, mcp, debugging, setup]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['claude-code', 'mcp', 'debugging', 'setup', 'articles', 'claude', 'code', 'gasoline', 'fast', 'bug', 'bug-triage']
 ---
 

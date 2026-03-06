@@ -1,6 +1,6 @@
 #!/bin/bash
 # Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This script provides a zero-dependency, platform-aware installation flow for Gasoline.

@@ -1,8 +1,8 @@
 ---
 title: Technical Architecture
 description: How Gasoline MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['architecture']
 ---
 
@@ -182,14 +182,14 @@ For a detailed understanding of how all the pieces fit together, check out our c
 
 ### System Architecture (C4 Model)
 
-- **[C2: Container Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
-- **[C3: Component Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
+- **[C2: Container Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
+- **[C3: Component Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
 
 ### Request-Response Flows
 
-- **[Request-Response Cycle](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
-- **[Extension Message Protocol](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
+- **[Request-Response Cycle](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
+- **[Extension Message Protocol](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
 
 ### Data Flow
 
-- **[Data Capture Pipeline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy
+- **[Data Capture Pipeline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy

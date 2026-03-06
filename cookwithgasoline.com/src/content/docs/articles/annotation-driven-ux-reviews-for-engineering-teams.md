@@ -4,8 +4,8 @@ description: "Run faster, clearer User Experience reviews with visual annotation
 date: 2026-03-03
 authors: [brenn]
 tags: [ux, annotations, collaboration, quality]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['ux', 'annotations', 'collaboration', 'quality', 'articles', 'annotation', 'driven', 'reviews', 'engineering', 'teams']
 ---
 

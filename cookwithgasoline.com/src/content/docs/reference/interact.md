@@ -1,8 +1,8 @@
 ---
 title: "Interact — Control the Browser"
 description: "Complete reference for the interact tool. 59 actions for navigation, DOM manipulation, element discovery, tab management, storage & cookies, dialog handling, file upload, draw mode, recording, compound actions, content extraction, state management, and JavaScript execution."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['reference', 'interact']
 ---
 

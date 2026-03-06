@@ -8,8 +8,8 @@ tags:
   - releases
   - mcp
   - stability
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v5', 'release']
 ---
 
