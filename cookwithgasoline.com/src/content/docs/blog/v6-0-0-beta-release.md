@@ -4,8 +4,8 @@ description: "AI agents can now check all links on your page, automate your brow
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['release', 'blog', 'v6', 'beta']
 ---
 
@@ -54,19 +54,10 @@ Gasoline v6.0.0 introduces the Link Health Analyzer, plus browser automation, re
 
 ### Browser Extension
 
-**[📥 Download gasoline-extension-v6.0.0.crx](/downloads/gasoline-extension-v6.0.0.crx)** (480 KB)
+Direct CRX download for this historical beta build is no longer distributed from this docs site.
+Use the current installer flow instead:
 
-Extension ID: `behrmkvjipzkr7hu6mwmbt5vpdgcdyvk`
-
-Drag-drop the signed CRX into `chrome://extensions/`:
-
-1. Download the file above
-2. Open `chrome://extensions/`
-3. Enable Developer mode (top right)
-4. Drag and drop the `.crx` file into the page
-5. Click "Add extension" when prompted
-
-[Full installation guide →](/downloads/)
+- [Full installation guide →](/downloads/)
 
 ### MCP Server
 

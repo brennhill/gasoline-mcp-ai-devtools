@@ -1516,6 +1516,10 @@ code:not(pre code) {
 }
 
 /* Starlight navigation contrast fixes for light theme */
+:root[data-theme='light'] #starlight__sidebar {
+  color: var(--g-ink-soft);
+}
+
 :root[data-theme='light'] #starlight__sidebar a,
 :root[data-theme='light'] #starlight__sidebar summary,
 :root[data-theme='light'] #starlight__sidebar button,
@@ -1527,6 +1531,18 @@ code:not(pre code) {
 :root[data-theme='light'] #starlight__sidebar a:hover,
 :root[data-theme='light'] #starlight__sidebar summary:hover,
 :root[data-theme='light'] .pagination-links a:hover {
+  color: var(--g-ink) !important;
+}
+
+/* In light theme, sidebar label variants should inherit dark text, never hardcoded white. */
+:root[data-theme='light'] #starlight__sidebar .large {
+  color: inherit !important;
+}
+
+:root[data-theme='light'] #starlight__sidebar summary:hover .large,
+:root[data-theme='light'] #starlight__sidebar summary:focus-visible .large,
+:root[data-theme='light'] #starlight__sidebar .top-level > li > a.large:hover,
+:root[data-theme='light'] #starlight__sidebar .top-level > li > a.large:focus-visible {
   color: var(--g-ink) !important;
 }
 
@@ -1574,6 +1590,36 @@ code:not(pre code) {
 :root[data-theme='light'] site-search button[data-open-modal] > svg,
 :root[data-theme='light'] site-search button[data-open-modal] > span {
   color: inherit !important;
+}
+
+/* Search modal and result cards should stay light in light theme. */
+:root[data-theme='light'] site-search dialog {
+  color: var(--g-ink-soft);
+  background: var(--g-bg);
+}
+
+:root[data-theme='light'] #starlight__search {
+  --pagefind-ui-primary: var(--g-ink);
+  --pagefind-ui-text: var(--g-ink-soft);
+  --pagefind-ui-background: var(--g-surface);
+  --pagefind-ui-border: var(--g-border);
+  --pagefind-ui-tag: var(--g-bg-soft);
+}
+
+:root[data-theme='light'] #starlight__search .pagefind-ui__search-input,
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-link,
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-excerpt {
+  color: var(--g-ink-soft) !important;
+}
+
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)),
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-nested {
+  background-color: var(--g-surface) !important;
+}
+
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):focus-within,
+:root[data-theme='light'] #starlight__search .pagefind-ui__result-nested:focus-within {
+  background-color: var(--g-bg-soft) !important;
 }
 
 .workflow-library-shell,

@@ -1,8 +1,8 @@
 ---
 title: Replace Selenium and Playwright with Natural Language
 description: Stop writing brittle test code. Write what you want tested in plain English and let AI do the clicking — no engineers, no special tools, no selectors to maintain.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'replace', 'selenium']
 ---
 

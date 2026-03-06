@@ -1,8 +1,8 @@
 ---
 title: "Generate — Create Artifacts"
 description: "Complete reference for the generate tool. 13 formats for producing Playwright tests, reproduction scripts, HAR exports, SARIF reports, CSP headers, SRI hashes, PR summaries, visual tests, annotation reports, test healing, and failure classification."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['reference', 'generate']
 ---
 

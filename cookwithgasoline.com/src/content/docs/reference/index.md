@@ -1,8 +1,8 @@
 ---
 title: API and Tool Reference
 description: Readthedocs-style entry point for Gasoline MCP tool APIs, request shapes, and common usage patterns.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['reference']
 ---
 

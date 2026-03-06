@@ -1,8 +1,8 @@
 ---
 title: Run a Product Demo with AI
 description: Use Gasoline's subtitle narration and browser control to deliver polished, narrated product demos — no slides, no scripts, just live software.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'product', 'demos']
 ---
 

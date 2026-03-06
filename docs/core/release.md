@@ -10,7 +10,7 @@ canonical: true
 
 # Release Process
 
-Gasoline MCP uses a `UNSTABLE` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Gasoline MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 
@@ -26,13 +26,13 @@ feature/b ──────●        │
 feature/c ───────────────●
 ```
 
-- **`main`** — Published releases. What's on npm and the Chrome Web Store.
+- **`stable`** — Published releases. What's on npm and the Chrome Web Store.
 - **`UNSTABLE`** — Integration branch. All features merge here first.
 - **Feature branches** — Branch from `UNSTABLE`, merge back to `UNSTABLE`.
 
 ## Quality Gates
 
-Every feature must pass all gates before merging to `UNSTABLE`. All gates must be green before `UNSTABLE` merges to `main`.
+Every feature must pass all gates before merging to `UNSTABLE`. All gates must be green before `UNSTABLE` merges to `stable`.
 
 ### Gate 1: Tests Pass
 
@@ -250,10 +250,10 @@ All locations updated by bump-version:
 
 **⚠️ CRITICAL:** `optionalDependencies` in `npm/gasoline-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
 
-### 3. Merge to `main`
+### 3. Merge to `stable`
 
 ```bash
-git checkout main
+git checkout stable
 git merge UNSTABLE
 ```
 
@@ -261,7 +261,7 @@ git merge UNSTABLE
 
 ```bash
 git tag v{version}
-git push origin main --follow-tags
+git push origin stable --follow-tags
 ```
 
 ### 5. Build & Publish
@@ -299,7 +299,7 @@ See `docs/pypi-distribution.md` for detailed PyPI publishing instructions.
 
 ```bash
 git checkout UNSTABLE
-git merge main
+git merge stable
 git push origin UNSTABLE
 ```
 
@@ -316,9 +316,9 @@ For critical fixes that can't wait for the next release:
 ```bash
 git checkout -b hotfix/fix-name main
 # Fix, test, commit
-git checkout main && git merge hotfix/fix-name
+git checkout stable && git merge hotfix/fix-name
 git tag v{version}
-git push origin main --follow-tags
+git push origin stable --follow-tags
 
 # Sync back
 git checkout UNSTABLE && git merge hotfix/fix-name

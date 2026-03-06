@@ -1,8 +1,8 @@
 ---
 title: "Security Auditing & Hardening"
 description: "Use Gasoline's security tools to audit credentials, PII, headers, cookies, third-party scripts, and transport security. Generate CSP headers and SRI hashes. Track security regressions."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'security', 'auditing']
 ---
 

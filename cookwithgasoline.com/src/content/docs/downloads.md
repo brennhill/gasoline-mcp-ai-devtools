@@ -1,8 +1,8 @@
 ---
 title: Downloads
 description: Download Gasoline extension and tools for your platform
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['downloads']
 ---
 
@@ -40,6 +40,15 @@ After running the installer, load the extension in Chrome:
 
 The extension captures browser telemetry and sends it to the local Gasoline server.
 
+#### What's New in 0.8.x
+
+- **Annotation System Upgrade** — Draw mode now pairs with review/export flows (`annotations`, `annotation_report`, `annotation_issues`) for multi-page feedback sessions.
+- **Tracked Hover Island** — A floating quick-action island on tracked tabs for one-click annotate, screenshot, terminal, and recording controls.
+- **Built-In Terminal from the Page** — Open the integrated terminal directly from the hover island and run live commands without leaving the browser.
+- **Recording Approval UX** — Clear pending/approved recording state in the popup, with explicit approve/deny flow and improved recording status feedback.
+- **Context Menu Consistency** — Dynamic start/stop labels for recording, annotations, and control states so extension actions always match runtime state.
+- **Protocol & Reliability Hardening** — Sync-path cleanup and stronger daemon/extension consistency for fewer tool-mode and state drift issues.
+
 #### What's New in 0.7.x
 
 - **5th Tool: analyze** — Active analysis with 27 modes (DOM queries, accessibility, security audits, link health, visual annotations, API validation, forms, visual diff, and more)
@@ -51,12 +60,6 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 - **Multi-Client Support** — Multiple AI tools can connect to the same daemon
 
 ## Alternative Install Methods
-
-### npm
-
-```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
-```
 
 ### From Source
 
@@ -105,8 +108,8 @@ To verify the binary:
 - Check that Developer mode is enabled
 
 **Recording not working?**
-- Click the Gasoline icon to grant recording permission
-- Ensure the tab you want to record is active
+- Click the Gasoline icon and approve the recording request
+- Ensure the tab you want to record is the tracked tab
 - Check your Chrome permissions for microphone access (if recording audio)
 
 **Issues with MCP integration?**

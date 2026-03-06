@@ -108,7 +108,7 @@ Create `install/index.html`:
 
   <h2>Next Steps</h2>
   <ul>
-    <li>Read the <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/README.md">documentation</a></li>
+    <li>Read the <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/README.md">documentation</a></li>
     <li>Join our <a href="https://discord.gg/example">community</a></li>
     <li>Report issues on <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues">GitHub</a></li>
   </ul>

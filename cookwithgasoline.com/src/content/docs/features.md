@@ -1,8 +1,8 @@
 ---
 title: What Gasoline Captures
 description: "Gasoline captures console logs, network errors, exceptions, WebSocket events, network bodies, user actions, Web Vitals, and generates Playwright tests, PR summaries, and accessibility reports."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['features']
 ---
 

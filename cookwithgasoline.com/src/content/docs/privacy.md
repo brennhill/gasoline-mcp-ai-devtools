@@ -1,8 +1,8 @@
 ---
 title: Privacy Policy
 description: Gasoline Privacy Policy - 100% localhost, zero data collection
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['privacy']
 ---
 
@@ -63,8 +63,8 @@ Before sending to your localhost server, Gasoline automatically redacts:
 - Automatic replacement before transmission
 
 **Verification:**
-- Source code: [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/extension/lib/serialize.js) (lines 107-134)
-- Header filters: [extension/lib/constants.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/extension/lib/constants.js) (lines 10-17)
+- Source code: [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/serialize.js) (lines 107-134)
+- Header filters: [extension/lib/constants.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/constants.js) (lines 10-17)
 
 ---
 
@@ -119,9 +119,9 @@ Before sending to your localhost server, Gasoline automatically redacts:
 - Community can audit our privacy claims
 
 **What you can inspect:**
-- [extension/manifest.json](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/extension/manifest.json) - Permissions requested
-- [extension/background/server.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/extension/background/server.js) - Where data is sent
-- [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/extension/lib/serialize.js) - Sensitive data redaction
+- [extension/manifest.json](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/manifest.json) - Permissions requested
+- [extension/background/server.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/background/server.js) - Where data is sent
+- [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/serialize.js) - Sensitive data redaction
 
 ---
 

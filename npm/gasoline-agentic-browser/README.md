@@ -239,7 +239,7 @@ Examples:
 gasoline-mcp --install --skills-repo brennhill/gasoline-skills
 
 # GitHub tree URL with subpath (auto-detects ref and path)
-gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-skills/tree/main/skills
+gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp-skills/tree/stable/skills
 
 # Explicit manifest/path controls
 gasoline-mcp --install \

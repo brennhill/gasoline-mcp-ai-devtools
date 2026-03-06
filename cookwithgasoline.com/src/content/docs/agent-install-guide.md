@@ -1,8 +1,8 @@
 ---
 title: "Agent-Assisted Installation"
 description: "Step-by-step instructions for LLM coding agents to install Gasoline with minimal human intervention."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['agent', 'install', 'guide']
 ---
 

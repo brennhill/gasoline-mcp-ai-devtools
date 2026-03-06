@@ -1,5 +1,5 @@
 # Gasoline - Ultimate Windows Installer (PowerShell)
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This PowerShell script provides a native, one-liner installation for Windows users.

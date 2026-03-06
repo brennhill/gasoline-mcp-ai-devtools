@@ -4,8 +4,8 @@ description: "Initial public release with core observability features"
 date: 2026-01-04T00:03:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['release', 'blog', 'v5']
 ---
 

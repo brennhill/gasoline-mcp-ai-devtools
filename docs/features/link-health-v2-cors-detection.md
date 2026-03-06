@@ -21,7 +21,7 @@ The initial link health analyzer (v6.0.0) used the browser extension to check al
 On https://cookwithgasoline.com/architecture/, there's a link to the C2 diagram:
 
 ```
-https://github.com/anthropics/gasoline-mcp/blob/main/docs/architecture/diagrams/c2-containers.md
+https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md
 ```
 
 #### Result before fix:
@@ -62,7 +62,7 @@ The browser couldn't detect this broken link due to CORS, giving users unreliabl
   },
   "results": [
     {
-      "url": "https://github.com/anthropics/gasoline-mcp/blob/main/docs/architecture/diagrams/c2-containers.md",
+      "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md",
       "status": null,
       "code": "cors_blocked",
       "timeMs": 150,
@@ -83,8 +83,8 @@ For CORS-blocked links, use the server-side tool:
 const response = await analyze({
   what: 'link_validation',
   urls: [
-    'https://github.com/anthropics/gasoline-mcp/blob/main/docs/architecture/diagrams/c2-containers.md',
-    'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c2-containers.md'
+    'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md',
+    'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md'
   ],
   timeout_ms: 15000,
   max_workers: 20
@@ -105,14 +105,14 @@ const response = await analyze({
   "total": 2,
   "results": [
     {
-      "url": "https://github.com/anthropics/gasoline-mcp/blob/main/docs/architecture/diagrams/c2-containers.md",
+      "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md",
       "status": 404,
       "code": "broken",
       "time_ms": 339,
       "error": ""
     },
     {
-      "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/docs/architecture/diagrams/c2-containers.md",
+      "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md",
       "status": 200,
       "code": "ok",
       "time_ms": 1005,

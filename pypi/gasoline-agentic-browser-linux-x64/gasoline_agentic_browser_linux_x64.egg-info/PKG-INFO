@@ -5,5 +5,5 @@ Summary: Gasoline Agentic Browser binary for linux-x64
 Author-email: Brennan Hill <noreply@cookwithgasoline.com>
 License: AGPL-3.0-only
 Project-URL: Homepage, https://cookwithgasoline.com
-Project-URL: Repository, https://github.com/brennhill/gasoline-agentic-browser-ai-devtools
+Project-URL: Repository, https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 Requires-Python: >=3.8

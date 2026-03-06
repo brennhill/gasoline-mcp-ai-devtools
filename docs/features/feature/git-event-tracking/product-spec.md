@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Git Event Tracking
 
 ## Overview
-Git Event Tracking automatically captures Git operations (commits, branch switches, rebases, merges) and emits them as events into Gasoline. When a developer commits code, Gasoline records the commit hash, message, changed files, and author. This provides crucial context: "Did the test failure happen before or after the code change? On which branch? After rebasing onto main?" Git events are correlated with test runs, network requests, and backend logs to answer questions like "When did I introduce this bug?" or "Does the failure only happen on this branch?". The complete development workflow—code changes, test executions, feature flag toggles—is visible in a single timeline.
+Git Event Tracking automatically captures Git operations (commits, branch switches, rebases, merges) and emits them as events into Gasoline. When a developer commits code, Gasoline records the commit hash, message, changed files, and author. This provides crucial context: "Did the test failure happen before or after the code change? On which branch? After rebasing onto stable?" Git events are correlated with test runs, network requests, and backend logs to answer questions like "When did I introduce this bug?" or "Does the failure only happen on this branch?". The complete development workflow—code changes, test executions, feature flag toggles—is visible in a single timeline.
 
 ## Problem
 Developers use Git to manage code and branches, but Gasoline has no visibility into these operations:
@@ -141,7 +141,7 @@ $ git commit -m "Fix payment timeout handling"
 ### Example 2: Branch Switch Invalidates Test
 #### Git operation:
 ```bash
-$ git checkout main
+$ git checkout stable
 ```
 
 #### Gasoline event:
@@ -158,12 +158,12 @@ $ git checkout main
 [10:16:12.500] test:completed (PASSED)
 ```
 
-**Developer insight:** "Interesting, the same test passes on main but fails on my feature branch. Let me compare commits."
+**Developer insight:** "Interesting, the same test passes on stable but fails on my feature branch. Let me compare commits."
 
 ### Example 3: Rebase Conflicts
 #### Git operation:
 ```bash
-$ git rebase main
+$ git rebase stable
 # Conflicts detected
 ```
 

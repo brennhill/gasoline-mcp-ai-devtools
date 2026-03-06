@@ -520,7 +520,7 @@ observe({what: "network_waterfall", limit: 50})
 2. **Run full test suite**
 3. **Manual UAT testing**
 4. **Update documentation**
-5. **Merge to `main` for v5.3 release**
+5. **Merge to `stable` for v5.3 release**
 
 ---
 
