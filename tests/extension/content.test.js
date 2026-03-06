@@ -16,7 +16,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler = undefined
 
     runtimeSendMessage = mock.fn((msg) => {
-      if (msg?.type === 'GET_TAB_ID') return Promise.resolve({ tabId: 42 })
+      if (msg?.type === 'get_tab_id') return Promise.resolve({ tabId: 42 })
       return Promise.resolve()
     })
 
@@ -46,11 +46,11 @@ describe('Content Window Message Bridge', () => {
   })
 
   test('MESSAGE_MAP contains expected forwarding contracts', () => {
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_LOG, 'log')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_WS, 'ws_event')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_NETWORK_BODY, 'network_body')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_ENHANCED_ACTION, 'enhanced_action')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_PERFORMANCE_SNAPSHOT, 'performance_snapshot')
+    assert.strictEqual(MESSAGE_MAP.gasoline_log, 'log')
+    assert.strictEqual(MESSAGE_MAP.gasoline_ws, 'ws_event')
+    assert.strictEqual(MESSAGE_MAP.gasoline_network_body, 'network_body')
+    assert.strictEqual(MESSAGE_MAP.gasoline_enhanced_action, 'enhanced_action')
+    assert.strictEqual(MESSAGE_MAP.gasoline_performance_snapshot, 'performance_snapshot')
   })
 
   test('forwards GASOLINE_NETWORK_BODY from tracked tab through runtime.sendMessage', async () => {
@@ -63,7 +63,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler({
       source: globalThis.window,
       origin: globalThis.window.location.origin,
-      data: { type: 'GASOLINE_NETWORK_BODY', payload }
+      data: { type: 'gasoline_network_body', payload }
     })
 
     const forwarded = runtimeSendMessage.mock.calls
@@ -84,7 +84,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler({
       source: globalThis.window,
       origin: globalThis.window.location.origin,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'boom' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'boom' } }
     })
 
     const forwardedCount = runtimeSendMessage.mock.calls
@@ -108,7 +108,7 @@ describe('Content Window Message Bridge', () => {
       source: globalThis.window,
       origin: globalThis.window.location.origin,
       data: {
-        type: 'GASOLINE_DOM_QUERY_RESPONSE',
+        type: 'gasoline_dom_query_response',
         requestId,
         result: expected
       }

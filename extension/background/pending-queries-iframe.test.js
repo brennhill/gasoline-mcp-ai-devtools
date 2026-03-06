@@ -200,7 +200,7 @@ describe('analyze frame routing', () => {
   test('highlight uses resolved target tab and falls back to scripting when content script is unreachable', async () => {
     globalThis.chrome.tabs.sendMessage = async (tabId, message, options) => {
       sendMessageCalls.push({ tabId, message, options })
-      if (message.type === 'GASOLINE_HIGHLIGHT') {
+      if (message.type === 'gasoline_highlight') {
         throw new Error('Could not establish connection. Receiving end does not exist.')
       }
       return {}

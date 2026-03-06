@@ -224,7 +224,7 @@ describe('Network Body Capture After Refactoring', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
 
     assert.ok(bodyEvent, 'Should capture network body event')
     const payload = bodyEvent.arguments[0].payload
@@ -245,7 +245,7 @@ describe('Network Body Capture After Refactoring', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
 
     assert.ok(bodyEvent, 'Should capture network body event')
     const payload = bodyEvent.arguments[0].payload

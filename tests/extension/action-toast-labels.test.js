@@ -17,7 +17,7 @@ describe('actionToast label normalization', () => {
 
     assert.strictEqual(globalThis.chrome.tabs.sendMessage.mock.calls.length, 1)
     const [, message] = globalThis.chrome.tabs.sendMessage.mock.calls[0].arguments
-    assert.strictEqual(message.type, 'GASOLINE_ACTION_TOAST')
+    assert.strictEqual(message.type, 'gasoline_action_toast')
     assert.strictEqual(message.text, 'Waiting for page to stabilize...')
   })
 
