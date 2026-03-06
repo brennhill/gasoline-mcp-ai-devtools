@@ -1,12 +1,13 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
-	extPath := `C:\Users\tester\.gasoline\extension`
+	extPath := `/Users/tester/GasolineAgenticDevtoolExtension`
 	checklist := manualExtensionSetupChecklist(extPath)
 	joined := strings.Join(checklist, "\n")
 
@@ -25,5 +26,25 @@ func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("checklist missing %q; got:\n%s", want, joined)
 		}
+	}
+}
+
+func TestExtensionInstallDir_DefaultVisiblePath(t *testing.T) {
+	t.Setenv("GASOLINE_EXTENSION_DIR", "")
+	home := "/Users/tester"
+	want := filepath.Join(home, "GasolineAgenticDevtoolExtension")
+
+	if got := extensionInstallDir(home); got != want {
+		t.Fatalf("extensionInstallDir(%q) = %q, want %q", home, got, want)
+	}
+}
+
+func TestExtensionInstallDir_EnvOverride(t *testing.T) {
+	override := "/tmp/custom-gasoline-ext"
+	t.Setenv("GASOLINE_EXTENSION_DIR", override)
+	home := "/Users/tester"
+
+	if got := extensionInstallDir(home); got != override {
+		t.Fatalf("extensionInstallDir(%q) = %q, want env override %q", home, got, override)
 	}
 }

@@ -47,7 +47,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 1. Open `chrome://extensions/`
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
-4. Select `~/.gasoline/extension`
+4. Select `~/GasolineAgenticDevtoolExtension`
 
 ## Step 3: Verify installation
 

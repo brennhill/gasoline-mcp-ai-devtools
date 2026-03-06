@@ -27,14 +27,14 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 **What this does:**
 - Downloads the platform binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~/.gasoline/extension/`
+- Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 After running the installer, load the extension in Chrome:
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top right)
 3. Click **Load unpacked**
-4. Select **`~/.gasoline/extension`**
+4. Select **`~/GasolineAgenticDevtoolExtension`**
 
 ### Chrome Extension
 

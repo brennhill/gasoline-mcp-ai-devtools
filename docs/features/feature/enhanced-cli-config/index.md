@@ -4,7 +4,7 @@ feature_id: feature-enhanced-cli-config
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 code_paths:
   - Makefile
   - scripts/build-crx.js
@@ -30,8 +30,8 @@ test_paths:
   - tests/extension/manifest-startup-integrity.test.js
   - tests/cli/server-install-hardening.test.cjs
   - tests/cli/cli-integration.test.cjs
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 ---
 
 # Enhanced Cli Config
