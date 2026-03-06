@@ -262,6 +262,7 @@ async function main() {
   })
 
   writeShim(binDir, 'gasoline-mcp', newBinary)
+  writeShim(binDir, 'gasoline-agentic-devtools', newBinary)
   writeShim(binDir, 'gasoline', newBinary)
   writeShim(binDir, 'dev-console', newBinary)
   const envWithShims = {

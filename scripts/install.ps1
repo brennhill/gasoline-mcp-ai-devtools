@@ -16,7 +16,10 @@ $REPO = "brennhill/gasoline-agentic-browser-devtools-mcp"
 $INSTALL_DIR = Join-Path $HOME ".gasoline"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
 $EXT_DIR = if ($env:GASOLINE_EXTENSION_DIR) { $env:GASOLINE_EXTENSION_DIR } else { Join-Path $HOME "GasolineAgenticDevtoolExtension" }
-$GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
+$CANONICAL_GASOLINE_BIN = Join-Path $BIN_DIR "gasoline-agentic-devtools.exe"
+$LEGACY_GASOLINE_BIN = Join-Path $BIN_DIR "gasoline.exe"
+$LEGACY_GASOLINE_BROWSER_BIN = Join-Path $BIN_DIR "gasoline-agentic-browser.exe"
+$GASOLINE_BIN = $CANONICAL_GASOLINE_BIN
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
 $STRICT_CHECKSUM = $env:GASOLINE_INSTALL_STRICT -eq "1"
@@ -47,9 +50,9 @@ function Show-InstallWarnings {
     }
     Write-Host ""
     Write-Host "The old server may still be running. Kill it manually:" -ForegroundColor Red
-    Write-Host "  Get-Process gasoline -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
-    Write-Host "  taskkill /F /IM gasoline.exe /T" -ForegroundColor Yellow
-    Write-Host "  Remove-Item `"$GASOLINE_BIN`" -Force" -ForegroundColor Yellow
+    Write-Host "  Get-Process gasoline-agentic-devtools,gasoline-agentic-browser,gasoline -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
+    Write-Host "  taskkill /F /IM gasoline-agentic-devtools.exe /IM gasoline-agentic-browser.exe /IM gasoline.exe /T" -ForegroundColor Yellow
+    Write-Host "  Remove-Item `"$CANONICAL_GASOLINE_BIN`",`"$LEGACY_GASOLINE_BIN`",`"$LEGACY_GASOLINE_BROWSER_BIN`" -Force" -ForegroundColor Yellow
     Write-Host "Then re-run installer:" -ForegroundColor Red
     Write-Host "  irm https://raw.githubusercontent.com/$REPO/STABLE/scripts/install.ps1 | iex" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Red
@@ -57,8 +60,19 @@ function Show-InstallWarnings {
 
 function Get-GasolineServerPids {
     $pids = @()
-    $targetPath = [System.IO.Path]::GetFullPath($GASOLINE_BIN).ToLowerInvariant()
-    $processes = Get-CimInstance Win32_Process -Filter "Name = 'gasoline.exe'" -ErrorAction SilentlyContinue
+    $targetPaths = @(
+        $CANONICAL_GASOLINE_BIN,
+        $LEGACY_GASOLINE_BIN,
+        $LEGACY_GASOLINE_BROWSER_BIN
+    ) | ForEach-Object {
+        try {
+            [System.IO.Path]::GetFullPath($_).ToLowerInvariant()
+        } catch {
+            $null
+        }
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'gasoline-agentic-devtools.exe' OR Name = 'gasoline-agentic-browser.exe' OR Name = 'gasoline.exe' OR Name = 'gasoline.new.exe'" -ErrorAction SilentlyContinue
 
     foreach ($proc in $processes) {
         if (-not $proc.ProcessId) { continue }
@@ -71,7 +85,7 @@ function Get-GasolineServerPids {
 
         try {
             $procPath = [System.IO.Path]::GetFullPath($proc.ExecutablePath).ToLowerInvariant()
-            if ($procPath -eq $targetPath) {
+            if ($targetPaths -contains $procPath) {
                 $pids += [int]$proc.ProcessId
             }
         } catch {
@@ -141,6 +155,35 @@ function Replace-GasolineBinary {
     }
 
     return $false
+}
+
+function Sync-BinaryCompatAliases {
+    param(
+        [string]$CanonicalPath,
+        [string[]]$AliasPaths
+    )
+
+    if (-not (Test-Path $CanonicalPath)) {
+        Add-InstallWarning "Compatibility alias sync skipped because canonical binary is missing: $CanonicalPath"
+        return $false
+    }
+
+    $allGood = $true
+    foreach ($aliasPath in $AliasPaths) {
+        if ([string]::IsNullOrWhiteSpace($aliasPath)) {
+            continue
+        }
+        if ([System.IO.Path]::GetFullPath($aliasPath).ToLowerInvariant() -eq [System.IO.Path]::GetFullPath($CanonicalPath).ToLowerInvariant()) {
+            continue
+        }
+        try {
+            Copy-Item -Path $CanonicalPath -Destination $aliasPath -Force -ErrorAction Stop
+        } catch {
+            $allGood = $false
+            Add-InstallWarning "Could not create compatibility alias: $aliasPath"
+        }
+    }
+    return $allGood
 }
 
 Write-Host ""
@@ -288,12 +331,23 @@ if (-not (Replace-GasolineBinary -StagePath $STAGED_BIN -LivePath $GASOLINE_BIN)
     try {
         Move-Item -Path $STAGED_BIN -Destination $FALLBACK_BIN -Force -ErrorAction Stop
         $INSTALL_BIN = $FALLBACK_BIN
-        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because gasoline.exe could not be replaced."
+        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because $(Split-Path -Path $GASOLINE_BIN -Leaf) could not be replaced."
     } catch {
-        Add-InstallWarning "Downloaded update could not be installed. gasoline.exe is likely still locked by a running process."
+        Add-InstallWarning "Downloaded update could not be installed. $(Split-Path -Path $GASOLINE_BIN -Leaf) is likely still locked by a running process."
     }
 } else {
     Write-Host "✅ Binary replaced: $GASOLINE_BIN"
+}
+
+$aliasTargets = @(
+    $CANONICAL_GASOLINE_BIN,
+    $LEGACY_GASOLINE_BIN,
+    $LEGACY_GASOLINE_BROWSER_BIN
+)
+if (Sync-BinaryCompatAliases -CanonicalPath $INSTALL_BIN -AliasPaths $aliasTargets) {
+    Write-Host "✅ Installed command aliases: gasoline, gasoline-agentic-browser"
+} else {
+    Write-Host "⚠️  Core binary installed, but one or more compatibility aliases could not be created." -ForegroundColor Yellow
 }
 
 # 5. Extension Staging: Refresh the browser extension files.

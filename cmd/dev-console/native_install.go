@@ -22,6 +22,38 @@ var installerLegacyServerKeys = []string{
 	"gasoline",
 }
 
+const installerCanonicalBinaryName = "gasoline-agentic-devtools"
+
+var installerLegacyBinaryNames = []string{
+	"gasoline-agentic-browser",
+	"gasoline",
+}
+
+func installerPreferredBinaryPath(exePath string) string {
+	if strings.TrimSpace(exePath) == "" {
+		return exePath
+	}
+
+	ext := filepath.Ext(exePath)
+	base := strings.TrimSuffix(filepath.Base(exePath), ext)
+	isLegacy := false
+	for _, legacy := range installerLegacyBinaryNames {
+		if base == legacy {
+			isLegacy = true
+			break
+		}
+	}
+	if !isLegacy {
+		return exePath
+	}
+
+	canonicalPath := filepath.Join(filepath.Dir(exePath), installerCanonicalBinaryName+ext)
+	if _, err := os.Stat(canonicalPath); err == nil {
+		return canonicalPath
+	}
+	return exePath
+}
+
 func extensionInstallDir(home string) string {
 	if override := strings.TrimSpace(os.Getenv("GASOLINE_EXTENSION_DIR")); override != "" {
 		return override
@@ -76,6 +108,7 @@ func runNativeInstall() {
 		fmt.Fprintf(os.Stderr, "❌ Error: Could not determine gasoline binary path: %v\n", err)
 		os.Exit(1)
 	}
+	exe = installerPreferredBinaryPath(exe)
 
 	home, _ := os.UserHomeDir()
 	extDir := extensionInstallDir(home)

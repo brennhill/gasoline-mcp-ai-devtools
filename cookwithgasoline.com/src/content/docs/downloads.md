@@ -55,7 +55,7 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 ### npm
 
 ```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
+npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
 ```
 
 ### From Source
@@ -94,7 +94,7 @@ To verify the extension installed correctly:
 
 To verify the binary:
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --doctor
+~/.gasoline/bin/gasoline-agentic-devtools --doctor
 ```
 
 ## Troubleshooting
