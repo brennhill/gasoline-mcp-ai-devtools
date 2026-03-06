@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.8.0 Released"
+title: "Gasoline v0.8.1 Released"
 description: "Sync-era protocol cleanup, recording approval UX hardening, installer reliability upgrades, and broader test coverage."
 date: 2026-03-06
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.8.0
+last_verified_version: 0.8.1
 last_verified_date: 2026-03-06
 normalized_tags: ['release', 'blog', 'v0']
 ---
 
-## What's New in v0.8.0
+## What's New in v0.8.1
 
-Gasoline v0.8.0 focuses on reliability and consistency across the daemon, extension, and test harness.
+Gasoline v0.8.1 focuses on reliability and consistency across the daemon, extension, and test harness.
 
 ### Highlights
 
@@ -26,7 +26,7 @@ Gasoline v0.8.0 focuses on reliability and consistency across the daemon, extens
 - `make test`
 - `make test-js`
 
-Both passed for the `v0.8.0` release cut.
+Both passed for the `v0.8.1` release cut.
 
 ### Upgrade
 
@@ -36,4 +36,4 @@ curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-d
 
 ### Full Changelog
 
-[View v0.8.0 on GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v0.8.0)
+[View v0.8.1 on GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v0.8.1)

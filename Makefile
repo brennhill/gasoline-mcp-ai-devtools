@@ -1,7 +1,7 @@
 # Gasoline Build Makefile
 
 VERSION := $(shell cat VERSION)
-BINARY_NAME := gasoline-agentic-browser
+BINARY_NAME := gasoline-agentic-devtools
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console

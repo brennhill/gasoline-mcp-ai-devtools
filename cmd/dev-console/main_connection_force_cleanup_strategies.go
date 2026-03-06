@@ -101,13 +101,13 @@ func cleanupPIDFiles() {
 
 func killUnixGasolineProcessesQuietly() (int, int) {
 	cmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
-	_ = cmd.Run()
+	_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
 	return 0, 0
 }
 
 func killWindowsGasolineProcessesQuietly() int {
 	cmd := exec.Command("taskkill", "/IM", "gasoline.exe", "/F")
-	_ = cmd.Run()
+	_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
 	return 0
 }
 

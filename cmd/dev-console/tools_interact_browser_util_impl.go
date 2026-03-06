@@ -35,17 +35,17 @@ func (h *interactActionHandler) resolveNavigateURLImpl(rawURL string) (string, e
 		return trimmed, nil
 	}
 	if h.parent.capture == nil {
-		return "", fmt.Errorf("gasoline-insecure URL is unavailable because capture is not initialized")
+		return "", fmt.Errorf("resolve insecure URL: capture not initialized. Initialize capture before using insecure mode")
 	}
 
 	mode, _, _ := h.parent.capture.GetSecurityMode()
 	if mode != capture.SecurityModeInsecureProxy {
-		return "", fmt.Errorf("gasoline-insecure URL requires security_mode=insecure_proxy")
+		return "", fmt.Errorf("resolve insecure URL: requires security_mode=insecure_proxy. Set security mode before navigating")
 	}
 
 	target := strings.TrimSpace(trimmed[len(insecurePrefix):])
 	if target == "" {
-		return "", fmt.Errorf("gasoline-insecure URL is missing target URL")
+		return "", fmt.Errorf("resolve insecure URL: target URL is empty. Provide a URL after the gasoline-insecure:// prefix")
 	}
 	parsed, err := url.Parse(target)
 	if err != nil {

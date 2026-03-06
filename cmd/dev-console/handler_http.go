@@ -130,7 +130,7 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	h.logDebugEntry(ctx, requestPreview, http.StatusOK, truncatePreview(string(responseJSON)), "")
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp) //nolint:errcheck // best-effort HTTP response write
 }
 
 // writeJSONRPCError writes a JSON-RPC error response to the HTTP response writer.
@@ -141,7 +141,7 @@ func (h *MCPHandler) writeJSONRPCError(w http.ResponseWriter, id any, code int, 
 		Error:   &JSONRPCError{Code: code, Message: message},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp) //nolint:errcheck // best-effort HTTP error response write
 }
 
 // jsonResponse is a JSON response helper.

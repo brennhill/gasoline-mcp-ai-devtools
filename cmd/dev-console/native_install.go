@@ -101,7 +101,7 @@ func runNativeInstall() {
 	// 1. Silent Reset (Kill stale instances)
 	// We do this first to ensure config files aren't being held open
 	// and no old versions are interfering.
-	_ = runForceCleanupQuietly()
+	_ = runForceCleanupQuietly() //nolint:errcheck // best-effort pre-install cleanup
 
 	exe, err := os.Executable()
 	if err != nil {
@@ -183,7 +183,7 @@ func runNativeInstall() {
 			continue // Client directory doesn't exist, skip
 		}
 
-		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom)
+		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom) //nolint:errcheck // best-effort per-client config
 	}
 
 	// 4. Start the Daemon
@@ -236,18 +236,18 @@ func installClaudeCode(exePath string) {
 		"command": exePath,
 		"args":    []string{},
 	}
-	data, _ := json.Marshal(entry)
+	data, _ := json.Marshal(entry) //nolint:errcheck // map[string]any always marshals
 
 	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", mcpServerName)
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
-	_ = cmd.Run()
+	_ = cmd.Run() //nolint:errcheck // best-effort Claude Code MCP registration
 }
 
 func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	data := make(map[string]any)
 	if bytes, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(bytes, &data)
+		_ = json.Unmarshal(bytes, &data) //nolint:errcheck // start with empty map if unmarshal fails
 	}
 
 	if _, ok := data[key]; !ok {
