@@ -1582,6 +1582,21 @@ code:not(pre code) {
   border-color: color-mix(in srgb, var(--g-border-strong) 42%, var(--g-border));
 }
 
+/* Starlight page titles and heading anchors default to white in several components.
+   Force readable heading/title contrast across docs pages in light theme. */
+:root[data-theme='light'] [data-page-title],
+:root[data-theme='light'] .sl-markdown-content :is(h1, h2, h3, h4, h5, h6),
+:root[data-theme='light'] .right-sidebar-panel :is(h2, h3),
+:root[data-theme='light'] #starlight__on-this-page,
+:root[data-theme='light'] #starlight__on-this-page--mobile {
+  color: var(--g-ink) !important;
+}
+
+:root[data-theme='light'] .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) a,
+:root[data-theme='light'] .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) .sl-anchor-icon {
+  color: inherit !important;
+}
+
 /* Header search trigger should stay readable in light theme even before hover/focus. */
 :root[data-theme='light'] site-search button[data-open-modal] {
   color: #c7d0e6 !important;
