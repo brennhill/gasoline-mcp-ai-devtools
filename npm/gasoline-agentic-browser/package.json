@@ -18,11 +18,11 @@
     "extension"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-agentic-browser-darwin-arm64": "0.7.12",
-    "@brennhill/gasoline-agentic-browser-darwin-x64": "0.7.12",
-    "@brennhill/gasoline-agentic-browser-linux-arm64": "0.7.12",
-    "@brennhill/gasoline-agentic-browser-linux-x64": "0.7.12",
-    "@brennhill/gasoline-agentic-browser-win32-x64": "0.7.12"
+    "@brennhill/gasoline-agentic-browser-darwin-arm64": "0.8.0",
+    "@brennhill/gasoline-agentic-browser-darwin-x64": "0.8.0",
+    "@brennhill/gasoline-agentic-browser-linux-arm64": "0.8.0",
+    "@brennhill/gasoline-agentic-browser-linux-x64": "0.8.0",
+    "@brennhill/gasoline-agentic-browser-win32-x64": "0.8.0"
   },
   "keywords": [
     "mcp",
