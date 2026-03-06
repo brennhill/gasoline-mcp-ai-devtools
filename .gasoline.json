@@ -1,0 +1,5 @@
+{
+  "code_standards": "gasoline-code-standards.md",
+  "file_size_limit": 800,
+  "duplicate_threshold": 8
+}
