@@ -15,7 +15,7 @@ const (
 	gasolineConfigFile         = ".gasoline.json"
 	defaultCodeStandardsFile   = "gasoline-code-standards.md"
 	defaultFileSizeLimit       = 800
-	defaultDuplicateThreshold  = 8
+	defaultDuplicateThreshold  = 3
 )
 
 // gasolineConfig is the structure of .gasoline.json.
