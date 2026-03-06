@@ -21,4 +21,4 @@ Related flow maps:
 - [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-06): interact handlers migrated to `commandBuilder` pattern (`cmd/dev-console/tools_interact_command_builder.go`) to consolidate the repeated guard/correlate/arm/enqueue/wait boilerplate. See `docs/core/common-patterns.md` section 7 for usage.
+Latest sync update (2026-03-06): CommandBuilder pattern (#501), dom-primitives split (#502).

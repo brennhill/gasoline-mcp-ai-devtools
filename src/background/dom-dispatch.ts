@@ -16,6 +16,9 @@ import { domFrameProbe } from './dom-frame-probe.js'
 import { domPrimitive } from './dom-primitives.js'
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
 import { domPrimitiveQuery } from './dom-primitives-query.js'
+import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './dom-primitives-stability.js'
+import { domPrimitiveOverlay } from './dom-primitives-overlay.js'
+import { domPrimitiveIntent } from './dom-primitives-intent.js'
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
 import { isReadOnlyAction, isMutatingAction } from './action-metadata.js'
 import { errorMessage } from '../lib/error-utils.js'
@@ -300,6 +303,64 @@ async function executeQuery(
   })
 }
 
+// #502: Execute stability actions (wait_for_stable, action_diff) via extracted self-contained functions
+async function executeStabilityAction(
+  target: DOMExecutionTarget,
+  params: DOMActionParams
+): Promise<chrome.scripting.InjectionResult[]> {
+  if (params.action === 'wait_for_stable') {
+    return chrome.scripting.executeScript({
+      target,
+      world: 'MAIN',
+      func: domPrimitiveWaitForStable,
+      args: [{ stability_ms: params.stability_ms, timeout_ms: params.timeout_ms }]
+    })
+  }
+  // action_diff
+  return chrome.scripting.executeScript({
+    target,
+    world: 'MAIN',
+    func: domPrimitiveActionDiff,
+    args: [{ timeout_ms: params.timeout_ms }]
+  })
+}
+
+// #502: Execute overlay actions (dismiss_top_overlay, auto_dismiss_overlays) via extracted self-contained function
+async function executeOverlayAction(
+  target: DOMExecutionTarget,
+  params: DOMActionParams
+): Promise<chrome.scripting.InjectionResult[]> {
+  return chrome.scripting.executeScript({
+    target,
+    world: 'MAIN',
+    func: domPrimitiveOverlay,
+    args: [
+      params.action as 'dismiss_top_overlay' | 'auto_dismiss_overlays',
+      { scope_selector: params.scope_selector, timeout_ms: params.timeout_ms }
+    ]
+  })
+}
+
+// #502: Execute intent actions (open_composer, submit_active_composer, confirm_top_dialog) via extracted self-contained function
+async function executeIntentAction(
+  target: DOMExecutionTarget,
+  params: DOMActionParams
+): Promise<chrome.scripting.InjectionResult[]> {
+  return chrome.scripting.executeScript({
+    target,
+    world: 'MAIN',
+    func: domPrimitiveIntent,
+    args: [
+      params.action as 'open_composer' | 'submit_active_composer' | 'confirm_top_dialog',
+      { scope_selector: params.scope_selector }
+    ]
+  })
+}
+
+const STABILITY_ACTIONS = new Set(['wait_for_stable', 'action_diff'])
+const OVERLAY_ACTIONS = new Set(['dismiss_top_overlay', 'auto_dismiss_overlays'])
+const INTENT_ACTIONS = new Set(['open_composer', 'submit_active_composer', 'confirm_top_dialog'])
+
 function sendToastForResult(
   tabId: number,
   readOnly: boolean,
@@ -527,7 +588,13 @@ export async function executeDOMAction(
           ? await executeQuery(executionTarget, params)
           : action === 'wait_for'
             ? await executeWaitFor(executionTarget, params)
-            : await executeStandardAction(executionTarget, params)
+            : STABILITY_ACTIONS.has(action)
+              ? await executeStabilityAction(executionTarget, params)
+              : OVERLAY_ACTIONS.has(action)
+                ? await executeOverlayAction(executionTarget, params)
+                : INTENT_ACTIONS.has(action)
+                  ? await executeIntentAction(executionTarget, params)
+                  : await executeStandardAction(executionTarget, params)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
