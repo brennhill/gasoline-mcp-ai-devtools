@@ -11,12 +11,13 @@
 
 import type { WebSocketCaptureMode } from '../types/index.js'
 import { SettingName } from '../lib/constants.js'
+import { setLocalValue, getLocalValue } from '../lib/storage-utils.js'
 
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
-  chrome.storage.local.set({ webSocketCaptureMode: mode })
+  setLocalValue('webSocketCaptureMode', mode)
   chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode })
 }
 
@@ -28,8 +29,8 @@ export async function initWebSocketModeSelector(): Promise<void> {
   if (!modeSelect) return
 
   return new Promise((resolve) => {
-    chrome.storage.local.get(['webSocketCaptureMode'], (result: { webSocketCaptureMode?: WebSocketCaptureMode }) => {
-      modeSelect.value = result.webSocketCaptureMode || 'medium'
+    getLocalValue('webSocketCaptureMode', (value: unknown) => {
+      modeSelect.value = (value as WebSocketCaptureMode) || 'medium'
       resolve()
     })
   })

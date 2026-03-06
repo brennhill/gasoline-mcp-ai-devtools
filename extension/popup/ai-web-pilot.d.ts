@@ -5,7 +5,7 @@
  */
 /**
  * Initialize the AI Web Pilot toggle.
- * Read the current state from chrome.storage.local.
+ * Read the current state from local storage via the storage facade.
  */
 export declare function initAiWebPilotToggle(): Promise<void>;
 /**

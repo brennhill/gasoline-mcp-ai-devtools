@@ -14,6 +14,12 @@ func safeMarshal(v any, fallback string) json.RawMessage {
 	return mcp.SafeMarshal(v, fallback)
 }
 
+// buildQueryParams marshals a string-keyed map into JSON for query dispatch.
+// Falls back to `{}` on marshal failure (impossible for map[string]any with primitive values).
+func buildQueryParams(fields map[string]any) json.RawMessage {
+	return safeMarshal(fields, "{}")
+}
+
 func lenientUnmarshal(args json.RawMessage, v any) {
 	mcp.LenientUnmarshal(args, v)
 }

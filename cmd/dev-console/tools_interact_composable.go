@@ -69,7 +69,7 @@ func (h *interactActionHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 // The extension instruments a MutationObserver after the main action, captures mutations,
 // and returns a structured summary of what changed (overlays, toasts, form errors, etc.).
 func (h *interactActionHandler) queueComposableActionDiff(req JSONRPCRequest) {
-	diffArgs, _ := json.Marshal(map[string]any{
+	diffArgs := buildQueryParams(map[string]any{
 		"action":     "action_diff",
 		"timeout_ms": 3000,
 	})
@@ -93,7 +93,7 @@ func (h *interactActionHandler) queueComposableWaitForStable(req JSONRPCRequest,
 	}
 	timeoutMs := 5000
 
-	stableArgs, _ := json.Marshal(map[string]any{
+	stableArgs := buildQueryParams(map[string]any{
 		"action":       "wait_for_stable",
 		"stability_ms": stabilityMs,
 		"timeout_ms":   timeoutMs,

@@ -11,6 +11,7 @@
 
 import type { FeatureToggleConfig } from './types.js'
 import { SettingName, StorageKey } from '../lib/constants.js'
+import { getLocalValues } from '../lib/storage-utils.js'
 
 /**
  * Feature toggle configuration
@@ -100,12 +101,12 @@ export async function initFeatureToggles(): Promise<void> {
   const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey)
 
   return new Promise((resolve) => {
-    chrome.storage.local.get(storageKeys, (result: Record<string, boolean | undefined>) => {
+    getLocalValues(storageKeys, (result: Record<string, unknown>) => {
       for (const toggle of FEATURE_TOGGLES) {
         const checkbox = document.getElementById(toggle.id) as HTMLInputElement | null
         if (checkbox) {
           // Use saved value or default
-          const savedValue = result[toggle.storageKey]
+          const savedValue = result[toggle.storageKey] as boolean | undefined
           checkbox.checked = savedValue !== undefined ? savedValue : toggle.default
 
           // Set up change handler

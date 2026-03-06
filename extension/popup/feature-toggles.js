@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { SettingName, StorageKey } from '../lib/constants.js';
+import { getLocalValues } from '../lib/storage-utils.js';
 /**
  * Feature toggle configuration
  */
@@ -91,7 +92,7 @@ export async function initFeatureToggles() {
     // Load saved states
     const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
     return new Promise((resolve) => {
-        chrome.storage.local.get(storageKeys, (result) => {
+        getLocalValues(storageKeys, (result) => {
             for (const toggle of FEATURE_TOGGLES) {
                 const checkbox = document.getElementById(toggle.id);
                 if (checkbox) {

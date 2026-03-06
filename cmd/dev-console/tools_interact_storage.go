@@ -196,7 +196,7 @@ func (h *interactActionHandler) queueExecuteScript(
 
 	correlationID := newCorrelationID(correlationPrefix)
 	h.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
-	execParams, _ := json.Marshal(map[string]any{
+	execParams := buildQueryParams(map[string]any{
 		"script":     script,
 		"timeout_ms": timeoutMs,
 		"world":      world,

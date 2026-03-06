@@ -8,18 +8,19 @@
  * Manages the AI Web Pilot feature toggle
  */
 import { StorageKey } from '../lib/constants.js';
+import { getLocalValue } from '../lib/storage-utils.js';
 /**
  * Initialize the AI Web Pilot toggle.
- * Read the current state from chrome.storage.local.
+ * Read the current state from local storage via the storage facade.
  */
 export async function initAiWebPilotToggle() {
     const toggle = document.getElementById('aiWebPilotEnabled');
     if (!toggle)
         return;
     return new Promise((resolve) => {
-        // Read from chrome.storage.local (single source of truth)
-        chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result) => {
-            toggle.checked = result.aiWebPilotEnabled !== false;
+        // Read from local storage (single source of truth)
+        getLocalValue(StorageKey.AI_WEB_PILOT_ENABLED, (value) => {
+            toggle.checked = value !== false;
             // Set up change handler
             toggle.addEventListener('change', () => {
                 handleAiWebPilotToggle(toggle.checked);

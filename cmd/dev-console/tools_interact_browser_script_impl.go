@@ -27,8 +27,8 @@ func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	if params.Selector == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))
+	if resp, blocked := requireString(req, params.Selector, "selector", "Add the 'selector' parameter"); blocked {
+		return resp
 	}
 
 	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
@@ -69,8 +69,8 @@ func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	if params.Script == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'script' is missing", "Add the 'script' parameter and call again", withParam("script"))
+	if resp, blocked := requireString(req, params.Script, "script", "Add the 'script' parameter and call again"); blocked {
+		return resp
 	}
 
 	if params.World == "" {

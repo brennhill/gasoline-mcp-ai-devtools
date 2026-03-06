@@ -503,15 +503,17 @@
       this.name = "TimeoutError";
     }
   };
-  async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback, cleanup) {
+  async function withTimeoutAndCleanup(promise, timeoutMs, options) {
+    const fallback = options?.fallback;
+    const cleanup = options?.cleanup;
     try {
       return await Promise.race([
         promise,
         new Promise((_, reject) => {
           setTimeout(() => {
             cleanup?.();
-            if (timeoutFallback !== void 0) {
-              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+            if (fallback !== void 0) {
+              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
             } else {
               reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
             }
@@ -939,9 +941,12 @@
         requestId,
         params: message.params
       });
-      return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
-        if (hasHighlightRequest(requestId)) {
-          deleteHighlightRequest(requestId);
+      return withTimeoutAndCleanup(deferred.promise, 3e4, {
+        fallback: { success: false, error: "timeout" },
+        cleanup: () => {
+          if (hasHighlightRequest(requestId)) {
+            deleteHighlightRequest(requestId);
+          }
         }
       });
     });
@@ -967,7 +972,10 @@
       state: state2,
       include_url
     });
-    return promiseRaceWithCleanup(deferred.promise, 5e3, { error: "State command timeout" }, () => window.removeEventListener("message", responseHandler));
+    return withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { error: "State command timeout" },
+      cleanup: () => window.removeEventListener("message", responseHandler)
+    });
   }
   function handlePing(sendResponse) {
     sendResponse({ status: "alive", timestamp: Date.now() });
@@ -1087,8 +1095,9 @@
       type: "GASOLINE_GET_WATERFALL",
       requestId
     });
-    promiseRaceWithCleanup(deferred.promise, 5e3, { entries: [] }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { entries: [] },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => {
       sendResponse(result);
     }, () => {
@@ -1113,8 +1122,9 @@
     };
     window.addEventListener("message", responseHandler);
     postToInject({ type: queryType, requestId, params: parsedParams });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, {
+      fallback: { error: `${label} timeout` },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
   }

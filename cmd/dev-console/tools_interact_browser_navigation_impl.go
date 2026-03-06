@@ -20,8 +20,8 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		return resp
 	}
 
-	if params.URL == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))
+	if resp, blocked := requireString(req, params.URL, "url", "Add the 'url' parameter and call again"); blocked {
+		return resp
 	}
 	resolvedURL, err := h.resolveNavigateURLImpl(params.URL)
 	if err != nil {

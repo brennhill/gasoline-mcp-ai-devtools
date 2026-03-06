@@ -6,6 +6,7 @@
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
+import { getLocalValue, setLocalValue, removeLocalValue } from '../lib/storage-utils.js'
 
 interface ActionRecordingElements {
   row: HTMLElement
@@ -68,9 +69,8 @@ function showError(els: ActionRecordingElements, message: string): void {
 
 function getServerUrl(): Promise<string> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(StorageKey.SERVER_URL, (result: Record<string, unknown>) => {
-      void chrome.runtime.lastError
-      resolve((result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL)
+    getLocalValue(StorageKey.SERVER_URL, (value: unknown) => {
+      resolve((value as string) || DEFAULT_SERVER_URL)
     })
   })
 }
@@ -123,13 +123,11 @@ async function startActionRecording(els: ActionRecordingElements, state: ActionR
     state.startTime = Date.now()
 
     // Persist state so reopening popup shows recording in progress
-    chrome.storage.local.set({
-      gasoline_action_recording: {
-        active: true,
-        recordingId: state.recordingId,
-        startTime: state.startTime
-      }
-    }, () => { void chrome.runtime.lastError })
+    setLocalValue('gasoline_action_recording', {
+      active: true,
+      recordingId: state.recordingId,
+      startTime: state.startTime
+    })
 
     showRecording(els, state)
   } catch (err) {
@@ -152,9 +150,7 @@ async function stopActionRecording(els: ActionRecordingElements, state: ActionRe
       showError(els, configureError)
     }
 
-    chrome.storage.local.remove('gasoline_action_recording', () => {
-      void chrome.runtime.lastError
-    })
+    removeLocalValue('gasoline_action_recording')
 
     showIdle(els, state)
   } catch (err) {
@@ -178,9 +174,8 @@ export function setupActionRecordingUI(): void {
   }
 
   // Restore state if popup was closed during recording
-  chrome.storage.local.get('gasoline_action_recording', (result: Record<string, unknown>) => {
-    void chrome.runtime.lastError
-    const saved = result['gasoline_action_recording'] as {
+  getLocalValue('gasoline_action_recording', (value: unknown) => {
+    const saved = value as {
       active?: boolean
       recordingId?: string
       startTime?: number

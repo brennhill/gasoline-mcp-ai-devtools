@@ -26,7 +26,7 @@ func (h *interactActionHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, 
 	workflowStart := time.Now()
 
 	// Step 1: Run accessibility audit.
-	a11yArgs, _ := json.Marshal(map[string]any{
+	a11yArgs := buildQueryParams(map[string]any{
 		"what":   "accessibility",
 		"scope":  params.Scope,
 		"tab_id": params.TabID,

@@ -53,8 +53,7 @@ func (u *uploadInteractHandler) handleUpload(req JSONRPCRequest, args json.RawMe
 
 // validateUploadParams checks required parameters for the upload action.
 func validateUploadParams(req JSONRPCRequest, params uploadParams) *JSONRPCResponse {
-	if params.FilePath == "" {
-		resp := fail(req, ErrMissingParam, "Required parameter 'file_path' is missing", "Add the 'file_path' parameter with an absolute path to the file", withParam("file_path"))
+	if resp, blocked := requireString(req, params.FilePath, "file_path", "Add the 'file_path' parameter with an absolute path to the file"); blocked {
 		return &resp
 	}
 	if params.Selector == "" && params.APIEndpoint == "" {

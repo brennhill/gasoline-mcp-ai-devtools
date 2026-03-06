@@ -49,7 +49,7 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 	h.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
 
 	// Structured params — no embedded script. The content script handles extraction directly.
-	queryParams, _ := json.Marshal(map[string]any{
+	queryParams := buildQueryParams(map[string]any{
 		"timeout_ms": params.TimeoutMs,
 	})
 
@@ -94,7 +94,7 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	// Request page summary via dedicated query type (CSP-safe, no eval).
 	// Use 4s query timeout to finish before the 5s Go-side wait.
 	summaryCorrelationID := newCorrelationID("nav_content")
-	summaryParams, _ := json.Marshal(map[string]any{
+	summaryParams := buildQueryParams(map[string]any{
 		"timeout_ms": 4000,
 	})
 	summaryQuery := queries.PendingQuery{
