@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "region": "us-west-2",
+  "build": "0.7.0-canary.4",
+  "pending_migrations": 0
+}

@@ -1,0 +1,477 @@
+---
+const integrationLogos = [
+  { label: 'Claude', icon: '/images/integrations/anthropic.svg', href: '/mcp-integration/claude-code/' },
+  { label: 'Windsurf', icon: '/images/integrations/windsurf.svg', href: '/mcp-integration/windsurf/' },
+  { label: 'Cursor', icon: '/images/integrations/cursor.svg', href: '/mcp-integration/cursor/' },
+  { label: 'Copilot', icon: '/images/integrations/githubcopilot.svg', href: '/mcp-integration/' },
+  { label: 'Gemini CLI', icon: '/images/integrations/googlegemini.svg', href: '/mcp-integration/gemini/' },
+  { label: 'Zed', icon: '/images/integrations/zedindustries.svg', href: '/mcp-integration/zed/' }
+]
+
+const overlayToolPaletteSnapshot = '/images/landing/overlay-tool-palette-snapshot.svg'
+const githubLogo = '/images/integrations/github.svg'
+
+const transformationCards = [
+  {
+    role: 'Engineering',
+    from: 'Manual browser bug reproduction across tools',
+    to: 'Single-loop triage with logs, network traces, and DOM evidence'
+  },
+  {
+    role: 'Product',
+    from: 'Specs detached from real UI behavior',
+    to: 'Annotated sessions and replayable evidence attached to every change'
+  },
+  {
+    role: 'QA',
+    from: 'Flaky scripts and brittle selectors',
+    to: 'Deterministic interact flows with reusable sequences and playback'
+  },
+  {
+    role: 'Security & Accessibility',
+    from: 'Late-cycle checks and scattered findings',
+    to: 'Shift-left audits with SARIF and actionable remediations'
+  }
+]
+
+const solutions = [
+  {
+    id: 'seo',
+    title: 'SEO Analysis',
+    copy: 'Drop in competitor URLs and instantly compare metadata quality, crawl paths, and optimization opportunities from rendered pages.',
+    href: '/guides/seo-analysis/',
+    cta: 'Explore SEO workflow',
+    bgClass: 'gmodern-solution-panel--olive',
+    visual: {
+      fields: [
+        { label: 'Your website URL', value: 'https://yourwebsite.com' },
+        { label: 'Competitor URL(s)', value: 'https://competitor1.com\nhttps://competitor2.com' }
+      ],
+      button: 'Run SEO audit',
+      metricTitle: 'Search visibility delta',
+      score: 192,
+      metrics: [
+        { label: 'Your website', value: 58 },
+        { label: 'Competitor1', value: 39 },
+        { label: 'Competitor2', value: 115 }
+      ],
+      callouts: [
+        {
+          text: 'Rendered-page signals beat raw HTML assumptions for search quality.',
+          tone: 'amber',
+          position: 'gmodern-workbench-callout--top-right'
+        },
+        {
+          text: 'Crawl-path gaps become obvious when visual + metadata checks run together.',
+          tone: 'ink',
+          position: 'gmodern-workbench-callout--bottom-left'
+        }
+      ]
+    }
+  },
+  {
+    id: 'product',
+    title: 'Product Development',
+    copy: 'Capture annotation sessions while building so design intent, engineering tasks, and release decisions stay aligned.',
+    href: '/guides/annotation-skill-terminal-workflow/',
+    cta: 'Explore annotation workflow',
+    bgClass: 'gmodern-solution-panel--sand',
+    visual: {
+      fields: [
+        { label: 'Prototype URL', value: 'https://app.example.com/checkout' },
+        { label: 'Review focus', value: 'Contrast, spacing, and conversion friction' }
+      ],
+      button: 'Start annotation review',
+      metricTitle: 'Annotation resolution',
+      score: 74,
+      metrics: [
+        { label: 'Open notes', value: 14 },
+        { label: 'Fixed this sprint', value: 37 },
+        { label: 'Ready for release', value: 23 }
+      ],
+      callouts: [
+        {
+          text: 'Annotations turn design feedback into concrete engineering tasks.',
+          tone: 'orange',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Screenshot evidence keeps product, design, and engineering aligned.',
+          tone: 'mint',
+          position: 'gmodern-workbench-callout--mid-right'
+        }
+      ]
+    }
+  },
+  {
+    id: 'debug',
+    title: 'Debugging',
+    copy: 'Correlate console errors, network payloads, and DOM mutations in one place so root cause is obvious and reproducible.',
+    href: '/guides/debug-webapps/',
+    cta: 'Explore debugging workflow',
+    bgClass: 'gmodern-solution-panel--rose',
+    visual: {
+      fields: [
+        { label: 'Failing route', value: '/checkout/payment' },
+        { label: 'Repro clue', value: 'Submit payment after address edit' }
+      ],
+      button: 'Capture debug trace',
+      metricTitle: 'Error source mix',
+      score: 43,
+      metrics: [
+        { label: 'Console errors', value: 11 },
+        { label: 'Network failures', value: 18 },
+        { label: 'DOM regressions', value: 14 }
+      ],
+      callouts: [
+        {
+          text: 'Error + network + DOM in one timeline means faster root-cause discovery.',
+          tone: 'red',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Replay the failing path and verify the fix with the same evidence.',
+          tone: 'ink',
+          position: 'gmodern-workbench-callout--bottom-right'
+        }
+      ]
+    }
+  },
+  {
+    id: 'demos',
+    title: 'Product Demos',
+    copy: 'Record repeatable, local-first product demos with subtitles and scripted walkthroughs for sales, onboarding, and release launches.',
+    href: '/guides/product-demos/',
+    cta: 'Explore demo workflow',
+    bgClass: 'gmodern-solution-panel--mint',
+    visual: {
+      fields: [
+        { label: 'Demo URL', value: 'https://app.example.com/onboarding' },
+        { label: 'Narration cue', value: 'Highlight instant bug triage and replay' }
+      ],
+      button: 'Record demo run',
+      metricTitle: 'Demo readiness',
+      score: 88,
+      metrics: [
+        { label: 'Script steps', value: 26 },
+        { label: 'Auto subtitles', value: 19 },
+        { label: 'Pass-through runs', value: 21 }
+      ],
+      callouts: [
+        {
+          text: 'Pictures are worth 1,000 words to an AI reviewer and your stakeholders.',
+          tone: 'orange',
+          position: 'gmodern-workbench-callout--top-right'
+        },
+        {
+          text: 'Annotations + subtitles make every demo clear, repeatable, and shareable.',
+          tone: 'mint',
+          position: 'gmodern-workbench-callout--bottom-left'
+        }
+      ]
+    }
+  },
+  {
+    id: 'automation',
+    title: 'Automation',
+    copy: 'Automate browser tasks with robust selectors, batch actions, and reusable sequences that scale across teams.',
+    href: '/guides/automate-and-notify/',
+    cta: 'Explore automation workflow',
+    bgClass: 'gmodern-solution-panel--sky',
+    visual: {
+      fields: [
+        { label: 'Workflow target', value: 'https://admin.example.com/reports' },
+        { label: 'Run schedule', value: 'Weekdays at 8:00 AM and 4:00 PM' }
+      ],
+      button: 'Execute automation',
+      metricTitle: 'Automation throughput',
+      score: 156,
+      metrics: [
+        { label: 'Tasks queued', value: 48 },
+        { label: 'Tasks completed', value: 92 },
+        { label: 'Exceptions', value: 16 }
+      ],
+      callouts: [
+        {
+          text: 'Run once, save the sequence, and replay across environments.',
+          tone: 'amber',
+          position: 'gmodern-workbench-callout--top-left'
+        },
+        {
+          text: 'Interactive workflows stay resilient with semantic selectors and guardrails.',
+          tone: 'sky',
+          position: 'gmodern-workbench-callout--bottom-right'
+        }
+      ]
+    }
+  }
+]
+---
+
+<div class="gmodern-page">
+  <section class="gmodern-showcase" aria-label="Product visual">
+    <div class="gmodern-showcase-frame">
+      <img src="/images/sparky-working-laptop-web.webp" alt="Gasoline mascot automating browser workflows" loading="lazy" />
+      <div class="gmodern-float gmodern-float--one">
+        <strong>observe()</strong>
+        <span>console + network + errors</span>
+      </div>
+      <div class="gmodern-float gmodern-float--two">
+        <strong>interact()</strong>
+        <span>browser control + replay</span>
+      </div>
+      <div class="gmodern-float gmodern-float--three">
+        <strong>analyze()</strong>
+        <span>a11y + security + visual checks</span>
+      </div>
+      <div class="gmodern-float gmodern-float--four">
+        <strong>configure()</strong>
+        <span>settings + noise rules + sessions</span>
+      </div>
+      <div class="gmodern-float gmodern-float--five">
+        <strong>generate()</strong>
+        <span>tests + reproductions + reports</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="gmodern-integrations" aria-label="Integrations">
+    <div class="gmodern-integrations-card">
+      <h2>Compatible with <strong>top AI coding agents</strong> and more:</h2>
+      <ul class="gmodern-integrations-logos">
+        {
+          integrationLogos.map((logo) => (
+            <li>
+              <a href={logo.href} class="gmodern-integration-chip">
+                <img src={logo.icon} alt={`${logo.label} logo`} loading="lazy" />
+                <span>{logo.label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="gmodern-integrations-callout">
+        <p class="gmodern-integrations-label">Gasoline Agent overlay tool palette</p>
+        <img
+          src={overlayToolPaletteSnapshot}
+          alt="Gasoline agent overlay tool palette with quick actions"
+          loading="lazy"
+        />
+        <div class="gmodern-integrations-callout-footer">
+          <span class="gmodern-integrations-status"><span aria-hidden="true">⚡</span> Overlay tracks quick actions, annotations, and context handoff</span>
+          <a href="/guides/product-demos/" class="gmodern-integrations-send" aria-label="Open annotation workflow guide">↑</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="gmodern-transform" aria-label="Transformation">
+    <p class="gmodern-eyebrow">TRANSFORMATION</p>
+    <h2>Turn ideas into instant automations</h2>
+    <p>See how real tasks in your role transform into agents that work for you.</p>
+
+    <div class="gmodern-transform-grid">
+      {
+        transformationCards.map((card) => (
+          <article>
+            <div class="gmodern-transform-card-body">
+              <h3>{card.role}</h3>
+              <p class="gmodern-before">Before: {card.from}</p>
+              <p class="gmodern-after">After: {card.to}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="gmodern-solutions" id="solutions" aria-label="Solutions">
+    <header>
+      <p class="gmodern-eyebrow">SOLUTIONS</p>
+      <h2>See how Gasoline Agentic Devtools ACCELERATES all your development needs.</h2>
+    </header>
+
+    <div class="gmodern-solutions-panels">
+      {
+        solutions.map((solution, index) => (
+          <article class={`gmodern-solution-panel ${solution.bgClass} ${index % 2 === 0 ? 'gmodern-solution-panel--stagger-left' : 'gmodern-solution-panel--stagger-right'}`}>
+            <div class="gmodern-solution-panel-visual">
+              <div class="gmodern-solution-workbench">
+
+                {solution.id === 'seo' && (
+                  <div class="gvis-bars" aria-hidden="true">
+                    <div class="gvis-bars-head">
+                      <h4>{solution.visual.metricTitle}</h4>
+                      <span class="gvis-bars-delta">+{solution.visual.score}</span>
+                    </div>
+                    <div class="gvis-bars-chart">
+                      {solution.visual.metrics.map((m, i) => (
+                        <div class="gvis-bars-row">
+                          <span>{m.label}</span>
+                          <div class="gvis-bars-track"><div class={`gvis-bars-fill gvis-bars-fill--${i}`} style={`width:${Math.round(m.value * 0.87)}%`}></div></div>
+                          <strong>{m.value}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <div class="gvis-bars-urls">
+                      {solution.visual.fields.map((f) => <code>{f.value}</code>)}
+                    </div>
+                    <button class="gvis-btn" type="button">{solution.visual.button}</button>
+                  </div>
+                )}
+
+                {solution.id === 'product' && (
+                  <div class="gvis-kanban" aria-hidden="true">
+                    <div class="gvis-kanban-head">
+                      <h4>{solution.visual.metricTitle}</h4>
+                      <div class="gvis-kanban-ring"><span>{solution.visual.score}%</span></div>
+                    </div>
+                    <div class="gvis-kanban-board">
+                      {solution.visual.metrics.map((m, i) => (
+                        <div class={`gvis-kanban-col gvis-kanban-col--${i}`}>
+                          <div class="gvis-kanban-col-header"><span>{m.label}</span><strong>{m.value}</strong></div>
+                          <div class="gvis-kanban-card"></div>
+                          <div class="gvis-kanban-card"></div>
+                          {i === 1 ? <div class="gvis-kanban-card"></div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {solution.id === 'debug' && (
+                  <div class="gvis-console" aria-hidden="true">
+                    <div class="gvis-console-bar">
+                      <span class="gvis-dot gvis-dot--r"></span>
+                      <span class="gvis-dot gvis-dot--y"></span>
+                      <span class="gvis-dot gvis-dot--g"></span>
+                      <code>{solution.visual.fields[0].value}</code>
+                    </div>
+                    <div class="gvis-console-body">
+                      <p class="gvis-line gvis-line--err"><span>ERR</span> TypeError: Cannot read 'id' of null</p>
+                      <p class="gvis-line gvis-line--net"><span>NET</span> POST /api/payment &rarr; 500</p>
+                      <p class="gvis-line gvis-line--err"><span>ERR</span> Unhandled promise rejection</p>
+                      <p class="gvis-line gvis-line--dom"><span>DOM</span> #checkout mutated after unmount</p>
+                      <p class="gvis-line gvis-line--net"><span>NET</span> GET /api/session &rarr; 401</p>
+                      <p class="gvis-line gvis-line--err"><span>ERR</span> Network error on retry</p>
+                    </div>
+                    <div class="gvis-console-footer">
+                      {solution.visual.metrics.map((m) => (
+                        <span><strong>{m.value}</strong> {m.label.toLowerCase()}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {solution.id === 'demos' && (
+                  <div class="gvis-storyboard" aria-hidden="true">
+                    <div class="gvis-sb-track">
+                      {[1,2,3,4,5,6].map((n) => (
+                        <div class={`gvis-sb-step ${n <= 4 ? 'gvis-sb-step--done' : n === 5 ? 'gvis-sb-step--active' : ''}`}>{n}</div>
+                      ))}
+                      <span class="gvis-sb-more">+{solution.visual.metrics[0].value - 6}</span>
+                    </div>
+                    <div class="gvis-sb-card">
+                      <div class="gvis-sb-card-head">Step 5 / {solution.visual.metrics[0].value}</div>
+                      <p>{solution.visual.fields[1].value}</p>
+                      <div class="gvis-sb-subtitle"><span>CC</span> Auto subtitle</div>
+                    </div>
+                    <div class="gvis-sb-progress">
+                      <div class="gvis-sb-bar"><div style={`width:${solution.visual.score}%`}></div></div>
+                      <span>{solution.visual.score}% ready</span>
+                    </div>
+                  </div>
+                )}
+
+                {solution.id === 'automation' && (
+                  <div class="gvis-pipeline" aria-hidden="true">
+                    <div class="gvis-pl-flow">
+                      <div class="gvis-pl-node gvis-pl-node--queued">
+                        <strong>{solution.visual.metrics[0].value}</strong>
+                        <span>{solution.visual.metrics[0].label}</span>
+                      </div>
+                      <div class="gvis-pl-arrow" aria-hidden="true"></div>
+                      <div class="gvis-pl-node gvis-pl-node--done">
+                        <strong>{solution.visual.metrics[1].value}</strong>
+                        <span>{solution.visual.metrics[1].label}</span>
+                      </div>
+                      <div class="gvis-pl-arrow" aria-hidden="true"></div>
+                      <div class="gvis-pl-node gvis-pl-node--warn">
+                        <strong>{solution.visual.metrics[2].value}</strong>
+                        <span>{solution.visual.metrics[2].label}</span>
+                      </div>
+                    </div>
+                    <div class="gvis-pl-info">
+                      <code>{solution.visual.fields[0].value}</code>
+                      <span>{solution.visual.fields[1].value}</span>
+                    </div>
+                    <button class="gvis-btn" type="button">{solution.visual.button}</button>
+                  </div>
+                )}
+
+                <ul class="gmodern-workbench-callouts" aria-hidden="true">
+                  {solution.visual.callouts.map((callout) => (
+                    <li class={`gmodern-workbench-callout gmodern-workbench-callout--${callout.tone} ${callout.position}`}>
+                      {callout.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div class="gmodern-solution-panel-body">
+              <p class="gmodern-panel-kicker">{solution.id === 'demos' ? 'PRODUCT DEMOS' : solution.id.toUpperCase()}</p>
+              <h3>{solution.title}</h3>
+              <p>{solution.copy}</p>
+              <div class="gmodern-panel-actions">
+                <a href={solution.href} class="gmodern-btn gmodern-btn--outline">{solution.cta}</a>
+                <a href="/downloads/" class="gmodern-btn gmodern-btn--solid">Install &amp; Automate Now</a>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="gmodern-cta" aria-label="Call to action">
+    <h2>Your browser workflows, supercharged.</h2>
+    <p>Debug faster. Automate confidently. Ship with evidence your whole team can trust.</p>
+    <div>
+      <a href="/downloads/" class="gmodern-btn gmodern-btn--solid gmodern-btn--install">
+        <img src="/images/flame-flicker/icon-flicker-3-normal.svg" alt="" aria-hidden="true" />
+        <span>Install Gasoline Agentic Devtools</span>
+      </a>
+      <a href="/reference/" class="gmodern-btn gmodern-btn--outline">Browse API reference</a>
+      <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp" target="_blank" rel="noopener" class="gmodern-btn gmodern-btn--outline gmodern-btn--github">
+        <img src={githubLogo} alt="" aria-hidden="true" />
+        <span>View on GitHub</span>
+      </a>
+    </div>
+  </section>
+</div>
+
+<script is:inline>
+  (() => {
+    const colorizeHeroTitle = () => {
+      const heroTitle = document.querySelector('.hero h1[data-page-title]');
+      if (!(heroTitle instanceof HTMLElement)) return;
+      if (heroTitle.querySelector('.hero-word')) return;
+
+      const original = heroTitle.textContent ?? '';
+      if (!original) return;
+
+      const withDesign = original.replace(/\bdesign\b/i, '<span class="hero-word hero-word--design">$&</span>');
+      const withCoding = withDesign.replace(/\bcoding\b/i, '<span class="hero-word hero-word--coding">$&</span>');
+      const withDebugging = withCoding.replace(/\bdebugging\b/i, '<span class="hero-word hero-word--debugging">$&</span>');
+      heroTitle.innerHTML = withDebugging;
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', colorizeHeroTitle, { once: true });
+    } else {
+      colorizeHeroTitle();
+    }
+  })();
+</script>

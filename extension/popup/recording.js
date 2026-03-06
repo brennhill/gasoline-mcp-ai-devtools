@@ -1,0 +1,409 @@
+/**
+ * Purpose: Implements popup recording controls, mic-permission flow, and saved-recording reveal behavior.
+ * Why: Gives users reliable start/stop control with explicit permission/error handling for tab capture sessions.
+ * Docs: docs/features/feature/playback-engine/index.md
+ * Docs: docs/features/feature/tab-recording/index.md
+ */
+/**
+ * @fileoverview Recording UI Module for Popup
+ * Manages recording controls, timer display, and mic permission flow.
+ */
+import { StorageKey } from '../lib/constants.js';
+import { errorMessage } from '../lib/error-utils.js';
+const START_LABEL = 'Record screen';
+const STOP_LABEL = 'Stop recording';
+const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
+const RECENT_RECORDING_START_MS = 8000;
+const TOP_NOTICE_DURATION_MS = 4000;
+const AUDIO_LABELS = {
+    '': 'Video only',
+    tab: 'Video + tab audio',
+    mic: 'Video + microphone',
+    both: 'Video + tab + mic'
+};
+let topNoticeTimer = null;
+function getRecordSection(els) {
+    const closest = els.row.closest;
+    if (typeof closest !== 'function')
+        return null;
+    return closest.call(els.row, '.section');
+}
+function applyRecordHighlight(els) {
+    const section = getRecordSection(els);
+    if (section)
+        section.classList.add('record-highlight');
+    els.label.textContent = HIGHLIGHT_LABEL;
+}
+function removeRecordHighlight(els) {
+    const section = getRecordSection(els);
+    if (section)
+        section.classList.remove('record-highlight');
+    if (els.label.textContent === HIGHLIGHT_LABEL) {
+        els.label.textContent = START_LABEL;
+    }
+}
+// #lizard forgives
+function showRecording(els, state, name, startTime) {
+    const wasRecording = state.isRecording;
+    removeRecordHighlight(els);
+    state.isRecording = true;
+    els.row.classList.add('is-recording');
+    els.label.textContent = STOP_LABEL;
+    els.statusEl.textContent = '';
+    if (els.optionsEl)
+        els.optionsEl.style.display = 'none';
+    if (state.timerInterval)
+        clearInterval(state.timerInterval);
+    state.timerInterval = setInterval(() => {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+    if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
+        showTopNotice(els, 'Recording started');
+    }
+}
+function showIdle(els, state) {
+    state.isRecording = false;
+    removeRecordHighlight(els);
+    els.row.classList.remove('is-recording');
+    els.label.textContent = START_LABEL;
+    els.statusEl.textContent = '';
+    if (els.optionsEl)
+        els.optionsEl.style.display = 'block';
+    if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+    }
+}
+function describePendingRecording(pending) {
+    const parts = [];
+    if (pending.name)
+        parts.push(`Name: ${pending.name}`);
+    if (typeof pending.fps === 'number')
+        parts.push(`FPS: ${pending.fps}`);
+    const audioLabel = AUDIO_LABELS[pending.audio ?? ''] ?? AUDIO_LABELS[''];
+    parts.push(`Mode: ${audioLabel}`);
+    return parts.join(' \u00b7 ');
+}
+function setApprovalPendingState(els, approvalEls, state, pending) {
+    const setRowAriaDisabled = (value) => {
+        const setAttr = els.row.setAttribute;
+        const removeAttr = els.row.removeAttribute;
+        if (value !== null) {
+            if (typeof setAttr === 'function')
+                setAttr.call(els.row, 'aria-disabled', value);
+            return;
+        }
+        if (typeof removeAttr === 'function')
+            removeAttr.call(els.row, 'aria-disabled');
+    };
+    const approvalPending = Boolean(pending && !pending.highlight && !state.isRecording);
+    if (approvalPending) {
+        if (approvalEls.detail && pending)
+            approvalEls.detail.textContent = describePendingRecording(pending);
+        if (approvalEls.card)
+            approvalEls.card.style.display = 'block';
+        els.row.classList.add('is-disabled');
+        setRowAriaDisabled('true');
+        if (els.optionsEl)
+            els.optionsEl.style.display = 'none';
+        return;
+    }
+    if (approvalEls.detail)
+        approvalEls.detail.textContent = '';
+    if (approvalEls.card)
+        approvalEls.card.style.display = 'none';
+    els.row.classList.remove('is-disabled');
+    setRowAriaDisabled(null);
+    if (!state.isRecording && els.optionsEl)
+        els.optionsEl.style.display = 'block';
+}
+function sendRecordingGestureDecision(type) {
+    chrome.runtime.sendMessage({ type }, () => {
+        void chrome.runtime.lastError;
+    });
+}
+function showTopNotice(els, text) {
+    const notice = els.topNoticeEl;
+    if (!notice)
+        return;
+    notice.textContent = text;
+    notice.style.display = 'block';
+    if (topNoticeTimer)
+        clearTimeout(topNoticeTimer);
+    topNoticeTimer = setTimeout(() => {
+        notice.style.display = 'none';
+    }, TOP_NOTICE_DURATION_MS);
+}
+function showSavedLink(saveInfoEl, displayName, filePath) {
+    saveInfoEl.textContent = 'Saved: ';
+    const link = document.createElement('a');
+    link.href = '#';
+    link.id = 'reveal-recording';
+    link.textContent = displayName;
+    link.style.color = '#58a6ff';
+    link.style.textDecoration = 'underline';
+    link.style.cursor = 'pointer';
+    saveInfoEl.appendChild(link);
+    const linkEl = document.getElementById('reveal-recording');
+    if (linkEl) {
+        linkEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            chrome.runtime.sendMessage({ type: 'REVEAL_FILE', path: filePath }, (result) => {
+                if (result?.error) {
+                    saveInfoEl.textContent = `Could not open folder: ${result.error}`;
+                    saveInfoEl.style.color = '#f85149';
+                    setTimeout(() => {
+                        saveInfoEl.style.display = 'none';
+                    }, 5000);
+                }
+            });
+        });
+    }
+}
+function showSaveResult(saveInfoEl, resp) {
+    if (resp?.status !== 'saved' || !resp.name || !saveInfoEl)
+        return;
+    const displayName = resp.name.replace(/--\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/, '');
+    if (resp.path) {
+        showSavedLink(saveInfoEl, displayName, resp.path);
+    }
+    else {
+        saveInfoEl.textContent = `Saved: ${displayName}`;
+    }
+    saveInfoEl.style.display = 'block';
+    setTimeout(() => {
+        saveInfoEl.style.display = 'none';
+    }, 12000);
+}
+function showStartError(saveInfoEl, errorText) {
+    if (!saveInfoEl)
+        return;
+    saveInfoEl.textContent = errorText;
+    saveInfoEl.style.display = 'block';
+    saveInfoEl.style.background = 'rgba(248, 81, 73, 0.1)';
+    saveInfoEl.style.color = '#f85149';
+    setTimeout(() => {
+        saveInfoEl.style.display = 'none';
+        saveInfoEl.style.background = 'rgba(63, 185, 80, 0.1)';
+        saveInfoEl.style.color = '#3fb950';
+    }, 5000);
+}
+function showMicPermissionPrompt(saveInfoEl, audioMode) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
+        chrome.storage.local.set({
+            [StorageKey.PENDING_MIC_RECORDING]: { audioMode, returnTabId: activeTabs[0]?.id }
+        });
+    });
+    saveInfoEl.innerHTML =
+        'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
+    saveInfoEl.style.display = 'block';
+    saveInfoEl.style.background = 'rgba(248, 81, 73, 0.1)';
+    saveInfoEl.style.color = '#f85149';
+    const link = document.getElementById('grant-mic-link');
+    if (link) {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            chrome.tabs.create({ url: chrome.runtime.getURL('mic-permission.html') });
+        });
+    }
+}
+function sendRecordStart(els, state, audioMode) {
+    console.log('[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:', audioMode);
+    chrome.runtime.sendMessage({ type: 'screen_recording_start', audio: audioMode }, (resp) => {
+        console.log('[Gasoline REC] Popup: screen_recording_start response:', resp);
+        if (chrome.runtime.lastError) {
+            console.error('[Gasoline REC] Popup: screen_recording_start lastError:', chrome.runtime.lastError.message);
+        }
+        if (resp?.status === 'recording' && resp.name) {
+            showRecording(els, state, resp.name, resp.startTime ?? Date.now());
+        }
+        else {
+            showIdle(els, state);
+            if (resp?.error)
+                showStartError(els.saveInfoEl, resp.error);
+        }
+    });
+}
+// #lizard forgives
+function tryMicPermissionThenStart(els, state, audioMode) {
+    console.log('[Gasoline REC] Popup: trying getUserMedia from popup...');
+    navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((micStream) => {
+        console.log('[Gasoline REC] Popup: getUserMedia succeeded from popup');
+        micStream.getTracks().forEach((t) => t.stop());
+        chrome.storage.local.set({ [StorageKey.MIC_GRANTED]: true });
+        sendRecordStart(els, state, audioMode);
+    })
+        .catch((err) => {
+        console.log('[Gasoline REC] Popup: getUserMedia FAILED:', err.name, errorMessage(err));
+        chrome.storage.local.remove(StorageKey.MIC_GRANTED);
+        showIdle(els, state);
+        if (els.saveInfoEl)
+            showMicPermissionPrompt(els.saveInfoEl, audioMode);
+    });
+}
+function handleStartClick(els, state) {
+    const audioSelect = document.getElementById('record-audio-mode');
+    const audioMode = audioSelect?.value ?? '';
+    chrome.storage.local.set({ [StorageKey.RECORD_AUDIO_PREF]: audioMode });
+    if (els.optionsEl)
+        els.optionsEl.style.display = 'none';
+    if (els.saveInfoEl)
+        els.saveInfoEl.style.display = 'none';
+    els.label.textContent = 'Starting...';
+    if (audioMode === 'mic' || audioMode === 'both') {
+        console.log('[Gasoline REC] Popup: mic/both mode — checking gasoline_mic_granted');
+        tryMicPermissionThenStart(els, state, audioMode);
+    }
+    else {
+        sendRecordStart(els, state, audioMode);
+    }
+}
+function handleStopClick(els, state) {
+    els.row.classList.remove('is-recording');
+    els.label.textContent = 'Saving...';
+    console.log('[Gasoline REC] Popup: sending screen_recording_stop');
+    chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, (resp) => {
+        console.log('[Gasoline REC] Popup: screen_recording_stop response:', resp);
+        if (chrome.runtime.lastError) {
+            console.error('[Gasoline REC] Popup: screen_recording_stop lastError:', chrome.runtime.lastError.message);
+        }
+        showIdle(els, state);
+        showSaveResult(els.saveInfoEl, resp);
+    });
+}
+export function setupRecordingUI() {
+    const row = document.getElementById('record-row');
+    const label = document.getElementById('record-label');
+    const statusEl = document.getElementById('recording-status');
+    if (!row || !label || !statusEl)
+        return;
+    const els = {
+        row,
+        label,
+        statusEl,
+        optionsEl: document.getElementById('record-options'),
+        saveInfoEl: document.getElementById('record-save-info'),
+        topNoticeEl: document.getElementById('record-top-notice')
+    };
+    const approvalEls = {
+        card: document.getElementById('record-approval-card'),
+        detail: document.getElementById('record-approval-detail'),
+        approveBtn: document.getElementById('record-approve-btn'),
+        denyBtn: document.getElementById('record-deny-btn')
+    };
+    const state = { isRecording: false, timerInterval: null };
+    let pendingRecordingIntent = null;
+    const updatePendingRecording = (pendingValue) => {
+        const pending = pendingValue;
+        if (pending?.highlight && !state.isRecording) {
+            applyRecordHighlight(els);
+            pendingRecordingIntent = null;
+            setApprovalPendingState(els, approvalEls, state, null);
+            chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+            return;
+        }
+        pendingRecordingIntent = pending && !pending.highlight ? pending : null;
+        if (!pendingRecordingIntent && !state.isRecording)
+            removeRecordHighlight(els);
+        setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+    };
+    const clearPendingRecordingIntent = () => {
+        pendingRecordingIntent = null;
+        setApprovalPendingState(els, approvalEls, state, null);
+        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+    };
+    row.style.visibility = 'hidden';
+    chrome.storage.local.get(StorageKey.RECORDING, (result) => {
+        const rec = result[StorageKey.RECORDING];
+        console.log('[Gasoline REC] Popup: gasoline_recording from storage:', rec);
+        if (rec?.active && rec.name && rec.startTime) {
+            console.log('[Gasoline REC] Popup: resuming recording UI for', rec.name);
+            showRecording(els, state, rec.name, rec.startTime);
+        }
+        row.style.visibility = 'visible';
+        // Check for highlight request from hover launcher
+        chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
+            void chrome.runtime.lastError;
+            updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING]);
+        });
+    });
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes[StorageKey.RECORDING]) {
+            const rec = changes[StorageKey.RECORDING].newValue;
+            console.log('[Gasoline REC] Popup: gasoline_recording changed:', rec);
+            if (rec?.active && rec.name && rec.startTime) {
+                showRecording(els, state, rec.name, rec.startTime);
+            }
+            else {
+                showIdle(els, state);
+            }
+            setApprovalPendingState(els, approvalEls, state, pendingRecordingIntent);
+            return;
+        }
+        if (areaName === 'local' && changes[StorageKey.PENDING_RECORDING]) {
+            updatePendingRecording(changes[StorageKey.PENDING_RECORDING].newValue);
+        }
+    });
+    approvalEls.approveBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED');
+        clearPendingRecordingIntent();
+    });
+    approvalEls.denyBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        sendRecordingGestureDecision('RECORDING_GESTURE_DENIED');
+        clearPendingRecordingIntent();
+    });
+    chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
+        const intent = result[StorageKey.PENDING_MIC_RECORDING];
+        console.log('[Gasoline REC] Popup: pending_mic_recording intent:', intent);
+        if (!intent?.audioMode)
+            return;
+        console.log('[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:', intent.audioMode);
+        chrome.storage.local.remove(StorageKey.PENDING_MIC_RECORDING);
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs
+                    .sendMessage(tabs[0].id, {
+                    type: 'GASOLINE_ACTION_TOAST',
+                    text: '',
+                    detail: '',
+                    state: 'success',
+                    duration_ms: 1
+                })
+                    .catch(() => { });
+            }
+        });
+        const audioSelect = document.getElementById('record-audio-mode');
+        if (audioSelect)
+            audioSelect.value = intent.audioMode;
+    });
+    chrome.storage.local.get(StorageKey.RECORD_AUDIO_PREF, (result) => {
+        const saved = result[StorageKey.RECORD_AUDIO_PREF];
+        if (saved) {
+            const audioSelect = document.getElementById('record-audio-mode');
+            if (audioSelect)
+                audioSelect.value = saved;
+        }
+    });
+    row.addEventListener('click', () => {
+        console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording);
+        if (pendingRecordingIntent && !state.isRecording) {
+            console.log('[Gasoline REC] Popup: record row click ignored while approval is pending');
+            return;
+        }
+        removeRecordHighlight(els);
+        if (state.isRecording) {
+            handleStopClick(els, state);
+        }
+        else {
+            handleStartClick(els, state);
+        }
+    });
+}
+//# sourceMappingURL=recording.js.map

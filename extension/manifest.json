@@ -1,0 +1,96 @@
+{
+  "manifest_version": 3,
+  "name": "Gasoline Devtools",
+  "version": "0.8.1",
+  "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png"
+    },
+    "default_title": "Gasoline: Agentic Browser Devtools"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["early-patch.bundled.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.bundled.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger", "cookies", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "toggle_draw_mode": {
+      "suggested_key": {
+        "default": "Alt+Shift+D",
+        "mac": "Alt+Shift+D"
+      },
+      "description": "Toggle Draw Mode"
+    },
+    "push_screenshot": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Push Screenshot to AI"
+    },
+    "push_chat": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "Push Chat to AI"
+    },
+    "toggle_screen_recording": {
+      "suggested_key": {
+        "default": "Alt+Shift+R",
+        "mac": "Alt+Shift+R"
+      },
+      "description": "Toggle screen recording"
+    },
+    "toggle_action_sequence_recording": {
+      "description": "Toggle action sequence recording"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "inject.bundled.js",
+        "content/draw-mode.js",
+        "lib/axe.min.js",
+        "icons/icon-48.png",
+        "icons/icon-glow.svg",
+        "icons/icon-flicker-1-tiny.svg",
+        "icons/icon-flicker-2-small.svg",
+        "icons/icon-flicker-3-normal.svg",
+        "icons/icon-flicker-4-medium.svg",
+        "icons/icon-flicker-5-large.svg",
+        "icons/icon-flicker-6-medium.svg",
+        "icons/icon-flicker-7-smallmed.svg",
+        "icons/icon-flicker-8-small.svg",
+        "icons/icon.svg"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

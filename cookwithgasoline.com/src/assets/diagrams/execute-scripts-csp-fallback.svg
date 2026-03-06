@@ -1,0 +1,76 @@
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .flowchart-box { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .flowchart-box-dark { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .flowchart-diamond { stroke: #ea580c; stroke-width: 2; }
+      .flowchart-success { fill: #22C55E; stroke: #16a34a; stroke-width: 2; }
+      .flowchart-error { fill: #DC2626; stroke: #b91c1c; stroke-width: 2; }
+      .flowchart-text { fill: #0F172A; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .flowchart-text-light { fill: #FFFFFF; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-label { fill: #FFFFFF; font-family: system-ui; font-size: 12px; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="400" y="35" text-anchor="middle">CSP Auto-Fallback: Three-World Execution</text>
+
+  <!-- Step 1: Try main world -->
+  <rect class="flowchart-box" x="250" y="60" width="300" height="50" rx="5"/>
+  <text class="flowchart-text" x="400" y="80">Try MAIN world</text>
+  <text class="flowchart-text" x="400" y="98">(inject.js via page context)</text>
+
+  <!-- Arrow down -->
+  <path class="arrow" d="M 400 110 L 400 150"/>
+
+  <!-- Decision 1: Success? -->
+  <polygon class="flowchart-diamond" points="400,150 480,190 400,230 320,190" fill="#FBBF24" stroke="#ea580c" stroke-width="2"/>
+  <text class="flowchart-text" x="400" y="198">Success?</text>
+
+  <!-- Success path (right) -->
+  <path class="arrow" d="M 480 190 L 550 190"/>
+  <text class="arrow-label" x="500" y="180">✓ Yes</text>
+  <rect class="flowchart-success" x="550" y="160" width="180" height="60" rx="4"/>
+  <text class="flowchart-text-light" x="640" y="185">Return result</text>
+  <text class="flowchart-text-light" x="640" y="205">(page globals accessible)</text>
+
+  <!-- Fallback path (down) -->
+  <path class="arrow" d="M 400 230 L 400 280"/>
+  <text class="arrow-label" x="420" y="260">✗ CSP blocked</text>
+
+  <!-- Step 2: Try isolated world -->
+  <rect class="flowchart-box-dark" x="250" y="280" width="300" height="50" rx="5"/>
+  <text class="flowchart-text-light" x="400" y="300">Try ISOLATED world</text>
+  <text class="flowchart-text-light" x="400" y="318">(chrome.scripting - CSP-proof)</text>
+
+  <!-- Arrow down -->
+  <path class="arrow" d="M 400 330 L 400 370"/>
+
+  <!-- Decision 2: Success? -->
+  <polygon class="flowchart-diamond" points="400,370 480,410 400,450 320,410" fill="#FBBF24" stroke="#ea580c" stroke-width="2"/>
+  <text class="flowchart-text" x="400" y="418">Success?</text>
+
+  <!-- Success path (right) -->
+  <path class="arrow" d="M 480 410 L 550 410"/>
+  <text class="arrow-label" x="500" y="400">✓ Yes</text>
+  <rect class="flowchart-success" x="550" y="380" width="180" height="60" rx="4"/>
+  <text class="flowchart-text-light" x="640" y="405">Return result</text>
+  <text class="flowchart-text-light" x="640" y="425">(DOM access only)</text>
+
+  <!-- Error path (down) -->
+  <path class="arrow" d="M 320 410 L 200 410"/>
+  <text class="arrow-label" x="260" y="400">✗ Still blocked</text>
+
+  <!-- Error -->
+  <rect class="flowchart-error" x="50" y="380" width="150" height="60" rx="4"/>
+  <text class="flowchart-text-light" x="125" y="410">Script failed</text>
+  <text class="flowchart-text-light" x="125" y="430">(CSP restricted)</text>
+
+  <!-- Bottom note -->
+  <rect x="50" y="465" width="700" height="30" fill="none" stroke="#334155" stroke-width="1" rx="3"/>
+  <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui;" x="65" y="485">AUTO mode (default) tries MAIN first, then auto-fallback to ISOLATED if CSP blocks it</text>
+</svg>

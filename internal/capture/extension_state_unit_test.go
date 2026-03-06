@@ -1,0 +1,116 @@
+// Purpose: Unit tests for capture pipeline extension state logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
+package capture
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+)
+// ============================================
+// WaitForExtensionConnected tests (issue #302)
+// ============================================
+
+func TestWaitForExtensionConnected_AlreadyConnected(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Simulate extension already connected.
+	c.mu.Lock()
+	c.extensionState.lastSyncSeen = time.Now()
+	c.mu.Unlock()
+
+	if !c.WaitForExtensionConnected(context.Background(), 5*time.Second) {
+		t.Fatal("WaitForExtensionConnected returned false when extension already connected")
+	}
+}
+
+func TestWaitForExtensionConnected_ConnectsDuringWait(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Connect at 50ms — well before the first 200ms poll tick, giving a comfortable
+	// 150ms margin before the tick catches the connection.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		c.mu.Lock()
+		c.extensionState.lastSyncSeen = time.Now()
+		c.mu.Unlock()
+	}()
+
+	if !c.WaitForExtensionConnected(context.Background(), time.Second) {
+		t.Fatal("WaitForExtensionConnected returned false; expected true after late connection")
+	}
+}
+
+func TestWaitForExtensionConnected_Timeout(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	// Extension never connects.
+
+	if c.WaitForExtensionConnected(context.Background(), 100*time.Millisecond) {
+		t.Fatal("WaitForExtensionConnected returned true; expected false after timeout")
+	}
+}
+
+// TestWaitForExtensionConnected_ContextCancelled lives in readiness_gate_test.go
+// with full timing bounds checks (P1-1).
+
+func TestCaptureTestHelpersAndTTL(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+
+	c.AddNetworkBodiesForTest([]NetworkBody{
+		{URL: "https://example.test/a", Status: 200},
+		{URL: "https://example.test/b", Status: 500},
+	})
+	c.AddWebSocketEventsForTest([]WebSocketEvent{
+		{Event: "open", URL: "wss://example.test"},
+	})
+	c.AddEnhancedActionsForTest([]EnhancedAction{
+		{Type: "click", URL: "https://example.test", Timestamp: 123},
+	})
+	if got := c.GetNetworkTotalAdded(); got != 2 {
+		t.Fatalf("GetNetworkTotalAdded() = %d, want 2", got)
+	}
+	if got := c.GetWebSocketTotalAdded(); got != 1 {
+		t.Fatalf("GetWebSocketTotalAdded() = %d, want 1", got)
+	}
+	if got := c.GetActionTotalAdded(); got != 1 {
+		t.Fatalf("GetActionTotalAdded() = %d, want 1", got)
+	}
+
+	c.SetPilotEnabled(true)
+	if !c.IsPilotEnabled() {
+		t.Fatal("SetPilotEnabled(true) did not update state")
+	}
+	c.SetTrackingStatusForTest(77, "https://tracked.test")
+	enabled, tabID, tabURL := c.GetTrackingStatus()
+	if !enabled || tabID != 77 || tabURL != "https://tracked.test" {
+		t.Fatalf("tracking state = (%v,%d,%q), want (true,77,https://tracked.test)", enabled, tabID, tabURL)
+	}
+
+	if q := c.GetLastPendingQuery(); q != nil {
+		t.Fatalf("GetLastPendingQuery() = %+v, want nil before adding pending query", q)
+	}
+	c.CreatePendingQuery(queries.PendingQuery{Type: "query_dom", Params: []byte(`{"selector":".x"}`)})
+	c.CreatePendingQuery(queries.PendingQuery{Type: "accessibility", Params: []byte(`{"scope":"page"}`)})
+	last := c.GetLastPendingQuery()
+	if last == nil || last.Type != "accessibility" {
+		t.Fatalf("last pending query = %+v, want accessibility query", last)
+	}
+
+	if isExpiredByTTL(time.Now(), 0) {
+		t.Fatal("isExpiredByTTL should return false when ttl=0")
+	}
+	if !isExpiredByTTL(time.Now().Add(-2*time.Second), time.Second) {
+		t.Fatal("isExpiredByTTL should return true for expired entry")
+	}
+	if isExpiredByTTL(time.Now().Add(-200*time.Millisecond), time.Second) {
+		t.Fatal("isExpiredByTTL should return false for recent entry")
+	}
+}

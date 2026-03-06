@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    // === Target Environment ===
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+
+    // === Module System ===
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    // === Output ===
+    "outDir": "extension",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    // === Strict Type Checking ===
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+
+    // === Additional Checks ===
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false,
+
+    // === Module Resolution ===
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    // === Build Performance ===
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // === Type Acquisition ===
+    "types": ["chrome"]
+  },
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "extension", "extension/lib/axe.min.js", "tests/**/*"]
+}

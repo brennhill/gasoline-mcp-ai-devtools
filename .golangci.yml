@@ -1,0 +1,55 @@
+version: 2
+
+run:
+  timeout: 10m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - ineffassign    # Ineffectual assignments
+    - staticcheck    # Static analysis (comprehensive)
+    - errcheck       # Unchecked error returns (json.Encode, io.Close, etc.)
+    - govet          # Go vet with shadow detection
+    - copyloopvar    # Loop variable capture bugs (Go 1.22+)
+    - dupl           # Copy-paste detection (catches duplicated function blocks)
+    - unconvert      # Unnecessary type conversions
+    - misspell       # Typos in comments and strings
+    - depguard       # Import boundary guardrails
+
+  settings:
+    errcheck:
+      # Don't require checking these (too noisy, best-effort operations)
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (net/http.ResponseWriter).Write
+      # But DO check json.NewEncoder().Encode() and similar
+
+    dupl:
+      threshold: 100  # Flag blocks of 100+ duplicated tokens
+
+    staticcheck:
+      checks:
+        - all
+        - "-ST1003"   # Allow Go naming convention violations (TabId, sinceTs, etc. — changing breaks JSON API)
+        - "-ST1005"   # Allow capitalized error strings (we use structured error messages)
+
+    depguard:
+      rules:
+        module_path_hygiene:
+          list-mode: lax
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/dev-console/dev-console
+              desc: "Use module-local imports under github.com/brennhill/gasoline-agentic-browser-devtools-mcp."
+
+  exclusions:
+    rules:
+      # Don't enforce errcheck on test files (too noisy)
+      - path: _test\.go
+        linters:
+          - errcheck
+    presets:
+      - comments

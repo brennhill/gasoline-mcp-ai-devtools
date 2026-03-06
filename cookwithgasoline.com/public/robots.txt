@@ -1,0 +1,8 @@
+# Gasoline MCP — AI/search friendly crawling policy
+User-agent: *
+Allow: /
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
+
+# Discovery helpers
+Allow: /llms.txt
+Allow: /llms-full.txt

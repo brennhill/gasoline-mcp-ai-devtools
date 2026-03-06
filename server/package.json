@@ -1,0 +1,45 @@
+{
+  "name": "gasoline-agentic-browser",
+  "version": "0.8.1",
+  "description": "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
+  "keywords": [
+    "browser",
+    "logs",
+    "debugging",
+    "ai",
+    "claude",
+    "cursor",
+    "copilot",
+    "devtools",
+    "console",
+    "gasoline"
+  ],
+  "homepage": "https://cookwithgasoline.com",
+  "bugs": {
+    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "Brenn Hill",
+  "bin": {
+    "gasoline": "bin/gasoline"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

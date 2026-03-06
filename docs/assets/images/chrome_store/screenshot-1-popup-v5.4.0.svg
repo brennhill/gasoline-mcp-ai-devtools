@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <!-- Screenshot 1: Extension Popup -->
+  <rect width="1280" height="800" fill="#0d1117"/>
+
+  <!-- Browser chrome -->
+  <rect x="40" y="40" width="1200" height="40" fill="#1a1a1a" rx="8"/>
+  <text x="60" y="67" font-family="system-ui" font-size="14" fill="#8b949e">chrome://extensions/</text>
+
+  <!-- Main browser area -->
+  <rect x="40" y="80" width="1200" height="680" fill="#161b22"/>
+
+  <!-- Extension popup (centered) -->
+  <g transform="translate(440, 180)">
+    <!-- Popup background -->
+    <rect width="400" height="440" fill="#1a1a1a" rx="8" stroke="#30363d" stroke-width="1"/>
+
+    <!-- Header with embedded flame icon -->
+    <g transform="translate(36, 36) scale(0.3)">
+      <!-- Embedded Gasoline flame -->
+      <defs>
+        <linearGradient id="flame-header" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" style="stop-color:#f97316"/>
+          <stop offset="50%" style="stop-color:#fb923c"/>
+          <stop offset="100%" style="stop-color:#fbbf24"/>
+        </linearGradient>
+      </defs>
+      <circle cx="0" cy="0" r="24" fill="#1a1a1a"/>
+      <path d="M 0 -20 C -10 -10, -14 -4, -14 2 C -14 10, -6 18, 0 18 C 6 18, 14 10, 14 2 C 14 -4, 10 -10, 0 -20 Z" fill="url(#flame-header)"/>
+    </g>
+    <text x="60" y="43" font-family="system-ui" font-size="18" fill="#e0e0e0" font-weight="600">Gasoline</text>
+
+    <!-- Connection status -->
+    <rect x="20" y="70" width="360" height="60" fill="#161b22" rx="4"/>
+    <circle cx="35" cy="100" r="6" fill="#3fb950"/>
+    <text x="50" y="95" font-family="system-ui" font-size="12" fill="#8b949e">STATUS</text>
+    <text x="50" y="110" font-family="system-ui" font-size="14" fill="#3fb950" font-weight="500">Connected to localhost:7890</text>
+
+    <!-- Tab Tracking section -->
+    <text x="20" y="155" font-family="system-ui" font-size="13" fill="#8b949e" font-weight="600">TAB TRACKING</text>
+    <rect x="20" y="165" width="360" height="50" fill="#252525" rx="6" stroke="#58a6ff" stroke-width="2"/>
+    <text x="180" y="195" font-family="system-ui" font-size="14" fill="#58a6ff" font-weight="600" text-anchor="middle">Track This Tab</text>
+
+    <!-- AI Web Pilot section -->
+    <text x="20" y="240" font-family="system-ui" font-size="13" fill="#8b949e" font-weight="600">AI WEB PILOT</text>
+    <rect x="20" y="250" width="360" height="70" fill="#161b22" rx="4"/>
+    <text x="30" y="270" font-family="system-ui" font-size="13" fill="#e0e0e0">Enable AI Control</text>
+    <text x="30" y="288" font-family="system-ui" font-size="11" fill="#d29922">Can take a few seconds to reflect on server</text>
+    <!-- Toggle switch (ON) -->
+    <rect x="340" y="257" width="40" height="24" fill="#3fb950" rx="12"/>
+    <circle cx="368" cy="269" r="10" fill="#fff"/>
+
+    <!-- Feature toggles -->
+    <text x="20" y="345" font-family="system-ui" font-size="13" fill="#8b949e" font-weight="600">CAPTURE</text>
+    <rect x="20" y="355" width="360" height="60" fill="#161b22" rx="4"/>
+    <text x="30" y="375" font-family="system-ui" font-size="12" fill="#e0e0e0">Network Waterfall</text>
+    <text x="30" y="390" font-family="system-ui" font-size="11" fill="#888">✓ Request timing data</text>
+    <text x="30" y="405" font-family="system-ui" font-size="11" fill="#888">✓ Screenshot on error</text>
+  </g>
+
+  <!-- Callout annotation -->
+  <text x="900" y="300" font-family="system-ui" font-size="24" fill="#fb923c" font-weight="700">Track a tab and enable</text>
+  <text x="900" y="330" font-family="system-ui" font-size="24" fill="#fb923c" font-weight="700">AI Web Pilot for</text>
+  <text x="900" y="360" font-family="system-ui" font-size="24" fill="#fb923c" font-weight="700">autonomous debugging</text>
+
+  <!-- Arrow pointing to AI Pilot toggle -->
+  <path d="M 850 340 L 830 280" stroke="#fb923c" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#fb923c"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,15 @@
+{
+  "name": "@brennhill/gasoline-agentic-browser-linux-arm64",
+  "version": "0.8.1",
+  "description": "Gasoline binary for Linux ARM64",
+  "license": "AGPL-3.0-only",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/gasoline"
+  ]
+}

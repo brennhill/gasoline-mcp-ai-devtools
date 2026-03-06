@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Docs: docs/features/feature/terminal/index.md -->
+  <title>Gasoline Terminal</title>
+  <link rel="stylesheet" href="/terminal/static/xterm.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #1a1b26; }
+    #header {
+      height: 32px;
+      background: #16161e;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      color: #787c99;
+      gap: 8px;
+      border-bottom: 1px solid #292e42;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    #header .status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #565f89;
+      flex-shrink: 0;
+    }
+    #header .status.connected { background: #9ece6a; }
+    #header .status.error { background: #f7768e; }
+    #header .cwd {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #header { display: none; }
+    #terminal-container {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <span id="status-dot" class="status"></span>
+    <span id="header-label">Gasoline Terminal</span>
+    <span id="header-cwd" class="cwd"></span>
+  </div>
+  <div id="terminal-container"></div>
+
+  <script src="/terminal/static/xterm.min.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token') || '';
+      var statusDot = document.getElementById('status-dot');
+      var headerCwd = document.getElementById('header-cwd');
+      var headerLabel = document.getElementById('header-label');
+      var container = document.getElementById('terminal-container');
+
+      // Initialize xterm.js
+      var term = new Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: '"SF Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, monospace',
+        theme: {
+          background: '#1a1b26',
+          foreground: '#a9b1d6',
+          cursor: '#c0caf5',
+          selectionBackground: '#33467c',
+          black: '#15161e',
+          red: '#f7768e',
+          green: '#9ece6a',
+          yellow: '#e0af68',
+          blue: '#7aa2f7',
+          magenta: '#bb9af7',
+          cyan: '#7dcfff',
+          white: '#a9b1d6',
+          brightBlack: '#414868',
+          brightRed: '#f7768e',
+          brightGreen: '#9ece6a',
+          brightYellow: '#e0af68',
+          brightBlue: '#7aa2f7',
+          brightMagenta: '#bb9af7',
+          brightCyan: '#7dcfff',
+          brightWhite: '#c0caf5'
+        },
+        scrollback: 1500,
+        allowProposedApi: true
+      });
+
+      term.open(container);
+      fitTerminal();
+
+      var ws = null;
+      var reconnectTimer = null;
+      var reconnectDelay = 1000;
+      var lastTypingNotifyAt = 0;
+
+      function notifyFocusState(focused) {
+        notifyParent('focus', { focused: !!focused });
+      }
+
+      function notifyTypingHeartbeat() {
+        var now = Date.now();
+        if (now - lastTypingNotifyAt < 120) return;
+        lastTypingNotifyAt = now;
+        notifyParent('typing', { at: now });
+      }
+
+      function softRedraw() {
+        fitTerminal();
+        if (typeof term.refresh === 'function') {
+          try {
+            term.refresh(0, Math.max(0, term.rows - 1));
+          } catch (_) {
+            // Best effort redraw only; safe to ignore.
+          }
+        }
+      }
+
+      function bindFocusBridge() {
+        var textarea = term && term.textarea;
+        if (!textarea) return;
+        textarea.addEventListener('focus', function() {
+          notifyFocusState(true);
+        });
+        textarea.addEventListener('blur', function() {
+          notifyFocusState(false);
+        });
+      }
+
+      function connect() {
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var wsUrl = protocol + '//' + window.location.host + '/terminal/ws?token=' + encodeURIComponent(token);
+
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = function() {
+          statusDot.className = 'status connected';
+          reconnectDelay = 1000;
+
+          // Send initial resize
+          sendResize();
+
+          // Notify parent frame
+          notifyParent('connected', {});
+        };
+
+        ws.onmessage = function(event) {
+          if (event.data instanceof ArrayBuffer) {
+            // Binary frame: terminal output
+            term.write(new Uint8Array(event.data));
+          } else {
+            // Text frame: control message
+            try {
+              var msg = JSON.parse(event.data);
+              if (msg.type === 'config') {
+                if (msg.cwd) {
+                  headerCwd.textContent = msg.cwd;
+                  headerCwd.title = msg.cwd;
+                }
+                if (msg.cli) {
+                  headerLabel.textContent = msg.cli;
+                }
+              } else if (msg.type === 'exited') {
+                term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
+                statusDot.className = 'status';
+                notifyParent('exited', { code: msg.code });
+              }
+            } catch(e) {
+              // Ignore parse errors on text frames
+            }
+          }
+        };
+
+        ws.onclose = function() {
+          statusDot.className = 'status';
+          notifyParent('disconnected', {});
+          notifyFocusState(false);
+          scheduleReconnect();
+        };
+
+        ws.onerror = function() {
+          statusDot.className = 'status error';
+        };
+      }
+
+      function scheduleReconnect() {
+        if (reconnectTimer) return;
+        reconnectTimer = setTimeout(function() {
+          reconnectTimer = null;
+          connect();
+          reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+        }, reconnectDelay);
+      }
+
+      // Terminal input → WebSocket (binary)
+      term.onData(function(data) {
+        notifyTypingHeartbeat();
+        notifyFocusState(true);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(new TextEncoder().encode(data));
+        }
+      });
+
+      // Resize handling
+      function fitTerminal() {
+        var containerWidth = container.clientWidth;
+        var containerHeight = container.clientHeight;
+        if (containerWidth === 0 || containerHeight === 0) return;
+
+        // Measure character cell size using xterm's internal renderer
+        var cellWidth = term._core._renderService.dimensions.css.cell.width;
+        var cellHeight = term._core._renderService.dimensions.css.cell.height;
+        if (!cellWidth || !cellHeight) return;
+
+        var cols = Math.floor(containerWidth / cellWidth);
+        var rows = Math.floor(containerHeight / cellHeight);
+        if (cols < 2 || rows < 2) return;
+
+        term.resize(cols, rows);
+        sendResize();
+      }
+
+      function sendResize() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'resize',
+            cols: term.cols,
+            rows: term.rows
+          }));
+        }
+      }
+
+      var resizeTimer = null;
+      window.addEventListener('resize', function() {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(fitTerminal, 100);
+      });
+      window.addEventListener('blur', function() {
+        notifyFocusState(false);
+      });
+      window.addEventListener('focus', function() {
+        notifyFocusState(document.activeElement === term.textarea);
+      });
+
+      // PostMessage API for parent frame communication
+      function notifyParent(event, data) {
+        if (window.parent === window) return;
+        window.parent.postMessage({
+          source: 'gasoline-terminal',
+          event: event,
+          data: data
+        }, '*');
+      }
+
+      // Listen for parent frame commands
+      window.addEventListener('message', function(event) {
+        if (!event.data || event.data.target !== 'gasoline-terminal') return;
+        switch (event.data.command) {
+          case 'focus':
+            term.focus();
+            notifyFocusState(true);
+            break;
+          case 'resize':
+            fitTerminal();
+            break;
+          case 'redraw':
+            softRedraw();
+            break;
+          case 'write':
+            if (event.data.text && ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(new TextEncoder().encode(event.data.text));
+            }
+            break;
+        }
+      });
+
+      // Start connection
+      bindFocusBridge();
+      connect();
+      term.focus();
+      notifyFocusState(true);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+---
+doc_type: feature_index
+feature_id: feature-best-practices-audit
+status: proposed
+feature_type: feature
+owners: []
+last_reviewed: 2026-03-05
+code_paths:
+test_paths: []
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+---
+
+# Best Practices Audit
+
+## TL;DR
+
+- Status: proposed
+- Tool: generate
+- Mode/Action: best_practices_audit
+- Location: `docs/features/feature/best-practices-audit`
+
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+
+## Requirement IDs
+
+- FEATURE_BEST_PRACTICES_AUDIT_001
+- FEATURE_BEST_PRACTICES_AUDIT_002
+- FEATURE_BEST_PRACTICES_AUDIT_003
+
+## Code and Tests
+
+Add concrete implementation and test links here as this feature evolves.

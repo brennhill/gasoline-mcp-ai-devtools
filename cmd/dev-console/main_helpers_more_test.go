@@ -1,0 +1,177 @@
+// Purpose: Additional tests for main helper functions.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
+
+package main
+
+import (
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+)
+
+func TestFindMCPConfigResolution(t *testing.T) {
+	// Do not run in parallel; uses Setenv.
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+
+	home := os.Getenv("HOME")
+	continuePath := filepath.Join(home, ".continue", "config.json")
+	if err := os.MkdirAll(filepath.Dir(continuePath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(continuePath), err)
+	}
+	if err := os.WriteFile(continuePath, []byte(`{"tool":"gasoline-mcp"}`), 0o600); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", continuePath, err)
+	}
+	if got := findMCPConfig(); got != continuePath {
+		t.Fatalf("findMCPConfig() = %q, want %q", got, continuePath)
+	}
+}
+
+func TestFindMCPConfigResolutionClaudePath(t *testing.T) {
+	// Do not run in parallel; uses Setenv.
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+
+	home := os.Getenv("HOME")
+	claudePath := filepath.Join(home, ".claude.json")
+	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline-browser-devtools":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", claudePath, err)
+	}
+	if got := findMCPConfig(); got != claudePath {
+		t.Fatalf("findMCPConfig() = %q, want %q", got, claudePath)
+	}
+}
+
+func TestPIDFileLifecycleAndLegacyFallback(t *testing.T) {
+	// Do not run in parallel; uses Setenv.
+	stateRoot := t.TempDir()
+	home := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateRoot)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	const port = 56789
+	if err := writePIDFile(port); err != nil {
+		t.Fatalf("writePIDFile(%d) error = %v", port, err)
+	}
+	if got := readPIDFile(port); got != os.Getpid() {
+		t.Fatalf("readPIDFile(%d) = %d, want current pid %d", port, got, os.Getpid())
+	}
+	removePIDFile(port)
+	if got := readPIDFile(port); got != 0 {
+		t.Fatalf("readPIDFile(%d) after remove = %d, want 0", port, got)
+	}
+
+	legacyPath, err := state.LegacyPIDFile(43210)
+	if err != nil {
+		t.Fatalf("LegacyPIDFile() error = %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("12345"), 0o600); err != nil {
+		t.Fatalf("WriteFile(legacy pid) error = %v", err)
+	}
+	if got := readPIDFile(43210); got != 12345 {
+		t.Fatalf("readPIDFile(legacy) = %d, want 12345", got)
+	}
+}
+
+func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
+	// Do not run in parallel; test redirects os.Stdout.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdout) error = %v", err)
+	}
+	oldOut := os.Stdout
+	os.Stdout = w
+	runSetupCheckWithOptions(port, setupCheckOptions{})
+	os.Stdout = oldOut
+	_ = w.Close()
+	out, err := io.ReadAll(r)
+	_ = r.Close()
+	if err != nil {
+		t.Fatalf("ReadAll(stdout) error = %v", err)
+	}
+	text := string(out)
+	if !strings.Contains(text, "GASOLINE SETUP CHECK") || !strings.Contains(text, "Next steps:") {
+		t.Fatalf("runSetupCheck output missing expected sections:\n%s", text)
+	}
+	if !strings.Contains(text, "Port:    "+strconv.Itoa(port)) {
+		t.Fatalf("runSetupCheck output missing port %d", port)
+	}
+}
+
+func TestEvaluateFastPathFailureThreshold(t *testing.T) {
+	t.Parallel()
+
+	summary := fastPathTelemetrySummary{
+		total:      10,
+		success:    9,
+		failure:    1,
+		errorCodes: map[int]int{-32002: 1},
+		methods:    map[string]int{"resources/read": 10},
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 5, 0.2); err != nil {
+		t.Fatalf("expected threshold pass, got err=%v", err)
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 5, 0.05); err == nil {
+		t.Fatal("expected threshold failure error, got nil")
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 20, 0.2); err == nil {
+		t.Fatal("expected insufficient samples error, got nil")
+	}
+}
+
+func TestRunSetupCheckIncludesFastPathTelemetrySummary(t *testing.T) {
+	// Do not run in parallel; test redirects os.Stdout and uses Setenv.
+	t.Setenv(state.StateDirEnv, t.TempDir())
+	resetFastPathCounters()
+	recordFastPathEvent("resources/read", true, 0)
+	recordFastPathEvent("resources/read", false, -32002)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdout) error = %v", err)
+	}
+	oldOut := os.Stdout
+	os.Stdout = w
+	ok := runSetupCheckWithOptions(port, setupCheckOptions{
+		minSamples:      2,
+		maxFailureRatio: 0.1,
+	})
+	os.Stdout = oldOut
+	_ = w.Close()
+	out, err := io.ReadAll(r)
+	_ = r.Close()
+	if err != nil {
+		t.Fatalf("ReadAll(stdout) error = %v", err)
+	}
+	if ok {
+		t.Fatal("runSetupCheckWithOptions should fail threshold check")
+	}
+	text := string(out)
+	if !strings.Contains(text, "Checking bridge fast-path telemetry...") {
+		t.Fatalf("expected fast-path telemetry diagnostics, got:\n%s", text)
+	}
+	if !strings.Contains(text, "Checking fast-path failure threshold... FAILED") {
+		t.Fatalf("expected threshold failure output, got:\n%s", text)
+	}
+}

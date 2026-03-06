@@ -1,0 +1,209 @@
+// Purpose: Handles recording disk persistence, directory resolution, and listing/load queries.
+// Docs: docs/features/feature/playback-engine/index.md
+
+package recording
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+)
+
+// ============================================================================
+// Persistence
+// ============================================================================
+
+func primaryRecordingsDir() (string, error) {
+	return state.RecordingsDir()
+}
+
+func legacyRecordingsDir() (string, error) {
+	return state.LegacyRecordingsDir()
+}
+
+// recordingReadRoots returns directories to search for existing recordings.
+// New state location is preferred; legacy location is included when it exists.
+func (r *RecordingManager) recordingReadRoots() ([]string, error) {
+	primaryDir, err := primaryRecordingsDir()
+	if err != nil {
+		return nil, fmt.Errorf("cannot_determine_recordings_dir: %w", err)
+	}
+
+	roots := []string{primaryDir}
+	legacyDir, err := legacyRecordingsDir()
+	if err != nil || legacyDir == "" || legacyDir == primaryDir {
+		return roots, nil
+	}
+	if info, statErr := os.Stat(legacyDir); statErr == nil && info.IsDir() {
+		roots = append(roots, legacyDir)
+	}
+	return roots, nil
+}
+
+// persistRecordingToDisk writes recording metadata.json to state/recordings/{id}/
+func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
+	// Determine storage directory.
+	recordingsDir, err := primaryRecordingsDir()
+	if err != nil {
+		return fmt.Errorf("cannot_find_recordings_dir: %w", err)
+	}
+
+	recordingDir := filepath.Join(recordingsDir, recording.ID)
+
+	// Create directory.
+	err = os.MkdirAll(recordingDir, 0755)
+	if err != nil {
+		return fmt.Errorf("mkdir_failed: %w", err)
+	}
+
+	// Create metadata.
+	metadata := &RecordingMetadata{
+		ID:                   recording.ID,
+		Name:                 recording.Name,
+		CreatedAt:            recording.CreatedAt,
+		StartURL:             recording.StartURL,
+		Viewport:             recording.Viewport,
+		Duration:             recording.Duration,
+		ActionCount:          recording.ActionCount,
+		Actions:              recording.Actions,
+		SensitiveDataEnabled: recording.SensitiveDataEnabled,
+		TestID:               recording.TestID,
+	}
+
+	// Marshal to JSON.
+	data, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("json_marshal_failed: %w", err)
+	}
+
+	// Write file.
+	metadataPath := filepath.Join(recordingDir, recordingMetadataFile)
+	err = os.WriteFile(metadataPath, data, 0600)
+	if err != nil {
+		return fmt.Errorf("write_file_failed: %w", err)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// Querying
+// ============================================================================
+
+// collectRecordingsFromRoots loads recordings from disk directories, deduplicating by name.
+func (r *RecordingManager) collectRecordingsFromRoots(roots []string, limit int) ([]Recording, error) {
+	recordings := make([]Recording, 0)
+	seen := make(map[string]bool)
+
+	for _, recordingsDir := range roots {
+		entries, err := os.ReadDir(recordingsDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("readdir_failed: %w", err)
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() || seen[entry.Name()] {
+				continue
+			}
+			seen[entry.Name()] = true
+			recording, err := r.loadRecordingFromDisk(entry.Name())
+			if err != nil {
+				continue
+			}
+			recordings = append(recordings, *recording)
+			if limit > 0 && len(recordings) >= limit {
+				return recordings, nil
+			}
+		}
+	}
+	return recordings, nil
+}
+
+// ListRecordings returns all saved recordings from disk.
+func (r *RecordingManager) ListRecordings(limit int) ([]Recording, error) {
+	roots, err := r.recordingReadRoots()
+	if err != nil {
+		return nil, err
+	}
+
+	recordings, err := r.collectRecordingsFromRoots(roots, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sort by created_at (newest first).
+	sort.Slice(recordings, func(i, j int) bool {
+		t1, _ := time.Parse(time.RFC3339, recordings[i].CreatedAt)
+		t2, _ := time.Parse(time.RFC3339, recordings[j].CreatedAt)
+		return t2.Before(t1)
+	})
+
+	return recordings, nil
+}
+
+// GetRecording loads a specific recording by ID.
+func (r *RecordingManager) GetRecording(recordingID string) (*Recording, error) {
+	if err := ValidateRecordingID(recordingID); err != nil {
+		return nil, err
+	}
+	return r.loadRecordingFromDisk(recordingID)
+}
+
+// loadRecordingFromDisk reads metadata.json and returns the Recording.
+func (r *RecordingManager) loadRecordingFromDisk(recordingID string) (*Recording, error) {
+	roots, err := r.recordingReadRoots()
+	if err != nil {
+		return nil, err
+	}
+
+	var lastErr error
+	for _, root := range roots {
+		metadataPath := filepath.Join(root, recordingID, recordingMetadataFile)
+
+		// Read file.
+		data, err := os.ReadFile(metadataPath) // nosemgrep: go_filesystem_rule-fileread -- CLI tool reads local recording metadata
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			lastErr = fmt.Errorf("read_failed: %w", err)
+			continue
+		}
+
+		// Unmarshal metadata.
+		metadata := &RecordingMetadata{}
+		err = json.Unmarshal(data, metadata)
+		if err != nil {
+			lastErr = fmt.Errorf("json_unmarshal_failed: %w", err)
+			continue
+		}
+
+		// Convert to Recording.
+		recording := &Recording{
+			ID:                   metadata.ID,
+			Name:                 metadata.Name,
+			CreatedAt:            metadata.CreatedAt,
+			StartURL:             metadata.StartURL,
+			Viewport:             metadata.Viewport,
+			Duration:             metadata.Duration,
+			ActionCount:          metadata.ActionCount,
+			Actions:              metadata.Actions,
+			SensitiveDataEnabled: metadata.SensitiveDataEnabled,
+			TestID:               metadata.TestID,
+		}
+
+		return recording, nil
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("read_failed: recording not found: %s", recordingID)
+}

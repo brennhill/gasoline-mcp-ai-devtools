@@ -1,0 +1,9 @@
+# Hugo build output
+/public/
+/resources/_gen/
+
+# Jekyll build output (legacy)
+/_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata

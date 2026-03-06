@@ -1,0 +1,240 @@
+import js from '@eslint/js'
+import security from 'eslint-plugin-security'
+import globals from 'globals'
+import prettier from 'eslint-config-prettier'
+
+export default [
+  // Ignore patterns
+  {
+    ignores: [
+      'node_modules/',
+      'dist/',
+      'coverage/',
+      'tests/e2e/',
+      'npm/',
+      'server/',
+      'docs/',
+      'demo/',
+      '.venv-build/',
+      '.gasoline/',
+      '.worktrees/',
+      '.claude/',
+      '.codex/',
+      'cookwithgasoline.com/dist/',
+      'pypi/**/build/',
+      'pypi/**/dist/',
+      'pypi/**/*.egg-info/',
+      // Generated framework smoke artifacts
+      'cmd/dev-console/testpages/frameworks/**',
+      'cmd/dev-console/testpages/_next/**',
+      'scripts/smoke-tests/framework-fixtures/next-app/.next/**',
+      'scripts/smoke-tests/framework-fixtures/next-app/out/**',
+      // Compiled TypeScript output (linted at the .ts source level)
+      'extension/background/',
+      'extension/content/',
+      'extension/inject/',
+      'extension/lib/',
+      'extension/popup/',
+      'extension/types/',
+      'extension/offscreen/',
+      // Bundled files
+      'extension/content.bundled.js',
+      'extension/inject.bundled.js',
+      'extension/early-patch.bundled.js',
+      'extension/offscreen.bundled.js',
+      'extension/popup.bundled.js',
+      // Vendored terminal assets (xterm.js)
+      'cmd/dev-console/terminal_assets/**',
+      // Generated smoke fixture bundles
+      'cmd/dev-console/testpages/frameworks/*.bundle.js'
+    ]
+  },
+
+  // Base recommended rules
+  js.configs.recommended,
+
+  // Extension source files (run in browser / service worker)
+  {
+    files: ['extension/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        chrome: 'readonly',
+        clients: 'readonly',
+        registration: 'readonly',
+        self: 'readonly',
+        __GASOLINE_VERSION__: 'readonly'
+      }
+    },
+    plugins: {
+      security
+    },
+    rules: {
+      'no-var': 'error',
+      'prefer-const': ['error', { destructuring: 'all' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'prefer-arrow-callback': 'error',
+      'no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
+      ],
+
+      // Security rules
+      'security/detect-object-injection': 'warn',
+      'security/detect-non-literal-regexp': 'warn',
+      'security/detect-eval-with-expression': 'error',
+      // eslint-plugin-security rule is incompatible with ESLint 10 context API
+      'security/detect-no-csrf-before-method-override': 'off',
+      'security/detect-possible-timing-attacks': 'warn',
+
+      // Best practices
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      'no-script-url': 'error',
+      'no-proto': 'error',
+      'no-extend-native': 'error',
+      'no-throw-literal': 'error',
+      'no-promise-executor-return': 'error',
+      'no-constructor-return': 'error',
+      'no-template-curly-in-string': 'warn',
+      'no-loss-of-precision': 'error',
+      'require-atomic-updates': 'error'
+    }
+  },
+
+  // Extension test files (run in Node.js)
+  {
+    files: ['tests/extension/**/*.js', 'tests/extension/**/*.mjs', 'tests/extension/**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        globalThis: 'readonly',
+        document: 'readonly',
+        chrome: 'readonly'
+      }
+    },
+    plugins: {
+      security
+    },
+    rules: {
+      'no-var': 'error',
+      'prefer-const': ['error', { destructuring: 'all' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
+      ],
+
+      // Relaxed security for tests
+      'security/detect-object-injection': 'off',
+      'security/detect-non-literal-regexp': 'off',
+      'security/detect-possible-timing-attacks': 'off',
+
+      // Best practices
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error'
+    }
+  },
+
+  // CLI test files (CommonJS, run in Node.js)
+  {
+    files: ['tests/cli/**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
+  },
+
+  // Scripts (ESM, run in Node.js)
+  {
+    files: ['scripts/**/*.js', 'scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node
+      }
+    },
+    plugins: {
+      security
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
+  },
+
+  // Gasoline CI package (runs in browser)
+  {
+    files: ['packages/gasoline-ci/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser
+      }
+    },
+    plugins: {
+      security
+    },
+    rules: {
+      'no-var': 'off', // Legacy code uses var
+      'prefer-const': 'off',
+      'prefer-arrow-callback': 'off',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
+  },
+
+  // Gasoline Playwright package (CommonJS, run in Node.js)
+  {
+    files: ['packages/gasoline-playwright/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
+  },
+
+  // Website demo/public snippets (run in browser)
+  {
+    files: ['cookwithgasoline.com/public/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser
+      }
+    }
+  },
+
+  // Website utility scripts (run in Node.js)
+  {
+    files: ['cookwithgasoline.com/scripts/**/*.js', 'cookwithgasoline.com/scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+
+  // Prettier must be last to disable conflicting format rules
+  prettier
+]

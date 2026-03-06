@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gasoline v5 E2E Test Page</title>
+</head>
+<body>
+  <h1>v5 Feature Test Page</h1>
+
+  <!-- Form with various selectors for reproduction script testing -->
+  <form id="login-form">
+    <input type="email" id="email" data-testid="email-input" aria-label="Email address" placeholder="Email">
+    <input type="password" id="password" data-testid="password-input" aria-label="Password" placeholder="Password">
+    <select data-testid="country-select" aria-label="Country">
+      <option value="">Select country</option>
+      <option value="us">United States</option>
+      <option value="uk">United Kingdom</option>
+    </select>
+    <button type="button" data-testid="login-btn" aria-label="Log in">Log In</button>
+  </form>
+
+  <!-- Elements for selector diversity testing -->
+  <nav>
+    <a href="/dashboard" data-testid="nav-dashboard">Dashboard</a>
+    <a href="/settings" aria-label="Settings page">Settings</a>
+    <a href="/profile" id="nav-profile">Profile</a>
+  </nav>
+
+  <div id="content">
+    <div class="card user-card">
+      <button class="btn primary" data-cy="action-btn">Take Action</button>
+      <input type="search" aria-label="Search users" placeholder="Search...">
+      <input type="checkbox" data-testid="agree-checkbox" aria-label="I agree">
+    </div>
+  </div>
+
+  <p id="status">Ready</p>
+
+  <script>
+    // Simulate a Redux-like store on window
+    window.__REDUX_STORE__ = {
+      getState: function() {
+        return {
+          auth: { user: null, loading: false, error: null, token: null },
+          ui: { theme: 'light', sidebarOpen: true },
+          data: { items: [], status: 'idle' }
+        }
+      }
+    }
+
+    // Simulate React fiber on a DOM element
+    const loginBtn = document.querySelector('[data-testid="login-btn"]')
+    if (loginBtn) {
+      loginBtn['__reactFiber$test123'] = {
+        type: { name: 'LoginButton', displayName: 'LoginButton' },
+        memoizedProps: { onClick: function(){}, disabled: false, className: 'btn' },
+        memoizedState: null,
+        return: {
+          type: { name: 'LoginForm' },
+          memoizedProps: { onSubmit: function(){}, initialEmail: '' },
+          memoizedState: { email: '', password: '', loading: false, error: null },
+          return: {
+            type: { name: 'App' },
+            memoizedProps: { theme: 'light' },
+            memoizedState: null,
+            return: null
+          }
+        }
+      }
+    }
+
+    // Error trigger that produces a stack trace
+    function triggerTypeError() {
+      try {
+        const result = undefined
+        result.data.user // This will throw
+      } catch(e) {
+        // Dispatch as window error event for inject.js to catch
+        window.dispatchEvent(new ErrorEvent('error', {
+          error: e,
+          message: e.message,
+          filename: window.location.href,
+          lineno: 80,
+          colno: 9
+        }))
+        document.getElementById('status').textContent = 'TypeError triggered'
+      }
+    }
+
+    function triggerAuthError() {
+      // Set error state in store
+      window.__REDUX_STORE__.getState = function() {
+        return {
+          auth: { user: null, loading: false, error: 'Unauthorized: token expired', token: null },
+          ui: { theme: 'light', sidebarOpen: true },
+          data: { items: [], status: 'error' }
+        }
+      }
+      try {
+        throw new Error('auth failed: Unauthorized')
+      } catch(e) {
+        window.dispatchEvent(new ErrorEvent('error', {
+          error: e,
+          message: e.message,
+          filename: window.location.href,
+          lineno: 95,
+          colno: 15
+        }))
+        document.getElementById('status').textContent = 'Auth error triggered'
+      }
+    }
+
+    // Attach click handlers
+    document.querySelector('[data-testid="login-btn"]').addEventListener('click', function() {
+      document.getElementById('status').textContent = 'Login clicked'
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+---
+doc_type: feature_index
+feature_id: feature-flow-recording
+status: proposed
+feature_type: feature
+owners: []
+last_reviewed: 2026-03-05
+code_paths:
+  - src/background/recording.ts
+  - src/background/recording-listeners.ts
+  - src/background/keyboard-shortcuts.ts
+  - src/background/context-menus.ts
+  - src/background/recording-utils.ts
+  - src/background/draw-mode-toggle.ts
+  - src/popup/action-recording.ts
+  - src/lib/daemon-http.ts
+test_paths:
+  - tests/extension/recording.test.js
+  - tests/extension/recording-shortcut-command.test.js
+  - tests/extension/tracked-hover-launcher.test.js
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
+---
+
+# Flow Recording
+
+## TL;DR
+
+- Status: proposed
+- Tool: interact, observe, configure
+- Mode/Action: recording, playback, test-generation
+- Location: `docs/features/feature/flow-recording`
+
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
+
+## Requirement IDs
+
+- FEATURE_FLOW_RECORDING_001
+- FEATURE_FLOW_RECORDING_002
+- FEATURE_FLOW_RECORDING_003
+
+## Code and Tests
+
+- Core recording lifecycle and listener wiring:
+  - `src/background/recording.ts`
+  - `src/background/recording-listeners.ts`
+  - `src/background/keyboard-shortcuts.ts`
+  - `src/background/context-menus.ts`
+  - `src/background/recording-utils.ts`
+- Core tests:
+  - `tests/extension/recording.test.js`
+  - `tests/extension/recording-shortcut-command.test.js`
+  - `tests/extension/tracked-hover-launcher.test.js`

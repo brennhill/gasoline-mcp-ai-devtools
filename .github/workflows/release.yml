@@ -1,0 +1,231 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Gate: only run the release train for tags that point to commits on STABLE.
+  check-tag-on-stable:
+    name: Verify Tag Commit Is On STABLE
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Check tag ancestry against STABLE
+        id: check
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          TAG_COMMIT=$(git rev-list -n 1 "$GITHUB_REF")
+          git fetch origin STABLE --depth=1
+
+          echo "Tag version: $TAG_VERSION"
+          echo "Tag commit: $TAG_COMMIT"
+
+          if git merge-base --is-ancestor "$TAG_COMMIT" origin/STABLE; then
+            echo "Tag commit is on STABLE; release train will run."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag commit is NOT on STABLE; release train will be skipped."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
+  # Step 1: Validate all versions match before doing anything
+  validate:
+    name: Validate Versions
+    needs: check-tag-on-stable
+    if: needs.check-tag-on-stable.outputs.should_release == 'true'
+    uses: ./.github/workflows/validate-versions.yml
+
+  # Step 2: Verify tag matches VERSION file
+  verify-tag:
+    name: Verify Tag Matches VERSION
+    runs-on: ubuntu-latest
+    needs: [check-tag-on-stable, validate]
+    if: needs.check-tag-on-stable.outputs.should_release == 'true'
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Verify tag matches VERSION file
+        id: check
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          FILE_VERSION=$(cat VERSION)
+
+          echo "Tag version: $TAG_VERSION"
+          echo "VERSION file: $FILE_VERSION"
+
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "❌ RELEASE BLOCKED: Tag v$TAG_VERSION does not match VERSION file ($FILE_VERSION)"
+            echo ""
+            echo "To fix:"
+            echo "  1. Update VERSION file to $TAG_VERSION"
+            echo "  2. Run: node scripts/bump-version.js $TAG_VERSION"
+            echo "  3. Commit and push"
+            echo "  4. Delete and recreate tag: git tag -d v$TAG_VERSION && git tag v$TAG_VERSION && git push origin v$TAG_VERSION"
+            exit 1
+          fi
+
+          echo "✅ Tag matches VERSION file: $TAG_VERSION"
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+  # Step 3: Build and publish
+  build-and-release:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    needs: verify-tag
+    if: needs.verify-tag.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: '1.24.13'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      # CRX build removed (requires local Chrome signing key)
+      
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build all platform binaries
+        run: make build
+        env:
+          VERSION: ${{ needs.verify-tag.outputs.version }}
+
+      - name: Verify binary version
+        run: |
+          ./dist/gasoline-agentic-devtools-linux-x64 --version
+          BINARY_VERSION=$(./dist/gasoline-agentic-devtools-linux-x64 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          EXPECTED="${{ needs.verify-tag.outputs.version }}"
+
+          if [ "$BINARY_VERSION" != "$EXPECTED" ]; then
+            echo "❌ Binary version mismatch: $BINARY_VERSION (expected $EXPECTED)"
+            exit 1
+          fi
+
+          echo "✅ Binary version verified: $BINARY_VERSION"
+
+      - name: Compile TypeScript
+        run: make compile-ts
+
+      # CRX build removed (requires local Chrome signing key)
+
+      - name: Stage package binaries
+        run: |
+          mkdir -p npm/darwin-arm64/bin
+          mkdir -p npm/darwin-x64/bin
+          mkdir -p npm/linux-arm64/bin
+          mkdir -p npm/linux-x64/bin
+          mkdir -p npm/win32-x64/bin
+
+          cp dist/gasoline-agentic-devtools-darwin-arm64 npm/darwin-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-darwin-x64 npm/darwin-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-arm64 npm/linux-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-x64 npm/linux-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+
+      - name: Publish packages
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+
+          # Publish platform packages first
+          for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+            echo "Publishing platform package: $pkg"
+            cd npm/$pkg
+            set +e
+            OUTPUT=$(npm publish --access public 2>&1)
+            STATUS=$?
+            set -e
+            echo "$OUTPUT"
+            if [ $STATUS -ne 0 ]; then
+              if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+                echo "Platform package already published for $pkg; continuing."
+              else
+                exit $STATUS
+              fi
+            fi
+            cd ../..
+          done
+
+          # Publish main package last
+          echo "Publishing aggregate package"
+          cd npm/gasoline-agentic-browser
+          set +e
+          OUTPUT=$(npm publish --access public 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $STATUS -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+              echo "Aggregate package already published; continuing."
+            else
+              exit $STATUS
+            fi
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build extension zip
+        run: make extension-zip
+
+      - name: Generate checksums manifest
+        run: make checksums
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
+        with:
+          files: |
+            dist/gasoline-agentic-devtools-darwin-arm64
+            dist/gasoline-agentic-devtools-darwin-x64
+            dist/gasoline-agentic-devtools-linux-arm64
+            dist/gasoline-agentic-devtools-linux-x64
+            dist/gasoline-agentic-devtools-win32-x64.exe
+            dist/gasoline-extension-v*.zip
+            dist/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          VERSION="${{ needs.verify-tag.outputs.version }}"
+          echo "## 🚀 Release v$VERSION Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Package Publication" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Platform and aggregate packages published for v$VERSION." >> $GITHUB_STEP_SUMMARY
+
+  skip-nonstable-tag:
+    name: Skip Non-STABLE Tags
+    runs-on: ubuntu-latest
+    needs: check-tag-on-stable
+    if: needs.check-tag-on-stable.outputs.should_release != 'true'
+    steps:
+      - name: Explain skip
+        run: |
+          echo "Tag is not on STABLE; skipping release train."
+          echo "This workflow only publishes when a version tag points to a STABLE commit."

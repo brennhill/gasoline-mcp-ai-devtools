@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/background.ts",
+    "src/content.ts",
+    "src/inject/index.ts",
+    "src/popup.ts",
+    "src/options.ts",
+    "src/devtools.ts",
+    "src/offscreen-recording.ts"
+  ],
+  "project": ["src/**/*.ts"],
+  "ignore": [
+    "src/background/dom-primitives.ts",
+    "src/types/**/*.ts"
+  ],
+  "ignoreDependencies": [
+    "@anthropic-ai/claude-code",
+    "chrome-types"
+  ]
+}

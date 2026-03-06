@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gasoline MCP E2E Test Page</title>
+</head>
+<body>
+  <h1>MCP Test Page</h1>
+  <img id="hero-image" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" width="800" height="600" alt="Hero">
+  <p id="status">Ready</p>
+
+  <button id="trigger-error" onclick="triggerError()">Trigger Error</button>
+  <button id="fetch-api" onclick="fetchApi()">Fetch API</button>
+  <button id="trigger-click" onclick="triggerClick()">Click Me</button>
+
+  <script>
+    function triggerError() {
+      console.error('MCP test error', { source: 'e2e' })
+      document.getElementById('status').textContent = 'Error triggered'
+    }
+
+    function fetchApi() {
+      fetch('/api/test-endpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'test', value: 42 })
+      }).catch(() => {
+        document.getElementById('status').textContent = 'Fetch completed'
+      })
+    }
+
+    function triggerClick() {
+      document.getElementById('status').textContent = 'Clicked'
+    }
+  </script>
+</body>
+</html>

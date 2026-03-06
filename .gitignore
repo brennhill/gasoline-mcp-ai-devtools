@@ -1,0 +1,87 @@
+# Build artifacts
+dist/
+/dev-console
+/gasoline-mcp*
+/verify-bin
+*.test
+*.zip
+*.crx
+
+# Local config
+.mcp.json
+.env
+.npmrc
+
+# Dependencies
+node_modules/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / AI agents
+.idea/
+.vscode/
+.codex/
+.gemini/
+*.swp
+*.swo
+.clinerules
+.editorconfig
+
+# E2E test artifacts
+tests/e2e/.tmp/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
+# Lint/build caches
+.eslintcache
+*.tsbuildinfo
+
+# Agent lock file (advisory, per-machine)
+.agent-locks.json
+
+# Claude Code sessions (ephemeral, not backed up)
+.claude/sessions/
+coverage.out
+coverage/
+
+# Hugo/Jekyll (no longer used)
+docs/.hugo_build.lock
+docs/Gemfile
+docs/Gemfile.lock
+
+# Benchmark intermediate files (only latest-benchmark.md is tracked)
+docs/benchmarks/*.txt
+
+# Runtime state
+.gasoline/
+.claude/
+server/bin/gasoline-*
+pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline
+pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline.exe
+cookwithgasoline.com/public/downloads/*.crx
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+
+#Ignore marketing
+docs/marketing
+docs/marketing-plan.md
+.gitnexus
+
+# Astro site (cookwithgasoline.com)
+cookwithgasoline.com/node_modules/
+cookwithgasoline.com/dist/
+cookwithgasoline.com/.astro/
+
+# Generated framework smoke fixtures
+cmd/dev-console/testpages/frameworks/
+cmd/dev-console/testpages/_next/
+scripts/smoke-tests/framework-fixtures/next-app/.next/
+scripts/smoke-tests/framework-fixtures/next-app/out/

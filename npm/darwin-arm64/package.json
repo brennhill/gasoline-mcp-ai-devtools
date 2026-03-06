@@ -1,0 +1,15 @@
+{
+  "name": "@brennhill/gasoline-agentic-browser-darwin-arm64",
+  "version": "0.8.1",
+  "description": "Gasoline binary for macOS ARM64 (Apple Silicon)",
+  "license": "AGPL-3.0-only",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/gasoline"
+  ]
+}

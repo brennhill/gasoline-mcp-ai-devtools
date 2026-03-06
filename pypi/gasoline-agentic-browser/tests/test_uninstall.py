@@ -1,0 +1,129 @@
+# Purpose: Validate test_uninstall.py behavior and guard against regressions.
+# Why: Prevents silent regressions in critical behavior paths.
+# Docs: docs/features/feature/enhanced-cli-config/index.md
+
+"""Tests for uninstall module."""
+
+import json
+import os
+import tempfile
+import shutil
+import unittest
+from gasoline_agentic_browser.uninstall import uninstall_from_client, execute_uninstall
+from gasoline_agentic_browser.config import MCP_SERVER_NAME
+
+
+class TestUninstallFromClient(unittest.TestCase):
+    def test_removes_gasoline_from_config(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg_path = os.path.join(tmp, "mcp.json")
+            with open(cfg_path, "w") as f:
+                json.dump({
+                    "mcpServers": {
+                        MCP_SERVER_NAME: {"command": "gasoline-mcp", "args": []},
+                        "other": {"command": "other", "args": []},
+                    }
+                }, f)
+
+            d = {
+                "id": "test", "name": "Test", "type": "file",
+                "configPath": {"all": cfg_path},
+                "detectDir": {"all": tmp},
+            }
+            result = uninstall_from_client(d, {"dryRun": False})
+            self.assertEqual(result["status"], "removed")
+
+            with open(cfg_path) as f:
+                written = json.load(f)
+            self.assertNotIn(MCP_SERVER_NAME, written["mcpServers"])
+            self.assertIn("other", written["mcpServers"])
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_deletes_file_when_only_server(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg_path = os.path.join(tmp, "mcp.json")
+            with open(cfg_path, "w") as f:
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
+
+            d = {
+                "id": "test", "name": "Test", "type": "file",
+                "configPath": {"all": cfg_path},
+                "detectDir": {"all": tmp},
+            }
+            result = uninstall_from_client(d, {"dryRun": False})
+            self.assertEqual(result["status"], "removed")
+            self.assertFalse(os.path.exists(cfg_path))
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_not_configured_when_missing(self):
+        d = {
+            "id": "test", "name": "Test", "type": "file",
+            "configPath": {"all": "/tmp/nonexistent-12345/mcp.json"},
+            "detectDir": {"all": "/tmp/nonexistent-12345"},
+        }
+        result = uninstall_from_client(d, {"dryRun": False})
+        self.assertEqual(result["status"], "notConfigured")
+
+    def test_dry_run_no_modify(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg_path = os.path.join(tmp, "mcp.json")
+            with open(cfg_path, "w") as f:
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
+
+            d = {
+                "id": "test", "name": "Test", "type": "file",
+                "configPath": {"all": cfg_path},
+                "detectDir": {"all": tmp},
+            }
+            result = uninstall_from_client(d, {"dryRun": True})
+            self.assertEqual(result["status"], "removed")
+
+            with open(cfg_path) as f:
+                written = json.load(f)
+            self.assertIn(MCP_SERVER_NAME, written["mcpServers"])
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_cli_dry_run(self):
+        d = {
+            "id": "claude-code", "name": "Claude Code", "type": "cli",
+            "detectCommand": "claude",
+            "removeArgs": ["mcp", "remove", "--scope", "user", MCP_SERVER_NAME],
+        }
+        result = uninstall_from_client(d, {"dryRun": True})
+        self.assertEqual(result["status"], "removed")
+        self.assertEqual(result["method"], "cli")
+
+
+class TestExecuteUninstall(unittest.TestCase):
+    def test_removes_from_file_clients(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg_path = os.path.join(tmp, "mcp.json")
+            with open(cfg_path, "w") as f:
+                json.dump({
+                    "mcpServers": {
+                        MCP_SERVER_NAME: {"command": "gasoline-mcp"},
+                        "other": {"command": "other"},
+                    }
+                }, f)
+
+            d = {
+                "id": "test", "name": "Test", "type": "file",
+                "configPath": {"all": cfg_path},
+                "detectDir": {"all": tmp},
+            }
+            result = execute_uninstall({"dryRun": False, "_clientOverrides": [d]})
+            self.assertTrue(result["success"])
+            self.assertEqual(len(result["removed"]), 1)
+        finally:
+            shutil.rmtree(tmp)
+
+
+if __name__ == "__main__":
+    unittest.main()

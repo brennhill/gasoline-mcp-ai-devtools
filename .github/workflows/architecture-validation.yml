@@ -1,0 +1,32 @@
+name: Architecture Validation
+
+on:
+  pull_request:
+    branches: [main, UNSTABLE]
+  push:
+    branches: [main, UNSTABLE]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-architecture:
+    name: Validate Async Queue Architecture
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0  # Fetch full history for merge-base
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: '1.24'
+
+      - name: Run architecture validation
+        run: |
+          chmod +x scripts/validate-architecture.sh
+          ./scripts/validate-architecture.sh

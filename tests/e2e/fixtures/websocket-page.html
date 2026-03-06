@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gasoline WebSocket E2E Test Page</title>
+</head>
+<body>
+  <h1>WebSocket Test Page</h1>
+  <p id="status">Ready</p>
+  <p id="ws-state">Disconnected</p>
+  <ul id="messages"></ul>
+
+  <button id="connect-ws" onclick="connectWs()">Connect WebSocket</button>
+  <button id="send-msg" onclick="sendMessage()">Send Message</button>
+  <button id="close-ws" onclick="closeWs()">Close WebSocket</button>
+
+  <script>
+    let ws = null
+
+    function connectWs() {
+      const port = new URLSearchParams(window.location.search).get('wsPort') || '8765'
+      ws = new WebSocket(`ws://127.0.0.1:${port}/ws`)
+
+      ws.addEventListener('open', () => {
+        document.getElementById('ws-state').textContent = 'Connected'
+        document.getElementById('status').textContent = 'WebSocket connected'
+      })
+
+      ws.addEventListener('message', (event) => {
+        const li = document.createElement('li')
+        li.textContent = event.data
+        li.className = 'ws-message'
+        document.getElementById('messages').appendChild(li)
+      })
+
+      ws.addEventListener('close', () => {
+        document.getElementById('ws-state').textContent = 'Disconnected'
+        document.getElementById('status').textContent = 'WebSocket closed'
+      })
+
+      ws.addEventListener('error', () => {
+        document.getElementById('ws-state').textContent = 'Error'
+        document.getElementById('status').textContent = 'WebSocket error'
+      })
+    }
+
+    function sendMessage() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'test', msg: 'hello from e2e' }))
+        document.getElementById('status').textContent = 'Message sent'
+      }
+    }
+
+    function closeWs() {
+      if (ws) {
+        ws.close()
+        ws = null
+      }
+    }
+  </script>
+</body>
+</html>

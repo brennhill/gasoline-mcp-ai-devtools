@@ -1,0 +1,197 @@
+// Purpose: Handles HTTP file read requests and upload route dispatch, delegating core logic to internal/upload.
+// Why: Provides the HTTP-facing upload endpoints while keeping validation and streaming in a testable internal package.
+// Docs: docs/features/feature/file-upload/index.md
+
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+)
+
+// handleFileReadInternal is the core logic for file read, delegating to internal/upload.
+var handleFileReadInternal = upload.HandleFileRead
+
+// handleDialogInjectInternal is the core logic for dialog injection, delegating to internal/upload.
+var handleDialogInjectInternal = upload.HandleDialogInject
+
+// ============================================
+// Stage 1: File Read (POST /api/file/read)
+// ============================================
+
+// handleFileRead serves stage-1 file metadata reads for upload workflows.
+//
+// Failure semantics:
+// - Invalid JSON/body size violations return 400.
+// - File-not-found maps to 404; permission errors map to 403; other validation errors map to 400.
+func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024) // 1MB max for request body
+	var req FileReadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonResponse(w, http.StatusBadRequest, FileReadResponse{
+			Success: false,
+			Error:   "Invalid JSON: " + err.Error(),
+		})
+		return
+	}
+
+	resp := handleFileReadInternal(req, uploadSecurityConfig, false)
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		status := http.StatusBadRequest
+		if strings.Contains(resp.Error, "not found") || strings.Contains(resp.Error, "no such file") {
+			status = http.StatusNotFound
+		} else if strings.Contains(resp.Error, "permission") {
+			status = http.StatusForbidden
+		}
+		jsonResponse(w, status, resp)
+	}
+}
+
+// ============================================
+// Stage 2: File Dialog Injection (POST /api/file/dialog/inject)
+// ============================================
+
+// handleFileDialogInject serves stage-2 dialog injection preparation.
+//
+// Failure semantics:
+// - Invalid payloads return 400; stage implementation errors are returned as validation failures.
+func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+	var req FileDialogInjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonResponse(w, http.StatusBadRequest, UploadStageResponse{
+			Success: false,
+			Error:   "Invalid JSON: " + err.Error(),
+		})
+		return
+	}
+
+	resp := handleDialogInjectInternal(req, uploadSecurityConfig)
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		jsonResponse(w, http.StatusBadRequest, resp)
+	}
+}
+
+// ============================================
+// Stage 3: Form Submission (POST /api/form/submit)
+// ============================================
+
+// handleFormSubmit serves stage-3 submit orchestration for upload flows.
+//
+// Failure semantics:
+// - Request decode errors return 400; internal stage failures are returned as 400 to keep client retry semantics explicit.
+func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024) // 10MB max for form metadata
+	var req FormSubmitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonResponse(w, http.StatusBadRequest, UploadStageResponse{
+			Success: false,
+			Error:   "Invalid JSON: " + err.Error(),
+		})
+		return
+	}
+
+	resp := handleFormSubmitInternal(req, uploadSecurityConfig)
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		jsonResponse(w, http.StatusBadRequest, resp)
+	}
+}
+
+// ============================================
+// Stage 4: OS Automation (POST /api/os-automation/inject)
+// ============================================
+
+// handleOSAutomation serves stage-4 OS automation bridge.
+//
+// Invariants:
+// - Execution is gated by explicit osAutomationEnabled runtime flag.
+//
+// Failure semantics:
+// - Disabled mode returns 403 and does not attempt automation primitives.
+func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
+	if r.Method != "POST" {
+		w.Header().Set("Allow", "POST")
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	if !osAutomationEnabled {
+		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
+			Success: false,
+			Stage:   4,
+			Error:   "OS-level upload automation is disabled. Start server with --enable-os-upload-automation flag.",
+		})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+	var req OSAutomationInjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonResponse(w, http.StatusBadRequest, UploadStageResponse{
+			Success: false,
+			Stage:   4,
+			Error:   "Invalid JSON: " + err.Error(),
+		})
+		return
+	}
+
+	resp := handleOSAutomationInternal(req, uploadSecurityConfig)
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		jsonResponse(w, http.StatusBadRequest, resp)
+	}
+}
+
+// handleOSAutomationDismiss sends Escape to close an orphaned native file dialog.
+//
+// Failure semantics:
+// - Disabled mode returns 403.
+// - Automation transport failures return 500 because the request passed validation but could not complete.
+func (s *Server) handleOSAutomationDismiss(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
+	if r.Method != "POST" {
+		w.Header().Set("Allow", "POST")
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	if !osAutomationEnabled {
+		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
+			Success: false,
+			Stage:   4,
+			Error:   "OS automation is disabled.",
+		})
+		return
+	}
+
+	resp := dismissFileDialogInternal()
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		jsonResponse(w, http.StatusInternalServerError, resp)
+	}
+}

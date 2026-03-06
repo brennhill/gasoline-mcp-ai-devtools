@@ -1,0 +1,70 @@
+title: "Gasoline"
+description: "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
+url: "https://cookwithgasoline.com"
+baseurl: ""
+
+# No theme - using custom layouts
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# SEO
+twitter:
+  username: brennhill
+logo: /assets/images/logo.png
+
+# Author
+author:
+  name: "Brenn Hill"
+
+# Analytics
+google_analytics: G-BDRZ2Z24M7
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+
+# Exclude
+exclude:
+  - .claude
+  - specification.md
+  - v4-specification.md
+  - v5-specification.md
+  - v5-roadmap.md
+  - v5-test-generation.md
+  - v6-roadmap.md
+  - v6-specification.md
+  - product-description.md
+  - performance-budget-spec.md
+  - generate-test-v2.md
+  - generate-test-specification.md
+  - competitive-analysis.md
+  - gasoline-ci-specification.md
+  - features/
+  - ai-first/
+  - agents/
+  - specs/
+  - mcp-integration/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - mm.zip
+  - minimal-mistakes-4.26.2
+  - ugly-site.png
+
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
