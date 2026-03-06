@@ -1,19 +1,15 @@
 /**
- * Purpose: Shared infrastructure for command dispatch -- result helpers, target tab resolution, action toast, and type aliases.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
-import { getTrackedTabInfo, clearTrackedTab, getActiveTab } from '../event-listeners.js';
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
 import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
-import { errorMessage } from '../../lib/error-utils.js';
-import { delay } from '../../lib/timeout-utils.js';
-export function debugLog(category, message, data = null) {
-    const globalLogger = globalThis
-        .__GASOLINE_DEBUG_LOG__;
-    if (typeof globalLogger === 'function') {
-        globalLogger(category, message, data);
-        return;
-    }
-    // Keep helpers usable before the main debug logger is initialized.
+function debugLog(category, message, data = null) {
+    // Keep helpers independent from index.ts to avoid circular imports during registry boot.
     const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
     if (!debugEnabled)
         return;
@@ -66,59 +62,18 @@ const PRETTY_LABELS = {
     focus: 'Focus',
     scroll_to: 'Scroll to',
     wait_for: 'Wait for',
-    wait_for_stable: 'Waiting for page to stabilize...',
     key_press: 'Key press',
     highlight: 'Highlight',
     subtitle: 'Subtitle',
     upload: 'Upload file'
 };
-const PRETTY_TRYING_LABELS = {
-    scroll_to: 'Scrolling to',
-    open_composer: 'Opening composer',
-    submit_active_composer: 'Submitting active composer',
-    confirm_top_dialog: 'Confirming top dialog',
-    dismiss_top_overlay: 'Dismissing top overlay',
-    auto_dismiss_overlays: 'Dismissing overlays'
-};
-function humanizeActionLabel(action) {
-    const explicit = PRETTY_LABELS[action];
-    if (explicit)
-        return explicit;
-    if (!/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(action))
-        return action;
-    const sentence = action.replaceAll('_', ' ');
-    return sentence.charAt(0).toUpperCase() + sentence.slice(1);
-}
-function inferWaitTarget(detail) {
-    if (!detail)
-        return undefined;
-    const trimmed = detail.trim();
-    if (!trimmed || trimmed.toLowerCase() === 'page')
-        return undefined;
-    return trimmed;
-}
-function resolveToastCopy(action, detail, state) {
-    if (state !== 'trying')
-        return { text: humanizeActionLabel(action), detail };
-    if (action === 'wait_for') {
-        const waitTarget = inferWaitTarget(detail);
-        if (waitTarget)
-            return { text: `Waiting for ${waitTarget}` };
-        return { text: 'Waiting for condition...' };
-    }
-    const tryingText = PRETTY_TRYING_LABELS[action];
-    if (tryingText)
-        return { text: tryingText, detail };
-    return { text: humanizeActionLabel(action), detail };
-}
 /** Show a visual action toast on the tracked tab */
 export function actionToast(tabId, action, detail, state = 'success', durationMs = 3000) {
-    const toastCopy = resolveToastCopy(action, detail, state);
     chrome.tabs
         .sendMessage(tabId, {
         type: 'GASOLINE_ACTION_TOAST',
-        text: toastCopy.text,
-        detail: toastCopy.detail,
+        text: PRETTY_LABELS[action] || action,
+        detail,
         state,
         duration_ms: durationMs
     })
@@ -181,25 +136,15 @@ const TARGETED_QUERY_TYPES = new Set([
     'a11y',
     'dom_action',
     'upload',
-    'screen_recording_start',
+    'record_start',
     'execute',
     'link_health',
     'draw_mode',
-    'cdp_action',
     'computed_styles',
     'form_discovery',
-    'form_state',
-    'data_table',
     'state_capture',
     'state_save',
-    'state_load',
-    'explore_page',
-    'get_readable',
-    'get_markdown',
-    'page_summary',
-    'page_structure',
-    'navigation',
-    'feature_gates'
+    'state_load'
 ]);
 export function requiresTargetTab(queryType) {
     return TARGETED_QUERY_TYPES.has(queryType);
@@ -207,7 +152,11 @@ export function requiresTargetTab(queryType) {
 export function isBrowserEscapeAction(queryType, paramsObj) {
     if (queryType !== 'browser_action')
         return false;
-    const action = typeof paramsObj.action === 'string' ? paramsObj.action : typeof paramsObj.what === 'string' ? paramsObj.what : '';
+    const action = typeof paramsObj.action === 'string'
+        ? paramsObj.action
+        : typeof paramsObj.what === 'string'
+            ? paramsObj.what
+            : '';
     return (action === 'navigate' ||
         action === 'refresh' ||
         action === 'back' ||
@@ -224,7 +173,7 @@ async function getTabWithRetry(tabId, retry = false) {
         if (!retry) {
             return null;
         }
-        await delay(300);
+        await new Promise((r) => setTimeout(r, 300));
         try {
             return await chrome.tabs.get(tabId);
         }
@@ -232,6 +181,14 @@ async function getTabWithRetry(tabId, retry = false) {
             return null;
         }
     }
+}
+async function getActiveTab() {
+    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = activeTabs[0];
+    if (!tab?.id) {
+        return null;
+    }
+    return tab;
 }
 function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
     const message = "No target tab resolved. Provide 'tab_id', enable tab tracking, or set 'use_active_tab=true' explicitly.";
@@ -247,7 +204,7 @@ function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
         }
     };
 }
-export async function persistTrackedTab(tab) {
+async function persistTrackedTab(tab) {
     if (!tab.id)
         return;
     await chrome.storage.local.set({
@@ -350,7 +307,7 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
         attempts.push({
             step: 'switch_to_non_internal_tab',
             status: 'failed',
-            detail: `Failed to enumerate/switch tabs: ${errorMessage(err)}`
+            detail: `Failed to enumerate/switch tabs: ${err.message}`
         });
     }
     try {
@@ -387,7 +344,7 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
         attempts.push({
             step: 'open_new_tab_and_track',
             status: 'failed',
-            detail: `Failed to open tab: ${errorMessage(err)}`
+            detail: `Failed to open tab: ${err.message}`
         });
     }
     return {
@@ -397,30 +354,6 @@ async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
 export async function resolveTargetTab(query, paramsObj) {
     const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined;
     const useActiveTab = paramsObj.use_active_tab === true;
-    async function resolveAutoTrackOrEscapeFallback(trackedTabId, fallbackMessage) {
-        if (isAiWebPilotEnabled()) {
-            const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
-            if (recovered.target || recovered.error) {
-                return recovered;
-            }
-        }
-        if (isBrowserEscapeAction(query.type, paramsObj)) {
-            const activeTab = await getActiveTab();
-            if (activeTab?.id) {
-                diagnosticLog(`[Diagnostic] ${fallbackMessage} ${activeTab.id} for escape action ${query.type}`);
-                return {
-                    target: {
-                        tabId: activeTab.id,
-                        url: activeTab.url || '',
-                        source: 'active_tab_fallback',
-                        trackedTabId,
-                        useActiveTab: true
-                    }
-                };
-            }
-        }
-        return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
-    }
     if (explicitTabId) {
         const explicitTab = await getTabWithRetry(explicitTabId);
         if (!explicitTab?.id) {
@@ -514,9 +447,51 @@ export async function resolveTargetTab(query, paramsObj) {
         catch {
             /* best effort */
         }
-        return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Falling back to active tab');
+        if (isAiWebPilotEnabled()) {
+            const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
+            if (recovered.target || recovered.error) {
+                return recovered;
+            }
+        }
+        if (isBrowserEscapeAction(query.type, paramsObj)) {
+            const activeTab = await getActiveTab();
+            if (activeTab?.id) {
+                diagnosticLog(`[Diagnostic] Falling back to active tab ${activeTab.id} for escape action ${query.type}`);
+                return {
+                    target: {
+                        tabId: activeTab.id,
+                        url: activeTab.url || '',
+                        source: 'active_tab_fallback',
+                        trackedTabId,
+                        useActiveTab: true
+                    }
+                };
+            }
+        }
+        return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
     }
-    return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Using active tab fallback');
+    if (isAiWebPilotEnabled()) {
+        const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
+        if (recovered.target || recovered.error) {
+            return recovered;
+        }
+    }
+    if (isBrowserEscapeAction(query.type, paramsObj)) {
+        const activeTab = await getActiveTab();
+        if (activeTab?.id) {
+            diagnosticLog(`[Diagnostic] Using active tab fallback ${activeTab.id} for escape action ${query.type}`);
+            return {
+                target: {
+                    tabId: activeTab.id,
+                    url: activeTab.url || '',
+                    source: 'active_tab_fallback',
+                    trackedTabId: null,
+                    useActiveTab: true
+                }
+            };
+        }
+    }
+    return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
 }
 /**
  * Check if a URL is restricted — content scripts cannot run on these pages.
@@ -527,24 +502,5 @@ export function isRestrictedUrl(url) {
         return true;
     const blocked = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://'];
     return blocked.some((p) => url.startsWith(p));
-}
-// =============================================================================
-// CONTENT SCRIPT ERROR DETECTION
-// =============================================================================
-/** Check if an error indicates the content script is not loaded on the target page. */
-export function isContentScriptUnreachableError(err) {
-    const message = errorMessage(err, '');
-    return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
-}
-/**
- * Guard that checks AI Web Pilot is enabled.
- * Returns true if enabled and the caller should proceed.
- * Returns false if disabled — the error response has already been sent.
- */
-export function requireAiWebPilot(ctx) {
-    if (isAiWebPilotEnabled())
-        return true;
-    ctx.sendResult({ error: 'ai_web_pilot_disabled' });
-    return false;
 }
 //# sourceMappingURL=helpers.js.map

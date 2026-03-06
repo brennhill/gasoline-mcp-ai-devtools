@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { DOMPrimitiveOptions, DOMResult } from './dom-types.js';
+import type { DOMPrimitiveOptions, DOMResult } from './dom-types';
 export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 /**
  * Single self-contained function for all DOM primitives.
@@ -24,9 +24,4 @@ export declare function domPrimitive(action: string, selector: string, options: 
     error?: string;
     message?: string;
 };
-/**
- * Backward-compatible wait helper used by unit tests and legacy call sites.
- * Polls wait_for and listens for DOM mutations for fast resolution.
- */
-export declare function domWaitFor(selector: string, timeoutMs?: number): Promise<DOMResult>;
 //# sourceMappingURL=dom-primitives.d.ts.map

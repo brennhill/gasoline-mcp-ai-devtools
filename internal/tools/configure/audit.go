@@ -1,13 +1,14 @@
-// Purpose: Summarizes audit trail entries into tool call counts, success/failure rates, and session aggregations.
+// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
+// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package configure
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
+import "github.com/dev-console/dev-console/internal/audit"
 
 // SummarizeAuditEntries aggregates audit entries into a summary map
 // with tool call counts, success/failure rates, and session counts.
-func SummarizeAuditEntries(entries []audit.Entry) map[string]any {
+func SummarizeAuditEntries(entries []audit.AuditEntry) map[string]any {
 	byTool := make(map[string]int)
 	uniqueSessions := make(map[string]struct{})
 	success := 0

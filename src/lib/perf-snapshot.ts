@@ -1,5 +1,6 @@
 /**
- * Purpose: Observes web vitals (FCP, LCP, CLS, INP), long tasks, and resource timing to build comprehensive performance snapshots.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/performance-audit/index.md
  */
 
@@ -9,7 +10,7 @@
  * to build comprehensive performance snapshots.
  */
 
-import { MAX_LONG_TASKS, MAX_SLOWEST_REQUESTS, MAX_URL_LENGTH } from './constants.js'
+import { MAX_LONG_TASKS, MAX_SLOWEST_REQUESTS, MAX_URL_LENGTH } from './constants'
 
 interface ResourceByType {
   count: number

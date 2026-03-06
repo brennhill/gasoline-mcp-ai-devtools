@@ -1,5 +1,5 @@
-// Purpose: Implements generic cursor pagination over sequenced telemetry collections.
-// Why: Keeps shared pagination rules centralized while adapters handle domain-specific fields.
+// Purpose: Implements cursor pagination over captured telemetry collections.
+// Why: Makes large evidence sets queryable without losing ordering or cursor consistency.
 // Docs: docs/features/feature/pagination/index.md
 
 package pagination
@@ -7,16 +7,48 @@ package pagination
 import (
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // Type aliases for imported types to avoid qualifying every use.
 type (
+	// LogEntry is a map-based log entry from the capture package.
+	// any: JSON log entries have dynamic fields; map allows flexible access without schema.
+	LogEntry = map[string]any
 	// EnhancedAction is a user action from the capture package.
 	EnhancedAction = capture.EnhancedAction
 	// WebSocketEvent is a WebSocket event from the capture package.
 	WebSocketEvent = capture.WebSocketEvent
 )
+
+// entryStr extracts a string field from a LogEntry map.
+// Returns empty string if field doesn't exist or isn't a string.
+func entryStr(entry LogEntry, key string) string {
+	if v, ok := entry[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// entryDisplay extracts a field from a LogEntry and returns it as a display string.
+// Handles numeric types by converting to string representation.
+func entryDisplay(entry LogEntry, key string) string {
+	if v, ok := entry[key]; ok {
+		switch val := v.(type) {
+		case string:
+			return val
+		case int:
+			return fmt.Sprintf("%d", val)
+		case int64:
+			return fmt.Sprintf("%d", val)
+		case float64:
+			return fmt.Sprintf("%.0f", val)
+		}
+	}
+	return ""
+}
 
 // ============================================
 // Sequenced is the interface for entries with pagination metadata.
@@ -78,9 +110,9 @@ func checkCursorExpired[T Sequenced](
 // filterByCursor filters entries using the cursor comparison for the given cursor type.
 func filterByCursor[T Sequenced](entries []T, cursor Cursor, cursorType string) []T {
 	var filtered []T
-	for _, entry := range entries {
-		if matchesCursorType(cursor, cursorType, entry.GetTimestamp(), entry.GetSequence()) {
-			filtered = append(filtered, entry)
+	for _, e := range entries {
+		if matchesCursorType(cursor, cursorType, e.GetTimestamp(), e.GetSequence()) {
+			filtered = append(filtered, e)
 		}
 	}
 	return filtered
@@ -133,6 +165,7 @@ func ApplyCursorPagination[T Sequenced](entries []T, p CursorParams) ([]T, *Curs
 
 	cursorStr, cursorType := resolveCursorType(p.AfterCursor, p.BeforeCursor, p.SinceCursor)
 
+	// No cursor specified - just apply limit
 	if cursorStr == "" {
 		countBeforeLimit := len(entries)
 		entries = applyLimit(entries, p.Limit, false)
@@ -159,6 +192,246 @@ func ApplyCursorPagination[T Sequenced](entries []T, p CursorParams) ([]T, *Curs
 	buildMetadata(entries, p.AfterCursor, countBeforeLimit, metadata)
 	return entries, metadata, nil
 }
+
+// ============================================
+// Log Pagination
+// ============================================
+
+// LogEntryWithSequence pairs a log entry with its sequence number and timestamp for pagination.
+type LogEntryWithSequence struct {
+	Entry     LogEntry
+	Sequence  int64
+	Timestamp string
+}
+
+// GetSequence implements Sequenced.
+func (e LogEntryWithSequence) GetSequence() int64 { return e.Sequence }
+
+// GetTimestamp implements Sequenced.
+func (e LogEntryWithSequence) GetTimestamp() string { return e.Timestamp }
+
+// EnrichLogEntries adds sequence numbers and timestamps to entries for pagination.
+// Must be called with the UNFILTERED entry list to get correct sequence numbers.
+func EnrichLogEntries(entries []LogEntry, logTotalAdded int64) []LogEntryWithSequence {
+	enriched := make([]LogEntryWithSequence, len(entries))
+	baseSeq := logTotalAdded - int64(len(entries)) + 1
+
+	for i, entry := range entries {
+		enriched[i] = LogEntryWithSequence{
+			Entry:     entry,
+			Sequence:  baseSeq + int64(i),
+			Timestamp: entryStr(entry, "ts"),
+		}
+	}
+
+	return enriched
+}
+
+// ApplyLogCursorPagination applies cursor-based pagination to log entries with sequence metadata.
+// Returns filtered entries, cursor metadata, and any error.
+func ApplyLogCursorPagination(
+	enrichedEntries []LogEntryWithSequence,
+	afterCursor, beforeCursor, sinceCursor string,
+	limit int,
+	restartOnEviction bool,
+) ([]LogEntryWithSequence, *CursorPaginationMetadata, error) {
+	return ApplyCursorPagination(enrichedEntries, CursorParams{
+		AfterCursor:       afterCursor,
+		BeforeCursor:      beforeCursor,
+		SinceCursor:       sinceCursor,
+		Limit:             limit,
+		RestartOnEviction: restartOnEviction,
+	})
+}
+
+// SerializeLogEntryWithSequence converts a LogEntryWithSequence to a JSON-serializable map.
+func SerializeLogEntryWithSequence(enriched LogEntryWithSequence) map[string]any {
+	result := map[string]any{
+		"level":     entryStr(enriched.Entry, "level"),
+		"message":   entryStr(enriched.Entry, "message"),
+		"source":    entryStr(enriched.Entry, "source"),
+		"timestamp": enriched.Timestamp,
+		"sequence":  enriched.Sequence,
+	}
+
+	// Add tabId if present
+	if tabId := entryDisplay(enriched.Entry, "tabId"); tabId != "" {
+		result["tab_id"] = tabId
+	}
+
+	return result
+}
+
+// ============================================
+// Action Pagination
+// ============================================
+
+// ActionEntryWithSequence pairs an action entry with its sequence number and timestamp for pagination.
+type ActionEntryWithSequence struct {
+	Entry     EnhancedAction
+	Sequence  int64
+	Timestamp string // RFC3339 normalized timestamp
+}
+
+// GetSequence implements Sequenced.
+func (e ActionEntryWithSequence) GetSequence() int64 { return e.Sequence }
+
+// GetTimestamp implements Sequenced.
+func (e ActionEntryWithSequence) GetTimestamp() string { return e.Timestamp }
+
+// EnrichActionEntries adds sequence numbers and normalized timestamps to action entries for pagination.
+// Must be called with the UNFILTERED entry list to get correct sequence numbers.
+func EnrichActionEntries(actions []capture.EnhancedAction, actionTotalAdded int64) []ActionEntryWithSequence {
+	enriched := make([]ActionEntryWithSequence, len(actions))
+	baseSeq := actionTotalAdded - int64(len(actions)) + 1
+
+	for i, action := range actions {
+		enriched[i] = ActionEntryWithSequence{
+			Entry:     action,
+			Sequence:  baseSeq + int64(i),
+			Timestamp: NormalizeTimestamp(action.Timestamp), // Convert int64 to RFC3339
+		}
+	}
+
+	return enriched
+}
+
+// ApplyActionCursorPagination applies cursor-based pagination to action entries with sequence metadata.
+// Returns filtered entries, cursor metadata, and any error.
+func ApplyActionCursorPagination(
+	enrichedEntries []ActionEntryWithSequence,
+	afterCursor, beforeCursor, sinceCursor string,
+	limit int,
+	restartOnEviction bool,
+) ([]ActionEntryWithSequence, *CursorPaginationMetadata, error) {
+	return ApplyCursorPagination(enrichedEntries, CursorParams{
+		AfterCursor:       afterCursor,
+		BeforeCursor:      beforeCursor,
+		SinceCursor:       sinceCursor,
+		Limit:             limit,
+		RestartOnEviction: restartOnEviction,
+	})
+}
+
+// SerializeActionEntryWithSequence converts an ActionEntryWithSequence to a JSON-serializable map.
+func SerializeActionEntryWithSequence(enriched ActionEntryWithSequence) map[string]any {
+	result := map[string]any{
+		"type":      enriched.Entry.Type,
+		"timestamp": enriched.Timestamp,
+		"sequence":  enriched.Sequence,
+	}
+
+	addNonEmpty(result, "url", enriched.Entry.URL)
+	if len(enriched.Entry.Selectors) > 0 {
+		result["selectors"] = enriched.Entry.Selectors
+	}
+	addNonEmpty(result, "value", enriched.Entry.Value)
+	addNonEmpty(result, "input_type", enriched.Entry.InputType)
+	addNonEmpty(result, "key", enriched.Entry.Key)
+	addNonEmpty(result, "from_url", enriched.Entry.FromURL)
+	addNonEmpty(result, "to_url", enriched.Entry.ToURL)
+	addNonEmpty(result, "selected_value", enriched.Entry.SelectedValue)
+	addNonEmpty(result, "selected_text", enriched.Entry.SelectedText)
+
+	if enriched.Entry.ScrollY != 0 {
+		result["scroll_y"] = enriched.Entry.ScrollY
+	}
+	if enriched.Entry.TabId > 0 {
+		result["tab_id"] = enriched.Entry.TabId
+	}
+
+	return result
+}
+
+// ============================================
+// WebSocket Pagination
+// ============================================
+
+// WebSocketEntryWithSequence pairs a websocket event with its sequence number and timestamp for pagination.
+type WebSocketEntryWithSequence struct {
+	Entry     WebSocketEvent
+	Sequence  int64
+	Timestamp string // RFC3339 timestamp (already string in capture.WebSocketEvent)
+}
+
+// GetSequence implements Sequenced.
+func (e WebSocketEntryWithSequence) GetSequence() int64 { return e.Sequence }
+
+// GetTimestamp implements Sequenced.
+func (e WebSocketEntryWithSequence) GetTimestamp() string { return e.Timestamp }
+
+// EnrichWebSocketEntries adds sequence numbers to websocket events for pagination.
+// Must be called with the UNFILTERED entry list to get correct sequence numbers.
+func EnrichWebSocketEntries(events []capture.WebSocketEvent, wsTotalAdded int64) []WebSocketEntryWithSequence {
+	enriched := make([]WebSocketEntryWithSequence, len(events))
+	baseSeq := wsTotalAdded - int64(len(events)) + 1
+
+	for i, event := range events {
+		enriched[i] = WebSocketEntryWithSequence{
+			Entry:     event,
+			Sequence:  baseSeq + int64(i),
+			Timestamp: event.Timestamp, // Already RFC3339 string
+		}
+	}
+
+	return enriched
+}
+
+// ApplyWebSocketCursorPagination applies cursor-based pagination to websocket events with sequence metadata.
+// Returns filtered entries, cursor metadata, and any error.
+func ApplyWebSocketCursorPagination(
+	enrichedEntries []WebSocketEntryWithSequence,
+	afterCursor, beforeCursor, sinceCursor string,
+	limit int,
+	restartOnEviction bool,
+) ([]WebSocketEntryWithSequence, *CursorPaginationMetadata, error) {
+	return ApplyCursorPagination(enrichedEntries, CursorParams{
+		AfterCursor:       afterCursor,
+		BeforeCursor:      beforeCursor,
+		SinceCursor:       sinceCursor,
+		Limit:             limit,
+		RestartOnEviction: restartOnEviction,
+	})
+}
+
+// SerializeWebSocketEntryWithSequence converts a WebSocketEntryWithSequence to a JSON-serializable map.
+func SerializeWebSocketEntryWithSequence(enriched WebSocketEntryWithSequence) map[string]any {
+	result := map[string]any{
+		"event":     enriched.Entry.Event,
+		"id":        enriched.Entry.ID,
+		"timestamp": enriched.Timestamp,
+		"sequence":  enriched.Sequence,
+	}
+
+	addNonEmpty(result, "type", enriched.Entry.Type)
+	addNonEmpty(result, "url", enriched.Entry.URL)
+	addNonEmpty(result, "direction", enriched.Entry.Direction)
+	addNonEmpty(result, "data", enriched.Entry.Data)
+	addNonEmpty(result, "reason", enriched.Entry.CloseReason)
+	addNonEmpty(result, "binary_format", enriched.Entry.BinaryFormat)
+
+	if enriched.Entry.Size > 0 {
+		result["size"] = enriched.Entry.Size
+	}
+	if enriched.Entry.CloseCode > 0 {
+		result["code"] = enriched.Entry.CloseCode
+	}
+	if enriched.Entry.FormatConfidence > 0 {
+		result["format_confidence"] = enriched.Entry.FormatConfidence
+	}
+	if enriched.Entry.Sampled != nil {
+		result["sampled"] = enriched.Entry.Sampled
+	}
+	if enriched.Entry.TabId > 0 {
+		result["tab_id"] = enriched.Entry.TabId
+	}
+
+	return result
+}
+
+// ============================================
+// Shared Serialization Helpers
+// ============================================
 
 // addNonEmpty adds a key-value pair to the map only if the string value is non-empty.
 func addNonEmpty(m map[string]any, key, value string) {

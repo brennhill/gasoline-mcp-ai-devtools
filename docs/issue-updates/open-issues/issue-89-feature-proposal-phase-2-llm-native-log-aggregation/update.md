@@ -1,7 +1,7 @@
 # Product Update: Issue #89
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/89
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/89
 - Title: [Feature Proposal] Phase 2: LLM-Native Log Aggregation
 - Last Updated: 2026-02-16T14:50:20Z
 

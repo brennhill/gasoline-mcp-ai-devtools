@@ -2,13 +2,11 @@
 feature: Tab Recording
 status: proposed
 tool: interact, observe
-mode: screen_recording_start, screen_recording_stop, saved_videos
-version: 0.7.12
+mode: record_start, record_stop, saved_videos
+version: v6.0
 doc_type: product-spec
 feature_id: feature-tab-recording
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Tab Recording
@@ -33,7 +31,7 @@ Today's workflow for sharing what happened in a browser:
 
 ### The workflow:
 
-1. Start recording (AI says `interact({action: "screen_recording_start", name: "checkout bug"})` or user clicks Record in popup)
+1. Start recording (AI says `interact({action: "record_start", name: "checkout bug"})` or user clicks Record in popup)
 2. Interact with the page normally — Gasoline's subtitles and action toasts are captured in the video automatically
 3. Stop recording → video saved to `~/.gasoline/recordings/` with a metadata sidecar file
 4. AI can list recordings via `observe({what: "saved_videos"})` and reference them by name
@@ -53,10 +51,10 @@ Today's workflow for sharing what happened in a browser:
 
 ```
 1. Developer: "Record yourself reproducing the checkout bug"
-2. AI calls interact({action: "screen_recording_start", name: "checkout bug repro"})
+2. AI calls interact({action: "record_start", name: "checkout bug repro"})
 3. AI navigates to checkout, fills form, triggers the bug
 4. Gasoline subtitles narrate each step in the video
-5. AI calls interact({action: "screen_recording_stop"})
+5. AI calls interact({action: "record_stop"})
 6. Video saved: ~/.gasoline/recordings/checkout-bug-repro--2026-02-07-1423.webm
 7. Developer shares the video — no Loom needed
 ```
@@ -88,12 +86,12 @@ Today's workflow for sharing what happened in a browser:
 
 ```
 1. Developer: "Record a demo of the new dashboard, narrate what you're doing"
-2. AI calls interact({action: "screen_recording_start", name: "dashboard demo"})
+2. AI calls interact({action: "record_start", name: "dashboard demo"})
 3. AI navigates and uses subtitle to narrate:
    interact({action: "navigate", url: "/dashboard", subtitle: "Opening the new dashboard"})
    interact({action: "click", selector: "text=Analytics", subtitle: "Clicking into analytics view"})
 4. Subtitles render in the page → captured in the video
-5. AI calls interact({action: "screen_recording_stop"})
+5. AI calls interact({action: "record_stop"})
 6. Result: a narrated product demo video, no Loom, no voiceover needed
 ```
 
@@ -105,9 +103,9 @@ Today's workflow for sharing what happened in a browser:
 
 #### Start:
 
-- [ ] `interact({action: "screen_recording_start"})` — starts recording the active tab at default 15fps
-- [ ] `interact({action: "screen_recording_start", name: "checkout bug"})` — starts with a user-provided name
-- [ ] `interact({action: "screen_recording_start", name: "smooth demo", fps: 30})` — starts at specified framerate
+- [ ] `interact({action: "record_start"})` — starts recording the active tab at default 15fps
+- [ ] `interact({action: "record_start", name: "checkout bug"})` — starts with a user-provided name
+- [ ] `interact({action: "record_start", name: "smooth demo", fps: 30})` — starts at specified framerate
 - [ ] `fps` parameter: optional, default `15`. Valid range: `5`–`60`.
   - `5` — minimal CPU, ~2MB/min (static content, bug evidence)
   - `15` — default, ~4MB/min (bug repros, most demos)
@@ -117,7 +115,7 @@ Today's workflow for sharing what happened in a browser:
 - [ ] If already recording, returns error: `"RECORD_START: Already recording. Stop current recording first."`
 
 #### Stop:
-- [ ] `interact({action: "screen_recording_stop"})` — stops recording, saves video + metadata
+- [ ] `interact({action: "record_stop"})` — stops recording, saves video + metadata
 - [ ] Returns: `{status: "saved", name: "checkout-bug--2026-02-07-1423", path: "...", duration_seconds: 154, size_bytes: 18400000}`
 - [ ] If not recording, returns error: `"RECORD_STOP: No active recording."`
 
@@ -138,10 +136,10 @@ Today's workflow for sharing what happened in a browser:
 - [ ] Recording state synced to `chrome.storage.local` so popup reopening shows correct state
 
 #### Behavior:
-- [ ] Popup start → triggers same recording pipeline as MCP `screen_recording_start`
-- [ ] Popup stop → triggers same pipeline as MCP `screen_recording_stop`
+- [ ] Popup start → triggers same recording pipeline as MCP `record_start`
+- [ ] Popup stop → triggers same pipeline as MCP `record_stop`
 - [ ] If MCP starts a recording, popup shows recording state
-- [ ] If popup starts a recording, MCP `screen_recording_stop` can stop it (and vice versa)
+- [ ] If popup starts a recording, MCP `record_stop` can stop it (and vice versa)
 - [ ] Single source of truth: one shared recording state
 
 ### R3: Video Listing
@@ -242,8 +240,8 @@ Today's workflow for sharing what happened in a browser:
 
 | Action | Parameters | Returns |
 |--------|-----------|---------|
-| `screen_recording_start` | `name?: string`, `fps?: number` (default 15, range 5–60) | `{status, name, path, fps}` |
-| `screen_recording_stop` | — | `{status, name, path, duration_seconds, size_bytes}` |
+| `record_start` | `name?: string`, `fps?: number` (default 15, range 5–60) | `{status, name, path, fps}` |
+| `record_stop` | — | `{status, name, path, duration_seconds, size_bytes}` |
 
 ### observe (1 new mode)
 

@@ -8,7 +8,7 @@
  * @fileoverview Type Index - Barrel export for all Gasoline Extension types
  *
  * This is the single entry point for importing types in the extension.
- * Usage: import type { LogEntry, BackgroundMessage } from './types.js';
+ * Usage: import type { LogEntry, BackgroundMessage } from './types';
  */
 
 // Re-export all message types
@@ -141,14 +141,22 @@ export type {
   StorageAreaName,
   ChromeSessionStorage,
   ChromeStorageWithSession
-} from './messages.js'
+} from './messages'
 
 // Re-export wire types (canonical HTTP payload shapes)
-export type { WireEnhancedAction } from './wire-enhanced-action.js'
+export type {
+  WireEnhancedAction
+} from './wire-enhanced-action'
 
-export type { WireNetworkBody, WireNetworkWaterfallEntry, WireNetworkWaterfallPayload } from './wire-network.js'
+export type {
+  WireNetworkBody,
+  WireNetworkWaterfallEntry,
+  WireNetworkWaterfallPayload
+} from './wire-network'
 
-export type { WireWebSocketEvent } from './wire-websocket-event.js'
+export type {
+  WireWebSocketEvent
+} from './wire-websocket-event'
 
 export type {
   WirePerformanceTiming,
@@ -159,7 +167,7 @@ export type {
   WireUserTimingEntry,
   WireUserTimingData,
   WirePerformanceSnapshot
-} from './wire-performance-snapshot.js'
+} from './wire-performance-snapshot'
 
 // Re-export all utility types
 export type {
@@ -225,10 +233,10 @@ export type {
   // Buffer types
   BufferState,
   MemoryEstimate
-} from './utils.js'
+} from './utils'
 
 // Re-export type guards from utils
-export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils.js'
+export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils'
 
 // ============================================
 // Favicon Replacer Types

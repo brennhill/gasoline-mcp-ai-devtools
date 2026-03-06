@@ -1,9 +1,10 @@
-// Purpose: Declares the Deps interface that interact handlers require from the host server.
+// Purpose: Provides interact tool implementation helpers for selectors and workflows.
+// Why: Centralizes selector/workflow logic so browser actions remain repeatable and debuggable.
 // Docs: docs/features/feature/interact-explore/index.md
 
 package interact
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/dev-console/dev-console/internal/mcp"
 
 // Deps provides all dependencies the interact handlers need.
 // *ToolHandler in cmd/dev-console/ satisfies this interface.

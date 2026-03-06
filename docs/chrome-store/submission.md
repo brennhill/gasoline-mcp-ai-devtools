@@ -20,7 +20,7 @@ Gasoline
 
 **Short Description:** (132 characters max)
 ```
-Agentic Browser Devtools - rapid e2e web development. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.
+Browser observability for AI coding agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.
 ```
 
 **Detailed Description:**
@@ -44,7 +44,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • No SaaS, no cloud service, no telemetry
 • All data stays on your machine
 • Automatic redaction of passwords, API keys, tokens
-• Open source (AGPL-3.0): github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• Open source (AGPL-3.0): github.com/brennhill/gasoline-mcp-ai-devtools
 
 ✨ Key Features
 • MCP protocol integration (emerging standard for AI tooling)
@@ -62,7 +62,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 📚 Documentation
 • Setup guide: cookwithgasoline.com/getting-started
 • Full docs: cookwithgasoline.com
-• GitHub: github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• GitHub: github.com/brennhill/gasoline-mcp-ai-devtools
 
 🔧 Technical Requirements
 • Chrome or Brave browser
@@ -266,7 +266,7 @@ Verify by inspecting:
 
 ## Open Source
 
-Full source code: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+Full source code: https://github.com/brennhill/gasoline-mcp-ai-devtools
 License: AGPL-3.0
 All compiled code matches source (TypeScript → JavaScript via tsc)
 ```

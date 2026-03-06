@@ -4,9 +4,6 @@ description: "Major release: complete browser observability platform for AI codi
 date: 2026-02-15
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0']
 ---
 
 ## What's New in v0.7.0
@@ -50,4 +47,4 @@ pip install gasoline-mcp==0.7.0
 
 ### Full Changelog
 
-[View on GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v0.7.0)
+[View on GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v0.7.0)

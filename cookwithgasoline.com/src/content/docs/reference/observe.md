@@ -1,16 +1,11 @@
 ---
-title: "Observe — Read Browser State"
-description: "Complete reference for the observe tool. 30 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, storage, page inventory, inbox messages, and more."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['reference', 'observe']
+title: "observe() — Read Browser State"
+description: "Complete reference for the observe tool. 23 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, and more."
 ---
 
 The `observe` tool reads the current browser state. It's your AI's eyes into the browser — errors, network traffic, WebSocket messages, performance metrics, visual state, and more.
 
 **Always call `observe()` before `interact()` or `generate()`** to give the AI context about the current page.
-
-Need one runnable call + response shape + failure fix for every mode? See [Observe Executable Examples](/reference/examples/observe-examples/).
 
 ## Quick Reference
 
@@ -40,8 +35,6 @@ These parameters work across multiple modes:
 | `before_cursor` | string | Forward pagination — entries newer than cursor |
 | `since_cursor` | string | All entries newer than cursor (inclusive, no limit) |
 | `restart_on_eviction` | boolean | Auto-restart if cursor expired from buffer overflow |
-| `summary` | boolean | Return compact summary (~60-70% smaller). Works with errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history, transients |
-| `scope` | string | Filter scope: `current_page` (default) or `all` — applies to errors, logs |
 
 ---
 
@@ -81,11 +74,7 @@ observe({what: "logs", min_level: "warn", limit: 50})
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `min_level` | string | Minimum level threshold: `debug` < `log` < `info` < `warn` < `error` |
-| `source` | string | Exact source filter |
-| `include_extension_logs` | boolean | Include extension debug logs alongside console output |
-| `extension_limit` | number | Max extension logs when `include_extension_logs: true` |
-| `include_internal` | boolean | Include daemon lifecycle/transport diagnostics |
+| `min_level` | string | Minimum level: `debug` < `log` < `info` < `warn` < `error` |
 | `limit` | number | Maximum entries to return |
 
 ### `extension_logs`
@@ -133,7 +122,6 @@ observe({what: "network_bodies", method: "POST", limit: 5})
 | `method` | string | Filter by HTTP method (GET, POST, etc.) |
 | `status_min` | number | Minimum status code (e.g., 400 for errors only) |
 | `status_max` | number | Maximum status code |
-| `body_path` | string | Extract JSON value using dot-path (e.g., `data.items[0].id`) |
 | `limit` | number | Maximum entries |
 
 **Buffer:** 100 recent requests, 8 MB total memory. Auth headers are always stripped.
@@ -198,17 +186,7 @@ Captures a screenshot of the current viewport. The AI receives the image and can
 
 ```js
 observe({what: "screenshot"})
-observe({what: "screenshot", selector: ".error-panel", format: "png"})
-observe({what: "screenshot", full_page: true})
 ```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `format` | string | `png` | Image format: `png` or `jpeg` |
-| `quality` | number | — | JPEG quality 1-100 (only for `jpeg`) |
-| `full_page` | boolean | false | Capture the full scrollable page |
-| `selector` | string | — | Capture a specific element by CSS selector |
-| `wait_for_stable` | boolean | false | Wait for layout to stabilize before capture |
 
 <!-- Screenshot: Example of observe screenshot output showing a web page capture -->
 
@@ -345,99 +323,6 @@ List commands that failed during execution.
 
 ```js
 observe({what: "failed_commands"})
-```
-
----
-
-## Browser Storage
-
-### `storage`
-
-Read localStorage, sessionStorage, or cookies for the current page.
-
-```js
-observe({what: "storage", storage_type: "local"})
-observe({what: "storage", storage_type: "cookies"})
-observe({what: "storage", storage_type: "session", key: "auth_token"})
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `storage_type` | string | `local`, `session`, or `cookies` |
-| `key` | string | Read a specific key (omit for all) |
-
-### `indexeddb`
-
-Read IndexedDB databases and object stores.
-
-```js
-observe({what: "indexeddb"})
-observe({what: "indexeddb", database: "myDB", store: "users"})
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `database` | string | Database name |
-| `store` | string | Object store name |
-
----
-
-## Aggregation & Summarization
-
-### `history`
-
-Navigation history from recorded user actions.
-
-```js
-observe({what: "history"})
-```
-
-### `summarized_logs`
-
-Groups and summarizes repeated log patterns. Useful for noisy applications where the same log message appears hundreds of times.
-
-```js
-observe({what: "summarized_logs"})
-observe({what: "summarized_logs", min_group_size: 5})
-```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `min_group_size` | number | 2 | Minimum occurrences to form a group |
-
-### `page_inventory`
-
-Inventory of interactive elements on the page — forms, buttons, links, inputs.
-
-```js
-observe({what: "page_inventory"})
-observe({what: "page_inventory", visible_only: true})
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `visible_only` | boolean | Only return visible elements |
-
-### `transients`
-
-Capture transient UI elements — toasts, alerts, snackbars, and notifications that appear briefly and disappear. Gasoline intercepts these before they vanish.
-
-```js
-observe({what: "transients"})
-observe({what: "transients", last_n: 5})
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `classification` | string | Filter by type: `alert`, `toast`, `snackbar`, `notification`, `tooltip`, `banner`, `flash` |
-
-### `inbox`
-
-Read queued push notifications and alert events emitted by streaming workflows.
-
-```js
-observe({what: "inbox"})
-observe({what: "inbox", limit: 20})
 ```
 
 ---

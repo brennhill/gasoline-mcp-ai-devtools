@@ -1,5 +1,6 @@
-// Purpose: Tests for synchronous tool call execution.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_core_sync_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -10,15 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	// Setup
 	cap := capture.NewCapture()
-	// coldStartTimeout=0 disables cold-start gate; extension is pre-connected via HandleSync below.
-	handler := &ToolHandler{capture: cap, coldStartTimeout: 0}
+	handler := &ToolHandler{capture: cap}
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	correlationID := "test-sync-123"
 	cap.RegisterCommand(correlationID, "q-sync-123", 15*time.Second)
@@ -118,17 +118,15 @@ func TestToolObserveCommandResult_IncludesTraceTimeline(t *testing.T) {
 		}
 	}
 
-	if trace["last_stage"] != "resolved" {
-		t.Fatalf("trace.last_stage = %v, want resolved", trace["last_stage"])
-	}
-	if _, ok := trace["events"]; ok {
-		t.Fatalf("trace.events should be omitted in summary response, got %v", trace["events"])
+	events, ok := trace["events"].([]any)
+	if !ok || len(events) < 4 {
+		t.Fatalf("trace.events = %v, want at least 4 events", trace["events"])
 	}
 }
 
 func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	cap := capture.NewCapture()
-	handler := &ToolHandler{capture: cap, coldStartTimeout: 0} // Disable cold-start gate for fast-fail test
+	handler := &ToolHandler{capture: cap}
 	req := JSONRPCRequest{ID: 1}
 	correlationID := "test-timeout-123"
 
@@ -142,7 +140,7 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	duration := time.Since(start)
 
 	// Since we didn't mock connection or result, it should fail fast or timeout.
-	// With coldStartTimeout=0, it fails fast if extension not connected.
+	// Current impl fails fast if extension not connected.
 	if duration > 1*time.Second {
 		t.Errorf("Should have failed fast since extension is not connected, took %v", duration)
 	}

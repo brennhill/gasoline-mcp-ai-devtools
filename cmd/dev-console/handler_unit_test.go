@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console handler logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate handler_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // handler_unit_test.go — Core MCP handler unit tests: request routing, resource methods,
 // tool dispatch, warnings, rate limiting, and shared test helpers.
@@ -10,9 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 type testLimiter struct {
@@ -25,10 +25,6 @@ type testRedactor struct {
 	replacement json.RawMessage
 }
 
-func (r testRedactor) Redact(input string) string {
-	return input // no-op for existing tests
-}
-
 func (r testRedactor) RedactJSON(_ json.RawMessage) json.RawMessage {
 	return r.replacement
 }
@@ -38,14 +34,14 @@ func (r testRedactor) RedactMapValues(data map[string]any) map[string]any {
 }
 
 type fakeToolHandlerForMCP struct {
-	cap      *capture.Store
+	cap      *capture.Capture
 	limiter  RateLimiter
 	redactor RedactionEngine
 	tools    []MCPTool
 	handleFn func(req JSONRPCRequest, name string, arguments json.RawMessage) (JSONRPCResponse, bool)
 }
 
-func (f *fakeToolHandlerForMCP) GetCapture() *capture.Store { return f.cap }
+func (f *fakeToolHandlerForMCP) GetCapture() *capture.Capture { return f.cap }
 func (f *fakeToolHandlerForMCP) GetToolCallLimiter() RateLimiter {
 	return f.limiter
 }
@@ -188,9 +184,7 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 }
 
 func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
-	origLastNotify := updateNotifyLastShown
-	updateNotifyLastShown = time.Now()
-	t.Cleanup(func() { updateNotifyLastShown = origLastNotify })
+	t.Parallel()
 
 	h := NewMCPHandler(nil, "v-test")
 	th := &fakeToolHandlerForMCP{

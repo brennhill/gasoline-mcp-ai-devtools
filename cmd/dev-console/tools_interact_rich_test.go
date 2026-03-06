@@ -1,4 +1,5 @@
-// Purpose: Tests for interact rich response formatting.
+// Purpose: Validate tools_interact_rich_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_rich_test.go — TDD tests for Rich Action Results.
@@ -431,13 +432,13 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 		t.Errorf("analysis = %q, should mention 55ms", analysis)
 	}
 
-	// Enriched fields are de-duplicated from nested result payloads.
+	// Fields must also still be in result (passthrough preserved)
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("result envelope must still exist")
 	}
-	if _, exists := extResult["timing"]; exists {
-		t.Error("timing should be stripped from nested result after top-level enrichment")
+	if _, exists := extResult["timing"]; !exists {
+		t.Error("timing must also remain inside result (passthrough)")
 	}
 }
 
@@ -478,68 +479,6 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	}
 }
 
-func TestRichAction_MatchedDiagnosticsSurfacedTopLevel(t *testing.T) {
-	env := newInteractTestEnv(t)
-	env.capture.SetPilotEnabled(true)
-
-	result, _ := env.callInteract(t, `{"what":"click","selector":"text=Submit","background":true}`)
-	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
-	corrID := resultData["correlation_id"].(string)
-
-	extensionResult := json.RawMessage(`{
-		"success": true,
-		"action": "click",
-		"matched": {
-			"tag": "button",
-			"role": "button",
-			"classes": ["btn", "btn-primary"],
-			"text_preview": "Submit",
-			"selector": "text=Submit",
-			"bbox": {"x": 64, "y": 120, "width": 128, "height": 36}
-		}
-	}`)
-	env.capture.CompleteCommand(corrID, extensionResult, "")
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
-	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
-	resp := env.handler.toolObserveCommandResult(req, args)
-
-	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
-
-	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
-		t.Fatalf("Failed to parse response JSON: %v", err)
-	}
-
-	matched, ok := responseData["matched"].(map[string]any)
-	if !ok {
-		t.Fatal("matched diagnostics must be surfaced at top level")
-	}
-	if matched["tag"] != "button" {
-		t.Fatalf("matched.tag = %v, want button", matched["tag"])
-	}
-	if matched["text_preview"] != "Submit" {
-		t.Fatalf("matched.text_preview = %v, want Submit", matched["text_preview"])
-	}
-	bbox, ok := matched["bbox"].(map[string]any)
-	if !ok {
-		t.Fatal("matched.bbox should be present")
-	}
-	if bbox["width"] != float64(128) {
-		t.Fatalf("matched.bbox.width = %v, want 128", bbox["width"])
-	}
-
-	extResult, ok := responseData["result"].(map[string]any)
-	if !ok {
-		t.Fatal("result envelope must still exist")
-	}
-	if _, exists := extResult["matched"]; exists {
-		t.Fatal("matched should be stripped from nested result after top-level enrichment")
-	}
-}
-
 func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
@@ -554,8 +493,6 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 		"action": "click",
 		"resolved_tab_id": 77,
 		"resolved_url": "https://example.com/form",
-		"effective_tab_id": 77,
-		"effective_url": "https://example.com/form",
 		"target_context": {
 			"source": "explicit_tab",
 			"requested_tab_id": 77,
@@ -577,32 +514,27 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
-	if responseData["effective_tab_id"] != float64(77) {
-		t.Fatalf("effective_tab_id = %v, want 77", responseData["effective_tab_id"])
+	if responseData["resolved_tab_id"] != float64(77) {
+		t.Fatalf("resolved_tab_id = %v, want 77", responseData["resolved_tab_id"])
 	}
-	if responseData["effective_url"] != "https://example.com/form" {
-		t.Fatalf("effective_url = %v, want https://example.com/form", responseData["effective_url"])
+	if responseData["resolved_url"] != "https://example.com/form" {
+		t.Fatalf("resolved_url = %v, want https://example.com/form", responseData["resolved_url"])
 	}
 
-	// Routing-only context is stripped from successful responses to reduce tokens.
-	if _, exists := responseData["target_context"]; exists {
-		t.Fatal("target_context should be stripped from successful responses")
+	targetContext, ok := responseData["target_context"].(map[string]any)
+	if !ok {
+		t.Fatal("target_context missing at top level")
 	}
-	if _, exists := responseData["resolved_tab_id"]; exists {
-		t.Fatal("resolved_tab_id should be omitted when URL did not change")
-	}
-	if _, exists := responseData["resolved_url"]; exists {
-		t.Fatal("resolved_url should be omitted when URL did not change")
+	if targetContext["source"] != "explicit_tab" {
+		t.Fatalf("target_context.source = %v, want explicit_tab", targetContext["source"])
 	}
 
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("result envelope missing")
 	}
-	for _, key := range []string{"target_context", "resolved_tab_id", "resolved_url", "effective_tab_id", "effective_url"} {
-		if _, exists := extResult[key]; exists {
-			t.Fatalf("%s should be stripped from nested result after enrichment", key)
-		}
+	if extResult["resolved_tab_id"] != float64(77) {
+		t.Fatalf("result.resolved_tab_id = %v, want 77", extResult["resolved_tab_id"])
 	}
 }
 
@@ -644,29 +576,33 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
-	// Enriched fields should be surfaced top-level.
-	if responseData["dom_summary"] != "2 added, 1 modified" {
-		t.Errorf("dom_summary = %q, want '2 added, 1 modified'", responseData["dom_summary"])
-	}
-	if responseData["analysis"] != "click completed in 42ms. 2 added, 1 modified." {
-		t.Errorf("analysis = %q, want 'click completed in 42ms. 2 added, 1 modified.'", responseData["analysis"])
-	}
-	timingTop, exists := responseData["timing"].(map[string]any)
-	if !exists {
-		t.Fatal("timing missing at top-level command result")
-	}
-	if totalMs, _ := timingTop["total_ms"].(float64); totalMs != 42 {
-		t.Errorf("timing.total_ms = %v, want 42", totalMs)
-	}
-
-	// Nested result should keep core result payload while dropping enriched duplicates.
+	// Extension result fields should be inside the "result" envelope
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("response should contain 'result' object with extension data")
 	}
-	for _, key := range []string{"dom_summary", "analysis", "timing"} {
-		if _, exists := extResult[key]; exists {
-			t.Fatalf("%s should be stripped from nested result after top-level enrichment", key)
-		}
+
+	domSummary, exists := extResult["dom_summary"]
+	if !exists {
+		t.Fatal("dom_summary missing from command result — extension field not passed through")
+	}
+	if domSummary != "2 added, 1 modified" {
+		t.Errorf("dom_summary = %q, want '2 added, 1 modified'", domSummary)
+	}
+
+	analysis, exists := extResult["analysis"]
+	if !exists {
+		t.Fatal("analysis missing from command result — extension field not passed through")
+	}
+	if analysis != "click completed in 42ms. 2 added, 1 modified." {
+		t.Errorf("analysis = %q, want 'click completed in 42ms. 2 added, 1 modified.'", analysis)
+	}
+
+	timing, exists := extResult["timing"].(map[string]any)
+	if !exists {
+		t.Fatal("timing missing from command result")
+	}
+	if totalMs, _ := timing["total_ms"].(float64); totalMs != 42 {
+		t.Errorf("timing.total_ms = %v, want 42", totalMs)
 	}
 }

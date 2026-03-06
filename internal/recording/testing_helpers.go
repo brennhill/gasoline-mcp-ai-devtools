@@ -1,5 +1,5 @@
-// Purpose: Exposes test-only accessors for recording internals (in-memory map, storage usage, active ID).
-// Why: Allows tests to verify internal state without exporting fields.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

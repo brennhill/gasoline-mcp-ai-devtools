@@ -9,9 +9,7 @@ created: 2026-01-28
 updated: 2026-01-28
 doc_type: product-spec
 feature_id: feature-gasoline-ci
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Gasoline CI Infrastructure (v6)
@@ -193,7 +191,7 @@ Response:
 
 - **This feature does NOT replace Playwright's built-in tracing.** Playwright traces capture screenshots, DOM snapshots, and network HAR files natively. Gasoline CI captures _runtime_ telemetry that Playwright does not: console errors with full arguments, WebSocket message content, unhandled exceptions with serialized error objects, and cross-request network body correlation. The two are complementary.
 
-- **This feature does NOT add new MCP tools.** The 5-tool model is preserved. CI integration uses existing HTTP endpoints and existing MCP tool modes. See the architecture reference in [360-observability-architecture.md](../../../core/360-observability-architecture.md).
+- **This feature does NOT add new MCP tools.** The 5-tool model is preserved. CI integration uses existing HTTP endpoints and existing MCP tool modes. See the Architecture section of [architecture.md](/.claude/docs/architecture.md).
 
 - **Out of scope: multi-worker test isolation by worker ID.** The current `/test-boundary` endpoint tracks a single `currentTestID` on the server. Parallel test workers that share a single Gasoline server instance will overwrite each other's test boundary. Full per-worker isolation requires either separate server instances per worker or client-side tagging of every entry with a `test_id`. This is tracked as OI-1.
 

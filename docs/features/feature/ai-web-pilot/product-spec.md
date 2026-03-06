@@ -3,14 +3,11 @@ feature: ai-web-pilot
 status: shipped
 tool: interact
 mode: navigate, execute_js, highlight
-version: 0.7.12
+version: 5.0.0
 doc_type: product-spec
 feature_id: feature-ai-web-pilot
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
-
 # Product Spec: AI Web Pilot
 
 User-facing requirements, rationale, and deprecations for the AI Web Pilot feature.

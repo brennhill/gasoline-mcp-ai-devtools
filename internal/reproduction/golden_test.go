@@ -1,4 +1,5 @@
-// Purpose: Golden-file snapshot tests for reproduction script generation output stability.
+// Purpose: Validate golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/reproduction-scripts/index.md
 
 // golden_test.go — Golden file validation for Playwright reproduction scripts.
@@ -10,7 +11,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"

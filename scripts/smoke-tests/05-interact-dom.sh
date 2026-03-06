@@ -43,51 +43,6 @@ FORMEOF
 
 _inject_smoke_form
 
-# Parse command_result content and determine whether interact failed.
-# Avoid brittle substring checks ("error", "failed") that can appear in benign
-# fields like page titles.
-_interact_failed() {
-    local raw="$1"
-
-    # Framework timeout sentinel string.
-    if echo "$raw" | grep -qi '^timeout waiting for '; then
-        return 0
-    fi
-
-    local payload
-    payload="$(extract_embedded_json "$raw" 2>/dev/null || true)"
-    if [ -z "$payload" ]; then
-        # If JSON extraction fails, only fail on explicit status markers.
-        if echo "$raw" | grep -qiE '"status":"(failed|error|timeout)"|"lifecycle_status":"(failed|error|timeout)"'; then
-            return 0
-        fi
-        return 1
-    fi
-
-    local verdict
-    verdict="$(
-        printf '%s' "$payload" | jq -r '
-            def norm(v): (v // "" | tostring | ascii_downcase);
-
-            (norm(.status)) as $status |
-            (norm(.lifecycle_status)) as $lifecycle |
-            (.isError == true or .result.isError == true) as $is_error |
-            (.result.success == false) as $success_false |
-            ((.error // .error_code // .failure_cause // "") | tostring | length > 0) as $has_error_signal |
-
-            if ($status == "failed" or $status == "error" or $status == "timeout" or
-                $lifecycle == "failed" or $lifecycle == "error" or $lifecycle == "timeout" or
-                $is_error or $success_false or
-                ($has_error_signal and $status != "complete"))
-            then "fail"
-            else "ok"
-            end
-        ' 2>/dev/null || echo "ok"
-    )"
-
-    [ "$verdict" = "fail" ]
-}
-
 # ── Test 5.1: Type text ─────────────────────────────────
 begin_test "5.1" "[BROWSER] Type text into input" \
     "interact(type) into #sf-name, then get_value to confirm" \
@@ -101,7 +56,7 @@ run_test_5_1() {
 
     interact_and_wait "type" '{"action":"type","selector":"#sf-name","text":"SmokeUser","clear":true,"reason":"Type into name field"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "type command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -137,7 +92,7 @@ run_test_5_2() {
     # Select 'user' (default is 'admin') to prove the value actually changes.
     interact_and_wait "select" '{"action":"select","selector":"#sf-role","value":"user","reason":"Select user role"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "select command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -267,7 +222,7 @@ run_test_5_7() {
 
     interact_and_wait "set_attribute" '{"action":"set_attribute","selector":"#sf-link","name":"data-smoke","value":"modified","reason":"Set data attribute"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "set_attribute command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -296,7 +251,7 @@ run_test_5_8() {
 
     interact_and_wait "scroll_to" '{"action":"scroll_to","selector":"#sf-scroll-target","reason":"Scroll to bottom target"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "scroll_to command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -329,7 +284,7 @@ run_test_5_9() {
 
     interact_and_wait "wait_for" '{"action":"wait_for","selector":"#delayed-el","timeout_ms":5000,"reason":"Wait for delayed element"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed\|timeout"; then
         fail "wait_for timed out or failed. Result: $(truncate "$INTERACT_RESULT" 200)"
     else
         pass "wait_for found #delayed-el within timeout."
@@ -353,7 +308,7 @@ run_test_5_10() {
     sleep 0.3
     interact_and_wait "key_press" '{"action":"key_press","selector":"#sf-name","text":"Tab","reason":"Press Tab key"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "key_press command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -434,7 +389,7 @@ run_test_5_12() {
 
     interact_and_wait "focus" '{"action":"focus","selector":"#sf-email","reason":"Focus email field"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "focus command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
@@ -579,7 +534,7 @@ run_test_5_16() {
     # Use the known unique selector for the actual recovery click to avoid brittle scope coupling.
     interact_and_wait "click" '{"action":"click","selector":"#sf-btn","reason":"Recover from element_not_found"}'
 
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "Recovery click failed after element_not_found. Result: $(truncate "$INTERACT_RESULT" 200)"
     else
         pass "element_not_found recovery succeeded via scoped list_interactive + click."
@@ -611,7 +566,7 @@ run_test_5_17() {
     fi
 
     interact_and_wait "click" '{"action":"click","selector":".dup-target","scope_selector":"#dup-a","reason":"Recover from ambiguous_target using scope"}'
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "Recovery click failed after ambiguous_target. Result: $(truncate "$INTERACT_RESULT" 220)"
     else
         pass "ambiguous_target recovery succeeded with scope_selector."
@@ -685,7 +640,7 @@ for e in elems:
     fi
 
     interact_and_wait "click" "{\"action\":\"click\",\"selector\":\"#sf-btn\",\"element_id\":\"$sf_btn_element_id\",\"reason\":\"Recover from stale_element_id with refreshed handle\"}"
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "Recovery click with refreshed element_id failed. Result: $(truncate "$INTERACT_RESULT" 220)"
     else
         pass "stale_element_id recovery succeeded with refreshed list_interactive handle."
@@ -718,7 +673,7 @@ run_test_5_19() {
     fi
 
     interact_and_wait "click" '{"action":"click","selector":"#sf-btn","scope_selector":"#smoke-form-dom","reason":"Recover from scope_not_found"}'
-    if _interact_failed "$INTERACT_RESULT"; then
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "Recovery click failed after scope_not_found. Result: $(truncate "$INTERACT_RESULT" 220)"
     else
         pass "scope_not_found recovery succeeded using valid fallback scope_selector."

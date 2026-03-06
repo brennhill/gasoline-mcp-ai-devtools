@@ -1,7 +1,9 @@
 /**
- * Purpose: Main background service worker hub -- owns debug logging, log handling, connection management, and batcher wiring.
- * Why: Central export point that delegates to specialized modules while owning cross-cutting concerns.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 /**
@@ -11,7 +13,10 @@
  * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
 
-import type { LogEntry, ChromeMessageSender } from '../types/index.js'
+import type {
+  LogEntry,
+  ChromeMessageSender
+} from '../types'
 
 import {
   getServerUrl,
@@ -32,7 +37,7 @@ import {
   isDebugMode,
   applyCaptureOverrides,
   type MutableConnectionStatus
-} from './state.js'
+} from './state'
 import {
   addDebugLogEntry,
   getDebugLog as getDebugLogEntries,
@@ -42,7 +47,7 @@ import {
   processErrorGroup,
   canTakeScreenshot,
   recordScreenshot
-} from './state-manager.js'
+} from './state-manager'
 import {
   createCircuitBreaker,
   RATE_LIMIT_CONFIG,
@@ -52,32 +57,36 @@ import {
   updateBadge,
   checkServerHealth,
   sendStatusPing
-} from './communication.js'
-import { getTrackedTabInfo } from './event-listeners.js'
-import { DebugCategory } from './debug.js'
-import { getRequestHeaders } from './server.js'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js'
+} from './communication'
+import { getTrackedTabInfo } from './event-listeners'
+import { DebugCategory } from './debug'
+import { getRequestHeaders } from './server'
+import {
+  saveStateSnapshot,
+  loadStateSnapshot,
+  listStateSnapshots,
+  deleteStateSnapshot
+} from './message-handlers'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl
-} from './pending-queries.js'
-import { updateVersionFromHealth } from './version-check.js'
-import { createBatcherInstances } from './batcher-instances.js'
-import { errorMessage } from '../lib/error-utils.js'
+} from './pending-queries'
+import { updateVersionFromHealth } from './version-check'
+import { createBatcherInstances } from './batcher-instances'
 import {
   startSyncClient as startSyncClientImpl,
   resetSyncClientConnection as resetSyncClientConnectionImpl
-} from './sync-manager.js'
+} from './sync-manager'
 
 // Re-export for consumers that already import from here
-export { DEFAULT_SERVER_URL } from '../lib/constants.js'
+export { DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // DEBUG LOGGING
 // =============================================================================
 
 // Re-export DebugCategory from debug module (to avoid circular dependencies)
-export { DebugCategory } from './debug.js'
+export { DebugCategory } from './debug'
 
 /**
  * Log a diagnostic message only when debug mode is enabled
@@ -94,9 +103,9 @@ export function diagnosticLog(message: string): void {
 export function debugLog(category: string, message: string, data: unknown = null): void {
   const timestamp = new Date().toISOString()
   // Cast category to DebugCategory - callers use DebugCategory constants
-  const entry: import('../types/index.js').DebugLogEntry = {
+  const entry: import('../types').DebugLogEntry = {
     ts: timestamp,
-    category: category as import('../types/index.js').DebugCategory,
+    category: category as import('../types').DebugCategory,
     message,
     ...(data !== null ? { data } : {})
   }
@@ -125,8 +134,6 @@ export function debugLog(category: string, message: string, data: unknown = null
   }
 }
 
-;(globalThis as { __GASOLINE_DEBUG_LOG__?: typeof debugLog }).__GASOLINE_DEBUG_LOG__ = debugLog
-
 /**
  * Get all debug log entries
  */
@@ -145,7 +152,7 @@ export function clearDebugLog(): void {
  * Export debug log as JSON string
  */
 export function exportDebugLog(): string {
-  return JSON.stringify( // WIRE-OK: local debug export, not sent to server
+  return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
       version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest().version : 'test',
@@ -235,7 +242,7 @@ async function tryResolveSourceMap(entry: LogEntry): Promise<LogEntry> {
       _enrichments: enrichments
     } as LogEntry
   } catch (err) {
-    debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: errorMessage(err) })
+    debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: (err as Error).message })
     return entry
   }
 }
@@ -307,13 +314,12 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
 
 export async function handleClearLogs(): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
-    if (!response.ok) return { success: false, error: `HTTP ${response.status}` }
+    await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
     setConnectionStatus({ entries: 0, errorCount: 0 })
     updateBadge(getConnectionStatus())
     return { success: true }
   } catch (error) {
-    return { success: false, error: errorMessage(error) }
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -333,7 +339,7 @@ function updateVersionFromHealthSafe(health: { version?: string; availableVersio
   try {
     updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog)
   } catch (err) {
-    debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: errorMessage(err) })
+    debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
   }
 }
 

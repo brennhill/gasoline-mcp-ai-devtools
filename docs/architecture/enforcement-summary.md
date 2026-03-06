@@ -1,9 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Architecture Enforcement - Complete Summary
@@ -106,7 +104,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
   - FAQ and troubleshooting
   - Maintenance procedures
 
-- [AGENTS.md](../../AGENTS.md)
+- [.claude/agents/principal-engineer.md](.claude/agents/principal-engineer.md)
   - Role-specific startup file
   - Loads ADRs automatically
   - Review checklist

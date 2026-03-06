@@ -1,5 +1,6 @@
-// Purpose: Tests for configure session store/load operations.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_configure_session_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_configure_session_test.go — Coverage tests for load session and test boundary handlers.
 package main
@@ -36,13 +37,12 @@ func TestToolLoadSessionContext_NilStore(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	// Force error path by setting sessionStoreImpl to nil on both the handler and sub-handler.
+	// Force error path by setting sessionStoreImpl to nil
 	env.handler.sessionStoreImpl = nil
-	env.handler.configureSessionHandler.sessionStoreImpl = nil
 
 	args := json.RawMessage(`{"what":"load"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.configureSession().toolLoadSessionContext(req, args)
+	resp := env.handler.toolLoadSessionContext(req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {

@@ -1,7 +1,7 @@
 # Product Update: Issue #42
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/42
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/42
 - Title: Implement configure(diff_sessions) — session snapshot comparison
 - Last Updated: 2026-02-14T14:06:39Z
 

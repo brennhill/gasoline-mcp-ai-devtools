@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
+	"github.com/dev-console/dev-console/internal/server"
 )
 
 // setupTestCapture creates a new Capture instance for testing.
@@ -32,11 +32,10 @@ func setupTestServer(t *testing.T) (*server.Server, string) {
 	return srv, logFile
 }
 
-// setupToolHandler creates a placeholder tool handler for integration tests.
-// Returns nil — integration tests that need real handler behavior should
-// construct their own via the cmd layer.
+// setupToolHandler is a placeholder that always returns nil.
+// NOTE: ToolHandler and MCPHandler have not been moved to internal packages.
+// Tests using this function should be skipped until the refactoring is complete.
 func setupToolHandler(t *testing.T, server *server.Server, capture *Capture) any {
 	t.Helper()
 	return nil
 }
-

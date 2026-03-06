@@ -1,6 +1,9 @@
 /**
- * Purpose: Manages sync client instance lifecycle (start/stop/reset) and wires dependencies to avoid circular imports with index.ts.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import { createSyncClient } from './sync-client.js';
 import { getLastCSPStatus } from './browser-actions.js';
@@ -9,7 +12,6 @@ import { updateBadge } from './communication.js';
 import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
 import { getTrackedTabInfo } from './event-listeners.js';
 import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js';
-import { errorMessage } from '../lib/error-utils.js';
 // =============================================================================
 // MODULE STATE
 // =============================================================================
@@ -56,7 +58,7 @@ export function startSyncClient(deps) {
             catch (err) {
                 deps.debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
                     type: command.type,
-                    error: errorMessage(err)
+                    error: err.message
                 });
             }
             finally {
@@ -126,8 +128,6 @@ export function startSyncClient(deps) {
                 tracked_tab_id: trackingInfo.trackedTabId || 0,
                 tracked_tab_url: trackingInfo.trackedTabUrl || '',
                 tracked_tab_title: trackingInfo.trackedTabTitle || '',
-                tab_status: trackingInfo.tabStatus || undefined,
-                tracked_tab_active: trackingInfo.trackedTabActive ?? undefined,
                 capture_logs: true,
                 capture_network: true,
                 capture_websocket: true,

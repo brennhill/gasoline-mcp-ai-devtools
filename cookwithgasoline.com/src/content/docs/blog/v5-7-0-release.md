@@ -4,9 +4,6 @@ description: "New graceful shutdown, PID file management, and sync protocol for 
 date: 2026-02-05T20:33:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v5']
 ---
 
 ## What's New in v5.7.0
@@ -59,4 +56,4 @@ npm install -g gasoline-mcp@5.7.0
 
 ## Full Changelog
 
-See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.0).
+See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.7.0).

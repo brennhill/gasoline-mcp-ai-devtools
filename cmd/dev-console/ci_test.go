@@ -1,5 +1,6 @@
-// Purpose: Tests for CI environment integration.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate ci_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // ci_test.go — Unit tests for CI endpoint pure functions.
 package main
@@ -8,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func TestComputeSnapshotStats(t *testing.T) {

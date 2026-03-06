@@ -1,6 +1,8 @@
 /**
- * Purpose: Main orchestration and barrel exports for the inject context -- combines API, observers, and message handlers for page-level capture.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 
 /**
@@ -9,13 +11,13 @@
  */
 
 // Re-export barrel pattern for tests and consumers
-export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize.js'
+export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize'
 export {
   getContextAnnotations,
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations
-} from '../lib/context.js'
+} from '../lib/context'
 export {
   getImplicitRole,
   isDynamicClass,
@@ -25,7 +27,7 @@ export {
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript
-} from '../lib/reproduction.js'
+} from '../lib/reproduction'
 export {
   recordAction,
   getActionBuffer,
@@ -40,7 +42,7 @@ export {
   setActionCaptureEnabled,
   installNavigationCapture,
   uninstallNavigationCapture
-} from '../lib/actions.js'
+} from '../lib/actions'
 export {
   parseResourceTiming,
   getNetworkWaterfall,
@@ -62,9 +64,8 @@ export {
   readResponseBodyWithTimeout,
   wrapFetchWithBodies,
   wrapXHRWithBodies,
-  unwrapXHR,
-  adoptEarlyBodies
-} from '../lib/network.js'
+  unwrapXHR
+} from '../lib/network'
 export {
   getPerformanceMarks,
   getPerformanceMeasures,
@@ -76,9 +77,9 @@ export {
   getPerformanceSnapshotForError,
   setPerformanceMarksEnabled,
   isPerformanceMarksEnabled
-} from '../lib/performance.js'
-export { postLog } from '../lib/bridge.js'
-export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js'
+} from '../lib/performance'
+export { postLog } from '../lib/bridge'
+export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 export {
   parseStackFrames,
   parseSourceMap,
@@ -94,8 +95,8 @@ export {
   setSourceMapCache,
   getSourceMapCache,
   getSourceMapCacheSize
-} from '../lib/ai-context.js'
-export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js'
+} from '../lib/ai-context'
+export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
 export {
   getSize,
   formatPayload,
@@ -107,14 +108,8 @@ export {
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
   resetForTesting
-} from '../lib/websocket.js'
-export {
-  executeDOMQuery,
-  getPageInfo,
-  runAxeAudit,
-  runAxeAuditWithTimeout,
-  formatAxeResults
-} from '../lib/dom-queries.js'
+} from '../lib/websocket'
+export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries'
 export {
   mapInitiatorType,
   aggregateResourceTiming,
@@ -129,13 +124,13 @@ export {
   sendPerformanceSnapshot,
   isPerformanceSnapshotEnabled,
   setPerformanceSnapshotEnabled
-} from '../lib/perf-snapshot.js'
+} from '../lib/perf-snapshot'
 
 // Re-export constants that tests import from inject.js
-export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js'
+export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants'
 
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api.js'
+export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api'
 
 // Export observer module
 export {
@@ -153,10 +148,10 @@ export {
   shouldDeferIntercepts,
   checkMemoryPressure,
   type DeferralState
-} from './observers.js'
+} from './observers'
 
 // Export message handlers module
-export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js'
+export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers'
 
 // Export state management functions
 export {
@@ -167,13 +162,13 @@ export {
   type RestoreStateResult,
   type RestoredCounts,
   type HighlightResult
-} from './state.js'
+} from './state'
 
-import { installGasolineAPI } from './api.js'
-import { installPhase1 } from './observers.js'
-import { installMessageListener } from './message-handlers.js'
-import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state.js'
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js'
+import { installGasolineAPI } from './api'
+import { installPhase1 } from './observers'
+import { installMessageListener } from './message-handlers'
+import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state'
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 
 /**
  * Auto-install when loaded in browser

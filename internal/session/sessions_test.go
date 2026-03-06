@@ -1,4 +1,5 @@
-// Purpose: Tests for session lifecycle management.
+// Purpose: Validate sessions_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 package session
@@ -9,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // ============================================
@@ -21,7 +22,7 @@ type mockCaptureState struct {
 	consoleWarnings []SnapshotError
 	networkRequests []SnapshotNetworkRequest
 	wsConnections   []SnapshotWSConnection
-	performance     *performance.Snapshot
+	performance     *performance.PerformanceSnapshot
 	pageURL         string
 }
 
@@ -53,7 +54,7 @@ func (m *mockCaptureState) GetWSConnections() []SnapshotWSConnection {
 	return m.wsConnections
 }
 
-func (m *mockCaptureState) GetPerformance() *performance.Snapshot {
+func (m *mockCaptureState) GetPerformance() *performance.PerformanceSnapshot {
 	return m.performance
 }
 
@@ -81,13 +82,13 @@ func TestSessionManager_CaptureSnapshot(t *testing.T) {
 		wsConnections: []SnapshotWSConnection{
 			{URL: "ws://localhost:8080/ws", State: "open"},
 		},
-		performance: &performance.Snapshot{
+		performance: &performance.PerformanceSnapshot{
 			URL: "http://localhost:3000/dashboard",
-			Timing: performance.Timing{
-				Load:             1100,
-				TimeToFirstByte:  200,
-				DomContentLoaded: 800,
-				DomInteractive:   750,
+			Timing: performance.PerformanceTiming{
+				Load:               1100,
+				TimeToFirstByte:    200,
+				DomContentLoaded:   800,
+				DomInteractive:     750,
 			},
 			Network: performance.NetworkSummary{
 				RequestCount: 12,
@@ -441,14 +442,14 @@ func TestSessionManager_ComparePerformanceRegression(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 1100, TimeToFirstByte: 200},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing: performance.PerformanceTiming{Load: 1100, TimeToFirstByte: 200},
 		Network: performance.NetworkSummary{RequestCount: 12, TransferSize: 340000},
 	}
 	sm.Capture("before", "")
 
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 3200, TimeToFirstByte: 800},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing: performance.PerformanceTiming{Load: 3200, TimeToFirstByte: 800},
 		Network: performance.NetworkSummary{RequestCount: 47, TransferSize: 2400000},
 	}
 	sm.Capture("after", "")
@@ -600,14 +601,14 @@ func TestSessionManager_VerdictRegressedByPerformance(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 1000},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing:  performance.PerformanceTiming{Load: 1000},
 		Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 100000},
 	}
 	sm.Capture("before", "")
 
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 3000},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing:  performance.PerformanceTiming{Load: 3000},
 		Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 100000},
 	}
 	sm.Capture("after", "")
@@ -898,15 +899,15 @@ func TestSessionManager_ComparePerformanceNoRegression(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 1000},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing:  performance.PerformanceTiming{Load: 1000},
 		Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 100000},
 	}
 	sm.Capture("before", "")
 
 	// Slightly faster — no regression
-	mock.performance = &performance.Snapshot{
-		Timing:  performance.Timing{Load: 900},
+	mock.performance = &performance.PerformanceSnapshot{
+		Timing:  performance.PerformanceTiming{Load: 900},
 		Network: performance.NetworkSummary{RequestCount: 10, TransferSize: 100000},
 	}
 	sm.Capture("after", "")
@@ -1183,9 +1184,9 @@ func TestHandleDiffSessions_URLFilter(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	params := map[string]any{
-		"action": "capture",
-		"name":   "filtered",
-		"url":    "/api/",
+		"action":     "capture",
+		"name":       "filtered",
+		"url": "/api/",
 	}
 	paramsJSON, _ := json.Marshal(params)
 

@@ -1,7 +1,7 @@
 # QA Plan: Issue #82
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/82
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/82
 - Title: Add visual regression / screenshot comparison
 
 ## QA Goal

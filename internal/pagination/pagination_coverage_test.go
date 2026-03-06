@@ -1,4 +1,5 @@
-// Purpose: Coverage-expansion tests for pagination and cursor edge cases and branch paths.
+// Purpose: Validate pagination_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_coverage_test.go — Targeted tests for uncovered branches in pagination package.
@@ -7,7 +8,7 @@ package pagination
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -105,6 +106,65 @@ func TestEntryStr_NonStringValue(t *testing.T) {
 		t.Errorf("entryStr(int value) = %q, want empty", got)
 	}
 }
+
+// ============================================
+// entryDisplay — int, int64, float64, missing key, string
+// ============================================
+
+func TestEntryDisplay_String(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"name": "hello"}
+	got := entryDisplay(entry, "name")
+	if got != "hello" {
+		t.Errorf("entryDisplay(string) = %q, want %q", got, "hello")
+	}
+}
+
+func TestEntryDisplay_Int(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"count": 42}
+	got := entryDisplay(entry, "count")
+	if got != "42" {
+		t.Errorf("entryDisplay(int) = %q, want %q", got, "42")
+	}
+}
+
+func TestEntryDisplay_Int64(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"big": int64(9999999999)}
+	got := entryDisplay(entry, "big")
+	if got != "9999999999" {
+		t.Errorf("entryDisplay(int64) = %q, want %q", got, "9999999999")
+	}
+}
+
+func TestEntryDisplay_Float64(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"tabId": float64(123)}
+	got := entryDisplay(entry, "tabId")
+	if got != "123" {
+		t.Errorf("entryDisplay(float64) = %q, want %q", got, "123")
+	}
+}
+
+func TestEntryDisplay_MissingKey(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"other": "value"}
+	got := entryDisplay(entry, "missing")
+	if got != "" {
+		t.Errorf("entryDisplay(missing key) = %q, want empty", got)
+	}
+}
+
+func TestEntryDisplay_UnsupportedType(t *testing.T) {
+	t.Parallel()
+	entry := LogEntry{"list": []string{"a", "b"}}
+	got := entryDisplay(entry, "list")
+	if got != "" {
+		t.Errorf("entryDisplay(unsupported type) = %q, want empty", got)
+	}
+}
+
 // ============================================
 // resolveCursorType — "since" branch
 // ============================================
@@ -256,7 +316,7 @@ func TestSerializeActionEntryWithSequence_AllOptionalFields(t *testing.T) {
 			SelectedValue: "option1",
 			SelectedText:  "Option 1",
 			ScrollY:       500,
-			TabID:         42,
+			TabId:         42,
 		},
 		Sequence:  10,
 		Timestamp: "2026-01-30T10:15:23Z",
@@ -338,7 +398,7 @@ func TestSerializeWebSocketEntryWithSequence_AllOptionalFields(t *testing.T) {
 			BinaryFormat:     "protobuf",
 			FormatConfidence: 0.95,
 			Sampled:          sampled,
-			TabID:            7,
+			TabId:            7,
 			Timestamp:        "2026-01-30T10:15:23Z",
 		},
 		Sequence:  100,
@@ -422,5 +482,66 @@ func TestSerializeWebSocketEntryWithSequence_NoOptionalFields(t *testing.T) {
 	}
 	if result["sequence"] != int64(1) {
 		t.Errorf("sequence = %v, want 1", result["sequence"])
+	}
+}
+
+// ============================================
+// SerializeLogEntryWithSequence — no tabId
+// ============================================
+
+func TestSerializeLogEntryWithSequence_NoTabId(t *testing.T) {
+	t.Parallel()
+	enriched := LogEntryWithSequence{
+		Entry: LogEntry{
+			"level":   "info",
+			"message": "test",
+			"source":  "app.js",
+		},
+		Sequence:  1,
+		Timestamp: "2026-01-30T10:15:23Z",
+	}
+	result := SerializeLogEntryWithSequence(enriched)
+	if _, exists := result["tab_id"]; exists {
+		t.Errorf("tab_id should not be present when not in entry, got %v", result["tab_id"])
+	}
+}
+
+// ============================================
+// SerializeLogEntryWithSequence — tabId as int (entryDisplay int branch)
+// ============================================
+
+func TestSerializeLogEntryWithSequence_TabIdAsInt(t *testing.T) {
+	t.Parallel()
+	enriched := LogEntryWithSequence{
+		Entry: LogEntry{
+			"level":   "info",
+			"message": "test",
+			"source":  "app.js",
+			"tabId":   42, // int type
+		},
+		Sequence:  1,
+		Timestamp: "2026-01-30T10:15:23Z",
+	}
+	result := SerializeLogEntryWithSequence(enriched)
+	if result["tab_id"] != "42" {
+		t.Errorf("tab_id = %v, want '42'", result["tab_id"])
+	}
+}
+
+func TestSerializeLogEntryWithSequence_TabIdAsInt64(t *testing.T) {
+	t.Parallel()
+	enriched := LogEntryWithSequence{
+		Entry: LogEntry{
+			"level":   "info",
+			"message": "test",
+			"source":  "app.js",
+			"tabId":   int64(99),
+		},
+		Sequence:  1,
+		Timestamp: "2026-01-30T10:15:23Z",
+	}
+	result := SerializeLogEntryWithSequence(enriched)
+	if result["tab_id"] != "99" {
+		t.Errorf("tab_id = %v, want '99'", result["tab_id"])
 	}
 }

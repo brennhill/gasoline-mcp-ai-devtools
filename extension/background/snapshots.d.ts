@@ -1,8 +1,11 @@
 /**
- * Purpose: Fetches and caches source maps, parses stack frames with VLQ decoding, and resolves stack traces for better error messages.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types/index.js';
+import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types';
 /** Parsed stack frame */
 interface ParsedStackFrame {
     functionName: string;

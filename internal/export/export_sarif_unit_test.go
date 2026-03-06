@@ -1,4 +1,5 @@
-// Purpose: Unit tests for HAR/SARIF export export sarif logic.
+// Purpose: Validate export_sarif_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 
 package export
@@ -152,11 +153,20 @@ func TestSaveSARIFToFile_PathGuardsAndWrite(t *testing.T) {
 		Runs:    []SARIFRun{},
 	}
 
-	// Allowed: under current working directory
-	cwdPath := filepath.Join(".tmp-sarif-tests", strings.ReplaceAll(t.Name(), "/", "_"), "audit.sarif")
+	origWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	cwd := t.TempDir()
+	if err := os.Chdir(cwd); err != nil {
+		t.Fatalf("chdir temp cwd: %v", err)
+	}
 	t.Cleanup(func() {
-		_ = os.RemoveAll(filepath.Dir(cwdPath))
+		_ = os.Chdir(origWD)
 	})
+
+	// Allowed: under current working directory
+	cwdPath := filepath.Join("reports", "audit.sarif")
 	if err := saveSARIFToFile(log, cwdPath); err != nil {
 		t.Fatalf("save under cwd should succeed: %v", err)
 	}

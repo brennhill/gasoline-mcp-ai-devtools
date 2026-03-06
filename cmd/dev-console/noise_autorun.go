@@ -1,7 +1,3 @@
-// Purpose: Debounces and triggers automatic noise detection on navigation events when GASOLINE_NOISE_AUTORUN is enabled.
-// Why: Coalesces rapid SPA route changes into a single noise-detection pass to avoid redundant analysis.
-// Docs: docs/features/feature/noise-filtering/index.md
-
 package main
 
 import (
@@ -10,30 +6,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // noiseAutoDetectInterval is the minimum time between automatic noise detection runs.
 // Navigation events closer together than this are coalesced into a single run.
 const noiseAutoDetectInterval = 30 * time.Second
 
-// noiseFirstConnectDefaultDelay allows initial capture buffers to warm before auto-detect.
-const noiseFirstConnectDefaultDelay = 2 * time.Second
-
-// noiseFirstConnectTestDelay keeps unit tests fast while preserving callback semantics.
-const noiseFirstConnectTestDelay = 10 * time.Millisecond
-
 // noiseAutoDetectEnvVar gates navigation-triggered noise auto-detection.
 // Default is off; set to 1/true/on/yes to enable.
 const noiseAutoDetectEnvVar = "GASOLINE_NOISE_AUTORUN"
-
-func noiseFirstConnectDelay() time.Duration {
-	if strings.HasSuffix(os.Args[0], ".test") {
-		return noiseFirstConnectTestDelay
-	}
-	return noiseFirstConnectDefaultDelay
-}
 
 // noiseAutoRunner debounces automatic noise detection. Multiple rapid navigation
 // events (e.g., SPA route changes) are coalesced: only one auto-detect runs per
@@ -63,36 +46,30 @@ func (r *noiseAutoRunner) schedule() {
 		return
 	}
 
-	immediate, delay, shouldRun := r.planRunSchedule(time.Now())
-	if !shouldRun {
+	r.mu.Lock()
+	if r.pending {
+		r.mu.Unlock()
 		return
 	}
-	if immediate {
-		// Enough time has passed — run immediately in background.
+
+	elapsed := time.Since(r.lastRun)
+	if elapsed >= r.interval {
+		// Enough time has passed — run immediately in background
+		r.pending = true
+		r.mu.Unlock()
 		util.SafeGo(r.run)
 		return
 	}
 
-	// Schedule for after the remaining debounce period.
+	// Schedule for after the remaining debounce period
+	r.pending = true
+	delay := r.interval - elapsed
+	r.mu.Unlock()
+
 	util.SafeGo(func() {
 		time.Sleep(delay)
 		r.run()
 	})
-}
-
-func (r *noiseAutoRunner) planRunSchedule(now time.Time) (immediate bool, delay time.Duration, shouldRun bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.pending {
-		return false, 0, false
-	}
-
-	elapsed := now.Sub(r.lastRun)
-	r.pending = true
-	if elapsed >= r.interval {
-		return true, 0, true
-	}
-	return false, r.interval - elapsed, true
 }
 
 // run executes the function and resets the debounce state.
@@ -100,9 +77,9 @@ func (r *noiseAutoRunner) run() {
 	r.fn()
 
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.lastRun = time.Now()
 	r.pending = false
+	r.mu.Unlock()
 }
 
 // wireNoiseAutoDetect connects automatic noise detection to navigation events.
@@ -126,46 +103,6 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 	stderrf("[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
 }
 
-// wireNoiseFirstConnect sets up a lifecycle callback to run noise auto-detection
-// once on the first extension connection. This ensures sessions start with common
-// noise patterns suppressed without requiring the LLM to call auto_detect.
-// Issue #264: Auto-detect noise rules on first connection.
-//
-// Implementation: chains with any existing lifecycle callback instead of replacing it.
-func wireNoiseFirstConnect(h *ToolHandler) {
-	if h.capture == nil || h.noiseConfig == nil {
-		return
-	}
-
-	var once sync.Once
-
-	h.capture.AddLifecycleCallback(func(event string, data map[string]any) {
-		if event != "extension_connected" {
-			return
-		}
-		once.Do(func() {
-			delay := noiseFirstConnectDelay()
-			// Small delay to let the first batch of logs/network data arrive
-			// before running auto-detection, so there's data to analyze.
-			// Respects shutdownCtx so the goroutine exits promptly on server shutdown.
-			util.SafeGo(func() {
-				select {
-				case <-time.After(delay):
-				case <-h.shutdownCtx.Done():
-					return
-				}
-				fn := h.noiseFirstConnectFn
-				if fn != nil {
-					fn()
-					return
-				}
-				h.runNoiseAutoDetect()
-				stderrf("[gasoline] noise auto-detect: ran on first extension connection\n")
-			})
-		})
-	})
-}
-
 func noiseAutoDetectEnabled() bool {
 	val := strings.ToLower(strings.TrimSpace(os.Getenv(noiseAutoDetectEnvVar)))
 	return val == "1" || val == "true" || val == "yes" || val == "on"
@@ -184,9 +121,9 @@ func (h *ToolHandler) IsConsoleNoise(entry map[string]any) bool {
 // This is the same logic as noiseActionAutoDetect() but designed for background use.
 func (h *ToolHandler) runNoiseAutoDetect() {
 	h.server.mu.RLock()
-	consoleEntries := make([]noise.LogEntry, len(h.server.entries))
+	consoleEntries := make([]ai.LogEntry, len(h.server.entries))
 	for i, e := range h.server.entries {
-		consoleEntries[i] = noise.LogEntry(e)
+		consoleEntries[i] = ai.LogEntry(e)
 	}
 	h.server.mu.RUnlock()
 
@@ -195,7 +132,7 @@ func (h *ToolHandler) runNoiseAutoDetect() {
 
 	proposals := h.noiseConfig.AutoDetect(consoleEntries, networkBodies, wsEvents)
 	if len(proposals) > 0 {
-		var toApply []noise.NoiseRule
+		var toApply []ai.NoiseRule
 		for _, p := range proposals {
 			if p.Confidence >= 0.9 {
 				toApply = append(toApply, p.Rule)

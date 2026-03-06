@@ -1,50 +1,15 @@
 /**
- * Purpose: Acquires tab capture streams, manages offscreen documents, and handles user gesture flow for video recording.
- * Docs: docs/features/feature/flow-recording/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 // recording-capture.ts — Tab capture stream acquisition, offscreen document management, and user gesture flow.
 // Extracted from recording.ts to separate media plumbing from recording lifecycle.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
-import { sendTabToast } from './event-listeners.js';
-import { errorMessage } from '../lib/error-utils.js';
-import { delay } from '../lib/timeout-utils.js';
-import { buildRecordingToastLabel } from './recording-utils.js';
 const LOG = '[Gasoline REC]';
-const AWAITING_APPROVAL_BADGE_TEXT = '?';
-const AWAITING_APPROVAL_BADGE_COLOR = '#d29922';
-let awaitingApprovalBadgeInterval = null;
-function applyAwaitingApprovalBadge() {
-    if (!chrome.action)
-        return;
-    try {
-        chrome.action.setBadgeText({ text: AWAITING_APPROVAL_BADGE_TEXT });
-        chrome.action.setBadgeBackgroundColor({ color: AWAITING_APPROVAL_BADGE_COLOR });
-    }
-    catch {
-        // Badge updates are best-effort.
-    }
-}
-function startAwaitingApprovalBadge() {
-    stopAwaitingApprovalBadge();
-    applyAwaitingApprovalBadge();
-    // Re-apply periodically so health badge updates don't overwrite waiting state.
-    awaitingApprovalBadgeInterval = setInterval(applyAwaitingApprovalBadge, scaleTimeout(1000));
-}
-function stopAwaitingApprovalBadge() {
-    if (awaitingApprovalBadgeInterval) {
-        clearInterval(awaitingApprovalBadgeInterval);
-        awaitingApprovalBadgeInterval = null;
-    }
-    if (!chrome.action)
-        return;
-    try {
-        chrome.action.setBadgeText({ text: '' });
-    }
-    catch {
-        // Badge updates are best-effort.
-    }
-}
 /** Ensure the offscreen document exists for recording. */
 export async function ensureOffscreenDocument() {
     // Check if an offscreen document already exists
@@ -68,7 +33,7 @@ export async function getStreamIdWithRecovery(tabId) {
         return await getStreamId(tabId);
     }
     catch (err) {
-        if (errorMessage(err)?.includes('active stream')) {
+        if (err.message?.includes('active stream')) {
             console.warn(LOG, 'Active stream detected — closing offscreen document to release leaked streams');
             try {
                 await chrome.offscreen.closeDocument();
@@ -77,7 +42,7 @@ export async function getStreamIdWithRecovery(tabId) {
                 /* might not exist */
             }
             // Brief pause to let Chrome release the capture
-            await delay(scaleTimeout(200));
+            await new Promise((r) => setTimeout(r, scaleTimeout(200)));
             console.log(LOG, 'Retrying getMediaStreamId after cleanup');
             return await getStreamId(tabId);
         }
@@ -101,59 +66,62 @@ function getStreamId(tabId) {
 }
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to open the Gasoline popup and approve.
+ * Shows a toast prompting the user to click the Gasoline icon.
  */
 export async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
     chrome.tabs.update(tab.id, { active: true });
-    sendTabToast(tab.id, `\u2191 Open Gasoline Popup`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
+    chrome.tabs
+        .sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: `\u2191 Click Gasoline Icon`,
+        detail: `Grant ${mediaType.toLowerCase()} recording permission`,
+        state: 'audio',
+        duration_ms: scaleTimeout(30000)
+    })
+        .catch(() => { });
     await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } });
-    startAwaitingApprovalBadge();
-    let gestureResult;
-    try {
-        gestureResult = await waitForRecordingGesture(scaleTimeout(30000));
-    }
-    finally {
-        stopAwaitingApprovalBadge();
-        await chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
-    }
-    if (gestureResult === 'denied') {
-        console.log(LOG, 'GESTURE_DENIED: User denied recording request from popup');
+    const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000));
+    await chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+    if (!gestureGranted) {
+        console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
+        chrome.tabs
+            .sendMessage(tab.id, {
+            type: 'GASOLINE_ACTION_TOAST',
+            text: `\u2191 Click Gasoline Icon`,
+            detail: `Grant ${mediaType.toLowerCase()} recording permission`,
+            state: 'audio',
+            duration_ms: scaleTimeout(8000)
+        })
+            .catch(() => { });
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${mediaType} recording request was denied in the Gasoline popup.`
+            error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline extension icon to grant ${mediaType.toLowerCase()} recording permission, then try again.`
         };
     }
-    if (gestureResult !== 'granted') {
-        console.log(LOG, 'GESTURE_TIMEOUT: User did not approve recording request within 30s');
-        sendTabToast(tab.id, `\u2191 Open Gasoline Popup`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(8000));
-        return {
-            status: 'error',
-            name: '',
-            error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Gasoline popup, click Approve, then try again.`
-        };
-    }
-    sendTabToast(tab.id, buildRecordingToastLabel(tab.url), '', 'success', scaleTimeout(2000));
+    chrome.tabs
+        .sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: 'Recording',
+        detail: 'Recording started',
+        state: 'success',
+        duration_ms: scaleTimeout(2000)
+    })
+        .catch(() => { });
     return { status: 'ok', name };
 }
-/** Wait for popup approval decision (grant/deny) with timeout fallback. */
+/** Wait for user to click extension icon (popup sends RECORDING_GESTURE_GRANTED). */
 function waitForRecordingGesture(timeoutMs) {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             chrome.runtime.onMessage.removeListener(listener);
-            resolve('timeout');
+            resolve(false);
         }, timeoutMs);
         const listener = (message) => {
             if (message.type === 'RECORDING_GESTURE_GRANTED') {
                 clearTimeout(timeout);
                 chrome.runtime.onMessage.removeListener(listener);
-                resolve('granted');
-                return;
-            }
-            if (message.type === 'RECORDING_GESTURE_DENIED') {
-                clearTimeout(timeout);
-                chrome.runtime.onMessage.removeListener(listener);
-                resolve('denied');
+                resolve(true);
             }
         };
         chrome.runtime.onMessage.addListener(listener);

@@ -1,11 +1,9 @@
 ---
 feature: test-generation
-version: 0.7.12
+version: v1.0
 doc_type: qa-plan
 feature_id: feature-test-generation
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — Comprehensive QA Plan

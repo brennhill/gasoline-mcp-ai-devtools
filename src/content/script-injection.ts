@@ -1,6 +1,8 @@
 /**
- * Purpose: Injects inject.bundled.js into the page MAIN world and syncs stored settings to the inject context.
- * Docs: docs/features/feature/csp-safe-execution/index.md
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 
 /**
@@ -8,8 +10,8 @@
  * Injects capture script into the page context and syncs stored settings
  */
 
-import type { WebSocketCaptureMode } from '../types/index.js'
-import { SettingName } from '../lib/constants.js'
+import type { WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false
@@ -212,7 +214,9 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
       resolve(ok)
     }
 
-    const onMessage = (event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>) => {
+    const onMessage = (
+      event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>
+    ) => {
       if (event.source !== window || event.origin !== window.location.origin) return
       if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG') return
       if (event.data?.requestId !== requestId) return

@@ -1,5 +1,6 @@
-// Purpose: Coverage-expansion tests for error clustering and API schema analysis edge cases and branch paths.
-// Docs: docs/features/feature/api-schema/index.md
+// Purpose: Validate branch_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // branch_coverage_test.go — Branch coverage tests for partially-covered functions.
 package analysis
@@ -8,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================

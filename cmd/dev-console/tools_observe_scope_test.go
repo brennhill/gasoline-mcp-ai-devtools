@@ -1,5 +1,6 @@
-// Purpose: Tests for observe tool scope filtering.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_observe_scope_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_observe_scope_test.go — Tests for scope filtering in errors/logs observe handlers.
 package main
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 func TestGetBrowserErrors_InvalidScope(t *testing.T) {
@@ -23,11 +24,11 @@ func TestGetBrowserErrors_InvalidScope(t *testing.T) {
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if result.IsError {
-		t.Error("did not expect hard error for invalid scope")
+	if !result.IsError {
+		t.Error("expected error for invalid scope")
 	}
-	if !strings.Contains(result.Content[0].Text, `"param_hint":"Unknown scope bogus ignored`) {
-		t.Errorf("expected scope param_hint, got: %s", result.Content[0].Text)
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Errorf("expected invalid_param error, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -60,11 +61,8 @@ func TestGetBrowserLogs_InvalidScope(t *testing.T) {
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if result.IsError {
-		t.Error("did not expect hard error for invalid scope")
-	}
-	if !strings.Contains(result.Content[0].Text, `"param_hint":"Unknown scope invalid ignored`) {
-		t.Errorf("expected scope param_hint, got: %s", result.Content[0].Text)
+	if !result.IsError {
+		t.Error("expected error for invalid scope")
 	}
 }
 

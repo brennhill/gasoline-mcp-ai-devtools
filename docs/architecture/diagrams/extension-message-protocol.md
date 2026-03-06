@@ -1,9 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Extension Message Protocol: All Message Types & Flows
@@ -96,8 +94,8 @@ Content-Type: application/json
     },
     {
       "id": "q-43",
-      "correlation_id": "screen_recording_start_12346_67891",
-      "action": "screen_recording_start",
+      "correlation_id": "record_start_12346_67891",
+      "action": "record_start",
       "name": "user-flow",
       "created_at": 1707346805000
     }
@@ -110,7 +108,7 @@ Content-Type: application/json
 - `queries` - Array of pending queries
 - `id` - Query ID (unique within server instance)
 - `correlation_id` - AI request tracking ID
-- `action` - Type: execute_js, query_dom, execute_a11y_audit, screen_recording_start, screen_recording_stop
+- `action` - Type: execute_js, query_dom, execute_a11y_audit, record_start, record_stop
 - `script` / `selector` / `audit` - Action-specific parameters
 - `timeout_ms` - How long before query expires (usually 30000ms)
 - `created_at` - Timestamp when query was created
@@ -544,8 +542,8 @@ All timestamps are **milliseconds since Unix epoch** (consistent with JavaScript
 | `execute_js` | script string | return value (any JSON) | 30s |
 | `analyze({what: "dom"})` | CSS selector | array of elements + text | 30s |
 | `execute_a11y_audit` | scope selector | accessibility tree | 60s |
-| `screen_recording_start` | recording name | {status: 'recording'} | 5s |
-| `screen_recording_stop` | none | {status: 'saved'} | 30s |
+| `record_start` | recording name | {status: 'recording'} | 5s |
+| `record_stop` | none | {status: 'saved'} | 30s |
 
 ---
 

@@ -1,4 +1,5 @@
-// Purpose: Tests for cursor encoding, decoding, and boundary handling.
+// Purpose: Validate cursor_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // cursor_test.go — Unit tests for cursor-based pagination

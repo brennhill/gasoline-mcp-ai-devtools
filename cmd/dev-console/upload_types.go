@@ -1,10 +1,10 @@
-// Purpose: Re-exports upload request/response wire types (FileReadRequest, FileDialogInjectRequest, etc.) from internal/upload.
-// Why: Keeps wire type definitions in internal/upload while making them available as short aliases in cmd.
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+import "github.com/dev-console/dev-console/internal/upload"
 
 // ============================================
 // Type Aliases

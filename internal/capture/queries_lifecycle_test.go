@@ -1,4 +1,5 @@
-// Purpose: Tests for capture query lifecycle management.
+// Purpose: Validate queries_lifecycle_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // queries_lifecycle_test.go — Tests for query goroutine lifecycle fixes.
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // ============================================

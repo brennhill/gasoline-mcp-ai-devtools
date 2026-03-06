@@ -7,7 +7,7 @@
  * @fileoverview Settings Module
  * Handles log level, WebSocket mode, and clear logs functionality
  */
-import type { WebSocketCaptureMode } from '../types/index.js';
+import type { WebSocketCaptureMode } from '../types';
 /**
  * Handle WebSocket mode change
  */

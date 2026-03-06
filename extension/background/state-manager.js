@@ -1,6 +1,9 @@
 /**
- * Purpose: Facade re-exporting state management functions from error-groups, cache-limits, and snapshots sub-modules.
- * Why: Provides a single import point so consumers do not need to know which sub-module owns each function.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview State Manager Facade
@@ -26,14 +29,12 @@ export function getDebugLog() {
     return [...debugLogBuffer];
 }
 /**
- * Add entry to debug log buffer.
- * Uses batch splice (25% eviction) instead of per-entry shift() to amortize O(n) cost.
+ * Add entry to debug log buffer
  */
 export function addDebugLogEntry(entry) {
     debugLogBuffer.push(entry);
     if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
-        const evictCount = Math.ceil(DEBUG_LOG_MAX_ENTRIES * 0.25);
-        debugLogBuffer.splice(0, evictCount);
+        debugLogBuffer.shift();
     }
 }
 /**

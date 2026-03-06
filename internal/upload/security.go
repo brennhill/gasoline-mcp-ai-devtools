@@ -1,4 +1,5 @@
-// Purpose: Enforces file path security: upload-dir scoping, symlink resolution, sensitive path denylist, and case-fold matching.
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload
@@ -26,7 +27,9 @@ type Security struct {
 	userDenyPatterns []string
 }
 
-// NewSecurity creates a Security directly without startup validation (test use only).
+// NewSecurity creates a Security with the given upload directory and deny patterns.
+// For production use, prefer ValidateUploadDir which also validates the directory.
+// This constructor is useful for tests that need direct control.
 func NewSecurity(uploadDir string, userDenyPatterns []string) *Security {
 	return &Security{uploadDir: uploadDir, userDenyPatterns: userDenyPatterns}
 }
@@ -88,12 +91,13 @@ func resolveAndValidateDir(rawDir string) (string, error) {
 
 // rejectRootOrHome rejects paths that are filesystem roots or user home directories.
 func rejectRootOrHome(resolved string) error {
-	// Reject filesystem roots.
+	// Reject filesystem roots
 	roots := []string{"/", "/home", "/Users", "/root"}
 	if runtime.GOOS == "windows" {
-		for _, drive := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
-			roots = append(roots, fmt.Sprintf("%c:\\", drive))
-			roots = append(roots, fmt.Sprintf("%c:\\Users", drive))
+		// Add common Windows roots
+		for _, d := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+			roots = append(roots, fmt.Sprintf("%c:\\", d))
+			roots = append(roots, fmt.Sprintf("%c:\\Users", d))
 		}
 	}
 	for _, root := range roots {
@@ -102,7 +106,7 @@ func rejectRootOrHome(resolved string) error {
 		}
 	}
 
-	// Reject user home directory itself.
+	// Reject user home directory itself
 	home, err := os.UserHomeDir()
 	if err == nil {
 		homeResolved, err := filepath.EvalSymlinks(home)
@@ -188,6 +192,7 @@ func (s *Security) checkUploadDirConstraint(rawPath, resolved string, required b
 // IsWithinDir checks if filePath is within or equal to dirPath.
 // Uses case-insensitive comparison on macOS/Windows.
 func IsWithinDir(filePath, dirPath string) bool {
+	// Ensure dirPath ends with separator for prefix matching
 	dirWithSep := dirPath
 	if !strings.HasSuffix(dirWithSep, string(filepath.Separator)) {
 		dirWithSep += string(filepath.Separator)
@@ -224,4 +229,203 @@ type UploadDirRequiredError struct{}
 
 func (e *UploadDirRequiredError) Error() string {
 	return "This upload stage requires --upload-dir to be set. Restart the server with --upload-dir=/path/to/folder and move your files there."
+}
+
+// ============================================
+// Sensitive Path Denylist
+// ============================================
+
+// BuiltinDenyPatterns are hardcoded sensitive path patterns that cannot be removed.
+// Patterns use filepath.Match syntax. Prefix ~ is expanded to the user's home directory.
+var BuiltinDenyPatterns []DenyPattern
+
+// DenyPattern represents a sensitive path pattern.
+type DenyPattern struct {
+	Prefix  string // resolved absolute path prefix to match
+	Display string // display pattern (with ~ for error messages)
+	Desc    string // human-readable description
+}
+
+// #lizard forgives
+func init() {
+	home, _ := os.UserHomeDir()
+
+	// Home-relative patterns (only added if $HOME is available)
+	if home != "" {
+		homePatterns := []struct {
+			pattern string
+			desc    string
+		}{
+			// SSH & GPG keys
+			{"~/.ssh", "SSH directory"},
+			{"~/.gnupg", "GPG directory"},
+
+			// Cloud credentials
+			{"~/.aws", "AWS credentials"},
+			{"~/.config/gcloud", "GCP credentials"},
+			{"~/.azure", "Azure credentials"},
+			{"~/.config/doctl", "DigitalOcean credentials"},
+			{"~/.kube", "Kubernetes config"},
+
+			// Shell history
+			{"~/.bash_history", "shell history"},
+			{"~/.zsh_history", "shell history"},
+			{"~/.node_repl_history", "shell history"},
+			{"~/.python_history", "shell history"},
+
+			// Browser data
+			{"~/Library/Application Support/Google/Chrome", "browser data"},
+			{"~/.config/google-chrome", "browser data"},
+			{"~/.config/chromium", "browser data"},
+			{"~/Library/Application Support/Firefox", "browser data"},
+			{"~/.mozilla/firefox", "browser data"},
+
+			// Package manager auth
+			{"~/.npmrc", "npm credentials"},
+			{"~/.pypirc", "PyPI credentials"},
+			{"~/.docker/config.json", "Docker credentials"},
+			{"~/.config/gh/hosts.yml", "GitHub CLI credentials"},
+		}
+		for _, r := range homePatterns {
+			expanded := strings.Replace(r.pattern, "~", home, 1)
+			expanded = filepath.Clean(expanded)
+			BuiltinDenyPatterns = append(BuiltinDenyPatterns, DenyPattern{
+				Prefix:  expanded,
+				Display: r.pattern,
+				Desc:    r.desc,
+			})
+		}
+	}
+
+	// Absolute system paths (always active, no $HOME dependency).
+	systemPaths := []struct {
+		path string
+		desc string
+	}{
+		// System files
+		{"/etc/shadow", "system password file"},
+		{"/etc/passwd", "system user file"},
+		{"/etc/sudoers", "sudoers file"},
+		{"/proc", "proc filesystem"},
+		{"/sys", "sys filesystem"},
+
+		// Root user credentials (covers containers running as root)
+		{"/root/.ssh", "root SSH directory"},
+		{"/root/.gnupg", "root GPG directory"},
+		{"/root/.aws", "root AWS credentials"},
+		{"/root/.config/gcloud", "root GCP credentials"},
+		{"/root/.azure", "root Azure credentials"},
+		{"/root/.kube", "root Kubernetes config"},
+		{"/root/.npmrc", "root npm credentials"},
+		{"/root/.docker", "root Docker config"},
+		{"/root/.bash_history", "root shell history"},
+
+		// macOS system keychain
+		{"/Library/Keychains", "system keychain"},
+	}
+	for _, sp := range systemPaths {
+		BuiltinDenyPatterns = append(BuiltinDenyPatterns, DenyPattern{
+			Prefix:  filepath.Clean(sp.path),
+			Display: sp.path,
+			Desc:    sp.desc,
+		})
+	}
+
+	// Windows system paths
+	if runtime.GOOS == "windows" {
+		winPaths := []struct {
+			path string
+			desc string
+		}{
+			{`C:\Windows\System32\config`, "Windows registry hives"},
+			{`C:\Windows\System32\drivers\etc`, "Windows hosts file"},
+		}
+		for _, wp := range winPaths {
+			BuiltinDenyPatterns = append(BuiltinDenyPatterns, DenyPattern{
+				Prefix:  filepath.Clean(wp.path),
+				Display: wp.path,
+				Desc:    wp.desc,
+			})
+		}
+	}
+}
+
+// PathsEqualFold returns true if a == b, using case-insensitive comparison
+// on macOS and Windows (which have case-insensitive filesystems by default).
+func PathsEqualFold(a, b string) bool {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
+// PathHasPrefixFold returns true if s starts with prefix, using case-insensitive
+// comparison on macOS and Windows.
+func PathHasPrefixFold(s, prefix string) bool {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		return len(s) >= len(prefix) && strings.EqualFold(s[:len(prefix)], prefix)
+	}
+	return strings.HasPrefix(s, prefix)
+}
+
+// SensitiveExtensions maps file extensions to their denylist pattern display string.
+var SensitiveExtensions = map[string]string{
+	".pem": "**/*.pem", ".key": "**/*.key",
+	".p12": "**/*.p12", ".pfx": "**/*.pfx",
+	".keystore": "**/*.keystore",
+}
+
+// MatchesDenylist checks if a resolved path matches any built-in deny pattern.
+// Returns the matching display pattern and true if denied.
+func MatchesDenylist(resolvedPath string) (string, bool) {
+	if pattern, matched := matchesPrefixDenylist(resolvedPath); matched {
+		return pattern, true
+	}
+	return matchesBasenameDenylist(resolvedPath)
+}
+
+// matchesPrefixDenylist checks against directory-prefix-based deny patterns.
+func matchesPrefixDenylist(resolvedPath string) (string, bool) {
+	for _, dp := range BuiltinDenyPatterns {
+		if PathsEqualFold(resolvedPath, dp.Prefix) || PathHasPrefixFold(resolvedPath, dp.Prefix+string(filepath.Separator)) {
+			return dp.Display, true
+		}
+	}
+	return "", false
+}
+
+// matchesBasenameDenylist checks against filename-based deny patterns.
+func matchesBasenameDenylist(resolvedPath string) (string, bool) {
+	baseLower := strings.ToLower(filepath.Base(resolvedPath))
+
+	if baseLower == ".env" || strings.HasPrefix(baseLower, ".env.") {
+		return "**/.env*", true
+	}
+
+	ext := strings.ToLower(filepath.Ext(resolvedPath))
+	if pattern, ok := SensitiveExtensions[ext]; ok {
+		return pattern, true
+	}
+
+	dir := filepath.Dir(resolvedPath)
+	if strings.EqualFold(filepath.Base(dir), ".git") && baseLower == "config" {
+		return "**/.git/config", true
+	}
+
+	return "", false
+}
+
+// MatchesUserDenylist checks if a resolved path matches any user-defined deny pattern.
+func MatchesUserDenylist(resolvedPath string, patterns []string) (string, bool) {
+	for _, pattern := range patterns {
+		// Try filepath.Match on the full path
+		if matched, _ := filepath.Match(pattern, resolvedPath); matched {
+			return pattern, true
+		}
+		// Try matching just the basename (for patterns like "*.sqlite")
+		if matched, _ := filepath.Match(pattern, filepath.Base(resolvedPath)); matched {
+			return pattern, true
+		}
+	}
+	return "", false
 }

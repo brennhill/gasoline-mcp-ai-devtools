@@ -559,7 +559,7 @@ describe('actions work on shadow DOM elements', () => {
     })
 
     const result = await domPrimitive('type', 'my-component >>> nested-comp >>> #deep-input', { text: 'hello' })
-    assert.strictEqual(result.success, true, `Type should work through >>> selector: ${JSON.stringify(result)}`)
+    assert.strictEqual(result.success, true, 'Type should work through >>> selector')
   })
 })
 

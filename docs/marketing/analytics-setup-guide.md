@@ -119,7 +119,7 @@ Enable:
 
 GitHub provides built-in analytics for repositories:
 
-1. Go to your repo: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+1. Go to your repo: https://github.com/brennhill/gasoline-mcp-ai-devtools
 2. Click "Insights" tab
 3. View:
    - **Traffic** - Views, clones, visitors
@@ -133,7 +133,7 @@ Use GitHub's API or third-party tools:
 
 ```bash
 # Get star count
-curl -s https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp | jq '.stargazers_count'
+curl -s https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools | jq '.stargazers_count'
 ```
 
 ### Set Up GitHub Insights Dashboard
@@ -304,7 +304,7 @@ Use Google Apps Script to automate data updates:
 
 ```javascript
 function updateGitHubStars() {
-  var response = UrlFetchApp.fetch('https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp');
+  var response = UrlFetchApp.fetch('https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools');
   var data = JSON.parse(response.getContentText());
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('GitHub');
   sheet.getRange('B2').setValue(data.stargazers_count);

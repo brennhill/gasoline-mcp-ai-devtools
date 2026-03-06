@@ -1,6 +1,6 @@
 {
-  "name": "@brennhill/gasoline-agentic-browser-linux-x64",
-  "version": "0.8.0",
+  "name": "@brennhill/gasoline-linux-x64",
+  "version": "0.7.10",
   "description": "Gasoline binary for Linux x64",
   "license": "AGPL-3.0-only",
   "os": [

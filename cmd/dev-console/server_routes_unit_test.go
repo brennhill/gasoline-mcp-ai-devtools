@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console server routes logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate server_routes_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -17,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func decodeJSONMap(t *testing.T, body []byte) map[string]any {
@@ -39,7 +40,7 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	// JSON clients get the discovery response via content negotiation
 	rootReq := localRequest(http.MethodGet, "/", nil)
@@ -50,8 +51,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 		t.Fatalf("GET / status = %d, want %d", rootRR.Code, http.StatusOK)
 	}
 	rootBody := decodeJSONMap(t, rootRR.Body.Bytes())
-	if rootBody["name"] != "gasoline-browser-devtools" {
-		t.Fatalf("root name = %v, want gasoline-browser-devtools", rootBody["name"])
+	if rootBody["name"] != "gasoline" {
+		t.Fatalf("root name = %v, want gasoline", rootBody["name"])
 	}
 
 	// Browsers (no Accept: application/json) get the HTML dashboard
@@ -82,8 +83,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	if healthBody["status"] != "ok" {
 		t.Fatalf("health status = %v, want ok", healthBody["status"])
 	}
-	if healthBody["service-name"] != "gasoline-browser-devtools" {
-		t.Fatalf("health service-name = %v, want gasoline-browser-devtools", healthBody["service-name"])
+	if healthBody["service-name"] != "gasoline" {
+		t.Fatalf("health service-name = %v, want gasoline", healthBody["service-name"])
 	}
 
 	healthBadReq := localRequest(http.MethodPost, "/health", nil)
@@ -112,13 +113,6 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	diagBody := decodeJSONMap(t, diagRR.Body.Bytes())
 	if _, ok := diagBody["generated_at"]; !ok {
 		t.Fatalf("diagnostics missing generated_at: %v", diagBody)
-	}
-	launchMode, ok := diagBody["launch_mode"].(map[string]any)
-	if !ok {
-		t.Fatalf("diagnostics missing launch_mode payload: %v", diagBody)
-	}
-	if launchMode["mode"] == "" {
-		t.Fatalf("diagnostics launch_mode.mode missing: %v", launchMode)
 	}
 	httpDebug, ok := diagBody["http_debug_log"].(map[string]any)
 	if !ok {
@@ -207,7 +201,7 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	// Create a server with a channel of size 1 and NO async worker,
 	// so the channel stays full when we manually fill it.
@@ -219,7 +213,7 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 		logDone:    make(chan struct{}),
 	}
 
-	tinyMux, _ := setupHTTPRoutes(tinyLogSrv, cap)
+	tinyMux := setupHTTPRoutes(tinyLogSrv, cap)
 
 	// Fill channel (no worker draining it), then trigger a drop
 	tinyLogSrv.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
@@ -265,7 +259,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	t.Parallel()
 
 	srv := newTestServerForHandlers(t)
-	mux, _ := setupHTTPRoutes(srv, nil)
+	mux := setupHTTPRoutes(srv, nil)
 
 	// GET /logs returns 405 (reads go through /telemetry?type=logs)
 	getReq := localRequest(http.MethodGet, "/logs", nil)
@@ -326,7 +320,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	// Reset global rate limiter map for deterministic tests.
 	screenshotRateMu.Lock()

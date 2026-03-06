@@ -19,8 +19,8 @@ describe('CSP-safe integration: parse + execute', () => {
     // Set up mock globals for test
     globalThis.document = {
       title: 'Test Page',
-      querySelector: function (_sel) { return { tagName: 'DIV', textContent: 'found: ' + _sel } },
-      querySelectorAll: function (_sel) { return [{ tagName: 'DIV' }] }
+      querySelector: function (sel) { return { tagName: 'DIV', textContent: 'found: ' + sel } },
+      querySelectorAll: function (sel) { return [{ tagName: 'DIV' }] }
     }
     globalThis.window = {
       location: { href: 'https://example.com/page', hostname: 'example.com' }
@@ -150,7 +150,7 @@ describe('CSP-safe integration: fallback chain', () => {
         )
       },
       scripting: {
-        executeScript: mock.fn((_opts) =>
+        executeScript: mock.fn((opts) =>
           Promise.resolve([{
             result: { success: true, result: 'structured_works', execution_mode: 'csp_safe_structured' }
           }])
@@ -192,7 +192,7 @@ describe('CSP-safe integration: fallback chain', () => {
     globalThis.chrome = {
       tabs: { sendMessage: mock.fn() },
       scripting: {
-        executeScript: mock.fn((_opts) =>
+        executeScript: mock.fn((opts) =>
           Promise.resolve([{
             result: { success: true, result: 'isolated_structured', execution_mode: 'csp_safe_structured' }
           }])

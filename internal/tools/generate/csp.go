@@ -1,4 +1,5 @@
-// Purpose: Builds Content-Security-Policy directive maps from captured network body origins.
+// Purpose: Provides generate tool implementation helpers for emitted artifacts.
+// Why: Centralizes artifact generation logic to avoid drift across output formats.
 // Docs: docs/features/feature/test-generation/index.md
 
 package generate
@@ -6,7 +7,7 @@ package generate
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // BuildCSPDirectives extracts unique origins from network bodies and groups them by CSP directive.

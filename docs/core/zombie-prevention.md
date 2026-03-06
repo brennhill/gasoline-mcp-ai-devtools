@@ -113,7 +113,7 @@ rm -rf ~/.npm/_npx
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "/path/to/dev/gasoline/dist/gasoline-darwin-arm64"
     }
   }
@@ -124,7 +124,7 @@ rm -rf ~/.npm/_npx
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "gasoline-mcp"
     }
   }

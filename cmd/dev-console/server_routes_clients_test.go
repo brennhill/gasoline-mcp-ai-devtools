@@ -1,5 +1,6 @@
-// Purpose: Tests for client management route handlers.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate server_routes_clients_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // server_routes_clients_test.go — Tests for handleClientsList and handleClientByID.
 package main
@@ -13,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // mockClientRegistry implements capture.ClientRegistry for testing.
@@ -71,44 +72,12 @@ func (m *mockClientRegistry) Get(id string) any {
 	return nil
 }
 
-func (m *mockClientRegistry) Unregister(id string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if _, ok := m.clients[id]; !ok {
-		return false
-	}
-	delete(m.clients, id)
-	nextOrder := make([]string, 0, len(m.order))
-	for _, existingID := range m.order {
-		if existingID != id {
-			nextOrder = append(nextOrder, existingID)
-		}
-	}
-	m.order = nextOrder
-	return true
-}
-
 // newCaptureWithRegistry creates a capture instance with a mock client registry.
-func newCaptureWithRegistry(t *testing.T) *capture.Store {
+func newCaptureWithRegistry(t *testing.T) *capture.Capture {
 	t.Helper()
 	cap := capture.NewCapture()
 	cap.SetClientRegistryForTest(newMockClientRegistry())
 	return cap
-}
-
-func TestHandleClientsList_RegistryUnavailable(t *testing.T) {
-	t.Parallel()
-	cap := capture.NewCapture()
-
-	req := httptest.NewRequest("GET", "/clients", nil)
-	w := httptest.NewRecorder()
-	handleClientsList(w, req, cap)
-
-	resp := w.Result()
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("expected status 503, got %d", resp.StatusCode)
-	}
 }
 
 // ============================================
@@ -362,18 +331,9 @@ func TestHandleClientByID_EmptyID(t *testing.T) {
 func TestHandleClientByID_DELETE_ReturnsUnregistered(t *testing.T) {
 	t.Parallel()
 	cap := newCaptureWithRegistry(t)
-	registered := cap.GetClientRegistry().Register("/tmp/project")
-	registeredMap, ok := registered.(map[string]any)
-	if !ok {
-		t.Fatalf("expected mock registry to return map, got %T", registered)
-	}
-	clientID, ok := registeredMap["id"].(string)
-	if !ok || clientID == "" {
-		t.Fatalf("expected registered client id, got %#v", registeredMap["id"])
-	}
 
-	req := httptest.NewRequest("DELETE", "/clients/"+clientID, nil)
-	req.URL.Path = "/clients/" + clientID
+	req := httptest.NewRequest("DELETE", "/clients/some-id", nil)
+	req.URL.Path = "/clients/some-id"
 	w := httptest.NewRecorder()
 	handleClientByID(w, req, cap)
 
@@ -391,31 +351,6 @@ func TestHandleClientByID_DELETE_ReturnsUnregistered(t *testing.T) {
 
 	if data["unregistered"] != true {
 		t.Errorf("expected unregistered true, got %v", data["unregistered"])
-	}
-}
-
-func TestHandleClientByID_DELETE_NonexistentClient(t *testing.T) {
-	t.Parallel()
-	cap := newCaptureWithRegistry(t)
-
-	req := httptest.NewRequest("DELETE", "/clients/missing-id", nil)
-	req.URL.Path = "/clients/missing-id"
-	w := httptest.NewRecorder()
-	handleClientByID(w, req, cap)
-
-	resp := w.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("expected status 404, got %d", resp.StatusCode)
-	}
-
-	var data map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-	if data["error"] != "Client not found" {
-		t.Errorf("expected error 'Client not found', got %v", data["error"])
 	}
 }
 

@@ -1,4 +1,5 @@
-// Purpose: Validates and marshals save_state/load_state parameters for browser state snapshot operations.
+// Purpose: Provides interact tool implementation helpers for selectors and workflows.
+// Why: Centralizes selector/workflow logic so browser actions remain repeatable and debuggable.
 // Docs: docs/features/feature/interact-explore/index.md
 
 package interact
@@ -143,7 +144,7 @@ const StateCaptureScript = `(() => {
 func ParseCapturedStatePayload(raw json.RawMessage) (map[string]any, error) {
 	trimmed := strings.TrimSpace(string(raw))
 	if trimmed == "" || trimmed == "null" {
-		return nil, errors.New("state_capture: received empty or null payload from browser. Ensure the page is loaded and accessible")
+		return nil, errors.New("empty state capture payload")
 	}
 
 	var envelope map[string]any
@@ -160,7 +161,7 @@ func ParseCapturedStatePayload(raw json.RawMessage) (map[string]any, error) {
 			if code, ok := envelope["error"].(string); ok && code != "" {
 				return nil, errors.New(code)
 			}
-			return nil, errors.New("state_capture: execute_js failed with no error details. Check browser console for script errors")
+			return nil, errors.New("execute_js failed")
 		}
 
 		if resultObj, ok := envelope["result"].(map[string]any); ok {
@@ -169,7 +170,7 @@ func ParseCapturedStatePayload(raw json.RawMessage) (map[string]any, error) {
 		if _, ok := envelope["form_values"]; ok {
 			return envelope, nil
 		}
-		return nil, errors.New("state_capture: execute_js succeeded but result payload is missing. The capture script may have returned an unexpected format")
+		return nil, errors.New("execute_js result missing payload")
 	}
 
 	// Direct result (no success envelope) — accept if any known field present
@@ -178,7 +179,7 @@ func ParseCapturedStatePayload(raw json.RawMessage) (map[string]any, error) {
 			return envelope, nil
 		}
 	}
-	return nil, errors.New("state_capture: payload missing expected fields (form_values, local_storage, session_storage, cookies). Verify the page has accessible state to capture")
+	return nil, errors.New("state capture payload missing expected fields")
 }
 
 // BuildStateRestoreScript builds a JS script that restores form values, scroll position,

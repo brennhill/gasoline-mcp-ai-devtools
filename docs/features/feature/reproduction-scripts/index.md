@@ -4,13 +4,11 @@ feature_id: feature-reproduction-scripts
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-16
 code_paths:
   - cmd/dev-console/reproduction.go
   - src/lib/reproduction.ts
 test_paths: []
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Reproduction Scripts

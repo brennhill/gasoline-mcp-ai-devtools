@@ -1,9 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # UAT Plan: Noise Rule Persistence (v5.8.1)
@@ -378,7 +376,7 @@ rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
 
 3. **Run Persistence Tests Only:**
    ```bash
-   go test ./internal/noise -run TestNoiseConfigWithStore -v
+   go test ./internal/ai -run TestPersistNoiseRules -v
    ```
 
 4. **Manual UAT:**
@@ -406,3 +404,4 @@ rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
 ✅ **Built-ins fresh** (not persisted, always loaded from code)
 ✅ **Backward compatible** (works without SessionStore)
 ✅ **Fully tested** (9 unit tests + 10 UAT scenarios)
+

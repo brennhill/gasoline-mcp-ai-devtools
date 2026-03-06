@@ -3,7 +3,7 @@ feature: Version Checking & Update Notifications
 status: shipped
 tool: configure
 mode: background
-version: 0.7.12
+version: v5.2.5
 last_reviewed: 2026-02-16
 ---
 

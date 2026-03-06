@@ -1,9 +1,6 @@
 ---
 title: "Noise Filtering"
 description: "Keep your AI focused on real issues. Auto-detect browser noise, add manual rules, filter extension errors and analytics failures, and manage noise rules across sessions."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['guides', 'noise', 'filtering']
 ---
 
 Every browser tab generates noise — extension errors, analytics script failures, framework warnings, Content Security Policy violations from third-party scripts. Without filtering, your AI spends time investigating false leads instead of real bugs.

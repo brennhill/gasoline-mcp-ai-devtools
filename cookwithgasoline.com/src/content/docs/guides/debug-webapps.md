@@ -1,9 +1,6 @@
 ---
 title: Debug a Web App at Full Speed
 description: Let your AI see everything — WebSocket messages, runtime errors, network failures, and screenshots — so it can diagnose bugs in seconds.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['guides', 'debugging', 'webapps']
 ---
 
 ## Debugging is a Data Problem

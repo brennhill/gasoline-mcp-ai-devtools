@@ -3,9 +3,7 @@ feature: Draw Mode
 version: v0.7-rev1
 doc_type: qa-plan
 feature_id: draw-mode
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Draw Mode -- Comprehensive QA Plan

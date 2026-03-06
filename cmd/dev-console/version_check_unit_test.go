@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console version check logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate version_check_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -64,7 +65,7 @@ func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
 	defer setGitHubAPIURL(oldURL)
 
 	origVersion := version
-	version = "0.7.12"
+	version = "7.8.0"
 	defer func() { version = origVersion }()
 
 	tests := []struct {
@@ -72,7 +73,7 @@ func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
 		tag  string
 	}{
 		{name: "older release", tag: "v0.7.2"},
-		{name: "equal release", tag: "v0.7.10"},
+		{name: "equal release", tag: "v0.7.7"},
 	}
 
 	for _, tc := range tests {

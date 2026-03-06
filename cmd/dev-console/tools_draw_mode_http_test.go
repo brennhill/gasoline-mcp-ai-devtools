@@ -1,5 +1,6 @@
-// Purpose: Tests for draw-mode HTTP endpoint handling.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_draw_mode_http_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_draw_mode_http_test.go — HTTP endpoint tests for draw mode completion.
 // Tests the POST /draw-mode/complete handler end-to-end: JSON parsing,
@@ -14,35 +15,40 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // createDrawModeTestServer creates an httptest server with just the draw-mode endpoint.
 // Bypasses extensionOnly middleware for unit testing the handler directly.
-func createDrawModeTestServer(t *testing.T) (*httptest.Server, *AnnotationStore) {
+// Resets globalAnnotationStore to prevent state leaking between tests.
+func createDrawModeTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-
+	// Reset globalAnnotationStore to avoid cross-test pollution
+	oldStore := globalAnnotationStore
+	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
+	t.Cleanup(func() {
+		globalAnnotationStore.Close()
+		globalAnnotationStore = oldStore
+	})
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
-	store := server.getAnnotationStore()
-	t.Cleanup(func() { store.Close() })
-
 	cap := capture.NewCapture()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/draw-mode/complete", func(w http.ResponseWriter, r *http.Request) {
 		server.handleDrawModeComplete(w, r, cap)
 	})
-	return httptest.NewServer(mux), store
+	return httptest.NewServer(mux)
 }
 
 // Minimal valid 1x1 transparent PNG as base64.
 const testPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
 
 func TestDrawModeComplete_EndToEnd(t *testing.T) {
-	ts, store := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	screenshotDataURL := "data:image/png;base64," + testPNGBase64
@@ -120,8 +126,8 @@ func TestDrawModeComplete_EndToEnd(t *testing.T) {
 		os.Remove(screenshotPath)
 	}
 
-	// Verify session stored in annotation store.
-	session := store.GetSession(42)
+	// Verify session stored in globalAnnotationStore
+	session := globalAnnotationStore.GetSession(42)
 	if session == nil {
 		t.Fatal("Expected session in annotation store for tabID 42")
 	}
@@ -139,7 +145,7 @@ func TestDrawModeComplete_EndToEnd(t *testing.T) {
 	}
 
 	// Verify element detail stored
-	detail, found := store.GetDetail("detail_001")
+	detail, found := globalAnnotationStore.GetDetail("detail_001")
 	if !found {
 		t.Fatal("Expected detail for 'detail_001' in annotation store")
 	}
@@ -154,14 +160,14 @@ func TestDrawModeComplete_EndToEnd(t *testing.T) {
 	}
 
 	// detail_002 was NOT in element_details, should not be stored
-	_, found002 := store.GetDetail("detail_002")
+	_, found002 := globalAnnotationStore.GetDetail("detail_002")
 	if found002 {
 		t.Error("Did not expect detail_002 to be stored (not in element_details)")
 	}
 }
 
 func TestDrawModeComplete_InvalidJSON(t *testing.T) {
-	ts, _ := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	resp, err := http.Post(ts.URL+"/draw-mode/complete", "application/json", strings.NewReader(`{invalid`))
@@ -176,7 +182,7 @@ func TestDrawModeComplete_InvalidJSON(t *testing.T) {
 }
 
 func TestDrawModeComplete_MethodNotAllowed(t *testing.T) {
-	ts, _ := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/draw-mode/complete")
@@ -191,7 +197,7 @@ func TestDrawModeComplete_MethodNotAllowed(t *testing.T) {
 }
 
 func TestDrawModeComplete_ZeroAnnotations(t *testing.T) {
-	ts, store := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	payload := map[string]any{
@@ -219,7 +225,7 @@ func TestDrawModeComplete_ZeroAnnotations(t *testing.T) {
 		t.Errorf("Expected annotation_count 0, got %v", result["annotation_count"])
 	}
 
-	session := store.GetSession(99)
+	session := globalAnnotationStore.GetSession(99)
 	if session == nil {
 		t.Fatal("Expected session in store even with 0 annotations")
 	}
@@ -229,7 +235,7 @@ func TestDrawModeComplete_ZeroAnnotations(t *testing.T) {
 }
 
 func TestDrawModeComplete_NoScreenshot(t *testing.T) {
-	ts, store := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	payload := map[string]any{
@@ -264,7 +270,7 @@ func TestDrawModeComplete_NoScreenshot(t *testing.T) {
 		t.Errorf("Expected empty screenshot path, got %v", result["screenshot"])
 	}
 
-	session := store.GetSession(55)
+	session := globalAnnotationStore.GetSession(55)
 	if session == nil {
 		t.Fatal("Expected session in store")
 	}
@@ -274,7 +280,7 @@ func TestDrawModeComplete_NoScreenshot(t *testing.T) {
 }
 
 func TestDrawModeComplete_InvalidBase64(t *testing.T) {
-	ts, _ := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	payload := map[string]any{
@@ -306,7 +312,7 @@ func TestDrawModeComplete_InvalidBase64(t *testing.T) {
 }
 
 func TestDrawModeComplete_MissingTabID(t *testing.T) {
-	ts, _ := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	payload := map[string]any{
@@ -328,7 +334,7 @@ func TestDrawModeComplete_MissingTabID(t *testing.T) {
 }
 
 func TestDrawModeComplete_WithSessionName(t *testing.T) {
-	ts, store := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	screenshotDataURL := "data:image/png;base64," + testPNGBase64
@@ -381,13 +387,13 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 	}
 
 	// Verify session stored in anonymous store by tab ID
-	session := store.GetSession(200)
+	session := globalAnnotationStore.GetSession(200)
 	if session == nil {
 		t.Fatal("Expected session in annotation store for tabID 200")
 	}
 
 	// Verify session also stored in named session
-	ns := store.GetNamedSession("qa-review")
+	ns := globalAnnotationStore.GetNamedSession("qa-review")
 	if ns == nil {
 		t.Fatal("Expected named session 'qa-review' in annotation store")
 	}
@@ -399,7 +405,7 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 	}
 
 	// Verify element detail stored
-	detail, found := store.GetDetail("detail_sn_001")
+	detail, found := globalAnnotationStore.GetDetail("detail_sn_001")
 	if !found {
 		t.Fatal("Expected detail for 'detail_sn_001'")
 	}
@@ -409,7 +415,7 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 }
 
 func TestDrawModeComplete_MalformedAnnotationWarning(t *testing.T) {
-	ts, _ := createDrawModeTestServer(t)
+	ts := createDrawModeTestServer(t)
 	defer ts.Close()
 
 	payload := map[string]any{

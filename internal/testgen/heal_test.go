@@ -1,4 +1,5 @@
-// Purpose: Tests for self-healing test selector repair.
+// Purpose: Validate heal_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // heal_test.go — Tests for test healing functions.

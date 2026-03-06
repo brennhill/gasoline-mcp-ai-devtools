@@ -1,4 +1,5 @@
-// Purpose: Tests for session snapshot capture and restoration.
+// Purpose: Validate snapshot_manager_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // snapshot_manager_test.go — Tests for snapshot-manager.go.
@@ -11,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // ============================================
@@ -82,9 +83,9 @@ func TestCapture_AllFieldsPopulated(t *testing.T) {
 		wsConnections: []SnapshotWSConnection{
 			{URL: "ws://localhost:8080/ws", State: "open", MessageRate: 5.2},
 		},
-		performance: &performance.Snapshot{
+		performance: &performance.PerformanceSnapshot{
 			URL:    "http://localhost:3000",
-			Timing: performance.Timing{Load: 1500, TimeToFirstByte: 100},
+			Timing: performance.PerformanceTiming{Load: 1500, TimeToFirstByte: 100},
 			Network: performance.NetworkSummary{
 				RequestCount: 8,
 				TransferSize: 120000,

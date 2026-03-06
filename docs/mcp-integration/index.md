@@ -143,7 +143,7 @@ Manage session state and settings. Use the `action` parameter:
 | `store` | Persistent key-value storage (save/load/list/delete/stats) |
 | `load` | Load persisted session data |
 | `noise_rule` | Manage noise filtering rules (add/remove/list/auto_detect) |
-| `clear` | Clear buffers (network, websocket, actions, logs, all). `buffer:"all"` also resets annotation sessions/details/waiters. |
+| `clear` | Clear buffers (network, websocket, actions, logs, all) |
 | `health` | Server health and memory stats |
 | `streaming` | Enable/disable push event notifications |
 | `test_boundary_start` | Mark the start of a test boundary |
@@ -187,7 +187,7 @@ If port 7890 is occupied:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "gasoline": {
       "command": "npx",
       "args": ["gasoline-mcp", "--port", "7891"]
     }

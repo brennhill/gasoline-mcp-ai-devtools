@@ -1,17 +1,19 @@
 /**
- * Purpose: Executes JavaScript in page context with world-aware routing (content script relay, chrome.scripting, or CSP-safe structured executor).
- * Docs: docs/features/feature/csp-safe-execution/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // query-execution.ts — JavaScript execution with world-aware routing and CSP fallback.
 // Handles execute_js queries via content script relay, chrome.scripting API, or structured executor.
 
-import { debugLog } from './index.js'
-import { DebugCategory } from './debug.js'
-import { scaleTimeout } from '../lib/timeouts.js'
-import { parseExpression } from './csp-safe-parser.js'
-import { cspSafeExecutor } from './csp-safe-executor.js'
-import { errorMessage } from '../lib/error-utils.js'
+import { debugLog } from './index'
+import { DebugCategory } from './debug'
+import { scaleTimeout } from '../lib/timeouts'
+import { parseExpression } from './csp-safe-parser'
+import { cspSafeExecutor } from './csp-safe-executor'
 
 // =============================================================================
 // CSP PROBE
@@ -36,12 +38,8 @@ export async function probeCSPStatus(tabId: number): Promise<CSPProbeResult> {
       target: { tabId },
       world: 'MAIN',
       func: () => {
-        try {
-          new Function('return 1')()
-          return 'ok'
-        } catch {
-          return 'csp_blocked'
-        }
+        try { new Function('return 1')(); return 'ok' }
+        catch { return 'csp_blocked' }
       }
     })
     const val = results?.[0]?.result
@@ -149,47 +147,8 @@ export async function executeViaScriptingAPI(
             const node = obj as { nodeName: string; id?: string }
             return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`
           }
-          // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
-          // that Object.keys() misses. Their toJSON() returns a plain object.
-          if (typeof (obj as { toJSON?: unknown }).toJSON === 'function') {
-            try {
-              return serialize((obj as { toJSON: () => unknown }).toJSON(), depth + 1, seen)
-            } catch {
-              // Fall through to Object.keys() enumeration
-            }
-          }
-          const keys = Object.keys(obj).slice(0, 50)
-          // #389: Some host objects expose data only via prototype getters
-          // (DOMRect/CSSStyleDeclaration-like values). If no enumerable keys exist,
-          // introspect prototype property names and capture primitive getter values.
-          if (keys.length === 0) {
-            try {
-              const proto = Object.getPrototypeOf(obj)
-              if (proto && proto !== Object.prototype) {
-                const hostResult: Record<string, unknown> = {}
-                const propNames = Object.getOwnPropertyNames(proto).slice(0, 120)
-                for (const key of propNames) {
-                  if (key === 'constructor') continue
-                  try {
-                    const value = (obj as Record<string, unknown>)[key]
-                    const valueType = typeof value
-                    if (value === undefined || valueType === 'function') continue
-                    if (valueType === 'string' || valueType === 'number' || valueType === 'boolean' || value === null) {
-                      hostResult[key] = value
-                    }
-                  } catch {
-                    // Ignore getter access errors.
-                  }
-                  if (Object.keys(hostResult).length >= 50) break
-                }
-                if (Object.keys(hostResult).length > 0) return hostResult
-              }
-            } catch {
-              // Fall through to default object key enumeration.
-            }
-          }
           const result: Record<string, unknown> = {}
-          for (const key of keys) {
+          for (const key of Object.keys(obj).slice(0, 50)) {
             try {
               result[key] = serialize((obj as Record<string, unknown>)[key], depth + 1, seen)
             } catch {
@@ -212,7 +171,7 @@ export async function executeViaScriptingAPI(
     }
     return { success: false, error: 'no_result', message: 'chrome.scripting.executeScript produced no result' }
   } catch (err) {
-    const msg = errorMessage(err) || ''
+    const msg = (err as Error).message || ''
     if (msg.includes('timeout')) {
       return { success: false, error: 'execution_timeout', message: msg }
     }
@@ -275,7 +234,7 @@ async function executeViaStructuredCommand(
       execution_mode: modeTag
     }
   } catch (err) {
-    const msg = errorMessage(err) || ''
+    const msg = (err as Error).message || ''
     if (msg.includes('timeout')) {
       return { success: false, error: 'execution_timeout', message: msg, execution_mode: modeTag }
     }
@@ -336,7 +295,7 @@ export async function executeWithWorldRouting(
 
     return result
   } catch (err) {
-    let message = errorMessage(err, 'Tab communication failed')
+    let message = (err as Error).message || 'Tab communication failed'
 
     // Auto-fallback: content script not reachable — try scripting API MAIN, then structured
     if (world === 'auto' && message.includes('Receiving end does not exist')) {

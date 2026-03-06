@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console main io logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate main_io_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -60,7 +61,7 @@ func TestRunSetupCheckPortInUseBranch(t *testing.T) {
 	port := ln.Addr().(*net.TCPAddr).Port
 
 	output := captureStdout(t, func() {
-		runSetupCheckWithOptions(port, setupCheckOptions{})
+		runSetupCheck(port)
 	})
 	if !strings.Contains(output, "Checking port availability... FAILED") {
 		t.Fatalf("setup check output missing failed-port branch: %q", output)

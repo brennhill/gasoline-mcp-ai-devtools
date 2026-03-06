@@ -1,8 +1,8 @@
 //go:build !windows
 // +build !windows
 
-// Purpose: Unix implementation of stdout duplication for bridge MCP transport isolation via dup2/dup3 syscalls.
-// Why: Separates the MCP transport fd from Go's os.Stdout so stderr/log output cannot corrupt JSON-RPC framing.
+// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

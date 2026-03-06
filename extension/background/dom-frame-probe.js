@@ -1,6 +1,6 @@
 /**
  * Purpose: Frame-matching probe executed in page context for targeted DOM actions.
- * Why: Must be self-contained for chrome.scripting.executeScript injection (no closures allowed).
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/interact-explore/index.md
  */
 /**

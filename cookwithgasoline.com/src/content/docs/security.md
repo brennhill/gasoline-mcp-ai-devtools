@@ -1,9 +1,6 @@
 ---
 title: Security
 description: "Gasoline's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['security']
 ---
 
 Gasoline is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).
@@ -129,7 +126,7 @@ Every buffer in the system has a hard cap:
 |--------|----------|-------------------|
 | WebSocket event ring | 500 events | Oldest dropped |
 | Network bodies ring | 100 entries | Oldest dropped |
-| Enhanced actions | 1,000 entries | Oldest dropped |
+| Enhanced actions | 50 entries | Oldest dropped |
 | Active WS connections | 20 tracked | Oldest dropped |
 | WebSocket buffer total | 4MB | HTTP 503 |
 | Network bodies total | 8MB | HTTP 503 |
@@ -137,9 +134,9 @@ Every buffer in the system has a hard cap:
 
 At no point can a misbehaving page consume unbounded memory in either the extension or the server.
 
-## Extension Permissions
+## Minimal Extension Permissions
 
-The Chrome extension requests:
+The Chrome extension requests only:
 
 | Permission | Why |
 |------------|-----|
@@ -147,25 +144,26 @@ The Chrome extension requests:
 | `storage` | Persist extension settings locally |
 | `alarms` | Schedule periodic health checks |
 | `tabs` | Query tab URL for log context |
-| `scripting` | Inject content scripts for DOM automation |
-| `tabCapture` | Tab video/audio recording |
-| `offscreen` | Offscreen document for media encoding |
-| `debugger` | Network body capture via Chrome DevTools Protocol |
-| `cookies` | Cookie inspection for security audits |
-| `contextMenus` | Right-click menu integration |
 
-Host permissions use `<all_urls>` to enable capture and automation on any site the developer is debugging. All communication stays local — the extension only talks to `127.0.0.1`.
+Host permissions are restricted to:
+
+```
+http://localhost/*
+http://127.0.0.1/*
+```
 
 **Not requested:**
 
 - No `webRequest` / `webRequestBlocking`
+- No `debugger`
 - No `history`, `bookmarks`, `downloads`
+- No broad host permissions (`<all_urls>`)
 - No `identity` or OAuth scopes
 
 ## Log File Security
 
-- **Default location:** `~/.gasoline/logs/gasoline.jsonl`
-- **File permissions:** `0600` (owner read/write only — no group or world access)
+- **Default location:** `~/gasoline-logs.jsonl` (user's home directory)
+- **File permissions:** `0644` (user read/write, others read-only)
 - **Append-only:** Server only appends, never seeks or rewrites in-place
 - **Automatic rotation:** Oldest entries dropped when `--max-entries` exceeded (default 1000)
 - **No external access:** File is read by the AI tool via stdio (MCP), not via HTTP
@@ -189,15 +187,15 @@ Malformed input returns appropriate HTTP errors (400, 429, 503) — never crashe
 
 The entire codebase is open under **AGPL-3.0**:
 
-- **Go server:** Zero dependencies, fully auditable
+- **Go server:** ~1,000 lines, zero dependencies, fully auditable in an afternoon
 - **Extension:** Vanilla JS, no build step, readable in Chrome DevTools
 - **No obfuscation:** What you see in the repo is what runs on your machine
 - **Reproducible builds:** `make build` produces identical binaries from source
 
 ```bash
 # Verify the binary yourself
-git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
-cd gasoline-agentic-browser-devtools-mcp && make build
+git clone https://github.com/brennhill/gasoline
+cd gasoline && make build
 shasum -a 256 bin/gasoline-*
 ```
 

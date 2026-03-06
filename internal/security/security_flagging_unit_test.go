@@ -1,12 +1,13 @@
-// Purpose: Unit tests for security flagging logic.
-// Docs: docs/features/feature/security-hardening/index.md
+// Purpose: Validate security_flagging_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package security
 
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func TestCheckNonStandardPortBranches(t *testing.T) {

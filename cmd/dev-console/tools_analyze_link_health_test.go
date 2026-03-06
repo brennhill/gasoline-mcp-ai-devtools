@@ -1,4 +1,5 @@
-// Purpose: Tests for analyze link-health endpoint checking.
+// Purpose: Validate tools_analyze_link_health_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // tools_analyze_link_health_test.go — Unit tests for analyze tool link_health mode.
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -23,12 +24,12 @@ import (
 type analyzeTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Store
+	capture *capture.Capture
 }
 
 func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {
 	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test-analyze-link-health.jsonl", 100)
+	server, err := NewServer("/tmp/test-analyze-link-health.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

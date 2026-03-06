@@ -1,4 +1,5 @@
-// Purpose: Tests for test failure classification and categorization.
+// Purpose: Validate classify_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // classify_test.go — Tests for test failure classification.

@@ -1,5 +1,6 @@
 /**
- * Purpose: Structured DOM querying, page info extraction, and accessibility auditing via axe-core for the inject context.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/query-dom/index.md
  */
 export interface DOMQueryParams {
@@ -75,16 +76,12 @@ interface FormattedAxeViolation {
 }
 interface FormattedAxeResults {
     violations: FormattedAxeViolation[];
-    passes?: FormattedAxeViolation[];
-    incomplete?: FormattedAxeViolation[];
-    inapplicable?: FormattedAxeViolation[];
     summary: {
         violations: number;
         passes: number;
         incomplete: number;
         inapplicable: number;
     };
-    partial?: boolean;
     error?: string;
 }
 interface AxeNode {
@@ -132,8 +129,7 @@ export declare function getPageInfo(): Promise<PageInfoResult>;
  */
 export declare function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeResults>;
 /**
- * Run axe audit with a timeout.
- * Issue #276: Returns partial results on timeout or conflict instead of throwing.
+ * Run axe audit with a timeout
  */
 export declare function runAxeAuditWithTimeout(params: AxeAuditParams, timeoutMs?: number): Promise<FormattedAxeResults>;
 /**

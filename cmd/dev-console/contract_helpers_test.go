@@ -1,5 +1,6 @@
-// Purpose: Tests for contract test helper utilities.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate contract_helpers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // contract_helpers_test.go — Response shape contract testing utilities.
 // Provides scenario builders and JSON shape assertion helpers for MCP tool responses.
@@ -15,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -270,14 +271,13 @@ func assertStructuredErrorCode(t *testing.T, label string, result MCPToolResult,
 	}
 
 	assertObjectShape(t, label+" (structured_error)", data, []fieldSpec{
-		required("error_code", "string"),
+		required("error", "string"),
 		required("message", "string"),
-		required("recovery_playbook", "string"),
+		required("retry", "string"),
 	})
 
 	if expectedCode != "" {
-		code, _ := data["error_code"].(string)
-		if code != expectedCode {
+		if code, _ := data["error"].(string); code != expectedCode {
 			t.Errorf("%s: expected error code %q, got %q", label, expectedCode, code)
 		}
 	}

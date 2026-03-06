@@ -1,5 +1,7 @@
-// Purpose: Computes before/after metric changes for load time, request count, and transfer size with regression detection.
-// Docs: docs/features/feature/request-session-correlation/index.md
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Why: Maintains reliable state snapshots and diffs for investigations.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
 
 // performance-diff.go — Performance diff computation.
 // diffPerformance and computeMetricChange functions.

@@ -1,21 +1,23 @@
 /**
- * Purpose: Command handlers for the analyze MCP tool (DOM inspection, accessibility audits, link health, draw mode) with frame routing.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // analyze.ts — Command handlers for the analyze MCP tool.
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.
 
-import { registerCommand, type CommandContext } from './registry.js'
-import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
-import { errorMessage } from '../../lib/error-utils.js'
-import { domFrameProbe } from '../dom-frame-probe.js'
-import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js'
+import { isAiWebPilotEnabled } from '../state'
+import { registerCommand } from './registry'
 
 // =============================================================================
 // FRAME ROUTING TYPES
 // =============================================================================
+
+type AnalyzeFrameTarget = string | number | undefined
 
 interface AnalyzeFrameSelection {
   frameIds: number[]
@@ -28,21 +30,106 @@ interface FrameQueryResult<T = unknown> {
   error?: string
 }
 
-interface FrameAwareAnalyzeConfig {
-  messageType: string
-  singleFrameErrorCode: string
-  aggregate: (results: FrameQueryResult<Record<string, unknown>>[]) => Record<string, unknown>
-  mainQuery?: (ctx: CommandContext) => Promise<Record<string, unknown>>
+// =============================================================================
+// FRAME ROUTING HELPERS
+// =============================================================================
+
+function normalizeAnalyzeFrameTarget(frame: unknown): AnalyzeFrameTarget | null {
+  if (frame === undefined || frame === null) return undefined
+
+  if (typeof frame === 'number') {
+    if (!Number.isInteger(frame) || frame < 0) return null
+    return frame
+  }
+
+  if (typeof frame === 'string') {
+    const trimmed = frame.trim()
+    if (trimmed.length === 0) return null
+    return trimmed
+  }
+
+  return null
+}
+
+/**
+ * Frame selection probe executed in page context.
+ * Must be self-contained for chrome.scripting.executeScript({ func }).
+ */
+function analyzeFrameProbe(frameTarget: AnalyzeFrameTarget): { matches: boolean } {
+  const isTop = window === window.top
+
+  const getParentFrameIndex = (): number => {
+    if (isTop) return -1
+    try {
+      const parentFrames = window.parent?.frames
+      if (!parentFrames) return -1
+      for (let i = 0; i < parentFrames.length; i++) {
+        if (parentFrames[i] === window) return i
+      }
+    } catch {
+      return -1
+    }
+    return -1
+  }
+
+  if (frameTarget === undefined) {
+    return { matches: isTop }
+  }
+
+  if (frameTarget === 'all') {
+    return { matches: true }
+  }
+
+  if (typeof frameTarget === 'number') {
+    return { matches: getParentFrameIndex() === frameTarget }
+  }
+
+  if (isTop) {
+    return { matches: false }
+  }
+
+  try {
+    const frameEl = window.frameElement
+    if (!frameEl || typeof frameEl.matches !== 'function') {
+      return { matches: false }
+    }
+    return { matches: frameEl.matches(frameTarget) }
+  } catch {
+    return { matches: false }
+  }
 }
 
 async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Promise<AnalyzeFrameSelection> {
-  const normalized = normalizeFrameArg(frame)
+  const normalized = normalizeAnalyzeFrameTarget(frame)
+  if (normalized === null) {
+    throw new Error('invalid_frame')
+  }
 
   // No frame targeting requested — skip the probe entirely and target the main frame.
   if (normalized === undefined) {
     return { frameIds: [0], mode: 'main' }
   }
-  const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe)
+
+  // Pass null instead of undefined to satisfy chrome.scripting.executeScript serialization.
+  const probeResults = await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: analyzeFrameProbe,
+    args: [normalized]
+  })
+
+  const frameIds = Array.from(
+    new Set(
+      probeResults
+        .filter((r) => !!(r.result as { matches?: boolean } | undefined)?.matches)
+        .map((r) => r.frameId)
+        .filter((id): id is number => typeof id === 'number')
+    )
+  )
+
+  if (frameIds.length === 0) {
+    throw new Error('frame_not_found')
+  }
 
   if (normalized === 'all') {
     return { frameIds, mode: 'all' }
@@ -69,29 +156,11 @@ async function sendFrameQueries<T>(
       } catch (err) {
         return {
           frame_id: frameId,
-          error: errorMessage(err, 'frame_query_failed')
+          error: (err as Error).message || 'frame_query_failed'
         }
       }
     })
   )
-}
-
-function buildSingleFrameResult(
-  perFrame: FrameQueryResult<Record<string, unknown>>[],
-  errorCode: string
-): Record<string, unknown> {
-  const first = perFrame[0]
-  if (!first) {
-    return { error: errorCode, message: 'No frame response received' }
-  }
-  if (first.error) {
-    return { error: errorCode, message: first.error, frame_id: first.frame_id }
-  }
-  return { ...(first.result || {}), frame_id: first.frame_id }
-}
-
-function isFrameRoutingError(message: string): boolean {
-  return message.startsWith('frame_not_found') || message.startsWith('invalid_frame')
 }
 
 function toNonNegativeInt(value: unknown): number {
@@ -208,6 +277,11 @@ function aggregateA11yFrameResults(results: FrameQueryResult<Record<string, unkn
     frames,
     ...(errors.length > 0 ? { error: errors.join('; ') } : {})
   }
+}
+
+function isContentScriptUnreachableError(err: unknown): boolean {
+  const message = (err as Error)?.message || ''
+  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
 }
 
 /**
@@ -328,73 +402,85 @@ async function executeDOMQueryFallbackViaScripting(
   }
 }
 
-async function runMainDOMAnalyzeQuery(ctx: CommandContext): Promise<Record<string, unknown>> {
-  try {
-    return (await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'DOM_QUERY',
-      params: ctx.query.params
-    })) as Record<string, unknown>
-  } catch (err) {
-    const fallbackReason = isContentScriptUnreachableError(err)
-      ? 'content_script_unreachable'
-      : 'content_script_send_failed'
-    try {
-      return await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason)
-    } catch {
-      throw err
-    }
-  }
-}
-
-async function runFrameAwareAnalyzeQuery(
-  ctx: CommandContext,
-  config: FrameAwareAnalyzeConfig
-): Promise<Record<string, unknown>> {
-  const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
-
-  if (frameSelection.mode === 'main') {
-    if (config.mainQuery) {
-      return config.mainQuery(ctx)
-    }
-    return (await chrome.tabs.sendMessage(ctx.tabId, {
-      type: config.messageType,
-      params: ctx.query.params
-    })) as Record<string, unknown>
-  }
-
-  const frameParams = stripFrameParam(ctx.params)
-  const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
-    type: config.messageType,
-    params: frameParams
-  })
-
-  if (perFrame.length === 1) {
-    return buildSingleFrameResult(perFrame, config.singleFrameErrorCode)
-  }
-  return config.aggregate(perFrame)
-}
-
 // =============================================================================
 // DOM
 // =============================================================================
 
 registerCommand('dom', async (ctx) => {
   try {
-    const result = await runFrameAwareAnalyzeQuery(ctx, {
-      messageType: 'DOM_QUERY',
-      singleFrameErrorCode: 'dom_query_failed',
-      aggregate: aggregateDOMFrameResults,
-      mainQuery: runMainDOMAnalyzeQuery
+    const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
+
+    // Fast path: preserve legacy behavior when no frame is specified.
+    if (frameSelection.mode === 'main') {
+      let result: Record<string, unknown>
+      try {
+        result = (await chrome.tabs.sendMessage(ctx.tabId, {
+          type: 'DOM_QUERY',
+          params: ctx.query.params
+        })) as Record<string, unknown>
+      } catch (err) {
+        const fallbackReason = isContentScriptUnreachableError(err)
+          ? 'content_script_unreachable'
+          : 'content_script_send_failed'
+        try {
+          result = await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason)
+        } catch {
+          throw err
+        }
+      }
+      if (ctx.query.correlation_id) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
+      } else {
+        ctx.sendResult(result)
+      }
+      return
+    }
+
+    const frameParams = stripFrameParam(ctx.params)
+    const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
+      type: 'DOM_QUERY',
+      params: frameParams
     })
-    ctx.sendResult(result)
+
+    let result: Record<string, unknown>
+    if (perFrame.length === 1) {
+      const first = perFrame[0]
+      if (!first) {
+        result = { error: 'dom_query_failed', message: 'No frame response received' }
+      } else if (first.error) {
+        result = { error: 'dom_query_failed', message: first.error, frame_id: first.frame_id }
+      } else {
+        result = { ...(first.result || {}), frame_id: first.frame_id }
+      }
+    } else {
+      result = aggregateDOMFrameResults(perFrame)
+    }
+
+    if (ctx.query.correlation_id) {
+      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
+    } else {
+      ctx.sendResult(result)
+    }
   } catch (err) {
-    const message = errorMessage(err, 'Failed to execute DOM query')
+    const message = (err as Error).message || 'Failed to execute DOM query'
     console.error('[Gasoline][DOM] Command failed:', message, (err as Error).stack || err)
-    const routingError = isFrameRoutingError(message)
-    ctx.sendResult({
-      error: routingError ? message : 'dom_query_failed',
-      message: routingError ? message : `Failed to execute DOM query: ${message}`
-    })
+    const isFrameNotFound = message === 'frame_not_found'
+    const isInvalidFrame = message === 'invalid_frame'
+    if (ctx.query.correlation_id) {
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
+      )
+    } else {
+      ctx.sendResult({
+        error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
+        message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
+      })
+    }
   }
 })
 
@@ -404,58 +490,145 @@ registerCommand('dom', async (ctx) => {
 
 registerCommand('a11y', async (ctx) => {
   try {
-    const result = await runFrameAwareAnalyzeQuery(ctx, {
-      messageType: 'A11Y_QUERY',
-      singleFrameErrorCode: 'a11y_audit_failed',
-      aggregate: aggregateA11yFrameResults
+    const frameSelection = await resolveAnalyzeFrameSelection(ctx.tabId, ctx.params.frame)
+
+    // Fast path: preserve legacy behavior when no frame is specified.
+    if (frameSelection.mode === 'main') {
+      const result = await chrome.tabs.sendMessage(ctx.tabId, {
+        type: 'A11Y_QUERY',
+        params: ctx.query.params
+      })
+      if (ctx.query.correlation_id) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
+      } else {
+        ctx.sendResult(result)
+      }
+      return
+    }
+
+    const frameParams = stripFrameParam(ctx.params)
+    const perFrame = await sendFrameQueries<Record<string, unknown>>(ctx.tabId, frameSelection.frameIds, {
+      type: 'A11Y_QUERY',
+      params: frameParams
+    })
+
+    let result: Record<string, unknown>
+    if (perFrame.length === 1) {
+      const first = perFrame[0]
+      if (!first) {
+        result = { error: 'a11y_audit_failed', message: 'No frame response received' }
+      } else if (first.error) {
+        result = { error: 'a11y_audit_failed', message: first.error, frame_id: first.frame_id }
+      } else {
+        result = { ...(first.result || {}), frame_id: first.frame_id }
+      }
+    } else {
+      result = aggregateA11yFrameResults(perFrame)
+    }
+
+    if (ctx.query.correlation_id) {
+      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
+    } else {
+      ctx.sendResult(result)
+    }
+  } catch (err) {
+    const message = (err as Error).message || 'Failed to execute accessibility audit'
+    console.error('[Gasoline][A11Y] Command failed:', message, (err as Error).stack || err)
+    const isFrameNotFound = message === 'frame_not_found'
+    const isInvalidFrame = message === 'invalid_frame'
+    if (ctx.query.correlation_id) {
+      ctx.sendAsyncResult(
+        ctx.syncClient,
+        ctx.query.id,
+        ctx.query.correlation_id,
+        'error',
+        null,
+        isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
+      )
+    } else {
+      ctx.sendResult({
+        error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
+        message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
+      })
+    }
+  }
+})
+
+// =============================================================================
+// LINK HEALTH
+// =============================================================================
+
+registerCommand('link_health', async (ctx) => {
+  try {
+    const result = await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'LINK_HEALTH_QUERY',
+      params: ctx.query.params
     })
     ctx.sendResult(result)
   } catch (err) {
-    const message = errorMessage(err, 'Failed to execute accessibility audit')
-    console.error('[Gasoline][A11Y] Command failed:', message, (err as Error).stack || err)
-    const routingError = isFrameRoutingError(message)
     ctx.sendResult({
-      error: routingError ? message : 'a11y_audit_failed',
-      message: routingError ? message : `Failed to execute accessibility audit: ${message}`
+      error: 'link_health_failed',
+      message: (err as Error).message || 'Link health check failed'
     })
   }
 })
 
 // =============================================================================
-// CONTENT SCRIPT PASS-THROUGH COMMANDS
+// COMPUTED STYLES
 // =============================================================================
 
-/** Register an analyze command that forwards params to a content script message type. */
-function registerPassthrough(command: string, messageType: string, fallbackMessage: string): void {
-  registerCommand(command, async (ctx) => {
-    try {
-      const result = await chrome.tabs.sendMessage(ctx.tabId, {
-        type: messageType,
-        params: ctx.query.params
-      })
-      ctx.sendResult(result)
-    } catch (err) {
-      ctx.sendResult({
-        error: `${command}_failed`,
-        message: errorMessage(err, fallbackMessage)
-      })
-    }
-  })
-}
+registerCommand('computed_styles', async (ctx) => {
+  try {
+    const result = await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'COMPUTED_STYLES_QUERY',
+      params: ctx.query.params
+    })
+    ctx.sendResult(result)
+  } catch (err) {
+    ctx.sendResult({
+      error: 'computed_styles_failed',
+      message: (err as Error).message || 'Computed styles query failed'
+    })
+  }
+})
 
-registerPassthrough('link_health', 'LINK_HEALTH_QUERY', 'Link health check failed')
-registerPassthrough('computed_styles', 'COMPUTED_STYLES_QUERY', 'Computed styles query failed')
-registerPassthrough('form_discovery', 'FORM_DISCOVERY_QUERY', 'Form discovery failed')
-registerPassthrough('form_state', 'FORM_STATE_QUERY', 'Form state extraction failed')
-registerPassthrough('data_table', 'DATA_TABLE_QUERY', 'Data table extraction failed')
+// =============================================================================
+// FORM DISCOVERY
+// =============================================================================
+
+registerCommand('form_discovery', async (ctx) => {
+  try {
+    const result = await chrome.tabs.sendMessage(ctx.tabId, {
+      type: 'FORM_DISCOVERY_QUERY',
+      params: ctx.query.params
+    })
+    ctx.sendResult(result)
+  } catch (err) {
+    ctx.sendResult({
+      error: 'form_discovery_failed',
+      message: (err as Error).message || 'Form discovery failed'
+    })
+  }
+})
 
 // =============================================================================
 // DRAW MODE
 // =============================================================================
 
 registerCommand('draw_mode', async (ctx) => {
-  if (!requireAiWebPilot(ctx)) return
-  const params = ctx.params as { action?: string; annot_session?: string }
+  if (!isAiWebPilotEnabled()) {
+    ctx.sendResult({
+      error: 'ai_web_pilot_disabled',
+      message: 'AI Web Pilot is not enabled in the extension popup'
+    })
+    return
+  }
+  let params: { action?: string; annot_session?: string }
+  try {
+    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
+  } catch {
+    params = {}
+  }
   if (params.action === 'start') {
     try {
       const result = await chrome.tabs.sendMessage(ctx.tabId, {
@@ -473,10 +646,9 @@ registerCommand('draw_mode', async (ctx) => {
     } catch (err) {
       ctx.sendResult({
         error: 'draw_mode_failed',
-        message: errorMessage(
-          err,
+        message:
+          (err as Error).message ||
           'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
-        )
       })
     }
   } else {
@@ -486,5 +658,3 @@ registerCommand('draw_mode', async (ctx) => {
     })
   }
 })
-
-// Navigation command handler extracted to analyze-navigation.ts (#335)

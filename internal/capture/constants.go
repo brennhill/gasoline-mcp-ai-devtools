@@ -7,7 +7,7 @@ package capture
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/circuit"
+	"github.com/dev-console/dev-console/internal/circuit"
 )
 
 const (
@@ -39,24 +39,9 @@ const (
 
 )
 
-// ExtensionReadinessTimeout is how long requireExtension will wait for a cold-start
-// connection before returning no_data. Tests override this via ToolHandler.extensionReadinessTimeout.
-const ExtensionReadinessTimeout = 5 * time.Second
-
-// extensionReadinessPollInterval is the server-side connection check cadence.
-// Faster than the extension's idle heartbeat (1s) to detect connection promptly.
-const extensionReadinessPollInterval = 200 * time.Millisecond
-
 var (
 	// extensionDisconnectThreshold is how long since last /sync before
 	// the extension is considered disconnected. Pending queries are auto-expired
 	// when the extension exceeds this threshold.
 	extensionDisconnectThreshold = 10 * time.Second
-
-	// readinessGatePollInterval is how often WaitForExtensionConnected checks
-	// for a connection. Kept short (100ms) to minimize latency after the
-	// extension actually connects.
-	// NOTE: This is a mutable package-level var. If a test hook is added to
-	// override it, tests using that hook must NOT use t.Parallel().
-	readinessGatePollInterval = 100 * time.Millisecond
 )

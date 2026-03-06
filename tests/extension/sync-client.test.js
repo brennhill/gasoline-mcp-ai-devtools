@@ -753,6 +753,7 @@ describe('SyncClient — Command dispatch', () => {
     client.start()
 
     for (let i = 0; i < 40 && queued.length === 0; i++) {
+      // eslint-disable-next-line no-await-in-loop
       await tick(10)
     }
 
@@ -761,6 +762,7 @@ describe('SyncClient — Command dispatch', () => {
     assert.strictEqual(queued[0].status, 'error')
     assert.ok(String(queued[0].error).includes('timed out'))
     for (let i = 0; i < 20 && fetchCalls < 2; i++) {
+      // eslint-disable-next-line no-await-in-loop
       await tick(10)
     }
     assert.ok(fetchCalls >= 2, `expected sync loop to continue after timeout, got ${fetchCalls} fetch call(s)`)

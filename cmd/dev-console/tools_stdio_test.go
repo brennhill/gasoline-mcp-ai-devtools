@@ -1,5 +1,6 @@
-// Purpose: Tests for stdio transport tool call handling.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_stdio_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_stdio_test.go — Unit tests verifying tool handlers produce no stdio pollution
 //
@@ -29,7 +30,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // captureStdout runs fn while capturing stdout output.
@@ -77,7 +78,7 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 	t.Helper()
 
 	// Create server with temp log file
-	server, err := NewServer(t.TempDir()+"/test-gasoline-stdio.jsonl", 100)
+	server, err := NewServer("/tmp/test-gasoline-stdio.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -314,12 +315,30 @@ func TestToolHandler_ResponseHelpers_NoStdout(t *testing.T) {
 		}
 	})
 
+	t.Run("mcpErrorResponse", func(t *testing.T) {
+		output := captureStdout(t, func() {
+			_ = mcpErrorResponse("test error")
+		})
+		if output != "" {
+			t.Errorf("INVARIANT VIOLATION: mcpErrorResponse wrote to stdout: %q", output)
+		}
+	})
+
 	t.Run("mcpJSONResponse", func(t *testing.T) {
 		output := captureStdout(t, func() {
 			_ = mcpJSONResponse("summary", map[string]string{"key": "value"})
 		})
 		if output != "" {
 			t.Errorf("INVARIANT VIOLATION: mcpJSONResponse wrote to stdout: %q", output)
+		}
+	})
+
+	t.Run("mcpMarkdownResponse", func(t *testing.T) {
+		output := captureStdout(t, func() {
+			_ = mcpMarkdownResponse("summary", "| col1 | col2 |\n| --- | --- |")
+		})
+		if output != "" {
+			t.Errorf("INVARIANT VIOLATION: mcpMarkdownResponse wrote to stdout: %q", output)
 		}
 	})
 

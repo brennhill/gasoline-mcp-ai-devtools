@@ -1,6 +1,9 @@
 /**
- * Purpose: Acquires tab capture streams, manages offscreen documents, and handles user gesture flow for video recording.
- * Docs: docs/features/feature/flow-recording/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /** Ensure the offscreen document exists for recording. */
 export declare function ensureOffscreenDocument(): Promise<void>;
@@ -11,7 +14,7 @@ export declare function ensureOffscreenDocument(): Promise<void>;
 export declare function getStreamIdWithRecovery(tabId: number): Promise<string>;
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to open the Gasoline popup and approve.
+ * Shows a toast prompting the user to click the Gasoline icon.
  */
 export declare function requestRecordingGesture(tab: chrome.tabs.Tab, name: string, fps: number, audio: string, mediaType: string): Promise<{
     status: string;

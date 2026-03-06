@@ -36,7 +36,16 @@ func (c *Capture) AddExtensionLogs(logs []ExtensionLog) {
 			log.Timestamp = now
 		}
 		log = c.redactExtensionLog(log)
-		c.extensionLogs.append(log)
+		c.elb.logs = append(c.elb.logs, log)
+
+		// Amortized eviction: only compact when buffer exceeds 1.5x capacity.
+		// Reduces allocation+copy from every sync to ~once every MaxExtensionLogs/2 syncs.
+		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
+		if len(c.elb.logs) > evictionThreshold {
+			kept := make([]ExtensionLog, MaxExtensionLogs)
+			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
+			c.elb.logs = kept
+		}
 	}
 }
 
@@ -47,5 +56,7 @@ func (c *Capture) AddExtensionLogs(logs []ExtensionLog) {
 func (c *Capture) GetExtensionLogs() []ExtensionLog {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.extensionLogs.snapshot()
+	result := make([]ExtensionLog, len(c.elb.logs))
+	copy(result, c.elb.logs)
+	return result
 }

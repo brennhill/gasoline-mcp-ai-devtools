@@ -1,9 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Generate Test: Turn Browser Sessions into Regression Tests
@@ -210,7 +208,7 @@ The `base_url` parameter rewrites captured URLs (e.g., from `https://staging.exa
 
 ## Getting Started
 
-1. Install [Gasoline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp) (extension + server)
+1. Install [Gasoline](https://github.com/brennhill/gasoline-mcp-ai-devtools) (extension + server)
 2. Use your app normally — Gasoline captures actions in the background
 3. Ask your AI assistant: *"Generate a regression test from my session"*
 4. Save the output as a `.spec.ts` file and run with `npx playwright test`

@@ -1,5 +1,6 @@
-// Purpose: Tests for parallel configuration access safety.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate config_parallel_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -8,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestApplyParallelModeStateDir_AutoGeneratesWhenMissing(t *testing.T) {

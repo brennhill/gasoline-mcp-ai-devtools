@@ -93,7 +93,7 @@
   <rect x="20" y="380" width="940" height="150" fill="none" stroke="#334155" stroke-width="1" rx="4"/>
   <text style="fill: #F97316; font-weight: bold; font-size: 13px;" x="40" y="400">Key Features:</text>
 
-  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="420">✓ Event-based capture (not video) — 10-to-100 times smaller data per session (10-50KB/min vs 1-5MB/min for video)</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="420">✓ Event-based capture (not video) — 10-100x smaller data per session (10-50KB/min vs 1-5MB/min for video)</text>
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="435">✓ Structured for AI — DOM mutations, user actions, network, console all queryable</text>
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="450">✓ PII redaction by default — sensitive fields (passwords, tokens, emails) stripped before storage</text>
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="465">✓ Session correlation — link to production errors, server logs, user profiles</text>

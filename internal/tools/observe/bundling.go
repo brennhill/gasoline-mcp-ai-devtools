@@ -1,4 +1,5 @@
-// Purpose: Assembles error bundles by correlating console errors with surrounding network/action context.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
 // Docs: docs/features/feature/observe/index.md
 
 package observe
@@ -7,9 +8,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // timedEntry pairs a log entry with its parsed timestamp.
@@ -33,18 +34,8 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 		Limit         int    `json:"limit"`
 		WindowSeconds int    `json:"window_seconds"`
 		URL           string `json:"url"`
-		Scope         string `json:"scope"`
-		Summary       bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
-	if params.Scope == "" {
-		params.Scope = "current_page"
-	}
-	var paramHint string
-	if params.Scope != "current_page" && params.Scope != "all" {
-		paramHint = "Unknown scope " + params.Scope + " ignored (using default=current_page). Valid values: current_page, all."
-		params.Scope = "current_page"
-	}
 	if params.Limit <= 0 {
 		params.Limit = 5
 	}
@@ -54,36 +45,14 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	if params.WindowSeconds > 10 {
 		params.WindowSeconds = 10
 	}
-	if params.Scope == "" {
-		params.Scope = "current_page"
-	}
 
-	_, trackedTabID, trackedTabURL := deps.GetCapture().GetTrackingStatus()
-	if params.URL == "" && params.Scope == "current_page" && trackedTabURL != "" {
-		params.URL = trackedTabURL
-	}
-
-	errors, logs := collectErrorsAndLogs(deps, params.Limit, params.URL, params.Scope, trackedTabID)
+	errors, logs := collectErrorsAndLogs(deps, params.Limit, params.URL)
 
 	cap := deps.GetCapture()
-	_, trackedTabID, _ = cap.GetTrackingStatus()
-
-	networkBodies := cap.GetNetworkBodies()
-	waterfallEntries := cap.GetNetworkWaterfallEntries()
-	actions := cap.GetAllEnhancedActions()
-
-	// Apply scope filtering to context buffers so bundles only include
-	// network/action entries from the tracked tab, not global state.
-	if params.Scope == "current_page" && trackedTabID != 0 {
-		networkBodies = filterNetworkBodiesByTab(networkBodies, trackedTabID)
-		waterfallEntries = filterWaterfallByTab(waterfallEntries, trackedTabID, cap)
-		actions = filterActionsByTab(actions, trackedTabID)
-	}
-
 	ctx := bundleContext{
-		networkBodies:    networkBodies,
-		waterfallEntries: waterfallEntries,
-		actions:          actions,
+		networkBodies:    cap.GetNetworkBodies(),
+		waterfallEntries: cap.GetNetworkWaterfallEntries(),
+		actions:          cap.GetAllEnhancedActions(),
 		logs:             logs,
 		windowSeconds:    params.WindowSeconds,
 	}
@@ -95,30 +64,15 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 		newestEntry = errors[0].ts
 	}
 
-	if params.Summary {
-		summaryResp := buildErrorBundlesSummary(bundles, newestEntry, BuildResponseMetadata(cap, newestEntry))
-		if paramHint != "" {
-			summaryResp["param_hint"] = paramHint
-		}
-		return mcp.Succeed(req, "Error bundles", summaryResp)
-	}
-
-	response := map[string]any{
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", map[string]any{
 		"bundles":  bundles,
 		"count":    len(bundles),
 		"metadata": BuildResponseMetadata(cap, newestEntry),
-	}
-	if paramHint != "" {
-		response["param_hint"] = paramHint
-	}
-	if len(bundles) == 0 {
-		response["hint"] = errorBundlesEmptyHint()
-	}
-	return mcp.Succeed(req, "Error bundles", response)
+	})}
 }
 
 // collectErrorsAndLogs extracts errors and logs from the log buffer snapshot.
-func collectErrorsAndLogs(deps Deps, limit int, urlFilter, scope string, trackedTabID int) ([]timedEntry, []timedEntry) {
+func collectErrorsAndLogs(deps Deps, limit int, urlFilter string) ([]timedEntry, []timedEntry) {
 	entries, _ := deps.GetLogEntries()
 
 	var errors, logs []timedEntry
@@ -131,12 +85,6 @@ func collectErrorsAndLogs(deps Deps, limit int, urlFilter, scope string, tracked
 		entryType, _ := entry["type"].(string)
 		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
 			continue
-		}
-		if scope == "current_page" && trackedTabID != 0 {
-			entryTabID, _ := entry["tabId"].(float64)
-			if int(entryTabID) != trackedTabID {
-				continue
-			}
 		}
 		level, _ := entry["level"].(string)
 		if level == "error" {
@@ -197,7 +145,7 @@ func errorEntryToMap(data map[string]any) map[string]any {
 func matchNetworkBodies(bodies []capture.NetworkBody, start, end time.Time) []map[string]any {
 	matched := make([]map[string]any, 0)
 	for _, nb := range bodies {
-		nbTs := util.ParseTimestamp(nb.Timestamp)
+		nbTs := parseTimestampString(nb.Timestamp)
 		if nbTs.IsZero() || !nbTs.After(start) || nbTs.After(end) {
 			continue
 		}
@@ -261,41 +209,7 @@ func matchLogs(logs []timedEntry, start, end time.Time) []map[string]any {
 	return matched
 }
 
-// filterNetworkBodiesByTab returns only network bodies from the specified tab.
-func filterNetworkBodiesByTab(bodies []capture.NetworkBody, tabID int) []capture.NetworkBody {
-	filtered := make([]capture.NetworkBody, 0, len(bodies))
-	for _, nb := range bodies {
-		if nb.TabID == tabID {
-			filtered = append(filtered, nb)
-		}
-	}
-	return filtered
-}
-
-// filterWaterfallByTab returns only waterfall entries from the tracked page.
-// NetworkWaterfallEntry lacks a TabID, so we match on the tracked tab's URL via capture.
-func filterWaterfallByTab(entries []capture.NetworkWaterfallEntry, tabID int, cap *capture.Capture) []capture.NetworkWaterfallEntry {
-	_, _, trackedURL := cap.GetTrackingStatus()
-	if trackedURL == "" {
-		return entries
-	}
-	filtered := make([]capture.NetworkWaterfallEntry, 0, len(entries))
-	for _, w := range entries {
-		if w.PageURL != "" && !ContainsIgnoreCase(w.PageURL, trackedURL) {
-			continue
-		}
-		filtered = append(filtered, w)
-	}
-	return filtered
-}
-
-// filterActionsByTab returns only actions from the specified tab.
-func filterActionsByTab(actions []capture.EnhancedAction, tabID int) []capture.EnhancedAction {
-	filtered := make([]capture.EnhancedAction, 0, len(actions))
-	for _, a := range actions {
-		if a.TabID == tabID {
-			filtered = append(filtered, a)
-		}
-	}
-	return filtered
+// parseTimestampString delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
+func parseTimestampString(s string) time.Time {
+	return util.ParseTimestamp(s)
 }

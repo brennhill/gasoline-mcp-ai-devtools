@@ -1,5 +1,6 @@
-// Purpose: Tests for interact state save/load operations.
-// Docs: docs/features/feature/interact-explore/index.md
+// Purpose: Validate state_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // state_test.go — Tests for state management pure functions.
 package interact
@@ -118,7 +119,7 @@ func TestParseCapturedStatePayload_FailureNoMessage(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return error on failure with no message")
 	}
-	if !strings.Contains(err.Error(), "state_capture: execute_js failed") {
+	if !strings.Contains(err.Error(), "execute_js failed") {
 		t.Errorf("error should be generic, got: %v", err)
 	}
 }

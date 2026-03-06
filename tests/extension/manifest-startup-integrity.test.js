@@ -84,6 +84,11 @@ function collectHtmlFiles(dir, acc = []) {
   return acc
 }
 
+function resolveLocalHtmlScript(baseHtmlPath, src) {
+  if (!src || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) return null
+  return path.resolve(path.dirname(baseHtmlPath), src)
+}
+
 test('manifest startup file references exist on disk', () => {
   const manifest = readManifest()
 
@@ -123,6 +128,7 @@ test('extension HTML files avoid inline script tags (MV3 CSP safe)', () => {
   assert.ok(htmlFiles.length > 0, 'expected extension HTML files to exist')
 
   const inlineScriptTag = /<script\b(?![^>]*\bsrc\s*=)[^>]*>/gi
+  const scriptWithSrc = /<script\b[^>]*\bsrc\s*=\s*['"]([^'"]+)['"][^>]*>/gi
   for (const abs of htmlFiles) {
     const html = fs.readFileSync(abs, 'utf8')
     assert.doesNotMatch(
@@ -130,5 +136,14 @@ test('extension HTML files avoid inline script tags (MV3 CSP safe)', () => {
       inlineScriptTag,
       `Inline <script> is not allowed in ${path.relative(EXT_DIR, abs)} under MV3 CSP`
     )
+
+    for (const match of html.matchAll(scriptWithSrc)) {
+      const resolved = resolveLocalHtmlScript(abs, match[1])
+      if (!resolved) continue
+      assert.ok(
+        fs.existsSync(resolved),
+        `HTML script src missing file in ${path.relative(EXT_DIR, abs)}: ${match[1]}`
+      )
+    }
   }
 })

@@ -4,14 +4,9 @@ feature_id: feature-query-service
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-17
 code_paths:
-  - internal/mcp/response_json.go
-  - internal/mcp/response_builders.go
-test_paths:
-  - internal/mcp/response_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+test_paths: []
 ---
 
 # Query Service
@@ -28,7 +23,6 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
-- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -38,8 +32,4 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-- Query response assembly:
-  - `internal/mcp/response_json.go`
-  - `internal/mcp/response_builders.go`
-- Tests:
-  - `internal/mcp/response_test.go`
+Add concrete implementation and test links here as this feature evolves.

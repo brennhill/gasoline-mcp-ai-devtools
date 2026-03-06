@@ -7,13 +7,14 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-import { createMockWindow, createMockDocument } from './helpers.js'
+import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 
 // Define esbuild constant not available in Node test env
 globalThis.__GASOLINE_VERSION__ = 'test'
 
 // Store original
 let originalWindow
+let originalConsole
 
 // =============================================================================
 // V5 WIRING: Exception handlers call enrichErrorWithAiContext

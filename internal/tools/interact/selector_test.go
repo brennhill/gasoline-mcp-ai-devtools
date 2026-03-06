@@ -1,5 +1,6 @@
-// Purpose: Tests for CSS and semantic selector resolution.
-// Docs: docs/features/feature/interact-explore/index.md
+// Purpose: Validate selector_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // selector_test.go — Tests for selector parsing and DOM action utilities.
 package interact
@@ -160,8 +161,7 @@ func TestDOMPrimitiveActions_Contains(t *testing.T) {
 	t.Parallel()
 	expected := []string{"click", "type", "select", "check", "get_text", "get_value",
 		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
-		"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
-		"hover"}
+		"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay"}
 	for _, action := range expected {
 		if !DOMPrimitiveActions[action] {
 			t.Errorf("DOMPrimitiveActions missing %q", action)
@@ -179,7 +179,6 @@ func TestDOMActionToReproType_Mappings(t *testing.T) {
 		"key_press": "keypress",
 		"scroll_to": "scroll_element",
 		"focus":     "focus",
-		"hover":     "hover",
 	}
 	for action, expected := range cases {
 		if got := DOMActionToReproType[action]; got != expected {

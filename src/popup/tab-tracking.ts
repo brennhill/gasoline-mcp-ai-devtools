@@ -9,8 +9,8 @@
  * Manages the "Track This Tab" button and tracking status
  */
 
-import { isInternalUrl } from './ui-utils.js'
-import { StorageKey } from '../lib/constants.js'
+import { isInternalUrl } from './ui-utils'
+import { StorageKey } from '../lib/constants'
 
 let trackingStorageSyncInstalled = false
 
@@ -128,7 +128,7 @@ function handleStopTracking(): void {
       if (btn) showIdleState(btn)
 
       // Stop recording if active
-      chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
+      chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
         if (chrome.runtime.lastError) {
           /* no recording active — expected */
         }
@@ -147,7 +147,7 @@ function handleStopTracking(): void {
   })
 }
 
-export function initTrackPageButton(): void {
+export async function initTrackPageButton(): Promise<void> {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
   if (!btn) return
 

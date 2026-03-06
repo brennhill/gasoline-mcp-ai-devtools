@@ -1,4 +1,5 @@
-// Purpose: Tests for interact audit trail integration.
+// Purpose: Validate tools_interact_audit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_audit_test.go — Behavioral tests for interact tool
@@ -27,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -37,12 +38,12 @@ import (
 type interactTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Store
+	capture *capture.Capture
 }
 
 func newInteractTestEnv(t *testing.T) *interactTestEnv {
 	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test-interact-audit.jsonl", 100)
+	server, err := NewServer("/tmp/test-interact-audit.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -55,9 +56,6 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
 	httpReq.Header.Set("X-Gasoline-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
-
-	// Simulate tab tracking so tests don't hit the tab tracking gate.
-	cap.SetTrackingStatusForTest(42, "https://example.com")
 
 	return &interactTestEnv{handler: handler, server: server, capture: cap}
 }

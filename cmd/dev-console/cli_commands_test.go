@@ -1,5 +1,6 @@
-// Purpose: Tests for CLI command parsing and dispatch.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate cli_commands_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // cli_commands_test.go — Tests for uncovered CLI argument parser branches.
 // Core tests are in cli_test.go; this file covers remaining edge cases.
@@ -32,14 +33,18 @@ func TestParseObserveArgs_StatusMaxAndLastN(t *testing.T) {
 	}
 }
 
-func TestParseObserveArgs_BodyPath(t *testing.T) {
+func TestParseObserveArgs_BodyFilters(t *testing.T) {
 	t.Parallel()
 
 	result, err := parseObserveArgs("network_bodies", []string{
+		"--body-key", "id",
 		"--body-path", "data.items[0]",
 	})
 	if err != nil {
 		t.Fatalf("error: %v", err)
+	}
+	if result["body_key"] != "id" {
+		t.Fatalf("body_key = %v, want id", result["body_key"])
 	}
 	if result["body_path"] != "data.items[0]" {
 		t.Fatalf("body_path = %v, want data.items[0]", result["body_path"])
@@ -148,7 +153,7 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	result, err := parseConfigureArgs("noise_rule", []string{
 		"--rule-id", "rule-1",
 		"--store-action", "save",
-		"--pattern", "err-*",
+		"--selector", "#app",
 		"--namespace", "test-ns",
 	})
 	if err != nil {
@@ -158,7 +163,7 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	checks := map[string]string{
 		"rule_id":      "rule-1",
 		"store_action": "save",
-		"pattern":      "err-*",
+		"selector":     "#app",
 		"namespace":    "test-ns",
 	}
 	for k, want := range checks {
@@ -268,7 +273,32 @@ func TestParseGenerateArgs_UnknownFlag(t *testing.T) {
 }
 
 // ============================================
-// cliParseFlag — missing flag
+// cliParseFlagInt — non-numeric edge case
+// ============================================
+
+func TestCliParseFlagInt_NonNumeric(t *testing.T) {
+	t.Parallel()
+
+	n, ok, _ := cliParseFlagInt([]string{"--limit", "abc"}, "--limit")
+	if ok {
+		t.Fatal("non-numeric value should return ok=false")
+	}
+	if n != 0 {
+		t.Fatalf("n = %d, want 0", n)
+	}
+}
+
+func TestCliParseFlagInt_Missing(t *testing.T) {
+	t.Parallel()
+
+	_, ok, _ := cliParseFlagInt([]string{"--other", "5"}, "--limit")
+	if ok {
+		t.Fatal("missing flag should return ok=false")
+	}
+}
+
+// ============================================
+// cliParseFlag / cliParseFlagBool — missing flag
 // ============================================
 
 func TestCliParseFlag_Missing(t *testing.T) {
@@ -279,6 +309,18 @@ func TestCliParseFlag_Missing(t *testing.T) {
 		t.Fatalf("missing flag should return empty, got %q", val)
 	}
 	if len(remaining) != 2 {
+		t.Fatalf("remaining should be unchanged, len = %d", len(remaining))
+	}
+}
+
+func TestCliParseFlagBool_Missing(t *testing.T) {
+	t.Parallel()
+
+	ok, remaining := cliParseFlagBool([]string{"--other"}, "--clear")
+	if ok {
+		t.Fatal("missing bool flag should return false")
+	}
+	if len(remaining) != 1 {
 		t.Fatalf("remaining should be unchanged, len = %d", len(remaining))
 	}
 }

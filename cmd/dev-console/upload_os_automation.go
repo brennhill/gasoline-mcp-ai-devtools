@@ -1,10 +1,10 @@
-// Purpose: Re-exports OS-level upload automation functions (browser PID detection, file dialog dismiss, native input) from internal/upload.
-// Why: Stage 4 upload escalation requires OS automation gated behind --enable-os-upload-automation.
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+import "github.com/dev-console/dev-console/internal/upload"
 
 // Handler function aliases.
 var (

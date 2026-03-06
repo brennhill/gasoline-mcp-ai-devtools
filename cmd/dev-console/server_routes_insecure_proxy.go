@@ -1,7 +1,3 @@
-// Purpose: Serves an opt-in insecure proxy endpoint at /proxy for CSP-bypass debugging of third-party resources.
-// Why: Enables debugging CSP-restricted pages by proxying requests through the local server in explicit security_mode.
-// Docs: docs/features/feature/csp-safe-execution/index.md
-
 package main
 
 import (
@@ -9,41 +5,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/dev-console/dev-console/internal/capture"
 )
-
-const (
-	// insecureProxyTimeout is the HTTP client timeout for outbound requests
-	// made through the insecure proxy endpoint.
-	insecureProxyTimeout = 20 * time.Second
-
-	// insecureProxyMaxResponseBytes caps the proxied response body size
-	// to prevent memory exhaustion from unexpectedly large upstream responses.
-	insecureProxyMaxResponseBytes = 50 * 1024 * 1024 // 50MB
-)
-
-// ssrfCheckEnabled controls whether the SSRF denylist is enforced.
-// Disabled in tests that need to reach localhost mock servers.
-var ssrfCheckEnabled = true
-
-var (
-	insecureProxyClient     *http.Client
-	insecureProxyClientOnce sync.Once
-)
-
-func getInsecureProxyClient() *http.Client {
-	insecureProxyClientOnce.Do(func() {
-		insecureProxyClient = &http.Client{
-			Timeout:   insecureProxyTimeout,
-			Transport: upload.NewSSRFSafeTransport(func() bool { return !ssrfCheckEnabled }),
-		}
-	})
-	return insecureProxyClient
-}
 
 var insecureProxyStripHeaders = map[string]bool{
 	"content-security-policy":             true,
@@ -52,7 +17,7 @@ var insecureProxyStripHeaders = map[string]bool{
 	"x-webkit-csp":                        true,
 }
 
-func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
+func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
 	if r.Method != http.MethodGet {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -93,16 +58,9 @@ func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap
 		upstreamReq.Header.Set("User-Agent", ua)
 	}
 
-	// Use pooled SSRF-safe client that pins DNS resolution at the dial layer,
-	// preventing redirect-based SSRF bypasses and TOCTOU DNS rebinding.
-	// Reuses the comprehensive denylist from internal/upload/ssrf.go.
-	client := getInsecureProxyClient()
+	client := &http.Client{Timeout: 20 * time.Second}
 	upstreamResp, err := client.Do(upstreamReq)
 	if err != nil {
-		if strings.Contains(err.Error(), "ssrf_blocked") {
-			jsonResponse(w, http.StatusForbidden, map[string]string{"error": "Target URL resolves to private/internal network address"})
-			return
-		}
 		jsonResponse(w, http.StatusBadGateway, map[string]string{"error": "Failed to fetch target URL"})
 		return
 	}
@@ -125,5 +83,5 @@ func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap
 		w.Header().Set("X-Gasoline-Production-Parity", "true")
 	}
 	w.WriteHeader(upstreamResp.StatusCode)
-	_, _ = io.Copy(w, io.LimitReader(upstreamResp.Body, insecureProxyMaxResponseBytes))
+	_, _ = io.Copy(w, upstreamResp.Body)
 }

@@ -1,4 +1,5 @@
-// Purpose: Provides fragile-selector detection for playback actions to flag selectors likely to break across runs.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

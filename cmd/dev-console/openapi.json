@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "0.7.12",
+    "version": "0.7.9",
     "license": {
       "name": "MIT"
     }
@@ -354,81 +354,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardStatus"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/config/active-codebase": {
-      "get": {
-        "tags": [
-          "Control"
-        ],
-        "summary": "Get active codebase path",
-        "description": "Returns the active codebase path used as the default terminal working directory. The extension reads this to know which project directory the terminal should open in.",
-        "operationId": "getActiveCodebase",
-        "responses": {
-          "200": {
-            "description": "Current active codebase path",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "active_codebase": {
-                      "type": "string",
-                      "description": "Absolute path to the active codebase directory"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Control"
-        ],
-        "summary": "Set active codebase path",
-        "description": "Sets the active codebase path used as the default terminal working directory. The extension writes this when the user selects a project.",
-        "operationId": "setActiveCodebase",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string",
-                    "description": "Absolute path to set as active codebase"
-                  }
-                },
-                "required": [
-                  "path"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated active codebase path",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string"
-                    },
-                    "active_codebase": {
-                      "type": "string"
-                    }
-                  }
                 }
               }
             }
@@ -1405,272 +1330,6 @@
         }
       }
     },
-    "/push/screenshot": {
-      "post": {
-        "tags": [
-          "Media"
-        ],
-        "summary": "Push screenshot notification",
-        "description": "Accepts extension push events for screenshots and forwards them through the server push pipeline to connected MCP clients.",
-        "operationId": "postPushScreenshot",
-        "security": [
-          {
-            "extensionClient": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Screenshot push event accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusOk"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/push/message": {
-      "post": {
-        "tags": [
-          "Management"
-        ],
-        "summary": "Push text notification",
-        "description": "Accepts extension push message events and routes them to connected MCP clients via the server push inbox.",
-        "operationId": "postPushMessage",
-        "security": [
-          {
-            "extensionClient": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Push message accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusOk"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/push/capabilities": {
-      "get": {
-        "tags": [
-          "Management"
-        ],
-        "summary": "Get push capabilities",
-        "description": "Returns the server push capability snapshot used by the extension to decide which push channels can be delivered.",
-        "operationId": "getPushCapabilities",
-        "security": [
-          {
-            "extensionClient": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Push capability state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/push/drain": {
-      "get": {
-        "tags": [
-          "Management"
-        ],
-        "summary": "Drain push events",
-        "description": "Returns and clears all queued push events. Used internally by the bridge process to relay push notifications to the MCP client.",
-        "operationId": "drainPushEvents",
-        "responses": {
-          "200": {
-            "description": "Queued push events",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "events": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      }
-                    },
-                    "count": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/config/active-codebase": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get active codebase path",
-        "description": "Returns the active codebase directory path used as the default terminal CWD. Extension-only endpoint.",
-        "operationId": "getActiveCodebase",
-        "responses": {
-          "200": {
-            "description": "Current active codebase path",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "active_codebase": {
-                      "type": "string",
-                      "description": "Filesystem path to the active codebase directory"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Set active codebase path",
-        "description": "Sets the active codebase directory path used as the default terminal CWD. Extension-only endpoint. Also accepts POST.",
-        "operationId": "setActiveCodebase",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string",
-                    "description": "Filesystem path to set as the active codebase directory"
-                  }
-                },
-                "required": [
-                  "path"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Active codebase updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "description": "Operation result status"
-                    },
-                    "active_codebase": {
-                      "type": "string",
-                      "description": "Filesystem path to the active codebase directory after update"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid JSON body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/tests/": {
-      "get": {
-        "tags": [
-          "Control"
-        ],
-        "summary": "Serve embedded test pages",
-        "description": "Serves deterministic embedded test harness pages under /tests/ for smoke testing and browser behavior validation.",
-        "operationId": "getTestsPages",
-        "responses": {
-          "200": {
-            "description": "HTML test page index or static test asset",
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/tests/ws": {
-      "get": {
-        "tags": [
-          "Control"
-        ],
-        "summary": "WebSocket echo test endpoint",
-        "description": "Upgrades to a WebSocket echo server used by the test harness for deterministic websocket behavior checks.",
-        "operationId": "getTestsWebSocket",
-        "responses": {
-          "101": {
-            "description": "Switching Protocols (WebSocket upgrade)"
-          },
-          "400": {
-            "description": "WebSocket upgrade required"
-          }
-        }
-      }
-    },
     "/recordings/storage": {
       "get": {
         "tags": [
@@ -2196,7 +1855,7 @@
           },
           "version": {
             "type": "string",
-            "example": "0.7.12",
+            "example": "0.7.9",
             "description": "Server version string"
           },
           "health": {
@@ -3085,8 +2744,8 @@
               "execute",
               "highlight",
               "state",
-              "screen_recording_start",
-              "screen_recording_stop",
+              "record_start",
+              "record_stop",
               "browser_action",
               "page_info",
               "tabs",

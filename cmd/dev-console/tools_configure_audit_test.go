@@ -1,5 +1,6 @@
-// Purpose: Tests for configure audit log handler.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_configure_audit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_configure_audit_test.go — Behavioral tests for configure tool
 //
@@ -26,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -36,7 +37,7 @@ import (
 type configureTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Store
+	capture *capture.Capture
 }
 
 func newConfigureTestEnv(t *testing.T) *configureTestEnv {
@@ -145,23 +146,23 @@ func TestConfigureAudit_Recording_DataFlow(t *testing.T) {
 
 	// Start recording with unique name
 	recordingName := "unique_recording_test_12345"
-	result, ok := env.callConfigure(t, `{"what":"event_recording_start","name":"`+recordingName+`"}`)
+	result, ok := env.callConfigure(t, `{"what":"recording_start","name":"`+recordingName+`"}`)
 	if !ok {
-		t.Fatal("event_recording_start should return result")
+		t.Fatal("recording_start should return result")
 	}
 
 	// ASSERTION 1: Not an error
 	if result.IsError {
-		t.Errorf("event_recording_start should NOT return isError\nGot: %+v", result)
+		t.Errorf("recording_start should NOT return isError\nGot: %+v", result)
 	}
 
 	// ASSERTION 2: Response contains recording_id
 	if len(result.Content) == 0 {
-		t.Fatal("event_recording_start should return content")
+		t.Fatal("recording_start should return content")
 	}
 	text := result.Content[0].Text
 	if !strings.Contains(text, "recording") {
-		t.Errorf("event_recording_start response MUST mention recording\nGot: %s", text)
+		t.Errorf("recording_start response MUST mention recording\nGot: %s", text)
 	}
 }
 
@@ -270,14 +271,14 @@ func TestConfigureAudit_TestBoundaryEnd_MissingTestID(t *testing.T) {
 func TestConfigureAudit_RecordingStop_MissingRecordingID(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"what":"event_recording_stop"}`)
+	result, ok := env.callConfigure(t, `{"what":"recording_stop"}`)
 	if !ok {
-		t.Fatal("event_recording_stop without recording_id should return result")
+		t.Fatal("recording_stop without recording_id should return result")
 	}
 
 	// ASSERTION 1: IsError is true
 	if !result.IsError {
-		t.Error("event_recording_stop without recording_id MUST return isError:true")
+		t.Error("recording_stop without recording_id MUST return isError:true")
 	}
 }
 
@@ -471,8 +472,8 @@ func TestConfigureAudit_AllActions(t *testing.T) {
 		{"streaming", `{"what":"streaming"}`},
 		{"test_boundary_start", `{"what":"test_boundary_start","test_name":"unit_test"}`},
 		{"test_boundary_end", `{"what":"test_boundary_end"}`},
-		{"event_recording_start", `{"what":"event_recording_start","name":"test_recording"}`},
-		{"event_recording_stop", `{"what":"event_recording_stop"}`},
+		{"recording_start", `{"what":"recording_start","name":"test_recording"}`},
+		{"recording_stop", `{"what":"recording_stop"}`},
 		{"playback", `{"what":"playback","name":"test_recording"}`},
 		{"log_diff", `{"what":"log_diff"}`},
 	}

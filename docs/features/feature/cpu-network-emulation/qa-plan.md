@@ -2,9 +2,7 @@
 feature: cpu-network-emulation
 doc_type: qa-plan
 feature_id: feature-cpu-network-emulation
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: CPU/Network Emulation

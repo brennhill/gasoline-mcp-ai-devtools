@@ -2,12 +2,10 @@
 feature: analyze-tool
 status: shipped
 tool: analyze
-version: 0.7.12
+version: v7.0
 doc_type: product-spec
 feature_id: feature-analyze-tool
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-17
 ---
 
 # Analyze Product Spec (TARGET)
@@ -16,7 +14,7 @@ last_verified_date: 2026-03-05
 Run analysis and command-driven browser inspection workflows that go beyond passive observation.
 
 ## Modes (`what`)
-`dom`, `performance`, `accessibility`, `error_clusters`, `navigation_patterns`, `security_audit`, `third_party_audit`, `link_health`, `link_validation`, `page_summary`, `annotations`, `annotation_detail`, `api_validation`, `draw_history`, `draw_session`, `computed_styles`, `forms`, `form_state`, `form_validation`, `data_table`, `visual_baseline`, `visual_diff`, `visual_baselines`, `navigation`, `page_structure`, `audit`, `feature_gates`
+`dom`, `performance`, `accessibility`, `error_clusters`, `history`, `security_audit`, `third_party_audit`, `link_health`, `link_validation`, `page_summary`, `annotations`, `annotation_detail`, `api_validation`, `draw_history`, `draw_session`
 
 ## Behavior Model
 - Sync by default.
@@ -25,19 +23,13 @@ Run analysis and command-driven browser inspection workflows that go beyond pass
 
 ## Mode Classes
 1. Extension-backed command modes
-- `dom`, `accessibility`, `link_health`, `page_summary`, `computed_styles`, `forms`, `form_state`, `form_validation`, `data_table`, `navigation`, `page_structure`, `feature_gates`
+- `dom`, `accessibility`, `link_health`, `page_summary`
 
 2. Server-side analysis modes
-- `performance`, `error_clusters`, `navigation_patterns`, `security_audit`, `third_party_audit`, `link_validation`, `api_validation`, `audit`
+- `performance`, `error_clusters`, `history`, `security_audit`, `third_party_audit`, `link_validation`, `api_validation`
 
 3. Annotation/session modes
 - `annotations`, `annotation_detail`, `draw_history`, `draw_session`
-
-4. Visual regression modes
-- `visual_baseline`, `visual_diff`, `visual_baselines`
-
-## Aliases
-- `history` → `navigation_patterns` (quiet alias, dispatches correctly but hidden from enum)
 
 ## Requirements
 - `ANALYZE_PROD_001`: `what` is required and enum-validated.

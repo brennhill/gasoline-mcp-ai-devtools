@@ -128,7 +128,7 @@ jobs:
           import sys
           import tomllib
 
-          path = "pypi/gasoline-agentic-browser/pyproject.toml"
+          path = "pypi/gasoline-mcp/pyproject.toml"
           with open(path, "rb") as fh:
               data = tomllib.load(fh)
 
@@ -190,7 +190,7 @@ jobs:
 
           # Publish platform packages first
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
-            echo "Publishing @brennhill/gasoline-agentic-browser-$pkg..."
+            echo "Publishing @brennhill/gasoline-$pkg..."
             cd npm/$pkg
             set +e
             OUTPUT=$(npm publish --access public 2>&1)
@@ -199,7 +199,7 @@ jobs:
             echo "$OUTPUT"
             if [ $STATUS -ne 0 ]; then
               if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
-                echo "Already published @brennhill/gasoline-agentic-browser-$pkg; continuing."
+                echo "Already published @brennhill/gasoline-$pkg; continuing."
               else
                 exit $STATUS
               fi
@@ -208,8 +208,8 @@ jobs:
           done
 
           # Publish main package last
-          echo "Publishing gasoline-agentic-browser..."
-          cd npm/gasoline-agentic-browser
+          echo "Publishing gasoline-mcp..."
+          cd npm/gasoline-mcp
           set +e
           OUTPUT=$(npm publish --access public 2>&1)
           STATUS=$?
@@ -217,7 +217,7 @@ jobs:
           echo "$OUTPUT"
           if [ $STATUS -ne 0 ]; then
             if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
-              echo "Already published gasoline-agentic-browser; continuing."
+              echo "Already published gasoline-mcp; continuing."
             else
               exit $STATUS
             fi
@@ -232,15 +232,15 @@ jobs:
         run: |
           # Publish platform packages first
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
-            echo "Publishing gasoline-agentic-browser-$pkg to PyPI..."
-            cd pypi/gasoline-agentic-browser-$pkg
+            echo "Publishing gasoline-mcp-$pkg to PyPI..."
+            cd pypi/gasoline-mcp-$pkg
             python -m twine upload --skip-existing dist/*
             cd ../..
           done
 
           # Publish main package last
-          echo "Publishing gasoline-agentic-browser to PyPI..."
-          cd pypi/gasoline-agentic-browser
+          echo "Publishing gasoline-mcp to PyPI..."
+          cd pypi/gasoline-mcp
           python -m twine upload --skip-existing dist/*
         env:
           TWINE_USERNAME: __token__
@@ -273,20 +273,20 @@ jobs:
           echo "### Published Packages" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**npm:**" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser@$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`@brennhill/gasoline-agentic-browser-darwin-arm64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`@brennhill/gasoline-agentic-browser-darwin-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`@brennhill/gasoline-agentic-browser-linux-arm64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`@brennhill/gasoline-agentic-browser-linux-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`@brennhill/gasoline-agentic-browser-win32-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`@brennhill/gasoline-darwin-arm64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`@brennhill/gasoline-darwin-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`@brennhill/gasoline-linux-arm64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`@brennhill/gasoline-linux-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`@brennhill/gasoline-win32-x64@$VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**PyPI:**" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser==$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser-darwin-arm64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser-darwin-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser-linux-arm64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser-linux-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gasoline-agentic-browser-win32-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp-darwin-arm64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp-darwin-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp-linux-arm64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp-linux-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`gasoline-mcp-win32-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
 
   skip-nonstable-tag:
     name: Skip Non-STABLE Tags

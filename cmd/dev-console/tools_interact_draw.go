@@ -1,16 +1,19 @@
-// Purpose: Queues draw_mode_start queries for the extension to activate the user annotation overlay.
-// Why: Separates draw mode activation from annotation retrieval to support async user interaction.
-// Docs: docs/features/feature/annotated-screenshots/index.md
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
+// tools_interact_draw.go — MCP interact handler for draw_mode_start action.
+// Docs: docs/features/feature/interact-explore/index.md
 package main
 
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // handleDrawModeStart queues a draw_mode query for the extension to activate draw mode.
-func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID        int    `json:"tab_id,omitempty"`
 		AnnotSession string `json:"annot_session,omitempty"`
@@ -19,10 +22,10 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		lenientUnmarshal(args, &params)
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
+	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -41,20 +44,18 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
 	// Mark draw started AFTER the query is queued, so WaitForSession's timestamp
 	// baseline is never set before the command that triggers the session exists.
-	h.parent.annotationStore.MarkDrawStarted()
+	h.annotationStore.MarkDrawStarted()
 
 	// Record AI action
-	h.parent.recordAIAction("draw_mode_start", "", nil)
+	h.recordAIAction("draw_mode_start", "", nil)
 
-	return succeed(req, "Draw mode activated", map[string]any{
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw mode activated", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"message":        "Draw mode activation queued. The user can now draw annotations on the page. Use analyze({what: 'annotations', wait: true}) to block until the user finishes drawing.",
-	})
+	})}
 }

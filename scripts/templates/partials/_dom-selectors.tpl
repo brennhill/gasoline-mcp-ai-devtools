@@ -1,7 +1,4 @@
   // --- PARTIAL: DOM Selector Resolution ---
-  // Purpose: Shadow DOM traversal, element ownership, visibility, scoping, and element handle store.
-  // Why: Core selector infrastructure used by all other DOM primitives.
-
   // — Shadow DOM: deep traversal utilities —
 
   function getShadowRoot(el: Element): ShadowRoot | null {
@@ -187,23 +184,17 @@
   type ElementHandleStore = {
     byElement: WeakMap<Element, string>
     byID: Map<string, Element>
-    selectorByID: Map<string, string>
     nextID: number
   }
 
   function getElementHandleStore(): ElementHandleStore {
     const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
     if (root.__gasolineElementHandles) {
-      // Migrate legacy stores that lack selectorByID (#361)
-      if (!root.__gasolineElementHandles.selectorByID) {
-        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
-      }
       return root.__gasolineElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
       byID: new Map<string, Element>(),
-      selectorByID: new Map<string, string>(),
       nextID: 1
     }
     root.__gasolineElementHandles = created
@@ -223,28 +214,316 @@
     return elementID
   }
 
-  // #361: When element is stale (disconnected after SPA navigation), try to re-resolve
-  // using the stored selector. This allows persistent elements (nav links, sidebars)
-  // to survive SPA navigations without requiring a fresh list_interactive call.
   function resolveElementByID(rawElementID?: string): Element | null {
     const elementID = (rawElementID || '').trim()
     if (!elementID) return null
     const store = getElementHandleStore()
     const node = store.byID.get(elementID)
-    if (node && (node as Node).isConnected !== false) return node
-    // Element is stale or missing — try re-resolution via stored selector
-    const storedSelector = store.selectorByID.get(elementID)
-    if (storedSelector) {
-      const reresolved = resolveElement(storedSelector, document)
-      if (reresolved && (reresolved as Node).isConnected !== false) {
-        // Update mappings to point to the new element
-        store.byElement.set(reresolved, elementID)
-        store.byID.set(elementID, reresolved)
-        return reresolved
+    if (!node) return null
+    if ((node as Node).isConnected === false) {
+      store.byID.delete(elementID)
+      return null
+    }
+    return node
+  }
+
+  function resolveByTextAll(searchText: string, scope: ParentNode = document): Element[] {
+    const results: Element[] = []
+    const seen = new Set<Element>()
+
+    function walkScope(root: ParentNode): void {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.textContent && node.textContent.trim().includes(searchText)) {
+          const parent = node.parentElement
+          if (!parent) continue
+          const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
+          const target = interactive || parent
+          if (isGasolineOwnedElement(target) || !isVisible(target)) continue
+          if (!seen.has(target)) {
+            seen.add(target)
+            results.push(target)
+          }
+        }
+      }
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]!
+          const shadow = getShadowRoot(child)
+          if (shadow) walkScope(shadow)
+        }
       }
     }
-    // Truly stale — clean up
-    if (node) store.byID.delete(elementID)
-    store.selectorByID.delete(elementID)
+
+    walkScope(scope)
+    return results
+  }
+
+  function resolveByLabelAll(labelText: string, scope: ParentNode = document): Element[] {
+    const labels = querySelectorAllDeep('label', scope)
+    const results: Element[] = []
+    const seen = new Set<Element>()
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
+    for (const label of labels) {
+      if (label.textContent && label.textContent.trim().includes(labelText)) {
+        const forAttr = label.getAttribute('for')
+        if (forAttr) {
+          const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0]
+          const target = local || (allowGlobalIdLookup ? document.getElementById(forAttr) : null)
+          if (target && !seen.has(target)) { seen.add(target); results.push(target) }
+        }
+        const nested = label.querySelector('input, select, textarea')
+        if (nested && !seen.has(nested)) { seen.add(nested); results.push(nested) }
+        if (!seen.has(label)) { seen.add(label); results.push(label) }
+      }
+    }
+    return results
+  }
+
+  function resolveByAriaLabelAll(al: string, scope: ParentNode = document): Element[] {
+    const results: Element[] = []
+    const seen = new Set<Element>()
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope)
+    for (const el of exact) {
+      if (!seen.has(el)) { seen.add(el); results.push(el) }
+    }
+    const all = querySelectorAllDeep('[aria-label]', scope)
+    for (const el of all) {
+      const label = el.getAttribute('aria-label') || ''
+      if (label.startsWith(al) && !seen.has(el)) { seen.add(el); results.push(el) }
+    }
+    return results
+  }
+
+  function resolveByText(searchText: string, scope: ParentNode = document): Element | null {
+    let fallback: Element | null = null
+
+    function walkScope(root: ParentNode): Element | null {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.textContent && node.textContent.trim().includes(searchText)) {
+          const parent = node.parentElement
+          if (!parent) continue
+          const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
+          const target = interactive || parent
+          if (isGasolineOwnedElement(target)) continue
+          if (!fallback) fallback = target
+          if (isVisible(target)) return target
+        }
+      }
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]!
+          const shadow = getShadowRoot(child)
+          if (shadow) {
+            const result = walkScope(shadow)
+            if (result) return result
+          }
+        }
+      }
+      return null
+    }
+
+    return walkScope(scope) || fallback
+  }
+
+  function resolveByLabel(labelText: string, scope: ParentNode = document): Element | null {
+    const labels = querySelectorAllDeep('label', scope)
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
+    for (const label of labels) {
+      if (label.textContent && label.textContent.trim().includes(labelText)) {
+        const forAttr = label.getAttribute('for')
+        if (forAttr) {
+          const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0]
+          if (local) return local
+          const target = allowGlobalIdLookup ? document.getElementById(forAttr) : null
+          if (target) return target
+        }
+        const nested = label.querySelector('input, select, textarea')
+        if (nested) return nested
+        return label
+      }
+    }
     return null
+  }
+
+  function resolveByAriaLabel(al: string, scope: ParentNode = document): Element | null {
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope)
+    if (exact.length > 0) return firstVisible(exact)
+    const all = querySelectorAllDeep('[aria-label]', scope)
+    let fallback: Element | null = null
+    for (const el of all) {
+      const label = el.getAttribute('aria-label') || ''
+      if (label.startsWith(al)) {
+        if (!fallback) fallback = el
+        if (isVisible(el)) return el
+      }
+    }
+    return fallback
+  }
+
+  function resolveElements(sel: string, scope: ParentNode = document): Element[] {
+    if (!sel) return []
+    if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
+    if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
+    if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
+    if (sel.startsWith('label=')) return resolveByLabelAll(sel.slice('label='.length), scope)
+    if (sel.startsWith('aria-label=')) return resolveByAriaLabelAll(sel.slice('aria-label='.length), scope)
+    try {
+      return querySelectorAllDeep(sel, scope)
+    } catch {
+      return []
+    }
+  }
+
+  function resolveElement(sel: string, scope: ParentNode = document): Element | null {
+    if (!sel) return null
+    if (sel.includes(' >>> ')) return resolveDeepCombinator(sel, scope)
+
+    const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
+    if (nthMatch) {
+      const base = nthMatch[1] || ''
+      const n = Number.parseInt(nthMatch[2] || '0', 10)
+      if (!base || Number.isNaN(n) || n < 1) return null
+      const matches = resolveElements(base, scope)
+      return matches[n - 1] || null
+    }
+
+    if (sel.startsWith('text=')) return resolveByText(sel.slice('text='.length), scope)
+    if (sel.startsWith('role=')) return firstVisible(querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope))
+    if (sel.startsWith('placeholder=')) return firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope))
+    if (sel.startsWith('label=')) return resolveByLabel(sel.slice('label='.length), scope)
+    if (sel.startsWith('aria-label=')) return resolveByAriaLabel(sel.slice('aria-label='.length), scope)
+
+    return querySelectorDeep(sel, scope)
+  }
+
+  // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
+  // but remains available here for backward compatibility and direct tests.
+  function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
+    if (el.id) return `#${el.id}`
+    if (el instanceof HTMLInputElement && el.name) return `input[name="${el.name}"]`
+    const ariaLabel = el.getAttribute('aria-label')
+    if (ariaLabel) return `aria-label=${ariaLabel}`
+    const placeholder = el.getAttribute('placeholder')
+    if (placeholder) return `placeholder=${placeholder}`
+    const text = (htmlEl.textContent || '').trim().slice(0, 40)
+    if (text) return `text=${text}`
+    return fallbackSelector
+  }
+
+  function buildShadowSelector(el: Element): string | null {
+    const rootNode = el.getRootNode()
+    if (!(rootNode instanceof ShadowRoot)) return null
+
+    const parts: string[] = []
+    let node: Element = el
+    let root: Node = rootNode
+    while (root instanceof ShadowRoot) {
+      const inner = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+      parts.unshift(inner)
+      node = root.host
+      root = node.getRootNode()
+    }
+    const hostSelector = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+    parts.unshift(hostSelector)
+    return parts.join(' >>> ')
+  }
+
+  function classifyElement(el: Element): string {
+    const tag = el.tagName.toLowerCase()
+    if (tag === 'a') return 'link'
+    if (tag === 'button' || el.getAttribute('role') === 'button') return 'button'
+    if (tag === 'input') {
+      const inputType = (el as HTMLInputElement).type || 'text'
+      if (inputType === 'submit' || inputType === 'button' || inputType === 'reset') return 'button'
+      if (inputType === 'checkbox' || inputType === 'radio') return 'checkbox'
+      return 'input'
+    }
+    if (tag === 'select') return 'select'
+    if (tag === 'textarea') return 'textarea'
+    if (el.getAttribute('role') === 'link') return 'link'
+    if (el.getAttribute('role') === 'tab') return 'tab'
+    if (el.getAttribute('role') === 'menuitem') return 'menuitem'
+    if (el.getAttribute('contenteditable') === 'true') return 'textarea'
+    return 'interactive'
+  }
+
+  function isVisibleElement(el: Element): boolean {
+    const htmlEl = el as HTMLElement
+    if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return true
+    const rect = htmlEl.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
+  }
+
+  function extractElementLabel(el: Element): string {
+    const htmlEl = el as HTMLElement
+    return (
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      el.getAttribute('placeholder') ||
+      (htmlEl?.textContent || '').trim().slice(0, 80) ||
+      el.tagName.toLowerCase()
+    )
+  }
+
+  function chooseBestScopeMatch(matches: Element[]): Element {
+    if (matches.length === 1) return matches[0]!
+
+    const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply)/i
+    let best = matches[0]!
+    let bestScore = -1
+
+    for (const candidate of matches) {
+      const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', candidate)
+      const visibleTextboxes = textboxes.filter(isVisibleElement).length
+
+      const buttonCandidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', candidate)
+      let visibleButtons = 0
+      let submitLikeButtons = 0
+      for (const btn of buttonCandidates) {
+        if (!isVisibleElement(btn)) continue
+        visibleButtons++
+        if (submitVerb.test(extractElementLabel(btn))) {
+          submitLikeButtons++
+        }
+      }
+
+      const interactiveCandidates = querySelectorAllDeep(
+        'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]',
+        candidate
+      )
+      const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length
+      const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive)
+
+      const rect = (candidate as HTMLElement).getBoundingClientRect?.()
+      const areaScore = rect && rect.width > 0 && rect.height > 0
+        ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
+        : 0
+
+      const score =
+        visibleTextboxes*1000 +
+        submitLikeButtons*250 +
+        visibleButtons*10 +
+        visibleInteractive -
+        hiddenInteractive +
+        areaScore
+
+      if (score > bestScore) {
+        bestScore = score
+        best = candidate
+      }
+    }
+
+    return best
   }

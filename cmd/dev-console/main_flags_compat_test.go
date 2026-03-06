@@ -1,5 +1,6 @@
-// Purpose: Tests for CLI flag backward compatibility.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate main_flags_compat_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 

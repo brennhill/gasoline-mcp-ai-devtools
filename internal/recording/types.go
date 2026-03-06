@@ -1,4 +1,5 @@
-// Purpose: Declares core recording data types: RecordingAction, Recording, ViewportInfo, and related structs.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

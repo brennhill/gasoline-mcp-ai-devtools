@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console handler telemetry logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate handler_unit_telemetry_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // handler_unit_telemetry_test.go — MCP handler tests for passive telemetry, HTTP transport,
 // protocol negotiation, notification detection, and content-type validation.
@@ -17,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // failReader always returns an error on Read.

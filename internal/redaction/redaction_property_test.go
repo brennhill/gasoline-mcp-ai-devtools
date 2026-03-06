@@ -1,4 +1,5 @@
-// Purpose: Property-based tests for redaction invariants.
+// Purpose: Validate redaction_property_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 // redaction_property_test.go — Property-based tests for redaction engine.
@@ -148,7 +149,7 @@ func TestPropertyRedactJSONEmptyObject(t *testing.T) {
 		redacted := engine.RedactJSON(json.RawMessage(input))
 
 		// Verify it's still valid JSON
-		var parsed any
+		var parsed interface{}
 		if err := json.Unmarshal([]byte(redacted), &parsed); err != nil {
 			t.Errorf("RedactJSON(%q) produced invalid JSON: %v", input, err)
 		}

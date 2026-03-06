@@ -1,17 +1,19 @@
 /**
- * Purpose: Shared infrastructure for command dispatch -- result helpers, target tab resolution, action toast, and type aliases.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // helpers.ts — Shared infrastructure for command dispatch.
 // Types, result helpers, target resolution, action toast, and constants.
 
-import type { PendingQuery } from '../../types/index.js'
-import type { SyncClient } from '../sync-client.js'
-import { getTrackedTabInfo, clearTrackedTab, getActiveTab } from '../event-listeners.js'
-import { DebugCategory } from '../debug.js'
-import { isAiWebPilotEnabled } from '../state.js'
-import { errorMessage } from '../../lib/error-utils.js'
-import { delay } from '../../lib/timeout-utils.js'
+import type { PendingQuery } from '../../types'
+import type { SyncClient } from '../sync-client'
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners'
+import { DebugCategory } from '../debug'
+import { isAiWebPilotEnabled } from '../state'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -66,15 +68,8 @@ interface RecoveryAttempt {
   detail: string
 }
 
-export function debugLog(category: string, message: string, data: unknown = null): void {
-  const globalLogger = (globalThis as { __GASOLINE_DEBUG_LOG__?: (c: string, m: string, d?: unknown) => void })
-    .__GASOLINE_DEBUG_LOG__
-  if (typeof globalLogger === 'function') {
-    globalLogger(category, message, data)
-    return
-  }
-
-  // Keep helpers usable before the main debug logger is initialized.
+function debugLog(category: string, message: string, data: unknown = null): void {
+  // Keep helpers independent from index.ts to avoid circular imports during registry boot.
   const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
   if (!debugEnabled) return
   if (data === null) {
@@ -139,53 +134,10 @@ const PRETTY_LABELS: Record<string, string> = {
   focus: 'Focus',
   scroll_to: 'Scroll to',
   wait_for: 'Wait for',
-  wait_for_stable: 'Waiting for page to stabilize...',
   key_press: 'Key press',
   highlight: 'Highlight',
   subtitle: 'Subtitle',
   upload: 'Upload file'
-}
-
-const PRETTY_TRYING_LABELS: Record<string, string> = {
-  scroll_to: 'Scrolling to',
-  open_composer: 'Opening composer',
-  submit_active_composer: 'Submitting active composer',
-  confirm_top_dialog: 'Confirming top dialog',
-  dismiss_top_overlay: 'Dismissing top overlay',
-  auto_dismiss_overlays: 'Dismissing overlays'
-}
-
-function humanizeActionLabel(action: string): string {
-  const explicit = PRETTY_LABELS[action]
-  if (explicit) return explicit
-  if (!/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(action)) return action
-  const sentence = action.replaceAll('_', ' ')
-  return sentence.charAt(0).toUpperCase() + sentence.slice(1)
-}
-
-function inferWaitTarget(detail?: string): string | undefined {
-  if (!detail) return undefined
-  const trimmed = detail.trim()
-  if (!trimmed || trimmed.toLowerCase() === 'page') return undefined
-  return trimmed
-}
-
-function resolveToastCopy(
-  action: string,
-  detail: string | undefined,
-  state: 'trying' | 'success' | 'warning' | 'error'
-): { text: string; detail?: string } {
-  if (state !== 'trying') return { text: humanizeActionLabel(action), detail }
-
-  if (action === 'wait_for') {
-    const waitTarget = inferWaitTarget(detail)
-    if (waitTarget) return { text: `Waiting for ${waitTarget}` }
-    return { text: 'Waiting for condition...' }
-  }
-
-  const tryingText = PRETTY_TRYING_LABELS[action]
-  if (tryingText) return { text: tryingText, detail }
-  return { text: humanizeActionLabel(action), detail }
 }
 
 /** Show a visual action toast on the tracked tab */
@@ -196,12 +148,11 @@ export function actionToast(
   state: 'trying' | 'success' | 'warning' | 'error' = 'success',
   durationMs = 3000
 ): void {
-  const toastCopy = resolveToastCopy(action, detail, state)
   chrome.tabs
     .sendMessage(tabId, {
       type: 'GASOLINE_ACTION_TOAST',
-      text: toastCopy.text,
-      detail: toastCopy.detail,
+      text: PRETTY_LABELS[action] || action,
+      detail,
       state,
       duration_ms: durationMs
     })
@@ -270,25 +221,15 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'a11y',
   'dom_action',
   'upload',
-  'screen_recording_start',
+  'record_start',
   'execute',
   'link_health',
   'draw_mode',
-  'cdp_action',
   'computed_styles',
   'form_discovery',
-  'form_state',
-  'data_table',
   'state_capture',
   'state_save',
-  'state_load',
-  'explore_page',
-  'get_readable',
-  'get_markdown',
-  'page_summary',
-  'page_structure',
-  'navigation',
-  'feature_gates'
+  'state_load'
 ])
 
 export function requiresTargetTab(queryType: string): boolean {
@@ -298,7 +239,11 @@ export function requiresTargetTab(queryType: string): boolean {
 export function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean {
   if (queryType !== 'browser_action') return false
   const action =
-    typeof paramsObj.action === 'string' ? paramsObj.action : typeof paramsObj.what === 'string' ? paramsObj.what : ''
+    typeof paramsObj.action === 'string'
+      ? paramsObj.action
+      : typeof paramsObj.what === 'string'
+      ? paramsObj.what
+      : ''
   return (
     action === 'navigate' ||
     action === 'refresh' ||
@@ -317,7 +262,7 @@ async function getTabWithRetry(tabId: number, retry = false): Promise<chrome.tab
     if (!retry) {
       return null
     }
-    await delay(300)
+    await new Promise((r) => setTimeout(r, 300))
     try {
       return await chrome.tabs.get(tabId)
     } catch {
@@ -326,12 +271,16 @@ async function getTabWithRetry(tabId: number, retry = false): Promise<chrome.tab
   }
 }
 
+async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+  const tab = activeTabs[0]
+  if (!tab?.id) {
+    return null
+  }
+  return tab
+}
 
-function buildMissingTargetError(
-  queryType: string,
-  useActiveTab: boolean,
-  trackedTabId: number | null
-): TargetResolutionError {
+function buildMissingTargetError(queryType: string, useActiveTab: boolean, trackedTabId: number | null): TargetResolutionError {
   const message =
     "No target tab resolved. Provide 'tab_id', enable tab tracking, or set 'use_active_tab=true' explicitly."
   return {
@@ -347,7 +296,7 @@ function buildMissingTargetError(
   }
 }
 
-export async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
+async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.id) return
   await chrome.storage.local.set({
     trackedTabId: tab.id,
@@ -383,7 +332,8 @@ function buildNoTrackableTabError(
       use_active_tab: useActiveTab,
       tracked_tab_id: trackedTabId,
       attempted_recovery: attempts,
-      retry: 'Open any normal web page tab (http/https), keep AI Web Pilot enabled, then retry the command.',
+      retry:
+        'Open any normal web page tab (http/https), keep AI Web Pilot enabled, then retry the command.',
       retryable: false
     }
   }
@@ -464,7 +414,7 @@ async function tryAutoTrackFallback(
     attempts.push({
       step: 'switch_to_non_internal_tab',
       status: 'failed',
-      detail: `Failed to enumerate/switch tabs: ${errorMessage(err)}`
+      detail: `Failed to enumerate/switch tabs: ${(err as Error).message}`
     })
   }
 
@@ -502,7 +452,7 @@ async function tryAutoTrackFallback(
     attempts.push({
       step: 'open_new_tab_and_track',
       status: 'failed',
-      detail: `Failed to open tab: ${errorMessage(err)}`
+      detail: `Failed to open tab: ${(err as Error).message}`
     })
   }
 
@@ -511,45 +461,12 @@ async function tryAutoTrackFallback(
   }
 }
 
-export async function resolveTargetTab(
-  query: PendingQuery,
-  paramsObj: QueryParamsObject
-): Promise<{
+export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
   target?: TargetResolution
   error?: TargetResolutionError
 }> {
   const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined
   const useActiveTab = paramsObj.use_active_tab === true
-
-  async function resolveAutoTrackOrEscapeFallback(
-    trackedTabId: number | null,
-    fallbackMessage: string
-  ): Promise<{ target?: TargetResolution; error?: TargetResolutionError }> {
-    if (isAiWebPilotEnabled()) {
-      const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId)
-      if (recovered.target || recovered.error) {
-        return recovered
-      }
-    }
-
-    if (isBrowserEscapeAction(query.type, paramsObj)) {
-      const activeTab = await getActiveTab()
-      if (activeTab?.id) {
-        diagnosticLog(`[Diagnostic] ${fallbackMessage} ${activeTab.id} for escape action ${query.type}`)
-        return {
-          target: {
-            tabId: activeTab.id,
-            url: activeTab.url || '',
-            source: 'active_tab_fallback',
-            trackedTabId,
-            useActiveTab: true
-          }
-        }
-      }
-    }
-
-    return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
-  }
 
   if (explicitTabId) {
     const explicitTab = await getTabWithRetry(explicitTabId)
@@ -650,10 +567,56 @@ export async function resolveTargetTab(
       /* best effort */
     }
 
-    return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Falling back to active tab')
+    if (isAiWebPilotEnabled()) {
+      const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId)
+      if (recovered.target || recovered.error) {
+        return recovered
+      }
+    }
+
+    if (isBrowserEscapeAction(query.type, paramsObj)) {
+      const activeTab = await getActiveTab()
+      if (activeTab?.id) {
+        diagnosticLog(`[Diagnostic] Falling back to active tab ${activeTab.id} for escape action ${query.type}`)
+        return {
+          target: {
+            tabId: activeTab.id,
+            url: activeTab.url || '',
+            source: 'active_tab_fallback',
+            trackedTabId,
+            useActiveTab: true
+          }
+        }
+      }
+    }
+
+    return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
   }
 
-  return resolveAutoTrackOrEscapeFallback(trackedTabId, 'Using active tab fallback')
+  if (isAiWebPilotEnabled()) {
+    const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId)
+    if (recovered.target || recovered.error) {
+      return recovered
+    }
+  }
+
+  if (isBrowserEscapeAction(query.type, paramsObj)) {
+    const activeTab = await getActiveTab()
+    if (activeTab?.id) {
+      diagnosticLog(`[Diagnostic] Using active tab fallback ${activeTab.id} for escape action ${query.type}`)
+      return {
+        target: {
+          tabId: activeTab.id,
+          url: activeTab.url || '',
+          source: 'active_tab_fallback',
+          trackedTabId: null,
+          useActiveTab: true
+        }
+      }
+    }
+  }
+
+  return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
 }
 
 /**
@@ -664,37 +627,4 @@ export function isRestrictedUrl(url: string | undefined): boolean {
   if (!url) return true
   const blocked = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://']
   return blocked.some((p) => url.startsWith(p))
-}
-
-// =============================================================================
-// CONTENT SCRIPT ERROR DETECTION
-// =============================================================================
-
-/** Check if an error indicates the content script is not loaded on the target page. */
-export function isContentScriptUnreachableError(err: unknown): boolean {
-  const message = errorMessage(err, '')
-  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
-}
-
-// =============================================================================
-// AI WEB PILOT GUARD
-// =============================================================================
-
-/**
- * Minimal context shape needed by requireAiWebPilot.
- * Avoids circular import with registry.ts (which defines CommandContext).
- */
-interface AiWebPilotGuardContext {
-  sendResult: (result: unknown) => void
-}
-
-/**
- * Guard that checks AI Web Pilot is enabled.
- * Returns true if enabled and the caller should proceed.
- * Returns false if disabled — the error response has already been sent.
- */
-export function requireAiWebPilot(ctx: AiWebPilotGuardContext): boolean {
-  if (isAiWebPilotEnabled()) return true
-  ctx.sendResult({ error: 'ai_web_pilot_disabled' })
-  return false
 }

@@ -1,4 +1,5 @@
-// Purpose: Tests for Playwright test script generation.
+// Purpose: Validate generate_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // generate_test.go — Tests for test generation functions using mock DataProvider.
@@ -9,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // mockDataProvider implements DataProvider for testing.
@@ -416,8 +417,8 @@ func TestGenerateTestFromInteraction_Basic(t *testing.T) {
 	if !result.Coverage.StateCaptured {
 		t.Fatal("StateCaptured should be true")
 	}
-	if !strings.Contains(result.Content, "getByTestId('submit').click()") {
-		t.Fatalf("script should contain click action; got:\n%s", result.Content)
+	if !strings.Contains(result.Content, "await page.click('#btn')") {
+		t.Fatalf("script should contain click action")
 	}
 	if len(result.Metadata.ContextUsed) != 1 || result.Metadata.ContextUsed[0] != "actions" {
 		t.Fatalf("ContextUsed = %v, want [actions]", result.Metadata.ContextUsed)

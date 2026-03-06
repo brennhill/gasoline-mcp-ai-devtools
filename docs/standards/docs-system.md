@@ -16,7 +16,6 @@ Make requirements and implementation context easy to discover for humans and LLM
 - Required files per feature: `product-spec.md`, `tech-spec.md`, `qa-plan.md`, `index.md`
 - Shared components: `docs/components/<component>.md`
 - Cross-feature mapping: `docs/traceability/feature-map.md`
-- Content writing standard: [content-style-voice-guide.md](./content-style-voice-guide.md)
 
 ## Required Frontmatter Fields
 
@@ -41,12 +40,6 @@ Every feature spec file must include at least:
 - Product, tech, and QA specs must link to each other.
 - Shared component docs must link back to related feature bundles.
 - Top-level indexes must link only to canonical files.
-- For architecture flow maps, use hybrid linking:
-  - Canonical map in `docs/architecture/flow-maps/`
-  - Feature-local `flow-map.md` pointer in `docs/features/<group>/<feature>/`
-  - Feature `index.md` links to local `flow-map.md`
-
-See: [LLM Flow Map Placement Best Practice](./llm-flow-map-best-practice.md)
 
 ## Update Workflow
 
@@ -58,9 +51,6 @@ See: [LLM Flow Map Placement Best Practice](./llm-flow-map-best-practice.md)
    - `python3 scripts/lint-documentation.py`
 5. Enforce feature bundle contract:
    - `node scripts/docs/check-feature-bundles.js`
-6. Enforce content writing/voice contract:
-   - `node scripts/docs/check-content-style-contract.mjs`
-   - `node scripts/docs/run-vale-on-changed.mjs`
 
 ## Definition of Done (Docs)
 

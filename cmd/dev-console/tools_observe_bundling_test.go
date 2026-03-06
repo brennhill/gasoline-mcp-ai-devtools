@@ -1,5 +1,6 @@
-// Purpose: Tests for observe response bundling and batching.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_observe_bundling_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_observe_bundling_test.go — Tests for error bundling observe mode.
 //
@@ -15,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // ============================================
@@ -26,12 +27,12 @@ import (
 type bundleTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Store
+	capture *capture.Capture
 }
 
 func newBundleTestEnv(t *testing.T) *bundleTestEnv {
 	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test-error-bundles.jsonl", 1000)
+	server, err := NewServer("/tmp/test-error-bundles.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

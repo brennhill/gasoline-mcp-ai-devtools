@@ -1,5 +1,6 @@
-// Purpose: Tests for handler response structure consistency.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate handler_consistency_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // handler_consistency_test.go — Verifies consistent HTTP error responses across all endpoints.
 // Every error response MUST: have Content-Type: application/json, contain parseable JSON with "error" key.
@@ -16,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // extensionRequest creates a localhost request with the required extension header.
@@ -32,7 +33,7 @@ func TestAllPOSTEndpoints_RejectGET(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	postOnlyEndpoints := []string{
 		"/websocket-events",
@@ -69,7 +70,7 @@ func TestAllPOSTEndpoints_InvalidJSON(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	// Endpoints that accept POST with JSON bodies and should return 400 on invalid JSON.
 	// Excluded: /sync (has its own test), /recordings/save (multipart), /shutdown (no body).
@@ -190,7 +191,7 @@ func TestDiagnostics_ReturnsRealData(t *testing.T) {
 
 	srv := newTestServerForHandlers(t)
 	cap := capture.NewCapture()
-	mux, _ := setupHTTPRoutes(srv, cap)
+	mux := setupHTTPRoutes(srv, cap)
 
 	// Ingest some data into various buffers.
 	cap.AddWebSocketEvents([]capture.WebSocketEvent{

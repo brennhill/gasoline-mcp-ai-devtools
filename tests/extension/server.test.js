@@ -26,6 +26,7 @@ const {
   sendLogsToServer,
   sendNetworkBodiesToServer,
   checkServerHealth,
+  pollPendingQueries,
   sendWSEventsToServer,
   sendEnhancedActionsToServer,
   updateBadge
@@ -258,6 +259,70 @@ describe('checkServerHealth', () => {
     const result = await checkServerHealth('http://localhost:9222')
     assert.strictEqual(result.connected, false)
     assert.ok(result.error.includes('invalid response'))
+  })
+})
+
+// ============================================
+// pollPendingQueries
+// ============================================
+
+describe('pollPendingQueries', () => {
+  test('returns queries on success', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [{ type: 'dom', params: {} }] })
+      })
+    )
+
+    const queries = await pollPendingQueries('http://localhost:9222', 'session-1', 'enabled')
+    assert.strictEqual(queries.length, 1)
+    assert.strictEqual(queries[0].type, 'dom')
+  })
+
+  test('returns empty array on error', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.reject(new Error('Network error'))
+    )
+
+    const queries = await pollPendingQueries('http://localhost:9222', 'session-1', 'enabled')
+    assert.deepStrictEqual(queries, [])
+  })
+
+  test('returns empty array on non-ok response', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 500 })
+    )
+
+    const queries = await pollPendingQueries('http://localhost:9222', 'session-1', 'enabled')
+    assert.deepStrictEqual(queries, [])
+  })
+
+  test('returns empty array when no queries available', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [] })
+      })
+    )
+
+    const queries = await pollPendingQueries('http://localhost:9222', 'session-1', 'enabled')
+    assert.deepStrictEqual(queries, [])
+  })
+
+  test('includes ext-session and pilot headers', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [] })
+      })
+    )
+
+    await pollPendingQueries('http://localhost:9222', 'my-session', 'disabled')
+    const call = mockFetch.mock.calls[0]
+    const headers = call.arguments[1].headers
+    assert.strictEqual(headers['X-Gasoline-Ext-Session'], 'my-session')
+    assert.strictEqual(headers['X-Gasoline-Pilot'], 'disabled')
   })
 })
 

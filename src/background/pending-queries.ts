@@ -1,30 +1,28 @@
 /**
- * Purpose: Thin dispatcher shell that delegates pending MCP queries to command modules registered in commands/.
- * Why: Decouples query routing from handler implementations to keep the dispatch table extensible.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // pending-queries.ts — Thin dispatcher shell.
 // Delegates to command modules registered in commands/.
 
-import type { PendingQuery } from '../types/index.js'
-import type { SyncClient } from './sync-client.js'
-import { dispatch } from './commands/registry.js'
+import type { PendingQuery } from '../types'
+import type { SyncClient } from './sync-client'
+import { dispatch } from './commands/registry'
 
 // Import command modules to trigger handler registration
-import './commands/observe.js'
-import './commands/analyze.js'
-import './commands/analyze-navigation.js'
-import './commands/analyze-page-structure.js'
-import './commands/analyze-feature-gates.js'
-import './commands/interact.js'
-import './commands/interact-content.js'
-import './commands/interact-explore.js'
+import './commands/observe'
+import './commands/analyze'
+import './commands/interact'
 
 // Re-export types for backward compatibility (used by browser-actions.ts, upload-handler.ts, dom-dispatch.ts)
-export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
+export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers'
 
 // Re-export handlePilotCommand (used by index.ts re-export chain)
-export { handlePilotCommand } from './commands/interact.js'
+export { handlePilotCommand } from './commands/interact'
 
 export async function handlePendingQuery(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   return dispatch(query, syncClient)

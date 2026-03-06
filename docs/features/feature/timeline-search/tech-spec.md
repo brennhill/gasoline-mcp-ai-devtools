@@ -4,12 +4,10 @@ scope: feature/timeline-search
 ai-priority: high
 tags: [v7, analysis, debugging]
 relates-to: [product-spec.md, ../backend-log-streaming/tech-spec.md, ../backend-control/tech-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: tech-spec
 feature_id: feature-timeline-search
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Timeline & Search — Technical Specification

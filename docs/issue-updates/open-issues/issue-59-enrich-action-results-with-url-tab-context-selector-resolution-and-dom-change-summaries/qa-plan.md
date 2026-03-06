@@ -1,7 +1,7 @@
 # QA Plan: Issue #59
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/59
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/59
 - Title: Enrich action results with URL/tab context, selector resolution, and DOM-change summaries
 
 ## QA Goal

@@ -1,4 +1,5 @@
-// Purpose: Benchmark capture pipeline throughput and latency.
+// Purpose: Validate capture_bench_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture
@@ -7,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // BenchmarkAddWebSocketEvents measures WebSocket event buffering performance

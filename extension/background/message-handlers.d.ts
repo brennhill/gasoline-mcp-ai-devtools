@@ -1,12 +1,15 @@
 /**
- * Purpose: Routes all chrome.runtime.onMessage events to type-safe handlers for logs, settings, screenshots, and state management.
- * Why: Centralizes message validation and sender security checks in one place.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
  * with type-safe message discrimination.
  */
-import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types/index.js';
+import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types';
 /** Message handler dependencies */
 export interface MessageHandlerDependencies {
     getServerUrl: () => string;

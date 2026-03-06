@@ -1,5 +1,6 @@
-// Purpose: Tests for state save, load, list, and delete operations.
-// Docs: docs/features/feature/state-time-travel/index.md
+// Purpose: Validate paths_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package state
 

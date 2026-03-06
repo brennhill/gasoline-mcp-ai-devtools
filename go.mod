@@ -1,3 +1,3 @@
-module github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+module github.com/dev-console/dev-console
 
 go 1.24.13

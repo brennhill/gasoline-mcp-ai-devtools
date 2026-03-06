@@ -1,5 +1,6 @@
-// Purpose: Contract tests for connection PID tracking.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate main_connection_pid_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -12,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestCleanupStalePIDFile_AliveUnrelatedProcessDoesNotBlock(t *testing.T) {

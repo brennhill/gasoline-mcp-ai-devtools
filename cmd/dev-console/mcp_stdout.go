@@ -1,6 +1,3 @@
-// Purpose: Serializes and writes MCP JSON-RPC payloads to stdout with content-length or line framing.
-// Why: Guarantees stdout output invariants (valid JSON, single newline) required by the MCP transport spec.
-
 package main
 
 import (
@@ -9,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/dev-console/dev-console/internal/bridge"
 )
 
 // writeMCPPayload is the only stdout emitter used by MCP wrapper responses.
@@ -38,7 +35,7 @@ func normalizeMCPPayload(payload []byte) []byte {
 
 	stderrf("[gasoline-bridge] ERROR: stdout invariant violation: invalid JSON payload (len=%d)\n", len(payload))
 	errResp := JSONRPCResponse{
-		JSONRPC: JSONRPCVersion,
+		JSONRPC: "2.0",
 		ID:      nil,
 		Error: &JSONRPCError{
 			Code:    -32603,
@@ -54,7 +51,7 @@ func normalizeMCPPayload(payload []byte) []byte {
 // This ensures the parent process (IDE) receives a proper error instead of empty response.
 func sendStartupError(message string) {
 	errResp := JSONRPCResponse{
-		JSONRPC: JSONRPCVersion,
+		JSONRPC: "2.0",
 		ID:      "startup",
 		Error: &JSONRPCError{
 			Code:    -32603,

@@ -7,7 +7,7 @@ package main
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/annotation"
+	"github.com/dev-console/dev-console/internal/annotation"
 )
 
 // Type aliases — keep existing code compiling without changes.
@@ -18,8 +18,12 @@ type AnnotationSession = annotation.Session
 type NamedAnnotationSession = annotation.NamedSession
 type AnnotationStore = annotation.Store
 
-// globalAnnotationStore is a legacy fallback store used by direct helper tests.
-// Runtime HTTP/tool paths use a server-scoped store via Server.getAnnotationStore().
+// Constant aliases for tests.
+const maxSessions = annotation.MaxSessions
+const maxNamedSessions = annotation.MaxNamedSessions
+const maxDetails = annotation.MaxDetails
+
+// globalAnnotationStore is the shared annotation store used by both HTTP routes and tool handlers.
 var globalAnnotationStore = annotation.NewStore(10 * time.Minute)
 
 // NewAnnotationStore creates a new store (wrapper for tests).

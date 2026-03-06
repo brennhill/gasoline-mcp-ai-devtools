@@ -1,34 +1,5 @@
 "use strict";
 (() => {
-  // extension/lib/error-utils.js
-  function errorMessage(err, fallback = "Unknown error") {
-    if (err instanceof Error && err.message)
-      return err.message;
-    if (typeof err === "string" && err)
-      return err;
-    return fallback;
-  }
-
-  // extension/lib/daemon-http.js
-  var DEFAULT_CLIENT_NAME = "gasoline-extension";
-  function buildDaemonHeaders(options = {}) {
-    const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
-    const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
-    const headers = {
-      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
-    };
-    if (contentType !== null) {
-      headers["Content-Type"] = contentType;
-    }
-    if (normalizedVersion) {
-      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
-    }
-    return {
-      ...headers,
-      ...additionalHeaders
-    };
-  }
-
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
   var defaultState = {
@@ -179,7 +150,7 @@
         success: true
       });
     } catch (err) {
-      console.error(LOG, "START EXCEPTION:", errorMessage(err), err.stack);
+      console.error(LOG, "START EXCEPTION:", err.message, err.stack);
       for (const s of acquiredStreams) {
         console.log(LOG, "Cleaning up leaked stream, stopping", s.getTracks().length, "tracks");
         s.getTracks().forEach((t) => t.stop());
@@ -189,7 +160,7 @@
         target: "background",
         type: "OFFSCREEN_RECORDING_STARTED",
         success: false,
-        error: `RECORD_START: ${errorMessage(err, "Failed to start recording in offscreen document.")}`
+        error: `RECORD_START: ${err.message || "Failed to start recording in offscreen document."}`
       });
     }
   }
@@ -262,10 +233,7 @@
         console.log(LOG, "POSTing to", `${serverUrl}/recordings/save`, { size: blob.size, hasAudio });
         const response = await fetch(`${serverUrl}/recordings/save`, {
           method: "POST",
-          headers: buildDaemonHeaders({
-            clientName: "gasoline-extension-offscreen",
-            contentType: null
-          }),
+          headers: { "X-Gasoline-Client": "gasoline-extension-offscreen" },
           body: formData
         });
         console.log(LOG, "Server response:", response.status);
@@ -299,14 +267,14 @@
           path: savePath
         });
       } catch (err) {
-        console.error(LOG, "SAVE EXCEPTION:", errorMessage(err), err.stack);
+        console.error(LOG, "SAVE EXCEPTION:", err.message, err.stack);
         state = { ...defaultState };
         chrome.runtime.sendMessage({
           target: "background",
           type: "OFFSCREEN_RECORDING_STOPPED",
           status: "error",
           name,
-          error: `RECORD_STOP: ${errorMessage(err, "Save failed.")}`
+          error: `RECORD_STOP: ${err.message || "Save failed."}`
         });
       }
     };

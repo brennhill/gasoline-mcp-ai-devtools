@@ -1,9 +1,6 @@
 ---
 title: Write UAT Scripts That Survive UI Changes
 description: Create reusable acceptance tests using natural language and semantic selectors — scripts that keep working even when your UI gets redesigned.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['guides', 'resilient', 'uat']
 ---
 
 ## The Selenium Problem

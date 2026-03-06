@@ -5,9 +5,9 @@
     {
       "tool": {
         "driver": {
-          "name": "Gasoline Agentic Browser",
+          "name": "Gasoline",
           "version": "VERSION",
-          "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
+          "informationUri": "https://github.com/anthropics/gasoline",
           "rules": [
             {
               "id": "color-contrast",

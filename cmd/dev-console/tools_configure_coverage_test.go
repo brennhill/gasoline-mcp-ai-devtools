@@ -1,5 +1,6 @@
-// Purpose: Coverage-expansion tests for dev-console edge cases and branch paths.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_configure_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_configure_coverage_test.go — Coverage tests for configure sub-handlers.
 package main

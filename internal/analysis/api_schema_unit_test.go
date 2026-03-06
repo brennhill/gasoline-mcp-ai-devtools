@@ -1,5 +1,6 @@
-// Purpose: Unit tests for error clustering and API schema analysis api schema logic.
-// Docs: docs/features/feature/api-schema/index.md
+// Purpose: Validate api_schema_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // api_schema_unit_test.go — Unit tests for inferTypeAndFormat and inferStringFormat.
 package analysis

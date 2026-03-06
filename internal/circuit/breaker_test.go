@@ -1,4 +1,6 @@
-// Purpose: Tests for circuit breaker state transitions, trip thresholds, and recovery.
+// Purpose: Validate breaker_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // breaker_test.go — Tests for the CircuitBreaker state machine.
 // Verifies state machine transitions, streak counting, and concurrent RecordEvents safety.

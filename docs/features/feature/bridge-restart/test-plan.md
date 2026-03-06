@@ -2,9 +2,7 @@
 doc_type: test_plan
 feature_id: feature-bridge-restart
 status: implemented
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-18
 ---
 
 # Bridge Restart — Test Plan
@@ -70,15 +68,6 @@ last_verified_date: 2026-03-05
 | `TestExtractToolAction_NonToolsCall` | Passing |
 | `TestExtractToolAction_MalformedJSON` | Passing |
 | `TestExtractToolAction_ConfigureNoAction` | Passing |
-
-### Startup Convergence Tests
-
-| Test | Status |
-|------|--------|
-| `TestBridgeStartupLock_SingleLeaderElection` | Passing |
-| `TestWaitForPeerDaemon_ServerAppearsOnFirstRetry` | Passing |
-| `TestBridgeStartupContention_AllClientsConverge` | Passing |
-| `TestFastStart_ToolsCallWaitsForDaemonBoot` | Passing |
 
 ### Manual Tests
 

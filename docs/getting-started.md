@@ -1,7 +1,7 @@
 ---
 title: "Fire It Up"
 description: "Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command."
-keywords: "install gasoline, gasoline agentic browser setup, npx gasoline-agentic-browser, browser extension install, MCP server setup"
+keywords: "install gasoline, gasoline mcp setup, npx gasoline-mcp, browser extension install, MCP server setup"
 permalink: /getting-started/
 header:
   overlay_image: /assets/images/hero-banner.png
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-03-02
+last_reviewed: 2026-02-24
 ---
 
 ## <i class="fas fa-fire"></i> 1. Ignite the Server & Configure Clients
@@ -21,12 +21,12 @@ last_reviewed: 2026-03-02
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
@@ -47,34 +47,13 @@ Since you've already downloaded the extension files with the script above, you j
 3.  Click **Load unpacked**
 4.  Select the folder: `~/.gasoline/extension`
 
-Click the Gasoline Agentic Browser icon in your toolbar — it should show **Connected**.
+Click the Gasoline icon in your toolbar — it should show **Connected**.
 
 ## <i class="fas fa-plug"></i> 3. Verify Your AI Tool
 
 The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
 
 <i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for manual setup if needed.
-
-### Launch Mode Guard (Persistent vs Transient)
-
-Gasoline now classifies launch context at startup:
-
-- `persistent`: expected long-lived runtime (daemon flag, supervisor, or non-interactive stdio).
-- `likely_transient`: interactive shell launch likely to disconnect when the process exits.
-
-If launch mode is `likely_transient`, Gasoline prints a one-time warning with remediation:
-
-```bash
-gasoline-mcp --daemon --port 7890
-```
-
-To enforce this in CI/team environments, set:
-
-```bash
-GASOLINE_REQUIRE_PERSISTENT=true
-```
-
-When strict mode is enabled, Gasoline exits non-zero on `likely_transient` launches.
 
 ## <i class="fas fa-check-circle"></i> Verify the Flame
 

@@ -2,12 +2,10 @@
 feature: Draw Mode
 status: proposed
 tool: interact, analyze
-version: 0.7.12
+version: v0.7
 doc_type: product-spec
 feature_id: draw-mode
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Draw Mode (Visual Annotation for LLM-Assisted Development)

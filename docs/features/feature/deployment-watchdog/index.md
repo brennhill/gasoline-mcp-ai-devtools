@@ -4,19 +4,9 @@ feature_id: feature-deployment-watchdog
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-16
 code_paths:
-  - cmd/dev-console/main_connection_mcp_upgrade.go
-  - cmd/dev-console/binary_watcher.go
-  - cmd/dev-console/config_modes.go
-  - cmd/dev-console/binary_watcher_marker.go
-  - cmd/dev-console/health_response_builders.go
-  - cmd/dev-console/server_routes_health_diagnostics.go
-  - cmd/dev-console/handler_tools_call_postprocess.go
-test_paths:
-  - cmd/dev-console/binary_watcher_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+test_paths: []
 ---
 
 # Deployment Watchdog
@@ -33,7 +23,6 @@ last_verified_date: 2026-03-05
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
-- Flow Map Pointer: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 

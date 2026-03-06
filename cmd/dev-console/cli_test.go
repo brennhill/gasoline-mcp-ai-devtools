@@ -1,5 +1,6 @@
-// Purpose: Tests for CLI argument parsing and execution.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate cli_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // cli_test.go — Tests for CLI mode: argument parsing, output formatting, and end-to-end flow.
 package main
@@ -430,36 +431,6 @@ func TestParseInteractArgsType(t *testing.T) {
 	}
 	if mcpArgs["clear"] != true {
 		t.Errorf("expected clear true, got %v", mcpArgs["clear"])
-	}
-}
-
-func TestParseInteractArgsScrollToDirection(t *testing.T) {
-	t.Parallel()
-
-	mcpArgs, err := parseInteractArgs("scroll_to", []string{"--selector", "#modal-body", "--direction", "bottom"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if mcpArgs["selector"] != "#modal-body" {
-		t.Errorf("expected selector '#modal-body', got %v", mcpArgs["selector"])
-	}
-	if mcpArgs["direction"] != "bottom" {
-		t.Errorf("expected direction 'bottom', got %v", mcpArgs["direction"])
-	}
-}
-
-func TestParseInteractArgsGetTextStructured(t *testing.T) {
-	t.Parallel()
-
-	mcpArgs, err := parseInteractArgs("get_text", []string{"--selector", ".accordion", "--structured"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if mcpArgs["selector"] != ".accordion" {
-		t.Errorf("expected selector '.accordion', got %v", mcpArgs["selector"])
-	}
-	if mcpArgs["structured"] != true {
-		t.Errorf("expected structured true, got %v", mcpArgs["structured"])
 	}
 }
 

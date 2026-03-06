@@ -1,5 +1,6 @@
-// Purpose: Unit tests for dev-console http helpers logic.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate http_helpers_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -9,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 func TestAuthMiddleware(t *testing.T) {

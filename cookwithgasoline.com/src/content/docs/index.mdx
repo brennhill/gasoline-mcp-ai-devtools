@@ -1,26 +1,33 @@
 ---
-title: "Gasoline Agentic Devtools"
-description: "Build web apps faster with interactive design, coding, and debugging."
+title: Enabling Full-stack Automated AI Debugging
+description: Gasoline MCP is an open-source browser extension + MCP server that streams real-time browser telemetry to AI coding assistants. Console logs, network errors, exceptions, WebSocket events — your AI sees it all. Zero dependencies. Localhost only. Enterprise safe.
 template: splash
 hero:
-  title: "Build web apps faster with interactive design, coding, and debugging."
-  tagline: "Debug web apps, automate workflows, record demos, and validate accessibility from one local-first devtool."
+  title: Enabling Full-stack Automated AI Debugging
+  tagline: Pouring fuel on the AI development fire
+  image:
+    html: '<img src="/images/sparky-working-laptop-web.webp" alt="Sparky coding" style="height:300px;width:auto;" />'
   actions:
-    - text: See how it works
-      link: /discover-workflows/
-      icon: right-arrow
-      variant: secondary
-    - text: Install Gasoline Agentic Devtools
+    - text: Download Now
       link: /downloads/
       icon: download
       variant: primary
+    - text: Get Started
+      link: /getting-started/
+      icon: right-arrow
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/brennhill/gasoline
+      icon: external
+      variant: secondary
 pagefind: false
 sidebar:
   hidden: true
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 import Landing from '../../components/Landing.astro';
+import RotatingHero from '../../components/RotatingHero.astro';
 
-<Landing />
+<RotatingHero>
+  <Landing />
+</RotatingHero>

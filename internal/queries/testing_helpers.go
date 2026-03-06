@@ -1,5 +1,5 @@
-// Purpose: Exposes test-only accessors for query dispatcher internals (last pending query, state inspection).
-// Why: Allows tests to verify internal state without exporting fields.
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
 // Docs: docs/features/feature/query-service/index.md
 
 package queries

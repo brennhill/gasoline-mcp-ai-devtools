@@ -1,12 +1,14 @@
 /**
- * Purpose: Handles incoming chrome.runtime messages from the background script -- pings, setting toggles, highlights, JS execution, state management, and draw mode.
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * @fileoverview Message Handlers Module
  * Handles messages from background script
  */
-import type { ContentMessage, ContentPingResponse, WebSocketCaptureMode, HighlightResponse, WaterfallEntry, StateAction, BrowserStateSnapshot, A11yAuditResult } from '../types/index.js';
+import type { ContentMessage, ContentPingResponse, WebSocketCaptureMode, HighlightResponse, WaterfallEntry, StateAction, BrowserStateSnapshot, A11yAuditResult } from '../types';
 export declare const TOGGLE_MESSAGES: ReadonlySet<string>;
 /**
  * Security: Validate sender is from the extension background script
@@ -88,20 +90,6 @@ export declare function handleGetNetworkWaterfall(sendResponse: (result: {
 }) => void): boolean;
 export declare function handleComputedStylesQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleFormDiscoveryQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
-export declare function handleFormStateQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
-export declare function handleDataTableQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleLinkHealthQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
-/**
- * Handle GET_READABLE message — extract readable content directly in ISOLATED world.
- */
-export declare function handleGetReadable(sendResponse: (result: unknown) => void): boolean;
-/**
- * Handle GET_MARKDOWN message — extract markdown content directly in ISOLATED world.
- */
-export declare function handleGetMarkdown(sendResponse: (result: unknown) => void): boolean;
-/**
- * Handle PAGE_SUMMARY message — extract page summary directly in ISOLATED world.
- */
-export declare function handlePageSummary(sendResponse: (result: unknown) => void): boolean;
 export {};
 //# sourceMappingURL=message-handlers.d.ts.map

@@ -4,12 +4,10 @@ feature_id: feature-redaction-patterns
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-02-16
 code_paths:
   - internal/redaction/redaction.go
 test_paths: []
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
 ---
 
 # Redaction Patterns

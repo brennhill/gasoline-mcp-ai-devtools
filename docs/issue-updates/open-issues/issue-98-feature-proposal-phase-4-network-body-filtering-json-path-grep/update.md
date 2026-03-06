@@ -1,7 +1,7 @@
 # Product Update: Issue #98
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/98
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/98
 - Title: [Feature Proposal] Phase 4: Network Body Filtering (JSON Path/Grep)
 - Last Updated: 2026-02-16T16:52:01Z
 

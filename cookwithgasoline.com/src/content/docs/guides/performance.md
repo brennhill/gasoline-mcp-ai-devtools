@@ -1,9 +1,6 @@
 ---
 title: "Performance Measurement & Refinement"
 description: "Use Gasoline to measure Web Vitals, profile page loads, compare before/after performance, detect regressions, analyze resource loading, and generate PR performance summaries."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['guides', 'performance']
 ---
 
 Gasoline captures Core Web Vitals, navigation timing, resource loading, and long tasks from every page your AI visits. Use this data to measure performance, identify bottlenecks, and verify optimizations — all without leaving your AI workflow.

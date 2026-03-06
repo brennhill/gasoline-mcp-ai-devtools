@@ -1,5 +1,6 @@
-// Purpose: Tests for recording playback result formatting.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate recording_playback_result_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // recording_playback_result_test.go — Tests for buildPlaybackResult method.
 package main
@@ -11,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================

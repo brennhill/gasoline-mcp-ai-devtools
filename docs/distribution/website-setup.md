@@ -108,9 +108,9 @@ Create `install/index.html`:
 
   <h2>Next Steps</h2>
   <ul>
-    <li>Read the <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/README.md">documentation</a></li>
+    <li>Read the <a href="https://github.com/anthropics/gasoline/blob/main/README.md">documentation</a></li>
     <li>Join our <a href="https://discord.gg/example">community</a></li>
-    <li>Report issues on <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues">GitHub</a></li>
+    <li>Report issues on <a href="https://github.com/anthropics/gasoline/issues">GitHub</a></li>
   </ul>
 
   <hr>
@@ -118,7 +118,7 @@ Create `install/index.html`:
     <small>
       Gasoline v5.8.2 |
       <a href="/downloads/checksums.txt">Verify checksums</a> |
-      <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp">View source</a>
+      <a href="https://github.com/anthropics/gasoline">View source</a>
     </small>
   </footer>
 </body>

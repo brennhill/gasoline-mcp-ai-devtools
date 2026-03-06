@@ -4,7 +4,6 @@
  * Docs: docs/features/feature/backend-log-streaming/index.md
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
- * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 
 /**
@@ -19,18 +18,17 @@
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
 
-import { initTabTracking } from './content/tab-tracking.js'
-import { initScriptInjection } from './content/script-injection.js'
+import { initTabTracking } from './content/tab-tracking'
+import { initScriptInjection } from './content/script-injection'
 import {
   initRequestTracking,
   getPendingRequestStats,
   clearPendingRequests,
   cleanupRequestTracking
-} from './content/request-tracking.js'
-import { initWindowMessageListener } from './content/window-message-listener.js'
-import { initRuntimeMessageListener } from './content/runtime-message-listener.js'
-import { initFaviconReplacer } from './content/favicon-replacer.js'
-import { setTrackedHoverLauncherEnabled } from './content/ui/tracked-hover-launcher.js'
+} from './content/request-tracking'
+import { initWindowMessageListener } from './content/window-message-listener'
+import { initRuntimeMessageListener } from './content/runtime-message-listener'
+import { initFaviconReplacer } from './content/favicon-replacer'
 
 // Export for testing
 export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking }
@@ -48,7 +46,6 @@ initTabTracking((tracked) => {
     initScriptInjection()
     scriptsInjected = true
   }
-  setTrackedHoverLauncherEnabled(tracked)
 })
 
 // Initialize request tracking (cleanup handlers)

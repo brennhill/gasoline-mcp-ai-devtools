@@ -3,7 +3,7 @@
  * @fileoverview recording.test.js -- Tests for the recording module.
  * Covers recording lifecycle (start/stop), state management, FPS clamping,
  * error handling (no tab, already recording, empty stream, offscreen timeout),
- * defensive chrome API guards, popup sync, and action-badge recording status.
+ * defensive chrome API guards, popup sync, and watermark management.
  *
  * NOTE: recording.js imports from ./index.js and ./event-listeners.js,
  * so a comprehensive chrome mock is required before import. The module also
@@ -26,9 +26,7 @@ let onMessageListeners = []
  * Tracks all chrome.tabs.sendMessage calls for toast/watermark assertions.
  */
 function createRecordingChromeMock(overrides = {}) {
-  if (!overrides.preserveListeners) {
-    onMessageListeners = []
-  }
+  onMessageListeners = []
 
   const tabsQueryResult = overrides.tabsQueryResult ?? [{ id: 42, url: 'http://example.com/page', title: 'Example' }]
   const storageData = overrides.storageData ?? {}
@@ -142,10 +140,9 @@ function simulateOffscreenStarted(success, error) {
     success,
     error: error || undefined
   }
-  const sender = { id: globalThis.chrome.runtime.id }
   // Dispatch to all registered listeners
   for (const listener of [...onMessageListeners]) {
-    listener(message, sender)
+    listener(message)
   }
 }
 
@@ -162,27 +159,16 @@ function simulateOffscreenStopped(overrides = {}) {
     path: overrides.path ?? '/tmp/test-recording.webm',
     error: overrides.error ?? undefined
   }
-  const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
-    listener(message, sender)
+    listener(message)
   }
 }
 
 // Simulate popup gesture grant that unblocks MCP-initiated recording start.
 function simulateRecordingGestureGranted() {
   const message = { type: 'RECORDING_GESTURE_GRANTED' }
-  const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
-    listener(message, sender)
-  }
-}
-
-// Simulate popup denial for MCP-initiated recording start.
-function simulateRecordingGestureDenied() {
-  const message = { type: 'RECORDING_GESTURE_DENIED' }
-  const sender = { id: globalThis.chrome.runtime.id }
-  for (const listener of [...onMessageListeners]) {
-    listener(message, sender)
+    listener(message)
   }
 }
 
@@ -388,39 +374,14 @@ describe('MCP-initiated recording flow', () => {
       (c) =>
         c.arguments[0] === 77 &&
         c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' &&
-        String(c.arguments[1]?.text || '').includes('Open Gasoline Popup')
+        String(c.arguments[1]?.text || '').includes('Click Gasoline Icon')
     )
-    assert.ok(permissionToastOnTarget, 'Should show popup-approval permission toast on target tab')
+    assert.ok(permissionToastOnTarget, 'Should show click-icon permission toast on target tab')
 
     const stopPromise = stopRecording()
     await new Promise((r) => setTimeout(r, 50))
     simulateOffscreenStopped()
     await stopPromise
-  })
-
-  test('should return denied error when popup rejects MCP recording request', async () => {
-    globalThis.chrome = createRecordingChromeMock({
-      tabsQueryResult: [{ id: 42, url: 'http://active-tab.example', title: 'Active Tab' }]
-    })
-    globalThis.chrome.tabs.get = mock.fn((tabId) =>
-      Promise.resolve({
-        id: tabId,
-        windowId: 1,
-        status: 'complete',
-        url: `http://target-${tabId}.example`,
-        title: 'Target Tab'
-      })
-    )
-
-    const startPromise = startRecording('mcp-denied', 15, 'query-mcp-denied', '', false, 77)
-
-    await waitForPendingRecordingIntent()
-    simulateRecordingGestureDenied()
-
-    const result = await startPromise
-    assert.strictEqual(result.status, 'error')
-    assert.ok(String(result.error || '').toLowerCase().includes('denied'))
-    assert.strictEqual(isRecording(), false)
   })
 })
 
@@ -638,7 +599,7 @@ describe('Successful Recording Lifecycle', () => {
     await stopPromise
   })
 
-  test('should start recording badge timer on start', async () => {
+  test('should send recording watermark to tab on start', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('watermark-test', 15, '', '', true)
@@ -646,15 +607,12 @@ describe('Successful Recording Lifecycle', () => {
     simulateOffscreenStarted(true)
     await startPromise
 
-    const bgCalls = globalThis.chrome.action.setBadgeBackgroundColor.mock.calls
-    assert.ok(bgCalls.some((c) => c.arguments[0]?.color === '#dc2626'), 'Should set recording badge background color')
-
-    const badgeCalls = globalThis.chrome.action.setBadgeText.mock.calls
-    const hasNonEmptyBadge = badgeCalls.some((c) => {
-      const text = c.arguments[0]?.text
-      return typeof text === 'string' && text.length > 0
-    })
-    assert.ok(hasNonEmptyBadge, 'Should set non-empty recording badge text')
+    // Check that watermark message was sent
+    const sendCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+    const watermarkCall = sendCalls.find(
+      (c) => c.arguments[1]?.type === 'GASOLINE_RECORDING_WATERMARK' && c.arguments[1]?.visible === true
+    )
+    assert.ok(watermarkCall, 'Should send recording watermark to tab')
 
     // Cleanup
     const stopPromise = stopRecording()
@@ -663,7 +621,7 @@ describe('Successful Recording Lifecycle', () => {
     await stopPromise
   })
 
-  test('should clear recording badge on stop', async () => {
+  test('should hide watermark on stop', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('watermark-hide', 15, '', '', true)
@@ -672,16 +630,19 @@ describe('Successful Recording Lifecycle', () => {
     await startPromise
 
     // Reset mock to only capture stop-related calls
-    globalThis.chrome.action.setBadgeText.mock.resetCalls()
+    globalThis.chrome.tabs.sendMessage.mock.resetCalls()
 
     const stopPromise = stopRecording()
     await new Promise((r) => setTimeout(r, 50))
     simulateOffscreenStopped()
     await stopPromise
 
-    const badgeCalls = globalThis.chrome.action.setBadgeText.mock.calls
-    const clearedBadge = badgeCalls.find((c) => c.arguments[0]?.text === '')
-    assert.ok(clearedBadge, 'Should clear recording badge text on stop')
+    // Check watermark was hidden
+    const sendCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+    const hideWatermark = sendCalls.find(
+      (c) => c.arguments[1]?.type === 'GASOLINE_RECORDING_WATERMARK' && c.arguments[1]?.visible === false
+    )
+    assert.ok(hideWatermark, 'Should hide recording watermark on stop')
   })
 
   test('should send offscreen start command with correct parameters', async () => {
@@ -713,7 +674,7 @@ describe('Successful Recording Lifecycle', () => {
     await stopPromise
   })
 
-  test('should not register tab update listener when using action-badge status', async () => {
+  test('should register tab update listener for watermark re-send', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('tab-update', 15, '', '', true)
@@ -721,9 +682,9 @@ describe('Successful Recording Lifecycle', () => {
     simulateOffscreenStarted(true)
     await startPromise
 
-    // Watermark-based tab update listener was removed in favor of action badge timer.
+    // Check that onUpdated.addListener was called
     const addListenerCalls = globalThis.chrome.tabs.onUpdated.addListener.mock.calls
-    assert.strictEqual(addListenerCalls.length, 0, 'Should not register tab update listener')
+    assert.ok(addListenerCalls.length > 0, 'Should register tab update listener for watermark')
 
     // Cleanup
     const stopPromise = stopRecording()
@@ -732,7 +693,7 @@ describe('Successful Recording Lifecycle', () => {
     await stopPromise
   })
 
-  test('should not remove tab update listener when none was registered', async () => {
+  test('should remove tab update listener on stop', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('listener-cleanup', 15, '', '', true)
@@ -745,9 +706,9 @@ describe('Successful Recording Lifecycle', () => {
     simulateOffscreenStopped()
     await stopPromise
 
-    // Watermark-based listener is no longer used.
+    // Check that onUpdated.removeListener was called
     const removeListenerCalls = globalThis.chrome.tabs.onUpdated.removeListener.mock.calls
-    assert.strictEqual(removeListenerCalls.length, 0, 'Should not remove a non-existent tab update listener')
+    assert.ok(removeListenerCalls.length > 0, 'Should remove tab update listener on stop')
   })
 })
 

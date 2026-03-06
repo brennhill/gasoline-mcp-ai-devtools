@@ -1,5 +1,6 @@
 /**
- * Purpose: Monkey-patches console.log/warn/error/info/debug to capture messages and forward them via the bridge while preserving original behavior.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/observe/index.md
  */
 /**

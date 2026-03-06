@@ -1,21 +1,23 @@
 /**
- * Purpose: Manages sync client instance lifecycle (start/stop/reset) and wires dependencies to avoid circular imports with index.ts.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 
 // sync-manager.ts — Sync client lifecycle management.
 // Owns the sync client instance and provides start/stop/reset operations.
 // Dependencies are injected to avoid circular imports with index.ts.
 
-import type { PendingQuery } from '../types/index.js'
-import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client.js'
-import { getLastCSPStatus } from './browser-actions.js'
-import { DebugCategory } from './debug.js'
-import { updateBadge } from './communication.js'
-import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js'
-import { getTrackedTabInfo } from './event-listeners.js'
-import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js'
-import { errorMessage } from '../lib/error-utils.js'
+import type { PendingQuery } from '../types'
+import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
+import { getLastCSPStatus } from './browser-actions'
+import { DebugCategory } from './debug'
+import { updateBadge } from './communication'
+import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager'
+import { getTrackedTabInfo } from './event-listeners'
+import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries'
 
 // =============================================================================
 // TYPES
@@ -114,7 +116,7 @@ export function startSyncClient(deps: SyncManagerDeps): void {
         } catch (err) {
           deps.debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
             type: command.type,
-            error: errorMessage(err)
+            error: (err as Error).message
           })
         } finally {
           removeProcessingQuery(command.id)
@@ -188,8 +190,6 @@ export function startSyncClient(deps: SyncManagerDeps): void {
           tracked_tab_id: trackingInfo.trackedTabId || 0,
           tracked_tab_url: trackingInfo.trackedTabUrl || '',
           tracked_tab_title: trackingInfo.trackedTabTitle || '',
-          tab_status: trackingInfo.tabStatus || undefined,
-          tracked_tab_active: trackingInfo.trackedTabActive ?? undefined,
           capture_logs: true,
           capture_network: true,
           capture_websocket: true,

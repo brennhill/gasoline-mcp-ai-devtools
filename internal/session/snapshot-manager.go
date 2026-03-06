@@ -1,5 +1,7 @@
-// Purpose: Manages named snapshot CRUD: capture current state, list, delete, with capacity-based eviction.
-// Docs: docs/features/feature/request-session-correlation/index.md
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Why: Maintains reliable state snapshots and diffs for investigations.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
 
 // snapshot-manager.go — SessionManager struct and snapshot management.
 // NewSessionManager, Capture, captureCurrentState, List, Delete functions.
@@ -11,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // SessionManager manages named session snapshots.
@@ -99,7 +101,7 @@ func (sm *SessionManager) captureCurrentState(name, urlFilter string) *NamedSnap
 	}
 
 	// Deep copy performance snapshot if present
-	var perfCopy *performance.Snapshot
+	var perfCopy *performance.PerformanceSnapshot
 	if perf != nil {
 		p := *perf
 		perfCopy = &p

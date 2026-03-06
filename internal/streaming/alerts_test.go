@@ -1,5 +1,6 @@
-// Purpose: Tests for streaming alert event generation and throttling.
-// Docs: docs/features/feature/context-streaming/index.md
+// Purpose: Validate alerts_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // alerts_test.go — Unit tests for AlertBuffer methods and pure alert processing functions.
 package streaming
@@ -10,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 func TestSeverityRank(t *testing.T) {

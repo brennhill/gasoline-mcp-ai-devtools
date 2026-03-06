@@ -1,5 +1,6 @@
-// Purpose: Tests for tool schema parity between bridge and daemon.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate tools_schema_parity_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 // tools_schema_parity_test.go — Enforces parity between tool schema enums and runtime dispatch handlers.
 package main
@@ -7,10 +8,7 @@ package main
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"testing"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
 )
 
 func TestSchemaParity_AnalyzeWhatEnumMatchesHandlers(t *testing.T) {
@@ -96,20 +94,12 @@ func sortedKeysObserveHandlers() []string {
 }
 
 func sortedInteractRuntimeActions(h *ToolHandler) []string {
-	// Build set of alias action names to exclude from parity check.
-	// Aliases are hidden from the schema enum but still routed at runtime.
-	aliasSet := make(map[string]bool)
-	for _, spec := range schema.InteractActionSpecs() {
-		if spec.IsAlias {
-			aliasSet[spec.Name] = true
-		}
-	}
-
 	actions := make(map[string]bool)
-	for action := range h.interactAction().buildInteractHandlers() {
-		if !aliasSet[action] {
-			actions[action] = true
-		}
+	for action := range h.interactDispatch() {
+		actions[action] = true
+	}
+	for action := range domPrimitiveActions {
+		actions[action] = true
 	}
 	keys := make([]string, 0, len(actions))
 	for action := range actions {
@@ -176,78 +166,6 @@ func toStringSlice(v any) ([]string, error) {
 	default:
 		return nil, fmt.Errorf("unsupported enum type %T", v)
 	}
-}
-
-// TestCLIParserParity_AllSchemaPropertiesMapped verifies that every MCP schema property
-// for each tool has a corresponding CLI flag in the parser. This prevents drift where
-// new schema properties are added but the CLI parser isn't updated.
-func TestCLIParserParity_AllSchemaPropertiesMapped(t *testing.T) {
-	t.Parallel()
-	h, _, _ := makeToolHandler(t)
-	tools := h.ToolsList()
-
-	// Known exceptions: params that are intentionally not CLI flags.
-	// "what" is the positional mode arg, not a flag.
-	// Deprecated aliases are handled at runtime, not exposed as CLI flags.
-	globalExceptions := map[string]bool{"what": true}
-	perTool := map[string]map[string]bool{
-		"observe":   {"telemetry_mode": true},
-		"analyze":   {"telemetry_mode": true},
-		"generate":  {"telemetry_mode": true, "format": true},
-		"configure": {"telemetry_mode": true, "action": true},
-		"interact":  {"telemetry_mode": true, "action": true},
-	}
-
-	cliParsers := map[string]func(string, []string) (map[string]any, error){
-		"observe":   parseObserveArgs,
-		"analyze":   parseAnalyzeArgs,
-		"generate":  parseGenerateArgs,
-		"configure": parseConfigureArgs,
-		"interact":  parseInteractArgs,
-	}
-
-	for _, tool := range tools {
-		parser, ok := cliParsers[tool.Name]
-		if !ok {
-			continue
-		}
-		t.Run(tool.Name, func(t *testing.T) {
-			t.Parallel()
-			props, ok := tool.InputSchema["properties"].(map[string]any)
-			if !ok {
-				t.Fatal("schema missing properties")
-			}
-
-			// Collect CLI mcpKeys by parsing a dummy call with no args.
-			// We can't easily extract keys from the parser function, so we check
-			// that the schema property count is reasonable vs the parser.
-			_ = parser // used below
-
-			exceptions := perTool[tool.Name]
-			var missing []string
-			for propName := range props {
-				if globalExceptions[propName] || exceptions[propName] {
-					continue
-				}
-				// Check that the flag is recognized by the parser. Pass a value
-				// that works for all flag kinds; only flag "unknown flag" as missing.
-				flag := "--" + schemaKeyToCLIFlag(propName)
-				_, err := parser("test", []string{flag, "1"})
-				if err != nil && strings.Contains(err.Error(), "unknown flag: "+flag) {
-					missing = append(missing, propName)
-				}
-			}
-			sort.Strings(missing)
-			if len(missing) > 0 {
-				t.Errorf("CLI parser for %s is missing flags for schema properties: %v", tool.Name, missing)
-			}
-		})
-	}
-}
-
-// schemaKeyToCLIFlag converts a snake_case MCP key to kebab-case CLI flag name.
-func schemaKeyToCLIFlag(key string) string {
-	return strings.ReplaceAll(key, "_", "-")
 }
 
 func assertSameStringSet(t *testing.T, label string, got, want []string) {

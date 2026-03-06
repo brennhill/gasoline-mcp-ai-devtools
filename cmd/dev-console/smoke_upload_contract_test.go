@@ -1,5 +1,6 @@
-// Purpose: Contract tests for upload endpoint behavior.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// Purpose: Validate smoke_upload_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
@@ -71,10 +72,7 @@ func TestOSAutomation_RejectsSmokeTmpPathOutsideDefaultUploadDir(t *testing.T) {
 		t.Fatalf("failed to write smoke file: %v", err)
 	}
 
-	sec, secErr := upload.ValidateUploadDir(allowedDir, nil)
-	if secErr != nil {
-		t.Fatalf("ValidateUploadDir() error = %v", secErr)
-	}
+	sec := upload.NewSecurity(allowedDir, nil)
 	resp := handleOSAutomationInternal(OSAutomationInjectRequest{
 		FilePath:   smokeFile,
 		BrowserPID: 12345, // skip PID auto-detect in test

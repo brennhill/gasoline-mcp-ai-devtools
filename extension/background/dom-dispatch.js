@@ -1,16 +1,13 @@
 /**
- * Purpose: Dispatches DOM actions (click, type, wait_for, list_interactive, query) to injected page scripts with frame targeting and CDP escalation.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import { domFrameProbe } from './dom-frame-probe.js';
 import { domPrimitive } from './dom-primitives.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
-import { domPrimitiveQuery } from './dom-primitives-query.js';
-import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
-import { isReadOnlyAction, isMutatingAction } from './action-metadata.js';
-import { errorMessage } from '../lib/error-utils.js';
-import { delay } from '../lib/timeout-utils.js';
-import { normalizeFrameArg, resolveMatchedFrameIds } from './frame-targeting.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -18,6 +15,20 @@ function parseDOMParams(query) {
     catch {
         return null;
     }
+}
+function isReadOnlyAction(action) {
+    return action === 'list_interactive' || action.startsWith('get_');
+}
+function isMutatingAction(action) {
+    return (action === 'click' ||
+        action === 'type' ||
+        action === 'select' ||
+        action === 'check' ||
+        action === 'set_attribute' ||
+        action === 'paste' ||
+        action === 'key_press' ||
+        action === 'focus' ||
+        action === 'scroll_to');
 }
 function hasMatchedTargetEvidence(result) {
     const matched = result.matched;
@@ -30,12 +41,43 @@ function hasMatchedTargetEvidence(result) {
         typeof matched.role === 'string' ||
         typeof matched.text_preview === 'string');
 }
+function normalizeFrameTarget(frame) {
+    if (frame === undefined || frame === null)
+        return undefined;
+    if (typeof frame === 'number') {
+        if (!Number.isInteger(frame) || frame < 0)
+            return null;
+        return frame;
+    }
+    if (typeof frame === 'string') {
+        const trimmed = frame.trim();
+        if (trimmed.length === 0)
+            return null;
+        return trimmed;
+    }
+    return null;
+}
 async function resolveExecutionTarget(tabId, frame) {
-    const normalized = normalizeFrameArg(frame);
+    const normalized = normalizeFrameTarget(frame);
+    if (normalized === null) {
+        throw new Error('invalid_frame');
+    }
     if (normalized === undefined || normalized === 'all') {
         return { tabId, allFrames: true };
     }
-    const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe);
+    const probeResults = await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        world: 'MAIN',
+        func: domFrameProbe,
+        args: [normalized]
+    });
+    const frameIds = Array.from(new Set(probeResults
+        .filter((r) => !!r.result?.matches)
+        .map((r) => r.frameId)
+        .filter((id) => typeof id === 'number')));
+    if (frameIds.length === 0) {
+        throw new Error('frame_not_found');
+    }
     return { tabId, frameIds };
 }
 /** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */
@@ -98,92 +140,54 @@ function toDOMResult(value) {
         return null;
     return candidate;
 }
-/** Resolve which DOM action name to dispatch for wait_for based on params.
- *  Callers must validate mutual exclusivity before calling this. */
-function resolveWaitForAction(params) {
-    if (params.absent)
-        return 'wait_for_absent';
-    if (params.text)
-        return 'wait_for_text';
-    return 'wait_for';
-}
-async function executeWaitForURL(tabId, params) {
-    const urlSubstring = params.url_contains;
-    const timeoutMs = Math.max(1, params.timeout_ms ?? 5000);
-    const startedAt = Date.now();
-    while (true) {
-        const tab = await chrome.tabs.get(tabId);
-        if (tab.url && tab.url.includes(urlSubstring)) {
-            return {
-                success: true,
-                action: 'wait_for',
-                selector: '',
-                value: tab.url
-            };
-        }
-        if (Date.now() - startedAt >= timeoutMs) {
-            return {
-                success: false,
-                action: 'wait_for',
-                selector: '',
-                error: 'timeout',
-                message: `URL did not contain "${urlSubstring}" within ${timeoutMs}ms`
-            };
-        }
-        const remaining = timeoutMs - (Date.now() - startedAt);
-        await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
+function withTimeoutResult(results, selector, timeoutMs) {
+    const timeoutResult = {
+        success: false,
+        action: 'wait_for',
+        selector,
+        error: 'timeout',
+        message: `Element not found within ${timeoutMs}ms: ${selector}`
+    };
+    if (results.length === 0) {
+        return [{ frameId: 0, result: timeoutResult }];
     }
+    return results.map((result) => ({ ...result, result: timeoutResult }));
+}
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 async function executeWaitFor(target, params) {
     const selector = params.selector || '';
-    const timeoutMs = Math.max(1, params.timeout_ms ?? 5000);
-    const domAction = resolveWaitForAction(params);
-    const domOpts = { timeout_ms: timeoutMs, text: params.text };
+    const timeoutMs = Math.max(1, params.timeout_ms || 5000);
     const startedAt = Date.now();
     const quickCheck = await chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitive,
-        args: [domAction, selector, domOpts]
+        args: [params.action, selector, { timeout_ms: timeoutMs }]
     });
     const quickPicked = pickFrameResult(quickCheck);
     const quickResult = toDOMResult(quickPicked?.result);
     if (quickResult?.success) {
         return quickResult;
     }
-    let lastResult = toDOMResult(quickPicked?.result) ?? null;
+    let lastResults = quickCheck;
     while (Date.now() - startedAt < timeoutMs) {
-        const remaining = timeoutMs - (Date.now() - startedAt);
-        await delay(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
+        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, timeoutMs));
         const probeResults = await chrome.scripting.executeScript({
             target,
             world: 'MAIN',
             func: domPrimitive,
-            args: [domAction, selector, domOpts]
+            args: [params.action, selector, { timeout_ms: timeoutMs }]
         });
+        lastResults = probeResults;
         const picked = pickFrameResult(probeResults);
         const result = toDOMResult(picked?.result);
-        if (result)
-            lastResult = result;
         if (result?.success) {
-            return result;
+            return probeResults;
         }
     }
-    const label = domAction === 'wait_for_text'
-        ? `Text "${params.text}" not found within ${timeoutMs}ms`
-        : domAction === 'wait_for_absent'
-            ? `Element still present within ${timeoutMs}ms: ${selector}`
-            : undefined;
-    if (lastResult?.error === 'timeout') {
-        return lastResult;
-    }
-    return {
-        success: false,
-        action: 'wait_for',
-        selector,
-        error: 'timeout',
-        message: label || `Element not found within ${timeoutMs}ms: ${selector}`
-    };
+    return withTimeoutResult(lastResults, selector, timeoutMs);
 }
 async function executeStandardAction(target, params) {
     return chrome.scripting.executeScript({
@@ -195,64 +199,30 @@ async function executeStandardAction(target, params) {
             params.selector || '',
             {
                 text: params.text,
-                key: params.key,
                 value: params.value,
-                direction: params.direction,
                 clear: params.clear,
                 checked: params.checked,
                 name: params.name,
                 timeout_ms: params.timeout_ms,
-                stability_ms: params.stability_ms,
                 analyze: params.analyze,
                 observe_mutations: params.observe_mutations,
                 element_id: params.element_id,
                 scope_selector: params.scope_selector,
                 scope_rect: params.scope_rect,
-                nth: params.nth,
-                new_tab: params.new_tab,
-                structured: params.structured
+                new_tab: params.new_tab
             }
         ]
     });
 }
 async function executeListInteractive(target, params) {
-    // Build options object with scope_rect and filter params (#369)
-    const opts = {};
-    if (params.scope_rect)
-        opts.scope_rect = params.scope_rect;
-    if (params.text_contains)
-        opts.text_contains = params.text_contains;
-    if (params.role)
-        opts.role = params.role;
-    if (params.visible_only)
-        opts.visible_only = params.visible_only;
-    if (params.exclude_nav)
-        opts.exclude_nav = params.exclude_nav;
-    const hasOpts = Object.keys(opts).length > 0;
-    const args = hasOpts
-        ? [params.selector || '', opts]
+    const args = params.scope_rect
+        ? [params.selector || '', { scope_rect: params.scope_rect }]
         : [params.selector || ''];
     return chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitiveListInteractive,
         args
-    });
-}
-// #370: Execute DOM query (exists, count, text, text_all, attributes)
-async function executeQuery(target, params) {
-    const opts = {};
-    if (params.query_type)
-        opts.query_type = params.query_type;
-    if (params.attribute_names)
-        opts.attribute_names = params.attribute_names;
-    if (params.scope_selector)
-        opts.scope_selector = params.scope_selector;
-    return chrome.scripting.executeScript({
-        target,
-        world: 'MAIN',
-        func: domPrimitiveQuery,
-        args: [params.selector || '', Object.keys(opts).length > 0 ? opts : undefined]
     });
 }
 function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, toastDetail) {
@@ -323,12 +293,7 @@ async function enrichWithEffectiveContext(tabId, result) {
     try {
         const tab = await chrome.tabs.get(tabId);
         if (result && typeof result === 'object' && !Array.isArray(result)) {
-            return {
-                ...result,
-                effective_tab_id: tabId,
-                effective_url: tab.url,
-                effective_title: tab.title
-            };
+            return { ...result, effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title };
         }
         return result;
     }
@@ -348,74 +313,23 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_action');
         return;
     }
-    if (action === 'wait_for') {
-        const hasSelector = !!(selector || params.element_id);
-        const hasText = !!params.text;
-        const hasURL = !!params.url_contains;
-        const condCount = (hasSelector || params.absent ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0);
-        if (condCount === 0) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for requires selector, text, or url_contains');
-            return;
-        }
-        if (condCount > 1) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for conditions are mutually exclusive');
-            return;
-        }
-        if (params.absent && !hasSelector) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for with absent requires a selector');
-            return;
-        }
+    if (action === 'wait_for' && !selector) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_selector');
+        return;
     }
     const toastLabel = reason || action;
     const toastDetail = reason ? undefined : selector || 'page';
     const readOnly = isReadOnlyAction(action);
-    // URL-based wait_for: polls chrome.tabs.get from background — no page injection needed.
-    if (action === 'wait_for' && params.url_contains) {
-        try {
-            const urlResult = await executeWaitForURL(tabId, params);
-            const status = urlResult.success ? 'complete' : 'error';
-            sendAsyncResult(syncClient, query.id, query.correlation_id, status, await enrichWithEffectiveContext(tabId, urlResult), urlResult.success ? undefined : urlResult.error);
-        }
-        catch (err) {
-            actionToast(tabId, action, errorMessage(err), 'error');
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMessage(err));
-        }
-        return;
-    }
     try {
         const executionTarget = await resolveExecutionTarget(tabId, params.frame);
         const tryingShownAt = Date.now();
         if (!readOnly)
             actionToast(tabId, toastLabel, toastDetail, 'trying', 10000);
-        // CDP auto-escalation: try hardware events first for click/type/key_press (main frame only).
-        // Falls back to DOM primitives silently if CDP is unavailable or fails.
-        if (isCDPEscalatable(action) && !params.frame && params.nth === undefined) {
-            try {
-                const cdpResult = await tryCDPEscalation(tabId, action, params);
-                if (cdpResult) {
-                    const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(action, selector || '', cdpResult);
-                    const domResult = toDOMResult(reconciledResult);
-                    if (domResult) {
-                        sendToastForResult(tabId, false, domResult, actionToast, toastLabel, toastDetail);
-                    }
-                    else {
-                        actionToast(tabId, toastLabel, toastDetail, 'success');
-                    }
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, status, await enrichWithEffectiveContext(tabId, reconciledResult), error);
-                    return;
-                }
-            }
-            catch {
-                // CDP failed — fall through to DOM primitives
-            }
-        }
         const rawResult = action === 'list_interactive'
             ? await executeListInteractive(executionTarget, params)
-            : action === 'query'
-                ? await executeQuery(executionTarget, params)
-                : action === 'wait_for'
-                    ? await executeWaitFor(executionTarget, params)
-                    : await executeStandardAction(executionTarget, params);
+            : action === 'wait_for'
+                ? await executeWaitFor(executionTarget, params)
+                : await executeStandardAction(executionTarget, params);
         // wait_for quick-check can return a DOMResult directly
         if (!Array.isArray(rawResult)) {
             if (rawResult === null || rawResult === undefined) {
@@ -442,7 +356,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const MIN_TOAST_MS = 500;
         const elapsed = Date.now() - tryingShownAt;
         if (!readOnly && elapsed < MIN_TOAST_MS)
-            await delay(MIN_TOAST_MS - elapsed);
+            await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed));
         // list_interactive: merge elements from all frames
         if (action === 'list_interactive') {
             const merged = mergeListInteractive(rawResult);
@@ -456,9 +370,9 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
             let resultPayload;
             if (picked) {
                 const base = { ...firstResult, frame_id: picked.frameId };
-                const matched = base['matched'];
+                const matched = base["matched"];
                 if (matched && typeof matched === 'object' && !Array.isArray(matched)) {
-                    base['matched'] = { ...matched, frame_id: picked.frameId };
+                    base["matched"] = { ...matched, frame_id: picked.frameId };
                 }
                 resultPayload = base;
             }
@@ -482,8 +396,8 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         }
     }
     catch (err) {
-        actionToast(tabId, action, errorMessage(err), 'error');
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMessage(err));
+        actionToast(tabId, action, err.message, 'error');
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, err.message);
     }
 }
 //# sourceMappingURL=dom-dispatch.js.map

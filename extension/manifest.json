@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Gasoline Devtools",
-  "version": "0.8.0",
+  "name": "Gasoline",
+  "version": "0.7.10",
   "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -14,7 +14,7 @@
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Gasoline: Agentic Browser Devtools"
+    "default_title": "Gasoline"
   },
   "background": {
     "service_worker": "background.js",
@@ -33,7 +33,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger", "cookies", "contextMenus"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab"],
   "host_permissions": ["<all_urls>"],
   "options_ui": {
     "page": "options.html",
@@ -46,30 +46,6 @@
         "mac": "Alt+Shift+D"
       },
       "description": "Toggle Draw Mode"
-    },
-    "push_screenshot": {
-      "suggested_key": {
-        "default": "Alt+Shift+S",
-        "mac": "Alt+Shift+S"
-      },
-      "description": "Push Screenshot to AI"
-    },
-    "push_chat": {
-      "suggested_key": {
-        "default": "Alt+Shift+C",
-        "mac": "Alt+Shift+C"
-      },
-      "description": "Push Chat to AI"
-    },
-    "toggle_screen_recording": {
-      "suggested_key": {
-        "default": "Alt+Shift+R",
-        "mac": "Alt+Shift+R"
-      },
-      "description": "Toggle screen recording"
-    },
-    "toggle_action_sequence_recording": {
-      "description": "Toggle action sequence recording"
     }
   },
   "web_accessible_resources": [

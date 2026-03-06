@@ -1,4 +1,5 @@
-// Purpose: Tests for reproduction script generation handler.
+// Purpose: Validate reproduction_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/reproduction-scripts/index.md
 
 // reproduction_test.go — Integration tests for reproduction helpers that live in cmd/dev-console.

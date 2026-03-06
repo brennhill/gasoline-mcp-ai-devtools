@@ -1,4 +1,5 @@
-// Purpose: Tests for capture recording delegation to recording manager.
+// Purpose: Validate recording_delegation_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // recording_delegation_test.go — Tests for Capture delegation to RecordingManager.
@@ -7,7 +8,7 @@ package capture
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestNewCaptureDelegation_RecordingManager(t *testing.T) {

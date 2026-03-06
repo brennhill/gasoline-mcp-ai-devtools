@@ -4,12 +4,10 @@ scope: feature/ttl-retention/implementation
 ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
-last-verified: 2026-03-05
+last-verified: 2026-01-31
 doc_type: tech-spec
 feature_id: feature-ttl-retention
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**

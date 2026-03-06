@@ -1,7 +1,7 @@
 # QA Plan: Issue #84
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/84
+- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/84
 - Title: Add cookie banner / consent dialog auto-dismissal
 
 ## QA Goal

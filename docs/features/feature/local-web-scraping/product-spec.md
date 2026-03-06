@@ -3,12 +3,10 @@ feature: local-web-scraping
 status: proposed
 tool: interact
 mode: scraping
-version: 0.7.12
+version: v6.2
 doc_type: product-spec
 feature_id: feature-local-web-scraping
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Local Web Scraping
