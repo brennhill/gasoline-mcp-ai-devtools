@@ -28,6 +28,8 @@ $STAGE_EXT_DIR = Join-Path $INSTALL_DIR ".extension-stage-$TEMP_TOKEN"
 $BACKUP_EXT_DIR = Join-Path $INSTALL_DIR ".extension-backup-$TEMP_TOKEN"
 $INSTALL_WARNINGS = New-Object System.Collections.Generic.List[string]
 $script:WARNINGS_PRINTED = $false
+# Minimum plausible binary size (5 MB). Catches truncated downloads and HTML error pages.
+$MIN_BINARY_BYTES = 5000000
 
 function Add-InstallWarning {
     param([string]$Message)
@@ -44,7 +46,7 @@ function Show-InstallWarnings {
 
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Red
-    Write-Host "🚨 INSTALL WARNING: MANUAL ACTION REQUIRED" -ForegroundColor Red
+    Write-Host "INSTALL WARNING: MANUAL ACTION REQUIRED" -ForegroundColor Red
     foreach ($warning in $INSTALL_WARNINGS) {
         Write-Host " - $warning" -ForegroundColor Yellow
     }
@@ -57,6 +59,83 @@ function Show-InstallWarnings {
     Write-Host "  irm https://raw.githubusercontent.com/$REPO/STABLE/scripts/install.ps1 | iex" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Red
 }
+
+# ─────────────────────────────────────────────────────────────
+# Prerequisite Checks
+# ─────────────────────────────────────────────────────────────
+
+function Test-NetworkConnectivity {
+    try {
+        $null = Invoke-WebRequest -Uri "https://github.com" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+    } catch {
+        Write-Host "Cannot reach github.com - check your network connection or proxy settings." -ForegroundColor Red
+        Write-Host "If you are behind a corporate proxy, configure your system proxy before running." -ForegroundColor Yellow
+        throw "Network connectivity check failed."
+    }
+}
+
+function Test-DiskSpace {
+    $requiredMB = 50
+    try {
+        $drive = (Get-Item $HOME).PSDrive
+        $freeMB = [math]::Floor($drive.Free / 1MB)
+        if ($freeMB -lt $requiredMB) {
+            throw "Insufficient disk space: ${freeMB} MB available, need ${requiredMB} MB. Free up space and re-run."
+        }
+    } catch [System.Management.Automation.PropertyNotFoundException] {
+        # PSDrive.Free not available on some configurations; skip check.
+    }
+}
+
+function Test-WriteAccess {
+    if (-not (Test-Path $INSTALL_DIR)) {
+        New-Item -Path $INSTALL_DIR -ItemType Directory -Force | Out-Null
+    }
+    $testFile = Join-Path $INSTALL_DIR ".write-test"
+    try {
+        [System.IO.File]::WriteAllText($testFile, "test")
+        Remove-Item -Path $testFile -Force -ErrorAction SilentlyContinue
+    } catch {
+        throw "Cannot write to $INSTALL_DIR - check directory permissions. If installed with elevated privileges previously, fix permissions and re-run."
+    }
+}
+
+Test-NetworkConnectivity
+Test-DiskSpace
+Test-WriteAccess
+
+# ─────────────────────────────────────────────────────────────
+# Retry-capable download helper
+# ─────────────────────────────────────────────────────────────
+
+function Invoke-DownloadWithRetry {
+    param(
+        [string]$Uri,
+        [string]$OutFile,
+        [int]$MaxAttempts = 3,
+        [int]$InitialDelaySec = 2
+    )
+
+    $delay = $InitialDelaySec
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+            return
+        } catch {
+            if ($attempt -lt $MaxAttempts) {
+                Write-Host "  Download attempt $attempt/$MaxAttempts failed; retrying in ${delay}s..." -ForegroundColor Yellow
+                Start-Sleep -Seconds $delay
+                $delay = $delay * 2
+            } else {
+                throw $_.Exception
+            }
+        }
+    }
+}
+
+# ─────────────────────────────────────────────────────────────
+# Process management helpers
+# ─────────────────────────────────────────────────────────────
 
 function Get-GasolineServerPids {
     $pids = @()
@@ -102,7 +181,7 @@ function Stop-GasolineServerProcesses {
         return $true
     }
 
-    Write-Host "🛑 Stopping running Gasoline server: PID(s) $($targetPids -join ', ')"
+    Write-Host "  Stopping running Gasoline server: PID(s) $($targetPids -join ', ')"
     foreach ($procId in $targetPids) {
         Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     }
@@ -113,7 +192,7 @@ function Stop-GasolineServerProcesses {
         return $true
     }
 
-    Write-Host "⚠️  Escalating termination with taskkill..." -ForegroundColor Yellow
+    Write-Host "  Escalating termination with taskkill..." -ForegroundColor Yellow
     foreach ($procId in $remaining) {
         & taskkill /F /PID $procId /T *> $null
     }
@@ -145,7 +224,7 @@ function Replace-GasolineBinary {
             return $true
         } catch {
             if ($attempt -lt $maxAttempts) {
-                Write-Host "⚠️  Binary replace attempt $attempt/$maxAttempts failed; retrying..." -ForegroundColor Yellow
+                Write-Host "  Binary replace attempt $attempt/$maxAttempts failed; retrying..." -ForegroundColor Yellow
                 Start-Sleep -Milliseconds (400 * $attempt)
                 continue
             }
@@ -186,18 +265,9 @@ function Sync-BinaryCompatAliases {
     return $allGood
 }
 
-Write-Host ""
-Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
-Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
-Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
-Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
-Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
-Write-Host ""
-Write-Host "🔥 Gasoline Installer" -ForegroundColor DarkYellow
-Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
-if ($STRICT_CHECKSUM) {
-    Write-Host "🔒 Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)" -ForegroundColor Yellow
-}
+# ─────────────────────────────────────────────────────────────
+# Extension staging helpers
+# ─────────────────────────────────────────────────────────────
 
 function New-ExtensionStage {
     if (Test-Path $STAGE_EXT_DIR) {
@@ -266,63 +336,134 @@ function Promote-ExtensionStage {
     }
 }
 
-# 1. Fetch Version: Get the latest stable version tag from GitHub.
-Write-Host "🔍 Checking for updates..."
-$VERSION = (Invoke-RestMethod -Uri $VERSION_URL).Trim()
-Write-Host "✨ Version: v$VERSION (win32-x64)"
+# ─────────────────────────────────────────────────────────────
+# Banner
+# ─────────────────────────────────────────────────────────────
 
-# 2. Directory Setup: Ensure the target installation folders exist on the filesystem.
-if (-not (Test-Path $BIN_DIR)) { New-Item -Path $BIN_DIR -ItemType Directory -Force }
+Write-Host ""
+Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
+Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
+Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
+Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
+Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
+Write-Host ""
+Write-Host "Gasoline Installer" -ForegroundColor DarkYellow
+Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
+if ($STRICT_CHECKSUM) {
+    Write-Host "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)" -ForegroundColor Yellow
+}
+
+# ─────────────────────────────────────────────────────────────
+# 1. Fetch Version
+# ─────────────────────────────────────────────────────────────
+
+Write-Host "Checking for updates..."
+try {
+    $VERSION = (Invoke-RestMethod -Uri $VERSION_URL -TimeoutSec 15).Trim()
+} catch {
+    Write-Host "Failed to fetch latest version from $VERSION_URL" -ForegroundColor Red
+    Write-Host "Check your network connection and try again." -ForegroundColor Yellow
+    throw "Version fetch failed: $($_.Exception.Message)"
+}
+
+# ─────────────────────────────────────────────────────────────
+# 2. Detect install vs upgrade
+# ─────────────────────────────────────────────────────────────
+
+$IS_UPGRADE = $false
+$PREVIOUS_VERSION = ""
+
+if (Test-Path $CANONICAL_GASOLINE_BIN) {
+    try {
+        $versionOutput = & $CANONICAL_GASOLINE_BIN --version 2>&1
+        if ($versionOutput -match '(\d+\.\d+\.\d+)') {
+            $PREVIOUS_VERSION = $Matches[1]
+            $IS_UPGRADE = $true
+        }
+    } catch {
+        # Old binary may be corrupted or incompatible; treat as fresh install.
+        $IS_UPGRADE = $true
+    }
+}
+
+if ($IS_UPGRADE -and $PREVIOUS_VERSION) {
+    Write-Host "Upgrading: v$PREVIOUS_VERSION -> v$VERSION (win32-x64)"
+} else {
+    Write-Host "Installing: v$VERSION (win32-x64)"
+}
+
+# ─────────────────────────────────────────────────────────────
+# 3. Directory Setup
+# ─────────────────────────────────────────────────────────────
+
+if (-not (Test-Path $BIN_DIR)) { New-Item -Path $BIN_DIR -ItemType Directory -Force | Out-Null }
 if (-not (Test-Path $INSTALL_DIR)) { New-Item -Path $INSTALL_DIR -ItemType Directory -Force | Out-Null }
-Write-Host "📁 Install root: $INSTALL_DIR"
+Write-Host "Install root: $INSTALL_DIR"
 
-# 3. Binary Installation: Download the Windows-native executable.
+# ─────────────────────────────────────────────────────────────
+# 4. Binary Installation
+# ─────────────────────────────────────────────────────────────
+
 $INSTALL_BIN = $GASOLINE_BIN
 $BINARY_NAME = "gasoline-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 $STAGED_BIN = "$GASOLINE_BIN.tmp.$TEMP_TOKEN"
 
-Write-Host "⬇️  Downloading latest binary..."
-# Download to a temporary '.tmp' file to ensure an atomic replacement later.
+Write-Host "Downloading binary..."
 if (Test-Path $STAGED_BIN) {
     Remove-Item -Path $STAGED_BIN -Force -ErrorAction SilentlyContinue
 }
-Invoke-WebRequest -Uri $BINARY_URL -OutFile $STAGED_BIN
-
-# 4. Integrity Verification: Verify the SHA-256 hash against the official release manifest.
- $checksumVerified = $false
 try {
-    # Fetch the checksum manifest and parse the hash for the windows binary.
-    $checksums = Invoke-RestMethod -Uri $CHECKSUM_URL
+    Invoke-DownloadWithRetry -Uri $BINARY_URL -OutFile $STAGED_BIN
+} catch {
+    Write-Host "Download failed after 3 attempts." -ForegroundColor Red
+    Write-Host "URL: $BINARY_URL" -ForegroundColor Yellow
+    Write-Host "Check your network connection, proxy settings, or try again later." -ForegroundColor Yellow
+    throw "Binary download failed: $($_.Exception.Message)"
+}
+
+# Validate binary size — catch truncated downloads and HTML error pages.
+$downloadedSize = (Get-Item $STAGED_BIN).Length
+if ($downloadedSize -lt $MIN_BINARY_BYTES) {
+    Remove-Item -Path $STAGED_BIN -Force -ErrorAction SilentlyContinue
+    throw "Downloaded file is too small ($downloadedSize bytes, expected >$MIN_BINARY_BYTES). The download may have been truncated or intercepted by a proxy."
+}
+
+# ─────────────────────────────────────────────────────────────
+# 5. Integrity Verification (SHA-256)
+# ─────────────────────────────────────────────────────────────
+
+$checksumVerified = $false
+try {
+    $checksums = Invoke-RestMethod -Uri $CHECKSUM_URL -TimeoutSec 15
     $expectedLine = ($checksums -split "`n") | Where-Object { $_ -match $BINARY_NAME }
     if (-not $expectedLine) {
         throw "checksums.txt did not include $BINARY_NAME"
     }
 
     $expectedHash = ($expectedLine -split "\s+")[0].ToLower()
-    # Calculate the hash of the downloaded file using built-in Windows security tools.
     $actualHash = (Get-FileHash $STAGED_BIN -Algorithm SHA256).Hash.ToLower()
     if ($expectedHash -ne $actualHash) {
-        throw "Checksum mismatch for $BINARY_NAME"
+        Remove-Item -Path $STAGED_BIN -Force -ErrorAction SilentlyContinue
+        throw "Checksum mismatch for $BINARY_NAME`nExpected: $expectedHash`nActual:   $actualHash"
     }
 
     $checksumVerified = $true
-    Write-Host "✅ Checksum verified."
+    Write-Host "Checksum verified." -ForegroundColor Green
 } catch {
     $msg = $_.Exception.Message
     if ($msg -like "*mismatch*") {
-        throw "❌ Checksum verification failed! The download may be corrupted or tampered with."
+        throw "Checksum verification failed! The download may be corrupted or tampered with.`n$msg"
     }
     if ($STRICT_CHECKSUM) {
-        throw "❌ Strict checksum mode: $msg"
+        throw "Strict checksum mode: $msg"
     }
-    # Non-fatal warning if checksums cannot be verified (e.g., firewall issues) and strict mode is disabled.
-    Write-Host "⚠️  Checksum verification skipped: $msg" -ForegroundColor Yellow
+    Write-Host "  Checksum verification skipped: $msg" -ForegroundColor Yellow
 }
 
 if ($STRICT_CHECKSUM -and -not $checksumVerified) {
-    throw "❌ Strict checksum mode: verification did not complete successfully."
+    throw "Strict checksum mode: verification did not complete successfully."
 }
 
 # Force-stop old server, then replace binary with retries for lock contention.
@@ -336,7 +477,18 @@ if (-not (Replace-GasolineBinary -StagePath $STAGED_BIN -LivePath $GASOLINE_BIN)
         Add-InstallWarning "Downloaded update could not be installed. $(Split-Path -Path $GASOLINE_BIN -Leaf) is likely still locked by a running process."
     }
 } else {
-    Write-Host "✅ Binary replaced: $GASOLINE_BIN"
+    Write-Host "Binary replaced: $GASOLINE_BIN" -ForegroundColor Green
+}
+
+# Quick smoke test — verify the binary actually runs.
+try {
+    $versionCheck = & $INSTALL_BIN --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "non-zero exit"
+    }
+} catch {
+    Write-Host "Binary smoke test failed - the downloaded binary cannot execute." -ForegroundColor Red
+    Write-Host "This may indicate a corrupted download. Try running the installer again." -ForegroundColor Yellow
 }
 
 $aliasTargets = @(
@@ -345,21 +497,23 @@ $aliasTargets = @(
     $LEGACY_GASOLINE_BROWSER_BIN
 )
 if (Sync-BinaryCompatAliases -CanonicalPath $INSTALL_BIN -AliasPaths $aliasTargets) {
-    Write-Host "✅ Installed command aliases: gasoline, gasoline-agentic-browser"
+    Write-Host "Binary installed with command aliases." -ForegroundColor Green
 } else {
-    Write-Host "⚠️  Core binary installed, but one or more compatibility aliases could not be created." -ForegroundColor Yellow
+    Write-Host "  Core binary installed, but one or more compatibility aliases could not be created." -ForegroundColor Yellow
 }
 
-# 5. Extension Staging: Refresh the browser extension files.
-# Tries the optimized release asset first, falling back to the full source zip if missing.
-Write-Host "⬇️  Refreshing browser extension..."
+# ─────────────────────────────────────────────────────────────
+# 6. Extension Staging
+# ─────────────────────────────────────────────────────────────
+
+Write-Host "Refreshing browser extension..."
 $EXT_ZIP_NAME = "gasoline-extension-v$VERSION.zip"
 $EXT_ZIP_URL = "https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 $TEMP_ZIP = Join-Path $env:TEMP "gasoline-ext-$TEMP_TOKEN.zip"
 $TEMP_EXTRACT = Join-Path $env:TEMP "gasoline-ext-src-$TEMP_TOKEN"
 
 try {
-    Invoke-WebRequest -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
+    Invoke-DownloadWithRetry -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
     New-ExtensionStage
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $STAGE_EXT_DIR -Force
     if (-not (Test-ExtensionStage -BaseDir $STAGE_EXT_DIR)) {
@@ -367,12 +521,15 @@ try {
     }
 } catch {
     # Fallback logic for older releases or bad extension zip assets.
-    Write-Host "⚠️  Falling back to source zip due to missing/incomplete extension zip" -ForegroundColor Yellow
+    Write-Host "  Falling back to source zip..." -ForegroundColor Yellow
     $SOURCE_ZIP_URL = "https://github.com/$REPO/archive/refs/heads/STABLE.zip"
-    Invoke-WebRequest -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
+    try {
+        Invoke-DownloadWithRetry -Uri $SOURCE_ZIP_URL -OutFile $TEMP_ZIP
+    } catch {
+        throw "Failed to download extension after multiple attempts. Check your network connection."
+    }
     if (Test-Path $TEMP_EXTRACT) { Remove-Item -Path $TEMP_EXTRACT -Recurse -Force }
     Expand-Archive -Path $TEMP_ZIP -DestinationPath $TEMP_EXTRACT -Force
-    # Find the extracted folder (named repo-version) and copy the extension subdirectory.
     $extractRoot = Get-ChildItem -Path $TEMP_EXTRACT | Where-Object { $_.PSIsContainer } | Select-Object -First 1
     if (-not $extractRoot) {
         throw "Source zip extraction failed: missing root directory."
@@ -391,7 +548,7 @@ try {
 }
 
 Promote-ExtensionStage
-Write-Host "✅ Staged extension directory: $EXT_DIR"
+Write-Host "Extension staged: $EXT_DIR" -ForegroundColor Green
 
 # Clean up staging temp directories.
 if (Test-Path $TEMP_EXTRACT) {
@@ -403,16 +560,13 @@ if (Test-Path $STAGE_EXT_DIR) {
 if (Test-Path $BACKUP_EXT_DIR) {
     Remove-Item -Path $BACKUP_EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
 }
-# Cleanup the temporary zip file.
 Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
 
-# 6. Native Configuration: Execute the Go binary to handle complex client configuration.
-# The binary's --install flag will:
-#   - Detect all installed MCP clients (Claude, Cursor, VS Code, etc.).
-#   - Safely update JSON configuration files with Windows-aware paths.
-#   - Reset any running Gasoline processes.
-#   - Display final success message and extension instructions.
-Write-Host "🚀 Finalizing configuration..."
+# ─────────────────────────────────────────────────────────────
+# 7. Native Configuration (Go binary --install)
+# ─────────────────────────────────────────────────────────────
+
+Write-Host "Finalizing configuration..."
 if (-not (Test-Path $INSTALL_BIN)) {
     Add-InstallWarning "Installer could not locate an executable to run for --install."
     Show-InstallWarnings
@@ -420,5 +574,102 @@ if (-not (Test-Path $INSTALL_BIN)) {
 }
 
 & $INSTALL_BIN --install
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Native configuration returned an error." -ForegroundColor Yellow
+    Write-Host "  The binary and extension were installed successfully." -ForegroundColor Yellow
+    Write-Host "  You may need to manually configure your MCP clients." -ForegroundColor Yellow
+    Write-Host "  Run: $INSTALL_BIN --install" -ForegroundColor Yellow
+    # Don't throw here - core install succeeded, only config auto-detection had issues.
+}
+
+# ─────────────────────────────────────────────────────────────
+# 8. Post-install health verification
+# ─────────────────────────────────────────────────────────────
+
 [void](Stop-GasolineServerProcesses)
+Start-Sleep -Seconds 1
+
+$healthOk = $false
+try {
+    $healthResponse = Invoke-RestMethod -Uri "http://127.0.0.1:7890/health" -TimeoutSec 5 -ErrorAction Stop
+    if ($healthResponse.status -or $healthResponse) {
+        $healthOk = $true
+    }
+} catch {
+    # Server may still be starting; non-fatal.
+}
+
+if ($healthOk) {
+    Write-Host "Server health check passed (port 7890)." -ForegroundColor Green
+} else {
+    Write-Host "  Server not yet responding on port 7890 - may still be starting." -ForegroundColor Yellow
+    Write-Host "  Verify: Invoke-RestMethod http://127.0.0.1:7890/health" -ForegroundColor Yellow
+}
+
+# ─────────────────────────────────────────────────────────────
+# 9. Register start-on-login
+# ─────────────────────────────────────────────────────────────
+
+$regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$regName = "GasolineDaemon"
+$regValue = "`"$CANONICAL_GASOLINE_BIN`" --daemon --port 7890"
+
+try {
+    Set-ItemProperty -Path $regPath -Name $regName -Value $regValue -ErrorAction Stop
+    Write-Host "Registered to start on login (Windows Registry)." -ForegroundColor Green
+} catch {
+    Write-Host "  Could not register start-on-login automatically." -ForegroundColor Yellow
+    Write-Host "  To register manually, run:" -ForegroundColor Yellow
+    Write-Host "  Set-ItemProperty -Path '$regPath' -Name '$regName' -Value '$regValue'" -ForegroundColor Green
+}
+
+# ─────────────────────────────────────────────────────────────
+# 10. PATH registration
+# ─────────────────────────────────────────────────────────────
+
+$binDirNorm = [System.IO.Path]::GetFullPath($BIN_DIR).TrimEnd("\")
+$currentUserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+$inPath = $false
+
+if ($currentUserPath) {
+    foreach ($entry in ($currentUserPath -split ";")) {
+        if (-not [string]::IsNullOrWhiteSpace($entry)) {
+            try {
+                $entryNorm = [System.IO.Path]::GetFullPath($entry).TrimEnd("\")
+                if ($entryNorm -eq $binDirNorm) {
+                    $inPath = $true
+                    break
+                }
+            } catch {
+                # Skip invalid path entries.
+            }
+        }
+    }
+}
+
+if (-not $inPath) {
+    try {
+        $newUserPath = if ($currentUserPath) { "$BIN_DIR;$currentUserPath" } else { $BIN_DIR }
+        [Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")
+        $env:PATH = "$BIN_DIR;$env:PATH"
+        Write-Host "Added $BIN_DIR to user PATH." -ForegroundColor Green
+        Write-Host "Restart your terminal for the change to take effect in new sessions." -ForegroundColor Yellow
+    } catch {
+        Write-Host "  Could not add $BIN_DIR to PATH automatically." -ForegroundColor Yellow
+        Write-Host "  Add it manually:" -ForegroundColor Yellow
+        Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$BIN_DIR;`$env:PATH`", 'User')" -ForegroundColor Green
+    }
+}
+
+# ─────────────────────────────────────────────────────────────
+# 11. Final summary
+# ─────────────────────────────────────────────────────────────
+
 Show-InstallWarnings
+
+Write-Host ""
+if ($IS_UPGRADE -and $PREVIOUS_VERSION) {
+    Write-Host "Gasoline upgraded: v$PREVIOUS_VERSION -> v$VERSION" -ForegroundColor Green
+} else {
+    Write-Host "Gasoline v$VERSION installed successfully." -ForegroundColor Green
+}
