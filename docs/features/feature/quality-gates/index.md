@@ -30,6 +30,7 @@ last_verified_date: 2026-03-06
 ## Specs
 
 - [Flow Map](./flow-map.md)
+- [Setup Guide](./setup-guide.md)
 
 ## Summary
 

@@ -272,3 +272,35 @@ func TestSetupQualityGates_ResponseContainsDefaults(t *testing.T) {
 		t.Fatal("defaults should include code_standards")
 	}
 }
+
+func TestSetupQualityGates_ResponseContainsHookConfig(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	dir := t.TempDir()
+	server.SetActiveCodebase(dir)
+
+	resp := callConfigureRaw(h, `{"what":"setup_quality_gates"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", firstText(result))
+	}
+
+	data := extractResultJSON(t, result)
+	hookConfig, ok := data["hook_config"].(map[string]any)
+	if !ok {
+		t.Fatal("response should include hook_config object")
+	}
+	if hookConfig["description"] == nil {
+		t.Fatal("hook_config should include description")
+	}
+	if hookConfig["command_hook_json"] == nil {
+		t.Fatal("hook_config should include command_hook_json")
+	}
+	if hookConfig["prompt_hook_json"] == nil {
+		t.Fatal("hook_config should include prompt_hook_json")
+	}
+	if hookConfig["settings_path"] == nil {
+		t.Fatal("hook_config should include settings_path")
+	}
+}
