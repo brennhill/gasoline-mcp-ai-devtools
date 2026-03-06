@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_pointer
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 canonical_flow_map: ../../../architecture/flow-maps/interact-navigate-and-document.md
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
@@ -21,4 +21,4 @@ Related flow maps:
 - [Interact Overlay & Selector Improvements](../../../architecture/flow-maps/interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](../../../architecture/flow-maps/shared-extraction-and-contract-normalization.md)
 
-Latest sync update (2026-03-05): content fallback extraction internals are deduplicated through shared main-element selection and cleanup helpers, and upload daemon calls use shared JSON request helpers.
+Latest sync update (2026-03-06): interact handlers migrated to `commandBuilder` pattern (`cmd/dev-console/tools_interact_command_builder.go`) to consolidate the repeated guard/correlate/arm/enqueue/wait boilerplate. See `docs/core/common-patterns.md` section 7 for usage.

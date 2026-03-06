@@ -6,8 +6,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 var validStorageTypes = map[string]string{
@@ -173,47 +171,31 @@ func (h *interactActionHandler) queueExecuteScript(
 	tabID, timeoutMs int,
 	world, script, reason, queuedMsg string,
 ) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	if world == "" {
 		world = "auto"
-	}
-	if resp, blocked := h.parent.requireCSPClear(req, world); blocked {
-		return resp
-	}
-
-	if timeoutMs <= 0 {
-		timeoutMs = 5000
 	}
 	if !validWorldValues[world] {
 		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+world, "Use 'auto' (default), 'main', or 'isolated'", withParam("world"))
 	}
-
-	correlationID := newCorrelationID(correlationPrefix)
-	h.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
-	execParams := buildQueryParams(map[string]any{
-		"script":     script,
-		"timeout_ms": timeoutMs,
-		"world":      world,
-		"reason":     reason,
-	})
-
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execParams,
-		TabID:         tabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
+	if timeoutMs <= 0 {
+		timeoutMs = 5000
 	}
 
-	return h.parent.MaybeWaitForCommand(req, correlationID, waitArgs, queuedMsg)
+	return h.newCommand(reason).
+		correlationPrefix(correlationPrefix).
+		reason(reason).
+		queryType("execute").
+		buildParams(map[string]any{
+			"script":     script,
+			"timeout_ms": timeoutMs,
+			"world":      world,
+			"reason":     reason,
+		}).
+		tabID(tabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		cspGuard(world).
+		queuedMessage(queuedMsg).
+		execute(req, waitArgs)
 }
 
 func jsQuote(v string) string {

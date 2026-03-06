@@ -7,8 +7,6 @@ package main
 import (
 	"encoding/json"
 	"net/url"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleExplorePage handles interact(what="explore_page").
@@ -17,13 +15,6 @@ import (
 // If url is provided, the extension navigates first before collecting data.
 // Screenshot is appended server-side after the extension returns.
 func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	var params struct {
 		URL         string `json:"url,omitempty"`
 		TabID       int    `json:"tab_id,omitempty"`
@@ -47,21 +38,16 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 		}
 	}
 
-	correlationID := newCorrelationID("explore_page")
-
-	query := queries.PendingQuery{
-		Type:          "explore_page",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("explore_page", params.URL, nil)
-
-	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "Explore page queued")
+	resp := h.newCommand("explore_page").
+		correlationPrefix("explore_page").
+		reason("explore_page").
+		queryType("explore_page").
+		queryParams(args).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		recordAction("explore_page", params.URL, nil).
+		queuedMessage("Explore page queued").
+		execute(req, args)
 
 	// Append inline screenshot only if the command completed (not queued or error)
 	if !isErrorResponse(resp) && !isResponseQueued(resp) {
