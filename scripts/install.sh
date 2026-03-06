@@ -1,20 +1,20 @@
 #!/bin/bash
 # Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This script provides a zero-dependency, platform-aware installation flow for Gasoline.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-mcp-ai-devtools"
+REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
 INSTALL_DIR="$HOME/.gasoline"
 BIN_DIR="$INSTALL_DIR/bin"
 EXT_DIR="$INSTALL_DIR/extension"
