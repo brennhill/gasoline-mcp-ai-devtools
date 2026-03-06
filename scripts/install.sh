@@ -176,7 +176,7 @@ echo -e "📁 Install root: $INSTALL_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
 GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
-BINARY_NAME="gasoline-$PLATFORM-$E_ARCH$BINARY_EXT"
+BINARY_NAME="gasoline-agentic-browser-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 

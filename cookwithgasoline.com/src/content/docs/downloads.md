@@ -1,7 +1,7 @@
 ---
 title: Downloads
 description: Download Gasoline extension and tools for your platform
-last_verified_version: 0.7.12
+last_verified_version: 0.8.0
 last_verified_date: 2026-03-05
 normalized_tags: ['downloads']
 ---
@@ -30,6 +30,8 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Extracts the Chrome extension to `~/.gasoline/extension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
+> Terminal availability: the built-in terminal is supported on macOS and Linux. It is currently unavailable on Windows.
+
 After running the installer, load the extension in Chrome:
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top right)
@@ -47,18 +49,10 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 - **Draw Mode & Visual Annotations** — Draw rectangles and type feedback directly on the page with multi-page sessions
 - **Test Healing & Classification** — Self-healing Playwright selectors and context-aware test generation
 - **Recording & Playback** — Full tab video recording with audio capture and log diff comparison
-- **Terminal Integration** — In-browser terminal with WebSocket relay and PTY session management
+- **Terminal Integration (macOS + Linux)** — In-browser terminal with WebSocket relay and PTY session management
 - **Multi-Client Support** — Multiple AI tools can connect to the same daemon
 
-## Alternative Install Methods
-
-### npm
-
-```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
-```
-
-### From Source
+## From Source
 
 ```bash
 git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
@@ -79,8 +73,8 @@ make build
 
 - **Browser:** Chrome/Chromium 120+ (for MV3 support)
 - **Runtime:** Native Go binary (no Node.js required for standalone binary installs)
-- **Node.js:** 18+ (optional, only if you install via npm)
 - **Platform:** macOS, Linux, Windows
+- **Terminal widget:** macOS + Linux only (not yet available on Windows)
 - **MCP Client:** Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
 
 ## Verification

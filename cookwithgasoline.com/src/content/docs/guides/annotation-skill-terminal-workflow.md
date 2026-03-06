@@ -14,6 +14,8 @@ This page walks through one practical loop:
 2. Use skills to structure what to do next.
 3. Validate and ship from the built-in terminal workflow.
 
+> Terminal availability: this workflow is supported on macOS and Linux. The built-in terminal is currently unavailable on Windows.
+
 ## Step 1: Capture Feedback with Annotations
 
 Use draw mode to mark real UI problems directly on the page.
