@@ -1,18 +1,18 @@
 # Gasoline - Ultimate Windows Installer (PowerShell)
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This PowerShell script provides a native, one-liner installation for Windows users.
 # It avoids external dependencies like bash/curl by using built-in .NET/PowerShell features.
 #
 # USAGE:
-#   irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 
 # Stop the script if any command results in an error. Equivalent to 'set -e'.
 $ErrorActionPreference = "Stop"
 
 # Configuration: Single source of truth for repository and local paths.
-$REPO = "brennhill/gasoline-mcp-ai-devtools"
+$REPO = "brennhill/gasoline-agentic-browser-devtools-mcp"
 $INSTALL_DIR = Join-Path $HOME ".gasoline"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
 $EXT_DIR = Join-Path $INSTALL_DIR "extension"
