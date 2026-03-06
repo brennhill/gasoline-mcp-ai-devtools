@@ -7,7 +7,6 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
@@ -101,27 +100,21 @@ func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json
 		return errResp
 	}
 
-	contextOpts := domActionContextOptions(action, params.Selector)
-	if resp, blocked := checkGuardsWithOpts(req, contextOpts, h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking); blocked {
-		return resp
-	}
-
 	args = normalizeDOMActionArgs(args, action)
 
-	correlationID := newCorrelationID("dom_" + action)
-	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "dom_action",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, action+" queued")
+	return h.newCommand("dom_" + action).
+		correlationPrefix("dom_" + action).
+		reason(action).
+		queryType("dom_action").
+		queryParams(args).
+		tabID(params.TabID).
+		guardsWithOpts(
+			domActionContextOptions(action, params.Selector),
+			h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking,
+		).
+		postEnqueue(func() {
+			h.parent.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
+		}).
+		queuedMessage(action + " queued").
+		execute(req, args)
 }

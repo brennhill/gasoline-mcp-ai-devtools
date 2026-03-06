@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -18,9 +16,6 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
 	resolvedURL := params.URL
 	if params.URL != "" {
 		rewriteURL, err := h.resolveNavigateURLImpl(params.URL)
@@ -33,9 +28,6 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 		resolvedURL = rewriteURL
 	}
 
-	correlationID := newCorrelationID("newtab")
-	h.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
-
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "new_tab"
@@ -44,21 +36,18 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	}
 	actionPayload := buildQueryParams(actionParams)
 
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        actionPayload,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("new_tab", resolvedURL, map[string]any{
-		"target_url":    resolvedURL,
-		"requested_url": params.URL,
-	})
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "New tab queued")
+	return h.newCommand("new_tab").
+		correlationPrefix("newtab").
+		reason("new_tab").
+		queryType("browser_action").
+		queryParams(actionPayload).
+		guards(h.parent.requirePilot, h.parent.requireExtension).
+		recordAction("new_tab", resolvedURL, map[string]any{
+			"target_url":    resolvedURL,
+			"requested_url": params.URL,
+		}).
+		queuedMessage("New tab queued").
+		execute(req, args)
 }
 
 func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -87,36 +76,26 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	// Default set_tracked to true so subsequent commands target the new tab.
 	setTracked := params.SetTracked == nil || *params.SetTracked
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	// No requireTabTracking gate: switch_tab IS how you establish tracking
-	// for an existing tab. The handler calls applySwitchTabTracking on success.
-
-	correlationID := newCorrelationID("switchtab")
-	h.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
-
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "switch_tab"
 	actionPayload := buildQueryParams(actionParams)
 
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        actionPayload,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("switch_tab", "", map[string]any{
-		"tab_id":    params.TabID,
-		"tab_index": params.TabIndex,
-	})
-
-	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+	// No requireTabTracking gate: switch_tab IS how you establish tracking
+	// for an existing tab. The handler calls applySwitchTabTracking on success.
+	resp, correlationID := h.newCommand("switch_tab").
+		correlationPrefix("switchtab").
+		reason("switch_tab").
+		queryType("browser_action").
+		queryParams(actionPayload).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension).
+		recordAction("switch_tab", "", map[string]any{
+			"tab_id":    params.TabID,
+			"tab_index": params.TabIndex,
+		}).
+		queuedMessage("Switch tab queued").
+		executeWithCorrelation(req, args)
 
 	// After the command completes, update tracked tab state so subsequent
 	// commands target the newly activated tab. See issue #271.
@@ -124,7 +103,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	// extension-side persistTrackedTab via the next /sync heartbeat.
 	// Server-side update only occurs in sync mode because MaybeWaitForCommand
 	// returns immediately when sync=false, so GetCommandResult has no result yet.
-	if setTracked {
+	if setTracked && correlationID != "" {
 		h.applySwitchTabTracking(correlationID)
 	}
 

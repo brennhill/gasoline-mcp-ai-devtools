@@ -43,6 +43,65 @@ Use this as a hard checklist during design, coding, and review.
   - one end-to-end/smoke assertion of payload shape and behavior.
 - If behavior changes, update/remove stale tests in the same PR; do not leave failing legacy assertions.
 
+## 7) CommandBuilder for Interact Handlers
+
+New interact handlers that follow the standard guard/correlate/arm/enqueue/wait sequence
+must use the `commandBuilder` pattern instead of repeating the boilerplate manually.
+
+- **File:** `cmd/dev-console/tools_interact_command_builder.go`
+- **Tests:** `cmd/dev-console/tools_interact_command_builder_test.go`
+
+### When to Use
+
+Use `commandBuilder` when a handler follows this sequence:
+1. Run guard checks (pilot, extension, tab tracking)
+2. Generate correlation ID
+3. Arm evidence for the command
+4. Enqueue a pending query
+5. Optionally record an AI action
+6. Wait for the command result
+
+### Usage
+
+```go
+return h.newCommand("highlight").
+    correlationPrefix("highlight").
+    reason("highlight").
+    queryType("highlight").
+    queryParams(args).
+    tabID(params.TabID).
+    guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+    recordAction("highlight", "", map[string]any{"selector": params.Selector}).
+    queuedMessage("Highlight queued").
+    execute(req, args)
+```
+
+### Builder Methods
+
+| Method | Purpose |
+|--------|---------|
+| `correlationPrefix(s)` | Prefix for generated correlation ID |
+| `reason(s)` | Reason string for evidence arming |
+| `queryType(s)` | PendingQuery.Type (e.g. "execute", "browser_action") |
+| `queryParams(p)` | Pre-serialized query params |
+| `buildParams(m)` | Build params from map (calls `buildQueryParams`) |
+| `tabID(id)` | Tab ID for the pending query |
+| `guards(fns...)` | Guard checks (run in order, first blocker short-circuits) |
+| `guardsWithOpts(opts, fns...)` | Guards with StructuredError context options |
+| `cspGuard(world)` | CSP check for world param |
+| `preEnqueue(fn)` | Callback after correlation ID, before enqueue |
+| `postEnqueue(fn)` | Callback after enqueue, before wait |
+| `recordAction(action, url, extra)` | Record AI action after enqueue |
+| `timeout(d)` | Override default enqueue timeout |
+| `queuedMessage(msg)` | Message for async (queued) responses |
+| `execute(req, args)` | Run the full sequence |
+| `executeWithCorrelation(req, args)` | Like execute, also returns correlation ID |
+
+### When NOT to Use
+
+- Handlers with completely custom response logic (e.g. `handleDrawModeStart` returns a static response instead of `MaybeWaitForCommand`)
+- Handlers on `*ToolHandler` (not `*interactActionHandler`) that create queries independently (e.g. `enrichNavigateResponse`)
+
 ## Review Checklist
 
 - [ ] Storage access follows helper/module boundaries.
@@ -51,3 +110,4 @@ Use this as a hard checklist during design, coding, and review.
 - [ ] UX labels/toasts/badges come from shared utilities.
 - [ ] `jscpd` run completed and clones were resolved or documented.
 - [ ] Unit + e2e/smoke tests reflect current behavior and pass.
+- [ ] New interact handlers use `commandBuilder` when the standard guard/correlate/enqueue/wait pattern applies.
