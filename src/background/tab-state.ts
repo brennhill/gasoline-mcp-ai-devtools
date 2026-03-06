@@ -18,7 +18,7 @@ import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/s
 export async function pingContentScript(tabId: number, timeoutMs = scaleTimeout(500)): Promise<boolean> {
   try {
     const response = (await Promise.race([
-      chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+      chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }),
       new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)),
@@ -261,7 +261,7 @@ export function sendTabToast(
 ): void {
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST' as const,
+      type: 'gasoline_action_toast' as const,
       text,
       detail,
       state,

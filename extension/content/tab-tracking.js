@@ -20,7 +20,7 @@ export async function updateTrackingStatus() {
     try {
         const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
         // Request tab ID from background script (content scripts can't access chrome.tabs)
-        const response = (await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' }));
+        const response = (await chrome.runtime.sendMessage({ type: 'get_tab_id' }));
         currentTabId = response?.tabId ?? null;
         isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === trackedTabId;
     }

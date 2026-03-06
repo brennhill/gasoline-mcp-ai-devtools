@@ -73,7 +73,7 @@ function syncStoredSettings(): void {
       if (setting.isMode) {
         window.postMessage(
           {
-            type: 'GASOLINE_SETTING',
+            type: 'gasoline_setting',
             setting: setting.messageType,
             mode: value as WebSocketCaptureMode,
             _nonce: pageNonce
@@ -82,7 +82,7 @@ function syncStoredSettings(): void {
         )
       } else {
         window.postMessage(
-          { type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
+          { type: 'gasoline_setting', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
           window.location.origin
         )
       }
@@ -215,7 +215,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
 
     const onMessage = (event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>) => {
       if (event.source !== window || event.origin !== window.location.origin) return
-      if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG') return
+      if (event.data?.type !== 'gasoline_inject_bridge_pong') return
       if (event.data?.requestId !== requestId) return
       if (event.data?._nonce && event.data._nonce !== pageNonce) return
       finish(true)
@@ -227,7 +227,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
     try {
       window.postMessage(
         {
-          type: 'GASOLINE_INJECT_BRIDGE_PING',
+          type: 'gasoline_inject_bridge_ping',
           requestId,
           _nonce: pageNonce
         },

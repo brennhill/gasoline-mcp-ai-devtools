@@ -145,13 +145,13 @@ function waitForRecordingGesture(timeoutMs) {
             resolve('timeout');
         }, timeoutMs);
         const listener = (message) => {
-            if (message.type === 'RECORDING_GESTURE_GRANTED') {
+            if (message.type === 'recording_gesture_granted') {
                 clearTimeout(timeout);
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve('granted');
                 return;
             }
-            if (message.type === 'RECORDING_GESTURE_DENIED') {
+            if (message.type === 'recording_gesture_denied') {
                 clearTimeout(timeout);
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve('denied');

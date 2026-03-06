@@ -53,14 +53,14 @@ function syncStoredSettings() {
                 continue; // Use default if not set
             if (setting.isMode) {
                 window.postMessage({
-                    type: 'GASOLINE_SETTING',
+                    type: 'gasoline_setting',
                     setting: setting.messageType,
                     mode: value,
                     _nonce: pageNonce
                 }, window.location.origin);
             }
             else {
-                window.postMessage({ type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+                window.postMessage({ type: 'gasoline_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
             }
         }
     });
@@ -190,7 +190,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         const onMessage = (event) => {
             if (event.source !== window || event.origin !== window.location.origin)
                 return;
-            if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG')
+            if (event.data?.type !== 'gasoline_inject_bridge_pong')
                 return;
             if (event.data?.requestId !== requestId)
                 return;
@@ -202,7 +202,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
         try {
             window.postMessage({
-                type: 'GASOLINE_INJECT_BRIDGE_PING',
+                type: 'gasoline_inject_bridge_ping',
                 requestId,
                 _nonce: pageNonce
             }, window.location.origin);

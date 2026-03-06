@@ -273,7 +273,7 @@ function broadcastStatusUpdate() {
     if (typeof chrome === 'undefined' || !chrome.runtime)
         return;
     chrome.runtime
-        .sendMessage({ type: 'statusUpdate', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
+        .sendMessage({ type: 'status_update', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
         .catch((err) => console.error('[Gasoline] Error sending status update:', err));
 }
 // eslint-disable-next-line security-node/detect-unhandled-async-errors

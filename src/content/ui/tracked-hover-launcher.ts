@@ -317,7 +317,7 @@ function runScreenshotCapture(): void {
 
   try {
     chrome.runtime.sendMessage(
-      { type: 'captureScreenshot' },
+      { type: 'capture_screenshot' },
       (response: { success?: boolean; error?: string } | undefined) => {
         const err = chrome.runtime.lastError
         const success = !err && response !== undefined && response.success !== false

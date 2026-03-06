@@ -187,7 +187,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         // Send start command to offscreen document and wait for confirmation (10s timeout)
         const startResult = await new Promise((resolve) => {
             const listener = (message) => {
-                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STARTED') {
+                if (message.target === 'background' && message.type === 'offscreen_recording_started') {
                     clearTimeout(timeout);
                     chrome.runtime.onMessage.removeListener(listener);
                     resolve(message);
@@ -197,7 +197,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve({
                     target: 'background',
-                    type: 'OFFSCREEN_RECORDING_STARTED',
+                    type: 'offscreen_recording_started',
                     success: false,
                     error: 'RECORD_START: Offscreen document timed out.'
                 });
@@ -205,7 +205,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             chrome.runtime.onMessage.addListener(listener);
             chrome.runtime.sendMessage({
                 target: 'offscreen',
-                type: 'OFFSCREEN_START_RECORDING',
+                type: 'offscreen_start_recording',
                 streamId,
                 serverUrl: getServerUrl(),
                 name,
@@ -292,7 +292,7 @@ export async function stopRecording(truncated = false) {
         // Send stop command to offscreen document and wait for result (30s timeout for upload)
         const stopResult = await new Promise((resolve) => {
             const listener = (message) => {
-                if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STOPPED') {
+                if (message.target === 'background' && message.type === 'offscreen_recording_stopped') {
                     clearTimeout(timeout);
                     chrome.runtime.onMessage.removeListener(listener);
                     resolve(message);
@@ -302,7 +302,7 @@ export async function stopRecording(truncated = false) {
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve({
                     target: 'background',
-                    type: 'OFFSCREEN_RECORDING_STOPPED',
+                    type: 'offscreen_recording_stopped',
                     status: 'error',
                     name: recordingState.name || '',
                     error: 'RECORD_STOP: Offscreen document timed out during save.'
@@ -311,7 +311,7 @@ export async function stopRecording(truncated = false) {
             chrome.runtime.onMessage.addListener(listener);
             chrome.runtime.sendMessage({
                 target: 'offscreen',
-                type: 'OFFSCREEN_STOP_RECORDING'
+                type: 'offscreen_stop_recording'
             });
         });
         console.log(LOG, 'Offscreen STOP result:', {

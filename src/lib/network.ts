@@ -64,7 +64,7 @@ interface RequestInfo {
  * Network body payload posted to content script
  */
 interface NetworkBodyPostMessage {
-  type: 'GASOLINE_NETWORK_BODY'
+  type: 'gasoline_network_body'
   payload: {
     url: string
     method: string
@@ -470,7 +470,7 @@ function postNetworkBody(
   responseTruncated: boolean
 ): void {
   const message: NetworkBodyPostMessage = {
-    type: 'GASOLINE_NETWORK_BODY',
+    type: 'gasoline_network_body',
     payload: {
       url,
       method,
@@ -614,7 +614,7 @@ export function adoptEarlyBodies(): void {
     const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body)
 
     const message: NetworkBodyPostMessage = {
-      type: 'GASOLINE_NETWORK_BODY',
+      type: 'gasoline_network_body',
       payload: {
         url: entry.url,
         method: entry.method,

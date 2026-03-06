@@ -274,7 +274,7 @@ registerCommand('waterfall', async (ctx) => {
         const tab = await chrome.tabs.get(ctx.tabId);
         debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId: ctx.tabId, url: tab.url });
         const result = (await chrome.tabs.sendMessage(ctx.tabId, {
-            type: 'GET_NETWORK_WATERFALL'
+            type: 'get_network_waterfall'
         }));
         debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
             entries: result?.entries?.length || 0

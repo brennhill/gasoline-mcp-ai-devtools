@@ -44,7 +44,7 @@ export interface PageMessageEventData {
  * Setting message to be posted to page context
  */
 export interface SettingMessage {
-  type: 'GASOLINE_SETTING'
+  type: 'gasoline_setting'
   setting: string
   enabled?: boolean
   mode?: WebSocketCaptureMode
@@ -55,7 +55,7 @@ export interface SettingMessage {
  * Highlight request message to page context
  */
 export interface HighlightRequestMessage {
-  type: 'GASOLINE_HIGHLIGHT_REQUEST'
+  type: 'gasoline_highlight_request'
   requestId: number
   params: {
     selector: string
@@ -67,7 +67,7 @@ export interface HighlightRequestMessage {
  * Execute JS request message to page context
  */
 export interface ExecuteJsRequestMessage {
-  type: 'GASOLINE_EXECUTE_JS'
+  type: 'gasoline_execute_js'
   requestId: number
   script: string
   timeoutMs: number
@@ -77,7 +77,7 @@ export interface ExecuteJsRequestMessage {
  * A11y query request message to page context
  */
 export interface A11yQueryRequestMessage {
-  type: 'GASOLINE_A11Y_QUERY'
+  type: 'gasoline_a11y_query'
   requestId: number
   params: Record<string, unknown>
 }
@@ -86,7 +86,7 @@ export interface A11yQueryRequestMessage {
  * DOM query request message to page context
  */
 export interface DomQueryRequestMessage {
-  type: 'GASOLINE_DOM_QUERY'
+  type: 'gasoline_dom_query'
   requestId: number
   params: Record<string, unknown>
 }
@@ -95,7 +95,7 @@ export interface DomQueryRequestMessage {
  * Get waterfall request message to page context
  */
 export interface GetWaterfallRequestMessage {
-  type: 'GASOLINE_GET_WATERFALL'
+  type: 'gasoline_get_waterfall'
   requestId: number
 }
 
@@ -103,7 +103,7 @@ export interface GetWaterfallRequestMessage {
  * State command message to page context
  */
 export interface StateCommandMessage {
-  type: 'GASOLINE_STATE_COMMAND'
+  type: 'gasoline_state_command'
   messageId: string
   action?: StateAction
   name?: string

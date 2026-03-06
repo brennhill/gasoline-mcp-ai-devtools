@@ -44,13 +44,13 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
   {
     id: 'toggle-screenshot',
     storageKey: StorageKey.SCREENSHOT_ON_ERROR,
-    messageType: 'setScreenshotOnError',
+    messageType: 'set_screenshot_on_error',
     default: true
   },
   {
     id: 'toggle-source-maps',
     storageKey: StorageKey.SOURCE_MAP_ENABLED,
-    messageType: 'setSourceMapEnabled',
+    messageType: 'set_source_map_enabled',
     default: true
   },
   {

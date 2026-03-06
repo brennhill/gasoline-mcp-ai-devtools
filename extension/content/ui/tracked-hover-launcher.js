@@ -298,7 +298,7 @@ function runScreenshotCapture() {
         catch { /* no audio */ }
     }
     try {
-        chrome.runtime.sendMessage({ type: 'captureScreenshot' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'capture_screenshot' }, (response) => {
             const err = chrome.runtime.lastError;
             const success = !err && response !== undefined && response.success !== false;
             showScreenshotFlash(success);

@@ -349,12 +349,12 @@ export function setupRecordingUI() {
     });
     approvalEls.approveBtn?.addEventListener('click', (event) => {
         event.preventDefault();
-        sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED');
+        sendRecordingGestureDecision('recording_gesture_granted');
         clearPendingRecordingIntent();
     });
     approvalEls.denyBtn?.addEventListener('click', (event) => {
         event.preventDefault();
-        sendRecordingGestureDecision('RECORDING_GESTURE_DENIED');
+        sendRecordingGestureDecision('recording_gesture_denied');
         clearPendingRecordingIntent();
     });
     getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value) => {
@@ -368,7 +368,7 @@ export function setupRecordingUI() {
             if (tabs[0]?.id) {
                 chrome.tabs
                     .sendMessage(tabs[0].id, {
-                    type: 'GASOLINE_ACTION_TOAST',
+                    type: 'gasoline_action_toast',
                     text: '',
                     detail: '',
                     state: 'success',
