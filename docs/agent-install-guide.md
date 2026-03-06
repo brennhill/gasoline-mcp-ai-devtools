@@ -31,11 +31,6 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Extracts the Chrome extension to `~/.gasoline/extension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
-**If the install script is unavailable**, fall back to npm:
-```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
-```
-
 ### Verify the install succeeded
 
 Check the exit code was 0 and the binary exists:
