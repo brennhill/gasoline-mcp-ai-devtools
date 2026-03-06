@@ -125,11 +125,15 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 
 	suggestions := buildQualityGateSuggestions(configExisted, standardsCreated, codeStandardsRef)
 
+	// Build the recommended hook config for the user's .claude/settings.json.
+	hookConfig := buildQualityGateHookConfig(absTarget, codeStandardsRef)
+
 	responseData := map[string]any{
 		"config_path":    configPath,
 		"config_existed": configExisted,
 		"defaults":       defaults,
 		"suggestions":    suggestions,
+		"hook_config":    hookConfig,
 	}
 	if standardsPath != "" {
 		responseData["standards_path"] = standardsPath
@@ -170,6 +174,56 @@ func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStand
 	)
 
 	return suggestions
+}
+
+// buildQualityGateHookConfig returns the recommended Claude Code hook configuration.
+// Hook config uses Claude Code's naming conventions (PascalCase event names), so it's
+// returned as a pre-formatted JSON string to avoid snake_case field validation.
+func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]any {
+	standardsAbsPath := filepath.Join(projectDir, codeStandardsRef)
+
+	// Build the command hook JSON — uses Claude Code spec fields (PascalCase).
+	commandHook := `{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat ` + standardsAbsPath + ` | head -200",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}`
+
+	promptHook := `{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Review this code change against these project standards. Only flag clear violations, not style preferences. If the change looks good, respond {\"ok\": true}. If there are issues, respond {\"ok\": false, \"reason\": \"specific findings\"}.\n\nProject standards from ` + codeStandardsRef + ` apply.",
+            "model": "haiku",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}`
+
+	return map[string]any{
+		"description":       "Add one of these hook configs to .claude/settings.json for automatic code review on every Edit/Write",
+		"settings_path":     filepath.Join(projectDir, ".claude", "settings.json"),
+		"command_hook_json": commandHook,
+		"prompt_hook_json":  promptHook,
+	}
 }
 
 // defaultCodeStandardsContent is the starter content for gasoline-code-standards.md.
