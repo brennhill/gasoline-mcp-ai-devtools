@@ -1,7 +1,7 @@
 ---
 title: Downloads
 description: Download Gasoline extension and tools for your platform
-last_verified_version: 0.8.0
+last_verified_version: 0.8.1
 last_verified_date: 2026-03-05
 normalized_tags: ['downloads']
 ---

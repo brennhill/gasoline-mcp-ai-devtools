@@ -1,6 +1,6 @@
 [project]
 name = "gasoline-agentic-browser-linux-x64"
-version = "0.8.0"
+version = "0.8.1"
 description = "Gasoline Agentic Browser binary for linux-x64"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"

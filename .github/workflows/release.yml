@@ -116,8 +116,8 @@ jobs:
 
       - name: Verify binary version
         run: |
-          ./dist/gasoline-agentic-browser-linux-x64 --version
-          BINARY_VERSION=$(./dist/gasoline-agentic-browser-linux-x64 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          ./dist/gasoline-agentic-devtools-linux-x64 --version
+          BINARY_VERSION=$(./dist/gasoline-agentic-devtools-linux-x64 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           EXPECTED="${{ needs.verify-tag.outputs.version }}"
 
           if [ "$BINARY_VERSION" != "$EXPECTED" ]; then
@@ -140,11 +140,11 @@ jobs:
           mkdir -p npm/linux-x64/bin
           mkdir -p npm/win32-x64/bin
 
-          cp dist/gasoline-agentic-browser-darwin-arm64 npm/darwin-arm64/bin/gasoline
-          cp dist/gasoline-agentic-browser-darwin-x64 npm/darwin-x64/bin/gasoline
-          cp dist/gasoline-agentic-browser-linux-arm64 npm/linux-arm64/bin/gasoline
-          cp dist/gasoline-agentic-browser-linux-x64 npm/linux-x64/bin/gasoline
-          cp dist/gasoline-agentic-browser-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+          cp dist/gasoline-agentic-devtools-darwin-arm64 npm/darwin-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-darwin-x64 npm/darwin-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-arm64 npm/linux-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-x64 npm/linux-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-win32-x64.exe npm/win32-x64/bin/gasoline.exe
 
       - name: Publish packages
         run: |
@@ -197,11 +197,11 @@ jobs:
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           files: |
-            dist/gasoline-agentic-browser-darwin-arm64
-            dist/gasoline-agentic-browser-darwin-x64
-            dist/gasoline-agentic-browser-linux-arm64
-            dist/gasoline-agentic-browser-linux-x64
-            dist/gasoline-agentic-browser-win32-x64.exe
+            dist/gasoline-agentic-devtools-darwin-arm64
+            dist/gasoline-agentic-devtools-darwin-x64
+            dist/gasoline-agentic-devtools-linux-arm64
+            dist/gasoline-agentic-devtools-linux-x64
+            dist/gasoline-agentic-devtools-win32-x64.exe
             dist/gasoline-extension-v*.zip
             dist/checksums.txt
           generate_release_notes: true
