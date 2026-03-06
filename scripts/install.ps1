@@ -363,3 +363,4 @@ if (-not (Test-Path $INSTALL_BIN)) {
 & $INSTALL_BIN --install
 [void](Stop-GasolineServerProcesses)
 Show-InstallWarnings
+Write-Host "ℹ️  Note: In-page xterm terminal support is currently disabled on Windows." -ForegroundColor Yellow
