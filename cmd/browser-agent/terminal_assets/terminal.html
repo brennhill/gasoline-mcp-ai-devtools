@@ -171,6 +171,12 @@
                 if (msg.cli) {
                   headerLabel.textContent = msg.cli;
                 }
+              } else if (msg.type === 'replay_end') {
+                // Scrollback replay is complete — all subsequent data is live.
+                notifyParent('replay_end', {});
+              } else if (msg.type === 'alt_screen') {
+                // Alt-screen state changed (e.g., vim, less entered/exited).
+                notifyParent('alt_screen', { active: msg.active });
               } else if (msg.type === 'exited') {
                 term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
                 statusDot.className = 'status';
