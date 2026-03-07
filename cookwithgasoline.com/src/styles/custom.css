@@ -1762,6 +1762,117 @@ code:not(pre code) {
   background: color-mix(in srgb, var(--g-surface) 94%, transparent);
 }
 
+.workflow-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.workflow-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.15rem;
+  border-left: 3px solid var(--wf-color, var(--g-border));
+}
+
+.workflow-card h3 {
+  margin: 0.25em 0;
+  font-size: 1.1rem;
+}
+
+.workflow-card p {
+  margin: 0;
+  color: var(--g-ink-soft);
+  font-size: 0.92rem;
+}
+
+.workflow-card ul {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 0.85rem;
+  color: var(--g-muted);
+}
+
+.workflow-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.workflow-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--wf-color, var(--g-ink));
+}
+
+.workflow-category-icon {
+  flex-shrink: 0;
+  color: var(--wf-color, var(--g-muted));
+}
+
+.workflow-runtime {
+  font-size: 0.8rem;
+  color: var(--g-muted);
+}
+
+.workflow-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--g-muted);
+}
+
+.workflow-card-bottom a {
+  color: var(--g-ink);
+  font-weight: 600;
+  text-decoration-color: color-mix(in srgb, var(--g-orange) 36%, transparent);
+}
+
+.workflow-card-bottom a:hover {
+  color: var(--g-orange);
+}
+
+.workflow-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+}
+
+.workflow-library-hero {
+  padding: 1.15rem;
+}
+
+.workflow-library-hero h2 {
+  margin: 0.25em 0;
+}
+
+.workflow-library-hero p {
+  margin: 0;
+}
+
+.workflow-count {
+  margin: 0;
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--g-muted);
+}
+
+.workflow-empty {
+  text-align: center;
+  color: var(--g-muted);
+  padding: 2rem 1rem;
+}
+
 .gasoline-footer {
   border-top: 1px solid var(--g-border);
   margin-top: 2rem;
