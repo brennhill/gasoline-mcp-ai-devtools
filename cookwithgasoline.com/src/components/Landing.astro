@@ -36,40 +36,6 @@ const transformationCards = [
 
 const solutions = [
   {
-    id: 'seo',
-    title: 'SEO Analysis',
-    copy: 'Drop in competitor URLs and instantly compare metadata quality, crawl paths, and optimization opportunities from rendered pages.',
-    href: '/guides/seo-analysis/',
-    cta: 'Explore SEO workflow',
-    bgClass: 'gmodern-solution-panel--olive',
-    visual: {
-      fields: [
-        { label: 'Your website URL', value: 'https://yourwebsite.com' },
-        { label: 'Competitor URL(s)', value: 'https://competitor1.com\nhttps://competitor2.com' }
-      ],
-      button: 'Run SEO audit',
-      metricTitle: 'Search visibility delta',
-      score: 192,
-      metrics: [
-        { label: 'Your website', value: 58 },
-        { label: 'Competitor1', value: 39 },
-        { label: 'Competitor2', value: 115 }
-      ],
-      callouts: [
-        {
-          text: 'Rendered-page signals beat raw HTML assumptions for search quality.',
-          tone: 'amber',
-          position: 'gmodern-workbench-callout--top-right'
-        },
-        {
-          text: 'Crawl-path gaps become obvious when visual + metadata checks run together.',
-          tone: 'ink',
-          position: 'gmodern-workbench-callout--bottom-left'
-        }
-      ]
-    }
-  },
-  {
     id: 'product',
     title: 'Product Development',
     copy: 'Capture annotation sessions while building so design intent, engineering tasks, and release decisions stay aligned.',
@@ -133,6 +99,40 @@ const solutions = [
           text: 'Replay the failing path and verify the fix with the same evidence.',
           tone: 'ink',
           position: 'gmodern-workbench-callout--bottom-right'
+        }
+      ]
+    }
+  },
+  {
+    id: 'seo',
+    title: 'SEO Analysis',
+    copy: 'Drop in competitor URLs and instantly compare metadata quality, crawl paths, and optimization opportunities from rendered pages.',
+    href: '/guides/seo-analysis/',
+    cta: 'Explore SEO workflow',
+    bgClass: 'gmodern-solution-panel--olive',
+    visual: {
+      fields: [
+        { label: 'Your website URL', value: 'https://yourwebsite.com' },
+        { label: 'Competitor URL(s)', value: 'https://competitor1.com\nhttps://competitor2.com' }
+      ],
+      button: 'Run SEO audit',
+      metricTitle: 'Search visibility delta',
+      score: 192,
+      metrics: [
+        { label: 'Your website', value: 58 },
+        { label: 'Competitor1', value: 39 },
+        { label: 'Competitor2', value: 115 }
+      ],
+      callouts: [
+        {
+          text: 'Rendered-page signals beat raw HTML assumptions for search quality.',
+          tone: 'amber',
+          position: 'gmodern-workbench-callout--top-right'
+        },
+        {
+          text: 'Crawl-path gaps become obvious when visual + metadata checks run together.',
+          tone: 'ink',
+          position: 'gmodern-workbench-callout--bottom-left'
         }
       ]
     }
