@@ -1,8 +1,8 @@
 ---
 title: Annotation + Skills + Terminal Workflow
 description: Use annotation sessions, guided skill playbooks, and the built-in terminal loop together so product feedback turns into tested fixes quickly.
-last_verified_version: 0.8.0
-last_verified_date: 2026-03-06
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 normalized_tags: ['guides', 'annotation', 'skill', 'terminal', 'workflow']
 ---
 
@@ -13,6 +13,8 @@ This page walks through one practical loop:
 1. Capture visual feedback with annotations.
 2. Use skills to structure what to do next.
 3. Validate and ship from the built-in terminal workflow.
+
+> Terminal availability: this workflow is supported on macOS and Linux. The built-in terminal is currently unavailable on Windows.
 
 ## Step 1: Capture Feedback with Annotations
 

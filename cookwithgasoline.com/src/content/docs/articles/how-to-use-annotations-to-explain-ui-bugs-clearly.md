@@ -4,8 +4,8 @@ description: "A beginner-friendly method for using visual annotations in Gasolin
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, annotations, ui, debugging]
-last_verified_version: 0.8.0
-last_verified_date: 2026-03-06
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 normalized_tags: ['beginner', 'annotations', 'ui', 'debugging', 'articles', 'use', 'explain', 'bugs', 'clearly']
 ---
 
