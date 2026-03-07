@@ -1,5 +1,5 @@
 {
-  "description": "Edit an exported function in protocol.go — should warn about importers",
+  "description": "Blast radius output should include the specific file path being edited",
   "hook": "blast-radius",
   "project_root": "REPO_ROOT",
   "input": {
@@ -8,7 +8,7 @@
   },
   "expect": {
     "has_output": true,
-    "contains": ["Blast Radius", "imported by"],
+    "contains": ["internal/hook/protocol.go", "Not yet reviewed"],
     "max_latency_ms": 5000
   }
 }

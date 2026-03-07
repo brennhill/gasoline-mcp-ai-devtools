@@ -1,0 +1,18 @@
+{
+  "description": "ASPIRATIONAL: Bash tool reading a file via cat should count as a read in session tracking",
+  "hook": "session-track",
+  "session_state": {
+    "touches": [
+      {"t": "2026-03-07T14:00:00Z", "tool": "Bash", "file": "", "action": "bash", "summary": "cat /p/handlers.go"}
+    ]
+  },
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "/p/handlers.go"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["[Session]", "already"],
+    "max_latency_ms": 100
+  }
+}

@@ -101,20 +101,29 @@ func LoadFixtures(dir string) ([]*Fixture, error) {
 }
 
 // RunFixture executes a single fixture and validates the result.
-func RunFixture(fix *Fixture, testdataDir string) *Result {
+// repoRoot is the absolute path to the repository root (used when project_root is "REPO_ROOT").
+func RunFixture(fix *Fixture, repoRoot string) *Result {
 	result := &Result{Fixture: fix}
+
+	// Resolve project root.
+	projectRoot := ""
+	if fix.ProjectRoot == "REPO_ROOT" {
+		projectRoot = repoRoot
+	} else if fix.ProjectRoot != "" {
+		projectRoot = fix.ProjectRoot
+	}
+
+	// Resolve relative file_path in tool_input to absolute using projectRoot.
+	toolInput := fix.Input.ToolInput
+	if projectRoot != "" {
+		toolInput = resolveToolInputPaths(toolInput, projectRoot)
+	}
 
 	// Build hook input.
 	input := hook.Input{
 		ToolName:     fix.Input.ToolName,
-		ToolInput:    fix.Input.ToolInput,
+		ToolInput:    toolInput,
 		ToolResponse: fix.Input.ToolResponse,
-	}
-
-	// Resolve project root relative to testdata dir.
-	projectRoot := ""
-	if fix.ProjectRoot != "" {
-		projectRoot = filepath.Join(testdataDir, fix.ProjectRoot)
 	}
 
 	// Setup session state if needed.
@@ -231,6 +240,31 @@ func validate(expect Expectation, output string, elapsed time.Duration) []string
 	}
 
 	return failures
+}
+
+// resolveToolInputPaths resolves relative file_path values in tool_input JSON
+// to absolute paths by joining with the project root.
+func resolveToolInputPaths(raw json.RawMessage, projectRoot string) json.RawMessage {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil {
+		return raw
+	}
+	fpRaw, ok := fields["file_path"]
+	if !ok {
+		return raw
+	}
+	var fp string
+	if json.Unmarshal(fpRaw, &fp) != nil {
+		return raw
+	}
+	if fp == "" || filepath.IsAbs(fp) {
+		return raw
+	}
+	abs := filepath.Join(projectRoot, fp)
+	absJSON, _ := json.Marshal(abs)
+	fields["file_path"] = absJSON
+	out, _ := json.Marshal(fields)
+	return out
 }
 
 func truncate(s string, n int) string {

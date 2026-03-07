@@ -1,0 +1,14 @@
+{
+  "description": "Edit introduces json.NewEncoder — should detect existing convention usage",
+  "hook": "quality-gate",
+  "project_root": "REPO_ROOT",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "internal/hook/session_store.go", "new_string": "json.NewEncoder(w).Encode(result)"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["CODEBASE CONVENTIONS", "json.NewEncoder(", "existing usage"],
+    "max_latency_ms": 5000
+  }
+}
