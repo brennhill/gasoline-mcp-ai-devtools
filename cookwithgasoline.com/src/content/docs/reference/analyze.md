@@ -1,8 +1,8 @@
 ---
 title: "Analyze — Active Analysis"
 description: "Complete reference for the analyze tool. 27 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, visual regression, form analysis, performance snapshots, and more."
-last_verified_version: 0.8.0
-last_verified_date: 2026-03-06
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 normalized_tags: ['reference', 'analyze']
 ---
 

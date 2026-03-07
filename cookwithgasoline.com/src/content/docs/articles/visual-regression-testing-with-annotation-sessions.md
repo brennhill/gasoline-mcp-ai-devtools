@@ -4,8 +4,8 @@ description: "Use visual annotations to build clear, repeatable visual regressio
 date: 2026-03-03
 authors: [brenn]
 tags: [visual-regression, annotations, ui, testing]
-last_verified_version: 0.8.0
-last_verified_date: 2026-03-06
+last_verified_version: 0.7.12
+last_verified_date: 2026-03-05
 normalized_tags: ['visual-regression', 'annotations', 'ui', 'testing', 'articles', 'visual', 'regression', 'annotation', 'sessions']
 ---
 
