@@ -43,7 +43,7 @@ export function isDebugMode() {
     return state.debugMode;
 }
 export function getConnectionStatus() {
-    return state.connectionStatus;
+    return Object.freeze({ ...state.connectionStatus });
 }
 export function getCurrentLogLevel() {
     return state.currentLogLevel;
@@ -52,7 +52,7 @@ export function isScreenshotOnError() {
     return state.screenshotOnError;
 }
 export function getCaptureOverrides() {
-    return state.captureOverrides;
+    return Object.freeze({ ...state.captureOverrides });
 }
 export function isAiControlled() {
     return state.aiControlled;
@@ -78,7 +78,7 @@ export function pushExtensionLog(entry) {
 function capExtensionLogQueue(maxEntries) {
     if (state.extensionLogQueue.length <= maxEntries)
         return;
-    state.extensionLogQueue.splice(0, state.extensionLogQueue.length - maxEntries);
+    state.extensionLogQueue = state.extensionLogQueue.slice(-maxEntries);
 }
 export function capExtensionLogs(maxEntries) {
     capExtensionLogQueue(maxEntries);

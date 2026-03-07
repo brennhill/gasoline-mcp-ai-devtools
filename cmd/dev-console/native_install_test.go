@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,27 +46,5 @@ func TestExtensionInstallDir_EnvOverride(t *testing.T) {
 
 	if got := extensionInstallDir(home); got != override {
 		t.Fatalf("extensionInstallDir(%q) = %q, want env override %q", home, got, override)
-	}
-}
-
-func TestInstallerPreferredBinaryPath_PrefersCanonicalWhenLegacyNameUsed(t *testing.T) {
-	root := t.TempDir()
-	canonical := filepath.Join(root, "gasoline-agentic-devtools")
-	if err := os.WriteFile(canonical, []byte(""), 0600); err != nil {
-		t.Fatalf("WriteFile(canonical) error = %v", err)
-	}
-
-	legacy := filepath.Join(root, "gasoline")
-	if got := installerPreferredBinaryPath(legacy); got != canonical {
-		t.Fatalf("installerPreferredBinaryPath(%q) = %q, want %q", legacy, got, canonical)
-	}
-}
-
-func TestInstallerPreferredBinaryPath_KeepsLegacyWhenCanonicalMissing(t *testing.T) {
-	root := t.TempDir()
-	legacy := filepath.Join(root, "gasoline-agentic-browser")
-
-	if got := installerPreferredBinaryPath(legacy); got != legacy {
-		t.Fatalf("installerPreferredBinaryPath(%q) = %q, want unchanged path", legacy, got)
 	}
 }

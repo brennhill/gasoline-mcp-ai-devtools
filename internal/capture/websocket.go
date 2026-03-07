@@ -32,7 +32,7 @@ func detectWSBinaryFormat(event *WebSocketEvent) {
 // AddWebSocketEvents ingests websocket telemetry and updates connection model.
 //
 // Invariants:
-// - wsEvents/wsAddedAt are appended in lockstep for TTL and cursor correctness.
+// - Each wsEventEntry stores the event and its ingestion timestamp together.
 // - Connection tracking is updated from same event stream under the same lock.
 // - Active test IDs are snapshotted once per batch for deterministic tagging.
 //
@@ -100,13 +100,14 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 
 	filtered := make([]WebSocketEvent, 0, limit)
 	for i := len(c.buffers.wsEvents) - 1; i >= 0; i-- {
-		if c.TTL > 0 && i < len(c.buffers.wsAddedAt) && isExpiredByTTL(c.buffers.wsAddedAt[i], c.TTL) {
+		entry := &c.buffers.wsEvents[i]
+		if c.TTL > 0 && isExpiredByTTL(entry.AddedAt, c.TTL) {
 			break
 		}
-		if !matchesWSEventFilter(&c.buffers.wsEvents[i], filter) {
+		if !matchesWSEventFilter(&entry.Event, filter) {
 			continue
 		}
-		filtered = append(filtered, c.buffers.wsEvents[i])
+		filtered = append(filtered, entry.Event)
 		if len(filtered) >= limit {
 			break
 		}

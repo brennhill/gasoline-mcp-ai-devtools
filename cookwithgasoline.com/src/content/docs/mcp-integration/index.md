@@ -1,8 +1,8 @@
 ---
 title: Fuel Any Agent
 description: "Connect Gasoline to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, and VS Code with Continue."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration']
 ---
 
@@ -40,7 +40,7 @@ Gasoline exposes **5 tools** — each with multiple sub-modes controlled by a si
 | `analyze` | Active analysis | dom, performance, accessibility, security_audit, third_party_audit, error_clusters, history, link_health, link_validation, page_summary, api_validation, annotations, annotation_detail, draw_history, draw_session |
 | `generate` | Code and report generation | reproduction, test, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
 | `configure` | Session management | store, load, noise_rule, clear, health, streaming, recording_start, recording_stop, playback, log_diff, telemetry, diff_sessions, audit_log, describe_capabilities |
-| `interact` | Browser control | navigate, click, type, select, check, key_press, execute_js, highlight, refresh, back, forward, new_tab, upload, draw_mode_start, record_start, record_stop, paste, save_state, load_state, get_readable, get_markdown, navigate_and_wait_for, fill_form_and_submit, run_a11y_and_export_sarif |
+| `interact` | Browser control | navigate, click, type, select, check, key_press, execute_js, highlight, refresh, back, forward, new_tab, upload, draw_mode_start, screen_recording_start, screen_recording_stop, paste, save_state, load_state, get_readable, get_markdown, navigate_and_wait_for, fill_form_and_submit, run_a11y_and_export_sarif |
 
 ### observe
 
@@ -148,7 +148,7 @@ Control the browser. Use the `action` parameter:
 | `new_tab` | Open a new tab |
 | `upload` | File upload for native file dialogs |
 | `draw_mode_start` | Activate visual annotation overlay |
-| `record_start` / `record_stop` | Start/stop video recording |
+| `screen_recording_start` / `screen_recording_stop` | Start/stop video recording |
 | `paste` | Paste text at current focus |
 | `save_state` / `load_state` | Save and restore browser state snapshots |
 | `get_readable` / `get_markdown` | Extract page content as readable text or markdown |

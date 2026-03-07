@@ -1,8 +1,8 @@
 ---
 title: Downloads
 description: Download Gasoline extension and tools for your platform
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['downloads']
 ---
 
@@ -30,8 +30,6 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
-> Terminal availability: the built-in terminal is supported on macOS and Linux. It is currently unavailable on Windows.
-
 After running the installer, load the extension in Chrome:
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top right)
@@ -42,6 +40,15 @@ After running the installer, load the extension in Chrome:
 
 The extension captures browser telemetry and sends it to the local Gasoline server.
 
+#### What's New in 0.8.x
+
+- **Annotation System Upgrade** — Draw mode now pairs with review/export flows (`annotations`, `annotation_report`, `annotation_issues`) for multi-page feedback sessions.
+- **Tracked Hover Island** — A floating quick-action island on tracked tabs for one-click annotate, screenshot, terminal, and recording controls.
+- **Built-In Terminal from the Page** — Open the integrated terminal directly from the hover island and run live commands without leaving the browser.
+- **Recording Approval UX** — Clear pending/approved recording state in the popup, with explicit approve/deny flow and improved recording status feedback.
+- **Context Menu Consistency** — Dynamic start/stop labels for recording, annotations, and control states so extension actions always match runtime state.
+- **Protocol & Reliability Hardening** — Sync-path cleanup and stronger daemon/extension consistency for fewer tool-mode and state drift issues.
+
 #### What's New in 0.7.x
 
 - **5th Tool: analyze** — Active analysis with 27 modes (DOM queries, accessibility, security audits, link health, visual annotations, API validation, forms, visual diff, and more)
@@ -49,16 +56,10 @@ The extension captures browser telemetry and sends it to the local Gasoline serv
 - **Draw Mode & Visual Annotations** — Draw rectangles and type feedback directly on the page with multi-page sessions
 - **Test Healing & Classification** — Self-healing Playwright selectors and context-aware test generation
 - **Recording & Playback** — Full tab video recording with audio capture and log diff comparison
-- **Terminal Integration (macOS + Linux)** — In-browser terminal with WebSocket relay and PTY session management
+- **Terminal Integration** — In-browser terminal with WebSocket relay and PTY session management
 - **Multi-Client Support** — Multiple AI tools can connect to the same daemon
 
 ## Alternative Install Methods
-
-### npm
-
-```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
-```
 
 ### From Source
 
@@ -81,8 +82,8 @@ make build
 
 - **Browser:** Chrome/Chromium 120+ (for MV3 support)
 - **Runtime:** Native Go binary (no Node.js required for standalone binary installs)
+- **Node.js:** 18+ (optional, only if you install via npm)
 - **Platform:** macOS, Linux, Windows
-- **Terminal widget:** macOS + Linux only (not yet available on Windows)
 - **MCP Client:** Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
 
 ## Verification
@@ -96,7 +97,7 @@ To verify the extension installed correctly:
 
 To verify the binary:
 ```bash
-~/.gasoline/bin/gasoline-agentic-devtools --doctor
+~/.gasoline/bin/gasoline-agentic-browser --doctor
 ```
 
 ## Troubleshooting
@@ -107,8 +108,8 @@ To verify the binary:
 - Check that Developer mode is enabled
 
 **Recording not working?**
-- Click the Gasoline icon to grant recording permission
-- Ensure the tab you want to record is active
+- Click the Gasoline icon and approve the recording request
+- Ensure the tab you want to record is the tracked tab
 - Check your Chrome permissions for microphone access (if recording audio)
 
 **Issues with MCP integration?**

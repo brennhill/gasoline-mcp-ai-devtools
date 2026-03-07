@@ -1,8 +1,8 @@
 ---
 title: Gasoline vs Alternatives
 description: "Compare Gasoline with Chrome DevTools MCP, BrowserTools MCP, and Cursor MCP Extension. Architecture, dependencies, and approach differences."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['alternatives']
 ---
 

@@ -23,8 +23,5 @@ func newTestGenHandler(deps testGenHandlerDeps) *testGenHandler {
 }
 
 func (h *ToolHandler) testGen() *testGenHandler {
-	if h.testGenHandler == nil {
-		h.testGenHandler = newTestGenHandler(h)
-	}
 	return h.testGenHandler
 }

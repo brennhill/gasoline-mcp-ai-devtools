@@ -1,8 +1,8 @@
 ---
 title: "WebSocket Debugging"
 description: "Debug WebSocket connections with Gasoline. Monitor connection lifecycle, inspect messages by direction and connection, track message rates, and diagnose real-time application issues."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'websocket', 'debugging']
 ---
 

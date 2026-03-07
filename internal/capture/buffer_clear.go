@@ -37,7 +37,7 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 // ClearWebSocketBuffers resets websocket events and live-connection tracking.
 //
 // Invariants:
-// - wsEvents/wsAddedAt/wsMemoryTotal/wsTotalAdded are reset atomically.
+// - wsEvents/wsMemoryTotal/wsTotalAdded are reset atomically.
 func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	c.mu.Lock()
 	defer c.mu.Unlock()

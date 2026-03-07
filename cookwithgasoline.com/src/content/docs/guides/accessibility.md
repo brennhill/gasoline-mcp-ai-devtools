@@ -1,8 +1,8 @@
 ---
 title: "Accessibility Testing"
 description: "Run WCAG accessibility audits with Gasoline's built-in axe-core engine. Scope audits, filter by WCAG tags, export SARIF reports for CI/CD, and track remediation progress."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'accessibility']
 ---
 

@@ -1,8 +1,8 @@
 ---
 title: "Observe — Read Browser State"
 description: "Complete reference for the observe tool. 30 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, storage, page inventory, inbox messages, and more."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['reference', 'observe']
 ---
 

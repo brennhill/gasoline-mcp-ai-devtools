@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.5.43 Released"
+title: "Gasoline v5.4.3 Released"
 description: "Bug fixes and stability improvements"
 date: 2026-01-18
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.5']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
-## What's New in v0.5.43
+## What's New in v5.4.3
 
-Gasoline v0.5.43 includes additional bug fixes and stability improvements following v0.5.41.
+Gasoline v5.4.3 includes additional bug fixes and stability improvements following v5.4.1.
 
 ### Fixes
 
@@ -28,9 +28,9 @@ Gasoline v0.5.43 includes additional bug fixes and stability improvements follow
 ## Upgrade
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+npm install -g gasoline-mcp@5.4.3
 ```
 
 ## Full Changelog
 
-[v0.5.43 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.3)
+[v5.4.3 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.3)

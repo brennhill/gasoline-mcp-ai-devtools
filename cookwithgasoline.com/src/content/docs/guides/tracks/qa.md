@@ -1,8 +1,8 @@
 ---
 title: QA Track
 description: A practical path for QA teams building repeatable, low-flake validation flows.
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'tracks', 'qa']
 ---
 

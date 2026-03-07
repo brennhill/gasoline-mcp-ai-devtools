@@ -4,8 +4,8 @@ description: "Step-by-step beginner guide to recording a clean, repeatable produ
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, demos, recording]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'demos', 'recording', 'articles', 'record', 'first', 'product', 'demo', 'gasoline']
 ---
 

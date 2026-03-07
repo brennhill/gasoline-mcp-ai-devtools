@@ -196,6 +196,7 @@ export const StorageKey = {
   NETWORK_BODY_CAPTURE_ENABLED: 'networkBodyCaptureEnabled',
   ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
   SUBTITLES_ENABLED: 'subtitlesEnabled',
+  ACTION_RECORDING: 'gasoline_action_recording',
   RECORDING: 'gasoline_recording',
   TRACKED_HOVER_LAUNCHER_HIDDEN: 'gasoline_tracked_hover_launcher_hidden',
   PENDING_RECORDING: 'gasoline_pending_recording',

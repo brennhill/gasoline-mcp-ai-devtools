@@ -22,38 +22,6 @@ var installerLegacyServerKeys = []string{
 	"gasoline",
 }
 
-const installerCanonicalBinaryName = "gasoline-agentic-devtools"
-
-var installerLegacyBinaryNames = []string{
-	"gasoline-agentic-browser",
-	"gasoline",
-}
-
-func installerPreferredBinaryPath(exePath string) string {
-	if strings.TrimSpace(exePath) == "" {
-		return exePath
-	}
-
-	ext := filepath.Ext(exePath)
-	base := strings.TrimSuffix(filepath.Base(exePath), ext)
-	isLegacy := false
-	for _, legacy := range installerLegacyBinaryNames {
-		if base == legacy {
-			isLegacy = true
-			break
-		}
-	}
-	if !isLegacy {
-		return exePath
-	}
-
-	canonicalPath := filepath.Join(filepath.Dir(exePath), installerCanonicalBinaryName+ext)
-	if _, err := os.Stat(canonicalPath); err == nil {
-		return canonicalPath
-	}
-	return exePath
-}
-
 func extensionInstallDir(home string) string {
 	if override := strings.TrimSpace(os.Getenv("GASOLINE_EXTENSION_DIR")); override != "" {
 		return override
@@ -101,14 +69,13 @@ func runNativeInstall() {
 	// 1. Silent Reset (Kill stale instances)
 	// We do this first to ensure config files aren't being held open
 	// and no old versions are interfering.
-	_ = runForceCleanupQuietly() //nolint:errcheck // best-effort pre-install cleanup
+	_ = runForceCleanupQuietly()
 
 	exe, err := os.Executable()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Error: Could not determine gasoline binary path: %v\n", err)
 		os.Exit(1)
 	}
-	exe = installerPreferredBinaryPath(exe)
 
 	home, _ := os.UserHomeDir()
 	extDir := extensionInstallDir(home)
@@ -183,11 +150,8 @@ func runNativeInstall() {
 			continue // Client directory doesn't exist, skip
 		}
 
-		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom) //nolint:errcheck // best-effort per-client config
+		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom)
 	}
-
-	// 3b. Codex (TOML-based config)
-	installCodex(home, exe)
 
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user
@@ -235,84 +199,22 @@ func installClaudeCode(exePath string) {
 		return
 	}
 
-	// Remove legacy MCP server registrations before adding the canonical one.
-	for _, legacy := range installerLegacyServerKeys {
-		cmd := exec.Command("claude", "mcp", "remove", "--scope", "user", legacy)
-		cmd.Env = append(os.Environ(), "CLAUDECODE=")
-		_ = cmd.Run() //nolint:errcheck // best-effort legacy removal
-	}
-
 	entry := map[string]any{
 		"command": exePath,
 		"args":    []string{},
 	}
-	data, _ := json.Marshal(entry) //nolint:errcheck // map[string]any always marshals
+	data, _ := json.Marshal(entry)
 
 	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", mcpServerName)
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
-	_ = cmd.Run() //nolint:errcheck // best-effort Claude Code MCP registration
-}
-
-// installCodex updates ~/.codex/config.toml to register the MCP server.
-// Codex uses TOML with [mcp_servers.<name>] sections.
-func installCodex(home, exePath string) {
-	configPath := filepath.Join(home, ".codex", "config.toml")
-	if _, err := os.Stat(filepath.Dir(configPath)); os.IsNotExist(err) {
-		return
-	}
-
-	raw, err := os.ReadFile(configPath)
-	if err != nil {
-		return // no config file, nothing to do
-	}
-
-	// Build set of section headers to remove (legacy + canonical, we re-add canonical).
-	removeSet := map[string]bool{
-		"[mcp_servers." + mcpServerName + "]": true,
-	}
-	for _, legacy := range installerLegacyServerKeys {
-		removeSet["[mcp_servers."+legacy+"]"] = true
-	}
-
-	// Filter out old sections line by line.
-	lines := strings.Split(string(raw), "\n")
-	var out []string
-	skipping := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if removeSet[trimmed] {
-			skipping = true
-			continue
-		}
-		// A new TOML section header ends the skip.
-		if skipping && strings.HasPrefix(trimmed, "[") {
-			skipping = false
-		}
-		if !skipping {
-			out = append(out, line)
-		}
-	}
-
-	// Strip trailing blank lines before appending.
-	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
-		out = out[:len(out)-1]
-	}
-
-	// Append the canonical entry.
-	out = append(out, "",
-		"[mcp_servers."+mcpServerName+"]",
-		fmt.Sprintf("command = %q", exePath),
-	)
-	out = append(out, "") // trailing newline
-
-	_ = os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o600) //nolint:errcheck // best-effort
+	_ = cmd.Run()
 }
 
 func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	data := make(map[string]any)
 	if bytes, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(bytes, &data) //nolint:errcheck // start with empty map if unmarshal fails
+		_ = json.Unmarshal(bytes, &data)
 	}
 
 	if _, ok := data[key]; !ok {

@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.3.00 Released"
+title: "Gasoline v3.0.0 Released"
 description: "MCP stdio server - proper bidirectional protocol implementation"
 date: 2025-12-19T01:23:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.3']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v3']
 ---
 
-## What's New in v0.3.00
+## What's New in v3.0.0
 
-Gasoline v0.3.00 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
+Gasoline v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
 
 ### Major Changes
 

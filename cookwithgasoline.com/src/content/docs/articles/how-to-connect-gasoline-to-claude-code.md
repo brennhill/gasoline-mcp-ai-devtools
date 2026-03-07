@@ -4,8 +4,8 @@ description: "A step-by-step beginner guide to connect Claude Code with Gasoline
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, claude-code, mcp, setup]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'claude-code', 'mcp', 'setup', 'articles', 'connect', 'gasoline', 'claude', 'code']
 ---
 

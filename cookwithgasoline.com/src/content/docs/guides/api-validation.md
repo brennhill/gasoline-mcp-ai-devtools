@@ -1,8 +1,8 @@
 ---
 title: "API Contract Validation"
 description: "Use Gasoline to infer API schemas from live traffic, detect breaking changes, validate response consistency, and catch contract violations during development."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'api', 'validation']
 ---
 

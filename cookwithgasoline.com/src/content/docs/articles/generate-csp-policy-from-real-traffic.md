@@ -4,8 +4,8 @@ description: "Create a practical Content Security Policy using observed traffic 
 date: 2026-03-03
 authors: [brenn]
 tags: [csp, security, headers, web]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['csp', 'security', 'headers', 'web', 'articles', 'generate', 'policy', 'real', 'traffic']
 ---
 

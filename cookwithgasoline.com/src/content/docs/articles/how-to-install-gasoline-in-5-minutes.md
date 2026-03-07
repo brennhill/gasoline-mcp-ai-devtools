@@ -4,8 +4,8 @@ description: "A beginner-friendly install guide for Gasoline Agentic Devtools, i
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, setup, installation]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'setup', 'installation', 'articles', 'install', 'gasoline', 'minutes']
 ---
 
