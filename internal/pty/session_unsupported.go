@@ -6,10 +6,25 @@
 
 package pty
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // maxScrollback keeps API parity with Unix session implementation.
 const maxScrollback = 256 * 1024
+
+// defaultInputIDMax keeps API parity with Unix session implementation.
+const defaultInputIDMax = 256
+
+// ScrollbackSentinel keeps API parity with Unix session implementation.
+const ScrollbackSentinel = "\x1b]133;REPLAY_END\x07"
+
+// IdleConfig configures idle detection for a session.
+type IdleConfig struct {
+	Timeout  time.Duration
+	Callback func(sessionID string)
+}
 
 // Session is a stub PTY session on unsupported platforms.
 type Session struct {
@@ -82,3 +97,23 @@ func (s *Session) Pid() int {
 
 // ForceRedraw is a no-op on unsupported platforms.
 func (s *Session) ForceRedraw() {}
+
+// AltScreenActive reports false on unsupported platforms.
+func (s *Session) AltScreenActive() bool { return false }
+
+// SetIdleConfig is a no-op on unsupported platforms.
+func (s *Session) SetIdleConfig(cfg IdleConfig) {}
+
+// LastOutputAt returns zero time on unsupported platforms.
+func (s *Session) LastOutputAt() time.Time { return time.Time{} }
+
+// LastInputAt returns zero time on unsupported platforms.
+func (s *Session) LastInputAt() time.Time { return time.Time{} }
+
+// ScrollbackWithSentinel returns sentinel only on unsupported platforms.
+func (s *Session) ScrollbackWithSentinel() []byte { return []byte(ScrollbackSentinel) }
+
+// WriteWithID is unsupported on non-Unix platforms.
+func (s *Session) WriteWithID(data []byte, inputID string) (int, error) {
+	return 0, errUnsupportedPTY
+}
