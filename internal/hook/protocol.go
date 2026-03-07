@@ -18,13 +18,15 @@ type Input struct {
 
 // ToolInputFields holds the commonly needed fields from tool_input.
 type ToolInputFields struct {
-	FilePath string `json:"file_path"`
-	Command  string `json:"command"`
+	FilePath  string `json:"file_path"`
+	Command   string `json:"command"`
+	NewString string `json:"new_string"` // Edit tool: the replacement text
+	Content   string `json:"content"`    // Write tool: the full file content
 }
 
 // Output is the JSON structure hooks write to stdout.
 type Output struct {
-	AdditionalContext string `json:"additionalContext"`
+	AdditionalContext string `json:"additionalContext"` // SPEC:claude-code-hooks (camelCase per protocol)
 }
 
 // ReadInput reads and parses hook input from a reader (typically os.Stdin).
@@ -44,6 +46,8 @@ func ReadInput(r io.Reader) (Input, error) {
 func (in Input) ParseToolInput() ToolInputFields {
 	var fields ToolInputFields
 	if len(in.ToolInput) > 0 {
+		// Best-effort parse — malformed tool_input falls back to zero-value fields,
+		// causing the hook to silently do nothing (correct per hook protocol).
 		_ = json.Unmarshal(in.ToolInput, &fields)
 	}
 	return fields
@@ -86,5 +90,5 @@ func WriteOutput(w io.Writer, context string) error {
 		return nil
 	}
 	out := Output{AdditionalContext: context}
-	return json.NewEncoder(w).Encode(out)
+	return json.NewEncoder(w).Encode(out) //nolint: error returned to caller
 }

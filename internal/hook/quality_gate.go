@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	gasolineConfigFile       = ".gasoline.json"
-	defaultCodeStandardsFile = "gasoline-code-standards.md"
-	defaultFileSizeLimit     = 800
+	GasolineConfigFile       = ".gasoline.json"
+	DefaultCodeStandardsFile = "gasoline-code-standards.md"
+	DefaultFileSizeLimit     = 800
 	maxStandardsLines        = 150
 )
 
-// gasolineConfig is the structure of .gasoline.json.
-type gasolineConfig struct {
+// GasolineConfig is the structure of .gasoline.json.
+type GasolineConfig struct {
 	CodeStandards      string `json:"code_standards"`
 	FileSizeLimit      int    `json:"file_size_limit"`
 	DuplicateThreshold int    `json:"duplicate_threshold"`
@@ -28,6 +28,11 @@ type gasolineConfig struct {
 // QualityGateResult holds the findings from the quality gate check.
 type QualityGateResult struct {
 	Context string
+}
+
+// FormatContext returns the additionalContext string for the hook output.
+func (r *QualityGateResult) FormatContext() string {
+	return r.Context
 }
 
 // RunQualityGate checks the edited/written file against project standards.
@@ -51,7 +56,7 @@ func RunQualityGate(input Input) *QualityGateResult {
 		return nil
 	}
 
-	cfg := loadGasolineConfig(filepath.Join(projectRoot, gasolineConfigFile))
+	cfg := loadGasolineConfig(filepath.Join(projectRoot, GasolineConfigFile))
 
 	var parts []string
 
@@ -78,10 +83,16 @@ func RunQualityGate(input Input) *QualityGateResult {
 		}
 	}
 
-	// 3. Review instruction.
+	// 3. Convention detection — reuse already-parsed fields to avoid double-unmarshal.
+	newContent := extractNewContent(input, fields)
+	if conventions := DetectConventions(filePath, projectRoot, newContent); len(conventions) > 0 {
+		parts = append(parts, FormatConventions(conventions))
+	}
+
+	// 4. Review instruction.
 	if len(parts) > 0 {
 		parts = append(parts,
-			"QUALITY GATE: Review your change against the standards above. Fix any violations before proceeding.")
+			"QUALITY GATE: Review your change against the standards and conventions above. Fix any violations before proceeding.")
 	}
 
 	if len(parts) == 0 {
@@ -96,8 +107,8 @@ func RunQualityGate(input Input) *QualityGateResult {
 // findProjectRoot walks up from filePath looking for .gasoline.json.
 func findProjectRoot(filePath string) string {
 	dir := filepath.Dir(filePath)
-	for dir != "/" && dir != "." {
-		if _, err := os.Stat(filepath.Join(dir, gasolineConfigFile)); err == nil {
+	for {
+		if _, err := os.Stat(filepath.Join(dir, GasolineConfigFile)); err == nil {
 			return dir
 		}
 		parent := filepath.Dir(dir)
@@ -106,29 +117,26 @@ func findProjectRoot(filePath string) string {
 		}
 		dir = parent
 	}
-	// Check root too.
-	if _, err := os.Stat(filepath.Join(dir, gasolineConfigFile)); err == nil {
-		return dir
-	}
 	return ""
 }
 
 // loadGasolineConfig reads and parses .gasoline.json with defaults.
-func loadGasolineConfig(path string) gasolineConfig {
-	cfg := gasolineConfig{
-		CodeStandards: defaultCodeStandardsFile,
-		FileSizeLimit: defaultFileSizeLimit,
+func loadGasolineConfig(path string) GasolineConfig {
+	cfg := GasolineConfig{
+		CodeStandards: DefaultCodeStandardsFile,
+		FileSizeLimit: DefaultFileSizeLimit,
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return cfg
 	}
+	// Best-effort parse — malformed config falls back to defaults above.
 	_ = json.Unmarshal(data, &cfg)
 	if cfg.CodeStandards == "" {
-		cfg.CodeStandards = defaultCodeStandardsFile
+		cfg.CodeStandards = DefaultCodeStandardsFile
 	}
 	if cfg.FileSizeLimit <= 0 {
-		cfg.FileSizeLimit = defaultFileSizeLimit
+		cfg.FileSizeLimit = DefaultFileSizeLimit
 	}
 	return cfg
 }
@@ -161,4 +169,26 @@ func countLines(path string) (int, error) {
 		count++
 	}
 	return count, nil
+}
+
+// extractNewContent returns the newly introduced code from the hook input.
+// For Edit: returns new_string (only the changed code).
+// For Write: returns content (entire file is new).
+// Falls back to reading the file from disk for Write if content is empty.
+// Accepts pre-parsed fields to avoid re-parsing tool_input JSON.
+func extractNewContent(input Input, fields ToolInputFields) string {
+	if fields.NewString != "" {
+		return fields.NewString
+	}
+	if fields.Content != "" {
+		return fields.Content
+	}
+	// Fallback for Write: file was already written to disk.
+	if input.ToolName == "Write" && fields.FilePath != "" {
+		data, err := os.ReadFile(fields.FilePath)
+		if err == nil {
+			return string(data)
+		}
+	}
+	return ""
 }

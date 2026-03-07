@@ -71,6 +71,15 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 
 **File size:** Max 800 LOC. Refactor if larger.
 
+## Pre-Commit Checklist
+
+Before presenting code as complete:
+
+- Grep for existing patterns before introducing new ones (http.Client, handler maps, error format)
+- No duplicated types/constants across packages — export from source of truth
+- 3+ similar functions → extract helper before continuing
+- Data structs must not do I/O — keep I/O at the call site
+
 ## Documentation Cross-Reference Contract (Required)
 
 For every feature and every refactor, update docs in the same change:

@@ -65,3 +65,12 @@ No code-only refactor is considered complete until this documentation contract i
 22. Duplicate code checks are required for refactors touching `src/background` or `src/popup` (`npx jscpd src/background src/popup --min-lines 8 --min-tokens 60`), and each non-trivial clone must be either extracted or documented as intentional.
 23. Behavior-replacing refactors must update or delete obsolete tests in the same change (for example, replacing watermark behavior with badge behavior).
 24. See `docs/core/common-patterns.md` for the canonical patterns and review checklist.
+
+## Pre-Commit Checklist
+
+Before presenting code as complete:
+
+- Grep for existing patterns before introducing new ones (http.Client, handler maps, error format)
+- No duplicated types/constants across packages — export from source of truth
+- 3+ similar functions → extract helper before continuing
+- Data structs must not do I/O — keep I/O at the call site

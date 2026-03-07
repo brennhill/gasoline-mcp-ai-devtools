@@ -123,6 +123,8 @@ func parseConfigureArgs(action string, args []string) (map[string]any, error) {
 		"--continue-on-error":       {mcpKey: "continue_on_error", kind: flagBool},
 		"--stop-after-step":         {mcpKey: "stop_after_step", kind: flagInt},
 		"--description":             {mcpKey: "description", kind: flagString},
+		// Quality gates
+		"--target-dir":              {mcpKey: "target_dir", kind: flagString},
 		// Network recording
 		"--network-action":          {mcpKey: "network_action", kind: flagString},
 	})
