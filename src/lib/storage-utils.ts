@@ -3,7 +3,7 @@
  * Why: Abstracts Chrome storage API differences and provides a single facade usable from both background and popup contexts.
  */
 
-import type { StorageAreaName, ChromeStorageWithSession } from '../types/index.js'
+import type { ChromeStorageWithSession } from '../types/index.js'
 
 // =============================================================================
 // FEATURE DETECTION
@@ -27,216 +27,7 @@ function isSessionStorageAvailable(): boolean {
 }
 
 // =============================================================================
-// SESSION STORAGE UTILITIES (ephemeral, resets on service worker restart)
-// =============================================================================
-
-/**
- * Set an ephemeral value in session storage (callback-based)
- * Falls back to memory for older Chrome versions
- */
-export function setSessionValue(key: string, value: unknown, callback?: () => void): void {
-  const storage = getStorageWithSession()
-  if (!storage || !storage.session) {
-    // Graceful degradation: store in memory (will be lost on service worker restart anyway)
-    if (callback) callback()
-    return
-  }
-  storage.session.set({ [key]: value }, () => {
-    if (callback) callback()
-  })
-}
-
-/**
- * Get an ephemeral value from session storage (callback-based)
- * Falls back to undefined for older Chrome versions
- */
-export function getSessionValue(key: string, callback: (value: unknown) => void): void {
-  const storage = getStorageWithSession()
-  if (!storage || !storage.session) {
-    callback(undefined)
-    return
-  }
-  storage.session.get([key], (result: Record<string, unknown>) => {
-    callback(result[key])
-  })
-}
-
-/**
- * Remove an ephemeral value from session storage (callback-based)
- */
-export function removeSessionValue(key: string, callback?: () => void): void {
-  const storage = getStorageWithSession()
-  if (!storage || !storage.session) {
-    if (callback) callback()
-    return
-  }
-  storage.session.remove([key], () => {
-    if (callback) callback()
-  })
-}
-
-/**
- * Clear all ephemeral values from session storage (callback-based)
- */
-export function clearSessionStorage(callback?: () => void): void {
-  const storage = getStorageWithSession()
-  if (!storage || !storage.session) {
-    if (callback) callback()
-    return
-  }
-  storage.session.clear(() => {
-    if (callback) callback()
-  })
-}
-
-// =============================================================================
-// LOCAL STORAGE UTILITIES (persistent, survives browser restart)
-// =============================================================================
-
-/**
- * Set a persistent value in local storage (callback-based)
- */
-export function setLocalValue(key: string, value: unknown, callback?: () => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback()
-    return
-  }
-  chrome.storage.local.set({ [key]: value }, () => {
-    if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal storage key, not user-controlled
-    }
-    if (callback) callback()
-  })
-}
-
-/**
- * Set multiple persistent values in local storage (callback-based)
- */
-export function setLocalValues(items: Record<string, unknown>, callback?: () => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback()
-    return
-  }
-  chrome.storage.local.set(items, () => {
-    if (chrome.runtime.lastError) {
-      console.warn('[Gasoline] Storage error setting multiple keys:', chrome.runtime.lastError.message)
-    }
-    if (callback) callback()
-  })
-}
-
-/**
- * Get a persistent value from local storage (callback-based)
- */
-export function getLocalValue(key: string, callback: (value: unknown) => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback(undefined)
-    return
-  }
-  chrome.storage.local.get([key], (result: Record<string, unknown>) => {
-    if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal storage key, not user-controlled
-      callback(undefined)
-      return
-    }
-    callback(result[key])
-  })
-}
-
-/**
- * Get multiple persistent values from local storage (callback-based)
- */
-export function getLocalValues(keys: string[], callback: (result: Record<string, unknown>) => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({})
-    return
-  }
-  chrome.storage.local.get(keys, (result: Record<string, unknown>) => {
-    if (chrome.runtime.lastError) {
-      console.warn('[Gasoline] Storage error getting multiple keys:', chrome.runtime.lastError.message)
-      callback({})
-      return
-    }
-    callback(result)
-  })
-}
-
-/**
- * Remove a persistent value from local storage (callback-based)
- */
-export function removeLocalValue(key: string, callback?: () => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback()
-    return
-  }
-  chrome.storage.local.remove([key], () => {
-    if (callback) callback()
-  })
-}
-
-/**
- * Remove multiple persistent values from local storage (callback-based)
- */
-export function removeLocalValues(keys: string[], callback?: () => void): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback()
-    return
-  }
-  chrome.storage.local.remove(keys, () => {
-    if (callback) callback()
-  })
-}
-
-// =============================================================================
-// FACADE FUNCTIONS - Choose storage area automatically
-// =============================================================================
-
-/**
- * Set a value in the appropriate storage area (callback-based)
- * For ephemeral data, prefers session storage (Chrome 102+), falls back to memory
- * For persistent data, uses local storage
- */
-export function setValue(key: string, value: unknown, areaName?: StorageAreaName, callback?: () => void): void {
-  const area = areaName || 'session'
-  if (area === 'session') {
-    setSessionValue(key, value, callback)
-  } else if (area === 'local') {
-    setLocalValue(key, value, callback)
-  } else {
-    if (callback) callback()
-  }
-}
-
-/**
- * Get a value from the appropriate storage area (callback-based)
- */
-export function getValue(key: string, areaName: StorageAreaName | undefined, callback: (value: unknown) => void): void {
-  const area = areaName || 'session'
-  if (area === 'session') {
-    getSessionValue(key, callback)
-  } else if (area === 'local') {
-    getLocalValue(key, callback)
-  } else {
-    callback(undefined)
-  }
-}
-
-/**
- * Remove a value from the appropriate storage area (callback-based)
- */
-export function removeValue(key: string, areaName?: StorageAreaName, callback?: () => void): void {
-  const area = areaName || 'session'
-  if (area === 'session') {
-    removeSessionValue(key, callback)
-  } else if (area === 'local') {
-    removeLocalValue(key, callback)
-  } else {
-    if (callback) callback()
-  }
-}
-
-// =============================================================================
-// ASYNC LOCAL STORAGE (Promise-based — preferred API for new code)
+// LOCAL STORAGE (Promise-based)
 // =============================================================================
 
 /**
@@ -289,7 +80,7 @@ export async function removeLocals(keys: string[]): Promise<void> {
 }
 
 // =============================================================================
-// ASYNC SESSION STORAGE (Promise-based — preferred API for new code)
+// SESSION STORAGE (Promise-based)
 // =============================================================================
 
 /**

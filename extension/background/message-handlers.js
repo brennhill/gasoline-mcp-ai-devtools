@@ -6,7 +6,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
-import { getLocal, getLocals, setLocal, getLocalValue } from '../lib/storage-utils.js';
+import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -285,7 +285,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         console.error('[Gasoline] Failed to broadcast tracking state:', err);
     }
 }
-function handleGetDiagnosticState(sendResponse, deps) {
+async function handleGetDiagnosticState(sendResponse, deps) {
     if (typeof chrome === 'undefined' || !chrome.storage) {
         sendResponse({
             cache: deps.getAiWebPilotEnabled(),
@@ -294,12 +294,11 @@ function handleGetDiagnosticState(sendResponse, deps) {
         });
         return;
     }
-    getLocalValue(StorageKey.AI_WEB_PILOT_ENABLED, (value) => {
-        sendResponse({
-            cache: deps.getAiWebPilotEnabled(),
-            storage: value,
-            timestamp: new Date().toISOString()
-        });
+    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
+    sendResponse({
+        cache: deps.getAiWebPilotEnabled(),
+        storage: value,
+        timestamp: new Date().toISOString()
     });
 }
 function handleCaptureScreenshot(sendResponse, deps) {

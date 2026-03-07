@@ -4,12 +4,12 @@
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { SettingName } from '../lib/constants.js';
-import { setLocalValue, getLocalValue } from '../lib/storage-utils.js';
+import { setLocal, getLocal } from '../lib/storage-utils.js';
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
-    setLocalValue('webSocketCaptureMode', mode);
+    void setLocal('webSocketCaptureMode', mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
@@ -19,12 +19,8 @@ export async function initWebSocketModeSelector() {
     const modeSelect = document.getElementById('ws-mode');
     if (!modeSelect)
         return;
-    return new Promise((resolve) => {
-        getLocalValue('webSocketCaptureMode', (value) => {
-            modeSelect.value = value || 'medium';
-            resolve();
-        });
-    });
+    const value = await getLocal('webSocketCaptureMode');
+    modeSelect.value = value || 'medium';
 }
 // Track clear-logs confirmation state
 let clearConfirmPending = false;

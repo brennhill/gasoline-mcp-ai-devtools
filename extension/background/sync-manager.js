@@ -107,7 +107,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'versionMismatch',
+                    type: 'version_mismatch',
                     extensionVersion,
                     serverVersion
                 })

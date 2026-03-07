@@ -96,61 +96,16 @@
       return null;
     return chrome.storage;
   }
-  function setSessionValue(key, value, callback) {
-    const storage = getStorageWithSession();
-    if (!storage || !storage.session) {
-      if (callback)
-        callback();
-      return;
-    }
-    storage.session.set({ [key]: value }, () => {
-      if (callback)
-        callback();
-    });
-  }
-  function getSessionValue(key, callback) {
-    const storage = getStorageWithSession();
-    if (!storage || !storage.session) {
-      callback(void 0);
-      return;
-    }
-    storage.session.get([key], (result) => {
-      callback(result[key]);
-    });
-  }
-  function getLocalValue(key, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback(void 0);
-      return;
-    }
-    chrome.storage.local.get([key], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-        callback(void 0);
-        return;
-      }
-      callback(result[key]);
-    });
-  }
-  function getLocalValues(keys, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback({});
-      return;
-    }
-    chrome.storage.local.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn("[Gasoline] Storage error getting multiple keys:", chrome.runtime.lastError.message);
-        callback({});
-        return;
-      }
-      callback(result);
-    });
-  }
   async function getLocal(key) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return void 0;
     const result = await chrome.storage.local.get([key]);
     return result[key];
+  }
+  async function getLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return {};
+    return await chrome.storage.local.get(keys);
   }
   async function setLocal(key, value) {
     if (typeof chrome === "undefined" || !chrome.storage)
@@ -161,6 +116,19 @@
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
     await chrome.storage.local.remove([key]);
+  }
+  async function getSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return void 0;
+    const result = await storage.session.get([key]);
+    return result[key];
+  }
+  async function setSession(key, value) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return;
+    await storage.session.set({ [key]: value });
   }
   async function removeSessions(keys) {
     const storage = getStorageWithSession();
@@ -230,25 +198,24 @@
     { storageKey: "actionReplayEnabled", messageType: SettingName.ACTION_REPLAY },
     { storageKey: "networkBodyCaptureEnabled", messageType: SettingName.NETWORK_BODY_CAPTURE }
   ];
-  function syncStoredSettings() {
+  async function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    getLocalValues(storageKeys, (result) => {
-      for (const setting of SYNC_SETTINGS) {
-        const value = result[setting.storageKey];
-        if (value === void 0)
-          continue;
-        if (setting.isMode) {
-          window.postMessage({
-            type: "gasoline_setting",
-            setting: setting.messageType,
-            mode: value,
-            _nonce: pageNonce
-          }, window.location.origin);
-        } else {
-          window.postMessage({ type: "gasoline_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
-        }
+    const result = await getLocals(storageKeys);
+    for (const setting of SYNC_SETTINGS) {
+      const value = result[setting.storageKey];
+      if (value === void 0)
+        continue;
+      if (setting.isMode) {
+        window.postMessage({
+          type: "gasoline_setting",
+          setting: setting.messageType,
+          mode: value,
+          _nonce: pageNonce
+        }, window.location.origin);
+      } else {
+        window.postMessage({ type: "gasoline_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
       }
-    });
+    }
   }
   function injectAxeCore() {
     if (document.getElementById("gasoline-axe-loader"))
@@ -1830,13 +1797,12 @@
   // extension/content/runtime-message-listener.js
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
-  function initRuntimeMessageListener() {
-    getLocalValues(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
-      if (result.actionToastsEnabled !== void 0)
-        actionToastsEnabled = result.actionToastsEnabled;
-      if (result.subtitlesEnabled !== void 0)
-        subtitlesEnabled = result.subtitlesEnabled;
-    });
+  async function initRuntimeMessageListener() {
+    const result = await getLocals(["actionToastsEnabled", "subtitlesEnabled"]);
+    if (result.actionToastsEnabled !== void 0)
+      actionToastsEnabled = result.actionToastsEnabled;
+    if (result.subtitlesEnabled !== void 0)
+      subtitlesEnabled = result.subtitlesEnabled;
     const syncHandlers = {
       gasoline_ping: () => {
       },
@@ -1878,8 +1844,8 @@
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
-          sr(result);
+          const result2 = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
+          sr(result2);
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
@@ -1888,8 +1854,8 @@
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
-          sr(result || { status: "stopped" });
+          const result2 = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
+          sr(result2 || { status: "stopped" });
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
@@ -2620,57 +2586,45 @@
   }
 
   // extension/content/ui/terminal-widget-session.js
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      try {
-        getLocalValue(StorageKey.SERVER_URL, (value) => {
-          const url = value || DEFAULT_SERVER_URL;
-          state.serverUrl = url;
-          resolve(url);
-        });
-      } catch {
-        resolve(DEFAULT_SERVER_URL);
-      }
-    });
+  async function getServerUrl() {
+    try {
+      const value = await getLocal(StorageKey.SERVER_URL);
+      const url = value || DEFAULT_SERVER_URL;
+      state.serverUrl = url;
+      return url;
+    } catch {
+      return DEFAULT_SERVER_URL;
+    }
   }
-  function getTerminalConfig() {
-    return new Promise((resolve) => {
-      try {
-        getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
-          const config = value || {};
-          resolve(config);
-        });
-      } catch {
-        resolve({});
-      }
-    });
+  async function getTerminalConfig() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_CONFIG);
+      const config = value || {};
+      return config;
+    } catch {
+      return {};
+    }
   }
-  function getTerminalAICommand() {
-    return new Promise((resolve) => {
-      try {
-        getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
-          const cmd = value || "claude";
-          resolve(cmd);
-        });
-      } catch {
-        resolve("claude");
-      }
-    });
+  async function getTerminalAICommand() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND);
+      const cmd = value || "claude";
+      return cmd;
+    } catch {
+      return "claude";
+    }
   }
-  function getTerminalDevRoot() {
-    return new Promise((resolve) => {
-      try {
-        getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
-          resolve(value || "");
-        });
-      } catch {
-        resolve("");
-      }
-    });
+  async function getTerminalDevRoot() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT);
+      return value || "";
+    } catch {
+      return "";
+    }
   }
   function persistSession(ss) {
     try {
-      setSessionValue(StorageKey.TERMINAL_SESSION, ss);
+      void setSession(StorageKey.TERMINAL_SESSION, ss);
     } catch {
     }
   }
@@ -2682,24 +2636,20 @@
   }
   function persistUIState(uiState) {
     try {
-      setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState);
+      void setSession(StorageKey.TERMINAL_UI_STATE, uiState);
     } catch {
     }
   }
-  function loadPersistedSession() {
-    return new Promise((resolve) => {
-      try {
-        getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
-          getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
-            const session = sessionValue;
-            const uiState = uiValue || "closed";
-            resolve({ session: session || null, uiState });
-          });
-        });
-      } catch {
-        resolve({ session: null, uiState: "closed" });
-      }
-    });
+  async function loadPersistedSession() {
+    try {
+      const sessionValue = await getSession(StorageKey.TERMINAL_SESSION);
+      const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE);
+      const session = sessionValue;
+      const uiState = uiValue || "closed";
+      return { session: session || null, uiState };
+    } catch {
+      return { session: null, uiState: "closed" };
+    }
   }
   async function validateSession(token) {
     try {
@@ -3012,11 +2962,8 @@
     try {
       let baseUrl = DEFAULT_SERVER_URL;
       try {
-        baseUrl = await new Promise((resolve) => {
-          getLocalValue(StorageKey.SERVER_URL, (value) => {
-            resolve(value || DEFAULT_SERVER_URL);
-          });
-        });
+        const value = await getLocal(StorageKey.SERVER_URL);
+        baseUrl = value || DEFAULT_SERVER_URL;
       } catch {
       }
       const url = new URL(baseUrl);
@@ -3067,13 +3014,12 @@
       return;
     stopButtonEl.style.display = active ? "flex" : "none";
   }
-  function syncRecordingStateFromStorage() {
+  async function syncRecordingStateFromStorage() {
     try {
-      getLocalValue(StorageKey.RECORDING, (value) => {
-        const rec = value;
-        const active = rec != null && typeof rec === "object" && Boolean(rec.active);
-        updateStopButtonVisibility(active);
-      });
+      const value = await getLocal(StorageKey.RECORDING);
+      const rec = value;
+      const active = rec != null && typeof rec === "object" && Boolean(rec.active);
+      updateStopButtonVisibility(active);
     } catch {
     }
   }
@@ -3101,14 +3047,11 @@
     }
     recordingStorageListener = null;
   }
-  function syncHiddenStateFromStorage(onSynced) {
+  async function syncHiddenStateFromStorage() {
     try {
-      getLocalValue(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, (value) => {
-        hiddenUntilPopupOpen = Boolean(value);
-        onSynced();
-      });
+      const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+      hiddenUntilPopupOpen = Boolean(value);
     } catch {
-      onSynced();
     }
   }
   function persistHiddenState(hidden) {
@@ -3640,10 +3583,11 @@
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
   }
-  function setTrackedHoverLauncherEnabled(enabled) {
+  async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
   }
 
   // extension/content.js

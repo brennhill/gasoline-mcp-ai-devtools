@@ -27,7 +27,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
-import { getLocal, getLocals, setLocal, getLocalValue } from '../lib/storage-utils.js'
+import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -427,7 +427,7 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
   }
 }
 
-function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
+async function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandlerDependencies): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
@@ -437,12 +437,11 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     return
   }
 
-  getLocalValue(StorageKey.AI_WEB_PILOT_ENABLED, (value) => {
-    sendResponse({
-      cache: deps.getAiWebPilotEnabled(),
-      storage: value as boolean | undefined,
-      timestamp: new Date().toISOString()
-    })
+  const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
+  sendResponse({
+    cache: deps.getAiWebPilotEnabled(),
+    storage: value as boolean | undefined,
+    timestamp: new Date().toISOString()
   })
 }
 

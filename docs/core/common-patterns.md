@@ -97,6 +97,12 @@ return h.newCommand("highlight").
 | `execute(req, args)` | Run the full sequence |
 | `executeWithCorrelation(req, args)` | Like execute, also returns correlation ID |
 
+### Validation
+
+- **`queryType` is required** — omitting it returns an `ErrMissingParam` error before any query is enqueued.
+- **`correlationPrefix`** defaults to the builder `name` if omitted, so correlation IDs are always prefixed (never `"-<id>"`).
+- **`guardsWithOpts`** accumulates options across multiple calls (appends, not overwrites).
+
 ### When NOT to Use
 
 - Handlers with completely custom response logic (e.g. `handleDrawModeStart` returns a static response instead of `MaybeWaitForCommand`)

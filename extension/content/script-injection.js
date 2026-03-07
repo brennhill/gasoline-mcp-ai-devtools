@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 import { SettingName } from '../lib/constants.js';
-import { getLocalValues } from '../lib/storage-utils.js';
+import { getLocals } from '../lib/storage-utils.js';
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
 /** Whether inject.js has responded to a bridge ping for this page load */
@@ -44,26 +44,25 @@ const SYNC_SETTINGS = [
  * Sync stored settings to the inject script after it loads.
  * This ensures new pages receive the current settings state.
  */
-function syncStoredSettings() {
+async function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    getLocalValues(storageKeys, (result) => {
-        for (const setting of SYNC_SETTINGS) {
-            const value = result[setting.storageKey];
-            if (value === undefined)
-                continue; // Use default if not set
-            if (setting.isMode) {
-                window.postMessage({
-                    type: 'gasoline_setting',
-                    setting: setting.messageType,
-                    mode: value,
-                    _nonce: pageNonce
-                }, window.location.origin);
-            }
-            else {
-                window.postMessage({ type: 'gasoline_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
-            }
+    const result = await getLocals(storageKeys);
+    for (const setting of SYNC_SETTINGS) {
+        const value = result[setting.storageKey];
+        if (value === undefined)
+            continue; // Use default if not set
+        if (setting.isMode) {
+            window.postMessage({
+                type: 'gasoline_setting',
+                setting: setting.messageType,
+                mode: value,
+                _nonce: pageNonce
+            }, window.location.origin);
         }
-    });
+        else {
+            window.postMessage({ type: 'gasoline_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+        }
+    }
 }
 /**
  * Inject axe-core library into the page

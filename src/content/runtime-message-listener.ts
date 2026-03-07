@@ -32,7 +32,7 @@ import {
   handleGetMarkdown,
   handlePageSummary
 } from './message-handlers.js'
-import { getLocalValues } from '../lib/storage-utils.js'
+import { getLocals } from '../lib/storage-utils.js'
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
@@ -45,12 +45,11 @@ let subtitlesEnabled = true
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
-export function initRuntimeMessageListener(): void {
+export async function initRuntimeMessageListener(): Promise<void> {
   // Load overlay toggle states from storage
-  getLocalValues(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
-    if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled as boolean
-    if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled as boolean
-  })
+  const result = await getLocals(['actionToastsEnabled', 'subtitlesEnabled'])
+  if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled as boolean
+  if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled as boolean
 
   /** Sync message handlers — return false (no async response needed) */
   type SyncMsg = ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string; params?: unknown }

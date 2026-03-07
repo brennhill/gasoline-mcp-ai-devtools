@@ -8,7 +8,7 @@
 // Deps are injected to avoid circular imports with recording.ts.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
-import { getLocal, getLocalValue } from '../lib/storage-utils.js';
+import { getLocal } from '../lib/storage-utils.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
@@ -116,7 +116,8 @@ export function installRecordingListeners(deps) {
             return false;
         console.log(LOG, 'mic_granted_close_tab received from tab', sender.tab?.id);
         // Read the stored return tab before closing the permission tab
-        getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value) => {
+        void (async () => {
+            const value = await getLocal(StorageKey.PENDING_MIC_RECORDING);
             const pending = value;
             const returnTabId = pending?.returnTabId;
             console.log(LOG, 'Pending mic recording intent:', pending, 'returnTabId:', returnTabId);
@@ -155,7 +156,7 @@ export function installRecordingListeners(deps) {
             else {
                 console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast');
             }
-        });
+        })();
         return false;
     });
     /**

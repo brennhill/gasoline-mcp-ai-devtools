@@ -5,7 +5,7 @@
  */
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
-import { getLocalValue, setSessionValue, getSessionValue, removeSessions, setLocal } from '../../lib/storage-utils.js'
+import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js'
 import {
   state,
   getTerminalServerUrl,
@@ -19,31 +19,25 @@ import { showSandboxError } from './terminal-widget-ui.js'
 // CONFIG HELPERS — read/write chrome.storage.local
 // =============================================================================
 
-export function getServerUrl(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      getLocalValue(StorageKey.SERVER_URL, (value) => {
-        const url = (value as string) || DEFAULT_SERVER_URL
-        state.serverUrl = url
-        resolve(url)
-      })
-    } catch {
-      resolve(DEFAULT_SERVER_URL) // Extension context invalidated
-    }
-  })
+export async function getServerUrl(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.SERVER_URL)
+    const url = (value as string) || DEFAULT_SERVER_URL
+    state.serverUrl = url
+    return url
+  } catch {
+    return DEFAULT_SERVER_URL // Extension context invalidated
+  }
 }
 
-export function getTerminalConfig(): Promise<TerminalConfig> {
-  return new Promise((resolve) => {
-    try {
-      getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
-        const config = (value as TerminalConfig) || {}
-        resolve(config)
-      })
-    } catch {
-      resolve({}) // Extension context invalidated
-    }
-  })
+export async function getTerminalConfig(): Promise<TerminalConfig> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_CONFIG)
+    const config = (value as TerminalConfig) || {}
+    return config
+  } catch {
+    return {} // Extension context invalidated
+  }
 }
 
 export function saveTerminalConfig(config: TerminalConfig): void {
@@ -54,29 +48,23 @@ export function saveTerminalConfig(config: TerminalConfig): void {
   }
 }
 
-function getTerminalAICommand(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
-        const cmd = (value as string) || 'claude'
-        resolve(cmd)
-      })
-    } catch {
-      resolve('claude')
-    }
-  })
+async function getTerminalAICommand(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND)
+    const cmd = (value as string) || 'claude'
+    return cmd
+  } catch {
+    return 'claude'
+  }
 }
 
-function getTerminalDevRoot(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
-        resolve((value as string) || '')
-      })
-    } catch {
-      resolve('')
-    }
-  })
+async function getTerminalDevRoot(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT)
+    return (value as string) || ''
+  } catch {
+    return ''
+  }
 }
 
 // =============================================================================
@@ -85,7 +73,7 @@ function getTerminalDevRoot(): Promise<string> {
 
 export function persistSession(ss: TerminalSessionState): void {
   try {
-    setSessionValue(StorageKey.TERMINAL_SESSION, ss)
+    void setSession(StorageKey.TERMINAL_SESSION, ss)
   } catch { /* extension context invalidated */ }
 }
 
@@ -97,24 +85,20 @@ export function clearPersistedSession(): void {
 
 export function persistUIState(uiState: TerminalUIState): void {
   try {
-    setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState)
+    void setSession(StorageKey.TERMINAL_UI_STATE, uiState)
   } catch { /* extension context invalidated */ }
 }
 
-export function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
-  return new Promise((resolve) => {
-    try {
-      getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
-        getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
-          const session = sessionValue as TerminalSessionState | undefined
-          const uiState = (uiValue as TerminalUIState) || 'closed'
-          resolve({ session: session || null, uiState })
-        })
-      })
-    } catch {
-      resolve({ session: null, uiState: 'closed' })
-    }
-  })
+export async function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
+  try {
+    const sessionValue = await getSession(StorageKey.TERMINAL_SESSION)
+    const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE)
+    const session = sessionValue as TerminalSessionState | undefined
+    const uiState = (uiValue as TerminalUIState) || 'closed'
+    return { session: session || null, uiState }
+  } catch {
+    return { session: null, uiState: 'closed' }
+  }
 }
 
 // =============================================================================

@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { SettingName, StorageKey } from '../lib/constants.js';
-import { getLocalValues } from '../lib/storage-utils.js';
+import { getLocals } from '../lib/storage-utils.js';
 /**
  * Feature toggle configuration
  */
@@ -91,22 +91,18 @@ export function handleFeatureToggle(storageKey, messageType, enabled) {
 export async function initFeatureToggles() {
     // Load saved states
     const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
-    return new Promise((resolve) => {
-        getLocalValues(storageKeys, (result) => {
-            for (const toggle of FEATURE_TOGGLES) {
-                const checkbox = document.getElementById(toggle.id);
-                if (checkbox) {
-                    // Use saved value or default
-                    const savedValue = result[toggle.storageKey];
-                    checkbox.checked = savedValue !== undefined ? savedValue : toggle.default;
-                    // Set up change handler
-                    checkbox.addEventListener('change', () => {
-                        handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
-                    });
-                }
-            }
-            resolve();
-        });
-    });
+    const result = await getLocals(storageKeys);
+    for (const toggle of FEATURE_TOGGLES) {
+        const checkbox = document.getElementById(toggle.id);
+        if (checkbox) {
+            // Use saved value or default
+            const savedValue = result[toggle.storageKey];
+            checkbox.checked = savedValue !== undefined ? savedValue : toggle.default;
+            // Set up change handler
+            checkbox.addEventListener('change', () => {
+                handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
+            });
+        }
+    }
 }
 //# sourceMappingURL=feature-toggles.js.map

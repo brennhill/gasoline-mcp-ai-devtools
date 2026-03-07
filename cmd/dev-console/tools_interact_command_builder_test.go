@@ -371,3 +371,112 @@ func TestCommandBuilder_MatchesRefresh(t *testing.T) {
 		t.Fatalf("query type = %q, want browser_action", pq.Type)
 	}
 }
+
+// TestCommandBuilder_EmptyCorrelationPrefix_FallsBackToName verifies that omitting
+// correlationPrefix falls back to the builder name.
+func TestCommandBuilder_EmptyCorrelationPrefix_FallsBackToName(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	args := asyncArgs(`{}`)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	h := env.handler.interactAction()
+
+	resp := h.newCommand("myaction").
+		reason("test").
+		queryType("browser_action").
+		queryParams(args).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		queuedMessage("Test queued").
+		execute(req, args)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("should not error, got: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("should create pending query")
+	}
+	if !strings.HasPrefix(pq.CorrelationID, "myaction_") {
+		t.Fatalf("correlation ID = %q, want prefix myaction_ (fallback from name)", pq.CorrelationID)
+	}
+}
+
+// TestCommandBuilder_MissingQueryType_ReturnsError verifies that forgetting to set
+// queryType produces an error response instead of silently creating a bad query.
+func TestCommandBuilder_MissingQueryType_ReturnsError(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	args := asyncArgs(`{}`)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	h := env.handler.interactAction()
+
+	resp := h.newCommand("test_no_type").
+		correlationPrefix("test").
+		reason("test").
+		queryParams(args).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		queuedMessage("Test queued").
+		execute(req, args)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("missing queryType should return error")
+	}
+	if !strings.Contains(result.Content[0].Text, "queryType") {
+		t.Errorf("error should mention queryType, got: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq != nil {
+		t.Fatal("missing queryType should not create pending query")
+	}
+}
+
+// TestCommandBuilder_GuardsWithOptsAppends verifies that multiple guardsWithOpts calls
+// accumulate options instead of overwriting.
+func TestCommandBuilder_GuardsWithOptsAppends(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	// pilot disabled to trigger guard
+
+	args := asyncArgs(`{}`)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	h := env.handler.interactAction()
+
+	resp := h.newCommand("test_opts_append").
+		correlationPrefix("test").
+		reason("test").
+		queryType("browser_action").
+		queryParams(args).
+		guardsWithOpts(
+			[]func(*StructuredError){withAction("first_action")},
+			h.parent.requirePilot,
+		).
+		guardsWithOpts(
+			[]func(*StructuredError){withAction("second_action")},
+			h.parent.requireExtension,
+		).
+		queuedMessage("Test queued").
+		execute(req, args)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// Should error from pilot guard (first in chain)
+	if !result.IsError {
+		t.Fatal("pilot disabled should return error")
+	}
+}

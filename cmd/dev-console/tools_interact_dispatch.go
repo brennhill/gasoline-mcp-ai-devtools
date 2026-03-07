@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,7 +37,10 @@ var interactRegistry = toolRegistry{
 		ToolName:   "interact",
 		ValidModes: "", // populated lazily per-call in toolInteract
 	},
-	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, _ string) (json.RawMessage, *JSONRPCResponse) {
+	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, what string) (json.RawMessage, *JSONRPCResponse) {
+		// Apply jitter before dispatch (moved here from handler wrapping to avoid concurrent map writes).
+		h.interactAction().applyJitter(what)
+
 		// Validate evidence mode.
 		if _, err := parseEvidenceMode(args); err != nil {
 			resp := fail(req, ErrInvalidParam,
@@ -54,17 +58,25 @@ var interactRegistry = toolRegistry{
 	// after dispatchTool returns, since PostDispatch doesn't receive args.
 }
 
+// interactHandlersOnce ensures the handler map is built exactly once, even under concurrency.
+var interactHandlersOnce sync.Once
+
 // cachedInteractHandlers is the lazily-initialized handler map for interact actions.
-// Populated once on first call to getInteractHandlers() and reused thereafter.
+// Populated once via sync.Once on first call to getInteractHandlers() and reused thereafter.
 var cachedInteractHandlers map[string]ModeHandler
 
 // getInteractHandlers returns the cached unified handler map for interact actions.
 // Merges both named handlers and DOM primitive actions into a single map[string]ModeHandler.
 // The map is built once and cached for the process lifetime.
 func getInteractHandlers() map[string]ModeHandler {
-	if cachedInteractHandlers != nil {
-		return cachedInteractHandlers
-	}
+	interactHandlersOnce.Do(func() {
+		cachedInteractHandlers = buildInteractHandlers()
+	})
+	return cachedInteractHandlers
+}
+
+// buildInteractHandlers constructs the full interact handler map.
+func buildInteractHandlers() map[string]ModeHandler {
 	handlers := map[string]ModeHandler{
 		"highlight": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.interactAction().handleHighlightImpl(req, args)
@@ -217,7 +229,6 @@ func getInteractHandlers() map[string]ModeHandler {
 		}
 	}
 
-	cachedInteractHandlers = handlers
 	return handlers
 }
 
