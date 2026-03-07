@@ -1,8 +1,36 @@
 ---
 import { workflowPresets } from '../data/workflows';
+import type { WorkflowCategory } from '../data/workflows';
 
 const categories = ['All', ...new Set(workflowPresets.map((workflow) => workflow.category))];
 const workflowsByNewest = [...workflowPresets].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+const categoryMeta: Record<WorkflowCategory, { color: string; icon: string }> = {
+  Automation: {
+    color: '#3b82f6',
+    icon: '<path d="M12 8V4l8 8-8 8v-4H4V8h8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  Debugging: {
+    color: '#ef4444',
+    icon: '<path d="M12 2a4 4 0 0 0-4 4v1H6l-1 3h2v3H5l-1 4h3v1a5 5 0 0 0 10 0v-1h3l-1-4h-2v-3h2l-1-3h-2V6a4 4 0 0 0-4-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  'Demo Recording': {
+    color: '#e67e22',
+    icon: '<circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  },
+  'Interactive Development': {
+    color: '#8b5cf6',
+    icon: '<path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  Reliability: {
+    color: '#10b981',
+    icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  Quality: {
+    color: '#f59e0b',
+    icon: '<path d="M9 11l3 3 8-8M21 12a9 9 0 1 1-4-7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+};
 ---
 
 <section class="workflow-library-shell" data-workflow-library>
@@ -61,12 +89,16 @@ const workflowsByNewest = [...workflowPresets].sort((a, b) => b.updatedAt.locale
           data-updated={workflow.updatedAt}
           data-impact={workflow.impactScore}
           data-search={`${workflow.title} ${workflow.summary} ${workflow.highlights.join(' ')} ${workflow.category}`.toLowerCase()}
+          style={`--wf-color: ${categoryMeta[workflow.category].color}`}
         >
           <div class="workflow-card-top">
-            <span class="workflow-category">{workflow.category}</span>
-            <span class="workflow-runtime">{workflow.runtime}</span>
+            <span class="workflow-category">
+              <svg class="workflow-category-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" set:html={categoryMeta[workflow.category].icon} />
+              Topic: {workflow.category}
+            </span>
+            <span class="workflow-runtime">Reading time: {workflow.runtime}</span>
           </div>
-          <h2>{workflow.title}</h2>
+          <h3>{workflow.title}</h3>
           <p>{workflow.summary}</p>
           <ul>
             {workflow.highlights.map((item) => <li>{item}</li>)}
