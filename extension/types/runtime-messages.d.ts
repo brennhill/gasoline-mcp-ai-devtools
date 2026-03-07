@@ -156,6 +156,15 @@ export interface StatusUpdateMessage {
     };
 }
 /**
+ * Version mismatch notification (background to popup).
+ * Fired when extension and server major versions differ.
+ */
+export interface VersionMismatchMessage {
+    readonly type: 'version_mismatch';
+    readonly extensionVersion: string;
+    readonly serverVersion: string;
+}
+/**
  * Union of all background-bound messages
  */
 export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage | PushChatMessage | ScreenRecordingStartMessage | ScreenRecordingStopMessage | RecordingGestureGrantedMessage | RecordingGestureDeniedMessage | OpenPopupForRecordingMessage;

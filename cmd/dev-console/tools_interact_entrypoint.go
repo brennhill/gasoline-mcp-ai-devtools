@@ -33,18 +33,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// Build the registry with lazily-populated handlers and valid modes.
 	reg := interactRegistry
-	handlers := getInteractHandlers()
-	reg.Handlers = handlers
+	reg.Handlers = getInteractHandlers()
 	reg.Resolution.ValidModes = h.interactAction().getValidInteractActions()
-
-	// Wrap each handler to apply jitter before dispatch.
-	for action, handler := range reg.Handlers {
-		action, handler := action, handler // capture for closure
-		reg.Handlers[action] = func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			th.interactAction().applyJitter(action)
-			return handler(th, req, args)
-		}
-	}
 
 	// Resolve mode early for composable side-effect checks.
 	// We need the resolved 'what' value but dispatchTool handles it internally.

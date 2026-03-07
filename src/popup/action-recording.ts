@@ -6,7 +6,7 @@
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
-import { getLocalValue, setLocalValue, removeLocalValue } from '../lib/storage-utils.js'
+import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js'
 
 interface ActionRecordingElements {
   row: HTMLElement
@@ -67,12 +67,9 @@ function showError(els: ActionRecordingElements, message: string): void {
   }, 5000)
 }
 
-function getServerUrl(): Promise<string> {
-  return new Promise((resolve) => {
-    getLocalValue(StorageKey.SERVER_URL, (value: unknown) => {
-      resolve((value as string) || DEFAULT_SERVER_URL)
-    })
-  })
+async function getServerUrl(): Promise<string> {
+  const value = await getLocal(StorageKey.SERVER_URL)
+  return (value as string) || DEFAULT_SERVER_URL
 }
 
 function getConfigureError(data: ConfigureCallResponse): string | null {
@@ -123,7 +120,7 @@ async function startActionRecording(els: ActionRecordingElements, state: ActionR
     state.startTime = Date.now()
 
     // Persist state so reopening popup shows recording in progress
-    setLocalValue('gasoline_action_recording', {
+    void setLocal('gasoline_action_recording', {
       active: true,
       recordingId: state.recordingId,
       startTime: state.startTime
@@ -150,7 +147,7 @@ async function stopActionRecording(els: ActionRecordingElements, state: ActionRe
       showError(els, configureError)
     }
 
-    removeLocalValue('gasoline_action_recording')
+    void removeLocal('gasoline_action_recording')
 
     showIdle(els, state)
   } catch (err) {
@@ -174,7 +171,7 @@ export function setupActionRecordingUI(): void {
   }
 
   // Restore state if popup was closed during recording
-  getLocalValue('gasoline_action_recording', (value: unknown) => {
+  void getLocal('gasoline_action_recording').then((value: unknown) => {
     const saved = value as {
       active?: boolean
       recordingId?: string

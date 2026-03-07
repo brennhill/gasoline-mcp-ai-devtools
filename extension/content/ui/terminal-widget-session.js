@@ -4,38 +4,32 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js';
-import { getLocalValue, setSessionValue, getSessionValue, removeSessions, setLocal } from '../../lib/storage-utils.js';
+import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js';
 import { state, getTerminalServerUrl } from './terminal-widget-types.js';
 import { showSandboxError } from './terminal-widget-ui.js';
 // =============================================================================
 // CONFIG HELPERS — read/write chrome.storage.local
 // =============================================================================
-export function getServerUrl() {
-    return new Promise((resolve) => {
-        try {
-            getLocalValue(StorageKey.SERVER_URL, (value) => {
-                const url = value || DEFAULT_SERVER_URL;
-                state.serverUrl = url;
-                resolve(url);
-            });
-        }
-        catch {
-            resolve(DEFAULT_SERVER_URL); // Extension context invalidated
-        }
-    });
+export async function getServerUrl() {
+    try {
+        const value = await getLocal(StorageKey.SERVER_URL);
+        const url = value || DEFAULT_SERVER_URL;
+        state.serverUrl = url;
+        return url;
+    }
+    catch {
+        return DEFAULT_SERVER_URL; // Extension context invalidated
+    }
 }
-export function getTerminalConfig() {
-    return new Promise((resolve) => {
-        try {
-            getLocalValue(StorageKey.TERMINAL_CONFIG, (value) => {
-                const config = value || {};
-                resolve(config);
-            });
-        }
-        catch {
-            resolve({}); // Extension context invalidated
-        }
-    });
+export async function getTerminalConfig() {
+    try {
+        const value = await getLocal(StorageKey.TERMINAL_CONFIG);
+        const config = value || {};
+        return config;
+    }
+    catch {
+        return {}; // Extension context invalidated
+    }
 }
 export function saveTerminalConfig(config) {
     try {
@@ -45,37 +39,31 @@ export function saveTerminalConfig(config) {
         // Extension context invalidated — config won't persist but session still works
     }
 }
-function getTerminalAICommand() {
-    return new Promise((resolve) => {
-        try {
-            getLocalValue(StorageKey.TERMINAL_AI_COMMAND, (value) => {
-                const cmd = value || 'claude';
-                resolve(cmd);
-            });
-        }
-        catch {
-            resolve('claude');
-        }
-    });
+async function getTerminalAICommand() {
+    try {
+        const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND);
+        const cmd = value || 'claude';
+        return cmd;
+    }
+    catch {
+        return 'claude';
+    }
 }
-function getTerminalDevRoot() {
-    return new Promise((resolve) => {
-        try {
-            getLocalValue(StorageKey.TERMINAL_DEV_ROOT, (value) => {
-                resolve(value || '');
-            });
-        }
-        catch {
-            resolve('');
-        }
-    });
+async function getTerminalDevRoot() {
+    try {
+        const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT);
+        return value || '';
+    }
+    catch {
+        return '';
+    }
 }
 // =============================================================================
 // SESSION PERSISTENCE — survives page refresh via chrome.storage.session
 // =============================================================================
 export function persistSession(ss) {
     try {
-        setSessionValue(StorageKey.TERMINAL_SESSION, ss);
+        void setSession(StorageKey.TERMINAL_SESSION, ss);
     }
     catch { /* extension context invalidated */ }
 }
@@ -87,25 +75,21 @@ export function clearPersistedSession() {
 }
 export function persistUIState(uiState) {
     try {
-        setSessionValue(StorageKey.TERMINAL_UI_STATE, uiState);
+        void setSession(StorageKey.TERMINAL_UI_STATE, uiState);
     }
     catch { /* extension context invalidated */ }
 }
-export function loadPersistedSession() {
-    return new Promise((resolve) => {
-        try {
-            getSessionValue(StorageKey.TERMINAL_SESSION, (sessionValue) => {
-                getSessionValue(StorageKey.TERMINAL_UI_STATE, (uiValue) => {
-                    const session = sessionValue;
-                    const uiState = uiValue || 'closed';
-                    resolve({ session: session || null, uiState });
-                });
-            });
-        }
-        catch {
-            resolve({ session: null, uiState: 'closed' });
-        }
-    });
+export async function loadPersistedSession() {
+    try {
+        const sessionValue = await getSession(StorageKey.TERMINAL_SESSION);
+        const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE);
+        const session = sessionValue;
+        const uiState = uiValue || 'closed';
+        return { session: session || null, uiState };
+    }
+    catch {
+        return { session: null, uiState: 'closed' };
+    }
 }
 // =============================================================================
 // SESSION LIFECYCLE — start, validate

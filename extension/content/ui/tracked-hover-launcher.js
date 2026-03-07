@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js';
-import { getLocalValue, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
+import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
 import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
@@ -34,11 +34,8 @@ async function checkTerminalReachable() {
     try {
         let baseUrl = DEFAULT_SERVER_URL;
         try {
-            baseUrl = await new Promise((resolve) => {
-                getLocalValue(StorageKey.SERVER_URL, (value) => {
-                    resolve(value || DEFAULT_SERVER_URL);
-                });
-            });
+            const value = await getLocal(StorageKey.SERVER_URL);
+            baseUrl = value || DEFAULT_SERVER_URL;
         }
         catch { /* use default */ }
         const url = new URL(baseUrl);
@@ -92,13 +89,12 @@ function updateStopButtonVisibility(active) {
         return;
     stopButtonEl.style.display = active ? 'flex' : 'none';
 }
-function syncRecordingStateFromStorage() {
+async function syncRecordingStateFromStorage() {
     try {
-        getLocalValue(StorageKey.RECORDING, (value) => {
-            const rec = value;
-            const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
-            updateStopButtonVisibility(active);
-        });
+        const value = await getLocal(StorageKey.RECORDING);
+        const rec = value;
+        const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
+        updateStopButtonVisibility(active);
     }
     catch {
         // Extension context invalidated
@@ -128,15 +124,13 @@ function uninstallRecordingStorageSync() {
     }
     recordingStorageListener = null;
 }
-function syncHiddenStateFromStorage(onSynced) {
+async function syncHiddenStateFromStorage() {
     try {
-        getLocalValue(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, (value) => {
-            hiddenUntilPopupOpen = Boolean(value);
-            onSynced();
-        });
+        const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+        hiddenUntilPopupOpen = Boolean(value);
     }
     catch {
-        onSynced(); // Extension context invalidated — proceed with defaults
+        // Extension context invalidated — proceed with defaults
     }
 }
 function persistHiddenState(hidden) {
@@ -682,9 +676,10 @@ function unmountLauncher() {
     // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
     // The PTY session survives launcher hide/show so users don't lose work.
 }
-export function setTrackedHoverLauncherEnabled(enabled) {
+export async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
 }
 //# sourceMappingURL=tracked-hover-launcher.js.map

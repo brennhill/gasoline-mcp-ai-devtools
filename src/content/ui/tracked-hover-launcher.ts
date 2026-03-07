@@ -6,7 +6,7 @@
 
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js'
-import { getLocalValue, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js'
+import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js'
 import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
@@ -41,11 +41,8 @@ async function checkTerminalReachable(): Promise<boolean> {
   try {
     let baseUrl = DEFAULT_SERVER_URL
     try {
-      baseUrl = await new Promise<string>((resolve) => {
-        getLocalValue(StorageKey.SERVER_URL, (value) => {
-          resolve((value as string) || DEFAULT_SERVER_URL)
-        })
-      })
+      const value = await getLocal(StorageKey.SERVER_URL)
+      baseUrl = (value as string) || DEFAULT_SERVER_URL
     } catch { /* use default */ }
     const url = new URL(baseUrl)
     url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET)
@@ -101,13 +98,12 @@ function updateStopButtonVisibility(active: boolean): void {
   stopButtonEl.style.display = active ? 'flex' : 'none'
 }
 
-function syncRecordingStateFromStorage(): void {
+async function syncRecordingStateFromStorage(): Promise<void> {
   try {
-    getLocalValue(StorageKey.RECORDING, (value) => {
-      const rec = value
-      const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
-      updateStopButtonVisibility(active)
-    })
+    const value = await getLocal(StorageKey.RECORDING)
+    const rec = value
+    const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
+    updateStopButtonVisibility(active)
   } catch {
     // Extension context invalidated
   }
@@ -135,14 +131,12 @@ function uninstallRecordingStorageSync(): void {
   recordingStorageListener = null
 }
 
-function syncHiddenStateFromStorage(onSynced: () => void): void {
+async function syncHiddenStateFromStorage(): Promise<void> {
   try {
-    getLocalValue(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, (value) => {
-      hiddenUntilPopupOpen = Boolean(value)
-      onSynced()
-    })
+    const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN)
+    hiddenUntilPopupOpen = Boolean(value)
   } catch {
-    onSynced() // Extension context invalidated — proceed with defaults
+    // Extension context invalidated — proceed with defaults
   }
 }
 
@@ -729,8 +723,9 @@ function unmountLauncher(): void {
   // The PTY session survives launcher hide/show so users don't lose work.
 }
 
-export function setTrackedHoverLauncherEnabled(enabled: boolean): void {
+export async function setTrackedHoverLauncherEnabled(enabled: boolean): Promise<void> {
   trackedEnabled = enabled
   installRuntimeListener()
-  syncHiddenStateFromStorage(applyVisibilityFromState)
+  await syncHiddenStateFromStorage()
+  applyVisibilityFromState()
 }

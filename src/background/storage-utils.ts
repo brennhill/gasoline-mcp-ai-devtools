@@ -4,19 +4,6 @@
  */
 
 export {
-  setSessionValue,
-  getSessionValue,
-  removeSessionValue,
-  clearSessionStorage,
-  setLocalValue,
-  setLocalValues,
-  getLocalValue,
-  getLocalValues,
-  removeLocalValue,
-  removeLocalValues,
-  setValue,
-  getValue,
-  removeValue,
   getStorageDiagnostics,
   wasServiceWorkerRestarted,
   markStateVersion

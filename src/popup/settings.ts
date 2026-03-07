@@ -11,13 +11,13 @@
 
 import type { WebSocketCaptureMode } from '../types/index.js'
 import { SettingName } from '../lib/constants.js'
-import { setLocalValue, getLocalValue } from '../lib/storage-utils.js'
+import { setLocal, getLocal } from '../lib/storage-utils.js'
 
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
-  setLocalValue('webSocketCaptureMode', mode)
+  void setLocal('webSocketCaptureMode', mode)
   chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode })
 }
 
@@ -28,12 +28,8 @@ export async function initWebSocketModeSelector(): Promise<void> {
   const modeSelect = document.getElementById('ws-mode') as HTMLSelectElement | null
   if (!modeSelect) return
 
-  return new Promise((resolve) => {
-    getLocalValue('webSocketCaptureMode', (value: unknown) => {
-      modeSelect.value = (value as WebSocketCaptureMode) || 'medium'
-      resolve()
-    })
-  })
+  const value = await getLocal('webSocketCaptureMode')
+  modeSelect.value = (value as WebSocketCaptureMode) || 'medium'
 }
 
 // Track clear-logs confirmation state

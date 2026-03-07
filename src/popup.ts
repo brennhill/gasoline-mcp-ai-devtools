@@ -19,7 +19,7 @@ import type { WebSocketCaptureMode } from './types/index.js'
 import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types.js'
 import type { ShowTrackedHoverLauncherMessage } from './types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from './lib/constants.js'
-import { getLocalValue, setSessionValue, getSessionValue, onStorageChanged } from './lib/storage-utils.js'
+import { getLocal, setSession, getSession, onStorageChanged } from './lib/storage-utils.js'
 import { updateConnectionStatus } from './popup/status-display.js'
 import { setupRecordingUI } from './popup/recording.js'
 import { setupDrawModeButton } from './popup/draw-mode.js'
@@ -46,7 +46,7 @@ export { initWebSocketModeSelector } from './popup/settings.js'
 export { isInternalUrl } from './popup/ui-utils.js'
 
 // Apply theme early to prevent flash of unstyled content (moved from inline script for CSP compliance).
-getLocalValue('theme', (value) => {
+void getLocal('theme').then((value) => {
   if (value === 'light') document.body.classList.add('light-theme')
 })
 
@@ -122,7 +122,7 @@ function requestTrackedHoverLauncherReshow(): void {
 
 /** Cache status to session storage so the popup renders instantly on next open. */
 function cacheStatus(status: PopupConnectionStatus): void {
-  setSessionValue(StorageKey.POPUP_LAST_STATUS, status)
+  void setSession(StorageKey.POPUP_LAST_STATUS, status)
 }
 
 /**
@@ -133,7 +133,7 @@ export function initPopup(): void {
   requestTrackedHoverLauncherReshow()
 
   // 1) Hydrate immediately from cached status (local, no network, no IPC wait).
-  getSessionValue(StorageKey.POPUP_LAST_STATUS, (value) => {
+  void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
     const cached = value as PopupConnectionStatus | undefined
     if (cached) updateConnectionStatus(cached)
   })
@@ -190,13 +190,6 @@ export function initPopup(): void {
       if (message.type === 'status_update' && message.status) {
         updateConnectionStatus(message.status)
         cacheStatus(message.status)
-      } else if (message.type === 'pilotStatusChanged') {
-        // Update toggle to reflect confirmed state from background
-        const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
-        if (toggle) {
-          toggle.checked = message.enabled === true
-          console.log('[Gasoline] Pilot status confirmed:', message.enabled)
-        }
       }
     }
   )

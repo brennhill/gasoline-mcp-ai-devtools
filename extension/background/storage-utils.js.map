@@ -1,1 +1,1 @@
-{"version":3,"file":"storage-utils.js","sourceRoot":"","sources":["../../src/background/storage-utils.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EACL,eAAe,EACf,eAAe,EACf,kBAAkB,EAClB,mBAAmB,EACnB,aAAa,EACb,cAAc,EACd,aAAa,EACb,cAAc,EACd,gBAAgB,EAChB,iBAAiB,EACjB,QAAQ,EACR,QAAQ,EACR,WAAW,EACX,qBAAqB,EACrB,yBAAyB,EACzB,gBAAgB,EACjB,MAAM,yBAAyB,CAAA"}
+{"version":3,"file":"storage-utils.js","sourceRoot":"","sources":["../../src/background/storage-utils.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EACL,qBAAqB,EACrB,yBAAyB,EACzB,gBAAgB,EACjB,MAAM,yBAAyB,CAAA"}

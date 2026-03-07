@@ -3,5 +3,5 @@
  * Why: Reduces popup churn by exposing common capture actions directly on tracked pages.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
-export declare function setTrackedHoverLauncherEnabled(enabled: boolean): void;
+export declare function setTrackedHoverLauncherEnabled(enabled: boolean): Promise<void>;
 //# sourceMappingURL=tracked-hover-launcher.d.ts.map

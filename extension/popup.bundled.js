@@ -95,105 +95,49 @@
       return null;
     return chrome.storage;
   }
-  function setSessionValue(key, value, callback) {
+  async function getLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return void 0;
+    const result = await chrome.storage.local.get([key]);
+    return result[key];
+  }
+  async function getLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return {};
+    return await chrome.storage.local.get(keys);
+  }
+  async function setLocal(key, value) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.set({ [key]: value });
+  }
+  async function setLocals(items) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.set(items);
+  }
+  async function removeLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.remove([key]);
+  }
+  async function removeLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.remove(keys);
+  }
+  async function getSession(key) {
     const storage = getStorageWithSession();
-    if (!storage || !storage.session) {
-      if (callback)
-        callback();
-      return;
-    }
-    storage.session.set({ [key]: value }, () => {
-      if (callback)
-        callback();
-    });
+    if (!storage || !storage.session)
+      return void 0;
+    const result = await storage.session.get([key]);
+    return result[key];
   }
-  function getSessionValue(key, callback) {
+  async function setSession(key, value) {
     const storage = getStorageWithSession();
-    if (!storage || !storage.session) {
-      callback(void 0);
+    if (!storage || !storage.session)
       return;
-    }
-    storage.session.get([key], (result) => {
-      callback(result[key]);
-    });
-  }
-  function setLocalValue(key, value, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.set({ [key]: value }, () => {
-      if (chrome.runtime.lastError) {
-        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-      }
-      if (callback)
-        callback();
-    });
-  }
-  function setLocalValues(items, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.set(items, () => {
-      if (chrome.runtime.lastError) {
-        console.warn("[Gasoline] Storage error setting multiple keys:", chrome.runtime.lastError.message);
-      }
-      if (callback)
-        callback();
-    });
-  }
-  function getLocalValue(key, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback(void 0);
-      return;
-    }
-    chrome.storage.local.get([key], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-        callback(void 0);
-        return;
-      }
-      callback(result[key]);
-    });
-  }
-  function getLocalValues(keys, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      callback({});
-      return;
-    }
-    chrome.storage.local.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn("[Gasoline] Storage error getting multiple keys:", chrome.runtime.lastError.message);
-        callback({});
-        return;
-      }
-      callback(result);
-    });
-  }
-  function removeLocalValue(key, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.remove([key], () => {
-      if (callback)
-        callback();
-    });
-  }
-  function removeLocalValues(keys, callback) {
-    if (typeof chrome === "undefined" || !chrome.storage) {
-      if (callback)
-        callback();
-      return;
-    }
-    chrome.storage.local.remove(keys, () => {
-      if (callback)
-        callback();
-    });
+    await storage.session.set({ [key]: value });
   }
   function onStorageChanged(listener) {
     if (typeof chrome === "undefined" || !chrome.storage)
@@ -544,7 +488,7 @@
   }
   function showMicPermissionPrompt(saveInfoEl, audioMode) {
     chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
-      setLocalValue(StorageKey.PENDING_MIC_RECORDING, { audioMode, returnTabId: activeTabs[0]?.id });
+      void setLocal(StorageKey.PENDING_MIC_RECORDING, { audioMode, returnTabId: activeTabs[0]?.id });
     });
     saveInfoEl.innerHTML = 'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
     saveInfoEl.style.display = "block";
@@ -579,11 +523,11 @@
     navigator.mediaDevices.getUserMedia({ audio: true }).then((micStream) => {
       console.log("[Gasoline REC] Popup: getUserMedia succeeded from popup");
       micStream.getTracks().forEach((t) => t.stop());
-      setLocalValue(StorageKey.MIC_GRANTED, true);
+      void setLocal(StorageKey.MIC_GRANTED, true);
       sendRecordStart(els, state, audioMode);
     }).catch((err) => {
       console.log("[Gasoline REC] Popup: getUserMedia FAILED:", err.name, errorMessage(err));
-      removeLocalValue(StorageKey.MIC_GRANTED);
+      void removeLocal(StorageKey.MIC_GRANTED);
       showIdle(els, state);
       if (els.saveInfoEl)
         showMicPermissionPrompt(els.saveInfoEl, audioMode);
@@ -592,7 +536,7 @@
   function handleStartClick(els, state) {
     const audioSelect = document.getElementById("record-audio-mode");
     const audioMode = audioSelect?.value ?? "";
-    setLocalValue(StorageKey.RECORD_AUDIO_PREF, audioMode);
+    void setLocal(StorageKey.RECORD_AUDIO_PREF, audioMode);
     if (els.optionsEl)
       els.optionsEl.style.display = "none";
     if (els.saveInfoEl)
@@ -646,7 +590,7 @@
         applyRecordHighlight(els);
         pendingRecordingIntent = null;
         setApprovalPendingState(els, approvalEls, state, null);
-        removeLocalValue(StorageKey.PENDING_RECORDING);
+        void removeLocal(StorageKey.PENDING_RECORDING);
         return;
       }
       pendingRecordingIntent = pending && !pending.highlight ? pending : null;
@@ -657,10 +601,10 @@
     const clearPendingRecordingIntent = () => {
       pendingRecordingIntent = null;
       setApprovalPendingState(els, approvalEls, state, null);
-      removeLocalValue(StorageKey.PENDING_RECORDING);
+      void removeLocal(StorageKey.PENDING_RECORDING);
     };
     row.style.visibility = "hidden";
-    getLocalValue(StorageKey.RECORDING, (value) => {
+    void getLocal(StorageKey.RECORDING).then(async (value) => {
       const rec = value;
       console.log("[Gasoline REC] Popup: gasoline_recording from storage:", rec);
       if (rec?.active && rec.name && rec.startTime) {
@@ -668,9 +612,8 @@
         showRecording(els, state, rec.name, rec.startTime);
       }
       row.style.visibility = "visible";
-      getLocalValue(StorageKey.PENDING_RECORDING, (pendingValue) => {
-        updatePendingRecording(pendingValue);
-      });
+      const pendingValue = await getLocal(StorageKey.PENDING_RECORDING);
+      updatePendingRecording(pendingValue);
     });
     onStorageChanged((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.RECORDING]) {
@@ -698,13 +641,13 @@
       sendRecordingGestureDecision("recording_gesture_denied");
       clearPendingRecordingIntent();
     });
-    getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value) => {
+    void getLocal(StorageKey.PENDING_MIC_RECORDING).then(async (value) => {
       const intent = value;
       console.log("[Gasoline REC] Popup: pending_mic_recording intent:", intent);
       if (!intent?.audioMode)
         return;
       console.log("[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:", intent.audioMode);
-      removeLocalValue(StorageKey.PENDING_MIC_RECORDING);
+      await removeLocal(StorageKey.PENDING_MIC_RECORDING);
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
@@ -721,7 +664,7 @@
       if (audioSelect)
         audioSelect.value = intent.audioMode;
     });
-    getLocalValue(StorageKey.RECORD_AUDIO_PREF, (value) => {
+    void getLocal(StorageKey.RECORD_AUDIO_PREF).then((value) => {
       const saved = value;
       if (saved) {
         const audioSelect = document.getElementById("record-audio-mode");
@@ -863,12 +806,9 @@
       els.statusEl.style.color = "";
     }, 5e3);
   }
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      getLocalValue(StorageKey.SERVER_URL, (value) => {
-        resolve(value || DEFAULT_SERVER_URL);
-      });
-    });
+  async function getServerUrl() {
+    const value = await getLocal(StorageKey.SERVER_URL);
+    return value || DEFAULT_SERVER_URL;
   }
   function getConfigureError(data) {
     const message = data.error?.message;
@@ -910,7 +850,7 @@
       }
       state.recordingId = extractRecordingID(data);
       state.startTime = Date.now();
-      setLocalValue("gasoline_action_recording", {
+      void setLocal("gasoline_action_recording", {
         active: true,
         recordingId: state.recordingId,
         startTime: state.startTime
@@ -932,7 +872,7 @@
       if (configureError) {
         showError(els, configureError);
       }
-      removeLocalValue("gasoline_action_recording");
+      void removeLocal("gasoline_action_recording");
       showIdle2(els, state);
     } catch (err) {
       showIdle2(els, state);
@@ -952,7 +892,7 @@
       timerInterval: null,
       startTime: null
     };
-    getLocalValue("gasoline_action_recording", (value) => {
+    void getLocal("gasoline_action_recording").then((value) => {
       const saved = value;
       if (saved?.active && saved.recordingId) {
         state.recordingId = saved.recordingId;
@@ -1039,21 +979,17 @@
   }
   async function initFeatureToggles() {
     const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
-    return new Promise((resolve) => {
-      getLocalValues(storageKeys, (result) => {
-        for (const toggle of FEATURE_TOGGLES) {
-          const checkbox = document.getElementById(toggle.id);
-          if (checkbox) {
-            const savedValue = result[toggle.storageKey];
-            checkbox.checked = savedValue !== void 0 ? savedValue : toggle.default;
-            checkbox.addEventListener("change", () => {
-              handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
-            });
-          }
-        }
-        resolve();
-      });
-    });
+    const result = await getLocals(storageKeys);
+    for (const toggle of FEATURE_TOGGLES) {
+      const checkbox = document.getElementById(toggle.id);
+      if (checkbox) {
+        const savedValue = result[toggle.storageKey];
+        checkbox.checked = savedValue !== void 0 ? savedValue : toggle.default;
+        checkbox.addEventListener("change", () => {
+          handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
+        });
+      }
+    }
   }
 
   // extension/popup/tab-tracking.js
@@ -1117,7 +1053,7 @@
       noTrackEl.style.display = "block";
   }
   function syncTrackButtonState(btn) {
-    getLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], (result) => {
+    void getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]).then((result) => {
       const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
       const trackedTabUrl = result[StorageKey.TRACKED_TAB_URL];
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -1144,27 +1080,24 @@
       syncTrackButtonState(btn);
     });
   }
-  function handleStopTracking() {
-    getLocalValue(StorageKey.TRACKED_TAB_ID, (value) => {
-      const prevTabId = value;
-      if (!prevTabId)
-        return;
-      removeLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
-        const btn = document.getElementById("track-page-btn");
-        if (btn)
-          showIdleState(btn);
-        chrome.runtime.sendMessage({ type: "screen_recording_stop" }, () => {
-          if (chrome.runtime.lastError) {
-          }
-        });
-        chrome.tabs.sendMessage(prevTabId, {
-          type: "tracking_state_changed",
-          state: { isTracked: false, aiPilotEnabled: false }
-        }).catch(() => {
-        });
-        console.log("[Gasoline] Stopped tracking via bar stop button");
-      });
+  async function handleStopTracking() {
+    const prevTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (!prevTabId)
+      return;
+    await removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+    const btn = document.getElementById("track-page-btn");
+    if (btn)
+      showIdleState(btn);
+    chrome.runtime.sendMessage({ type: "screen_recording_stop" }, () => {
+      if (chrome.runtime.lastError) {
+      }
     });
+    chrome.tabs.sendMessage(prevTabId, {
+      type: "tracking_state_changed",
+      state: { isTracked: false, aiPilotEnabled: false }
+    }).catch(() => {
+    });
+    console.log("[Gasoline] Stopped tracking via bar stop button");
   }
   function initTrackPageButton() {
     const btn = document.getElementById("track-page-btn");
@@ -1186,50 +1119,50 @@
       console.log("[Gasoline] Switched to tracked tab:", tabId);
     } catch (err) {
       console.error("[Gasoline] Failed to switch to tracked tab:", err);
-      removeLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+      void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
     }
   }
   async function handleTrackPageClick() {
     const btn = document.getElementById("track-page-btn");
-    getLocalValue(StorageKey.TRACKED_TAB_ID, async (value) => {
-      const trackedTabId = value;
-      if (trackedTabId) {
-        handleStopTracking();
-      } else {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) {
-            const tab = tabs[0];
-            if (isInternalUrl(tab.url)) {
-              if (btn) {
-                btn.disabled = true;
-                btn.textContent = "Cannot Track Internal Pages";
-                btn.style.opacity = "0.5";
-              }
-              return;
-            }
-            setLocalValues({ trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || "" }, () => {
-              showTrackingState(btn, tab.url, tab.id);
-              console.log("[Gasoline] Now tracking tab:", tab.id, tab.url);
-              if (tab.id) {
-                const tabId = tab.id;
-                chrome.tabs.sendMessage(tabId, { type: "gasoline_ping" }, (response) => {
-                  if (chrome.runtime.lastError || !response?.status) {
-                    console.log("[Gasoline] Content script not found, reloading tab", tabId);
-                    chrome.tabs.reload(tabId);
-                  } else {
-                    console.log("[Gasoline] Content script already loaded, skipping reload");
-                    chrome.tabs.sendMessage(tabId, {
-                      type: "tracking_state_changed",
-                      state: { isTracked: true, aiPilotEnabled: false }
-                    });
-                  }
-                });
-              }
-            });
-          }
-        });
+    const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (trackedTabId) {
+      await handleStopTracking();
+      return;
+    }
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab)
+      return;
+    if (isInternalUrl(tab.url)) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Cannot Track Internal Pages";
+        btn.style.opacity = "0.5";
       }
+      return;
+    }
+    await setLocals({
+      trackedTabId: tab.id,
+      trackedTabUrl: tab.url,
+      trackedTabTitle: tab.title || ""
     });
+    if (btn)
+      showTrackingState(btn, tab.url, tab.id);
+    console.log("[Gasoline] Now tracking tab:", tab.id, tab.url);
+    if (tab.id) {
+      const tabId = tab.id;
+      chrome.tabs.sendMessage(tabId, { type: "gasoline_ping" }, (response) => {
+        if (chrome.runtime.lastError || !response?.status) {
+          console.log("[Gasoline] Content script not found, reloading tab", tabId);
+          chrome.tabs.reload(tabId);
+        } else {
+          console.log("[Gasoline] Content script already loaded, skipping reload");
+          chrome.tabs.sendMessage(tabId, {
+            type: "tracking_state_changed",
+            state: { isTracked: true, aiPilotEnabled: false }
+          });
+        }
+      });
+    }
   }
 
   // extension/popup/ai-web-pilot.js
@@ -1237,14 +1170,10 @@
     const toggle = document.getElementById("aiWebPilotEnabled");
     if (!toggle)
       return;
-    return new Promise((resolve) => {
-      getLocalValue(StorageKey.AI_WEB_PILOT_ENABLED, (value) => {
-        toggle.checked = value !== false;
-        toggle.addEventListener("change", () => {
-          handleAiWebPilotToggle(toggle.checked);
-        });
-        resolve();
-      });
+    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
+    toggle.checked = value !== false;
+    toggle.addEventListener("change", () => {
+      handleAiWebPilotToggle(toggle.checked);
     });
   }
   async function handleAiWebPilotToggle(enabled) {
@@ -1261,19 +1190,15 @@
 
   // extension/popup/settings.js
   function handleWebSocketModeChange(mode) {
-    setLocalValue("webSocketCaptureMode", mode);
+    void setLocal("webSocketCaptureMode", mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
   }
   async function initWebSocketModeSelector() {
     const modeSelect = document.getElementById("ws-mode");
     if (!modeSelect)
       return;
-    return new Promise((resolve) => {
-      getLocalValue("webSocketCaptureMode", (value) => {
-        modeSelect.value = value || "medium";
-        resolve();
-      });
-    });
+    const value = await getLocal("webSocketCaptureMode");
+    modeSelect.value = value || "medium";
   }
   var clearConfirmPending = false;
   var clearConfirmTimer = null;
@@ -1328,7 +1253,7 @@
   }
 
   // extension/popup.js
-  getLocalValue("theme", (value) => {
+  void getLocal("theme").then((value) => {
     if (value === "light")
       document.body.classList.add("light-theme");
   });
@@ -1389,11 +1314,11 @@
     });
   }
   function cacheStatus(status) {
-    setSessionValue(StorageKey.POPUP_LAST_STATUS, status);
+    void setSession(StorageKey.POPUP_LAST_STATUS, status);
   }
   function initPopup() {
     requestTrackedHoverLauncherReshow();
-    getSessionValue(StorageKey.POPUP_LAST_STATUS, (value) => {
+    void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
       const cached = value;
       if (cached)
         updateConnectionStatus(cached);
@@ -1442,12 +1367,6 @@
       if (message.type === "status_update" && message.status) {
         updateConnectionStatus(message.status);
         cacheStatus(message.status);
-      } else if (message.type === "pilotStatusChanged") {
-        const toggle = document.getElementById("aiWebPilotEnabled");
-        if (toggle) {
-          toggle.checked = message.enabled === true;
-          console.log("[Gasoline] Pilot status confirmed:", message.enabled);
-        }
       }
     });
     onStorageChanged((changes, areaName) => {

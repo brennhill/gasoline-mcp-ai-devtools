@@ -9,7 +9,7 @@
  */
 import { isInternalUrl } from './ui-utils.js';
 import { StorageKey } from '../lib/constants.js';
-import { getLocalValue, getLocalValues, setLocalValues, removeLocalValues, onStorageChanged } from '../lib/storage-utils.js';
+import { getLocal, getLocals, setLocals, removeLocals, onStorageChanged } from '../lib/storage-utils.js'; // async API only
 let trackingStorageSyncInstalled = false;
 /**
  * Initialize the Track This Tab button.
@@ -80,7 +80,7 @@ function showIdleState(btn) {
         noTrackEl.style.display = 'block';
 }
 function syncTrackButtonState(btn) {
-    getLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], (result) => {
+    void getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]).then((result) => {
         const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
         const trackedTabUrl = result[StorageKey.TRACKED_TAB_URL];
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -112,33 +112,30 @@ function installTrackingStorageSync(btn) {
 /**
  * Handle stop tracking from the compact tracking bar stop button.
  */
-function handleStopTracking() {
-    getLocalValue(StorageKey.TRACKED_TAB_ID, (value) => {
-        const prevTabId = value;
-        if (!prevTabId)
-            return;
-        removeLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
-            const btn = document.getElementById('track-page-btn');
-            if (btn)
-                showIdleState(btn);
-            // Stop recording if active
-            chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
-                if (chrome.runtime.lastError) {
-                    /* no recording active — expected */
-                }
-            });
-            // Notify content script so favicon restores without reload
-            chrome.tabs
-                .sendMessage(prevTabId, {
-                type: 'tracking_state_changed',
-                state: { isTracked: false, aiPilotEnabled: false }
-            })
-                .catch(() => {
-                /* tab may be closed */
-            });
-            console.log('[Gasoline] Stopped tracking via bar stop button');
-        });
+async function handleStopTracking() {
+    const prevTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (!prevTabId)
+        return;
+    await removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+    const btn = document.getElementById('track-page-btn');
+    if (btn)
+        showIdleState(btn);
+    // Stop recording if active
+    chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
+        if (chrome.runtime.lastError) {
+            /* no recording active — expected */
+        }
     });
+    // Notify content script so favicon restores without reload
+    chrome.tabs
+        .sendMessage(prevTabId, {
+        type: 'tracking_state_changed',
+        state: { isTracked: false, aiPilotEnabled: false }
+    })
+        .catch(() => {
+        /* tab may be closed */
+    });
+    console.log('[Gasoline] Stopped tracking via bar stop button');
 }
 export function initTrackPageButton() {
     const btn = document.getElementById('track-page-btn');
@@ -167,7 +164,7 @@ export async function handleUrlClick(tabId) {
     catch (err) {
         console.error('[Gasoline] Failed to switch to tracked tab:', err);
         // Tab might have been closed - clear tracking
-        removeLocalValues([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+        void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
     }
 }
 /**
@@ -179,53 +176,51 @@ export async function handleUrlClick(tabId) {
 export async function handleTrackPageClick() {
     const btn = document.getElementById('track-page-btn');
     // Check if we're currently tracking
-    getLocalValue(StorageKey.TRACKED_TAB_ID, async (value) => {
-        const trackedTabId = value;
-        if (trackedTabId) {
-            // Untrack — delegate to the shared stop handler
-            handleStopTracking();
+    const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (trackedTabId) {
+        // Untrack — delegate to the shared stop handler
+        await handleStopTracking();
+        return;
+    }
+    // Track current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab)
+        return;
+    // Block tracking on internal Chrome pages
+    if (isInternalUrl(tab.url)) {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Cannot Track Internal Pages';
+            btn.style.opacity = '0.5';
         }
-        else {
-            // Track current tab
-            // #lizard forgives
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                if (tabs[0]) {
-                    const tab = tabs[0];
-                    // Block tracking on internal Chrome pages
-                    if (isInternalUrl(tab.url)) {
-                        if (btn) {
-                            btn.disabled = true;
-                            btn.textContent = 'Cannot Track Internal Pages';
-                            btn.style.opacity = '0.5';
-                        }
-                        return;
-                    }
-                    setLocalValues({ trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' }, () => {
-                        showTrackingState(btn, tab.url, tab.id);
-                        console.log('[Gasoline] Now tracking tab:', tab.id, tab.url);
-                        // Only reload if content script is not already injected
-                        if (tab.id) {
-                            const tabId = tab.id;
-                            chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }, (response) => {
-                                if (chrome.runtime.lastError || !response?.status) {
-                                    // Content script not loaded — reload to inject it
-                                    console.log('[Gasoline] Content script not found, reloading tab', tabId);
-                                    chrome.tabs.reload(tabId);
-                                }
-                                else {
-                                    // Content script already running — notify it of tracking change
-                                    console.log('[Gasoline] Content script already loaded, skipping reload');
-                                    chrome.tabs.sendMessage(tabId, {
-                                        type: 'tracking_state_changed',
-                                        state: { isTracked: true, aiPilotEnabled: false }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
+        return;
+    }
+    await setLocals({
+        trackedTabId: tab.id,
+        trackedTabUrl: tab.url,
+        trackedTabTitle: tab.title || ''
     });
+    if (btn)
+        showTrackingState(btn, tab.url, tab.id);
+    console.log('[Gasoline] Now tracking tab:', tab.id, tab.url);
+    // Only reload if content script is not already injected
+    if (tab.id) {
+        const tabId = tab.id;
+        chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }, (response) => {
+            if (chrome.runtime.lastError || !response?.status) {
+                // Content script not loaded — reload to inject it
+                console.log('[Gasoline] Content script not found, reloading tab', tabId);
+                chrome.tabs.reload(tabId);
+            }
+            else {
+                // Content script already running — notify it of tracking change
+                console.log('[Gasoline] Content script already loaded, skipping reload');
+                chrome.tabs.sendMessage(tabId, {
+                    type: 'tracking_state_changed',
+                    state: { isTracked: true, aiPilotEnabled: false }
+                });
+            }
+        });
+    }
 }
 //# sourceMappingURL=tab-tracking.js.map

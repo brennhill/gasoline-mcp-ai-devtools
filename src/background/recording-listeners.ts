@@ -10,7 +10,7 @@
 
 import { scaleTimeout } from '../lib/timeouts.js'
 import { StorageKey } from '../lib/constants.js'
-import { getLocal, getLocalValue } from '../lib/storage-utils.js'
+import { getLocal } from '../lib/storage-utils.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
@@ -137,54 +137,54 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
     console.log(LOG, 'mic_granted_close_tab received from tab', sender.tab?.id)
 
     // Read the stored return tab before closing the permission tab
-    getLocalValue(StorageKey.PENDING_MIC_RECORDING, (value: unknown) => {
-        const pending = value as { returnTabId?: number } | undefined
-        const returnTabId = pending?.returnTabId
-        console.log(
-          LOG,
-          'Pending mic recording intent:',
-          pending,
-          'returnTabId:',
-          returnTabId
-        )
+    void (async () => {
+      const value = await getLocal(StorageKey.PENDING_MIC_RECORDING)
+      const pending = value as { returnTabId?: number } | undefined
+      const returnTabId = pending?.returnTabId
+      console.log(
+        LOG,
+        'Pending mic recording intent:',
+        pending,
+        'returnTabId:',
+        returnTabId
+      )
 
-        // Close the permission tab
-        if (sender.tab?.id) {
-          console.log(LOG, 'Closing permission tab', sender.tab.id)
-          chrome.tabs.remove(sender.tab.id).catch(() => {})
-        }
-
-        // Activate the original tab and show guidance toast
-        if (returnTabId) {
-          console.log(LOG, 'Activating return tab', returnTabId)
-          chrome.tabs
-            .update(returnTabId, { active: true })
-            .then(() => {
-              console.log(LOG, 'Return tab activated, sending toast in 300ms')
-              // Short delay to let the tab activation settle before sending message
-              setTimeout(() => {
-                console.log(LOG, 'Sending guidance toast to tab', returnTabId)
-                chrome.tabs
-                  .sendMessage(returnTabId, {
-                    type: 'gasoline_action_toast',
-                    text: 'Mic permission granted',
-                    detail: 'Open Gasoline and click Record',
-                    state: 'success' as const,
-                    duration_ms: scaleTimeout(8000)
-                  })
-                  .catch((err) => {
-                    console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', errorMessage(err))
-                  })
-              }, scaleTimeout(300))
-            })
-            .catch((err) => {
-              console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', errorMessage(err))
-            })
-        } else {
-          console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast')
-        }
+      // Close the permission tab
+      if (sender.tab?.id) {
+        console.log(LOG, 'Closing permission tab', sender.tab.id)
+        chrome.tabs.remove(sender.tab.id).catch(() => {})
       }
-    )
+
+      // Activate the original tab and show guidance toast
+      if (returnTabId) {
+        console.log(LOG, 'Activating return tab', returnTabId)
+        chrome.tabs
+          .update(returnTabId, { active: true })
+          .then(() => {
+            console.log(LOG, 'Return tab activated, sending toast in 300ms')
+            // Short delay to let the tab activation settle before sending message
+            setTimeout(() => {
+              console.log(LOG, 'Sending guidance toast to tab', returnTabId)
+              chrome.tabs
+                .sendMessage(returnTabId, {
+                  type: 'gasoline_action_toast',
+                  text: 'Mic permission granted',
+                  detail: 'Open Gasoline and click Record',
+                  state: 'success' as const,
+                  duration_ms: scaleTimeout(8000)
+                })
+                .catch((err) => {
+                  console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', errorMessage(err))
+                })
+            }, scaleTimeout(300))
+          })
+          .catch((err) => {
+            console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', errorMessage(err))
+          })
+      } else {
+        console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast')
+      }
+    })()
 
     return false
   })

@@ -5,7 +5,7 @@
  */
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
-import { getLocalValue, setLocalValue, removeLocalValue } from '../lib/storage-utils.js';
+import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js';
 const START_LABEL = 'Record action workflow';
 const STOP_LABEL = 'Stop recording';
 function showRecording(els, state) {
@@ -43,12 +43,9 @@ function showError(els, message) {
         els.statusEl.style.color = '';
     }, 5000);
 }
-function getServerUrl() {
-    return new Promise((resolve) => {
-        getLocalValue(StorageKey.SERVER_URL, (value) => {
-            resolve(value || DEFAULT_SERVER_URL);
-        });
-    });
+async function getServerUrl() {
+    const value = await getLocal(StorageKey.SERVER_URL);
+    return value || DEFAULT_SERVER_URL;
 }
 function getConfigureError(data) {
     const message = data.error?.message;
@@ -91,7 +88,7 @@ async function startActionRecording(els, state) {
         state.recordingId = extractRecordingID(data);
         state.startTime = Date.now();
         // Persist state so reopening popup shows recording in progress
-        setLocalValue('gasoline_action_recording', {
+        void setLocal('gasoline_action_recording', {
             active: true,
             recordingId: state.recordingId,
             startTime: state.startTime
@@ -114,7 +111,7 @@ async function stopActionRecording(els, state) {
         if (configureError) {
             showError(els, configureError);
         }
-        removeLocalValue('gasoline_action_recording');
+        void removeLocal('gasoline_action_recording');
         showIdle(els, state);
     }
     catch (err) {
@@ -136,7 +133,7 @@ export function setupActionRecordingUI() {
         startTime: null
     };
     // Restore state if popup was closed during recording
-    getLocalValue('gasoline_action_recording', (value) => {
+    void getLocal('gasoline_action_recording').then((value) => {
         const saved = value;
         if (saved?.active && saved.recordingId) {
             state.recordingId = saved.recordingId;
