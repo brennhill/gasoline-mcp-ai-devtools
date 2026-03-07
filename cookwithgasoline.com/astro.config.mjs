@@ -4,6 +4,16 @@ import starlightBlog from 'starlight-blog'
 
 export default defineConfig({
   site: 'https://cookwithgasoline.com',
+  head: [
+    {
+      tag: 'script',
+      attrs: {
+        defer: true,
+        src: 'https://cloud.umami.is/script.js',
+        'data-website-id': 'dc758a95-775c-44f5-9805-2d2ee8a6dfb0'
+      }
+    }
+  ],
   integrations: [
     starlight({
       title: 'Gasoline Agentic Devtools',
