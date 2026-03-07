@@ -104,3 +104,74 @@ func TestWriteOutput_Empty(t *testing.T) {
 		t.Errorf("expected no output for empty context, got %q", buf.String())
 	}
 }
+
+func TestDetectAgent_Default(t *testing.T) {
+	// Clear any env vars that might be set.
+	t.Setenv("GEMINI_SESSION_ID", "")
+	t.Setenv("CODEX_SESSION_ID", "")
+	if got := DetectAgent(); got != AgentClaude {
+		t.Errorf("DetectAgent() = %q, want %q", got, AgentClaude)
+	}
+}
+
+func TestDetectAgent_Gemini(t *testing.T) {
+	t.Setenv("GEMINI_SESSION_ID", "test-session")
+	if got := DetectAgent(); got != AgentGemini {
+		t.Errorf("DetectAgent() = %q, want %q", got, AgentGemini)
+	}
+}
+
+func TestDetectAgent_Codex(t *testing.T) {
+	t.Setenv("CODEX_SESSION_ID", "test-session")
+	t.Setenv("GEMINI_SESSION_ID", "")
+	if got := DetectAgent(); got != AgentCodex {
+		t.Errorf("DetectAgent() = %q, want %q", got, AgentCodex)
+	}
+}
+
+func TestWriteOutput_GeminiFormat(t *testing.T) {
+	t.Setenv("GEMINI_SESSION_ID", "test-session")
+
+	var buf bytes.Buffer
+	if err := WriteOutput(&buf, "test context"); err != nil {
+		t.Fatalf("WriteOutput: %v", err)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(buf.Bytes(), &raw); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	hso, ok := raw["hookSpecificOutput"]
+	if !ok {
+		t.Fatal("expected hookSpecificOutput key for Gemini format")
+	}
+
+	var inner map[string]string
+	if err := json.Unmarshal(hso, &inner); err != nil {
+		t.Fatalf("unmarshal inner: %v", err)
+	}
+
+	if inner["additionalContext"] != "test context" {
+		t.Errorf("additionalContext = %q, want 'test context'", inner["additionalContext"])
+	}
+}
+
+func TestWriteOutput_ClaudeFormat(t *testing.T) {
+	t.Setenv("GEMINI_SESSION_ID", "")
+	t.Setenv("CODEX_SESSION_ID", "")
+
+	var buf bytes.Buffer
+	if err := WriteOutput(&buf, "test context"); err != nil {
+		t.Fatalf("WriteOutput: %v", err)
+	}
+
+	var out Output
+	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if out.AdditionalContext != "test context" {
+		t.Errorf("AdditionalContext = %q, want 'test context'", out.AdditionalContext)
+	}
+}

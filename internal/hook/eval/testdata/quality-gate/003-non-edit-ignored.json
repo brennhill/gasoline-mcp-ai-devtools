@@ -1,0 +1,13 @@
+{
+  "description": "Read tool should not trigger quality gate",
+  "hook": "quality-gate",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO"}
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 50
+  }
+}

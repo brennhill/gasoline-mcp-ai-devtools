@@ -1,0 +1,15 @@
+{
+  "description": "Edit introduces http.Client{} — should trigger decision guard",
+  "hook": "decision-guard",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO", "new_string": "client := &http.Client{Timeout: 5 * time.Second}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["ARCHITECTURAL DECISIONS", "DECISION-001", "shared HTTP client", "DECISION GUARD"],
+    "not_contains": ["DECISION-003"],
+    "max_latency_ms": 200
+  }
+}

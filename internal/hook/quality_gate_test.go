@@ -168,9 +168,9 @@ func TestFindProjectRoot_Nested(t *testing.T) {
 	fp := filepath.Join(nested, "foo.go")
 	os.WriteFile(fp, []byte("package pkg\n"), 0644)
 
-	root := findProjectRoot(fp)
+	root := FindProjectRoot(fp)
 	if root != dir {
-		t.Errorf("findProjectRoot = %q, want %q", root, dir)
+		t.Errorf("FindProjectRoot = %q, want %q", root, dir)
 	}
 }
 

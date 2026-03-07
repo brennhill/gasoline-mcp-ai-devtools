@@ -1,5 +1,5 @@
 // main.go — Entry point for the gasoline-hooks binary.
-// Standalone CLI for Claude Code PostToolUse hooks (quality-gate, compress-output).
+// Standalone CLI for AI coding agent hooks (Claude Code, Gemini CLI, Codex).
 // Can be installed independently or as part of the full Gasoline suite.
 
 package main
@@ -22,6 +22,9 @@ const defaultDaemonPort = "7890"
 var subcommands = map[string]func() int{
 	"compress-output": runCompressOutput,
 	"quality-gate":    runQualityGate,
+	"session-track":   runSessionTrack,
+	"blast-radius":    runBlastRadius,
+	"decision-guard":  runDecisionGuard,
 }
 
 func main() {
@@ -51,25 +54,40 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `gasoline-hooks — Claude Code quality hooks
+	fmt.Fprintf(os.Stderr, `gasoline-hooks — AI coding agent hooks (Claude Code, Gemini CLI, Codex)
 
 Usage: gasoline-hooks <command>
 
 Commands:
   quality-gate      Check edited files against project standards
   compress-output   Compress verbose test/build output
+  session-track     Track file reads/edits, detect redundant reads
+  blast-radius      Warn about downstream impact of edits
+  decision-guard    Enforce locked architectural decisions
 
 Flags:
   --version         Show version
   --help            Show this help
 
-These hooks read Claude Code PostToolUse JSON from stdin and write
-additionalContext JSON to stdout. Configure them in .claude/settings.json:
+These hooks read PostToolUse/AfterTool JSON from stdin and write
+additionalContext JSON to stdout. Auto-detects Claude/Gemini/Codex.
 
+Claude Code (.claude/settings.json):
   "hooks": {
     "PostToolUse": [
-      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "gasoline-hooks quality-gate", "timeout": 10}]},
-      {"matcher": "Bash", "hooks": [{"type": "command", "command": "gasoline-hooks compress-output", "timeout": 10}]}
+      {"matcher": "Edit|Write", "hooks": [
+        {"type": "command", "command": "gasoline-hooks quality-gate", "timeout": 10},
+        {"type": "command", "command": "gasoline-hooks blast-radius", "timeout": 10},
+        {"type": "command", "command": "gasoline-hooks decision-guard", "timeout": 10},
+        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+      ]},
+      {"matcher": "Read", "hooks": [
+        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+      ]},
+      {"matcher": "Bash", "hooks": [
+        {"type": "command", "command": "gasoline-hooks compress-output", "timeout": 10},
+        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+      ]}
     ]
   }
 
@@ -115,6 +133,82 @@ func runQualityGate() int {
 	}
 
 	result := hook.RunQualityGate(input)
+	if result == nil {
+		return 0
+	}
+
+	if err := hook.WriteOutput(os.Stdout, result.FormatContext()); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// runSessionTrack records the tool use and injects session context.
+func runSessionTrack() int {
+	input, err := hook.ReadInput(os.Stdin)
+	if err != nil {
+		return 0
+	}
+
+	sessionDir, err := hook.SessionDir()
+	if err != nil {
+		return 0 // Graceful degradation — can't track without session dir.
+	}
+
+	// Clean stale sessions in the background.
+	go hook.CleanStaleSessions()
+
+	result := hook.RunSessionTrack(input, sessionDir)
+	if result == nil {
+		return 0
+	}
+
+	if err := hook.WriteOutput(os.Stdout, result.FormatContext()); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// runBlastRadius checks for downstream impact of file edits.
+func runBlastRadius() int {
+	input, err := hook.ReadInput(os.Stdin)
+	if err != nil {
+		return 0
+	}
+
+	fields := input.ParseToolInput()
+	projectRoot := hook.FindProjectRoot(fields.FilePath)
+	if projectRoot == "" {
+		return 0
+	}
+
+	sessionDir, _ := hook.SessionDir()
+
+	result := hook.RunBlastRadius(input, projectRoot, sessionDir)
+	if result == nil {
+		return 0
+	}
+
+	if err := hook.WriteOutput(os.Stdout, result.FormatContext()); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// runDecisionGuard enforces locked architectural decisions.
+func runDecisionGuard() int {
+	input, err := hook.ReadInput(os.Stdin)
+	if err != nil {
+		return 0
+	}
+
+	fields := input.ParseToolInput()
+	projectRoot := hook.FindProjectRoot(fields.FilePath)
+	if projectRoot == "" {
+		return 0
+	}
+
+	result := hook.RunDecisionGuard(input, projectRoot)
 	if result == nil {
 		return 0
 	}

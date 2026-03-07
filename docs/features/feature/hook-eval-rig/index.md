@@ -1,25 +1,22 @@
 ---
 doc_type: feature_index
 feature_id: feature-hook-eval-rig
-status: proposed
+status: implemented
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-07
 code_paths:
-  - cmd/hooks/eval_test.go
-  - internal/hook/eval/
-  - scripts/eval/
+  - internal/hook/eval/eval.go
+  - internal/hook/eval/testdata/
 test_paths:
-  - cmd/hooks/eval_test.go
   - internal/hook/eval/eval_test.go
-  - scripts/eval/
 ---
 
 # Hook Eval Rig
 
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
-| **Status**    | proposed                                |
+| **Status**    | implemented (Tier 1)                    |
 | **Binary**    | gasoline-hooks                          |
 | **Command**   | `gasoline-hooks eval`                   |
 | **Purpose**   | Measure token savings, accuracy, and redundancy elimination |

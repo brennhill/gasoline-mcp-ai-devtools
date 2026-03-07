@@ -1,0 +1,20 @@
+{
+  "description": "Edit a file with session history — should inject session summary",
+  "hook": "session-track",
+  "session_state": {
+    "touches": [
+      {"t": "2026-03-07T14:00:00Z", "tool": "Read", "file": "/project/handlers.go", "action": "read"},
+      {"t": "2026-03-07T14:01:00Z", "tool": "Read", "file": "/project/routes.go", "action": "read"},
+      {"t": "2026-03-07T14:02:00Z", "tool": "Bash", "file": "", "action": "bash", "summary": "go test ./..."}
+    ]
+  },
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "/project/handlers.go", "new_string": "func HandleUser() {}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["[Session]", "files read", "edited", "commands"],
+    "max_latency_ms": 100
+  }
+}

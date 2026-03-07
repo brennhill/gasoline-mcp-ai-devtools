@@ -1,0 +1,14 @@
+{
+  "description": "Edit a file near the size limit — should warn about file size",
+  "hook": "quality-gate",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_LARGE_HANDLER_GO", "new_string": "// added line"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["NOTE:", "Approaching the limit"],
+    "max_latency_ms": 500
+  }
+}

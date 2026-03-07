@@ -1,0 +1,19 @@
+{
+  "description": "Re-read a file that was edited since last read — should mention edit",
+  "hook": "session-track",
+  "session_state": {
+    "touches": [
+      {"t": "2026-03-07T14:00:00Z", "tool": "Read", "file": "/project/handlers.go", "action": "read"},
+      {"t": "2026-03-07T14:05:00Z", "tool": "Edit", "file": "/project/handlers.go", "action": "edit", "summary": "refactored validateInput"}
+    ]
+  },
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "/project/handlers.go"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["[Session]", "You read this file", "edited it"],
+    "max_latency_ms": 100
+  }
+}

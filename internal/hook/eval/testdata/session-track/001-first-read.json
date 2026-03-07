@@ -1,0 +1,12 @@
+{
+  "description": "First read of a file — should not produce redundant read warning",
+  "hook": "session-track",
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "/project/handlers.go"}
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 100
+  }
+}
