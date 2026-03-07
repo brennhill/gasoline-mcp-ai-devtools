@@ -14,6 +14,7 @@ import { CDP_VERSION } from '../../lib/constants.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { delay } from '../../lib/timeout-utils.js';
 import { postDaemonJSON } from '../../lib/daemon-http.js';
+import { captureVisibleTabSafe } from '../tab-state.js';
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
@@ -133,12 +134,11 @@ registerCommand('screenshot', async (ctx) => {
     const fullPage = ctx.params.full_page === true;
     try {
         const tab = await chrome.tabs.get(ctx.tabId);
-        await chrome.tabs.update(ctx.tabId, { active: true });
         if (fullPage) {
             await captureFullPage(ctx, tab, format, quality);
             return;
         }
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
             format: format,
             quality
         });
@@ -242,7 +242,7 @@ async function captureFullPage(ctx, tab, format, quality) {
         debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
             error: errorMessage(err)
         });
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
             format: format,
             quality
         });
