@@ -391,27 +391,7 @@ const solutions = [
                 )}
 
                 {solution.id === 'debug' && (
-                  <div class="gvis-console" aria-hidden="true">
-                    <div class="gvis-console-bar">
-                      <span class="gvis-dot gvis-dot--r"></span>
-                      <span class="gvis-dot gvis-dot--y"></span>
-                      <span class="gvis-dot gvis-dot--g"></span>
-                      <code>{solution.visual.fields[0].value}</code>
-                    </div>
-                    <div class="gvis-console-body">
-                      <p class="gvis-line gvis-line--err"><span>ERR</span> TypeError: Cannot read 'id' of null</p>
-                      <p class="gvis-line gvis-line--net"><span>NET</span> POST /api/payment &rarr; 500</p>
-                      <p class="gvis-line gvis-line--err"><span>ERR</span> Unhandled promise rejection</p>
-                      <p class="gvis-line gvis-line--dom"><span>DOM</span> #checkout mutated after unmount</p>
-                      <p class="gvis-line gvis-line--net"><span>NET</span> GET /api/session &rarr; 401</p>
-                      <p class="gvis-line gvis-line--err"><span>ERR</span> Network error on retry</p>
-                    </div>
-                    <div class="gvis-console-footer">
-                      {solution.visual.metrics.map((m) => (
-                        <span><strong>{m.value}</strong> {m.label.toLowerCase()}</span>
-                      ))}
-                    </div>
-                  </div>
+                  <img src="/images/landing/sparky-debug.png" alt="Sparky debugging code with magnifying glass" class="gmodern-solution-visual-image" />
                 )}
 
                 {solution.id === 'demos' && (
