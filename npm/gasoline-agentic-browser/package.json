@@ -5,7 +5,8 @@
   "license": "AGPL-3.0-only",
   "bin": {
     "gasoline-agentic-browser": "bin/gasoline-agentic-browser",
-    "gasoline-agentic-devtools": "bin/gasoline-agentic-browser"
+    "gasoline-agentic-devtools": "bin/gasoline-agentic-browser",
+    "gasoline-hooks": "bin/gasoline-hooks"
   },
   "scripts": {
     "preinstall": "node lib/kill-daemon.js",

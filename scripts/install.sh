@@ -8,10 +8,22 @@
 #
 # USAGE:
 #   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+#   curl -sSL ... | sh -s -- --hooks-only   # Install only the hooks binary
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
+
+# ─────────────────────────────────────────────────────────────
+# CLI flag parsing
+# ─────────────────────────────────────────────────────────────
+
+HOOKS_ONLY="${GASOLINE_HOOKS_ONLY:-0}"
+for arg in "$@"; do
+    case "$arg" in
+        --hooks-only) HOOKS_ONLY=1 ;;
+    esac
+done
 
 # Configuration: Define the single source of truth for paths and repository metadata.
 REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
@@ -23,8 +35,9 @@ BACKUP_EXT_DIR="$INSTALL_DIR/.extension-backup-$$"
 # The VERSION file on the STABLE branch is the source of truth for the latest release.
 VERSION_URL="https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
 STRICT_CHECKSUM="${GASOLINE_INSTALL_STRICT:-0}"
-# Minimum plausible binary size (5 MB). Catches truncated downloads and HTML error pages.
+# Minimum plausible binary sizes. Catches truncated downloads and HTML error pages.
 MIN_BINARY_BYTES=5000000
+MIN_HOOKS_BINARY_BYTES=2000000
 
 # UI: Define colors for high-visibility terminal output.
 RED='\033[0;31m'
@@ -53,7 +66,11 @@ cat <<'EOF'
   \____|\__,_|___/\___/|_|_|_| |_|\___|
 EOF
 echo -e "${NC}"
-echo -e "${ORANGE}${BOLD}Gasoline Installer${NC}"
+if [ "$HOOKS_ONLY" = "1" ]; then
+    echo -e "${ORANGE}${BOLD}Gasoline Hooks Installer${NC} (hooks-only mode)"
+else
+    echo -e "${ORANGE}${BOLD}Gasoline Installer${NC}"
+fi
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
     echo -e "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)"
@@ -69,7 +86,7 @@ check_prerequisites() {
     if ! command -v curl >/dev/null 2>&1; then
         missing="${missing}  - curl (required for downloads)\n"
     fi
-    if ! command -v unzip >/dev/null 2>&1; then
+    if [ "$HOOKS_ONLY" != "1" ] && ! command -v unzip >/dev/null 2>&1; then
         missing="${missing}  - unzip (required for extension extraction)\n"
     fi
 
@@ -82,8 +99,12 @@ check_prerequisites() {
 }
 
 check_disk_space() {
-    # Need ~50 MB for binary + extension + temp files.
+    # Full install: ~50 MB (binary + extension + temp files).
+    # Hooks only:   ~15 MB (hooks binary + temp files).
     local required_mb=50
+    if [ "$HOOKS_ONLY" = "1" ]; then
+        required_mb=15
+    fi
     local available_mb=0
 
     if command -v df >/dev/null 2>&1; then
@@ -350,14 +371,22 @@ fi
 # ─────────────────────────────────────────────────────────────
 
 CANONICAL_GASOLINE_BIN="$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT"
+GASOLINE_HOOKS_BIN="$BIN_DIR/gasoline-hooks$BINARY_EXT"
 LEGACY_GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
 LEGACY_GASOLINE_BROWSER_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
 IS_UPGRADE=0
 PREVIOUS_VERSION=""
 
-if [ -x "$CANONICAL_GASOLINE_BIN" ]; then
-    PREVIOUS_VERSION=$("$CANONICAL_GASOLINE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-    IS_UPGRADE=1
+if [ "$HOOKS_ONLY" = "1" ]; then
+    if [ -x "$GASOLINE_HOOKS_BIN" ]; then
+        PREVIOUS_VERSION=$("$GASOLINE_HOOKS_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+        IS_UPGRADE=1
+    fi
+else
+    if [ -x "$CANONICAL_GASOLINE_BIN" ]; then
+        PREVIOUS_VERSION=$("$CANONICAL_GASOLINE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+        IS_UPGRADE=1
+    fi
 fi
 
 if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
@@ -387,69 +416,91 @@ echo -e "Install root: $INSTALL_DIR"
 # 5. Stop stale processes before binary replacement
 # ─────────────────────────────────────────────────────────────
 
-kill_stale_gasoline_processes
+# Hooks-only installs don't run a daemon — no processes to stop.
+if [ "$HOOKS_ONLY" != "1" ]; then
+    kill_stale_gasoline_processes
+fi
 
 # ─────────────────────────────────────────────────────────────
 # 6. Binary Installation
 # ─────────────────────────────────────────────────────────────
 
-BINARY_NAME="gasoline-agentic-devtools-$PLATFORM-$E_ARCH$BINARY_EXT"
-BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 
-echo -e "Downloading binary..."
-if ! curl_retry "$TEMP_ROOT/gasoline_dl" "$BINARY_URL"; then
-    echo -e "${RED}Download failed after 3 attempts.${NC}"
-    echo -e "URL: $BINARY_URL"
-    echo -e "Check your network connection, proxy settings, or try again later."
-    exit 1
-fi
+# download_and_verify fetches a binary, validates size, verifies checksum, and installs it.
+# Usage: download_and_verify <asset_name> <dest_path> <min_bytes> <label>
+download_and_verify() {
+    local asset_name="$1"
+    local dest_path="$2"
+    local min_bytes="$3"
+    local label="$4"
+    local dl_url="https://github.com/$REPO/releases/download/v$VERSION/$asset_name"
+    local dl_path="$TEMP_ROOT/${asset_name}_dl"
 
-# Validate binary size — catch truncated downloads and HTML error pages.
-DOWNLOADED_SIZE=$(wc -c < "$TEMP_ROOT/gasoline_dl" | tr -d ' ')
-if [ "$DOWNLOADED_SIZE" -lt "$MIN_BINARY_BYTES" ]; then
-    echo -e "${RED}Downloaded file is too small (${DOWNLOADED_SIZE} bytes, expected >${MIN_BINARY_BYTES}).${NC}"
-    echo -e "The download may have been truncated or intercepted by a proxy."
-    exit 1
-fi
+    echo -e "Downloading ${label}..."
+    if ! curl_retry "$dl_path" "$dl_url"; then
+        echo -e "${RED}Download failed after 3 attempts.${NC}"
+        echo -e "URL: $dl_url"
+        echo -e "Check your network connection, proxy settings, or try again later."
+        exit 1
+    fi
 
-# ─────────────────────────────────────────────────────────────
-# 7. Integrity Verification (SHA-256)
-# ─────────────────────────────────────────────────────────────
+    # Validate binary size — catch truncated downloads and HTML error pages.
+    local dl_size
+    dl_size=$(wc -c < "$dl_path" | tr -d ' ')
+    if [ "$dl_size" -lt "$min_bytes" ]; then
+        echo -e "${RED}Downloaded file is too small (${dl_size} bytes, expected >${min_bytes}).${NC}"
+        echo -e "The download may have been truncated or intercepted by a proxy."
+        exit 1
+    fi
 
-CHECKSUM_VERIFIED=0
+    # Integrity Verification (SHA-256).
+    if [ -f "$TEMP_ROOT/checksums.txt" ]; then
+        local expected_hash
+        expected_hash=$(grep "$asset_name" "$TEMP_ROOT/checksums.txt" | awk '{print $1}' || true)
+        local actual_hash=""
+
+        if [ -z "$expected_hash" ]; then
+            if [ "$STRICT_CHECKSUM" = "1" ]; then
+                echo -e "${RED}Strict checksum mode: checksums.txt missing entry for $asset_name.${NC}"
+                exit 1
+            fi
+        elif command -v shasum >/dev/null 2>&1; then
+            actual_hash=$(shasum -a 256 "$dl_path" | awk '{print $1}')
+        elif command -v sha256sum >/dev/null 2>&1; then
+            actual_hash=$(sha256sum "$dl_path" | awk '{print $1}')
+        else
+            if [ "$STRICT_CHECKSUM" = "1" ]; then
+                echo -e "${RED}Strict checksum mode: no SHA-256 tool found.${NC}"
+                exit 1
+            fi
+        fi
+
+        if [ -n "${actual_hash:-}" ]; then
+            if [ "$expected_hash" != "$actual_hash" ]; then
+                echo -e "${RED}Checksum verification failed for ${label}!${NC}"
+                echo -e "Expected: $expected_hash"
+                echo -e "Actual:   $actual_hash"
+                exit 1
+            fi
+            echo -e "${GREEN}  Checksum verified.${NC}"
+        fi
+    fi
+
+    mv "$dl_path" "$dest_path"
+    chmod 755 "$dest_path"
+
+    # Quick smoke test.
+    if ! "$dest_path" --version >/dev/null 2>&1; then
+        echo -e "${RED}${label} smoke test failed — the binary cannot execute.${NC}"
+        echo -e "Platform: $PLATFORM-$E_ARCH"
+        exit 1
+    fi
+}
+
+# Fetch checksums once for all binaries.
 if curl -fsSL --max-time 15 "$CHECKSUM_URL" -o "$TEMP_ROOT/checksums.txt" 2>/dev/null; then
-    EXPECTED_HASH=$(grep "$BINARY_NAME" "$TEMP_ROOT/checksums.txt" | awk '{print $1}' || true)
-    ACTUAL_HASH=""
-
-    if [ -z "$EXPECTED_HASH" ]; then
-        if [ "$STRICT_CHECKSUM" = "1" ]; then
-            echo -e "${RED}Strict checksum mode: checksums.txt missing entry for $BINARY_NAME.${NC}"
-            exit 1
-        fi
-        echo -e "${YELLOW}  checksums.txt did not contain $BINARY_NAME; continuing without checksum verification.${NC}"
-    elif command -v shasum >/dev/null 2>&1; then
-        ACTUAL_HASH=$(shasum -a 256 "$TEMP_ROOT/gasoline_dl" | awk '{print $1}')
-    elif command -v sha256sum >/dev/null 2>&1; then
-        ACTUAL_HASH=$(sha256sum "$TEMP_ROOT/gasoline_dl" | awk '{print $1}')
-    else
-        if [ "$STRICT_CHECKSUM" = "1" ]; then
-            echo -e "${RED}Strict checksum mode: no SHA-256 tool found (need shasum or sha256sum).${NC}"
-            exit 1
-        fi
-        echo -e "${YELLOW}  No SHA-256 tool found (shasum/sha256sum); continuing without checksum verification.${NC}"
-    fi
-
-    if [ -n "${ACTUAL_HASH:-}" ]; then
-        if [ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]; then
-            echo -e "${RED}Checksum verification failed! The binary may be corrupted or tampered with.${NC}"
-            echo -e "Expected: $EXPECTED_HASH"
-            echo -e "Actual:   $ACTUAL_HASH"
-            exit 1
-        fi
-        CHECKSUM_VERIFIED=1
-        echo -e "${GREEN}Checksum verified.${NC}"
-    fi
+    :
 else
     if [ "$STRICT_CHECKSUM" = "1" ]; then
         echo -e "${RED}Strict checksum mode: failed to download checksum manifest.${NC}"
@@ -458,32 +509,30 @@ else
     echo -e "${YELLOW}  Checksum verification skipped (could not fetch manifest).${NC}"
 fi
 
-if [ "$STRICT_CHECKSUM" = "1" ] && [ "$CHECKSUM_VERIFIED" -ne 1 ]; then
-    echo -e "${RED}Strict checksum mode: verification did not complete successfully.${NC}"
-    exit 1
+# --- Install main binary (skip for --hooks-only) ---
+if [ "$HOOKS_ONLY" != "1" ]; then
+    BINARY_NAME="gasoline-agentic-devtools-$PLATFORM-$E_ARCH$BINARY_EXT"
+    download_and_verify "$BINARY_NAME" "$CANONICAL_GASOLINE_BIN" "$MIN_BINARY_BYTES" "gasoline binary"
+
+    if sync_binary_compat_aliases "$CANONICAL_GASOLINE_BIN" "$LEGACY_GASOLINE_BIN" "$LEGACY_GASOLINE_BROWSER_BIN"; then
+        echo -e "${GREEN}Binary installed with command aliases.${NC}"
+    else
+        echo -e "${YELLOW}  Core binary installed, but one or more compatibility aliases could not be created.${NC}"
+    fi
 fi
 
-# Move the verified binary to its final path and set executable permissions.
-mv "$TEMP_ROOT/gasoline_dl" "$CANONICAL_GASOLINE_BIN"
-chmod 755 "$CANONICAL_GASOLINE_BIN"
+# --- Always install hooks binary ---
+HOOKS_BINARY_NAME="gasoline-hooks-$PLATFORM-$E_ARCH$BINARY_EXT"
+download_and_verify "$HOOKS_BINARY_NAME" "$GASOLINE_HOOKS_BIN" "$MIN_HOOKS_BINARY_BYTES" "gasoline-hooks binary"
+echo -e "${GREEN}gasoline-hooks installed.${NC}"
 
-# Quick smoke test — verify the binary actually runs.
-if ! "$CANONICAL_GASOLINE_BIN" --version >/dev/null 2>&1; then
-    echo -e "${RED}Binary smoke test failed — the downloaded binary cannot execute.${NC}"
-    echo -e "This may indicate an architecture mismatch or a corrupted download."
-    echo -e "Platform: $PLATFORM-$E_ARCH, Binary: $BINARY_NAME"
-    exit 1
-fi
+# ─────────────────────────────────────────────────────────────
+# 7. Extension, Config, Daemon (skip for --hooks-only)
+# ─────────────────────────────────────────────────────────────
 
-if sync_binary_compat_aliases "$CANONICAL_GASOLINE_BIN" "$LEGACY_GASOLINE_BIN" "$LEGACY_GASOLINE_BROWSER_BIN"; then
-    echo -e "${GREEN}Binary installed with command aliases.${NC}"
+if [ "$HOOKS_ONLY" = "1" ]; then
+    echo -e "Skipping extension, daemon, and MCP config (hooks-only mode)."
 else
-    echo -e "${YELLOW}  Core binary installed, but one or more compatibility aliases could not be created.${NC}"
-fi
-
-# ─────────────────────────────────────────────────────────────
-# 8. Extension Staging
-# ─────────────────────────────────────────────────────────────
 
 echo -e "Refreshing browser extension..."
 EXT_ZIP_NAME="gasoline-extension-v$VERSION.zip"
@@ -521,7 +570,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 9. Native Configuration (Go binary --install)
+# 7b. Native Configuration (Go binary --install)
 # ─────────────────────────────────────────────────────────────
 
 echo -e "Finalizing configuration..."
@@ -534,7 +583,7 @@ if ! "$CANONICAL_GASOLINE_BIN" --install; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 10. Post-install health verification
+# 8. Post-install health verification
 # ─────────────────────────────────────────────────────────────
 
 # Give the daemon a moment to start.
@@ -553,7 +602,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 11. Register start-on-login
+# 9. Register start-on-login
 # ─────────────────────────────────────────────────────────────
 
 register_autostart() {
@@ -647,8 +696,10 @@ DESKTOP
 
 register_autostart
 
+fi # end HOOKS_ONLY guard
+
 # ─────────────────────────────────────────────────────────────
-# 12. PATH registration
+# 10. PATH registration
 # ─────────────────────────────────────────────────────────────
 
 register_path() {
@@ -687,11 +738,24 @@ register_path() {
 register_path
 
 # ─────────────────────────────────────────────────────────────
-# 13. Final summary
+# 11. Final summary
 # ─────────────────────────────────────────────────────────────
 
 echo ""
-if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
+if [ "$HOOKS_ONLY" = "1" ]; then
+    if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
+        echo -e "${GREEN}${BOLD}gasoline-hooks upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+    else
+        echo -e "${GREEN}${BOLD}gasoline-hooks v$VERSION installed successfully.${NC}"
+    fi
+    echo ""
+    echo -e "Add quality gates to your Claude Code project:"
+    echo -e "  gasoline-hooks quality-gate   (check code against project standards)"
+    echo -e "  gasoline-hooks compress-output (compress verbose test/build output)"
+    echo ""
+    echo -e "Want the full Gasoline suite (browser devtools, MCP server, extension)?"
+    echo -e "  curl -fsSL https://gasoline.dev/install.sh | sh"
+elif [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
     echo -e "${GREEN}${BOLD}Gasoline upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
 else
     echo -e "${GREEN}${BOLD}Gasoline v$VERSION installed successfully.${NC}"
