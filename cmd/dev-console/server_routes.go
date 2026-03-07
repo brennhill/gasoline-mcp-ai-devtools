@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tracking"
 )
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse).
@@ -118,6 +119,9 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 	mux.HandleFunc("/doctor", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleDoctorHTTP(w, cap)
 	}))
+
+	// NOT MCP — Token savings tracking from hook scripts (POST from output-compression-hook.sh)
+	mux.HandleFunc("/api/token-savings", corsMiddleware(tracking.HandleRecordTokenSavings(server.tokenTracker)))
 
 	// NOT MCP — Graceful shutdown (use CLI --stop flag, not MCP)
 	mux.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
