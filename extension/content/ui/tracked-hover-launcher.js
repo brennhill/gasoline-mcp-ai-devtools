@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js';
+import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
 import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
@@ -21,6 +22,7 @@ let trackedEnabled = false;
 let hiddenUntilPopupOpen = false;
 let hideTimer = null;
 let recordingStorageListener = null;
+let recordingStorageUnsubscribe = null;
 let runtimeListenerInstalled = false;
 let annotationListenerInstalled = false;
 /**
@@ -32,16 +34,8 @@ async function checkTerminalReachable() {
     try {
         let baseUrl = DEFAULT_SERVER_URL;
         try {
-            const result = await new Promise((resolve) => {
-                chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-                    if (chrome.runtime.lastError) {
-                        resolve({});
-                        return;
-                    }
-                    resolve(r);
-                });
-            });
-            baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+            const value = await getLocal(StorageKey.SERVER_URL);
+            baseUrl = value || DEFAULT_SERVER_URL;
         }
         catch { /* use default */ }
         const url = new URL(baseUrl);
@@ -95,15 +89,12 @@ function updateStopButtonVisibility(active) {
         return;
     stopButtonEl.style.display = active ? 'flex' : 'none';
 }
-function syncRecordingStateFromStorage() {
+async function syncRecordingStateFromStorage() {
     try {
-        chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-            if (chrome.runtime.lastError)
-                return;
-            const rec = result[StorageKey.RECORDING];
-            const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
-            updateStopButtonVisibility(active);
-        });
+        const value = await getLocal(StorageKey.RECORDING);
+        const rec = value;
+        const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
+        updateStopButtonVisibility(active);
     }
     catch {
         // Extension context invalidated
@@ -122,40 +113,33 @@ function installRecordingStorageSync() {
         const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
         updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
 }
 function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
         return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+        recordingStorageUnsubscribe();
+        recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
 }
-function syncHiddenStateFromStorage(onSynced) {
+async function syncHiddenStateFromStorage() {
     try {
-        chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-            if (chrome.runtime.lastError) {
-                onSynced(); // Proceed with default state on storage failure
-                return;
-            }
-            hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
-            onSynced();
-        });
+        const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+        hiddenUntilPopupOpen = Boolean(value);
     }
     catch {
-        onSynced(); // Extension context invalidated — proceed with defaults
+        // Extension context invalidated — proceed with defaults
     }
 }
 function persistHiddenState(hidden) {
     try {
         if (hidden) {
-            chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-                void chrome.runtime.lastError; // Best-effort persistence — no user-visible impact on failure
-            });
+            void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
             return;
         }
-        chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-            void chrome.runtime.lastError;
-        });
+        void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     }
     catch {
         // Extension context invalidated — hidden state won't persist but functionality is unaffected
@@ -308,7 +292,7 @@ function runScreenshotCapture() {
         catch { /* no audio */ }
     }
     try {
-        chrome.runtime.sendMessage({ type: 'captureScreenshot' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'capture_screenshot' }, (response) => {
             const err = chrome.runtime.lastError;
             const success = !err && response !== undefined && response.success !== false;
             showScreenshotFlash(success);
@@ -692,9 +676,10 @@ function unmountLauncher() {
     // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
     // The PTY session survives launcher hide/show so users don't lose work.
 }
-export function setTrackedHoverLauncherEnabled(enabled) {
+export async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
 }
 //# sourceMappingURL=tracked-hover-launcher.js.map

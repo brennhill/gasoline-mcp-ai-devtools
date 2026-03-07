@@ -336,7 +336,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter
 			return encoded
 		}
 
-		encoded, _ := json.Marshal(map[string]any{
+		encoded := buildQueryParams(map[string]any{
 			"status":             "complete",
 			"annot_session_name": sessionName,
 			"pages":              []any{},
@@ -357,7 +357,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter
 		return encoded
 	}
 
-	encoded, _ := json.Marshal(map[string]any{
+	encoded := buildQueryParams(map[string]any{
 		"status":          "complete",
 		"annotations":     []any{},
 		"count":           0,
@@ -379,8 +379,8 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 		}
 	}
 
-	if params.CorrelationID == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))
+	if resp, blocked := requireString(req, params.CorrelationID, "correlation_id", "Add the 'correlation_id' from the annotation you want detail for"); blocked {
+		return resp
 	}
 
 	detail, found := h.annotationStore.GetDetail(params.CorrelationID)

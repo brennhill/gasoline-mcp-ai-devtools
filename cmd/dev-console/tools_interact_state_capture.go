@@ -5,7 +5,6 @@
 package main
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
@@ -33,7 +32,7 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 
 	correlationID := newCorrelationID("state_capture")
 
-	scriptArgs, _ := json.Marshal(map[string]any{
+	scriptArgs := buildQueryParams(map[string]any{
 		"action": "execute_js",
 		"script": act.StateCaptureScript,
 		"world":  "main",
@@ -73,7 +72,7 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 	correlationID := newCorrelationID("state_restore")
 
 	script := act.BuildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
-	scriptArgs, _ := json.Marshal(map[string]any{
+	scriptArgs := buildQueryParams(map[string]any{
 		"action": "execute_js",
 		"script": script,
 		"world":  "main",
@@ -100,7 +99,7 @@ func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateDat
 	}
 	correlationID := newCorrelationID("nav")
 	// Error impossible: map contains only string values
-	navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
+	navArgs := buildQueryParams(map[string]any{"action": "navigate", "url": savedURL})
 	query := queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        navArgs,

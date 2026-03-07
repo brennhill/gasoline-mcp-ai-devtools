@@ -27,6 +27,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
+import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -169,7 +170,7 @@ function handleMessage(
   // Type validation: ensure message conforms to expected discriminated union
   // TypeScript's type system ensures exhaustiveness, but add logging for debugging
   switch (messageType) {
-    case 'GET_TAB_ID':
+    case 'get_tab_id':
       sendResponse({ tabId: sender.tab?.id })
       return true
 
@@ -198,7 +199,7 @@ function handleMessage(
       handleLogMessageAsync(message, sender, deps)
       return true
 
-    case 'getStatus':
+    case 'get_status':
       sendResponse({
         ...deps.getConnectionStatus(),
         serverUrl: deps.getServerUrl(),
@@ -211,42 +212,42 @@ function handleMessage(
       })
       return false
 
-    case 'clearLogs':
+    case 'clear_logs':
       handleClearLogsAsync(sendResponse, deps)
       return true
 
-    case 'setLogLevel':
+    case 'set_log_level':
       deps.setCurrentLogLevel(message.level)
       deps.saveSetting(StorageKey.LOG_LEVEL, message.level)
       return false
 
-    case 'setScreenshotOnError':
+    case 'set_screenshot_on_error':
       deps.setScreenshotOnError(message.enabled)
       deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled)
       sendResponse({ success: true })
       return false
 
-    case 'setAiWebPilotEnabled':
+    case 'set_ai_web_pilot_enabled':
       handleSetAiWebPilotEnabled(message.enabled, sendResponse, deps)
       return false
 
-    case 'getAiWebPilotEnabled':
+    case 'get_ai_web_pilot_enabled':
       sendResponse({ enabled: deps.getAiWebPilotEnabled() })
       return false
 
-    case 'getTrackingState':
+    case 'get_tracking_state':
       handleGetTrackingState(sendResponse, deps, sender.tab?.id)
       return true
 
-    case 'getDiagnosticState':
+    case 'get_diagnostic_state':
       handleGetDiagnosticState(sendResponse, deps)
       return true
 
-    case 'captureScreenshot':
+    case 'capture_screenshot':
       handleCaptureScreenshot(sendResponse, deps)
       return true
 
-    case 'setSourceMapEnabled':
+    case 'set_source_map_enabled':
       deps.setSourceMapEnabled(message.enabled)
       deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled)
       if (!message.enabled) {
@@ -255,55 +256,55 @@ function handleMessage(
       sendResponse({ success: true })
       return false
 
-    case 'setNetworkWaterfallEnabled':
-    case 'setPerformanceMarksEnabled':
-    case 'setActionReplayEnabled':
-    case 'setWebSocketCaptureEnabled':
-    case 'setWebSocketCaptureMode':
-    case 'setPerformanceSnapshotEnabled':
-    case 'setDeferralEnabled':
-    case 'setNetworkBodyCaptureEnabled':
-    case 'setActionToastsEnabled':
-    case 'setSubtitlesEnabled':
+    case 'set_network_waterfall_enabled':
+    case 'set_performance_marks_enabled':
+    case 'set_action_replay_enabled':
+    case 'set_web_socket_capture_enabled':
+    case 'set_web_socket_capture_mode':
+    case 'set_performance_snapshot_enabled':
+    case 'set_deferral_enabled':
+    case 'set_network_body_capture_enabled':
+    case 'set_action_toasts_enabled':
+    case 'set_subtitles_enabled':
       handleForwardedSetting(message, sendResponse, deps)
       return false
 
-    case 'setDebugMode':
+    case 'set_debug_mode':
       deps.setDebugMode(message.enabled)
       deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled)
       sendResponse({ success: true })
       return false
 
-    case 'getDebugLog':
+    case 'get_debug_log':
       sendResponse({ log: deps.exportDebugLog() })
       return false
 
-    case 'clearDebugLog':
+    case 'clear_debug_log':
       deps.clearDebugLog()
       deps.debugLog('lifecycle', 'Debug log cleared')
       sendResponse({ success: true })
       return false
 
-    case 'setServerUrl':
+    case 'set_server_url':
       handleSetServerUrl(message.url, sendResponse, deps)
       return false
 
-    case 'GASOLINE_CAPTURE_SCREENSHOT':
+    case 'gasoline_capture_screenshot':
       // Content script requests screenshot capture (while draw mode overlay is still visible)
       handleDrawModeCaptureScreenshot(sender, sendResponse)
       return true
 
-    case 'GASOLINE_PUSH_CHAT':
+    case 'gasoline_push_chat':
       handlePushChatAsync(message as { message: string; page_url: string }, sender, sendResponse)
       return true
 
-    case 'DRAW_MODE_COMPLETED':
+    case 'draw_mode_completed':
       // Fire-and-forget: content script sends draw mode results
       handleDrawModeCompletedAsync(message, sender, deps)
       return false
 
     default:
-      // screen_recording_start/stop, OFFSCREEN_*, MIC_GRANTED_CLOSE_TAB, REVEAL_FILE
+      // screen_recording_start/stop, offscreen_*, mic_granted_close_tab, reveal_file
       // are handled by recording-listeners.ts — return false so they can handle it.
       return false
   }
@@ -365,8 +366,7 @@ async function handleGetTrackingState(
   senderTabId?: number
 ): Promise<void> {
   try {
-    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
-    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
     const aiPilotEnabled = deps.getAiWebPilotEnabled()
 
     sendResponse({
@@ -389,7 +389,7 @@ async function handleGetTrackingState(
  */
 export async function broadcastTrackingState(untrackedTabId?: number | null): Promise<void> {
   try {
-    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
+    const result = await getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
     const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
     const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true
 
@@ -397,7 +397,7 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
     if (trackedTabId) {
       chrome.tabs
         .sendMessage(trackedTabId, {
-          type: 'trackingStateChanged',
+          type: 'tracking_state_changed',
           state: {
             isTracked: true,
             aiPilotEnabled: aiPilotEnabled
@@ -412,7 +412,7 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
     if (untrackedTabId && untrackedTabId !== trackedTabId) {
       chrome.tabs
         .sendMessage(untrackedTabId, {
-          type: 'trackingStateChanged',
+          type: 'tracking_state_changed',
           state: {
             isTracked: false,
             aiPilotEnabled: false
@@ -427,7 +427,7 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
   }
 }
 
-function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
+async function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandlerDependencies): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
@@ -437,12 +437,11 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     return
   }
 
-  chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
-    sendResponse({
-      cache: deps.getAiWebPilotEnabled(),
-      storage: result.aiWebPilotEnabled,
-      timestamp: new Date().toISOString()
-    })
+  const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
+  sendResponse({
+    cache: deps.getAiWebPilotEnabled(),
+    storage: value as boolean | undefined,
+    timestamp: new Date().toISOString()
   })
 }
 
@@ -593,42 +592,27 @@ interface StateSnapshotStorage {
 }
 
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export async function saveStateSnapshot(
   name: string,
   state: BrowserStateSnapshot
 ): Promise<{ success: boolean; snapshot_name: string; size_bytes: number }> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
-      snapshots[name] = {
-        ...state,
-        name,
-        size_bytes: sizeBytes
-      }
-      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-        resolve({
-          success: true,
-          snapshot_name: name,
-          size_bytes: sizeBytes
-        })
-      })
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
+  snapshots[name] = { ...state, name, size_bytes: sizeBytes }
+  await setLocal(SNAPSHOT_KEY, snapshots)
+  return { success: true, snapshot_name: name, size_bytes: sizeBytes }
 }
 
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export async function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      resolve(snapshots[name] || null)
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  return snapshots[name] || null
 }
 
 /**
@@ -637,31 +621,23 @@ export async function loadStateSnapshot(name: string): Promise<StoredStateSnapsh
 export async function listStateSnapshots(): Promise<
   Array<{ name: string; url: string; timestamp: number; size_bytes: number }>
 > {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      const list = Object.values(snapshots).map((s) => ({
-        name: s.name,
-        url: s.url,
-        timestamp: s.timestamp,
-        size_bytes: s.size_bytes
-      }))
-      resolve(list)
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  return Object.values(snapshots).map((s) => ({
+    name: s.name,
+    url: s.url,
+    timestamp: s.timestamp,
+    size_bytes: s.size_bytes
+  }))
 }
 
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export async function deleteStateSnapshot(name: string): Promise<{ success: boolean; deleted: string }> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
-      const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      delete snapshots[name]
-      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-        resolve({ success: true, deleted: name })
-      })
-    })
-  })
+  const existing = (await getLocal(SNAPSHOT_KEY)) as StateSnapshotStorage | undefined
+  const snapshots: StateSnapshotStorage = existing || {}
+  delete snapshots[name]
+  await setLocal(SNAPSHOT_KEY, snapshots)
+  return { success: true, deleted: name }
 }

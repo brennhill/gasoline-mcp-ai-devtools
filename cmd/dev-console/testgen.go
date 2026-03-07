@@ -50,7 +50,7 @@ func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args 
 	}
 	warnings = filterGenerateDispatchWarnings(warnings)
 
-	if errResp, ok := validateTestFromContextParams(req.ID, params); !ok {
+	if errResp, blocked := validateTestFromContextParams(req, params); blocked {
 		return errResp
 	}
 
@@ -82,36 +82,16 @@ func (h *testGenHandler) handleGenerateTestFromContext(req JSONRPCRequest, args 
 	return appendWarningsToResponse(resp, warnings)
 }
 
-func validateTestFromContextParams(reqID any, params TestFromContextRequest) (JSONRPCResponse, bool) {
-	if params.Context == "" {
-		return JSONRPCResponse{
-			JSONRPC: JSONRPCVersion,
-			ID:      reqID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'context' is missing",
-				"Add the 'context' parameter and call again",
-				withParam("context"),
-				withHint("Valid values: error, interaction, regression"),
-			),
-		}, false
-	}
+var validTestGenContexts = []string{"error", "interaction", "regression"}
 
-	if _, ok := testGenContextDispatch[params.Context]; !ok {
-		return JSONRPCResponse{
-			JSONRPC: JSONRPCVersion,
-			ID:      reqID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Invalid context value: "+params.Context,
-				"Use a valid context value",
-				withParam("context"),
-				withHint("Valid values: error, interaction, regression"),
-			),
-		}, false
+func validateTestFromContextParams(req JSONRPCRequest, params TestFromContextRequest) (JSONRPCResponse, bool) {
+	if resp, blocked := requireString(req, params.Context, "context", "Add the 'context' parameter and call again"); blocked {
+		return resp, true
 	}
-
-	return JSONRPCResponse{}, true
+	if resp, blocked := requireOneOf(req, params.Context, "context", validTestGenContexts, "Use a valid context value"); blocked {
+		return resp, true
+	}
+	return JSONRPCResponse{}, false
 }
 
 func testGenErrorToResponse(reqID any, err error) JSONRPCResponse {

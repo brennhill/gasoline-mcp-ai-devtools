@@ -37,24 +37,14 @@ func (h *testGenHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.Ra
 	return appendWarningsToResponse(resp, warnings)
 }
 
-var validHealActions = map[string]bool{"analyze": true, "repair": true, "batch": true}
+var validHealActions = []string{"analyze", "repair", "batch"}
 
 func validateHealParams(req JSONRPCRequest, params TestHealRequest) (JSONRPCResponse, bool) {
-	if params.Action == "" {
-		return fail(req, ErrMissingParam,
-			"Required parameter 'action' is missing",
-			"Add the 'action' parameter and call again",
-			withParam("action"),
-			withHint("Valid values: analyze, repair"),
-		), true
+	if resp, blocked := requireString(req, params.Action, "action", "Add the 'action' parameter and call again"); blocked {
+		return resp, true
 	}
-	if !validHealActions[params.Action] {
-		return fail(req, ErrInvalidParam,
-			"Invalid action value: "+params.Action,
-			"Use a valid action value",
-			withParam("action"),
-			withHint("Valid values: analyze, repair, batch"),
-		), true
+	if resp, blocked := requireOneOf(req, params.Action, "action", validHealActions, "Use a valid action value"); blocked {
+		return resp, true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -72,12 +62,8 @@ func (h *testGenHandler) dispatchHealAction(req JSONRPCRequest, params TestHealR
 }
 
 func (h *testGenHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
-	if params.TestFile == "" {
-		return nil, fail(req, ErrMissingParam,
-			"Required parameter 'test_file' is missing for analyze action",
-			"Add the 'test_file' parameter and call again",
-			withParam("test_file"),
-		), true
+	if resp, blocked := requireString(req, params.TestFile, "test_file", "Add the 'test_file' parameter and call again"); blocked {
+		return nil, resp, true
 	}
 	selectors, err := h.analyzeTestFile(params, projectDir)
 	if err != nil {
@@ -117,12 +103,8 @@ func (h *testGenHandler) handleHealRepair(req JSONRPCRequest, params TestHealReq
 }
 
 func (h *testGenHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
-	if params.TestDir == "" {
-		return nil, fail(req, ErrMissingParam,
-			"Required parameter 'test_dir' is missing for batch action",
-			"Add the 'test_dir' parameter and call again",
-			withParam("test_dir"),
-		), true
+	if resp, blocked := requireString(req, params.TestDir, "test_dir", "Add the 'test_dir' parameter and call again"); blocked {
+		return nil, resp, true
 	}
 	batchResult, err := h.healTestBatch(params, projectDir)
 	if err != nil {

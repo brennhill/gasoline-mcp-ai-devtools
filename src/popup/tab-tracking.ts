@@ -11,6 +11,7 @@
 
 import { isInternalUrl } from './ui-utils.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, getLocals, setLocals, removeLocals, onStorageChanged } from '../lib/storage-utils.js' // async API only
 
 let trackingStorageSyncInstalled = false
 
@@ -86,14 +87,15 @@ function showIdleState(btn: HTMLButtonElement): void {
 }
 
 function syncTrackButtonState(btn: HTMLButtonElement): void {
-  chrome.storage.local.get(
-    [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL],
-    (result: { trackedTabId?: number; trackedTabUrl?: string }) => {
+  void getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]).then(
+    (result: Record<string, unknown>) => {
+      const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+      const trackedTabUrl = result[StorageKey.TRACKED_TAB_URL] as string | undefined
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
         const currentUrl = tabs?.[0]?.url
 
-        if (result.trackedTabId) {
-          showTrackingState(btn, result.trackedTabUrl, result.trackedTabId)
+        if (trackedTabId) {
+          showTrackingState(btn, trackedTabUrl, trackedTabId)
         } else if (isInternalUrl(currentUrl)) {
           showInternalPageState(btn)
         } else {
@@ -108,7 +110,7 @@ function installTrackingStorageSync(btn: HTMLButtonElement): void {
   if (trackingStorageSyncInstalled) return
   trackingStorageSyncInstalled = true
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  onStorageChanged((changes, areaName) => {
     if (areaName !== 'local') return
     if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL]) return
     syncTrackButtonState(btn)
@@ -118,33 +120,30 @@ function installTrackingStorageSync(btn: HTMLButtonElement): void {
 /**
  * Handle stop tracking from the compact tracking bar stop button.
  */
-function handleStopTracking(): void {
-  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], (result: { trackedTabId?: number }) => {
-    const prevTabId = result.trackedTabId
-    if (!prevTabId) return
+async function handleStopTracking(): Promise<void> {
+  const prevTabId = await getLocal(StorageKey.TRACKED_TAB_ID) as number | undefined
+  if (!prevTabId) return
 
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
-      const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
-      if (btn) showIdleState(btn)
+  await removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL])
+  const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
+  if (btn) showIdleState(btn)
 
-      // Stop recording if active
-      chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
-        if (chrome.runtime.lastError) {
-          /* no recording active — expected */
-        }
-      })
-      // Notify content script so favicon restores without reload
-      chrome.tabs
-        .sendMessage(prevTabId, {
-          type: 'trackingStateChanged',
-          state: { isTracked: false, aiPilotEnabled: false }
-        })
-        .catch(() => {
-          /* tab may be closed */
-        })
-      console.log('[Gasoline] Stopped tracking via bar stop button')
-    })
+  // Stop recording if active
+  chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
+    if (chrome.runtime.lastError) {
+      /* no recording active — expected */
+    }
   })
+  // Notify content script so favicon restores without reload
+  chrome.tabs
+    .sendMessage(prevTabId, {
+      type: 'tracking_state_changed',
+      state: { isTracked: false, aiPilotEnabled: false }
+    })
+    .catch(() => {
+      /* tab may be closed */
+    })
+  console.log('[Gasoline] Stopped tracking via bar stop button')
 }
 
 export function initTrackPageButton(): void {
@@ -174,7 +173,7 @@ export async function handleUrlClick(tabId: number | undefined): Promise<void> {
   } catch (err) {
     console.error('[Gasoline] Failed to switch to tracked tab:', err)
     // Tab might have been closed - clear tracking
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL])
+    void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL])
   }
 }
 
@@ -188,55 +187,51 @@ export async function handleTrackPageClick(): Promise<void> {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
 
   // Check if we're currently tracking
-  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], async (result: { trackedTabId?: number }) => {
-    if (result.trackedTabId) {
-      // Untrack — delegate to the shared stop handler
-      handleStopTracking()
-    } else {
-      // Track current tab
-      // #lizard forgives
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
-        if (tabs[0]) {
-          const tab = tabs[0]
+  const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID) as number | undefined
+  if (trackedTabId) {
+    // Untrack — delegate to the shared stop handler
+    await handleStopTracking()
+    return
+  }
 
-          // Block tracking on internal Chrome pages
-          if (isInternalUrl(tab.url)) {
-            if (btn) {
-              btn.disabled = true
-              btn.textContent = 'Cannot Track Internal Pages'
-              btn.style.opacity = '0.5'
-            }
-            return
-          }
+  // Track current tab
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab) return
 
-          chrome.storage.local.set(
-            { trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' },
-            () => {
-              showTrackingState(btn!, tab.url, tab.id)
-
-              console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
-              // Only reload if content script is not already injected
-              if (tab.id) {
-                const tabId = tab.id
-                chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
-                  if (chrome.runtime.lastError || !response?.status) {
-                    // Content script not loaded — reload to inject it
-                    console.log('[Gasoline] Content script not found, reloading tab', tabId)
-                    chrome.tabs.reload(tabId)
-                  } else {
-                    // Content script already running — notify it of tracking change
-                    console.log('[Gasoline] Content script already loaded, skipping reload')
-                    chrome.tabs.sendMessage(tabId, {
-                      type: 'trackingStateChanged',
-                      state: { isTracked: true, aiPilotEnabled: false }
-                    })
-                  }
-                })
-              }
-            }
-          )
-        }
-      })
+  // Block tracking on internal Chrome pages
+  if (isInternalUrl(tab.url)) {
+    if (btn) {
+      btn.disabled = true
+      btn.textContent = 'Cannot Track Internal Pages'
+      btn.style.opacity = '0.5'
     }
+    return
+  }
+
+  await setLocals({
+    trackedTabId: tab.id,
+    trackedTabUrl: tab.url,
+    trackedTabTitle: tab.title || ''
   })
+  if (btn) showTrackingState(btn, tab.url, tab.id)
+
+  console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
+  // Only reload if content script is not already injected
+  if (tab.id) {
+    const tabId = tab.id
+    chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }, (response) => {
+      if (chrome.runtime.lastError || !response?.status) {
+        // Content script not loaded — reload to inject it
+        console.log('[Gasoline] Content script not found, reloading tab', tabId)
+        chrome.tabs.reload(tabId)
+      } else {
+        // Content script already running — notify it of tracking change
+        console.log('[Gasoline] Content script already loaded, skipping reload')
+        chrome.tabs.sendMessage(tabId, {
+          type: 'tracking_state_changed',
+          state: { isTracked: true, aiPilotEnabled: false }
+        })
+      }
+    })
+  }
 }

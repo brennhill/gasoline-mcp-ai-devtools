@@ -65,7 +65,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     if (!VALID_STATE_ACTIONS.has(action)) {
         console.warn('[Gasoline] Invalid state action:', action);
         window.postMessage({
-            type: 'GASOLINE_STATE_RESPONSE',
+            type: 'gasoline_state_response',
             messageId,
             result: { error: `Invalid action: ${action}` }
         }, window.location.origin);
@@ -75,7 +75,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     if (action === 'restore' && (!state || typeof state !== 'object')) {
         console.warn('[Gasoline] Invalid state object for restore');
         window.postMessage({
-            type: 'GASOLINE_STATE_RESPONSE',
+            type: 'gasoline_state_response',
             messageId,
             result: { error: 'Invalid state object' }
         }, window.location.origin);
@@ -99,7 +99,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     }
     // Send response back to content script
     window.postMessage({
-        type: 'GASOLINE_STATE_RESPONSE',
+        type: 'gasoline_state_response',
         messageId,
         result
     }, window.location.origin);

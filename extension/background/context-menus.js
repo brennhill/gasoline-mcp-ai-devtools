@@ -3,6 +3,7 @@
  * Split from event-listeners.ts to keep files under 800 LOC.
  */
 import { StorageKey } from '../lib/constants.js';
+import { getLocal } from '../lib/storage-utils.js';
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { toggleDrawModeForTab } from './draw-mode-toggle.js';
@@ -33,7 +34,7 @@ async function isDrawModeActive(tabId) {
         return false;
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'GASOLINE_GET_ANNOTATIONS'
+            type: 'gasoline_get_annotations'
         }));
         return result?.draw_mode_active === true;
     }
@@ -42,8 +43,7 @@ async function isDrawModeActive(tabId) {
     }
 }
 async function refreshDynamicContextMenuTitles(tabId, recordingHandlers, actionRecordingHandlers) {
-    const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-    const trackedTabId = tracked[StorageKey.TRACKED_TAB_ID];
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     const drawModeActive = await isDrawModeActive(tabId);
     await Promise.all([
         updateContextMenuTitle(MENU_ID_CONTROL, trackedTabId && tabId === trackedTabId ? RELEASE_CONTROL_TITLE : CONTROL_TAB_TITLE),
@@ -84,8 +84,8 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
             return;
         if (info.menuItemId === MENU_ID_CONTROL) {
             try {
-                const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-                if (tracked[StorageKey.TRACKED_TAB_ID] === tab.id) {
+                const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
+                if (trackedTabId === tab.id) {
                     clearTrackedTab();
                     if (logFn)
                         logFn(`Released control for tab ${tab.id}`);
@@ -103,7 +103,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_SCREENSHOT) {
             try {
-                chrome.tabs.sendMessage(tab.id, { type: 'captureScreenshot' });
+                chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' });
             }
             catch {
                 if (logFn)

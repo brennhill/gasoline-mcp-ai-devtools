@@ -1,7 +1,7 @@
 ---
 title: "Fire It Up"
 description: "Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command."
-keywords: "install gasoline, gasoline agentic browser setup, npx gasoline-agentic-browser, browser extension install, MCP server setup"
+keywords: "install gasoline, gasoline agentic browser setup, browser extension install, MCP server setup"
 permalink: /getting-started/
 header:
   overlay_image: /assets/images/hero-banner.png

@@ -6,6 +6,7 @@
 
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
 import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js'
+import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js'
 import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
@@ -27,6 +28,7 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null
 let recordingStorageListener:
   | ((changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void)
   | null = null
+let recordingStorageUnsubscribe: (() => void) | null = null
 let runtimeListenerInstalled = false
 let annotationListenerInstalled = false
 
@@ -39,13 +41,8 @@ async function checkTerminalReachable(): Promise<boolean> {
   try {
     let baseUrl = DEFAULT_SERVER_URL
     try {
-      const result = await new Promise<Record<string, unknown>>((resolve) => {
-        chrome.storage.local.get([StorageKey.SERVER_URL], (r: Record<string, unknown>) => {
-          if (chrome.runtime.lastError) { resolve({}); return }
-          resolve(r)
-        })
-      })
-      baseUrl = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+      const value = await getLocal(StorageKey.SERVER_URL)
+      baseUrl = (value as string) || DEFAULT_SERVER_URL
     } catch { /* use default */ }
     const url = new URL(baseUrl)
     url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET)
@@ -101,14 +98,12 @@ function updateStopButtonVisibility(active: boolean): void {
   stopButtonEl.style.display = active ? 'flex' : 'none'
 }
 
-function syncRecordingStateFromStorage(): void {
+async function syncRecordingStateFromStorage(): Promise<void> {
   try {
-    chrome.storage.local.get([StorageKey.RECORDING], (result: Record<string, unknown>) => {
-      if (chrome.runtime.lastError) return
-      const rec = result[StorageKey.RECORDING]
-      const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
-      updateStopButtonVisibility(active)
-    })
+    const value = await getLocal(StorageKey.RECORDING)
+    const rec = value
+    const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
+    updateStopButtonVisibility(active)
   } catch {
     // Extension context invalidated
   }
@@ -124,41 +119,34 @@ function installRecordingStorageSync(): void {
     const active = rec != null && typeof rec === 'object' && Boolean((rec as { active?: boolean }).active)
     updateStopButtonVisibility(active)
   }
-  chrome.storage.onChanged.addListener(recordingStorageListener)
+  recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener)
 }
 
 function uninstallRecordingStorageSync(): void {
   if (!recordingStorageListener) return
-  chrome.storage.onChanged.removeListener(recordingStorageListener)
+  if (recordingStorageUnsubscribe) {
+    recordingStorageUnsubscribe()
+    recordingStorageUnsubscribe = null
+  }
   recordingStorageListener = null
 }
 
-function syncHiddenStateFromStorage(onSynced: () => void): void {
+async function syncHiddenStateFromStorage(): Promise<void> {
   try {
-    chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result: Record<string, unknown>) => {
-      if (chrome.runtime.lastError) {
-        onSynced() // Proceed with default state on storage failure
-        return
-      }
-      hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN])
-      onSynced()
-    })
+    const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN)
+    hiddenUntilPopupOpen = Boolean(value)
   } catch {
-    onSynced() // Extension context invalidated — proceed with defaults
+    // Extension context invalidated — proceed with defaults
   }
 }
 
 function persistHiddenState(hidden: boolean): void {
   try {
     if (hidden) {
-      chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-        void chrome.runtime.lastError // Best-effort persistence — no user-visible impact on failure
-      })
+      void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true)
       return
     }
-    chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-      void chrome.runtime.lastError
-    })
+    void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN)
   } catch {
     // Extension context invalidated — hidden state won't persist but functionality is unaffected
   }
@@ -323,7 +311,7 @@ function runScreenshotCapture(): void {
 
   try {
     chrome.runtime.sendMessage(
-      { type: 'captureScreenshot' },
+      { type: 'capture_screenshot' },
       (response: { success?: boolean; error?: string } | undefined) => {
         const err = chrome.runtime.lastError
         const success = !err && response !== undefined && response.success !== false
@@ -735,8 +723,9 @@ function unmountLauncher(): void {
   // The PTY session survives launcher hide/show so users don't lose work.
 }
 
-export function setTrackedHoverLauncherEnabled(enabled: boolean): void {
+export async function setTrackedHoverLauncherEnabled(enabled: boolean): Promise<void> {
   trackedEnabled = enabled
   installRuntimeListener()
-  syncHiddenStateFromStorage(applyVisibilityFromState)
+  await syncHiddenStateFromStorage()
+  applyVisibilityFromState()
 }

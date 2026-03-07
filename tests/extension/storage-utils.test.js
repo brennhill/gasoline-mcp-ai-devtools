@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
  * @fileoverview storage-utils.test.js -- Tests for storage-utils module.
- * Covers session storage CRUD, local storage CRUD, facade functions,
+ * Covers async local storage CRUD, async session storage CRUD,
  * graceful degradation when APIs are unavailable, diagnostics, and
  * service worker restart detection.
  *
@@ -19,7 +19,7 @@ import assert from 'node:assert'
 /**
  * Create a fresh chrome mock with working storage simulation.
  * Each storage area (local, session) maintains an in-memory store that
- * correctly dispatches callbacks, including the remove() method.
+ * correctly supports both callback and Promise patterns.
  */
 function createStorageMock() {
   function makeArea() {
@@ -50,9 +50,10 @@ function createStorageMock() {
       }),
       clear: mock.fn((callback) => {
         store = {}
-        // Re-assign _store so external references pick up the new empty store.
-        // Internal closures still reference the old `store`, but that's fine
-        // because this mock is recreated per test.
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+      setAccessLevel: mock.fn((opts, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
       })
@@ -81,7 +82,10 @@ function createStorageMock() {
         })
       },
       session,
-      onChanged: { addListener: mock.fn() }
+      onChanged: {
+        addListener: mock.fn(),
+        removeListener: mock.fn()
+      }
     },
     tabs: {
       get: mock.fn(),
@@ -107,108 +111,199 @@ if (!globalThis.navigator || !globalThis.navigator.userAgent) {
   })
 }
 
-// Dynamic import to allow re-importing with different chrome mocks
+// Dynamic import — import once and test against the live chrome global
 let storageUtils
 async function loadModule() {
-  // We can't truly re-import ESM easily, so we import once and test against
-  // the live chrome global that the module references.
   if (!storageUtils) {
-    storageUtils = await import('../../extension/background/storage-utils.js')
+    storageUtils = await import('../../extension/lib/storage-utils.js')
   }
   return storageUtils
 }
 
 // =============================================================================
-// SESSION STORAGE
+// LOCAL STORAGE (async)
 // =============================================================================
 
-describe('Session Storage', () => {
+describe('Local Storage (async)', () => {
   beforeEach(() => {
     chromeMock = createStorageMock()
     globalThis.chrome = chromeMock
   })
 
-  test('setSessionValue should store value in session storage', async () => {
+  test('setLocal should store value in local storage', async () => {
     const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.setSessionValue('testKey', 'testValue', () => {
-        resolve()
-      })
+    await mod.setLocal('persistKey', { data: 'hello' })
+    assert.strictEqual(chromeMock.storage.local.set.mock.calls.length, 1)
+    const setArg = chromeMock.storage.local.set.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(setArg, { persistKey: { data: 'hello' } })
+  })
+
+  test('setLocals should store multiple values', async () => {
+    const mod = await loadModule()
+    await mod.setLocals({ a: 1, b: 2 })
+    assert.strictEqual(chromeMock.storage.local.set.mock.calls.length, 1)
+    const setArg = chromeMock.storage.local.set.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(setArg, { a: 1, b: 2 })
+  })
+
+  test('getLocal should retrieve value from local storage', async () => {
+    const mod = await loadModule()
+    chromeMock.storage.local.get = mock.fn((keys) => {
+      return Promise.resolve({ serverUrl: 'http://localhost:3333' })
     })
+    const value = await mod.getLocal('serverUrl')
+    assert.strictEqual(value, 'http://localhost:3333')
+  })
+
+  test('getLocal should return undefined for missing key', async () => {
+    const mod = await loadModule()
+    chromeMock.storage.local.get = mock.fn((keys) => {
+      return Promise.resolve({})
+    })
+    const value = await mod.getLocal('nope')
+    assert.strictEqual(value, undefined)
+  })
+
+  test('getLocals should retrieve multiple values', async () => {
+    const mod = await loadModule()
+    chromeMock.storage.local.get = mock.fn((keys) => {
+      return Promise.resolve({ a: 1, b: 2 })
+    })
+    const result = await mod.getLocals(['a', 'b'])
+    assert.deepStrictEqual(result, { a: 1, b: 2 })
+  })
+
+  test('removeLocal should call local.remove', async () => {
+    const mod = await loadModule()
+    await mod.removeLocal('deadKey')
+    assert.strictEqual(chromeMock.storage.local.remove.mock.calls.length, 1)
+    const removeArg = chromeMock.storage.local.remove.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(removeArg, ['deadKey'])
+  })
+
+  test('removeLocals should remove multiple keys', async () => {
+    const mod = await loadModule()
+    await mod.removeLocals(['a', 'b'])
+    assert.strictEqual(chromeMock.storage.local.remove.mock.calls.length, 1)
+    const removeArg = chromeMock.storage.local.remove.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(removeArg, ['a', 'b'])
+  })
+})
+
+// =============================================================================
+// LOCAL STORAGE GRACEFUL DEGRADATION
+// =============================================================================
+
+describe('Local Storage Graceful Degradation', () => {
+  beforeEach(() => {
+    chromeMock = createStorageMock()
+    globalThis.chrome = chromeMock
+  })
+
+  test('setLocal should resolve when chrome is undefined', async () => {
+    const mod = await loadModule()
+    const savedChrome = globalThis.chrome
+    delete globalThis.chrome
+    await assert.doesNotReject(async () => {
+      await mod.setLocal('key', 'val')
+    })
+    globalThis.chrome = savedChrome
+  })
+
+  test('getLocal should return undefined when chrome is undefined', async () => {
+    const mod = await loadModule()
+    const savedChrome = globalThis.chrome
+    delete globalThis.chrome
+    const value = await mod.getLocal('key')
+    assert.strictEqual(value, undefined)
+    globalThis.chrome = savedChrome
+  })
+
+  test('getLocals should return empty object when chrome is undefined', async () => {
+    const mod = await loadModule()
+    const savedChrome = globalThis.chrome
+    delete globalThis.chrome
+    const result = await mod.getLocals(['key'])
+    assert.deepStrictEqual(result, {})
+    globalThis.chrome = savedChrome
+  })
+
+  test('removeLocal should resolve when chrome is undefined', async () => {
+    const mod = await loadModule()
+    const savedChrome = globalThis.chrome
+    delete globalThis.chrome
+    await assert.doesNotReject(async () => {
+      await mod.removeLocal('key')
+    })
+    globalThis.chrome = savedChrome
+  })
+
+  test('setLocal should resolve when chrome.storage is missing', async () => {
+    const mod = await loadModule()
+    delete globalThis.chrome.storage
+    await assert.doesNotReject(async () => {
+      await mod.setLocal('key', 'val')
+    })
+  })
+
+  test('getLocal should return undefined when chrome.storage is missing', async () => {
+    const mod = await loadModule()
+    delete globalThis.chrome.storage
+    const value = await mod.getLocal('key')
+    assert.strictEqual(value, undefined)
+  })
+})
+
+// =============================================================================
+// SESSION STORAGE (async)
+// =============================================================================
+
+describe('Session Storage (async)', () => {
+  beforeEach(() => {
+    chromeMock = createStorageMock()
+    globalThis.chrome = chromeMock
+  })
+
+  test('setSession should store value in session storage', async () => {
+    const mod = await loadModule()
+    await mod.setSession('testKey', 'testValue')
     assert.strictEqual(chromeMock.storage.session.set.mock.calls.length, 1)
     const setArg = chromeMock.storage.session.set.mock.calls[0].arguments[0]
     assert.deepStrictEqual(setArg, { testKey: 'testValue' })
   })
 
-  test('setSessionValue should work without callback', async () => {
+  test('getSession should retrieve value from session storage', async () => {
     const mod = await loadModule()
-    // Should not throw even without callback
-    assert.doesNotThrow(() => {
-      mod.setSessionValue('key', 'val')
+    chromeMock.storage.session.get = mock.fn((keys) => {
+      return Promise.resolve({ myKey: 42 })
     })
+    const value = await mod.getSession('myKey')
+    assert.strictEqual(value, 42)
   })
 
-  test('getSessionValue should retrieve value from session storage', async () => {
+  test('getSession should return undefined for missing key', async () => {
     const mod = await loadModule()
-    // Pre-populate mock
-    chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      callback({ myKey: 42 })
+    chromeMock.storage.session.get = mock.fn((keys) => {
+      return Promise.resolve({})
     })
-    await new Promise((resolve) => {
-      mod.getSessionValue('myKey', (value) => {
-        assert.strictEqual(value, 42)
-        resolve()
-      })
-    })
+    const value = await mod.getSession('missing')
+    assert.strictEqual(value, undefined)
   })
 
-  test('getSessionValue should return undefined for missing key', async () => {
+  test('removeSession should call session.remove', async () => {
     const mod = await loadModule()
-    chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      callback({})
-    })
-    await new Promise((resolve) => {
-      mod.getSessionValue('missing', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-  })
-
-  test('removeSessionValue should call session.remove', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.removeSessionValue('deleteMe', () => {
-        resolve()
-      })
-    })
+    await mod.removeSession('deleteMe')
     assert.strictEqual(chromeMock.storage.session.remove.mock.calls.length, 1)
     const removeArg = chromeMock.storage.session.remove.mock.calls[0].arguments[0]
     assert.deepStrictEqual(removeArg, ['deleteMe'])
   })
 
-  test('removeSessionValue should work without callback', async () => {
+  test('removeSessions should remove multiple keys', async () => {
     const mod = await loadModule()
-    assert.doesNotThrow(() => {
-      mod.removeSessionValue('noCallback')
-    })
-  })
-
-  test('clearSessionStorage should call session.clear', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.clearSessionStorage(() => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.session.clear.mock.calls.length, 1)
-  })
-
-  test('clearSessionStorage should work without callback', async () => {
-    const mod = await loadModule()
-    assert.doesNotThrow(() => {
-      mod.clearSessionStorage()
-    })
+    await mod.removeSessions(['a', 'b'])
+    assert.strictEqual(chromeMock.storage.session.remove.mock.calls.length, 1)
+    const removeArg = chromeMock.storage.session.remove.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(removeArg, ['a', 'b'])
   })
 })
 
@@ -222,343 +317,84 @@ describe('Session Storage Graceful Degradation', () => {
     globalThis.chrome = chromeMock
   })
 
-  test('setSessionValue should call callback when session storage unavailable', async () => {
-    const mod = await loadModule()
-    // Remove session storage
-    delete globalThis.chrome.storage.session
-    let called = false
-    mod.setSessionValue('key', 'val', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
-  })
-
-  test('getSessionValue should return undefined when session storage unavailable', async () => {
+  test('setSession should resolve when session storage unavailable', async () => {
     const mod = await loadModule()
     delete globalThis.chrome.storage.session
-    await new Promise((resolve) => {
-      mod.getSessionValue('key', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
+    await assert.doesNotReject(async () => {
+      await mod.setSession('key', 'val')
     })
   })
 
-  test('removeSessionValue should call callback when session storage unavailable', async () => {
+  test('getSession should return undefined when session storage unavailable', async () => {
     const mod = await loadModule()
     delete globalThis.chrome.storage.session
-    let called = false
-    mod.removeSessionValue('key', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
+    const value = await mod.getSession('key')
+    assert.strictEqual(value, undefined)
   })
 
-  test('clearSessionStorage should call callback when session storage unavailable', async () => {
+  test('removeSession should resolve when session storage unavailable', async () => {
     const mod = await loadModule()
     delete globalThis.chrome.storage.session
-    let called = false
-    mod.clearSessionStorage(() => {
-      called = true
+    await assert.doesNotReject(async () => {
+      await mod.removeSession('key')
     })
-    assert.strictEqual(called, true)
   })
 
-  test('setSessionValue should call callback when chrome is undefined', async () => {
+  test('setSession should resolve when chrome is undefined', async () => {
     const mod = await loadModule()
     const savedChrome = globalThis.chrome
     delete globalThis.chrome
-    let called = false
-    mod.setSessionValue('key', 'val', () => {
-      called = true
+    await assert.doesNotReject(async () => {
+      await mod.setSession('key', 'val')
     })
-    assert.strictEqual(called, true)
     globalThis.chrome = savedChrome
   })
 
-  test('getSessionValue should return undefined when chrome is undefined', async () => {
+  test('getSession should return undefined when chrome is undefined', async () => {
     const mod = await loadModule()
     const savedChrome = globalThis.chrome
     delete globalThis.chrome
-    await new Promise((resolve) => {
-      mod.getSessionValue('key', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
+    const value = await mod.getSession('key')
+    assert.strictEqual(value, undefined)
     globalThis.chrome = savedChrome
   })
 })
 
 // =============================================================================
-// LOCAL STORAGE
+// STORAGE CHANGE LISTENER
 // =============================================================================
 
-describe('Local Storage', () => {
+describe('Storage Change Listener', () => {
   beforeEach(() => {
     chromeMock = createStorageMock()
     globalThis.chrome = chromeMock
   })
 
-  test('setLocalValue should store value in local storage', async () => {
+  test('onStorageChanged should register a listener', async () => {
     const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.setLocalValue('persistKey', { data: 'hello' }, () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.local.set.mock.calls.length, 1)
-    const setArg = chromeMock.storage.local.set.mock.calls[0].arguments[0]
-    assert.deepStrictEqual(setArg, { persistKey: { data: 'hello' } })
+    const listener = () => {}
+    mod.onStorageChanged(listener)
+    assert.strictEqual(chromeMock.storage.onChanged.addListener.mock.calls.length, 1)
+    assert.strictEqual(chromeMock.storage.onChanged.addListener.mock.calls[0].arguments[0], listener)
   })
 
-  test('setLocalValue should work without callback', async () => {
+  test('onStorageChanged should return an unsubscribe function', async () => {
     const mod = await loadModule()
-    assert.doesNotThrow(() => {
-      mod.setLocalValue('key', 'val')
-    })
+    const listener = () => {}
+    const unsub = mod.onStorageChanged(listener)
+    assert.strictEqual(typeof unsub, 'function')
+    unsub()
+    assert.strictEqual(chromeMock.storage.onChanged.removeListener.mock.calls.length, 1)
   })
 
-  test('getLocalValue should retrieve value from local storage', async () => {
-    const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys, callback) => {
-      callback({ serverUrl: 'http://localhost:3333' })
-    })
-    await new Promise((resolve) => {
-      mod.getLocalValue('serverUrl', (value) => {
-        assert.strictEqual(value, 'http://localhost:3333')
-        resolve()
-      })
-    })
-  })
-
-  test('getLocalValue should return undefined for missing key', async () => {
-    const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys, callback) => {
-      callback({})
-    })
-    await new Promise((resolve) => {
-      mod.getLocalValue('nope', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-  })
-
-  test('getLocalValue should return undefined on lastError', async () => {
-    const mod = await loadModule()
-    chromeMock.runtime.lastError = { message: 'QUOTA_BYTES exceeded' }
-    chromeMock.storage.local.get = mock.fn((keys, callback) => {
-      callback({ someKey: 'data' })
-    })
-    await new Promise((resolve) => {
-      mod.getLocalValue('someKey', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-    chromeMock.runtime.lastError = null
-  })
-
-  test('removeLocalValue should call local.remove', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.removeLocalValue('deadKey', () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.local.remove.mock.calls.length, 1)
-    const removeArg = chromeMock.storage.local.remove.mock.calls[0].arguments[0]
-    assert.deepStrictEqual(removeArg, ['deadKey'])
-  })
-
-  test('removeLocalValue should work without callback', async () => {
-    const mod = await loadModule()
-    assert.doesNotThrow(() => {
-      mod.removeLocalValue('noCallback')
-    })
-  })
-})
-
-// =============================================================================
-// LOCAL STORAGE FALLBACK
-// =============================================================================
-
-describe('Local Storage Fallback', () => {
-  beforeEach(() => {
-    chromeMock = createStorageMock()
-    globalThis.chrome = chromeMock
-  })
-
-  test('setLocalValue should call callback when chrome is undefined', async () => {
+  test('onStorageChanged should return noop when chrome is undefined', async () => {
     const mod = await loadModule()
     const savedChrome = globalThis.chrome
     delete globalThis.chrome
-    let called = false
-    mod.setLocalValue('key', 'val', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
+    const unsub = mod.onStorageChanged(() => {})
+    assert.strictEqual(typeof unsub, 'function')
+    unsub() // should not throw
     globalThis.chrome = savedChrome
-  })
-
-  test('getLocalValue should return undefined when chrome is undefined', async () => {
-    const mod = await loadModule()
-    const savedChrome = globalThis.chrome
-    delete globalThis.chrome
-    await new Promise((resolve) => {
-      mod.getLocalValue('key', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-    globalThis.chrome = savedChrome
-  })
-
-  test('removeLocalValue should call callback when chrome is undefined', async () => {
-    const mod = await loadModule()
-    const savedChrome = globalThis.chrome
-    delete globalThis.chrome
-    let called = false
-    mod.removeLocalValue('key', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
-    globalThis.chrome = savedChrome
-  })
-
-  test('setLocalValue should call callback when chrome.storage is missing', async () => {
-    const mod = await loadModule()
-    delete globalThis.chrome.storage
-    let called = false
-    mod.setLocalValue('key', 'val', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
-  })
-
-  test('getLocalValue should return undefined when chrome.storage is missing', async () => {
-    const mod = await loadModule()
-    delete globalThis.chrome.storage
-    await new Promise((resolve) => {
-      mod.getLocalValue('key', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-  })
-})
-
-// =============================================================================
-// FACADE FUNCTIONS (setValue, getValue, removeValue)
-// =============================================================================
-
-describe('Facade Functions', () => {
-  beforeEach(() => {
-    chromeMock = createStorageMock()
-    globalThis.chrome = chromeMock
-  })
-
-  test('setValue should default to session storage', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.setValue('key', 'val', undefined, () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.session.set.mock.calls.length, 1)
-  })
-
-  test('setValue with "local" area should use local storage', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.setValue('key', 'val', 'local', () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.local.set.mock.calls.length, 1)
-  })
-
-  test('setValue with "session" area should use session storage', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.setValue('key', 'val', 'session', () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.session.set.mock.calls.length, 1)
-  })
-
-  test('setValue with unknown area should just call callback', async () => {
-    const mod = await loadModule()
-    let called = false
-    mod.setValue('key', 'val', 'unknown_area', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
-    assert.strictEqual(chromeMock.storage.session.set.mock.calls.length, 0)
-    assert.strictEqual(chromeMock.storage.local.set.mock.calls.length, 0)
-  })
-
-  test('getValue should default to session storage', async () => {
-    const mod = await loadModule()
-    chromeMock.storage.session.get = mock.fn((keys, cb) => cb({ key: 'fromSession' }))
-    await new Promise((resolve) => {
-      mod.getValue('key', undefined, (value) => {
-        assert.strictEqual(value, 'fromSession')
-        resolve()
-      })
-    })
-  })
-
-  test('getValue with "local" area should use local storage', async () => {
-    const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys, cb) => cb({ key: 'fromLocal' }))
-    await new Promise((resolve) => {
-      mod.getValue('key', 'local', (value) => {
-        assert.strictEqual(value, 'fromLocal')
-        resolve()
-      })
-    })
-  })
-
-  test('getValue with unknown area should return undefined', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.getValue('key', 'unknown_area', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-  })
-
-  test('removeValue should default to session storage', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.removeValue('key', undefined, () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.session.remove.mock.calls.length, 1)
-  })
-
-  test('removeValue with "local" area should use local storage', async () => {
-    const mod = await loadModule()
-    await new Promise((resolve) => {
-      mod.removeValue('key', 'local', () => {
-        resolve()
-      })
-    })
-    assert.strictEqual(chromeMock.storage.local.remove.mock.calls.length, 1)
-  })
-
-  test('removeValue with unknown area should just call callback', async () => {
-    const mod = await loadModule()
-    let called = false
-    mod.removeValue('key', 'unknown_area', () => {
-      called = true
-    })
-    assert.strictEqual(called, true)
   })
 })
 
@@ -659,7 +495,7 @@ describe('Service Worker Restart Detection', () => {
 })
 
 // =============================================================================
-// DATA SERIALIZATION
+// DATA SERIALIZATION (async)
 // =============================================================================
 
 describe('Data Serialization', () => {
@@ -668,7 +504,7 @@ describe('Data Serialization', () => {
     globalThis.chrome = chromeMock
   })
 
-  test('should store and retrieve complex objects', async () => {
+  test('should store and retrieve complex objects via local storage', async () => {
     const mod = await loadModule()
     const complexData = {
       nested: { array: [1, 2, 3], obj: { a: true } },
@@ -677,113 +513,76 @@ describe('Data Serialization', () => {
       nullVal: null
     }
 
-    chromeMock.storage.local.set = mock.fn((data, cb) => {
-      chromeMock.storage.local._lastSet = data
-      if (cb) cb()
+    let stored = {}
+    chromeMock.storage.local.set = mock.fn((data) => {
+      Object.assign(stored, data)
+      return Promise.resolve()
     })
-    chromeMock.storage.local.get = mock.fn((keys, callback) => {
-      callback(chromeMock.storage.local._lastSet || {})
-    })
-
-    await new Promise((resolve) => {
-      mod.setLocalValue('complex', complexData, () => {
-        resolve()
-      })
+    chromeMock.storage.local.get = mock.fn((keys) => {
+      return Promise.resolve(stored)
     })
 
-    await new Promise((resolve) => {
-      mod.getLocalValue('complex', (value) => {
-        assert.deepStrictEqual(value, complexData)
-        resolve()
-      })
-    })
+    await mod.setLocal('complex', complexData)
+    const value = await mod.getLocal('complex')
+    assert.deepStrictEqual(value, complexData)
   })
 
-  test('should handle boolean values', async () => {
+  test('should handle boolean values via session storage', async () => {
     const mod = await loadModule()
-    chromeMock.storage.session.set = mock.fn((data, cb) => {
-      chromeMock.storage.session._lastSet = data
-      if (cb) cb()
+    let stored = {}
+    chromeMock.storage.session.set = mock.fn((data) => {
+      Object.assign(stored, data)
+      return Promise.resolve()
     })
-    chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      callback(chromeMock.storage.session._lastSet || {})
-    })
-
-    await new Promise((resolve) => {
-      mod.setSessionValue('flag', true, () => {
-        resolve()
-      })
+    chromeMock.storage.session.get = mock.fn((keys) => {
+      return Promise.resolve(stored)
     })
 
-    await new Promise((resolve) => {
-      mod.getSessionValue('flag', (value) => {
-        assert.strictEqual(value, true)
-        resolve()
-      })
-    })
+    await mod.setSession('flag', true)
+    const value = await mod.getSession('flag')
+    assert.strictEqual(value, true)
   })
 
-  test('should handle numeric values including zero', async () => {
+  test('should handle numeric values including zero via session storage', async () => {
     const mod = await loadModule()
-    chromeMock.storage.session.set = mock.fn((data, cb) => {
-      chromeMock.storage.session._lastSet = data
-      if (cb) cb()
+    let stored = {}
+    chromeMock.storage.session.set = mock.fn((data) => {
+      Object.assign(stored, data)
+      return Promise.resolve()
     })
-    chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      callback(chromeMock.storage.session._lastSet || {})
-    })
-
-    await new Promise((resolve) => {
-      mod.setSessionValue('count', 0, () => {
-        resolve()
-      })
+    chromeMock.storage.session.get = mock.fn((keys) => {
+      return Promise.resolve(stored)
     })
 
-    await new Promise((resolve) => {
-      mod.getSessionValue('count', (value) => {
-        assert.strictEqual(value, 0)
-        resolve()
-      })
-    })
+    await mod.setSession('count', 0)
+    const value = await mod.getSession('count')
+    assert.strictEqual(value, 0)
   })
 })
 
 // =============================================================================
-// STORAGE QUOTA HANDLING (lastError simulation)
+// SESSION ACCESS LEVEL
 // =============================================================================
 
-describe('Storage Quota Handling', () => {
+describe('Session Access Level', () => {
   beforeEach(() => {
     chromeMock = createStorageMock()
     globalThis.chrome = chromeMock
   })
 
-  test('setLocalValue should still call callback on lastError', async () => {
+  test('setSessionAccessLevel should call session.setAccessLevel', async () => {
     const mod = await loadModule()
-    chromeMock.runtime.lastError = { message: 'QUOTA_BYTES_PER_ITEM quota exceeded' }
-    let called = false
-    await new Promise((resolve) => {
-      mod.setLocalValue('bigKey', 'x'.repeat(100000), () => {
-        called = true
-        resolve()
-      })
-    })
-    assert.strictEqual(called, true)
-    chromeMock.runtime.lastError = null
+    await mod.setSessionAccessLevel('TRUSTED_AND_UNTRUSTED_CONTEXTS')
+    assert.strictEqual(chromeMock.storage.session.setAccessLevel.mock.calls.length, 1)
+    const arg = chromeMock.storage.session.setAccessLevel.mock.calls[0].arguments[0]
+    assert.deepStrictEqual(arg, { accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
   })
 
-  test('getLocalValue should return undefined and call callback on lastError', async () => {
+  test('setSessionAccessLevel should resolve when session storage unavailable', async () => {
     const mod = await loadModule()
-    chromeMock.runtime.lastError = { message: 'QUOTA_BYTES exceeded' }
-    chromeMock.storage.local.get = mock.fn((keys, callback) => {
-      callback({ key: 'should-be-ignored' })
+    delete globalThis.chrome.storage.session
+    await assert.doesNotReject(async () => {
+      await mod.setSessionAccessLevel('TRUSTED_CONTEXTS')
     })
-    await new Promise((resolve) => {
-      mod.getLocalValue('key', (value) => {
-        assert.strictEqual(value, undefined)
-        resolve()
-      })
-    })
-    chromeMock.runtime.lastError = null
   })
 })

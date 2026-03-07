@@ -30,17 +30,18 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Verifies SHA-256 checksum
 - Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
+- Installs command aliases: canonical `gasoline-agentic-devtools`, plus compatibility aliases `gasoline` and `gasoline-agentic-browser`
 
 **If the install script is unavailable**, fall back to npm:
 ```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
+npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
 ```
 
 ### Verify the install succeeded
 
 Check the exit code was 0 and the binary exists:
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --version
+~/.gasoline/bin/gasoline-agentic-devtools --version
 ```
 
 ## Step 2: Ask the user to load the Chrome extension
@@ -81,7 +82,7 @@ For Claude Code specifically, no restart is needed if the installer used `claude
 Once the user confirms the extension is loaded and the AI tool is restarted, run the doctor command:
 
 ```bash
-gasoline-agentic-browser --doctor
+gasoline-agentic-devtools --doctor
 ```
 
 Expected output shows:
@@ -102,7 +103,7 @@ If the extension is connected, you'll get back page info (URL, title). If not, y
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `--doctor` shows "binary not found" | PATH not updated | Run `export PATH="$HOME/.gasoline/bin:$PATH"` and add to shell profile |
-| Port 7890 in use | Stale daemon | Run `gasoline-agentic-browser --kill` then retry |
+| Port 7890 in use | Stale daemon | Run `gasoline-agentic-devtools --stop --port 7890` then retry |
 | Extension shows "Disconnected" | Daemon not running | The MCP client starts the daemon automatically — make sure the AI tool is running |
 | `observe` returns no data | No tab open | User needs to have at least one Chrome tab open |
 | Extension not visible in toolbar | Not pinned | User should click the puzzle-piece icon in Chrome toolbar and pin Gasoline |

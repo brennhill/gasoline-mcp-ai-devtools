@@ -82,7 +82,7 @@ When the AI client disconnects (closes its session), Gasoline logs the disconnec
 
 **Want to keep the server running?** Use `--persist`:
 ```bash
-gasoline-agentic-browser --persist
+gasoline-agentic-devtools --persist
 ```
 This keeps the HTTP server running after MCP disconnect so the extension stays connected between AI sessions. Press Ctrl+C to stop.
 
@@ -98,7 +98,7 @@ lsof -ti :7890 | xargs kill
 If port 7890 is in use:
 
 ```bash
-gasoline-agentic-browser --port 7891
+gasoline-agentic-devtools --port 7891
 ```
 
 Then update the extension:
@@ -112,7 +112,7 @@ Then update the extension:
 
 Run the built-in setup check:
 ```bash
-gasoline-agentic-browser --doctor
+gasoline-agentic-devtools --doctor
 ```
 
 This verifies port availability, binary version, client configuration, and prints next steps. You can also test from the extension: go to **Options** and click the **Test** button next to the Server URL.

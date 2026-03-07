@@ -66,16 +66,16 @@ const contentScriptSender = { tab: { id: 1, url: 'http://localhost:3000' } }
 
 describe('forwarded settings', () => {
   const forwardedTypes = [
-    'setNetworkWaterfallEnabled',
-    'setPerformanceMarksEnabled',
-    'setActionReplayEnabled',
-    'setWebSocketCaptureEnabled',
-    'setWebSocketCaptureMode',
-    'setPerformanceSnapshotEnabled',
-    'setDeferralEnabled',
-    'setNetworkBodyCaptureEnabled',
-    'setActionToastsEnabled',
-    'setSubtitlesEnabled'
+    'set_network_waterfall_enabled',
+    'set_performance_marks_enabled',
+    'set_action_replay_enabled',
+    'set_web_socket_capture_enabled',
+    'set_web_socket_capture_mode',
+    'set_performance_snapshot_enabled',
+    'set_deferral_enabled',
+    'set_network_body_capture_enabled',
+    'set_action_toasts_enabled',
+    'set_subtitles_enabled'
   ]
 
   for (const msgType of forwardedTypes) {
@@ -93,11 +93,11 @@ describe('forwarded settings', () => {
 // setSourceMapEnabled
 // ============================================
 
-describe('setSourceMapEnabled', () => {
+describe('set_source_map_enabled', () => {
   test('enabling does not clear cache', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'setSourceMapEnabled', enabled: true }, extensionSender, sendResponse)
+    handler({ type: 'set_source_map_enabled', enabled: true }, extensionSender, sendResponse)
     assert.strictEqual(deps.setSourceMapEnabled.mock.calls[0].arguments[0], true)
     assert.strictEqual(deps.clearSourceMapCache.mock.calls.length, 0)
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].success, true)
@@ -106,7 +106,7 @@ describe('setSourceMapEnabled', () => {
   test('disabling clears cache', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'setSourceMapEnabled', enabled: false }, extensionSender, sendResponse)
+    handler({ type: 'set_source_map_enabled', enabled: false }, extensionSender, sendResponse)
     assert.strictEqual(deps.setSourceMapEnabled.mock.calls[0].arguments[0], false)
     assert.strictEqual(deps.clearSourceMapCache.mock.calls.length, 1)
   })
@@ -116,11 +116,11 @@ describe('setSourceMapEnabled', () => {
 // setScreenshotOnError
 // ============================================
 
-describe('setScreenshotOnError', () => {
+describe('set_screenshot_on_error', () => {
   test('persists setting', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'setScreenshotOnError', enabled: true }, extensionSender, sendResponse)
+    handler({ type: 'set_screenshot_on_error', enabled: true }, extensionSender, sendResponse)
     assert.strictEqual(deps.setScreenshotOnError.mock.calls[0].arguments[0], true)
     assert.ok(deps.saveSetting.mock.calls.some(
       c => c.arguments[0] === 'screenshotOnError' && c.arguments[1] === true
@@ -133,13 +133,13 @@ describe('setScreenshotOnError', () => {
 // setServerUrl
 // ============================================
 
-describe('setServerUrl', () => {
+describe('set_server_url', () => {
   test('updates server URL and re-checks connection', () => {
     const { handler, deps } = getInstalledHandler({
       getServerUrl: mock.fn(() => 'http://localhost:8080')
     })
     const sendResponse = mock.fn()
-    handler({ type: 'setServerUrl', url: 'http://localhost:8080' }, extensionSender, sendResponse)
+    handler({ type: 'set_server_url', url: 'http://localhost:8080' }, extensionSender, sendResponse)
     assert.strictEqual(deps.setServerUrl.mock.calls[0].arguments[0], 'http://localhost:8080')
     assert.strictEqual(deps.checkConnectionAndUpdate.mock.calls.length, 1)
     assert.strictEqual(deps.forwardToAllContentScripts.mock.calls.length, 1)
@@ -151,7 +151,7 @@ describe('setServerUrl', () => {
       getServerUrl: mock.fn(() => 'http://localhost:7890')
     })
     const sendResponse = mock.fn()
-    handler({ type: 'setServerUrl', url: '' }, extensionSender, sendResponse)
+    handler({ type: 'set_server_url', url: '' }, extensionSender, sendResponse)
     assert.strictEqual(deps.setServerUrl.mock.calls[0].arguments[0], 'http://localhost:7890')
   })
 })
@@ -179,13 +179,13 @@ describe('log message handling', () => {
 // getAiWebPilotEnabled
 // ============================================
 
-describe('getAiWebPilotEnabled', () => {
+describe('get_ai_web_pilot_enabled', () => {
   test('returns current state', () => {
     const { handler } = getInstalledHandler({
       getAiWebPilotEnabled: mock.fn(() => true)
     })
     const sendResponse = mock.fn()
-    handler({ type: 'getAiWebPilotEnabled' }, extensionSender, sendResponse)
+    handler({ type: 'get_ai_web_pilot_enabled' }, extensionSender, sendResponse)
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].enabled, true)
   })
 })
@@ -200,7 +200,7 @@ describe('clearLogs error handling', () => {
       handleClearLogs: mock.fn(() => Promise.reject(new Error('disk full')))
     })
     const sendResponse = mock.fn()
-    handler({ type: 'clearLogs' }, extensionSender, sendResponse)
+    handler({ type: 'clear_logs' }, extensionSender, sendResponse)
     await new Promise(r => setTimeout(r, 10))
     assert.ok(sendResponse.mock.calls[0].arguments[0].error.includes('disk full'))
   })

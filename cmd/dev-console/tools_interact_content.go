@@ -31,13 +31,6 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 	}
 	lenientUnmarshal(args, &params)
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 10_000
 	}
@@ -45,25 +38,17 @@ func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args
 		params.TimeoutMs = 30_000
 	}
 
-	correlationID := newCorrelationID(correlationPrefix)
-	h.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
-
-	// Structured params — no embedded script. The content script handles extraction directly.
-	queryParams, _ := json.Marshal(map[string]any{
-		"timeout_ms": params.TimeoutMs,
-	})
-
-	query := queries.PendingQuery{
-		Type:          queryType,
-		Params:        queryParams,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
+	return h.newCommand(queryType).
+		correlationPrefix(correlationPrefix).
+		reason(queryType).
+		queryType(queryType).
+		buildParams(map[string]any{
+			"timeout_ms": params.TimeoutMs,
+		}).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		queuedMessage(queryType + " queued").
+		execute(req, args)
 }
 
 func (h *interactActionHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -94,7 +79,7 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	// Request page summary via dedicated query type (CSP-safe, no eval).
 	// Use 4s query timeout to finish before the 5s Go-side wait.
 	summaryCorrelationID := newCorrelationID("nav_content")
-	summaryParams, _ := json.Marshal(map[string]any{
+	summaryParams := buildQueryParams(map[string]any{
 		"timeout_ms": 4000,
 	})
 	summaryQuery := queries.PendingQuery{

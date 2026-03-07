@@ -14,6 +14,7 @@
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js';
 import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-http.js';
+import { getLocal, getLocals, setLocals } from './lib/storage-utils.js';
 /**
  * Apply persisted theme as early as possible without inline HTML scripts.
  * Keeps options page CSP-compliant (MV3 disallows inline scripts by default).
@@ -21,8 +22,8 @@ import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-htt
 function bootstrapTheme() {
     if (typeof document === 'undefined' || typeof chrome === 'undefined' || !chrome.storage?.local)
         return;
-    chrome.storage.local.get([StorageKey.THEME], (result) => {
-        if (result[StorageKey.THEME] === 'light') {
+    void getLocal(StorageKey.THEME).then((value) => {
+        if (value === 'light') {
             document.body?.classList.add('light-theme');
         }
     });
@@ -64,8 +65,8 @@ function loadActiveCodebaseFromDaemon(serverUrl) {
 /**
  * Load saved options
  */
-export function loadOptions() {
-    chrome.storage.local.get([
+export async function loadOptions() {
+    const result = await getLocals([
         StorageKey.SERVER_URL,
         StorageKey.SCREENSHOT_ON_ERROR,
         StorageKey.SOURCE_MAP_ENABLED,
@@ -74,49 +75,48 @@ export function loadOptions() {
         StorageKey.THEME,
         StorageKey.TERMINAL_AI_COMMAND,
         StorageKey.TERMINAL_DEV_ROOT
-    ], (result) => {
-        // Set server URL
-        const serverUrlInput = document.getElementById('server-url-input');
-        if (serverUrlInput) {
-            serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL;
-        }
-        // Set theme toggle state (default: dark, toggle active = light)
-        const themeToggle = document.getElementById('theme-toggle');
-        if (result.theme === 'light') {
-            themeToggle?.classList.add('active');
-            document.body.classList.add('light-theme');
-        }
-        // Set screenshot toggle state
-        const screenshotToggle = document.getElementById('screenshot-toggle');
-        if (result.screenshotOnError) {
-            screenshotToggle?.classList.add('active');
-        }
-        // Set source map toggle state
-        const sourcemapToggle = document.getElementById('sourcemap-toggle');
-        if (result.sourceMapEnabled) {
-            sourcemapToggle?.classList.add('active');
-        }
-        // Set deferral toggle state (default: enabled/active)
-        const deferralToggle = document.getElementById('deferral-toggle');
-        if (result.deferralEnabled !== false) {
-            deferralToggle?.classList.add('active');
-        }
-        // Set debug mode toggle state
-        const debugToggle = document.getElementById('debug-mode-toggle');
-        if (result.debugMode) {
-            debugToggle?.classList.add('active');
-        }
-        // Set terminal AI command
-        const aiCmdInput = document.getElementById('terminal-ai-command');
-        if (aiCmdInput) {
-            aiCmdInput.value = result.gasoline_terminal_ai_command || 'claude';
-        }
-        // Set terminal dev root
-        const devRootInput = document.getElementById('terminal-dev-root');
-        if (devRootInput) {
-            devRootInput.value = result.gasoline_terminal_dev_root || '';
-        }
-    });
+    ]);
+    // Set server URL
+    const serverUrlInput = document.getElementById('server-url-input');
+    if (serverUrlInput) {
+        serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL;
+    }
+    // Set theme toggle state (default: dark, toggle active = light)
+    const themeToggle = document.getElementById('theme-toggle');
+    if (result.theme === 'light') {
+        themeToggle?.classList.add('active');
+        document.body.classList.add('light-theme');
+    }
+    // Set screenshot toggle state
+    const screenshotToggle = document.getElementById('screenshot-toggle');
+    if (result.screenshotOnError) {
+        screenshotToggle?.classList.add('active');
+    }
+    // Set source map toggle state
+    const sourcemapToggle = document.getElementById('sourcemap-toggle');
+    if (result.sourceMapEnabled) {
+        sourcemapToggle?.classList.add('active');
+    }
+    // Set deferral toggle state (default: enabled/active)
+    const deferralToggle = document.getElementById('deferral-toggle');
+    if (result.deferralEnabled !== false) {
+        deferralToggle?.classList.add('active');
+    }
+    // Set debug mode toggle state
+    const debugToggle = document.getElementById('debug-mode-toggle');
+    if (result.debugMode) {
+        debugToggle?.classList.add('active');
+    }
+    // Set terminal AI command
+    const aiCmdInput = document.getElementById('terminal-ai-command');
+    if (aiCmdInput) {
+        aiCmdInput.value = result.gasoline_terminal_ai_command || 'claude';
+    }
+    // Set terminal dev root
+    const devRootInput = document.getElementById('terminal-dev-root');
+    if (devRootInput) {
+        devRootInput.value = result.gasoline_terminal_dev_root || '';
+    }
 }
 /**
  * Save options to storage and notify background
@@ -144,7 +144,7 @@ export function saveOptions() {
     const terminalAICommand = aiCmdInput?.value.trim() || '';
     const devRootInput = document.getElementById('terminal-dev-root');
     const terminalDevRoot = devRootInput?.value.trim() || '';
-    chrome.storage.local.set({
+    setLocals({
         serverUrl,
         screenshotOnError,
         sourceMapEnabled,
@@ -153,16 +153,16 @@ export function saveOptions() {
         theme,
         [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
         [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
-    }, () => {
+    }).then(() => {
         // Show saved message
         const message = document.getElementById('saved-message');
         message?.classList.add('show');
         // Notify background of changes so it can update its in-memory state
         chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl });
-        chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError });
-        chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled });
+        chrome.runtime.sendMessage({ type: 'set_screenshot_on_error', enabled: screenshotOnError });
+        chrome.runtime.sendMessage({ type: 'set_source_map_enabled', enabled: sourceMapEnabled });
         chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled });
-        chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode });
+        chrome.runtime.sendMessage({ type: 'set_debug_mode', enabled: debugMode });
         // Sync terminal dev root to daemon so MCP and terminal use the same CWD
         if (terminalDevRoot) {
             syncDevRootToDaemon(serverUrl, terminalDevRoot);
@@ -278,7 +278,7 @@ export async function handleExportDebugLog() {
         exportBtn.textContent = 'Exporting...';
     }
     return new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'getDebugLog' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'get_debug_log' }, (response) => {
             if (exportBtn) {
                 exportBtn.disabled = false;
                 exportBtn.textContent = 'Export Debug Log';
@@ -310,18 +310,18 @@ export async function handleExportDebugLog() {
  */
 export async function handleClearDebugLog() {
     return new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'clearDebugLog' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'clear_debug_log' }, (response) => {
             resolve(response || { success: false });
         });
     });
 }
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    loadOptions();
+    void loadOptions();
     // After chrome.storage options load, also pull active_codebase from daemon
     // to sync any MCP-side changes back to the extension options UI.
-    chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-        const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+    void getLocal(StorageKey.SERVER_URL).then((value) => {
+        const url = value || DEFAULT_SERVER_URL;
         loadActiveCodebaseFromDaemon(url);
     });
     const saveBtn = document.getElementById('save-btn');

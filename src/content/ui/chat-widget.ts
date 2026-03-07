@@ -309,7 +309,7 @@ function sendChatMessage(): void {
 
   chrome.runtime.sendMessage(
     {
-      type: 'GASOLINE_PUSH_CHAT',
+      type: 'gasoline_push_chat',
       message,
       page_url: window.location.href
     },

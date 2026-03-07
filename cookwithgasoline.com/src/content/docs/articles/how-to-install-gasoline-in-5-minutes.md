@@ -54,7 +54,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 Run:
 
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --doctor
+~/.gasoline/bin/gasoline-agentic-devtools --doctor
 ```
 
 You want to see a healthy result, not missing dependency errors.

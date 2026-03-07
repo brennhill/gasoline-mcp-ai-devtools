@@ -6,6 +6,7 @@
 import { scaleTimeout } from '../lib/timeouts.js'
 import { delay } from '../lib/timeout-utils.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/storage-utils.js'
 
 // =============================================================================
 // CONTENT SCRIPT HELPERS
@@ -17,7 +18,7 @@ import { StorageKey } from '../lib/constants.js'
 export async function pingContentScript(tabId: number, timeoutMs = scaleTimeout(500)): Promise<boolean> {
   try {
     const response = (await Promise.race([
-      chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+      chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }),
       new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)),
@@ -94,12 +95,8 @@ export interface SavedSettings {
  * Load saved settings from chrome.storage.local
  */
 export async function loadSavedSettings(): Promise<SavedSettings> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return {}
-  }
-
   try {
-    const result = (await chrome.storage.local.get([
+    const result = (await getLocals([
       StorageKey.SERVER_URL,
       StorageKey.LOG_LEVEL,
       StorageKey.SCREENSHOT_ON_ERROR,
@@ -117,13 +114,9 @@ export async function loadSavedSettings(): Promise<SavedSettings> {
  * Load AI Web Pilot enabled state from storage
  */
 export async function loadAiWebPilotState(logFn?: (message: string) => void): Promise<boolean> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return false
-  }
-
   const startTime = performance.now()
-  const result = (await chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED])) as { aiWebPilotEnabled?: boolean }
-  const wasLoaded = result.aiWebPilotEnabled !== false
+  const aiEnabled = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
+  const wasLoaded = aiEnabled !== false
   const loadTime = performance.now() - startTime
   if (logFn) {
     logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
@@ -135,20 +128,15 @@ export async function loadAiWebPilotState(logFn?: (message: string) => void): Pr
  * Load debug mode state from storage
  */
 export async function loadDebugModeState(): Promise<boolean> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return false
-  }
-
-  const result = (await chrome.storage.local.get([StorageKey.DEBUG_MODE])) as { debugMode?: boolean }
-  return result.debugMode === true
+  const debugMode = await getLocal(StorageKey.DEBUG_MODE)
+  return debugMode === true
 }
 
 /**
  * Save setting to chrome.storage.local
  */
 export function saveSetting(key: string, value: unknown): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.set({ [key]: value })
+  setLocal(key, value)
 }
 
 // =============================================================================
@@ -170,11 +158,7 @@ const TRACKED_TAB_STORAGE_KEYS = [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_
  * Get tracked tab information, including Chrome tab status.
  */
 export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null }
-  }
-
-  const result = (await chrome.storage.local.get(TRACKED_TAB_STORAGE_KEYS)) as {
+  const result = (await getLocals(TRACKED_TAB_STORAGE_KEYS)) as {
     trackedTabId?: number
     trackedTabUrl?: string
     trackedTabTitle?: string
@@ -210,8 +194,8 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
  * Persist tracked tab state.
  */
 export async function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>): Promise<void> {
-  if (typeof chrome === 'undefined' || !chrome.storage || !tab.id) return
-  await chrome.storage.local.set({
+  if (!tab.id) return
+  await setLocals({
     [StorageKey.TRACKED_TAB_ID]: tab.id,
     [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
     [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
@@ -222,19 +206,14 @@ export async function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 't
  * Clear tracked tab state
  */
 export function clearTrackedTab(): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.remove(TRACKED_TAB_STORAGE_KEYS)
+  removeLocals(TRACKED_TAB_STORAGE_KEYS)
 }
 
 /**
  * Get all extension config settings.
  */
 export async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return {}
-  }
-
-  const result = (await chrome.storage.local.get([
+  const result = (await getLocals([
     StorageKey.AI_WEB_PILOT_ENABLED,
     StorageKey.WEBSOCKET_CAPTURE_ENABLED,
     StorageKey.NETWORK_WATERFALL_ENABLED,
@@ -266,11 +245,44 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
 }
 
 // =============================================================================
+// FOCUS-SAFE TAB CAPTURE
+// =============================================================================
+
+/**
+ * Capture a screenshot of a tab without permanently stealing focus.
+ * chrome.tabs.captureVisibleTab() requires the tab to be active. If the target
+ * tab isn't currently active, we briefly activate it, capture, then restore
+ * the previously active tab so the user's workflow isn't interrupted.
+ */
+export async function captureVisibleTabSafe(
+  tabId: number,
+  windowId: number,
+  options: { format: 'jpeg' | 'png'; quality?: number }
+): Promise<string> {
+  const [activeTab] = await chrome.tabs.query({ active: true, windowId })
+  const wasActive = activeTab?.id === tabId
+
+  if (!wasActive) {
+    await chrome.tabs.update(tabId, { active: true })
+  }
+
+  try {
+    return await chrome.tabs.captureVisibleTab(windowId, options)
+  } finally {
+    if (!wasActive && activeTab?.id) {
+      await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
+        /* original tab may have been closed during capture */
+      })
+    }
+  }
+}
+
+// =============================================================================
 // TAB TOAST
 // =============================================================================
 
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Send a gasoline_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(
@@ -282,7 +294,7 @@ export function sendTabToast(
 ): void {
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST' as const,
+      type: 'gasoline_action_toast' as const,
       text,
       detail,
       state,

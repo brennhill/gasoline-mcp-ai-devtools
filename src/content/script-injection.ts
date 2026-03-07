@@ -10,6 +10,7 @@
 
 import type { WebSocketCaptureMode } from '../types/index.js'
 import { SettingName } from '../lib/constants.js'
+import { getLocals } from '../lib/storage-utils.js'
 
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false
@@ -61,32 +62,31 @@ const SYNC_SETTINGS: readonly {
  * Sync stored settings to the inject script after it loads.
  * This ensures new pages receive the current settings state.
  */
-function syncStoredSettings(): void {
+async function syncStoredSettings(): Promise<void> {
   const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey)
+  const result = await getLocals(storageKeys)
 
-  chrome.storage.local.get(storageKeys, (result: Record<string, boolean | string | undefined>) => {
-    for (const setting of SYNC_SETTINGS) {
-      const value = result[setting.storageKey]
-      if (value === undefined) continue // Use default if not set
+  for (const setting of SYNC_SETTINGS) {
+    const value = result[setting.storageKey]
+    if (value === undefined) continue // Use default if not set
 
-      if (setting.isMode) {
-        window.postMessage(
-          {
-            type: 'GASOLINE_SETTING',
-            setting: setting.messageType,
-            mode: value as WebSocketCaptureMode,
-            _nonce: pageNonce
-          },
-          window.location.origin
-        )
-      } else {
-        window.postMessage(
-          { type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
-          window.location.origin
-        )
-      }
+    if (setting.isMode) {
+      window.postMessage(
+        {
+          type: 'gasoline_setting',
+          setting: setting.messageType,
+          mode: value as WebSocketCaptureMode,
+          _nonce: pageNonce
+        },
+        window.location.origin
+      )
+    } else {
+      window.postMessage(
+        { type: 'gasoline_setting', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
+        window.location.origin
+      )
     }
-  })
+  }
 }
 
 /**
@@ -214,7 +214,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
 
     const onMessage = (event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>) => {
       if (event.source !== window || event.origin !== window.location.origin) return
-      if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG') return
+      if (event.data?.type !== 'gasoline_inject_bridge_pong') return
       if (event.data?.requestId !== requestId) return
       if (event.data?._nonce && event.data._nonce !== pageNonce) return
       finish(true)
@@ -226,7 +226,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
     try {
       window.postMessage(
         {
-          type: 'GASOLINE_INJECT_BRIDGE_PING',
+          type: 'gasoline_inject_bridge_ping',
           requestId,
           _nonce: pageNonce
         },

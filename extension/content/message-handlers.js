@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking.js';
-import { createDeferredPromise, promiseRaceWithCleanup } from '../lib/timeout-utils.js';
+import { createDeferredPromise, withTimeoutAndCleanup } from '../lib/timeout-utils.js';
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
 import { extractReadable as extractReadableContent } from './extractors/readable.js';
@@ -55,14 +55,17 @@ export function forwardHighlightMessage(message) {
         const deferred = createDeferredPromise();
         // Post message to page context (inject.js)
         postToInject({
-            type: 'GASOLINE_HIGHLIGHT_REQUEST',
+            type: 'gasoline_highlight_request',
             requestId,
             params: message.params
         });
         // Timeout fallback + cleanup stale entries after 30 seconds
-        return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
-            if (hasHighlightRequest(requestId)) {
-                deleteHighlightRequest(requestId);
+        return withTimeoutAndCleanup(deferred.promise, 30000, {
+            fallback: { success: false, error: 'timeout' },
+            cleanup: () => {
+                if (hasHighlightRequest(requestId)) {
+                    deleteHighlightRequest(requestId);
+                }
             }
         });
     });
@@ -79,7 +82,7 @@ export async function handleStateCommand(params) {
     const responseHandler = (event) => {
         if (event.source !== window)
             return;
-        if (event.data?.type === 'GASOLINE_STATE_RESPONSE' && event.data?.messageId === messageId) {
+        if (event.data?.type === 'gasoline_state_response' && event.data?.messageId === messageId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve(event.data.result || { error: 'No result from state command' });
         }
@@ -87,7 +90,7 @@ export async function handleStateCommand(params) {
     window.addEventListener('message', responseHandler);
     // Send command to inject.js (include state for restore action)
     postToInject({
-        type: 'GASOLINE_STATE_COMMAND',
+        type: 'gasoline_state_command',
         messageId,
         action,
         name,
@@ -95,7 +98,10 @@ export async function handleStateCommand(params) {
         include_url
     });
     // Timeout after 5 seconds with cleanup
-    return promiseRaceWithCleanup(deferred.promise, 5000, { error: 'State command timeout' }, () => window.removeEventListener('message', responseHandler));
+    return withTimeoutAndCleanup(deferred.promise, 5000, {
+        fallback: { error: 'State command timeout' },
+        cleanup: () => window.removeEventListener('message', responseHandler)
+    });
 }
 /**
  * Handle GASOLINE_PING message
@@ -110,7 +116,7 @@ export function handlePing(sendResponse) {
 export function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
         return;
-    const payload = { type: 'GASOLINE_SETTING', setting: message.type };
+    const payload = { type: 'gasoline_setting', setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
         payload.mode = message.mode;
     }
@@ -144,7 +150,7 @@ function executeInMainWorld(params, sendResponse) {
         }
     }, safetyTimeoutMs);
     postToInject({
-        type: 'GASOLINE_EXECUTE_JS',
+        type: 'gasoline_execute_js',
         requestId,
         script: params.script || '',
         timeoutMs
@@ -207,7 +213,7 @@ export function handleA11yQuery(params, sendResponse) {
     }, ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
     postToInject({
-        type: 'GASOLINE_A11Y_QUERY',
+        type: 'gasoline_a11y_query',
         requestId,
         params: parsedParams
     });
@@ -228,7 +234,7 @@ export function handleDomQuery(params, sendResponse) {
     }, ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
     postToInject({
-        type: 'GASOLINE_DOM_QUERY',
+        type: 'gasoline_dom_query',
         requestId,
         params: parsedParams
     });
@@ -249,7 +255,7 @@ export function handleGetNetworkWaterfall(sendResponse) {
         const nonce = event.data?._nonce;
         if (nonce && nonce !== getPageNonce())
             return;
-        if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE' && event.data?.requestId === requestId) {
+        if (event.data?.type === 'gasoline_waterfall_response' && event.data?.requestId === requestId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve({ entries: event.data.entries || [] });
         }
@@ -257,12 +263,13 @@ export function handleGetNetworkWaterfall(sendResponse) {
     window.addEventListener('message', responseHandler);
     // Post message to page context
     postToInject({
-        type: 'GASOLINE_GET_WATERFALL',
+        type: 'gasoline_get_waterfall',
         requestId
     });
     // Timeout fallback: respond with empty array after 5 seconds
-    promiseRaceWithCleanup(deferred.promise, 5000, { entries: [] }, () => {
-        window.removeEventListener('message', responseHandler);
+    withTimeoutAndCleanup(deferred.promise, 5000, {
+        fallback: { entries: [] },
+        cleanup: () => window.removeEventListener('message', responseHandler)
     }).then((result) => {
         sendResponse(result);
     }, () => {
@@ -293,25 +300,26 @@ function forwardInjectQuery(queryType, responseType, label, params, sendResponse
     };
     window.addEventListener('message', responseHandler);
     postToInject({ type: queryType, requestId, params: parsedParams });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
-        window.removeEventListener('message', responseHandler);
+    withTimeoutAndCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, {
+        fallback: { error: `${label} timeout` },
+        cleanup: () => window.removeEventListener('message', responseHandler)
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
 }
 export function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery('GASOLINE_COMPUTED_STYLES_QUERY', 'GASOLINE_COMPUTED_STYLES_RESPONSE', 'Computed styles query', params, sendResponse);
+    return forwardInjectQuery('gasoline_computed_styles_query', 'gasoline_computed_styles_response', 'Computed styles query', params, sendResponse);
 }
 export function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse);
+    return forwardInjectQuery('gasoline_form_discovery_query', 'gasoline_form_discovery_response', 'Form discovery', params, sendResponse);
 }
 export function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery('GASOLINE_FORM_STATE_QUERY', 'GASOLINE_FORM_STATE_RESPONSE', 'Form state', params, sendResponse);
+    return forwardInjectQuery('gasoline_form_state_query', 'gasoline_form_state_response', 'Form state', params, sendResponse);
 }
 export function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery('GASOLINE_DATA_TABLE_QUERY', 'GASOLINE_DATA_TABLE_RESPONSE', 'Data table extraction', params, sendResponse);
+    return forwardInjectQuery('gasoline_data_table_query', 'gasoline_data_table_response', 'Data table extraction', params, sendResponse);
 }
 export function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse);
+    return forwardInjectQuery('gasoline_link_health_query', 'gasoline_link_health_response', 'Link health check', params, sendResponse);
 }
 // ============================================
 // Content-Script-Native Extractors (ISOLATED world, CSP-safe)

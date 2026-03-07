@@ -34,8 +34,5 @@ func newConfigureSessionHandler(deps configureSessionDeps, store *persistence.Se
 }
 
 func (h *ToolHandler) configureSession() *configureSessionHandler {
-	if h.configureSessionHandler == nil {
-		h.configureSessionHandler = newConfigureSessionHandler(h, h.sessionStoreImpl, h.sessionManager, h.server)
-	}
 	return h.configureSessionHandler
 }

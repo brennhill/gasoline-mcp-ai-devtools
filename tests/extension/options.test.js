@@ -155,7 +155,7 @@ describe('Options Deferral Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_deferral_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -168,7 +168,7 @@ describe('Options Deferral Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_deferral_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -239,7 +239,7 @@ describe('Options Screenshot Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setScreenshotOnError' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_screenshot_on_error' && c.arguments[0].enabled === true
       )
     )
   })
@@ -310,7 +310,7 @@ describe('Options Source Map Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setSourceMapEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_source_map_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -395,7 +395,7 @@ describe('Options Debug Mode Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_debug_mode' && c.arguments[0].enabled === true
       )
     )
   })
@@ -408,7 +408,7 @@ describe('Options Debug Mode Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_debug_mode' && c.arguments[0].enabled === false
       )
     )
   })

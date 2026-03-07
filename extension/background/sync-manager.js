@@ -72,7 +72,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'statusUpdate',
+                    type: 'status_update',
                     status: { ...deps.getConnectionStatus(), aiControlled: deps.getAiControlled() }
                 })
                     .catch(() => {
@@ -86,7 +86,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'statusUpdate',
+                    type: 'status_update',
                     status: { ...deps.getConnectionStatus(), aiControlled: deps.getAiControlled() }
                 })
                     .catch(() => {
@@ -107,7 +107,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'versionMismatch',
+                    type: 'version_mismatch',
                     extensionVersion,
                     serverVersion
                 })

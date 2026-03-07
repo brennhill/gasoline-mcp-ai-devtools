@@ -47,11 +47,11 @@ export async function handleLinkHealthQuery(data) {
 function handleLinkHealthMessage(data) {
     handleLinkHealthQuery(data)
         .then((result) => {
-        postResponse({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result });
+        postResponse({ type: 'gasoline_link_health_response', requestId: data.requestId, result });
     })
         .catch((err) => {
         postResponse({
-            type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+            type: 'gasoline_link_health_response',
             requestId: data.requestId,
             result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
         });
@@ -61,12 +61,12 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
     if (typeof window === 'undefined')
         return;
     const messageHandlers = {
-        GASOLINE_SETTING: (data) => {
+        gasoline_setting: (data) => {
             const settingData = data;
             if (isValidSettingPayload(settingData))
                 handleSetting(settingData);
         },
-        GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+        gasoline_state_command: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
         GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
         GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
         GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
@@ -93,7 +93,7 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
 }
 function handleBridgePingMessage(data) {
     postResponse({
-        type: 'GASOLINE_INJECT_BRIDGE_PONG',
+        type: 'gasoline_inject_bridge_pong',
         requestId: data.requestId
     });
 }
@@ -105,14 +105,14 @@ function handleComputedStylesMessage(data) {
             properties: params.properties
         });
         postResponse({
-            type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+            type: 'gasoline_computed_styles_response',
             requestId: data.requestId,
             result: { elements: result, count: result.length }
         });
     }
     catch (err) {
         postResponse({
-            type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+            type: 'gasoline_computed_styles_response',
             requestId: data.requestId,
             result: { error: 'computed_styles_error', message: errorMessage(err, 'Failed to query computed styles') }
         });
@@ -126,14 +126,14 @@ function handleFormDiscoveryMessage(data) {
             mode: params.mode === 'validate' ? 'validate' : 'discover'
         });
         postResponse({
-            type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+            type: 'gasoline_form_discovery_response',
             requestId: data.requestId,
             result: { forms: result, count: result.length }
         });
     }
     catch (err) {
         postResponse({
-            type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+            type: 'gasoline_form_discovery_response',
             requestId: data.requestId,
             result: { error: 'form_discovery_error', message: errorMessage(err, 'Failed to discover forms') }
         });
@@ -147,14 +147,14 @@ function handleFormStateMessage(data) {
             mode: 'discover'
         });
         postResponse({
-            type: 'GASOLINE_FORM_STATE_RESPONSE',
+            type: 'gasoline_form_state_response',
             requestId: data.requestId,
             result: { forms, count: forms.length }
         });
     }
     catch (err) {
         postResponse({
-            type: 'GASOLINE_FORM_STATE_RESPONSE',
+            type: 'gasoline_form_state_response',
             requestId: data.requestId,
             result: { error: 'form_state_error', message: errorMessage(err, 'Failed to extract form state') }
         });
@@ -169,14 +169,14 @@ function handleDataTableMessage(data) {
             max_cols: params.max_cols
         });
         postResponse({
-            type: 'GASOLINE_DATA_TABLE_RESPONSE',
+            type: 'gasoline_data_table_response',
             requestId: data.requestId,
             result
         });
     }
     catch (err) {
         postResponse({
-            type: 'GASOLINE_DATA_TABLE_RESPONSE',
+            type: 'gasoline_data_table_response',
             requestId: data.requestId,
             result: { error: 'data_table_error', message: errorMessage(err, 'Failed to extract table data') }
         });
@@ -188,7 +188,7 @@ function handleExecuteJs(data) {
     if (typeof script !== 'string') {
         console.warn('[Gasoline] Script must be a string');
         postResponse({
-            type: 'GASOLINE_EXECUTE_JS_RESULT',
+            type: 'gasoline_execute_js_result',
             requestId,
             result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
         });
@@ -201,7 +201,7 @@ function handleExecuteJs(data) {
     executeJavaScript(script, timeoutMs)
         .then((result) => {
         postResponse({
-            type: 'GASOLINE_EXECUTE_JS_RESULT',
+            type: 'gasoline_execute_js_result',
             requestId,
             result
         });
@@ -209,7 +209,7 @@ function handleExecuteJs(data) {
         .catch((err) => {
         console.error('[Gasoline] Failed to execute JS:', err);
         postResponse({
-            type: 'GASOLINE_EXECUTE_JS_RESULT',
+            type: 'gasoline_execute_js_result',
             requestId,
             result: { success: false, error: 'execution_failed', message: err.message }
         });
@@ -219,7 +219,7 @@ function handleA11yQuery(data) {
     const { requestId, params } = data;
     if (typeof runAxeAuditWithTimeout !== 'function') {
         postResponse({
-            type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+            type: 'gasoline_a11y_query_response',
             requestId,
             result: {
                 error: 'runAxeAuditWithTimeout not available - try reloading the extension'
@@ -231,7 +231,7 @@ function handleA11yQuery(data) {
         runAxeAuditWithTimeout(params || {})
             .then((result) => {
             postResponse({
-                type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+                type: 'gasoline_a11y_query_response',
                 requestId,
                 result
             });
@@ -239,7 +239,7 @@ function handleA11yQuery(data) {
             .catch((err) => {
             console.error('[Gasoline] Accessibility audit error:', err);
             postResponse({
-                type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+                type: 'gasoline_a11y_query_response',
                 requestId,
                 result: { error: err.message || 'Accessibility audit failed' }
             });
@@ -248,7 +248,7 @@ function handleA11yQuery(data) {
     catch (err) {
         console.error('[Gasoline] Failed to run accessibility audit:', err);
         postResponse({
-            type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+            type: 'gasoline_a11y_query_response',
             requestId,
             result: { error: errorMessage(err, 'Failed to run accessibility audit') }
         });
@@ -258,7 +258,7 @@ function handleDomQuery(data) {
     const { requestId, params } = data;
     if (typeof executeDOMQuery !== 'function') {
         postResponse({
-            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            type: 'gasoline_dom_query_response',
             requestId,
             result: {
                 error: 'executeDOMQuery not available - try reloading the extension'
@@ -270,7 +270,7 @@ function handleDomQuery(data) {
         executeDOMQuery((params || {}))
             .then((result) => {
             postResponse({
-                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                type: 'gasoline_dom_query_response',
                 requestId,
                 result
             });
@@ -278,7 +278,7 @@ function handleDomQuery(data) {
             .catch((err) => {
             console.error('[Gasoline] DOM query error:', err);
             postResponse({
-                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                type: 'gasoline_dom_query_response',
                 requestId,
                 result: { error: err.message || 'DOM query failed' }
             });
@@ -287,7 +287,7 @@ function handleDomQuery(data) {
     catch (err) {
         console.error('[Gasoline] Failed to run DOM query:', err);
         postResponse({
-            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            type: 'gasoline_dom_query_response',
             requestId,
             result: { error: errorMessage(err, 'Failed to run DOM query') }
         });
@@ -298,7 +298,7 @@ function handleGetWaterfall(data) {
     try {
         const entries = getNetworkWaterfall({});
         postResponse({
-            type: 'GASOLINE_WATERFALL_RESPONSE',
+            type: 'gasoline_waterfall_response',
             requestId,
             entries: entries || [],
             page_url: window.location.href
@@ -307,7 +307,7 @@ function handleGetWaterfall(data) {
     catch (err) {
         console.error('[Gasoline] Failed to get network waterfall:', err);
         postResponse({
-            type: 'GASOLINE_WATERFALL_RESPONSE',
+            type: 'gasoline_waterfall_response',
             requestId,
             entries: []
         });

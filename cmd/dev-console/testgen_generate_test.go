@@ -21,10 +21,13 @@ func newTestToolHandler() *ToolHandler {
 		entries: make([]LogEntry, 0),
 		mu:      sync.RWMutex{},
 	}
-	return &ToolHandler{
+	h := &ToolHandler{
 		MCPHandler: &MCPHandler{server: srv},
 		capture:    cap,
 	}
+	h.testGenHandler = newTestGenHandler(h)
+	h.interactActionHandler = newInteractActionHandler(h)
+	return h
 }
 
 // ============================================

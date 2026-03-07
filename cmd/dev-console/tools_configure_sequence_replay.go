@@ -78,8 +78,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 func parseReplaySequenceParams(req JSONRPCRequest, args json.RawMessage) (sequenceReplayParams, *JSONRPCResponse) {
 	var params sequenceReplayParams
 	lenientUnmarshal(args, &params)
-	if params.Name == "" {
-		resp := fail(req, ErrMissingParam, "Required parameter 'name' is missing", "Add the 'name' parameter", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter"); blocked {
 		return params, &resp
 	}
 	return params, nil

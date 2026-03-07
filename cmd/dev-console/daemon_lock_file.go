@@ -39,7 +39,7 @@ func readDaemonLockFile() (*daemonLockRecord, error) {
 	}
 	var rec daemonLockRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
-		return nil, fmt.Errorf("invalid daemon lock metadata at %s: %w", path, err)
+		return nil, fmt.Errorf("parse daemon lock at %s: %w. Delete the stale lock file and retry", path, err)
 	}
 	return &rec, nil
 }
@@ -79,7 +79,7 @@ func removeDaemonLockIfOwned(pid int) {
 		return
 	}
 	if rec.PID == pid {
-		_ = removeDaemonLockFile()
+		_ = removeDaemonLockFile() //nolint:errcheck // best-effort ownership cleanup
 	}
 }
 

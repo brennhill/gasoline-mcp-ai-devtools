@@ -12,6 +12,7 @@ import { DebugCategory } from '../debug.js'
 import { isAiWebPilotEnabled } from '../state.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { delay } from '../../lib/timeout-utils.js'
+import { setLocals } from '../../lib/storage-utils.js'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -199,7 +200,7 @@ export function actionToast(
   const toastCopy = resolveToastCopy(action, detail, state)
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'gasoline_action_toast',
       text: toastCopy.text,
       detail: toastCopy.detail,
       state,
@@ -349,7 +350,7 @@ function buildMissingTargetError(
 
 export async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.id) return
-  await chrome.storage.local.set({
+  await setLocals({
     trackedTabId: tab.id,
     trackedTabUrl: tab.url || '',
     trackedTabTitle: tab.title || ''
@@ -638,7 +639,7 @@ export async function resolveTargetTab(
       if (toastTab?.id) {
         chrome.tabs
           .sendMessage(toastTab.id, {
-            type: 'GASOLINE_ACTION_TOAST',
+            type: 'gasoline_action_toast',
             text: 'Tracked tab unavailable',
             detail: "Provide tab_id or use 'use_active_tab=true'",
             state: 'warning',

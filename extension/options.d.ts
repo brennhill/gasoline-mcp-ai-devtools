@@ -15,7 +15,7 @@ interface ClearLogResponse {
 /**
  * Load saved options
  */
-export declare function loadOptions(): void;
+export declare function loadOptions(): Promise<void>;
 /**
  * Save options to storage and notify background
  * ARCHITECTURE: Options page writes to storage directly (for immediate persistence),

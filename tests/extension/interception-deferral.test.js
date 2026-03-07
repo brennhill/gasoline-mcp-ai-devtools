@@ -436,7 +436,7 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     // postMessage should not have been called with a GASOLINE_LOG for this
     const gasolineLogs = globalThis.window.postMessage.mock.calls.filter(
-      (call) => call.arguments[0]?.type === 'GASOLINE_LOG'
+      (call) => call.arguments[0]?.type === 'gasoline_log'
     )
     assert.strictEqual(gasolineLogs.length, 0, 'Console logs before Phase 2 should not be captured')
 

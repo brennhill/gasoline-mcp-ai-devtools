@@ -387,7 +387,7 @@ describe('Draw Mode — Event Handling Basics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'GASOLINE_CAPTURE_SCREENSHOT' && typeof callback === 'function') {
+      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
         // Simulate background returning a screenshot synchronously
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
@@ -416,12 +416,12 @@ describe('Draw Mode — Event Handling Basics', () => {
       assert.ok(sentMessages.length > 0, 'expected at least one sendMessage call')
 
       // Find the DRAW_MODE_COMPLETED message
-      const completed = sentMessages.find((m) => m.type === 'DRAW_MODE_COMPLETED')
+      const completed = sentMessages.find((m) => m.type === 'draw_mode_completed')
       assert.ok(completed, 'expected DRAW_MODE_COMPLETED message')
       assert.ok(Array.isArray(completed.annotations), 'expected annotations array')
 
       // Verify toast was sent
-      const toast = sentMessages.find((m) => m.type === 'GASOLINE_ACTION_TOAST')
+      const toast = sentMessages.find((m) => m.type === 'gasoline_action_toast')
       assert.ok(toast, 'expected GASOLINE_ACTION_TOAST message')
       assert.strictEqual(toast.text, 'Annotations submitted')
       assert.strictEqual(toast.state, 'success')
@@ -645,7 +645,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'GASOLINE_CAPTURE_SCREENSHOT' && typeof callback === 'function') {
+      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
       return undefined
@@ -662,7 +662,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
 
     assert.strictEqual(dm.isDrawModeActive(), false, 'draw mode should be inactive after shortcut submit')
 
-    const completed = sentMessages.find((m) => m.type === 'DRAW_MODE_COMPLETED')
+    const completed = sentMessages.find((m) => m.type === 'draw_mode_completed')
     assert.ok(completed, 'expected DRAW_MODE_COMPLETED message')
     assert.strictEqual(completed.annotations.length, 1)
     assert.strictEqual(completed.annotations[0].text, 'submit-via-shortcut')
@@ -675,7 +675,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'GASOLINE_CAPTURE_SCREENSHOT' && typeof callback === 'function') {
+      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
       return undefined
@@ -692,9 +692,9 @@ describe('Draw Mode — Drawing Mechanics', () => {
     assert.strictEqual(dm.isDrawModeActive(), true, 'draw mode should remain active on invalid submit')
     assert.ok(inputEl.parentElement, 'text input should remain mounted for correction')
 
-    const errorToast = sentMessages.find((m) => m.type === 'GASOLINE_ACTION_TOAST' && m.state === 'error')
+    const errorToast = sentMessages.find((m) => m.type === 'gasoline_action_toast' && m.state === 'error')
     assert.ok(errorToast, 'expected validation error toast')
-    assert.ok(!sentMessages.some((m) => m.type === 'DRAW_MODE_COMPLETED'), 'should not send completion on invalid submit')
+    assert.ok(!sentMessages.some((m) => m.type === 'draw_mode_completed'), 'should not send completion on invalid submit')
   })
 
   test('empty text on Enter discards annotation', () => {

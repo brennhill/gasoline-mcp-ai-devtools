@@ -312,7 +312,7 @@ export async function executeWithWorldRouting(
   // MAIN or AUTO: try content script (MAIN world) first
   try {
     const result = (await chrome.tabs.sendMessage(tabId, {
-      type: 'GASOLINE_EXECUTE_QUERY',
+      type: 'gasoline_execute_query',
       params: queryParams
     })) as ExecutionResult
 

@@ -31,7 +31,7 @@ When users install a new gasoline binary (npm, pip, or manual copy), the old dae
 
 2. **Version Verification**
    - Runs `<binary> --version` with 5-second timeout
-   - Parses output matching "gasoline v0.8.0" or bare "0.8.0"
+   - Parses output matching "gasoline v0.8.1" or bare "0.8.1"
    - Only triggers upgrade for strictly newer semver (not same, not older)
 
 3. **Graceful Shutdown**

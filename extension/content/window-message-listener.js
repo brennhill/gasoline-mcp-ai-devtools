@@ -7,10 +7,10 @@ import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js';
 import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js';
 import { getPageNonce } from './script-injection.js';
 const RESPONSE_HANDLERS = {
-    GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
-    GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
-    GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id, result),
-    GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id, result)
+    gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
+    gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
+    gasoline_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
+    gasoline_dom_query_response: (id, result) => resolveDomRequest(id, result)
 };
 export function initWindowMessageListener() {
     window.addEventListener('message', (event) => {

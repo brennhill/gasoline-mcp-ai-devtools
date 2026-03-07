@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
@@ -22,31 +21,18 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	args = normalizeDOMActionArgs(args, "list_interactive")
 
-	correlationID := newCorrelationID("dom_list")
-	h.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "dom_action",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("dom_list_interactive", "", nil)
-
-	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
+	resp, correlationID := h.newCommand("list_interactive").
+		correlationPrefix("dom_list").
+		reason("list_interactive").
+		queryType("dom_action").
+		queryParams(args).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		recordAction("dom_list_interactive", "", nil).
+		queuedMessage("list_interactive queued").
+		executeWithCorrelation(req, args)
 
 	// Post-process: extract elements from result and build index→selector store.
 	// IMPORTANT: index store is built from ALL elements before truncation.

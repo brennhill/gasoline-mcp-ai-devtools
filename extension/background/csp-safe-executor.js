@@ -190,7 +190,7 @@ export function cspSafeExecutor(command) {
                 .catch((err) => ({
                 success: false,
                 error: 'promise_rejected',
-                message: err?.message || String(err),
+                message: err instanceof Error ? err.message : String(err),
                 execution_mode: 'csp_safe_structured'
             }));
         }
@@ -204,7 +204,7 @@ export function cspSafeExecutor(command) {
         return {
             success: false,
             error: 'structured_execution_error',
-            message: err?.message || String(err),
+            message: err instanceof Error ? err.message : String(err),
             execution_mode: 'csp_safe_structured'
         };
     }

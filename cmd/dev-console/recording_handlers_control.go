@@ -67,8 +67,8 @@ func (h *ToolHandler) toolConfigureEventRecordingStop(req JSONRPCRequest, args j
 		}
 	}
 
-	if params.RecordingID == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from event_recording_start", withParam("recording_id"))
+	if resp, blocked := requireString(req, params.RecordingID, "recording_id", "Provide the recording_id from event_recording_start"); blocked {
+		return resp
 	}
 
 	// Call capture to stop recording

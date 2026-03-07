@@ -39,13 +39,7 @@ v0.7.0 is a ground-up rewrite delivering a complete browser observability platfo
 ### Install
 
 ```bash
-npx gasoline-mcp@0.7.0
-```
-
-Or with pip:
-
-```bash
-pip install gasoline-mcp==0.7.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 ### Full Changelog

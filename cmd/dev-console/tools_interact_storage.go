@@ -6,8 +6,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 var validStorageTypes = map[string]string{
@@ -42,8 +40,8 @@ func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.R
 	if !ok {
 		return errResp
 	}
-	if params.Key == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for set_storage action", "Add the 'key' parameter and call again", withParam("key"))
+	if resp, blocked := requireString(req, params.Key, "key", "Add the 'key' parameter and call again"); blocked {
+		return resp
 	}
 	if params.Value == nil {
 		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_storage action", "Add the 'value' parameter and call again", withParam("value"))
@@ -70,8 +68,8 @@ func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args jso
 	if !ok {
 		return errResp
 	}
-	if params.Key == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'key' is missing for delete_storage action", "Add the 'key' parameter and call again", withParam("key"))
+	if resp, blocked := requireString(req, params.Key, "key", "Add the 'key' parameter and call again"); blocked {
+		return resp
 	}
 
 	script := fmt.Sprintf(`(() => { try { %s.removeItem(%s); return { ok: true, action: "delete_storage", storage_type: %s, key: %s }; } catch (e) { return { ok: false, error: String((e && e.message) || e) }; } })()`,
@@ -113,8 +111,8 @@ func (h *interactActionHandler) handleSetCookie(req JSONRPCRequest, args json.Ra
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for set_cookie action", "Add the 'name' parameter and call again", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter and call again"); blocked {
+		return resp
 	}
 	if params.Value == nil {
 		return fail(req, ErrMissingParam, "Required parameter 'value' is missing for set_cookie action", "Add the 'value' parameter and call again", withParam("value"))
@@ -147,8 +145,8 @@ func (h *interactActionHandler) handleDeleteCookie(req JSONRPCRequest, args json
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.Name == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'name' is missing for delete_cookie action", "Add the 'name' parameter and call again", withParam("name"))
+	if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter and call again"); blocked {
+		return resp
 	}
 
 	cookie := params.Name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT"
@@ -173,47 +171,31 @@ func (h *interactActionHandler) queueExecuteScript(
 	tabID, timeoutMs int,
 	world, script, reason, queuedMsg string,
 ) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
 	if world == "" {
 		world = "auto"
-	}
-	if resp, blocked := h.parent.requireCSPClear(req, world); blocked {
-		return resp
-	}
-
-	if timeoutMs <= 0 {
-		timeoutMs = 5000
 	}
 	if !validWorldValues[world] {
 		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+world, "Use 'auto' (default), 'main', or 'isolated'", withParam("world"))
 	}
-
-	correlationID := newCorrelationID(correlationPrefix)
-	h.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
-	execParams, _ := json.Marshal(map[string]any{
-		"script":     script,
-		"timeout_ms": timeoutMs,
-		"world":      world,
-		"reason":     reason,
-	})
-
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execParams,
-		TabID:         tabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
+	if timeoutMs <= 0 {
+		timeoutMs = 5000
 	}
 
-	return h.parent.MaybeWaitForCommand(req, correlationID, waitArgs, queuedMsg)
+	return h.newCommand(reason).
+		correlationPrefix(correlationPrefix).
+		reason(reason).
+		queryType("execute").
+		buildParams(map[string]any{
+			"script":     script,
+			"timeout_ms": timeoutMs,
+			"world":      world,
+			"reason":     reason,
+		}).
+		tabID(tabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		cspGuard(world).
+		queuedMessage(queuedMsg).
+		execute(req, waitArgs)
 }
 
 func jsQuote(v string) string {

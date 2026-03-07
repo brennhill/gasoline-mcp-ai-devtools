@@ -6,6 +6,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
+import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -71,7 +72,7 @@ function handleMessage(message, sender, sendResponse, deps) {
     // Type validation: ensure message conforms to expected discriminated union
     // TypeScript's type system ensures exhaustiveness, but add logging for debugging
     switch (messageType) {
-        case 'GET_TAB_ID':
+        case 'get_tab_id':
             sendResponse({ tabId: sender.tab?.id });
             return true;
         case 'ws_event':
@@ -94,7 +95,7 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'log':
             handleLogMessageAsync(message, sender, deps);
             return true;
-        case 'getStatus':
+        case 'get_status':
             sendResponse({
                 ...deps.getConnectionStatus(),
                 serverUrl: deps.getServerUrl(),
@@ -106,34 +107,34 @@ function handleMessage(message, sender, sendResponse, deps) {
                 memoryPressure: deps.getMemoryPressureState()
             });
             return false;
-        case 'clearLogs':
+        case 'clear_logs':
             handleClearLogsAsync(sendResponse, deps);
             return true;
-        case 'setLogLevel':
+        case 'set_log_level':
             deps.setCurrentLogLevel(message.level);
             deps.saveSetting(StorageKey.LOG_LEVEL, message.level);
             return false;
-        case 'setScreenshotOnError':
+        case 'set_screenshot_on_error':
             deps.setScreenshotOnError(message.enabled);
             deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled);
             sendResponse({ success: true });
             return false;
-        case 'setAiWebPilotEnabled':
+        case 'set_ai_web_pilot_enabled':
             handleSetAiWebPilotEnabled(message.enabled, sendResponse, deps);
             return false;
-        case 'getAiWebPilotEnabled':
+        case 'get_ai_web_pilot_enabled':
             sendResponse({ enabled: deps.getAiWebPilotEnabled() });
             return false;
-        case 'getTrackingState':
+        case 'get_tracking_state':
             handleGetTrackingState(sendResponse, deps, sender.tab?.id);
             return true;
-        case 'getDiagnosticState':
+        case 'get_diagnostic_state':
             handleGetDiagnosticState(sendResponse, deps);
             return true;
-        case 'captureScreenshot':
+        case 'capture_screenshot':
             handleCaptureScreenshot(sendResponse, deps);
             return true;
-        case 'setSourceMapEnabled':
+        case 'set_source_map_enabled':
             deps.setSourceMapEnabled(message.enabled);
             deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled);
             if (!message.enabled) {
@@ -141,47 +142,47 @@ function handleMessage(message, sender, sendResponse, deps) {
             }
             sendResponse({ success: true });
             return false;
-        case 'setNetworkWaterfallEnabled':
-        case 'setPerformanceMarksEnabled':
-        case 'setActionReplayEnabled':
-        case 'setWebSocketCaptureEnabled':
-        case 'setWebSocketCaptureMode':
-        case 'setPerformanceSnapshotEnabled':
-        case 'setDeferralEnabled':
-        case 'setNetworkBodyCaptureEnabled':
-        case 'setActionToastsEnabled':
-        case 'setSubtitlesEnabled':
+        case 'set_network_waterfall_enabled':
+        case 'set_performance_marks_enabled':
+        case 'set_action_replay_enabled':
+        case 'set_web_socket_capture_enabled':
+        case 'set_web_socket_capture_mode':
+        case 'set_performance_snapshot_enabled':
+        case 'set_deferral_enabled':
+        case 'set_network_body_capture_enabled':
+        case 'set_action_toasts_enabled':
+        case 'set_subtitles_enabled':
             handleForwardedSetting(message, sendResponse, deps);
             return false;
-        case 'setDebugMode':
+        case 'set_debug_mode':
             deps.setDebugMode(message.enabled);
             deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled);
             sendResponse({ success: true });
             return false;
-        case 'getDebugLog':
+        case 'get_debug_log':
             sendResponse({ log: deps.exportDebugLog() });
             return false;
-        case 'clearDebugLog':
+        case 'clear_debug_log':
             deps.clearDebugLog();
             deps.debugLog('lifecycle', 'Debug log cleared');
             sendResponse({ success: true });
             return false;
-        case 'setServerUrl':
+        case 'set_server_url':
             handleSetServerUrl(message.url, sendResponse, deps);
             return false;
-        case 'GASOLINE_CAPTURE_SCREENSHOT':
+        case 'gasoline_capture_screenshot':
             // Content script requests screenshot capture (while draw mode overlay is still visible)
             handleDrawModeCaptureScreenshot(sender, sendResponse);
             return true;
-        case 'GASOLINE_PUSH_CHAT':
+        case 'gasoline_push_chat':
             handlePushChatAsync(message, sender, sendResponse);
             return true;
-        case 'DRAW_MODE_COMPLETED':
+        case 'draw_mode_completed':
             // Fire-and-forget: content script sends draw mode results
             handleDrawModeCompletedAsync(message, sender, deps);
             return false;
         default:
-            // screen_recording_start/stop, OFFSCREEN_*, MIC_GRANTED_CLOSE_TAB, REVEAL_FILE
+            // screen_recording_start/stop, offscreen_*, mic_granted_close_tab, reveal_file
             // are handled by recording-listeners.ts — return false so they can handle it.
             return false;
     }
@@ -226,8 +227,7 @@ function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
  */
 async function handleGetTrackingState(sendResponse, deps, senderTabId) {
     try {
-        const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
-        const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
+        const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
         const aiPilotEnabled = deps.getAiWebPilotEnabled();
         sendResponse({
             state: {
@@ -249,14 +249,14 @@ async function handleGetTrackingState(sendResponse, deps, senderTabId) {
  */
 export async function broadcastTrackingState(untrackedTabId) {
     try {
-        const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED]);
+        const result = await getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED]);
         const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
         const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true;
         // Notify the currently tracked tab it's being tracked
         if (trackedTabId) {
             chrome.tabs
                 .sendMessage(trackedTabId, {
-                type: 'trackingStateChanged',
+                type: 'tracking_state_changed',
                 state: {
                     isTracked: true,
                     aiPilotEnabled: aiPilotEnabled
@@ -270,7 +270,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         if (untrackedTabId && untrackedTabId !== trackedTabId) {
             chrome.tabs
                 .sendMessage(untrackedTabId, {
-                type: 'trackingStateChanged',
+                type: 'tracking_state_changed',
                 state: {
                     isTracked: false,
                     aiPilotEnabled: false
@@ -285,7 +285,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         console.error('[Gasoline] Failed to broadcast tracking state:', err);
     }
 }
-function handleGetDiagnosticState(sendResponse, deps) {
+async function handleGetDiagnosticState(sendResponse, deps) {
     if (typeof chrome === 'undefined' || !chrome.storage) {
         sendResponse({
             cache: deps.getAiWebPilotEnabled(),
@@ -294,12 +294,11 @@ function handleGetDiagnosticState(sendResponse, deps) {
         });
         return;
     }
-    chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result) => {
-        sendResponse({
-            cache: deps.getAiWebPilotEnabled(),
-            storage: result.aiWebPilotEnabled,
-            timestamp: new Date().toISOString()
-        });
+    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
+    sendResponse({
+        cache: deps.getAiWebPilotEnabled(),
+        storage: value,
+        timestamp: new Date().toISOString()
     });
 }
 function handleCaptureScreenshot(sendResponse, deps) {
@@ -424,68 +423,45 @@ function handleSetServerUrl(url, sendResponse, deps) {
 // =============================================================================
 const SNAPSHOT_KEY = 'gasoline_state_snapshots';
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export async function saveStateSnapshot(name, state) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
-            snapshots[name] = {
-                ...state,
-                name,
-                size_bytes: sizeBytes
-            };
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({
-                    success: true,
-                    snapshot_name: name,
-                    size_bytes: sizeBytes
-                });
-            });
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
+    snapshots[name] = { ...state, name, size_bytes: sizeBytes };
+    await setLocal(SNAPSHOT_KEY, snapshots);
+    return { success: true, snapshot_name: name, size_bytes: sizeBytes };
 }
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export async function loadStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            resolve(snapshots[name] || null);
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    return snapshots[name] || null;
 }
 /**
  * List all state snapshots with metadata
  */
 export async function listStateSnapshots() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const list = Object.values(snapshots).map((s) => ({
-                name: s.name,
-                url: s.url,
-                timestamp: s.timestamp,
-                size_bytes: s.size_bytes
-            }));
-            resolve(list);
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    return Object.values(snapshots).map((s) => ({
+        name: s.name,
+        url: s.url,
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes
+    }));
 }
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export async function deleteStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            delete snapshots[name];
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({ success: true, deleted: name });
-            });
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    delete snapshots[name];
+    await setLocal(SNAPSHOT_KEY, snapshots);
+    return { success: true, deleted: name };
 }
 //# sourceMappingURL=message-handlers.js.map

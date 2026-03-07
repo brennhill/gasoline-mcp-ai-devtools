@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 - **Test:** Daemon detects a newer binary on disk
   - **Given:** Daemon running v7.8.0
-  - **When:** Binary is replaced with v0.8.0
+  - **When:** Binary is replaced with v0.8.1
   - **Then:** Watcher detects file change, verifies version, sets upgrade_pending
 
 - **Test:** Daemon auto-restarts after grace period

@@ -3,12 +3,13 @@
  * Why: Keeps destructive and behavior-changing popup operations centralized with explicit UX safeguards.
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
-import { SettingName } from '../lib/constants.js';
+import { SettingName, StorageKey } from '../lib/constants.js';
+import { setLocal, getLocal } from '../lib/storage-utils.js';
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
-    chrome.storage.local.set({ webSocketCaptureMode: mode });
+    void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
@@ -18,12 +19,8 @@ export async function initWebSocketModeSelector() {
     const modeSelect = document.getElementById('ws-mode');
     if (!modeSelect)
         return;
-    return new Promise((resolve) => {
-        chrome.storage.local.get(['webSocketCaptureMode'], (result) => {
-            modeSelect.value = result.webSocketCaptureMode || 'medium';
-            resolve();
-        });
-    });
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
+    modeSelect.value = value || 'medium';
 }
 // Track clear-logs confirmation state
 let clearConfirmPending = false;
@@ -67,7 +64,7 @@ export async function handleClearLogs() {
         clearBtn.textContent = 'Clearing...';
     }
     return new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'clearLogs' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'clear_logs' }, (response) => {
             if (clearBtn) {
                 clearBtn.disabled = false;
                 clearBtn.textContent = 'Clear Logs';

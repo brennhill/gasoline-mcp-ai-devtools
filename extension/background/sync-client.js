@@ -70,7 +70,7 @@ export class SyncClient {
         // Cap queue size to prevent memory leak if server is unreachable
         const MAX_PENDING_RESULTS = 200;
         if (this.pendingResults.length > MAX_PENDING_RESULTS) {
-            this.pendingResults.splice(0, this.pendingResults.length - MAX_PENDING_RESULTS);
+            this.pendingResults = this.pendingResults.slice(-MAX_PENDING_RESULTS);
         }
         this.flush();
     }
@@ -183,7 +183,7 @@ export class SyncClient {
                 this.callbacks.clearExtensionLogs();
             }
             if (resultsSentCount > 0) {
-                this.pendingResults.splice(0, resultsSentCount);
+                this.pendingResults = this.pendingResults.slice(resultsSentCount);
             }
             // Dispatch commands without blocking the heartbeat loop.
             // Command completion is returned asynchronously via queueCommandResult().

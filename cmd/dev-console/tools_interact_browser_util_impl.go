@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
@@ -35,17 +34,17 @@ func (h *interactActionHandler) resolveNavigateURLImpl(rawURL string) (string, e
 		return trimmed, nil
 	}
 	if h.parent.capture == nil {
-		return "", fmt.Errorf("gasoline-insecure URL is unavailable because capture is not initialized")
+		return "", fmt.Errorf("resolve insecure URL: capture not initialized. Initialize capture before using insecure mode")
 	}
 
 	mode, _, _ := h.parent.capture.GetSecurityMode()
 	if mode != capture.SecurityModeInsecureProxy {
-		return "", fmt.Errorf("gasoline-insecure URL requires security_mode=insecure_proxy")
+		return "", fmt.Errorf("resolve insecure URL: requires security_mode=insecure_proxy. Set security mode before navigating")
 	}
 
 	target := strings.TrimSpace(trimmed[len(insecurePrefix):])
 	if target == "" {
-		return "", fmt.Errorf("gasoline-insecure URL is missing target URL")
+		return "", fmt.Errorf("resolve insecure URL: target URL is empty. Provide a URL after the gasoline-insecure:// prefix")
 	}
 	parsed, err := url.Parse(target)
 	if err != nil {
@@ -80,42 +79,34 @@ type browserActionOpts struct {
 
 // queueBrowserAction is the shared helper for simple browser actions that follow
 // the guard → correlate → arm evidence → enqueue → record → wait pattern.
-// Eliminates the repeated 15+ line boilerplate in back, forward, refresh, activate_tab, close_tab, etc.
+// Uses commandBuilder to eliminate repeated boilerplate.
 func (h *interactActionHandler) queueBrowserAction(req JSONRPCRequest, args json.RawMessage, opts browserActionOpts) JSONRPCResponse {
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if !opts.skipTabGuard {
-		if resp, blocked := h.parent.requireTabTracking(req); blocked {
-			return resp
-		}
-	}
-
-	correlationID := newCorrelationID(opts.correlationPfx)
-	h.armEvidenceForCommand(correlationID, opts.action, args, req.ClientID)
-
 	actionParams := opts.params
 	if actionParams == nil {
-		actionParams, _ = json.Marshal(map[string]string{"action": opts.action})
-	}
-
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        actionParams,
-		TabID:         opts.tabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
+		actionParams = buildQueryParams(map[string]any{"action": opts.action})
 	}
 
 	recordAction := opts.recordAction
 	if recordAction == "" {
 		recordAction = opts.action
 	}
-	h.parent.recordAIAction(recordAction, opts.recordURL, opts.recordExtra)
 
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, opts.queuedMsg)
+	cmd := h.newCommand(opts.action).
+		correlationPrefix(opts.correlationPfx).
+		reason(opts.action).
+		queryType("browser_action").
+		queryParams(actionParams).
+		tabID(opts.tabID).
+		recordAction(recordAction, opts.recordURL, opts.recordExtra).
+		queuedMessage(opts.queuedMsg)
+
+	if opts.skipTabGuard {
+		cmd.guards(h.parent.requirePilot, h.parent.requireExtension)
+	} else {
+		cmd.guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking)
+	}
+
+	return cmd.execute(req, args)
 }
 
 // handleScreenshotAliasImpl provides backward compatibility for clients that call
@@ -136,22 +127,16 @@ func (h *interactActionHandler) handleSubtitleImpl(req JSONRPCRequest, args json
 		return fail(req, ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", withParam("text"))
 	}
 
-	correlationID := newCorrelationID("subtitle")
-	h.armEvidenceForCommand(correlationID, "subtitle", args, req.ClientID)
-
-	query := queries.PendingQuery{
-		Type:          "subtitle",
-		Params:        args,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
 	queuedMsg := "Subtitle set"
 	if *params.Text == "" {
 		queuedMsg = "Subtitle cleared"
 	}
 
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, queuedMsg)
+	return h.newCommand("subtitle").
+		correlationPrefix("subtitle").
+		reason("subtitle").
+		queryType("subtitle").
+		queryParams(args).
+		queuedMessage(queuedMsg).
+		execute(req, args)
 }
