@@ -1142,9 +1142,9 @@
       return;
     }
     await setLocals({
-      trackedTabId: tab.id,
-      trackedTabUrl: tab.url,
-      trackedTabTitle: tab.title || ""
+      [StorageKey.TRACKED_TAB_ID]: tab.id,
+      [StorageKey.TRACKED_TAB_URL]: tab.url,
+      [StorageKey.TRACKED_TAB_TITLE]: tab.title || ""
     });
     if (btn)
       showTrackingState(btn, tab.url, tab.id);
