@@ -35,7 +35,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.12** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.8.0** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 **macOS / Linux:**
 ```bash
