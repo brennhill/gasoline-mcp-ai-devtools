@@ -242,15 +242,24 @@ func TestRedactJSONValue_NestedTypes(t *testing.T) {
 	redactFn := func(s string) string { return strings.ToUpper(s) }
 
 	result := redactJSONValue(input, redactFn)
-	m := result.(map[string]any)
+	m, ok := result.(map[string]any)
+	if !ok {
+		t.Fatalf("redactJSONValue returned unexpected type: %T", result)
+	}
 	if m["key"] != "SECRET_VALUE" {
 		t.Errorf("key = %v, want SECRET_VALUE", m["key"])
 	}
-	nested := m["nested"].(map[string]any)
+	nested, ok := m["nested"].(map[string]any)
+	if !ok {
+		t.Fatalf("nested field has unexpected type: %T", m["nested"])
+	}
 	if nested["inner"] != "ANOTHER_SECRET" {
 		t.Errorf("nested.inner = %v, want ANOTHER_SECRET", nested["inner"])
 	}
-	arr := m["array"].([]any)
+	arr, ok := m["array"].([]any)
+	if !ok {
+		t.Fatalf("array field has unexpected type: %T", m["array"])
+	}
 	if arr[0] != "ITEM1" || arr[1] != "ITEM2" {
 		t.Errorf("array = %v, want [ITEM1, ITEM2]", arr)
 	}
@@ -370,7 +379,9 @@ func TestHandleNetworkBodies_Success(t *testing.T) {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 	var resp map[string]any
-	json.Unmarshal(rr.Body.Bytes(), &resp)
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["status"] != "ok" || resp["count"] != float64(1) {
 		t.Errorf("response = %v", resp)
 	}

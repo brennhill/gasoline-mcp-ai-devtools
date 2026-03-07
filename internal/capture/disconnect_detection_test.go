@@ -194,7 +194,10 @@ func TestGetPilotStatus_IncludesExtensionLastSeen(t *testing.T) {
 	c.extensionState.lastSyncClientID = "test-client"
 	c.mu.Unlock()
 
-	status := c.GetPilotStatus().(map[string]any)
+	status, ok := c.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatalf("GetPilotStatus returned unexpected type: %T", c.GetPilotStatus())
+	}
 
 	if status["extension_connected"] != true {
 		t.Fatalf("expected extension_connected=true, got %v", status["extension_connected"])
@@ -211,7 +214,10 @@ func TestGetPilotStatus_EmptyLastSeenWhenNeverSynced(t *testing.T) {
 	c := NewCapture()
 	defer c.Close()
 
-	status := c.GetPilotStatus().(map[string]any)
+	status, ok := c.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatalf("GetPilotStatus returned unexpected type: %T", c.GetPilotStatus())
+	}
 
 	lastSeen, ok := status["extension_last_seen"].(string)
 	if !ok || lastSeen != "" {
@@ -224,7 +230,10 @@ func TestGetPilotStatus_DefaultsToAssumedEnabledUntilAuthoritative(t *testing.T)
 	c := NewCapture()
 	defer c.Close()
 
-	status := c.GetPilotStatus().(map[string]any)
+	status, ok := c.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatalf("GetPilotStatus returned unexpected type: %T", c.GetPilotStatus())
+	}
 
 	if status["enabled"] != true {
 		t.Fatalf("enabled = %v, want true while startup state is uncertain", status["enabled"])
@@ -260,7 +269,10 @@ func TestGetPilotStatus_ExplicitDisableFromSyncIsAuthoritative(t *testing.T) {
 	w := httptest.NewRecorder()
 	c.HandleSync(w, httpReq)
 
-	status := c.GetPilotStatus().(map[string]any)
+	status, ok := c.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatalf("GetPilotStatus returned unexpected type: %T", c.GetPilotStatus())
+	}
 
 	if status["enabled"] != false {
 		t.Fatalf("enabled = %v, want false for explicit pilot disable", status["enabled"])

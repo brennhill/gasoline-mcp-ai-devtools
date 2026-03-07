@@ -76,17 +76,13 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
-	var summaryParams struct {
-		Summary bool `json:"summary"`
-	}
-	_ = json.Unmarshal(args, &summaryParams)
-
-	// Add mode=validate to params for the extension.
+	// Parse once into a map, augment with mode=validate, and read summary flag from the same parse.
 	var rawParams map[string]any
 	if json.Unmarshal(args, &rawParams) == nil {
 		rawParams["mode"] = "validate"
 	}
 	augmentedArgs, _ := json.Marshal(rawParams)
+	wantSummary, _ := rawParams["summary"].(bool)
 
 	correlationID := newCorrelationID("form_validation")
 	query := queries.PendingQuery{
@@ -100,7 +96,7 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 	}
 
 	resp := h.MaybeWaitForCommand(req, correlationID, augmentedArgs, "Form validation queued")
-	if summaryParams.Summary {
+	if wantSummary {
 		resp = buildFormValidationSummary(resp)
 	}
 

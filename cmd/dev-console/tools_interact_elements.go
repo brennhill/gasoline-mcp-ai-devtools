@@ -146,7 +146,7 @@ func truncateListInteractiveResponse(resp JSONRPCResponse, limit int) JSONRPCRes
 			continue
 		}
 
-		elements := act.ExtractElementList(data)
+		elements := extractElementList(data)
 		if elements == nil || len(elements) <= limit {
 			continue
 		}

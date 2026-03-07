@@ -198,7 +198,9 @@ func TestHandleRecordingStorage_DELETE_MissingID(t *testing.T) {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
 	}
 	var resp map[string]string
-	json.Unmarshal(rr.Body.Bytes(), &resp)
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["error"] == "" {
 		t.Error("expected error message for missing recording_id")
 	}
@@ -267,7 +269,9 @@ func TestHandleQueryResult_WithCorrelationID(t *testing.T) {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 	var resp map[string]any
-	json.Unmarshal(rr.Body.Bytes(), &resp)
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Errorf("response status = %v, want ok", resp["status"])
 	}
