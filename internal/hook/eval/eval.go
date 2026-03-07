@@ -57,21 +57,35 @@ type Result struct {
 	Failures   []string
 }
 
-// fixtureHookDirs are the subdirectories of testdata/ that contain eval fixtures.
-// Other directories (like codebase-go-web) are test codebases, not fixtures.
-var fixtureHookDirs = []string{
+// fixtureDirs are the subdirectories of testdata/ that contain eval fixtures.
+// Hook infrastructure dirs test specific hook behaviors.
+// Principle dirs (u01-u10) test the 10 universal principles across
+// the discover → suggest → enforce → migrate cycle.
+var fixtureDirs = []string{
+	// Hook infrastructure
 	"quality-gate",
 	"compress-output",
 	"session-track",
 	"blast-radius",
 	"decision-guard",
+	// Universal principles
+	"u01-errors-not-ignored",
+	"u02-single-responsibility",
+	"u03-separation-of-concerns",
+	"u04-no-magic-globals",
+	"u05-immutability",
+	"u06-fail-fast",
+	"u07-explicit-over-implicit",
+	"u08-no-raw-resource-access",
+	"u09-testing-structure",
+	"u10-dead-code-deleted",
 }
 
 // LoadFixtures loads all JSON fixture files from the hook subdirectories.
 func LoadFixtures(dir string) ([]*Fixture, error) {
 	var fixtures []*Fixture
 
-	for _, hookDir := range fixtureHookDirs {
+	for _, hookDir := range fixtureDirs {
 		hookPath := filepath.Join(dir, hookDir)
 		entries, err := os.ReadDir(hookPath)
 		if err != nil {
