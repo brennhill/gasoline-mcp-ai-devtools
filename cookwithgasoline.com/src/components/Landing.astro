@@ -368,25 +368,7 @@ const solutions = [
               <div class="gmodern-solution-workbench">
 
                 {solution.id === 'seo' && (
-                  <div class="gvis-bars" aria-hidden="true">
-                    <div class="gvis-bars-head">
-                      <h4>{solution.visual.metricTitle}</h4>
-                      <span class="gvis-bars-delta">+{solution.visual.score}</span>
-                    </div>
-                    <div class="gvis-bars-chart">
-                      {solution.visual.metrics.map((m, i) => (
-                        <div class="gvis-bars-row">
-                          <span>{m.label}</span>
-                          <div class="gvis-bars-track"><div class={`gvis-bars-fill gvis-bars-fill--${i}`} style={`width:${Math.round(m.value * 0.87)}%`}></div></div>
-                          <strong>{m.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <div class="gvis-bars-urls">
-                      {solution.visual.fields.map((f) => <code>{f.value}</code>)}
-                    </div>
-                    <button class="gvis-btn" type="button">{solution.visual.button}</button>
-                  </div>
+                  <img src="/images/landing/sparky-seo.png" alt="Sparky analyzing SEO metrics" class="gmodern-solution-visual-image" />
                 )}
 
                 {solution.id === 'product' && (

@@ -682,6 +682,13 @@ site-search kbd {
   height: 100%;
 }
 
+.gmodern-solution-visual-image {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+}
+
 .gmodern-workbench-form {
   max-width: 320px;
   border: 1px solid color-mix(in srgb, var(--g-border-strong) 48%, var(--g-border));
