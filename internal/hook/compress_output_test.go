@@ -150,7 +150,7 @@ func TestCompressOutput_GoBuild_Errors(t *testing.T) {
 	if result.Category != "build_output" {
 		t.Errorf("Category = %q, want build_output", result.Category)
 	}
-	if !strings.Contains(result.Compressed, "error(s):") {
+	if !strings.Contains(result.Compressed, "issue(s):") {
 		t.Error("missing error count")
 	}
 }

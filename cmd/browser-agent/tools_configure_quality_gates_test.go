@@ -273,7 +273,7 @@ func TestSetupQualityGates_ResponseContainsDefaults(t *testing.T) {
 	}
 }
 
-func TestSetupQualityGates_ResponseContainsHookConfig(t *testing.T) {
+func TestSetupQualityGates_InstallsHooks(t *testing.T) {
 	t.Parallel()
 	h, server, _ := makeToolHandler(t)
 
@@ -287,20 +287,114 @@ func TestSetupQualityGates_ResponseContainsHookConfig(t *testing.T) {
 	}
 
 	data := extractResultJSON(t, result)
-	hookConfig, ok := data["hook_config"].(map[string]any)
-	if !ok {
-		t.Fatal("response should include hook_config object")
+	if data["hooks_installed"] != true {
+		t.Fatal("hooks_installed should be true on first run")
 	}
-	if hookConfig["description"] == nil {
-		t.Fatal("hook_config should include description")
+	if data["settings_path"] == nil {
+		t.Fatal("response should include settings_path")
 	}
-	if hookConfig["command_hook_json"] == nil {
-		t.Fatal("hook_config should include command_hook_json")
+
+	// Verify .claude/settings.json was created with hooks.
+	settingsPath := filepath.Join(dir, ".claude", "settings.json")
+	settingsBytes, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf(".claude/settings.json not created: %v", err)
 	}
-	if hookConfig["prompt_hook_json"] == nil {
-		t.Fatal("hook_config should include prompt_hook_json")
+
+	var settings map[string]any
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatalf("settings.json is not valid JSON: %v", err)
 	}
-	if hookConfig["settings_path"] == nil {
-		t.Fatal("hook_config should include settings_path")
+
+	hooks, _ := settings["hooks"].(map[string]any)
+	if hooks == nil {
+		t.Fatal("settings.json missing hooks key")
+	}
+	postToolUse, _ := hooks["PostToolUse"].([]any)
+	if len(postToolUse) != 2 {
+		t.Fatalf("expected 2 PostToolUse entries, got %d", len(postToolUse))
+	}
+
+	// Verify quality gate hook.
+	settingsStr := string(settingsBytes)
+	if !strings.Contains(settingsStr, "gasoline-hooks quality-gate") {
+		t.Error("settings.json missing quality-gate hook command")
+	}
+	if !strings.Contains(settingsStr, "gasoline-hooks compress-output") {
+		t.Error("settings.json missing compress-output hook command")
+	}
+}
+
+func TestSetupQualityGates_DoesNotDuplicateHooks(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	dir := t.TempDir()
+	server.SetActiveCodebase(dir)
+
+	// Run setup twice.
+	callConfigureRaw(h, `{"what":"setup_quality_gates"}`)
+	resp := callConfigureRaw(h, `{"what":"setup_quality_gates"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", firstText(result))
+	}
+
+	data := extractResultJSON(t, result)
+	if data["hooks_installed"] != false {
+		t.Fatal("hooks_installed should be false on second run")
+	}
+
+	// Verify only 2 PostToolUse entries (not 4).
+	settingsBytes, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+	var settings map[string]any
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatalf("invalid settings JSON: %v", err)
+	}
+	hooks, _ := settings["hooks"].(map[string]any)
+	postToolUse, _ := hooks["PostToolUse"].([]any)
+	if len(postToolUse) != 2 {
+		t.Fatalf("expected 2 PostToolUse entries after double-run, got %d", len(postToolUse))
+	}
+}
+
+func TestSetupQualityGates_MergesWithExistingSettings(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	dir := t.TempDir()
+	server.SetActiveCodebase(dir)
+
+	// Pre-create .claude/settings.json with existing settings.
+	settingsDir := filepath.Join(dir, ".claude")
+	os.MkdirAll(settingsDir, 0755)
+	existing := `{"permissions":{"allow":["Read","Write"]},"model":"sonnet"}`
+	os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(existing), 0644)
+
+	resp := callConfigureRaw(h, `{"what":"setup_quality_gates"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", firstText(result))
+	}
+
+	// Verify existing settings were preserved.
+	settingsBytes, _ := os.ReadFile(filepath.Join(settingsDir, "settings.json"))
+	var settings map[string]any
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatalf("invalid settings JSON: %v", err)
+	}
+
+	if settings["model"] != "sonnet" {
+		t.Fatal("existing model setting was lost")
+	}
+	permissions, _ := settings["permissions"].(map[string]any)
+	if permissions == nil {
+		t.Fatal("existing permissions were lost")
+	}
+
+	// Verify hooks were added.
+	hooks, _ := settings["hooks"].(map[string]any)
+	if hooks == nil {
+		t.Fatal("hooks were not added")
 	}
 }

@@ -10,6 +10,7 @@
     "x64"
   ],
   "files": [
-    "bin/gasoline.exe"
+    "bin/gasoline.exe",
+    "bin/gasoline-hooks.exe"
   ]
 }

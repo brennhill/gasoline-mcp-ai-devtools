@@ -14,16 +14,21 @@ code_paths:
   - internal/hook/protocol.go
   - internal/hook/compress_output.go
   - internal/hook/quality_gate.go
+  - internal/hook/convention_detect.go
   - internal/tracking/token_tracker.go
   - internal/tracking/stats_endpoint.go
-  - cmd/dev-console/cli_hook.go
+  - cmd/hooks/main.go
 test_paths:
   - cmd/dev-console/tools_configure_quality_gates_test.go
+  - cmd/hooks/main_test.go
   - internal/hook/protocol_test.go
   - internal/hook/compress_output_test.go
   - internal/hook/quality_gate_test.go
+  - internal/hook/convention_detect_test.go
   - internal/tracking/token_tracker_test.go
   - internal/tracking/stats_endpoint_test.go
+  - scripts/install-upgrade-regression.contract.test.mjs
+  - scripts/test-install-hooks-only.sh
 last_verified_version: 0.8.1
 last_verified_date: 2026-03-06
 ---
@@ -45,15 +50,26 @@ last_verified_date: 2026-03-06
 
 ## Summary
 
-Automated code quality enforcement that catches architectural drift, duplicate code, and pattern violations without burning tokens. Scaffolds `.gasoline.json` and `gasoline-code-standards.md` in the project root. Quality gates are enforced via Claude Code prompt hooks that call Haiku to review edits against the standards doc.
+Automated code quality enforcement that catches architectural drift, duplicate code, and pattern violations without burning tokens. Scaffolds `.gasoline.json` and `gasoline-code-standards.md` in the project root. Quality gates are enforced via Claude Code hooks that inject standards, detect conventions (searching the codebase for existing usage of patterns like `http.Client{`, handler maps, type declarations), and suggest helper extraction when 2+ instances exist.
 
 ## Architecture
 
-1. **`.gasoline.json`** — minimal config pointing to the standards doc, committed to repo
-2. **`gasoline-code-standards.md`** — plain markdown coding conventions, read by Haiku
-3. **Claude Code hooks** — PostToolUse on Edit/Write (quality gates) and Bash (output compression)
-4. **Haiku review** — ~$0.0001/edit, findings injected as `additionalContext`
-5. **Token tracking** — `internal/tracking/` tracks compression savings, logs on shutdown, persists lifetime stats to `~/.gasoline/stats/lifetime.json`
+1. **`gasoline-hooks` binary** — standalone CLI for Claude Code hooks (`cmd/hooks/`), installable independently
+2. **`.gasoline.json`** — minimal config pointing to the standards doc, committed to repo
+3. **`gasoline-code-standards.md`** — plain markdown coding conventions, read by Haiku
+4. **Claude Code hooks** — PostToolUse on Edit/Write (quality gates) and Bash (output compression)
+5. **Haiku review** — ~$0.0001/edit, findings injected as `additionalContext`
+6. **Token tracking** — `internal/tracking/` tracks compression savings, logs on shutdown, persists lifetime stats to `~/.gasoline/stats/lifetime.json`
+
+## Install
+
+```bash
+# Hooks only (standalone)
+curl -fsSL https://gasoline.dev/install.sh | sh -s -- --hooks-only
+
+# Full Gasoline (includes hooks)
+curl -fsSL https://gasoline.dev/install.sh | sh
+```
 
 ## Setup
 

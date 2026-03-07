@@ -54,10 +54,6 @@ func main() {
 		}
 	}()
 
-	if len(os.Args) >= 2 && os.Args[1] == "hook" {
-		os.Exit(runHookMode(os.Args[1:]))
-	}
-
 	if len(os.Args) >= 2 && IsCLIMode(os.Args[1:]) {
 		os.Exit(runCLIMode(os.Args[1:]))
 	}

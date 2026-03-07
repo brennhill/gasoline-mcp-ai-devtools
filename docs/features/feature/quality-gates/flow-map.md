@@ -24,22 +24,42 @@ AI or user calls configure(what="setup_quality_gates")
 ```
 AI calls Edit/Write tool
   -> Claude Code PostToolUse hook fires
-  -> Prompt hook sends to Haiku:
-     - gasoline-code-standards.md (from .gasoline.json pointer)
-     - the diff (changed file content)
-  -> Haiku checks for violations (~200ms)
-  -> Findings returned as additionalContext
-  -> Primary model (Opus/Sonnet) sees findings
-  -> Fixes immediately in same turn
+  -> gasoline-hooks quality-gate reads JSON from stdin:
+     1. Finds .gasoline.json (walks up from edited file)
+     2. Reads code_standards doc
+     3. Checks file size vs limit
+     4. Detects patterns in new code, searches codebase for existing usage
+     5. Suggests helper extraction at 2+ instances
+     6. Outputs findings as additionalContext (JSON to stdout)
+  -> Primary model sees standards + conventions + findings
+  -> Fixes violations before proceeding
+```
+
+## Binary Architecture
+
+```
+gasoline-hooks (standalone, cmd/hooks/)
+  ├── quality-gate     -> internal/hook/quality_gate.go
+  └── compress-output  -> internal/hook/compress_output.go
+
+gasoline (MCP server, cmd/dev-console/)
+  └── configure(what="setup_quality_gates")
+      -> writes .gasoline.json, gasoline-code-standards.md
+      -> installs hooks into .claude/settings.json (references gasoline-hooks)
 ```
 
 ## Code Paths
 
 | Component | Path |
 |-----------|------|
-| Handler | `cmd/dev-console/tools_configure_quality_gates.go` |
-| Registry | `cmd/dev-console/tools_configure_registry.go` |
-| Mode spec | `internal/tools/configure/mode_specs_configure.go` |
-| Schema enum | `internal/schema/configure_properties_core.go` |
-| Schema props | `internal/schema/configure_properties_runtime.go` |
-| Tests | `cmd/dev-console/tools_configure_quality_gates_test.go` |
+| Hooks binary | `cmd/hooks/main.go` |
+| Hooks binary tests | `cmd/hooks/main_test.go` |
+| Setup handler | `cmd/dev-console/tools_configure_quality_gates.go` |
+| Setup tests | `cmd/dev-console/tools_configure_quality_gates_test.go` |
+| Quality gate logic | `internal/hook/quality_gate.go` |
+| Convention detection | `internal/hook/convention_detect.go` |
+| Output compression | `internal/hook/compress_output.go` |
+| Hook protocol | `internal/hook/protocol.go` |
+| Token tracking | `internal/tracking/token_tracker.go` |
+| Installer contract tests | `scripts/install-upgrade-regression.contract.test.mjs` |
+| Hooks install test | `scripts/test-install-hooks-only.sh` |

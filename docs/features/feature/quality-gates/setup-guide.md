@@ -10,91 +10,33 @@ Automated code quality enforcement via Claude Code hooks.
 
 ## Quick Start
 
-### 1. Create config files
+### 1. Run setup (one command)
 
 ```
 configure(what="setup_quality_gates")
 ```
 
-This creates:
-- `.gasoline.json` — points to your standards doc, configures thresholds
-- `gasoline-code-standards.md` — starter coding conventions
+This automatically:
+- Creates `.gasoline.json` — points to your standards doc, configures thresholds
+- Creates `gasoline-code-standards.md` — starter coding conventions
+- Installs hooks into `.claude/settings.json` — merges with existing settings, never overwrites
 
-### 2. Add Claude Code hooks
-
-Add to `.claude/settings.json` in your project:
-
-**Recommended: Both quality gates + output compression**
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook quality-gate",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook compress-output",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+After this single command, quality gates are active on every Edit/Write and output compression runs on every Bash command.
 
 What gets injected:
-- **On Edit/Write:** Your code standards doc, file size warnings, review instructions
+- **On Edit/Write:** Your code standards doc, file size warnings, codebase convention examples, helper extraction suggestions
 - **On Bash:** Compressed test/build output (91-99% token savings on verbose output)
 
-**Optional: Add Haiku review (belt and suspenders)**
+### 2. (Optional) Add Haiku review
 
-Chain the quality gate hook with a Haiku prompt hook for automated code review:
+For belt-and-suspenders AI review, add a prompt hook to the Edit|Write matcher in `.claude/settings.json`:
 
 ```json
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook quality-gate",
-            "timeout": 10
-          },
-          {
-            "type": "prompt",
-            "prompt": "Review this code change against the project standards and any quality gate findings above. Only flag clear violations. Respond {\"ok\": true} if acceptable, or {\"ok\": false, \"reason\": \"specific findings\"} if not.",
-            "model": "haiku",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook compress-output",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
+  "type": "prompt",
+  "prompt": "Review this code change against the project standards and any quality gate findings above. Only flag clear violations. Respond {\"ok\": true} if acceptable, or {\"ok\": false, \"reason\": \"specific findings\"} if not.",
+  "model": "haiku",
+  "timeout": 30
 }
 ```
 
@@ -108,14 +50,15 @@ Bad rule: "Use good patterns." (flags everything)
 
 ## What Gets Checked
 
-### By `gasoline hook quality-gate`
+### By `gasoline-hooks quality-gate`
 
 | Check | Trigger | Data injected |
 |-------|---------|---------------|
 | **Standards doc** | Every Edit/Write | Full standards content (first 150 lines) |
 | **File size** | File > 90% of limit | Warning with line count and limit |
+| **Convention detection** | New code uses a known pattern | Existing codebase examples + helper extraction suggestion if 2+ instances |
 
-### By `gasoline hook compress-output`
+### By `gasoline-hooks compress-output`
 
 | Pattern | Detection | Compression |
 |---------|-----------|-------------|
@@ -148,17 +91,20 @@ Bad rule: "Use good patterns." (flags everything)
 ```
 AI calls Edit/Write
   -> PostToolUse hook fires
-  -> `gasoline hook quality-gate` runs:
+  -> `gasoline-hooks quality-gate` runs:
      1. Finds .gasoline.json (walks up from changed file)
      2. Reads code_standards doc
      3. Checks file line count vs limit
-     4. Outputs findings as additionalContext (JSON)
-  -> AI sees standards + findings in its context
+     4. Detects patterns in new code (http.Client{, map[string]func, type decls, etc.)
+     5. Searches codebase for existing usage of those patterns
+     6. If 2+ instances found, suggests extracting a shared helper
+     7. Outputs findings as additionalContext (JSON)
+  -> AI sees standards + conventions + findings in its context
   -> Fixes violations before proceeding
 
 AI calls Bash (test/build)
   -> PostToolUse hook fires
-  -> `gasoline hook compress-output` runs:
+  -> `gasoline-hooks compress-output` runs:
      1. Detects output pattern (go test, jest, tsc, etc.)
      2. Compresses to summary + errors only
      3. Posts savings to daemon for tracking
@@ -214,9 +160,10 @@ Token savings are tracked per session and across lifetime:
 - Check that `matcher` matches the tool name exactly: `Edit|Write` or `Bash`
 - Run `claude --debug` to see hook execution
 
-**gasoline not found?**
-- Ensure gasoline is installed: `npm install -g gasoline-agentic-devtools`
-- Or use the full path: `gasoline-mcp hook quality-gate`
+**gasoline-hooks not found?**
+- Install hooks standalone: `curl -fsSL https://gasoline.dev/install.sh | sh -s -- --hooks-only`
+- Or install the full suite: `curl -fsSL https://gasoline.dev/install.sh | sh`
+- Via npm: `npm install -g gasoline-agentic-devtools`
 
 **Too many false positives?**
 - Make rules more specific in the standards doc
