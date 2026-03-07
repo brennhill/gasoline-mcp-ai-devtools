@@ -58,6 +58,7 @@ type Server struct {
 
 	// Terminal PTY session manager
 	ptyManager *pty.Manager
+	ptyRelays  *terminalRelayMap
 
 	// Terminal server port (0 = terminal server not running)
 	terminalPort int

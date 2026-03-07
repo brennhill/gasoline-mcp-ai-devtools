@@ -46,7 +46,7 @@ func NewWriteBuffer(w io.Writer) *WriteBuffer {
 // Write appends data to the buffer without blocking. Returns ErrWriteBufferFull
 // if the buffer exceeds the backpressure cap.
 func (wb *WriteBuffer) Write(data []byte) (int, error) {
-	wb.mu.Lock()
+	wb.mu.Lock() // lint:manual-unlock — multiple early-return paths
 	if wb.closed {
 		wb.mu.Unlock()
 		return 0, ErrWriteBufferFull
@@ -81,7 +81,7 @@ func (wb *WriteBuffer) drain() {
 // reflects the true amount of undelivered data.
 func (wb *WriteBuffer) flushAll() {
 	for {
-		wb.mu.Lock()
+		wb.mu.Lock() // lint:manual-unlock — lock/unlock brackets I/O outside lock
 		if len(wb.buf) == 0 {
 			wb.mu.Unlock()
 			return
@@ -95,8 +95,14 @@ func (wb *WriteBuffer) flushAll() {
 		wb.mu.Unlock()
 
 		_, err := wb.writer.Write(chunk)
+		if err != nil {
+			// Leave data in buffer — caller can retry or Close will
+			// attempt a final flush. For PTY stdin this typically means
+			// the child process exited, so the data is undeliverable.
+			return
+		}
 
-		wb.mu.Lock()
+		wb.mu.Lock() // lint:manual-unlock — same pattern as above
 		if len(wb.buf) >= n {
 			wb.buf = wb.buf[n:]
 		}
@@ -104,10 +110,6 @@ func (wb *WriteBuffer) flushAll() {
 			wb.buf = nil
 		}
 		wb.mu.Unlock()
-
-		if err != nil {
-			return
-		}
 	}
 }
 
@@ -120,7 +122,7 @@ func (wb *WriteBuffer) Pending() int {
 
 // Close stops the drain goroutine and flushes remaining data.
 func (wb *WriteBuffer) Close() error {
-	wb.mu.Lock()
+	wb.mu.Lock() // lint:manual-unlock — unlock before blocking on drain goroutine
 	if wb.closed {
 		wb.mu.Unlock()
 		return nil

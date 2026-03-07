@@ -244,6 +244,28 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("expected count 1, got %v", count)
 	}
+
+	// Validate the new rich session objects.
+	sessions, ok := resp["sessions"].([]any)
+	if !ok {
+		t.Fatalf("expected sessions array, got %T", resp["sessions"])
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+	sess := sessions[0].(map[string]any)
+	if sess["id"] != "test" {
+		t.Fatalf("expected id 'test', got %v", sess["id"])
+	}
+	if sess["alive"] != true {
+		t.Fatalf("expected alive=true, got %v", sess["alive"])
+	}
+	if sess["pid"] == nil {
+		t.Fatal("expected pid in session info")
+	}
+	if _, hasAlt := sess["alt_screen"]; !hasAlt {
+		t.Fatal("expected alt_screen field in session info")
+	}
 }
 
 func TestHandleTerminalValidate_ValidToken(t *testing.T) {

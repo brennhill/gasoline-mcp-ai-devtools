@@ -43,6 +43,9 @@ const terminalPromptChars = "$#>%"
 // NOT MCP — These are daemon-served endpoints for the in-browser terminal.
 func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager, cap *capture.Store) {
 	relays := newTerminalRelayMap()
+	if server != nil {
+		server.ptyRelays = relays
+	}
 
 	// Serve terminal HTML page.
 	mux.HandleFunc("/terminal", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -595,6 +598,10 @@ func handleTerminalUpload(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 	if sessionID == "" {
 		sessionID = "default"
 	}
+
+	// Cap request body at the upload limit (+4KB for overhead) to prevent
+	// unbounded memory buffering before pty.Upload's own LimitReader kicks in.
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20+4096)
 
 	// Verify session exists.
 	if _, err := mgr.Get(sessionID); err != nil {

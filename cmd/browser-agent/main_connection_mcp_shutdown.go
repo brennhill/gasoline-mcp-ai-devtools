@@ -92,6 +92,9 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 			th.capture.Close()
 		}
 	}
+	if server.ptyRelays != nil {
+		server.ptyRelays.closeAll()
+	}
 	if server.ptyManager != nil {
 		server.ptyManager.StopAll()
 	}
