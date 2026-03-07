@@ -727,7 +727,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nSession: store, load, clear, telemetry, security_mode.\nDiagnostics: health, doctor, restart, audit_log, describe_capabilities, report_issue.\nRecording: event_recording_start/stop, playback, log_diff, network_recording.\nSequences: save/get/list/delete/replay_sequence.\nNoise \u0026 streaming: noise_rule, streaming, action_jitter.\nTesting: test_boundary_start/end.\nHelp: tutorial, examples, diff_sessions.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
+    "description": "Session settings and utilities.\n\nSession: store, load, clear, telemetry, security_mode.\nDiagnostics: health, doctor, restart, audit_log, describe_capabilities, report_issue.\nRecording: event_recording_start/stop, playback, log_diff, network_recording.\nSequences: save/get/list/delete/replay_sequence.\nNoise \u0026 streaming: noise_rule, streaming, action_jitter.\nTesting: test_boundary_start/end.\nQuality: setup_quality_gates.\nHelp: tutorial, examples, diff_sessions.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -990,6 +990,10 @@
           },
           "type": "array"
         },
+        "target_dir": {
+          "description": "Directory to write .gasoline.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
+          "type": "string"
+        },
         "telemetry_mode": {
           "description": "Telemetry metadata mode: off, auto, full. configure(what='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
           "enum": [
@@ -1082,7 +1086,8 @@
             "security_mode",
             "network_recording",
             "action_jitter",
-            "report_issue"
+            "report_issue",
+            "setup_quality_gates"
           ],
           "type": "string"
         }

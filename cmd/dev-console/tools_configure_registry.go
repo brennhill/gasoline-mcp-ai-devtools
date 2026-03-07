@@ -56,6 +56,7 @@ var configureHandlers = map[string]ModeHandler{
 	"network_recording":     method((*ToolHandler).toolConfigureNetworkRecording),
 	"action_jitter":         method((*ToolHandler).toolConfigureActionJitter),
 	"report_issue":          method((*ToolHandler).toolConfigureReportIssue),
+	"setup_quality_gates":   method((*ToolHandler).toolConfigureSetupQualityGates),
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.
