@@ -46,7 +46,23 @@ irm https://raw.githubusercontent.com/brennhill/blazetorch-ai-devstack/STABLE/sc
 
 If the script auto-config doesn't work:
 
-1. Open `chrome://extensions`
+**Option A: Agent-assisted (recommended)**
+
+Ask your AI agent to help:
+```
+"Can you open the Chrome extensions page and help me load the BlazeTorch extension?"
+```
+
+The agent can call:
+```
+interact(what='navigate', url='chrome://extensions')
+```
+
+Then guide you through enabling Developer Mode and loading the extension.
+
+**Option B: Manual**
+
+1. Open `chrome://extensions` (or `brave://extensions` for Brave)
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked**
 4. Select `~/.blazetorch/extension`
@@ -77,6 +93,42 @@ Add to `~/.claude/claude.json` or your IDE's MCP config:
 ```
 
 The server will start automatically when you first use a BlazeTorch tool.
+
+---
+
+## Helping Users Setup (for Agents)
+
+When a user asks for help installing BlazeTorch, you can:
+
+1. **Guide them to open extensions page:**
+```
+interact(what='navigate', url='chrome://extensions')
+# or for Brave:
+# interact(what='navigate', url='brave://extensions')
+```
+
+2. **Take a screenshot to see their current state:**
+```
+observe(what='screenshot')
+```
+
+3. **Give them step-by-step instructions:**
+- "I opened the Chrome extensions page for you. Do you see a toggle for 'Developer mode' in the top right?"
+- "Once enabled, click 'Load unpacked' and select the folder at `~/.blazetorch/extension`"
+
+4. **Verify installation:**
+```
+configure(what='health')
+# If it returns daemon running + extension connected, you're ready
+```
+
+5. **Help with troubleshooting:**
+```
+configure(what='health')  # Check what's not working
+observe(what='logs', min_level='debug')  # See debug logs
+```
+
+**Pro tip:** You can call `interact(what='screenshot')` to visually verify what the user is seeing, and guide them more accurately.
 
 ---
 
