@@ -372,22 +372,7 @@ const solutions = [
                 )}
 
                 {solution.id === 'product' && (
-                  <div class="gvis-kanban" aria-hidden="true">
-                    <div class="gvis-kanban-head">
-                      <h4>{solution.visual.metricTitle}</h4>
-                      <div class="gvis-kanban-ring"><span>{solution.visual.score}%</span></div>
-                    </div>
-                    <div class="gvis-kanban-board">
-                      {solution.visual.metrics.map((m, i) => (
-                        <div class={`gvis-kanban-col gvis-kanban-col--${i}`}>
-                          <div class="gvis-kanban-col-header"><span>{m.label}</span><strong>{m.value}</strong></div>
-                          <div class="gvis-kanban-card"></div>
-                          <div class="gvis-kanban-card"></div>
-                          {i === 1 ? <div class="gvis-kanban-card"></div> : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <img src="/images/landing/sparky-product.png" alt="Sparky designing product mockups" class="gmodern-solution-visual-image" />
                 )}
 
                 {solution.id === 'debug' && (
