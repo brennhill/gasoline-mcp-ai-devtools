@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 const (
@@ -98,6 +101,20 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 	if server.ptyManager != nil {
 		server.ptyManager.StopAll()
 	}
+
+	// Log token savings summary and persist lifetime stats.
+	if server.tokenTracker != nil {
+		if summary := server.tokenTracker.GetSessionSummary(); summary != "" {
+			stderrf("[gasoline] %s", summary)
+		}
+		if root, err := state.RootDir(); err == nil {
+			lifetimePath := filepath.Join(root, "stats", "lifetime.json")
+			if err := server.tokenTracker.SaveLifetime(lifetimePath); err != nil {
+				stderrf("[gasoline] Failed to save lifetime token stats: %v\n", err)
+			}
+		}
+	}
+
 	removePIDFile(port)
 	removeDaemonLockIfOwned(os.Getpid())
 }
