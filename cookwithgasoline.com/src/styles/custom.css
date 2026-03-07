@@ -1877,6 +1877,91 @@ code:not(pre code) {
   padding: 2rem 1rem;
 }
 
+.gmodern-token-efficiency {
+  max-width: 1120px;
+  margin: 3rem auto;
+  padding: 0 var(--sl-content-pad-x, 1rem);
+  display: grid;
+  gap: 1.5rem;
+}
+
+.gmodern-token-efficiency header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.gmodern-token-efficiency h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.gmodern-token-efficiency p {
+  margin: 0;
+  color: var(--g-ink-soft);
+  max-width: 65ch;
+}
+
+.gmodern-token-table {
+  overflow-x: auto;
+}
+
+.gmodern-token-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-md);
+  background: color-mix(in srgb, var(--g-surface) 96%, transparent);
+  overflow: hidden;
+}
+
+.gmodern-token-table thead {
+  background: color-mix(in srgb, var(--g-border) 40%, transparent);
+  border-bottom: 1px solid var(--g-border);
+}
+
+.gmodern-token-table th,
+.gmodern-token-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--g-border);
+}
+
+.gmodern-token-table th {
+  font-weight: 700;
+  color: var(--g-ink);
+}
+
+.gmodern-token-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gmodern-token-table tbody tr:nth-child(7),
+.gmodern-token-table tbody tr:nth-child(8),
+.gmodern-token-table tbody tr:nth-child(9) {
+  background: color-mix(in srgb, var(--g-orange) 8%, transparent);
+  font-weight: 600;
+}
+
+.gmodern-token-table td:last-child {
+  text-align: right;
+  font-family: 'Monaco', 'Menlo', monospace;
+  color: var(--g-orange);
+}
+
+.gmodern-token-callout {
+  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--g-orange);
+  border-radius: var(--g-radius-sm);
+  background: color-mix(in srgb, var(--g-orange) 6%, transparent);
+  color: var(--g-ink-soft);
+}
+
+.gmodern-token-callout p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .gasoline-footer {
   border-top: 1px solid var(--g-border);
   margin-top: 2rem;
