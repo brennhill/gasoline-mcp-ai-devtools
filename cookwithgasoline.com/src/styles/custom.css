@@ -675,6 +675,13 @@ site-search kbd {
   position: relative;
   padding: clamp(1rem, 2.5vw, 1.8rem);
   border-right: 1px solid color-mix(in srgb, var(--g-border-strong) 24%, var(--g-border));
+  overflow: hidden;
+}
+
+.gmodern-solution-panel-visual .gmodern-solution-visual-image {
+  position: absolute;
+  inset: 0;
+  padding: 0;
 }
 
 .gmodern-solution-workbench {
@@ -683,10 +690,9 @@ site-search kbd {
 }
 
 .gmodern-solution-visual-image {
-  max-width: 100%;
-  height: auto;
-  max-height: 400px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .gmodern-workbench-form {
