@@ -41,6 +41,11 @@ var observeHandlers = map[string]ModeHandler{
 	"indexeddb":         obs(observe.GetIndexedDB),
 	"summarized_logs":   obs(observe.GetSummarizedLogs),
 	"transients":        obs(observe.GetTransients),
+	// Annotations (canonical home; also available via analyze for backwards compat)
+	"annotations":       method((*ToolHandler).toolGetAnnotations),
+	"annotation_detail": method((*ToolHandler).toolGetAnnotationDetail),
+	"draw_history":      method((*ToolHandler).toolListDrawHistory),
+	"draw_session":      method((*ToolHandler).toolGetDrawSession),
 	// Local handlers
 	"page_inventory":    method((*ToolHandler).toolObservePageInventory),
 	"inbox":             method((*ToolHandler).toolObserveInbox),
@@ -74,6 +79,10 @@ var serverSideObserveModes = map[string]bool{
 	"pilot":             true,
 	"history":           true,
 	"inbox":             true,
+	"annotations":       true,
+	"annotation_detail": true,
+	"draw_history":      true,
+	"draw_session":      true,
 }
 
 // getValidObserveModes returns a sorted, comma-separated list of valid observe modes.
