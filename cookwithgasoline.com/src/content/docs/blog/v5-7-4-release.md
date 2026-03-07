@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.5.74 Released"
+title: "Gasoline v5.7.4 Released"
 description: "Stability and MCP reliability improvements"
 date: 2026-02-07T22:56:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.5']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
-## What's New in v0.5.74
+## What's New in v5.7.4
 
-Gasoline v0.5.74 improves stability and MCP protocol reliability based on production feedback.
+Gasoline v5.7.4 improves stability and MCP protocol reliability based on production feedback.
 
 ### Improvements
 
@@ -35,9 +35,9 @@ Gasoline v0.5.74 improves stability and MCP protocol reliability based on produc
 ## Upgrade
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+npm install -g gasoline-mcp@5.7.4
 ```
 
 ## Full Changelog
 
-[v0.5.74 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.4)
+[v5.7.4 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.4)

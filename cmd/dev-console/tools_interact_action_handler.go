@@ -54,8 +54,5 @@ func (h *interactActionHandler) GetJitter() int {
 }
 
 func (h *ToolHandler) interactAction() *interactActionHandler {
-	if h.interactActionHandler == nil {
-		h.interactActionHandler = newInteractActionHandler(h)
-	}
 	return h.interactActionHandler
 }

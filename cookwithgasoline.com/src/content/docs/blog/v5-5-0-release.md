@@ -1,6 +1,6 @@
 ---
-title: "Gasoline v0.5.50: Rock-Solid MCP Protocol Compliance"
-description: "v0.5.50 delivers 100% MCP protocol compliance with critical fixes for stdio transport, notification handling, and response framing. Claude Desktop and Cursor now connect flawlessly."
+title: "Gasoline v5.5.0: Rock-Solid MCP Protocol Compliance"
+description: "v5.5.0 delivers 100% MCP protocol compliance with critical fixes for stdio transport, notification handling, and response framing. Claude Desktop and Cursor now connect flawlessly."
 date: 2026-02-04T21:09:00Z
 authors:
   - brenn
@@ -8,12 +8,12 @@ tags:
   - releases
   - mcp
   - stability
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v0.5', 'release']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v5', 'release']
 ---
 
-Gasoline v0.5.50 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
+Gasoline v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
 
 ## The Problem: Intermittent Connection Failures
 
@@ -49,7 +49,7 @@ The stdio bridge could exit before the final response was written to stdout, tru
 
 ## Comprehensive Protocol Tests
 
-v0.5.50 adds 10 new Go tests that verify MCP protocol compliance:
+v5.5.0 adds 10 new Go tests that verify MCP protocol compliance:
 
 - `TestMCPProtocol_ResponseNewlines` — exactly one trailing newline per response
 - `TestMCPProtocol_NotificationNoResponse` — notifications receive no response
@@ -70,12 +70,12 @@ The GitHub API version check now fails silently. Previously, rate limit errors (
 
 ## Prior Versions Deprecated
 
-All npm packages prior to v0.5.50 have been deprecated. Users installing old versions will see a warning directing them to upgrade.
+All npm packages prior to v5.5.0 have been deprecated. Users installing old versions will see a warning directing them to upgrade.
 
 ## Upgrade
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+npx gasoline-mcp@5.5.0
 ```
 
 Or update your MCP configuration:
@@ -85,8 +85,8 @@ Or update your MCP configuration:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-browser",
-      "args": ["--port", "7890", "--persist"]
+      "command": "npx",
+      "args": ["-y", "gasoline-mcp@5.5.0", "--port", "7890", "--persist"]
     }
   }
 }

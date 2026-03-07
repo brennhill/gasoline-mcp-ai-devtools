@@ -88,7 +88,7 @@ async function startActionRecording(els, state) {
         state.recordingId = extractRecordingID(data);
         state.startTime = Date.now();
         // Persist state so reopening popup shows recording in progress
-        void setLocal('gasoline_action_recording', {
+        void setLocal(StorageKey.ACTION_RECORDING, {
             active: true,
             recordingId: state.recordingId,
             startTime: state.startTime
@@ -111,7 +111,7 @@ async function stopActionRecording(els, state) {
         if (configureError) {
             showError(els, configureError);
         }
-        void removeLocal('gasoline_action_recording');
+        void removeLocal(StorageKey.ACTION_RECORDING);
         showIdle(els, state);
     }
     catch (err) {
@@ -133,7 +133,7 @@ export function setupActionRecordingUI() {
         startTime: null
     };
     // Restore state if popup was closed during recording
-    void getLocal('gasoline_action_recording').then((value) => {
+    void getLocal(StorageKey.ACTION_RECORDING).then((value) => {
         const saved = value;
         if (saved?.active && saved.recordingId) {
             state.recordingId = saved.recordingId;

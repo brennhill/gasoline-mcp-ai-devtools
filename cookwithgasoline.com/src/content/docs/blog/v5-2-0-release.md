@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.5.20 Released"
+title: "Gasoline v5.2.0 Released"
 description: "Improved error handling and network inspection"
 date: 2026-01-10T20:15:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.5']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v5']
 ---
 
-## What's New in v0.5.20
+## What's New in v5.2.0
 
-Gasoline v0.5.20 improves error handling, network inspection, and adds better filtering options for high-volume environments.
+Gasoline v5.2.0 improves error handling, network inspection, and adds better filtering options for high-volume environments.
 
 ### Features
 
@@ -30,9 +30,9 @@ Gasoline v0.5.20 improves error handling, network inspection, and adds better fi
 ## Upgrade
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+npm install -g gasoline-mcp@5.2.0
 ```
 
 ## Full Changelog
 
-[v0.5.20 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.2.0)
+[v5.2.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.2.0)

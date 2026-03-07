@@ -29,10 +29,10 @@ export interface ExtensionLogQueueEntry {
 }
 export declare function getServerUrl(): string;
 export declare function isDebugMode(): boolean;
-export declare function getConnectionStatus(): MutableConnectionStatus;
+export declare function getConnectionStatus(): Readonly<MutableConnectionStatus>;
 export declare function getCurrentLogLevel(): string;
 export declare function isScreenshotOnError(): boolean;
-export declare function getCaptureOverrides(): Record<string, string>;
+export declare function getCaptureOverrides(): Readonly<Record<string, string>>;
 export declare function isAiControlled(): boolean;
 export declare function isConnectionCheckRunning(): boolean;
 export declare function isAiWebPilotCacheInitialized(): boolean;

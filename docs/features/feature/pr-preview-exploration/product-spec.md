@@ -36,7 +36,7 @@ PR Preview Exploration is a **multi-step workflow that the AI agent orchestrates
 The workflow proceeds in five phases:
 
 1. **Discover** — The agent learns the preview URL (from the human, from a convention, or from the GitHub deployment status API).
-2. **Baseline** — The agent captures a behavioral baseline of the main branch (or loads a previously saved baseline).
+2. **Baseline** — The agent captures a behavioral baseline of the stable branch (or loads a previously saved baseline).
 3. **Explore** — The agent navigates to the preview URL, exercises the app, and lets Gasoline passively capture telemetry.
 4. **Compare** — The agent compares the preview telemetry against the baseline to find regressions.
 5. **Report** — The agent produces a structured findings report, optionally posted as a PR comment.
@@ -48,7 +48,7 @@ This feature strictly follows the Gasoline architecture: **5 tools, no more**. T
 | Phase | Tool | Mode/Action | Purpose |
 |-------|------|-------------|---------|
 | Discover | (external) | GitHub API / user input | Get preview URL |
-| Baseline | `configure` | `diff_sessions` (capture) | Snapshot main branch state |
+| Baseline | `configure` | `diff_sessions` (capture) | Snapshot stable branch state |
 | Baseline | `configure` | `save_baseline` / `compare_baseline` | Behavioral fingerprint |
 | Explore | `interact` | `navigate` | Open the preview URL |
 | Explore | `interact` | `execute_js` | Click, type, scroll |
@@ -64,7 +64,7 @@ No new tools. No new modes. The entire feature is an agent behavior pattern that
 ## User Stories
 
 - As an AI coding agent, I want to navigate to a PR preview URL so that I can observe its runtime behavior.
-- As an AI coding agent, I want to compare preview telemetry against a main-branch baseline so that I can detect regressions introduced by the PR.
+- As an AI coding agent, I want to compare preview telemetry against a stable-branch baseline so that I can detect regressions introduced by the PR.
 - As an AI coding agent, I want to produce a structured findings report so that the PR author knows what runtime issues to fix before merging.
 - As a developer, I want AI to automatically explore my PR previews so that runtime bugs are caught before merge without manual testing.
 - As a team lead, I want PR preview exploration results posted as PR comments so that the review process includes runtime signal alongside code signal.
@@ -94,14 +94,14 @@ The agent tries mechanisms in order: if the human provided a URL, use it. If not
 
 Before exploring the preview, the agent needs a "known good" state to compare against. Two strategies:
 
-**Strategy A: Live baseline.** The agent navigates to the production/main-branch version of the app, captures a session snapshot and a behavioral baseline, then navigates to the preview. This is the most accurate but doubles the exploration time.
+**Strategy A: Live baseline.** The agent navigates to the production/stable-branch version of the app, captures a session snapshot and a behavioral baseline, then navigates to the preview. This is the most accurate but doubles the exploration time.
 
 **Strategy B: Stored baseline.** The agent loads a previously saved baseline (from `compare_baseline` / `diff_sessions`). This is faster but may be stale. The agent checks the baseline's creation timestamp and warns if it is older than a configurable threshold (default: 24 hours).
 
 The choice between strategies depends on context. If the agent has access to the production URL and the exploration budget allows it, Strategy A is preferred. If a recent baseline exists, Strategy B saves time.
 
 Baseline capture uses:
-- `configure({action: "diff_sessions", session_action: "capture", name: "main-baseline"})` for session-level diffing
+- `configure({action: "diff_sessions", session_action: "capture", name: "stable-baseline"})` for session-level diffing
 - Behavioral baselines (`save_baseline`) for structured regression detection of network patterns, console errors, WebSocket state, and timing
 
 ### Phase 3: Exploration
@@ -149,14 +149,14 @@ The agent compares the preview session against the baseline:
 
 #### Session diff:
 ```
-configure({action: "diff_sessions", session_action: "compare", compare_a: "main-baseline", compare_b: "preview-pr-42"})
+configure({action: "diff_sessions", session_action: "compare", compare_a: "stable-baseline", compare_b: "preview-pr-42"})
 ```
 
 This returns a structured diff showing new errors, changed network responses, performance deltas, and other differences.
 
 #### Behavioral baseline comparison (if baseline feature is available):
 ```
-configure({action: "compare_baseline", name: "main-baseline"})
+configure({action: "compare_baseline", name: "stable-baseline"})
 ```
 
 This returns regression categorization: network regressions (status code changes), timing regressions (latency spikes), console regressions (new errors), and WebSocket regressions.
@@ -312,7 +312,7 @@ The exploration phase uses `execute_js` to interact with the page. The principal
 
 - **Preview URL changes mid-exploration.** Some preview environments use dynamic URLs that change on redeployment. Expected behavior: The agent navigates to the URL once at the start. If the URL becomes invalid mid-exploration (page errors), the agent stops and reports partial results.
 
-- **No baseline available.** The agent cannot capture or load a baseline (first run, main branch unavailable). Expected behavior: The agent skips the comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). The report notes "no baseline available — showing absolute findings, not regressions."
+- **No baseline available.** The agent cannot capture or load a baseline (first run, stable branch unavailable). Expected behavior: The agent skips the comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). The report notes "no baseline available — showing absolute findings, not regressions."
 
 ## Dependencies
 

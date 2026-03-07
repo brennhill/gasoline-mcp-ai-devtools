@@ -110,6 +110,7 @@ export declare const StorageKey: {
     readonly NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled";
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
+    readonly ACTION_RECORDING: "gasoline_action_recording";
     readonly RECORDING: "gasoline_recording";
     readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
     readonly PENDING_RECORDING: "gasoline_pending_recording";

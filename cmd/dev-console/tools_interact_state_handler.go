@@ -37,8 +37,5 @@ func newStateInteractHandler(deps stateInteractDeps, store *persistence.SessionS
 }
 
 func (h *ToolHandler) stateInteract() *stateInteractHandler {
-	if h.stateInteractHandler == nil {
-		h.stateInteractHandler = newStateInteractHandler(h, h.sessionStoreImpl)
-	}
 	return h.stateInteractHandler
 }

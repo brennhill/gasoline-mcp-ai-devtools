@@ -4,8 +4,8 @@ description: "Create a practical, repeatable runbook for production bug response
 date: 2026-03-03
 authors: [brenn]
 tags: [runbook, production, debugging, operations]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['runbook', 'production', 'debugging', 'operations', 'articles', 'gasoline']
 ---
 

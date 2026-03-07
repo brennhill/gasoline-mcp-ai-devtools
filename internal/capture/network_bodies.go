@@ -36,7 +36,7 @@ func detectAndSetBinaryFormat(body *NetworkBody) {
 // AddNetworkBodies ingests a batch into the network evidence ring buffer.
 //
 // Invariants:
-// - networkBodies/networkAddedAt are updated in lockstep.
+// - Each networkBodyEntry stores the body and its ingestion timestamp together.
 // - Totals are monotonic (`networkTotalAdded`, `networkErrorTotalAdded`) and never decremented.
 // - Active test IDs are snapshotted once per batch for consistent event tagging.
 //

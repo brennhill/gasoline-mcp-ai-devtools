@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.1.00 Released"
+title: "Gasoline v1.0.0 Released"
 description: "Initial proof of concept - Go server with Chrome extension communication"
 date: 2025-12-11T22:34:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.1']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v1']
 ---
 
-## What's New in v0.1.00
+## What's New in v1.0.0
 
-Gasoline v0.1.00 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
+Gasoline v1.0.0 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
 
 ### Features
 

@@ -75,6 +75,7 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
+    ACTION_RECORDING: "gasoline_action_recording",
     RECORDING: "gasoline_recording",
     TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
     PENDING_RECORDING: "gasoline_pending_recording",
@@ -850,7 +851,7 @@
       }
       state.recordingId = extractRecordingID(data);
       state.startTime = Date.now();
-      void setLocal("gasoline_action_recording", {
+      void setLocal(StorageKey.ACTION_RECORDING, {
         active: true,
         recordingId: state.recordingId,
         startTime: state.startTime
@@ -872,7 +873,7 @@
       if (configureError) {
         showError(els, configureError);
       }
-      void removeLocal("gasoline_action_recording");
+      void removeLocal(StorageKey.ACTION_RECORDING);
       showIdle2(els, state);
     } catch (err) {
       showIdle2(els, state);
@@ -892,7 +893,7 @@
       timerInterval: null,
       startTime: null
     };
-    void getLocal("gasoline_action_recording").then((value) => {
+    void getLocal(StorageKey.ACTION_RECORDING).then((value) => {
       const saved = value;
       if (saved?.active && saved.recordingId) {
         state.recordingId = saved.recordingId;
@@ -1190,14 +1191,14 @@
 
   // extension/popup/settings.js
   function handleWebSocketModeChange(mode) {
-    void setLocal("webSocketCaptureMode", mode);
+    void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
   }
   async function initWebSocketModeSelector() {
     const modeSelect = document.getElementById("ws-mode");
     if (!modeSelect)
       return;
-    const value = await getLocal("webSocketCaptureMode");
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
     modeSelect.value = value || "medium";
   }
   var clearConfirmPending = false;

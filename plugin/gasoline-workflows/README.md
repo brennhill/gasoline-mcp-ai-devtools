@@ -4,7 +4,7 @@ Workflow commands that compose Gasoline MCP's 5 browser telemetry tools into com
 
 ## Prerequisites
 
-- [Gasoline MCP](https://github.com/anthropics/gasoline) installed and running
+- [Gasoline MCP](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp) installed and running
 - Chrome extension installed and connected to a tab
 - Claude Code with MCP support
 

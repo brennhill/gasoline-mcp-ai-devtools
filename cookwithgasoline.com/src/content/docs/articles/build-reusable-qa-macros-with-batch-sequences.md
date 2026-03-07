@@ -4,8 +4,8 @@ description: "Create repeatable Quality Assurance flows with batch sequences so 
 date: 2026-03-03
 authors: [brenn]
 tags: [qa, automation, workflows, testing]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['qa', 'automation', 'workflows', 'testing', 'articles', 'build', 'reusable', 'macros', 'batch', 'sequences']
 ---
 

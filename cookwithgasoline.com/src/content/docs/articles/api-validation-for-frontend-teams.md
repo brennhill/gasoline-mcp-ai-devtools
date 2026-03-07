@@ -4,8 +4,8 @@ description: "Learn a practical API validation routine for frontend teams using 
 date: 2026-03-03
 authors: [brenn]
 tags: [api, frontend, validation, quality]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['api', 'frontend', 'validation', 'quality', 'articles', 'teams']
 ---
 

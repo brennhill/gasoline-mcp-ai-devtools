@@ -475,8 +475,10 @@ interface GetAnnotationsMessage {
  */
 export interface TrackingStateChangedMessage {
   readonly type: 'tracking_state_changed'
-  readonly isTracked: boolean
-  readonly aiPilotEnabled: boolean
+  readonly state: {
+    readonly isTracked: boolean
+    readonly aiPilotEnabled: boolean
+  }
 }
 
 /**

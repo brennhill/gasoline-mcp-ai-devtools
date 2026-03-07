@@ -1,17 +1,17 @@
 ---
-title: "Gasoline v0.2.00 Released"
+title: "Gasoline v2.0.0 Released"
 description: "First MCP implementation - proof of concept, not production-ready"
 date: 2025-12-14T23:47:00Z
 authors: [brennhill]
 tags: [release]
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
-normalized_tags: ['release', 'blog', 'v0.2']
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['release', 'blog', 'v2']
 ---
 
-## What's New in v0.2.00
+## What's New in v2.0.0
 
-Gasoline v0.2.00 adds MCP protocol support. The implementation is naive and has significant limitations, but it works as a proof of concept.
+Gasoline v2.0.0 adds MCP protocol support. The implementation is naive and has significant limitations, but it works as a proof of concept.
 
 ### Features
 

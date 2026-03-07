@@ -41,6 +41,6 @@
 - [Technical Deep Dive: Why Cook With Gasoline MCP?](https://cookwithgasoline.com/blog/technical-deep-dive-why-cook-with-gasoline/): How Gasoline MCP solves LLM browser automation from accessibility trees to console vision
 
 ## Links
-- [GitHub](https://github.com/brennhill/gasoline)
+- [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 - [npm](https://www.npmjs.com/package/gasoline-mcp)
 - [Blog](https://cookwithgasoline.com/blog/)

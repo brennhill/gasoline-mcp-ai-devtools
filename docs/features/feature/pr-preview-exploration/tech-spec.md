@@ -34,7 +34,7 @@ If all mechanisms fail, the agent prompts the human for the URL.
 ### Phase 2: Baseline Capture
 Before visiting the preview, the agent establishes a "known good" behavioral baseline:
 
-- **Live baseline (preferred)**: Navigate to the production/main-branch version, capture a session snapshot via `configure({action: "diff_sessions", session_action: "capture"})`, and optionally save a behavioral baseline via `configure({action: "save_baseline"})`.
+- **Live baseline (preferred)**: Navigate to the production/stable-branch version, capture a session snapshot via `configure({action: "diff_sessions", session_action: "capture"})`, and optionally save a behavioral baseline via `configure({action: "save_baseline"})`.
 - **Stored baseline (faster)**: Load a previously saved baseline from persistent memory. Agent checks staleness (warns if > 24 hours old).
 
 The baseline includes console error fingerprints, network endpoint status codes and latencies, performance metrics (LCP, FCP, CLS, load time), and WebSocket connection state.
@@ -70,14 +70,14 @@ The agent compares the preview session against the baseline:
 
 **Session diff**:
 ```
-configure({action: "diff_sessions", session_action: "compare", compare_a: "main-baseline", compare_b: "preview-pr-42"})
+configure({action: "diff_sessions", session_action: "compare", compare_a: "stable-baseline", compare_b: "preview-pr-42"})
 ```
 
 Returns structured diff: new errors, changed network responses, performance deltas, WebSocket state changes.
 
 **Behavioral baseline comparison** (if available):
 ```
-configure({action: "compare_baseline", name: "main-baseline"})
+configure({action: "compare_baseline", name: "stable-baseline"})
 ```
 
 Returns categorized regressions: network, timing, console, WebSocket.
@@ -180,7 +180,7 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 
 - **Preview URL changes mid-exploration**: Some preview environments use dynamic URLs that change on redeployment. Agent navigates once at start. If URL becomes invalid mid-exploration, agent stops and reports partial results.
 
-- **No baseline available**: First run or main branch unavailable. Agent skips comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). Report notes "no baseline available — showing absolute findings, not regressions."
+- **No baseline available**: First run or stable branch unavailable. Agent skips comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). Report notes "no baseline available — showing absolute findings, not regressions."
 
 ### Assumptions
 

@@ -112,14 +112,17 @@ func TestCoverageBoost_EnhancedActionsBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
 	c.mu.Lock()
-	c.buffers.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
-	c.buffers.actionAddedAt = []time.Time{time.Now()}
+	now := time.Now()
+	c.buffers.enhancedActions = []enhancedActionEntry{
+		{Action: EnhancedAction{Type: "click"}, AddedAt: now},
+		{Action: EnhancedAction{Type: "click"}, AddedAt: now},
+	}
 	c.extensionState.activeTestIDs["test-1"] = true
 	c.mu.Unlock()
 
 	c.AddEnhancedActions([]EnhancedAction{{Type: "type", Value: "hello"}})
-	if got := c.GetEnhancedActionCount(); got != 2 {
-		t.Fatalf("GetEnhancedActionCount() = %d, want 2 after mismatch recovery + add", got)
+	if got := c.GetEnhancedActionCount(); got != 3 {
+		t.Fatalf("GetEnhancedActionCount() = %d, want 3 after add", got)
 	}
 
 	actions := c.GetAllEnhancedActions()
@@ -144,12 +147,12 @@ func TestCoverageBoost_EnhancedActionsBranches(t *testing.T) {
 func TestCoverageBoost_NetworkBodiesBranches(t *testing.T) {
 	c := newCoverageCapture(t)
 
+	now := time.Now()
 	c.mu.Lock()
-	c.buffers.networkBodies = []NetworkBody{
-		{Method: "GET", URL: "https://a.example", RequestBody: "a", ResponseBody: "a"},
-		{Method: "GET", URL: "https://b.example", RequestBody: "b", ResponseBody: "b"},
+	c.buffers.networkBodies = []networkBodyEntry{
+		{Body: NetworkBody{Method: "GET", URL: "https://a.example", RequestBody: "a", ResponseBody: "a"}, AddedAt: now},
+		{Body: NetworkBody{Method: "GET", URL: "https://b.example", RequestBody: "b", ResponseBody: "b"}, AddedAt: now},
 	}
-	c.buffers.networkAddedAt = []time.Time{time.Now()}
 	c.extensionState.activeTestIDs["tid"] = true
 	c.mu.Unlock()
 
@@ -159,8 +162,8 @@ func TestCoverageBoost_NetworkBodiesBranches(t *testing.T) {
 		RequestBody:  "ping",
 		ResponseBody: "pong",
 	}})
-	if got := c.GetNetworkBodyCount(); got != 2 {
-		t.Fatalf("GetNetworkBodyCount() = %d, want 2 after mismatch recovery + add", got)
+	if got := c.GetNetworkBodyCount(); got != 3 {
+		t.Fatalf("GetNetworkBodyCount() = %d, want 3 after add", got)
 	}
 	bodies := c.GetNetworkBodies()
 	last := bodies[len(bodies)-1]

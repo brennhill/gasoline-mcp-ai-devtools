@@ -3,13 +3,13 @@
  * Why: Keeps destructive and behavior-changing popup operations centralized with explicit UX safeguards.
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
-import { SettingName } from '../lib/constants.js';
+import { SettingName, StorageKey } from '../lib/constants.js';
 import { setLocal, getLocal } from '../lib/storage-utils.js';
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
-    void setLocal('webSocketCaptureMode', mode);
+    void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
@@ -19,7 +19,7 @@ export async function initWebSocketModeSelector() {
     const modeSelect = document.getElementById('ws-mode');
     if (!modeSelect)
         return;
-    const value = await getLocal('webSocketCaptureMode');
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
     modeSelect.value = value || 'medium';
 }
 // Track clear-logs confirmation state

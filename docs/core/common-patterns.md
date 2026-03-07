@@ -3,6 +3,28 @@
 This file defines the default implementation patterns for extension and MCP changes.
 Use this as a hard checklist during design, coding, and review.
 
+## 0) 0.8 Helper Inventory (Use These First)
+
+- Server dispatch and mode resolution:
+  - `cmd/dev-console/tool_dispatch_helpers.go`
+  - `cmd/dev-console/tools_observe_registry.go`
+  - `cmd/dev-console/tools_configure_registry.go`
+- Shared async query path:
+  - `cmd/dev-console/tools_pending_query_enqueue.go`
+  - `cmd/dev-console/tools_shared_queries.go`
+- Interact response shaping:
+  - `cmd/dev-console/tools_interact_response_helpers.go`
+- Recording helper seams:
+  - `cmd/dev-console/recording_helpers.go`
+- Extension command routing:
+  - `src/background/commands/registry.ts`
+  - `src/background/commands/helpers.ts`
+- Frame-target handling:
+  - `src/background/frame-targeting.ts`
+- Shared test helpers:
+  - `internal/pagination/test_helpers_test.go`
+  - `internal/capture/sync_test_helpers_test.go`
+
 ## 1) Shared State Access
 
 - Use feature helpers/modules for shared keys instead of new inline `chrome.storage.local` logic.
@@ -43,70 +65,41 @@ Use this as a hard checklist during design, coding, and review.
   - one end-to-end/smoke assertion of payload shape and behavior.
 - If behavior changes, update/remove stale tests in the same PR; do not leave failing legacy assertions.
 
-## 7) CommandBuilder for Interact Handlers
+## 7) Tool Dispatch + Registry Pattern
 
-New interact handlers that follow the standard guard/correlate/arm/enqueue/wait sequence
-must use the `commandBuilder` pattern instead of repeating the boilerplate manually.
+- Top-level tool entrypoints (`toolObserve`, `toolConfigure`, `toolInteract`, `toolAnalyze`, `toolGenerate`) should delegate through `dispatchTool(...)`.
+- Mode/action registration belongs in the tool registry files (`tools_*_registry.go`), not ad-hoc `switch` blocks in entrypoint files.
+- Alias handling (`action`/`mode` fallback) must stay in shared mode-resolution helpers.
 
-- **File:** `cmd/dev-console/tools_interact_command_builder.go`
-- **Tests:** `cmd/dev-console/tools_interact_command_builder_test.go`
+## 8) Pending Query + Async Command Pattern
 
-### When to Use
+- Always enqueue extension work via `enqueuePendingQuery(...)`.
+- Do not write one-off queueing logic inside individual tool handlers.
+- Keep queue saturation and timeout behavior standardized through shared enqueue response paths.
 
-Use `commandBuilder` when a handler follows this sequence:
-1. Run guard checks (pilot, extension, tab tracking)
-2. Generate correlation ID
-3. Arm evidence for the command
-4. Enqueue a pending query
-5. Optionally record an AI action
-6. Wait for the command result
+## 9) Frame and Target Normalization Pattern
 
-### Usage
+- Normalize `frame` parameters with `normalizeFrameArg(...)`.
+- Resolve explicit frame IDs with `resolveMatchedFrameIds(...)`.
+- Keep target tab/context enrichment centralized through command helpers (`resolveTargetTab`, `withTargetContext`).
 
-```go
-return h.newCommand("highlight").
-    correlationPrefix("highlight").
-    reason("highlight").
-    queryType("highlight").
-    queryParams(args).
-    tabID(params.TabID).
-    guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
-    recordAction("highlight", "", map[string]any{"selector": params.Selector}).
-    queuedMessage("Highlight queued").
-    execute(req, args)
-```
+## 10) Extension Command Routing Pattern
 
-### Builder Methods
+- Register pending-query handlers in `src/background/commands/registry.ts`.
+- Reuse `src/background/commands/helpers.ts` for parsing, target resolution, action toasts, and result envelopes.
+- Avoid reintroducing monolithic `if/else` router logic in `pending-queries.ts`.
 
-| Method | Purpose |
-|--------|---------|
-| `correlationPrefix(s)` | Prefix for generated correlation ID |
-| `reason(s)` | Reason string for evidence arming |
-| `queryType(s)` | PendingQuery.Type (e.g. "execute", "browser_action") |
-| `queryParams(p)` | Pre-serialized query params |
-| `buildParams(m)` | Build params from map (calls `buildQueryParams`) |
-| `tabID(id)` | Tab ID for the pending query |
-| `guards(fns...)` | Guard checks (run in order, first blocker short-circuits) |
-| `guardsWithOpts(opts, fns...)` | Guards with StructuredError context options |
-| `cspGuard(world)` | CSP check for world param |
-| `preEnqueue(fn)` | Callback after correlation ID, before enqueue |
-| `postEnqueue(fn)` | Callback after enqueue, before wait |
-| `recordAction(action, url, extra)` | Record AI action after enqueue |
-| `timeout(d)` | Override default enqueue timeout |
-| `queuedMessage(msg)` | Message for async (queued) responses |
-| `execute(req, args)` | Run the full sequence |
-| `executeWithCorrelation(req, args)` | Like execute, also returns correlation ID |
+## 11) Response Shaping Pattern
 
-### Validation
+- Keep composable response enrichment (`include_screenshot`, `include_interactive`, content/metadata shaping) in shared response helper files.
+- Preserve stable response envelopes and metadata keys; avoid per-handler custom shapes for equivalent outcomes.
+- If a schema/output shape changes, update docs examples and smoke assertions in the same change.
 
-- **`queryType` is required** — omitting it returns an `ErrMissingParam` error before any query is enqueued.
-- **`correlationPrefix`** defaults to the builder `name` if omitted, so correlation IDs are always prefixed (never `"-<id>"`).
-- **`guardsWithOpts`** accumulates options across multiple calls (appends, not overwrites).
+## 12) Shared Test Utility Pattern
 
-### When NOT to Use
-
-- Handlers with completely custom response logic (e.g. `handleDrawModeStart` returns a static response instead of `MaybeWaitForCommand`)
-- Handlers on `*ToolHandler` (not `*interactActionHandler`) that create queries independently (e.g. `enrichNavigateResponse`)
+- Before adding repeated assertions/setup in tests, extend shared helpers first.
+- Use pagination and sync helper suites for cursor/transport assertions to avoid drift between modules.
+- Contract changes must be reflected in smoke/UAT modules that validate the same behavior.
 
 ## Review Checklist
 
@@ -114,6 +107,9 @@ return h.newCommand("highlight").
 - [ ] Multi-entry-point behavior uses a shared helper path.
 - [ ] Runtime message contract is typed and synchronized.
 - [ ] UX labels/toasts/badges come from shared utilities.
+- [ ] Tool mode dispatch and alias handling stay in shared registry/dispatch helpers.
+- [ ] Async extension work uses shared enqueue helpers (no one-off queue paths).
+- [ ] Frame/tab normalization uses shared targeting helpers.
+- [ ] Response shape changes are reflected in docs/examples/smoke checks.
 - [ ] `jscpd` run completed and clones were resolved or documented.
 - [ ] Unit + e2e/smoke tests reflect current behavior and pass.
-- [ ] New interact handlers use `commandBuilder` when the standard guard/correlate/enqueue/wait pattern applies.

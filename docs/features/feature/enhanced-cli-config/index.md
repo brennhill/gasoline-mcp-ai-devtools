@@ -30,7 +30,7 @@ test_paths:
   - tests/extension/manifest-startup-integrity.test.js
   - tests/cli/server-install-hardening.test.cjs
   - tests/cli/cli-integration.test.cjs
-last_verified_version: 0.8.1
+last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 ---
 

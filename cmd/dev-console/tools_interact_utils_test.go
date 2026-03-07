@@ -201,8 +201,8 @@ func TestResolveNavigateURL_GasolineInsecure_NilCapture_ReturnsError(t *testing.
 	if err == nil {
 		t.Fatal("expected error when capture is nil")
 	}
-	if !strings.Contains(err.Error(), "capture is not initialized") {
-		t.Errorf("error = %q, want to contain 'capture is not initialized'", err.Error())
+	if !strings.Contains(err.Error(), "capture not initialized") {
+		t.Errorf("error = %q, want to contain 'capture not initialized'", err.Error())
 	}
 }
 
@@ -231,8 +231,8 @@ func TestResolveNavigateURL_GasolineInsecure_MissingTarget_ReturnsError(t *testi
 	if err == nil {
 		t.Fatal("expected error for empty target URL")
 	}
-	if !strings.Contains(err.Error(), "missing target URL") {
-		t.Errorf("error = %q, want to contain 'missing target URL'", err.Error())
+	if !strings.Contains(err.Error(), "target URL is empty") {
+		t.Errorf("error = %q, want to contain 'target URL is empty'", err.Error())
 	}
 }
 

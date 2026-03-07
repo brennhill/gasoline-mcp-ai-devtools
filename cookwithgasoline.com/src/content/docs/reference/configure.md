@@ -1,8 +1,8 @@
 ---
 title: "Configure — Customize the Session"
 description: "Complete reference for the configure tool. 29 modes for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, macro sequences, audit log, diagnostics, issue reporting, and more."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['reference', 'configure']
 ---
 

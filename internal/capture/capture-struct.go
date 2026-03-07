@@ -20,8 +20,9 @@ import (
 // Release locks before calling external callbacks. Use RLock() for read-only access.
 // Sub-struct locks: a11y, perf, session, mem use parent mu.
 //
-// Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
-// 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
+// Ring buffers (wsEvents, networkBodies, enhancedActions) use entry wrapper structs that
+// bundle each datum with its ingestion timestamp, eliminating parallel-array desync risk:
+// 1. Each entry carries its own AddedAt timestamp (wsEventEntry, networkBodyEntry, enhancedActionEntry)
 // 2. Monotonic counters that survive eviction (wsTotalAdded, networkTotalAdded, actionTotalAdded)
 // 3. Memory totals that estimate buffer overhead (wsMemoryTotal, networkBodyMemoryTotal)
 //

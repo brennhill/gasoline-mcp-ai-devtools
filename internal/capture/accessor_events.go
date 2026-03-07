@@ -25,15 +25,6 @@ func (c *Capture) GetActionTimestamps() []time.Time {
 	return c.buffers.actionTimestamps()
 }
 
-func cloneTimes(src []time.Time) []time.Time {
-	if len(src) == 0 {
-		return []time.Time{}
-	}
-	out := make([]time.Time, len(src))
-	copy(out, src)
-	return out
-}
-
 // GetNetworkBodies returns a copy of the network bodies slice (thread-safe)
 func (c *Capture) GetNetworkBodies() []NetworkBody {
 	c.mu.RLock()

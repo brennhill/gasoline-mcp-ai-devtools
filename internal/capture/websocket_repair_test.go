@@ -1,7 +1,7 @@
-// Purpose: Tests for WebSocket connection repair after disconnection.
+// Purpose: Tests for WebSocket entry wrapper struct integrity.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// websocket_repair_test.go — Unit tests for repairWSParallelArrays.
+// websocket_repair_test.go — Unit tests for wsEventEntry buffer consistency.
 //go:build !production
 
 package capture
@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestRepairWSParallelArrays_EqualLength(t *testing.T) {
+func TestWSEntryBuffer_EqualLength(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -24,7 +24,7 @@ func TestRepairWSParallelArrays_EqualLength(t *testing.T) {
 		t.Fatalf("expected equal lengths, got events=%d addedAt=%d", events, addedAt)
 	}
 
-	// Trigger repair via AddWebSocketEvents (calls repairWSParallelArrays internally)
+	// Add via production path
 	c.AddWebSocketEvents([]WebSocketEvent{{Event: "message", Data: "new", ID: "ws1"}})
 
 	events, addedAt, _ = c.GetWSLengthsForTest()
@@ -36,75 +36,51 @@ func TestRepairWSParallelArrays_EqualLength(t *testing.T) {
 	}
 }
 
-func TestRepairWSParallelArrays_EventsLonger(t *testing.T) {
+func TestWSEntryBuffer_ExtraEventsViaTestHelper(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
-	// Add 2 matched events, then 3 extra wsEvents without matching wsAddedAt
+	// Add 2 events, then 3 extra via test helper
 	c.AddWebSocketEventsForTest([]WebSocketEvent{
 		{Event: "message", Data: "matched1", ID: "ws1"},
 		{Event: "message", Data: "matched2", ID: "ws1"},
 	})
-	c.SetWSParallelMismatchForTest(3, 0)
+	c.AddExtraWSEventsForTest(3)
 
 	events, addedAt, _ := c.GetWSLengthsForTest()
-	if events == addedAt {
-		t.Fatal("expected mismatch before repair")
+	// With entry wrappers, events and addedAt are always equal
+	if events != addedAt {
+		t.Fatalf("expected equal lengths, got events=%d addedAt=%d", events, addedAt)
 	}
-	if events != 5 || addedAt != 2 {
-		t.Fatalf("expected events=5 addedAt=2, got events=%d addedAt=%d", events, addedAt)
+	if events != 5 {
+		t.Fatalf("expected 5 events, got %d", events)
 	}
 
-	// Trigger repair by adding a new event
+	// Adding another event should work fine
 	c.AddWebSocketEvents([]WebSocketEvent{{Event: "message", Data: "trigger", ID: "ws1"}})
 
 	events, addedAt, _ = c.GetWSLengthsForTest()
 	if events != addedAt {
-		t.Fatalf("after repair: expected equal lengths, got events=%d addedAt=%d", events, addedAt)
+		t.Fatalf("after add: expected equal lengths, got events=%d addedAt=%d", events, addedAt)
+	}
+	if events != 6 {
+		t.Fatalf("expected 6 events, got %d", events)
 	}
 }
 
-func TestRepairWSParallelArrays_AddedAtLonger(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	// Add 2 matched events, then 3 extra wsAddedAt without matching wsEvents
-	c.AddWebSocketEventsForTest([]WebSocketEvent{
-		{Event: "message", Data: "matched1", ID: "ws1"},
-		{Event: "message", Data: "matched2", ID: "ws1"},
-	})
-	c.SetWSParallelMismatchForTest(0, 3)
-
-	events, addedAt, _ := c.GetWSLengthsForTest()
-	if events == addedAt {
-		t.Fatal("expected mismatch before repair")
-	}
-	if events != 2 || addedAt != 5 {
-		t.Fatalf("expected events=2 addedAt=5, got events=%d addedAt=%d", events, addedAt)
-	}
-
-	// Trigger repair
-	c.AddWebSocketEvents([]WebSocketEvent{{Event: "message", Data: "trigger", ID: "ws1"}})
-
-	events, addedAt, _ = c.GetWSLengthsForTest()
-	if events != addedAt {
-		t.Fatalf("after repair: expected equal lengths, got events=%d addedAt=%d", events, addedAt)
-	}
-}
-
-func TestRepairWSParallelArrays_MemoryRecalculated(t *testing.T) {
+func TestWSEntryBuffer_MemoryTracked(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
 	// Add events with known data sizes
 	c.AddWebSocketEventsForTest([]WebSocketEvent{
-		{Event: "message", Data: "aaaa", ID: "ws1"},  // 4 bytes data
+		{Event: "message", Data: "aaaa", ID: "ws1"},   // 4 bytes data
 		{Event: "message", Data: "bbbbbb", ID: "ws1"}, // 6 bytes data
 	})
-	// Add extra unmatched event
-	c.SetWSParallelMismatchForTest(1, 0)
+	// Add extra events via test helper
+	c.AddExtraWSEventsForTest(1)
 
-	// Trigger repair
+	// Add via production path to trigger memory accounting
 	c.AddWebSocketEvents([]WebSocketEvent{{Event: "message", Data: "cc", ID: "ws1"}})
 
 	events, addedAt, mem := c.GetWSLengthsForTest()
@@ -116,11 +92,11 @@ func TestRepairWSParallelArrays_MemoryRecalculated(t *testing.T) {
 	}
 }
 
-func TestRepairWSParallelArrays_BothEmpty(t *testing.T) {
+func TestWSEntryBuffer_BothEmpty(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
-	// Both arrays are empty — no-op repair
+	// Buffer is empty
 	events, addedAt, _ := c.GetWSLengthsForTest()
 	if events != 0 || addedAt != 0 {
 		t.Fatalf("expected both empty, got events=%d addedAt=%d", events, addedAt)

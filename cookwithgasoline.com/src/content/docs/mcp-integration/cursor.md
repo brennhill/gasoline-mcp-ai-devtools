@@ -1,8 +1,8 @@
 ---
 title: Gasoline + Cursor
 description: "Configure Gasoline as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'cursor']
 ---
 
