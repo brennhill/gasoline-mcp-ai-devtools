@@ -40,6 +40,7 @@ export {
 import type { LogEntry } from '../types/index.js'
 import { getRequestHeaders } from './server.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { captureVisibleTabSafe } from './tab-state.js'
 
 /**
  * Truncate a single argument if too large
@@ -130,9 +131,7 @@ export async function captureScreenshot(
 
   try {
     const tab = await chrome.tabs.get(tabId)
-    await chrome.tabs.update(tabId, { active: true })
-
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+    const dataUrl = await captureVisibleTabSafe(tabId, tab.windowId, {
       format: 'jpeg',
       quality: 80
     })

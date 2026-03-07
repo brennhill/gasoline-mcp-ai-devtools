@@ -192,6 +192,32 @@ export async function getActiveTab() {
     return tab;
 }
 // =============================================================================
+// FOCUS-SAFE TAB CAPTURE
+// =============================================================================
+/**
+ * Capture a screenshot of a tab without permanently stealing focus.
+ * chrome.tabs.captureVisibleTab() requires the tab to be active. If the target
+ * tab isn't currently active, we briefly activate it, capture, then restore
+ * the previously active tab so the user's workflow isn't interrupted.
+ */
+export async function captureVisibleTabSafe(tabId, windowId, options) {
+    const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+    const wasActive = activeTab?.id === tabId;
+    if (!wasActive) {
+        await chrome.tabs.update(tabId, { active: true });
+    }
+    try {
+        return await chrome.tabs.captureVisibleTab(windowId, options);
+    }
+    finally {
+        if (!wasActive && activeTab?.id) {
+            await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
+                /* original tab may have been closed during capture */
+            });
+        }
+    }
+}
+// =============================================================================
 // TAB TOAST
 // =============================================================================
 /**
