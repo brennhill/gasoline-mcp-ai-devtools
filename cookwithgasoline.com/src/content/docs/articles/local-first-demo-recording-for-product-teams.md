@@ -1,6 +1,6 @@
 ---
 title: "Local-First Demo Recording for Product Teams"
-description: "Record product demos locally, replay them reliably, and keep data private with Gasoline Agentic Devtools."
+description: "Record product demos locally, replay them reliably, and keep data private with BlazeTorch AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [demos, recording, product, workflows]
@@ -13,7 +13,7 @@ Great demos are hard to repeat. Local-first recording makes them much easier.
 
 Local-first means your recording workflow runs on your machine first, helping reduce accidental data exposure.
 
-This guide shows how product teams can use **Gasoline Agentic Devtools** to create reliable demos.
+This guide shows how product teams can use **BlazeTorch AI DevTools** to create reliable demos.
 
 <!-- more -->
 
@@ -31,7 +31,7 @@ You want demos that are:
 - easy to update,
 - safe to share.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with BlazeTorch AI DevTools
 
 ### Step 1. Start recording
 
@@ -76,4 +76,4 @@ generate({what: "reproduction", include_screenshots: true})
 
 ## You’re Making Demos a Team Asset
 
-With **Gasoline Agentic Devtools**, demos stop being one-off performances and become reusable, improvable artifacts.
+With **BlazeTorch AI DevTools**, demos stop being one-off performances and become reusable, improvable artifacts.

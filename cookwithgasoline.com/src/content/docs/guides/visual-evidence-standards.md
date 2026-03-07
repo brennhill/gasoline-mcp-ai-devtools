@@ -31,7 +31,7 @@ Template:
 Examples:
 
 - `Screenshot showing failed checkout request with 422 schema mismatch for cart update.`
-- `Diagram showing triage flow from observe to analyze to generate in Gasoline Agentic Devtools.`
+- `Diagram showing triage flow from observe to analyze to generate in BlazeTorch AI DevTools.`
 
 ## Required Visual Set per How-To
 

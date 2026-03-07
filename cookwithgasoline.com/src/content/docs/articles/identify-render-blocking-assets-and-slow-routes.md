@@ -1,6 +1,6 @@
 ---
 title: "Identify Render-Blocking Assets and Slow Routes"
-description: "Learn how to find files that delay page rendering and routes that feel slow, using a beginner-friendly workflow in Gasoline Agentic Devtools."
+description: "Learn how to find files that delay page rendering and routes that feel slow, using a beginner-friendly workflow in BlazeTorch AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [performance, rendering, frontend, optimization]
@@ -11,7 +11,7 @@ normalized_tags: ['performance', 'rendering', 'frontend', 'optimization', 'artic
 
 If a page shows a blank screen for too long, something is blocking rendering.
 
-Rendering means “the browser drawing visible content.” This guide helps you locate blockers and fix them with **Gasoline Agentic Devtools**.
+Rendering means “the browser drawing visible content.” This guide helps you locate blockers and fix them with **BlazeTorch AI DevTools**.
 
 <!-- more -->
 
@@ -25,7 +25,7 @@ Rendering means “the browser drawing visible content.” This guide helps you 
 
 You want pages to feel fast at first glance, not just eventually complete.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with BlazeTorch AI DevTools
 
 ### Step 1. Scan for performance bottlenecks
 
@@ -71,4 +71,4 @@ analyze({what: "performance", summary: true})
 
 ## You’re Improving First Impressions
 
-Fast first paint builds trust. **Gasoline Agentic Devtools** gives you a practical way to prioritize what truly affects user experience.
+Fast first paint builds trust. **BlazeTorch AI DevTools** gives you a practical way to prioritize what truly affects user experience.

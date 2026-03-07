@@ -1,7 +1,7 @@
-# BlazeTorch AI Devstack — Rebrand Master Plan
+# BlazeTorch AI DevTools — Rebrand Master Plan
 
 **From:** Gasoline Agentic Browser Devtools MCP
-**To:** BlazeTorch AI Devstack
+**To:** BlazeTorch AI DevTools
 **Status:** Planning (not yet executed)
 
 ---
@@ -54,7 +54,7 @@
 │   └── Update site URL from cookwithgasoline.com → blazetorch.dev
 ├── src/
 │   ├── content/docs/ (all markdown files)
-│   │   └── Search & replace: "Gasoline" → "BlazeTorch AI Devstack"
+│   │   └── Search & replace: "Gasoline" → "BlazeTorch AI DevTools"
 │   │   └── Search & replace: "gasoline" → "blazetorch"
 │   ├── components/
 │   │   ├── Header.astro - update branding/colors?
@@ -107,7 +107,7 @@
 1. **"Gasoline" → "BlazeTorch"** (brand name)
 2. **"gasoline" → "blazetorch"** (lowercase, URLs, CLI)
 3. **"cookwithgasoline.com" → "blazetorch.dev"** (URLs)
-4. **"Agentic Devtools" → "AI Devstack"** (tagline)
+4. **"Agentic Devtools" → "AI DevTools"** (tagline)
 
 **Exclude:**
 - git commit history (don't rewrite, too disruptive)

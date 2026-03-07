@@ -1,6 +1,6 @@
 ---
 title: "How to Share Reproducible Bug Evidence with Your Team"
-description: "A practical beginner playbook for turning browser bugs into clear, reproducible evidence using Gasoline Agentic Devtools."
+description: "A practical beginner playbook for turning browser bugs into clear, reproducible evidence using BlazeTorch AI DevTools."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, collaboration, debugging]

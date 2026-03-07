@@ -1,6 +1,6 @@
 ---
 title: "Claude Code + Gasoline: Fast Bug Triage Setup"
-description: "A beginner-friendly setup guide for using Claude Code with Gasoline Agentic Devtools for browser-aware bug triage."
+description: "A beginner-friendly setup guide for using Claude Code with BlazeTorch AI DevTools for browser-aware bug triage."
 date: 2026-03-03
 authors: [brenn]
 tags: [claude-code, mcp, debugging, setup]
@@ -11,7 +11,7 @@ normalized_tags: ['claude-code', 'mcp', 'debugging', 'setup', 'articles', 'claud
 
 If you want your assistant to debug what is actually happening in the browser, this setup is for you.
 
-This walkthrough helps first-time users connect **Claude Code** to **Gasoline Agentic Devtools** and run a real bug triage loop.
+This walkthrough helps first-time users connect **Claude Code** to **BlazeTorch AI DevTools** and run a real bug triage loop.
 
 <!-- more -->
 
@@ -76,4 +76,4 @@ generate({what: "test"})
 
 ## You’re Shipping with Better Feedback Loops
 
-This setup turns your assistant into a practical debugging partner. **Gasoline Agentic Devtools** gives Claude Code the runtime visibility it needs.
+This setup turns your assistant into a practical debugging partner. **BlazeTorch AI DevTools** gives Claude Code the runtime visibility it needs.

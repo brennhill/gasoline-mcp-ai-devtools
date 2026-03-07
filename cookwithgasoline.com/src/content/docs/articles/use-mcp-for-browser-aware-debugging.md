@@ -1,6 +1,6 @@
 ---
 title: "How to Use MCP for Browser-Aware Debugging"
-description: "A first-timer guide to using the Model Context Protocol for debugging real browser behavior with Gasoline Agentic Devtools."
+description: "A first-timer guide to using the Model Context Protocol for debugging real browser behavior with BlazeTorch AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [mcp, debugging, browser, ai-development]
@@ -13,7 +13,7 @@ If your assistant can only read source code, it misses runtime truth.
 
 The **Model Context Protocol (MCP)** is a standard that lets tools connect AI assistants to external capabilities. MCP spec: https://modelcontextprotocol.io/specification/
 
-With **Gasoline Agentic Devtools**, MCP gives your assistant browser awareness.
+With **BlazeTorch AI DevTools**, MCP gives your assistant browser awareness.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ With **Gasoline Agentic Devtools**, MCP gives your assistant browser awareness.
 
 You want to stop copy-pasting logs and screenshots into chat.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with BlazeTorch AI DevTools
 
 ### Step 1. Observe what the browser is doing
 
@@ -69,4 +69,4 @@ You are no longer narrating bugs to your assistant. Your assistant can inspect, 
 
 ## You’re Using the New Debugging Stack
 
-This is modern development: live context + AI + repeatable artifacts. **Gasoline Agentic Devtools** makes that workflow practical today.
+This is modern development: live context + AI + repeatable artifacts. **BlazeTorch AI DevTools** makes that workflow practical today.

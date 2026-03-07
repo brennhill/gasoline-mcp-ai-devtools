@@ -40,7 +40,7 @@ You want speed during investigation and stability in release gates.
 - Flexible exploration when root cause is unknown.
 - Rapid artifact creation (`reproduction`, `test`, reports).
 
-## Best Hybrid Workflow with Gasoline Agentic Devtools
+## Best Hybrid Workflow with BlazeTorch AI DevTools
 
 ### Step 1. Explore and diagnose with MCP
 
@@ -73,4 +73,4 @@ This gives you the best of both worlds.
 
 ## You Don’t Need Tool Religion
 
-Use the workflow that fits the phase. **Gasoline Agentic Devtools** pairs beautifully with traditional test runners instead of replacing them blindly.
+Use the workflow that fits the phase. **BlazeTorch AI DevTools** pairs beautifully with traditional test runners instead of replacing them blindly.

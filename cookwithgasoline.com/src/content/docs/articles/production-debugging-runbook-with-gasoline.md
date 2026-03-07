@@ -1,6 +1,6 @@
 ---
 title: "Build a Production Debugging Runbook with Gasoline"
-description: "Create a practical, repeatable runbook for production bug response using Gasoline Agentic Devtools."
+description: "Create a practical, repeatable runbook for production bug response using BlazeTorch AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [runbook, production, debugging, operations]
@@ -11,7 +11,7 @@ normalized_tags: ['runbook', 'production', 'debugging', 'operations', 'articles'
 
 Incidents are stressful when everyone improvises.
 
-A runbook gives your team a clear sequence to follow under pressure. This article helps you create one with **Gasoline Agentic Devtools**.
+A runbook gives your team a clear sequence to follow under pressure. This article helps you create one with **BlazeTorch AI DevTools**.
 
 <!-- more -->
 
@@ -76,4 +76,4 @@ configure({what: "save_sequence", name: "incident-triage-core", steps: [/* triag
 
 ## You’re Building Operational Confidence
 
-A runbook is one of the highest-leverage team tools. **Gasoline Agentic Devtools** helps you make it concrete, repeatable, and easier to improve after every incident.
+A runbook is one of the highest-leverage team tools. **BlazeTorch AI DevTools** helps you make it concrete, repeatable, and easier to improve after every incident.

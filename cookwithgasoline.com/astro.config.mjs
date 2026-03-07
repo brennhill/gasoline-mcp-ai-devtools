@@ -3,7 +3,7 @@ import starlight from '@astrojs/starlight'
 import starlightBlog from 'starlight-blog'
 
 export default defineConfig({
-  site: 'https://cookwithgasoline.com',
+  site: 'https://blazetorch.dev',
   head: [
     {
       tag: 'script',

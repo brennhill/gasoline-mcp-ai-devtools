@@ -81,7 +81,7 @@ The MCP config was written in Step 1, but the AI tool needs to restart to pick i
 
 **Tell the user:**
 
-> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the Gasoline MCP server.
+> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the BlazeTorch server.
 
 For Claude Code specifically, no restart is needed if the installer used `claude mcp add-json` — it takes effect on the next conversation.
 

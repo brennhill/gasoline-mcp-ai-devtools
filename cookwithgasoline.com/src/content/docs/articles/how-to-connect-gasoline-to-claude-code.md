@@ -1,6 +1,6 @@
 ---
 title: "How to Connect Gasoline to Claude Code"
-description: "A step-by-step beginner guide to connect Claude Code with Gasoline Agentic Devtools using MCP."
+description: "A step-by-step beginner guide to connect Claude Code with BlazeTorch AI DevTools using MCP."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, claude-code, mcp, setup]

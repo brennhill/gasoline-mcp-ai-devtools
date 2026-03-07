@@ -1,6 +1,6 @@
 ---
 title: "Cursor + Gasoline for Interactive Web Development"
-description: "A practical setup and workflow guide for using Cursor with Gasoline Agentic Devtools to build and debug web apps faster."
+description: "A practical setup and workflow guide for using Cursor with BlazeTorch AI DevTools to build and debug web apps faster."
 date: 2026-03-03
 authors: [brenn]
 tags: [cursor, mcp, development, debugging]
@@ -11,7 +11,7 @@ normalized_tags: ['cursor', 'mcp', 'development', 'debugging', 'articles', 'gaso
 
 Cursor is great for editing code. Gasoline makes it browser-aware.
 
-This guide helps new users connect **Cursor** to **Gasoline Agentic Devtools** and use it for interactive development tasks.
+This guide helps new users connect **Cursor** to **BlazeTorch AI DevTools** and use it for interactive development tasks.
 
 <!-- more -->
 
@@ -28,7 +28,7 @@ Use Cursor not just to write code, but to watch real browser behavior and verify
 
 ## Step-by-Step
 
-### Step 1. Add Gasoline MCP server in Cursor config
+### Step 1. Add BlazeTorch server in Cursor config
 
 ```json
 {
@@ -75,4 +75,4 @@ generate({what: "test", test_name: "cursor-generated-regression"})
 
 ## You’re Working Like a Modern Product Engineer
 
-This is not just coding faster. It is learning faster. **Gasoline Agentic Devtools** helps Cursor workflows stay grounded in real runtime behavior.
+This is not just coding faster. It is learning faster. **BlazeTorch AI DevTools** helps Cursor workflows stay grounded in real runtime behavior.

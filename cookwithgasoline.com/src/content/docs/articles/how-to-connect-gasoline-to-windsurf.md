@@ -1,6 +1,6 @@
 ---
 title: "How to Connect Gasoline to Windsurf"
-description: "Simple beginner setup for connecting Windsurf to Gasoline Agentic Devtools through MCP."
+description: "Simple beginner setup for connecting Windsurf to BlazeTorch AI DevTools through MCP."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, windsurf, mcp, setup]
