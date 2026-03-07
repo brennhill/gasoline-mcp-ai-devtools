@@ -152,7 +152,7 @@ async function initializeExtensionAsync(): Promise<void> {
     const settings = await loadSavedSettings()
     setServerUrl(settings.serverUrl || DEFAULT_SERVER_URL)
     setCurrentLogLevel('all')
-    setScreenshotOnError(settings.screenshotOnError !== false)
+    setScreenshotOnError(settings.screenshotOnError === true)
     setSourceMapEnabled(settings.sourceMapEnabled !== false)
     setDebugMode(settings.debugMode || false)
 
