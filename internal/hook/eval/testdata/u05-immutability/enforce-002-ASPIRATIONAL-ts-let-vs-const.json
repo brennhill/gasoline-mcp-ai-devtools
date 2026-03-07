@@ -1,0 +1,14 @@
+{
+  "description": "ASPIRATIONAL U5 Enforce: TypeScript let where const suffices — should flag as unnecessary mutability",
+  "hook": "quality-gate",
+  "project_root": "REPO_ROOT",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "src/content/window-message-listener.ts", "new_string": "let result = computeValue();\nconsole.log(result);"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["U5", "let", "const"],
+    "max_latency_ms": 5000
+  }
+}
