@@ -415,23 +415,7 @@ const solutions = [
                 )}
 
                 {solution.id === 'demos' && (
-                  <div class="gvis-storyboard" aria-hidden="true">
-                    <div class="gvis-sb-track">
-                      {[1,2,3,4,5,6].map((n) => (
-                        <div class={`gvis-sb-step ${n <= 4 ? 'gvis-sb-step--done' : n === 5 ? 'gvis-sb-step--active' : ''}`}>{n}</div>
-                      ))}
-                      <span class="gvis-sb-more">+{solution.visual.metrics[0].value - 6}</span>
-                    </div>
-                    <div class="gvis-sb-card">
-                      <div class="gvis-sb-card-head">Step 5 / {solution.visual.metrics[0].value}</div>
-                      <p>{solution.visual.fields[1].value}</p>
-                      <div class="gvis-sb-subtitle"><span>CC</span> Auto subtitle</div>
-                    </div>
-                    <div class="gvis-sb-progress">
-                      <div class="gvis-sb-bar"><div style={`width:${solution.visual.score}%`}></div></div>
-                      <span>{solution.visual.score}% ready</span>
-                    </div>
-                  </div>
+                  <img src="/images/landing/sparky-product-demo.png" alt="Sparky demonstrating product demo recording" class="gmodern-solution-visual-image" />
                 )}
 
                 {solution.id === 'automation' && (
