@@ -180,9 +180,9 @@ func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStand
 // Hook config uses Claude Code's naming conventions (PascalCase event names), so it's
 // returned as a pre-formatted JSON string to avoid snake_case field validation.
 func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]any {
-	// The quality-gate-hook.sh script reads .gasoline.json, loads the standards doc,
-	// runs file size checks and jscpd duplicate detection, then injects all findings
-	// as additionalContext. It finds the project root by walking up from the changed file.
+	// `gasoline hook quality-gate` reads .gasoline.json, loads the standards doc,
+	// checks file size, and injects all findings as additionalContext.
+	// `gasoline hook compress-output` compresses verbose Bash output to summary + errors.
 	commandHook := `{
   "hooks": {
     "PostToolUse": [
@@ -191,8 +191,18 @@ func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]
         "hooks": [
           {
             "type": "command",
-            "command": "` + filepath.Join(projectDir, "scripts", "quality-gate-hook.sh") + `",
-            "timeout": 30
+            "command": "gasoline hook quality-gate",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "gasoline hook compress-output",
+            "timeout": 10
           }
         ]
       }

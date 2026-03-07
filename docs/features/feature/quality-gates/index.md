@@ -11,12 +11,17 @@ code_paths:
   - internal/tools/configure/mode_specs_configure.go
   - internal/schema/configure_properties_core.go
   - internal/schema/configure_properties_runtime.go
+  - internal/hook/protocol.go
+  - internal/hook/compress_output.go
+  - internal/hook/quality_gate.go
   - internal/tracking/token_tracker.go
   - internal/tracking/stats_endpoint.go
-  - scripts/quality-gate-hook.sh
-  - scripts/output-compression-hook.sh
+  - cmd/dev-console/cli_hook.go
 test_paths:
   - cmd/dev-console/tools_configure_quality_gates_test.go
+  - internal/hook/protocol_test.go
+  - internal/hook/compress_output_test.go
+  - internal/hook/quality_gate_test.go
   - internal/tracking/token_tracker_test.go
   - internal/tracking/stats_endpoint_test.go
 last_verified_version: 0.8.1

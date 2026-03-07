@@ -1,7 +1,7 @@
 ---
 doc_type: guide
 feature_id: feature-quality-gates
-last_reviewed: 2026-03-06
+last_reviewed: 2026-03-07
 ---
 
 # Quality Gates Setup Guide
@@ -20,13 +20,11 @@ This creates:
 - `.gasoline.json` — points to your standards doc, configures thresholds
 - `gasoline-code-standards.md` — starter coding conventions
 
-### 2. Add a Claude Code hook
+### 2. Add Claude Code hooks
 
 Add to `.claude/settings.json` in your project:
 
-**Option A: Quality gate script (recommended)**
-
-The script reads your standards, checks file size, runs jscpd for duplicates, and injects all findings into the AI's context.
+**Recommended: Both quality gates + output compression**
 
 ```json
 {
@@ -37,38 +35,18 @@ The script reads your standards, checks file size, runs jscpd for duplicates, an
         "hooks": [
           {
             "type": "command",
-            "command": "scripts/quality-gate-hook.sh",
-            "timeout": 30
+            "command": "gasoline hook quality-gate",
+            "timeout": 10
           }
         ]
-      }
-    ]
-  }
-}
-```
-
-What gets injected on every Edit/Write:
-- Your full code standards doc (from `.gasoline.json` -> `code_standards`)
-- File size warning if approaching or exceeding the limit
-- jscpd duplicate detection results (if duplicates found in the same directory)
-- Review instruction telling the AI to fix violations before proceeding
-
-**Option B: Prompt hook (Haiku reviews automatically)**
-
-Haiku reviews every edit (~$0.0001/edit) and blocks non-conforming changes.
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
+      },
       {
-        "matcher": "Edit|Write",
+        "matcher": "Bash",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Review this code change against the project standards. Only flag clear violations, not style preferences. If the change looks good, respond {\"ok\": true}. If there are issues, respond {\"ok\": false, \"reason\": \"specific findings\"}.",
-            "model": "haiku",
-            "timeout": 30
+            "type": "command",
+            "command": "gasoline hook compress-output",
+            "timeout": 10
           }
         ]
       }
@@ -77,9 +55,13 @@ Haiku reviews every edit (~$0.0001/edit) and blocks non-conforming changes.
 }
 ```
 
-**Option C: Both (belt and suspenders)**
+What gets injected:
+- **On Edit/Write:** Your code standards doc, file size warnings, review instructions
+- **On Bash:** Compressed test/build output (91-99% token savings on verbose output)
 
-Chain both hooks — the script injects evidence (file size, duplicates, standards), then Haiku reviews the change with that evidence in context.
+**Optional: Add Haiku review (belt and suspenders)**
+
+Chain the quality gate hook with a Haiku prompt hook for automated code review:
 
 ```json
 {
@@ -90,14 +72,24 @@ Chain both hooks — the script injects evidence (file size, duplicates, standar
         "hooks": [
           {
             "type": "command",
-            "command": "scripts/quality-gate-hook.sh",
-            "timeout": 30
+            "command": "gasoline hook quality-gate",
+            "timeout": 10
           },
           {
             "type": "prompt",
             "prompt": "Review this code change against the project standards and any quality gate findings above. Only flag clear violations. Respond {\"ok\": true} if acceptable, or {\"ok\": false, \"reason\": \"specific findings\"} if not.",
             "model": "haiku",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "gasoline hook compress-output",
+            "timeout": 10
           }
         ]
       }
@@ -116,13 +108,27 @@ Bad rule: "Use good patterns." (flags everything)
 
 ## What Gets Checked
 
-### By the hook script (`quality-gate-hook.sh`)
+### By `gasoline hook quality-gate`
 
 | Check | Trigger | Data injected |
 |-------|---------|---------------|
 | **Standards doc** | Every Edit/Write | Full standards content (first 150 lines) |
 | **File size** | File > 90% of limit | Warning with line count and limit |
-| **Duplicates** | jscpd finds clones | Clone locations and similarity % |
+
+### By `gasoline hook compress-output`
+
+| Pattern | Detection | Compression |
+|---------|-----------|-------------|
+| go test | Command or `--- PASS/FAIL` markers | Summary + failed tests only |
+| jest/vitest | Command or `Test Suites:` markers | Summary + failure files |
+| pytest | Command or `N passed` markers | Summary + failures |
+| cargo test | Command or `test result:` markers | Summary + failures |
+| go build/vet | Command | Error lines only |
+| make | Command | Error/warning lines only |
+| tsc | Command | `error TS` lines only |
+| npm/webpack | Command | ERROR lines only |
+| cargo build | Command | `error[E` lines only |
+| Generic | >100 lines, no pattern | First 30 + last 20 lines |
 
 ### By the standards doc (AI self-review or Haiku)
 
@@ -142,14 +148,22 @@ Bad rule: "Use good patterns." (flags everything)
 ```
 AI calls Edit/Write
   -> PostToolUse hook fires
-  -> quality-gate-hook.sh runs:
+  -> `gasoline hook quality-gate` runs:
      1. Finds .gasoline.json (walks up from changed file)
      2. Reads code_standards doc
      3. Checks file line count vs limit
-     4. Runs jscpd on the directory (if npx available)
-     5. Outputs findings as additionalContext (JSON)
+     4. Outputs findings as additionalContext (JSON)
   -> AI sees standards + findings in its context
   -> Fixes violations before proceeding
+
+AI calls Bash (test/build)
+  -> PostToolUse hook fires
+  -> `gasoline hook compress-output` runs:
+     1. Detects output pattern (go test, jest, tsc, etc.)
+     2. Compresses to summary + errors only
+     3. Posts savings to daemon for tracking
+     4. Outputs compressed result as additionalContext (JSON)
+  -> AI sees compressed output instead of verbose logs
 ```
 
 ## Configuration
@@ -180,26 +194,29 @@ If you already have a conventions doc:
 }
 ```
 
-## Token Cost
+## Token Savings
+
+Token savings are tracked per session and across lifetime:
+- **Session summary** logged to stderr on daemon shutdown
+- **Lifetime stats** persisted to `~/.gasoline/stats/lifetime.json`
 
 | Approach | Cost per edit |
 |----------|--------------|
-| Command hook (inject standards + evidence) | ~200-400 tokens |
+| Quality gate hook (inject standards) | ~200-400 tokens |
+| Compression hook (Bash output) | Saves 91-99% on test/build output |
 | Prompt hook (Haiku review) | ~$0.0001 |
-| Both hooks combined | ~200-400 tokens + ~$0.0001 |
 | Manual review pass | ~2,000-5,000 tokens |
-| No quality gates | Free, but 3-6x review passes later |
 
 ## Troubleshooting
 
 **Hook not firing?**
-- Verify `.claude/settings.json` exists in `.claude/` under the project root
-- Check that `matcher` matches the tool name exactly: `Edit|Write`
+- Verify `.claude/settings.json` exists under the project root
+- Check that `matcher` matches the tool name exactly: `Edit|Write` or `Bash`
 - Run `claude --debug` to see hook execution
 
-**jscpd not running?**
-- Requires `npx` in PATH (Node.js). The hook skips jscpd silently if unavailable.
-- First run downloads jscpd (~5s). Subsequent runs are instant.
+**gasoline not found?**
+- Ensure gasoline is installed: `npm install -g gasoline-agentic-devtools`
+- Or use the full path: `gasoline-mcp hook quality-gate`
 
 **Too many false positives?**
 - Make rules more specific in the standards doc
