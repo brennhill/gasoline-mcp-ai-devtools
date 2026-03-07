@@ -163,43 +163,77 @@
 
 ---
 
-## Decision Points (User Input Needed)
+## Decision Points (LOCKED)
 
-1. **GitHub repo name:**
-   - A) Rename `gasoline-*` → `blazetorch-*` (hard break)
-   - B) Keep current name, rebrand in docs only (soft break)
+1. **GitHub repo name:** ✅ **A) Rename to `blazetorch-ai-devstack`**
+   - GitHub auto-redirects old URLs (no problem)
 
-2. **Package names:**
-   - A) Rename `gasoline-mcp` → `blazetorch-mcp` (breaking change)
-   - B) Keep current names for compatibility
+2. **Package names:** ✅ **A) Full rebrand `gasoline-mcp` → `blazetorch-mcp`**
+   - Installer script handles auto-migration (existing code)
+   - Users won't experience disruption
 
-3. **Extension/binary names:**
-   - A) Rebrand everything (Chrome extension, CLI, etc.)
-   - B) Keep backward-compatible names
+3. **Extension/binary names:** ✅ **A) Full rebrand**
+   - Extension needs Chrome Web Store update anyway
+   - Most users install unpacked (no impact)
+   - Very few users on old version
 
-4. **Release timing:**
-   - A) Big bang release (v0.9.0 with rebrand)
-   - B) Gradual rollout (docs first, code later)
+4. **Release timing:** ✅ **A) Big bang release as v0.8.2**
+   - Single comprehensive release
+   - All branding changes included
 
-5. **Old domain:**
-   - A) 301 redirect + 6-month archive
-   - B) Keep both sites running indefinitely
+5. **Old domain:** ✅ **B) Keep both running for ~1 year**
+   - 301 redirects from cookwithgasoline.com → blazetorch.dev
+   - Maintain both until domain expires naturally
 
 ---
 
-## Execution Order (Recommended)
+## Execution Order (v0.8.2 Release)
 
-1. **Make decisions above** (critical blockers)
-2. **Setup blazetorch.dev** (DNS, infrastructure)
-3. **Update website code** (astro.config.mjs, content, branding)
-4. **Test site locally** (build, verify links)
-5. **Update main repo** (README, docs, file headers)
-6. **Create release branch** (with all changes)
-7. **Test install scripts** (download URLs work)
-8. **Deploy website** (blazetorch.dev live)
-9. **Tag release** (v0.9.0 or v0.8.1)
-10. **Setup redirects** (cookwithgasoline.com → blazetorch.dev)
-11. **Announce** (release notes, blog, social)
+### Phase A: Website Migration (cookwithgasoline.com → blazetorch.dev)
+- [ ] Setup blazetorch.dev DNS (point to same host as cookwithgasoline.com)
+- [ ] Update astro.config.mjs: `site: 'https://blazetorch.dev'`
+- [ ] Update Landing.astro, Header.astro, Footer.astro branding
+- [ ] Search & replace in /docs: "Gasoline" → "BlazeTorch", "gasoline" → "blazetorch"
+- [ ] Update OG images, favicon (if rebranding visuals)
+- [ ] Test build locally: `npm run build`
+- [ ] Deploy blazetorch.dev
+- [ ] Verify: analytics script loads on blazetorch.dev
+- [ ] Setup 301 redirects: cookwithgasoline.com/* → blazetorch.dev/*
+
+### Phase B: Main Repo Updates (gasoline → blazetorch)
+- [ ] Create `rebrand/v0.8.2` branch (or work on UNSTABLE)
+- [ ] Rename repo: `gasoline-agentic-browser-devtools-mcp` → `blazetorch-ai-devstack`
+- [ ] Update README.md (all branches: STABLE, UNSTABLE, main)
+- [ ] Update CHANGELOG.md
+- [ ] Update all docs files:
+  - [ ] File headers ("Gasoline" → "BlazeTorch")
+  - [ ] All feature docs
+  - [ ] All guides
+  - [ ] Reference docs
+- [ ] Update extension manifest.json: name, description
+- [ ] Update install scripts (install.sh, install.ps1):
+  - [ ] Download URLs point to blazetorch.dev
+  - [ ] References to `gasoline-mcp` → `blazetorch-mcp`
+  - [ ] Verify auto-migration code works
+- [ ] Update Go binaries: version strings, output messages
+- [ ] Update npm package (if published): name, description
+- [ ] Search & replace across codebase (standard substitutions)
+
+### Phase C: Testing & Release
+- [ ] Full UAT: Run install script, verify package names updated
+- [ ] Test on fresh machine (if possible)
+- [ ] Build extension: verify manifest loads correctly
+- [ ] Verify all docs render correctly on blazetorch.dev
+- [ ] Check GitHub auto-redirects (old URLs still work)
+- [ ] Bump version: `node scripts/bump-version.js 0.8.2`
+- [ ] Create release: v0.8.2 with rebrand notes
+- [ ] Tag release on all branches (STABLE, UNSTABLE, main)
+- [ ] Monitor: no broken links, install script works
+
+### Phase D: Post-Release
+- [ ] Update Chrome Web Store extension listing (name, description)
+- [ ] Announce rebrand (release notes emphasize "same tool, new name")
+- [ ] Update external links (docs links, readme badges, etc.)
 
 ---
 
