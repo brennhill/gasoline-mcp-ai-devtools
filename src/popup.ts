@@ -19,6 +19,7 @@ import type { WebSocketCaptureMode } from './types/index.js'
 import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types.js'
 import type { ShowTrackedHoverLauncherMessage } from './types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from './lib/constants.js'
+import { getLocal, setSession, getSession, onStorageChanged } from './lib/storage-utils.js'
 import { updateConnectionStatus } from './popup/status-display.js'
 import { setupRecordingUI } from './popup/recording.js'
 import { setupDrawModeButton } from './popup/draw-mode.js'
@@ -45,12 +46,9 @@ export { initWebSocketModeSelector } from './popup/settings.js'
 export { isInternalUrl } from './popup/ui-utils.js'
 
 // Apply theme early to prevent flash of unstyled content (moved from inline script for CSP compliance).
-try {
-  chrome.storage.local.get('theme', (r: Record<string, unknown>) => {
-    void chrome.runtime.lastError
-    if (r?.['theme'] === 'light') document.body.classList.add('light-theme')
-  })
-} catch { /* storage unavailable — default dark theme */ }
+void getLocal('theme').then((value) => {
+  if (value === 'light') document.body.classList.add('light-theme')
+})
 
 const DEFAULT_MAX_ENTRIES = 1000
 const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE: ShowTrackedHoverLauncherMessage = {
@@ -124,11 +122,7 @@ function requestTrackedHoverLauncherReshow(): void {
 
 /** Cache status to session storage so the popup renders instantly on next open. */
 function cacheStatus(status: PopupConnectionStatus): void {
-  try {
-    chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
-      void chrome.runtime.lastError
-    })
-  } catch { /* best-effort */ }
+  void setSession(StorageKey.POPUP_LAST_STATUS, status)
 }
 
 /**
@@ -139,17 +133,14 @@ export function initPopup(): void {
   requestTrackedHoverLauncherReshow()
 
   // 1) Hydrate immediately from cached status (local, no network, no IPC wait).
-  try {
-    chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result: Record<string, unknown>) => {
-      void chrome.runtime.lastError
-      const cached = result?.[StorageKey.POPUP_LAST_STATUS] as PopupConnectionStatus | undefined
-      if (cached) updateConnectionStatus(cached)
-    })
-  } catch { /* session storage unavailable — will show defaults until fresh data arrives */ }
+  void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
+    const cached = value as PopupConnectionStatus | undefined
+    if (cached) updateConnectionStatus(cached)
+  })
 
   // 2) Request fresh status from background worker (async — updates UI when ready).
   try {
-    chrome.runtime.sendMessage({ type: 'getStatus' }, (status: PopupConnectionStatus | undefined) => {
+    chrome.runtime.sendMessage({ type: 'get_status' }, (status: PopupConnectionStatus | undefined) => {
       if (chrome.runtime.lastError) {
         updateConnectionStatus({
           connected: false,
@@ -196,22 +187,15 @@ export function initPopup(): void {
   // Listen for status updates
   chrome.runtime.onMessage.addListener(
     (message: { type: string; status?: PopupConnectionStatus; enabled?: boolean }) => {
-      if (message.type === 'statusUpdate' && message.status) {
+      if (message.type === 'status_update' && message.status) {
         updateConnectionStatus(message.status)
         cacheStatus(message.status)
-      } else if (message.type === 'pilotStatusChanged') {
-        // Update toggle to reflect confirmed state from background
-        const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
-        if (toggle) {
-          toggle.checked = message.enabled === true
-          console.log('[Gasoline] Pilot status confirmed:', message.enabled)
-        }
       }
     }
   )
 
   // Listen for storage changes (e.g., tracked tab URL updates)
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  onStorageChanged((changes, areaName) => {
     if (areaName === 'local' && changes[StorageKey.TRACKED_TAB_URL]) {
       const urlEl = document.getElementById('tracking-bar-url')
       if (urlEl && changes[StorageKey.TRACKED_TAB_URL]!.newValue) {

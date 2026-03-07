@@ -31,7 +31,7 @@ export async function handleDrawModeQuery(query, tabId, sendResult, sendAsyncRes
     try {
       const sessionName = params.annot_session || ''
       const result = await chrome.tabs.sendMessage(tabId, {
-        type: 'GASOLINE_DRAW_MODE_START',
+        type: 'gasoline_draw_mode_start',
         started_by: 'llm',
         annot_session_name: sessionName,
         correlation_id: query.correlation_id || query.id || ''
@@ -145,18 +145,18 @@ export function installDrawModeCommandListener() {
       // Check if draw mode is active by querying content script
       try {
         const result = await chrome.tabs.sendMessage(tab.id, {
-          type: 'GASOLINE_GET_ANNOTATIONS'
+          type: 'gasoline_get_annotations'
         })
 
         if (result?.draw_mode_active) {
           // Deactivate
           await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_STOP'
+            type: 'gasoline_draw_mode_stop'
           })
         } else {
           // Activate
           await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
+            type: 'gasoline_draw_mode_start',
             started_by: 'user'
           })
         }
@@ -164,7 +164,7 @@ export function installDrawModeCommandListener() {
         // Content script not loaded — try activating anyway
         try {
           await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_DRAW_MODE_START',
+            type: 'gasoline_draw_mode_start',
             started_by: 'user'
           })
         } catch {
@@ -172,7 +172,7 @@ export function installDrawModeCommandListener() {
           debugLog('warn', 'Cannot reach content script for draw mode toggle')
           try {
             await chrome.tabs.sendMessage(tab.id, {
-              type: 'GASOLINE_ACTION_TOAST',
+              type: 'gasoline_action_toast',
               text: 'Draw mode unavailable',
               detail: 'Refresh the page and try again',
               state: 'error',

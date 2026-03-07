@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: dom-selector-resolution-and-disambiguation
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 owners:
   - Brenn
 last_verified_version: 0.7.12
@@ -14,6 +14,8 @@ last_verified_date: 2026-03-05
 ## Scope
 
 Selector resolution inside extension DOM primitives used by `interact` mutating actions (`click`, `type`, `select`, `check`, `focus`, `paste`, `key_press`, `scroll_to`, and intent helpers), including modal-overlay blocking guards.
+
+**#502 Split:** Intent actions (`open_composer`, `submit_active_composer`, `confirm_top_dialog`), overlay actions (`dismiss_top_overlay`, `auto_dismiss_overlays`), and stability actions (`wait_for_stable`, `action_diff`) are dispatched directly by `dom-dispatch.ts` to self-contained extracted modules (`dom-primitives-intent.ts`, `dom-primitives-overlay.ts`, `dom-primitives-stability.ts`). They no longer route through the main `domPrimitive` function.
 
 ## Entrypoints
 
@@ -57,6 +59,9 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 - `scripts/templates/dom-primitives.ts.tpl`
 - `extension/background/dom-primitives.js`
 - `src/background/dom-dispatch.ts`
+- `src/background/dom-primitives-intent.ts`
+- `src/background/dom-primitives-overlay.ts`
+- `src/background/dom-primitives-stability.ts`
 - `src/background/dom-types.ts`
 - `cmd/dev-console/tools_async_result_enrichment.go`
 - `cmd/dev-console/tools_async_result_normalization.go`

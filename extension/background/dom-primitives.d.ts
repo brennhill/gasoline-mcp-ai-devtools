@@ -1,8 +1,10 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Core DOM primitives for selector-based actions (click, type, wait_for, etc.).
+ * #502: Intent/overlay/stability actions extracted to separate self-contained modules:
+ *   - dom-primitives-intent.ts (open_composer, submit_active_composer, confirm_top_dialog)
+ *   - dom-primitives-overlay.ts (dismiss_top_overlay, auto_dismiss_overlays)
+ *   - dom-primitives-stability.ts (wait_for_stable, action_diff)
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 import type { DOMPrimitiveOptions, DOMResult } from './dom-types.js';
 export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';

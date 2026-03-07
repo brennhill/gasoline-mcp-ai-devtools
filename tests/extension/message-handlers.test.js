@@ -81,7 +81,7 @@ describe('sender validation', () => {
   test('content script sender is valid', () => {
     const { handler } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'GET_TAB_ID' }, contentScriptSender, sendResponse)
+    handler({ type: 'get_tab_id' }, contentScriptSender, sendResponse)
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].tabId, 1)
   })
@@ -89,7 +89,7 @@ describe('sender validation', () => {
   test('extension page sender is valid', () => {
     const { handler } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'getStatus' }, extensionSender, sendResponse)
+    handler({ type: 'get_status' }, extensionSender, sendResponse)
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.ok(sendResponse.mock.calls[0].arguments[0].connected !== undefined)
   })
@@ -97,7 +97,7 @@ describe('sender validation', () => {
   test('web page sender is rejected', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    const result = handler({ type: 'getStatus' }, webPageSender, sendResponse)
+    const result = handler({ type: 'get_status' }, webPageSender, sendResponse)
     assert.strictEqual(result, false)
     assert.strictEqual(sendResponse.mock.calls.length, 0)
     // debugLog should be called with rejection
@@ -115,7 +115,7 @@ describe('message routing', () => {
   test('GET_TAB_ID returns sender tab id', () => {
     const { handler } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'GET_TAB_ID' }, contentScriptSender, sendResponse)
+    handler({ type: 'get_tab_id' }, contentScriptSender, sendResponse)
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].tabId, 1)
   })
 
@@ -165,7 +165,7 @@ describe('message routing', () => {
       getServerUrl: mock.fn(() => 'http://localhost:9222')
     })
     const sendResponse = mock.fn()
-    handler({ type: 'getStatus' }, extensionSender, sendResponse)
+    handler({ type: 'get_status' }, extensionSender, sendResponse)
     const resp = sendResponse.mock.calls[0].arguments[0]
     assert.strictEqual(resp.connected, true)
     assert.strictEqual(resp.serverUrl, 'http://localhost:9222')
@@ -181,7 +181,7 @@ describe('message routing', () => {
       }))
     })
     const sendResponse = mock.fn()
-    handler({ type: 'getStatus' }, extensionSender, sendResponse)
+    handler({ type: 'get_status' }, extensionSender, sendResponse)
     const resp = sendResponse.mock.calls[0].arguments[0]
     assert.strictEqual(resp.securityMode, 'insecure_proxy')
     assert.strictEqual(resp.productionParity, false)
@@ -193,7 +193,7 @@ describe('message routing', () => {
       handleClearLogs: mock.fn(() => Promise.resolve({ cleared: 50 }))
     })
     const sendResponse = mock.fn()
-    handler({ type: 'clearLogs' }, extensionSender, sendResponse)
+    handler({ type: 'clear_logs' }, extensionSender, sendResponse)
     // Wait for async handler
     await new Promise(r => setTimeout(r, 10))
     assert.strictEqual(sendResponse.mock.calls.length, 1)
@@ -202,7 +202,7 @@ describe('message routing', () => {
 
   test('setLogLevel updates level and persists', () => {
     const { handler, deps } = getInstalledHandler()
-    handler({ type: 'setLogLevel', level: 'warn' }, extensionSender, mock.fn())
+    handler({ type: 'set_log_level', level: 'warn' }, extensionSender, mock.fn())
     assert.strictEqual(deps.setCurrentLogLevel.mock.calls[0].arguments[0], 'warn')
     assert.ok(deps.saveSetting.mock.calls.some(
       c => c.arguments[0] === 'logLevel' && c.arguments[1] === 'warn'
@@ -224,7 +224,7 @@ describe('message routing', () => {
   test('setDebugMode updates and persists', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'setDebugMode', enabled: true }, extensionSender, sendResponse)
+    handler({ type: 'set_debug_mode', enabled: true }, extensionSender, sendResponse)
     assert.strictEqual(deps.setDebugMode.mock.calls[0].arguments[0], true)
     assert.ok(deps.saveSetting.mock.calls.some(c => c.arguments[0] === 'debugMode'))
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].success, true)
@@ -235,14 +235,14 @@ describe('message routing', () => {
       exportDebugLog: mock.fn(() => ['line1', 'line2'])
     })
     const sendResponse = mock.fn()
-    handler({ type: 'getDebugLog' }, extensionSender, sendResponse)
+    handler({ type: 'get_debug_log' }, extensionSender, sendResponse)
     assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0].log, ['line1', 'line2'])
   })
 
   test('clearDebugLog clears and responds', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
-    handler({ type: 'clearDebugLog' }, extensionSender, sendResponse)
+    handler({ type: 'clear_debug_log' }, extensionSender, sendResponse)
     assert.strictEqual(deps.clearDebugLog.mock.calls.length, 1)
     assert.strictEqual(sendResponse.mock.calls[0].arguments[0].success, true)
   })

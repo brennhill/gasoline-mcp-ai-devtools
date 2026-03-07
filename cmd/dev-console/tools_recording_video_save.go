@@ -161,7 +161,7 @@ func (s *Server) handleVideoRecordingSave(w http.ResponseWriter, r *http.Request
 
 	if upload.queryID != "" && cap != nil {
 		// Error impossible: map contains only primitive types from input
-		result, _ := json.Marshal(map[string]any{
+		result := buildQueryParams(map[string]any{
 			"status":           "saved",
 			"name":             upload.meta.Name,
 			"path":             videoPath,

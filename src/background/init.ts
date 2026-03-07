@@ -84,7 +84,7 @@ import { isRecording, startRecording, stopRecording } from './recording.js'
 import type { MessageHandlerDependencies } from './message-handlers.js'
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
 import { captureScreenshot, updateBadge } from './communication.js'
-import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js'
+import { wasServiceWorkerRestarted, markStateVersion, setSessionAccessLevel, setLocal } from '../lib/storage-utils.js'
 
 /**
  * Initialize the extension on startup
@@ -123,9 +123,7 @@ async function initializeExtensionAsync(): Promise<void> {
 
     // Allow content scripts to access chrome.storage.session (required for terminal state persistence).
     // Without this, content scripts silently fail to read/write session storage.
-    if (chrome.storage.session?.setAccessLevel) {
-      await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
-    }
+    await setSessionAccessLevel('TRUSTED_AND_UNTRUSTED_CONTEXTS')
 
     // ============= STEP 2: Load debug mode =============
     const debugEnabled = await loadDebugModeState()
@@ -154,7 +152,7 @@ async function initializeExtensionAsync(): Promise<void> {
     const settings = await loadSavedSettings()
     setServerUrl(settings.serverUrl || DEFAULT_SERVER_URL)
     setCurrentLogLevel('all')
-    setScreenshotOnError(settings.screenshotOnError !== false)
+    setScreenshotOnError(settings.screenshotOnError === true)
     setSourceMapEnabled(settings.sourceMapEnabled !== false)
     setDebugMode(settings.debugMode || false)
 
@@ -224,13 +222,16 @@ async function initializeExtensionAsync(): Promise<void> {
         setDebugMode(enabled)
       },
       setAiWebPilotEnabled: (enabled, callback) => {
-        chrome.storage.local.set({ aiWebPilotEnabled: enabled }, () => {
+        setLocal('aiWebPilotEnabled', enabled).then(() => {
           setAiWebPilotEnabledCache(enabled)
           // Reset connection when enabling to allow immediate reconnection
           if (enabled) {
             resetSyncClientConnection()
             console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled (direct)')
           }
+          if (callback) callback()
+        }).catch((err: unknown) => {
+          console.error('[Gasoline] Failed to save aiWebPilotEnabled:', err)
           if (callback) callback()
         })
       },

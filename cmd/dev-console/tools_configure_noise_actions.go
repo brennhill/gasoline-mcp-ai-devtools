@@ -106,8 +106,7 @@ func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (an
 }
 
 func (h *ToolHandler) noiseActionRemove(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
-	if args.RuleID == "" {
-		resp := fail(req, ErrMissingParam, "Required parameter 'rule_id' is missing", "Add the 'rule_id' parameter", withParam("rule_id"))
+	if resp, blocked := requireString(req, args.RuleID, "rule_id", "Add the 'rule_id' parameter"); blocked {
 		return nil, &resp
 	}
 	if err := h.noiseConfig.RemoveRule(args.RuleID); err != nil {

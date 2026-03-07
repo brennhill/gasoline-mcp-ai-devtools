@@ -37,11 +37,8 @@ func (h *interactActionHandler) handleClipboardWrite(req JSONRPCRequest, args js
 	if resp, stop := parseArgs(req, args, &params); stop {
 		return resp
 	}
-	if params.Text == "" {
-		return fail(req, ErrMissingParam,
-			"Required parameter 'text' is missing",
-			"Add the 'text' parameter with the content to write to clipboard",
-			withParam("text"))
+	if resp, blocked := requireString(req, params.Text, "text", "Add the 'text' parameter with the content to write to clipboard"); blocked {
+		return resp
 	}
 
 	// JSON-encode the text to safely embed it in the script

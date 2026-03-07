@@ -5,6 +5,7 @@
  */
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js'
 import {
   state,
   getTerminalServerUrl,
@@ -18,82 +19,52 @@ import { showSandboxError } from './terminal-widget-ui.js'
 // CONFIG HELPERS — read/write chrome.storage.local
 // =============================================================================
 
-export function getServerUrl(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve(DEFAULT_SERVER_URL) // Storage read failed — fall back to default
-          return
-        }
-        const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
-        state.serverUrl = url
-        resolve(url)
-      })
-    } catch {
-      resolve(DEFAULT_SERVER_URL) // Extension context invalidated
-    }
-  })
+export async function getServerUrl(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.SERVER_URL)
+    const url = (value as string) || DEFAULT_SERVER_URL
+    state.serverUrl = url
+    return url
+  } catch {
+    return DEFAULT_SERVER_URL // Extension context invalidated
+  }
 }
 
-export function getTerminalConfig(): Promise<TerminalConfig> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve({}) // Storage read failed — use defaults
-          return
-        }
-        const config = (result[StorageKey.TERMINAL_CONFIG] as TerminalConfig) || {}
-        resolve(config)
-      })
-    } catch {
-      resolve({}) // Extension context invalidated
-    }
-  })
+export async function getTerminalConfig(): Promise<TerminalConfig> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_CONFIG)
+    const config = (value as TerminalConfig) || {}
+    return config
+  } catch {
+    return {} // Extension context invalidated
+  }
 }
 
 export function saveTerminalConfig(config: TerminalConfig): void {
   try {
-    chrome.storage.local.set({ [StorageKey.TERMINAL_CONFIG]: config }, () => {
-      void chrome.runtime.lastError // Best-effort persistence
-    })
+    void setLocal(StorageKey.TERMINAL_CONFIG, config)
   } catch {
     // Extension context invalidated — config won't persist but session still works
   }
 }
 
-function getTerminalAICommand(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('claude')
-          return
-        }
-        const cmd = (result[StorageKey.TERMINAL_AI_COMMAND] as string) || 'claude'
-        resolve(cmd)
-      })
-    } catch {
-      resolve('claude')
-    }
-  })
+async function getTerminalAICommand(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND)
+    const cmd = (value as string) || 'claude'
+    return cmd
+  } catch {
+    return 'claude'
+  }
 }
 
-function getTerminalDevRoot(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('')
-          return
-        }
-        resolve((result[StorageKey.TERMINAL_DEV_ROOT] as string) || '')
-      })
-    } catch {
-      resolve('')
-    }
-  })
+async function getTerminalDevRoot(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT)
+    return (value as string) || ''
+  } catch {
+    return ''
+  }
 }
 
 // =============================================================================
@@ -102,47 +73,32 @@ function getTerminalDevRoot(): Promise<string> {
 
 export function persistSession(ss: TerminalSessionState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-      void chrome.runtime.lastError
-    })
+    void setSession(StorageKey.TERMINAL_SESSION, ss)
   } catch { /* extension context invalidated */ }
 }
 
 export function clearPersistedSession(): void {
   try {
-    chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-      void chrome.runtime.lastError
-    })
+    void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE])
   } catch { /* extension context invalidated */ }
 }
 
 export function persistUIState(uiState: TerminalUIState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-      void chrome.runtime.lastError
-    })
+    void setSession(StorageKey.TERMINAL_UI_STATE, uiState)
   } catch { /* extension context invalidated */ }
 }
 
-export function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.session.get(
-        [StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE],
-        (result: Record<string, unknown>) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: 'closed' })
-            return
-          }
-          const session = result[StorageKey.TERMINAL_SESSION] as TerminalSessionState | undefined
-          const uiState = (result[StorageKey.TERMINAL_UI_STATE] as TerminalUIState) || 'closed'
-          resolve({ session: session || null, uiState })
-        }
-      )
-    } catch {
-      resolve({ session: null, uiState: 'closed' })
-    }
-  })
+export async function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
+  try {
+    const sessionValue = await getSession(StorageKey.TERMINAL_SESSION)
+    const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE)
+    const session = sessionValue as TerminalSessionState | undefined
+    const uiState = (uiValue as TerminalUIState) || 'closed'
+    return { session: session || null, uiState }
+  } catch {
+    return { session: null, uiState: 'closed' }
+  }
 }
 
 // =============================================================================

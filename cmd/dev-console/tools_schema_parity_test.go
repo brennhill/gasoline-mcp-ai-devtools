@@ -106,7 +106,7 @@ func sortedInteractRuntimeActions(h *ToolHandler) []string {
 	}
 
 	actions := make(map[string]bool)
-	for action := range h.interactAction().buildInteractHandlers() {
+	for action := range getInteractHandlers() {
 		if !aliasSet[action] {
 			actions[action] = true
 		}

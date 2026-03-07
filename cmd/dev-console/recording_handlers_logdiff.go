@@ -25,8 +25,11 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
-	if params.OriginalID == "" || params.ReplayID == "" {
-		return fail(req, ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))
+	if resp, blocked := requireString(req, params.OriginalID, "original_id", "Provide the original recording ID"); blocked {
+		return resp
+	}
+	if resp, blocked := requireString(req, params.ReplayID, "replay_id", "Provide the replay recording ID"); blocked {
+		return resp
 	}
 
 	// Compare recordings
@@ -76,8 +79,11 @@ func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
-	if params.OriginalID == "" || params.ReplayID == "" {
-		return fail(req, ErrMissingParam, "Required parameters 'original_id' and 'replay_id' are missing", "Provide both recording IDs", withParam("original_id"), withParam("replay_id"))
+	if resp, blocked := requireString(req, params.OriginalID, "original_id", "Provide the original recording ID"); blocked {
+		return resp
+	}
+	if resp, blocked := requireString(req, params.ReplayID, "replay_id", "Provide the replay recording ID"); blocked {
+		return resp
 	}
 
 	// Compare recordings

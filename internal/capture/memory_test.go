@@ -60,12 +60,30 @@ func makeAction() EnhancedAction {
 func recalcMemoryTotals(c *Capture) {
 	c.buffers.wsMemoryTotal = 0
 	for i := range c.buffers.wsEvents {
-		c.buffers.wsMemoryTotal += wsEventMemory(&c.buffers.wsEvents[i])
+		c.buffers.wsMemoryTotal += wsEventMemory(&c.buffers.wsEvents[i].Event)
 	}
 	c.buffers.networkBodyMemoryTotal = 0
 	for i := range c.buffers.networkBodies {
-		c.buffers.networkBodyMemoryTotal += nbEntryMemory(&c.buffers.networkBodies[i])
+		c.buffers.networkBodyMemoryTotal += nbEntryMemory(&c.buffers.networkBodies[i].Body)
 	}
+}
+
+// extractWSEvents extracts WebSocketEvent values from entry wrappers (test helper).
+func extractWSEvents(entries []wsEventEntry) []WebSocketEvent {
+	out := make([]WebSocketEvent, len(entries))
+	for i := range entries {
+		out[i] = entries[i].Event
+	}
+	return out
+}
+
+// extractNetworkBodies extracts NetworkBody values from entry wrappers (test helper).
+func extractNetworkBodies(entries []networkBodyEntry) []NetworkBody {
+	out := make([]NetworkBody, len(entries))
+	for i := range entries {
+		out[i] = entries[i].Body
+	}
+	return out
 }
 
 // bruteForceWSMemory recalculates WS memory by iterating all events (reference implementation).
@@ -96,8 +114,10 @@ func TestMemory_CalcWSMemory_PerEventEstimate(t *testing.T) {
 
 	dataSize := 1000
 	c.mu.Lock()
-	c.buffers.wsEvents = append(c.buffers.wsEvents, makeWSEvent(dataSize))
-	c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, time.Now())
+	c.buffers.wsEvents = append(c.buffers.wsEvents, wsEventEntry{
+		Event:   makeWSEvent(dataSize),
+		AddedAt: time.Now(),
+	})
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
@@ -120,8 +140,10 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 
 	reqSize, respSize := 500, 1500
 	c.mu.Lock()
-	c.buffers.networkBodies = append(c.buffers.networkBodies, makeNetworkBody(reqSize, respSize))
-	c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, time.Now())
+	c.buffers.networkBodies = append(c.buffers.networkBodies, networkBodyEntry{
+		Body:    makeNetworkBody(reqSize, respSize),
+		AddedAt: time.Now(),
+	})
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
@@ -154,7 +176,7 @@ func TestMemory_RunningTotal_WSAccurateAfterAdd(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.wsMemoryTotal
-	expected := bruteForceWSMemory(c.buffers.wsEvents)
+	expected := bruteForceWSMemory(extractWSEvents(c.buffers.wsEvents))
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -174,7 +196,7 @@ func TestMemory_RunningTotal_NBAccurateAfterAdd(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.networkBodyMemoryTotal
-	expected := bruteForceNBMemory(c.buffers.networkBodies)
+	expected := bruteForceNBMemory(extractNetworkBodies(c.buffers.networkBodies))
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -195,7 +217,7 @@ func TestMemory_RunningTotal_WSAccurateAfterRotation(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.wsMemoryTotal
-	expected := bruteForceWSMemory(c.buffers.wsEvents)
+	expected := bruteForceWSMemory(extractWSEvents(c.buffers.wsEvents))
 	count := len(c.buffers.wsEvents)
 	c.mu.RUnlock()
 
@@ -220,7 +242,7 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.networkBodyMemoryTotal
-	expected := bruteForceNBMemory(c.buffers.networkBodies)
+	expected := bruteForceNBMemory(extractNetworkBodies(c.buffers.networkBodies))
 	count := len(c.buffers.networkBodies)
 	c.mu.RUnlock()
 
@@ -246,7 +268,7 @@ func TestMemory_RunningTotal_WSAccurateAfterPerBufferEviction(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.wsMemoryTotal
-	expected := bruteForceWSMemory(c.buffers.wsEvents)
+	expected := bruteForceWSMemory(extractWSEvents(c.buffers.wsEvents))
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -267,7 +289,7 @@ func TestMemory_RunningTotal_NBAccurateAfterPerBufferEviction(t *testing.T) {
 
 	c.mu.RLock()
 	runningTotal := c.buffers.networkBodyMemoryTotal
-	expected := bruteForceNBMemory(c.buffers.networkBodies)
+	expected := bruteForceNBMemory(extractNetworkBodies(c.buffers.networkBodies))
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
@@ -357,9 +379,9 @@ func TestMemory_RunningTotal_MultipleAddEvictCycles(t *testing.T) {
 
 	c.mu.RLock()
 	wsRunning := c.buffers.wsMemoryTotal
-	wsExpected := bruteForceWSMemory(c.buffers.wsEvents)
+	wsExpected := bruteForceWSMemory(extractWSEvents(c.buffers.wsEvents))
 	nbRunning := c.buffers.networkBodyMemoryTotal
-	nbExpected := bruteForceNBMemory(c.buffers.networkBodies)
+	nbExpected := bruteForceNBMemory(extractNetworkBodies(c.buffers.networkBodies))
 	c.mu.RUnlock()
 
 	if wsRunning != wsExpected {

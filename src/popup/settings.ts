@@ -10,13 +10,14 @@
  */
 
 import type { WebSocketCaptureMode } from '../types/index.js'
-import { SettingName } from '../lib/constants.js'
+import { SettingName, StorageKey } from '../lib/constants.js'
+import { setLocal, getLocal } from '../lib/storage-utils.js'
 
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
-  chrome.storage.local.set({ webSocketCaptureMode: mode })
+  void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode)
   chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode })
 }
 
@@ -27,12 +28,8 @@ export async function initWebSocketModeSelector(): Promise<void> {
   const modeSelect = document.getElementById('ws-mode') as HTMLSelectElement | null
   if (!modeSelect) return
 
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['webSocketCaptureMode'], (result: { webSocketCaptureMode?: WebSocketCaptureMode }) => {
-      modeSelect.value = result.webSocketCaptureMode || 'medium'
-      resolve()
-    })
-  })
+  const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE)
+  modeSelect.value = (value as WebSocketCaptureMode) || 'medium'
 }
 
 // Track clear-logs confirmation state
@@ -81,7 +78,7 @@ export async function handleClearLogs(): Promise<{ success?: boolean; error?: st
   }
 
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'clearLogs' }, (response: { success?: boolean; error?: string } | undefined) => {
+    chrome.runtime.sendMessage({ type: 'clear_logs' }, (response: { success?: boolean; error?: string } | undefined) => {
       if (clearBtn) {
         clearBtn.disabled = false
         clearBtn.textContent = 'Clear Logs'

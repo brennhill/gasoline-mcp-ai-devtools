@@ -10,6 +10,28 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
+func isLocalPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		return false
+	}
+	_ = ln.Close() //nolint:errcheck // pre-flight check; port availability probe only
+	return true
+}
+
+func suggestAvailablePort(startPort, maxOffset int) (int, bool) {
+	for offset := 0; offset <= maxOffset; offset++ {
+		candidate := startPort + offset
+		if candidate <= 0 {
+			continue
+		}
+		if isLocalPortAvailable(candidate) {
+			return candidate, true
+		}
+	}
+	return 0, false
+}
+
 // checkPortAvailability prints port availability status.
 func checkPortAvailability(port int) {
 	fmt.Print("Checking port availability... ")
@@ -18,7 +40,12 @@ func checkPortAvailability(port int) {
 		fmt.Println("FAILED")
 		fmt.Printf("  Port %d is already in use.\n", port)
 		fmt.Printf("  Fix: %s\n", portKillHint(port))
-		fmt.Printf("  Or use a different port: --port %d\n", port+1)
+		fmt.Printf("  Quick stop (Gasoline): gasoline --stop --port %d\n", port)
+		if suggested, ok := suggestAvailablePort(port+1, 25); ok {
+			fmt.Printf("  Suggested free port: --port %d\n", suggested)
+		} else {
+			fmt.Printf("  Or use a different port: --port %d\n", port+1)
+		}
 	} else {
 		_ = ln.Close() //nolint:errcheck // pre-flight check; port availability test only
 		fmt.Println("OK")

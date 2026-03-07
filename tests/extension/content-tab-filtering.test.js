@@ -94,7 +94,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be dropped' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should be dropped' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from untracked tab should be dropped')
@@ -105,7 +105,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be forwarded' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should be forwarded' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Messages from tracked tab should be forwarded')
@@ -116,11 +116,11 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(999, 1) // untracked
 
     const messageTypes = [
-      { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
-      { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
-      { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'GASOLINE_ENHANCED_ACTION', payload: { type: 'click', url: '/page' } },
-      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } }
+      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
+      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } },
+      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'gasoline_enhanced_action', payload: { type: 'click', url: '/page' } },
+      { type: 'gasoline_performance_snapshot', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -134,11 +134,11 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(42, 42) // tracked
 
     const messageTypes = [
-      { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
-      { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
-      { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'GASOLINE_ENHANCED_ACTION', payload: { type: 'click', url: '/page' } },
-      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } }
+      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
+      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } },
+      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'gasoline_enhanced_action', payload: { type: 'click', url: '/page' } },
+      { type: 'gasoline_performance_snapshot', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -153,7 +153,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when no tab is tracked')
@@ -164,7 +164,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when trackedTabId is null')
@@ -179,7 +179,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'test' } }
     })
 
     assert.strictEqual(messagesSent.length, 1)
@@ -191,9 +191,9 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(tabId, tabId)
 
     const messageTypes = [
-      { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
-      { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } }
+      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
+      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } }
     ]
 
     for (const msg of messageTypes) {
@@ -214,7 +214,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: {}, // Not window
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'injected' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'injected' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from non-window sources should be rejected')
@@ -233,7 +233,7 @@ describe('Content Script Tab Filtering', () => {
     // Now should forward messages
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'now tracked' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'now tracked' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should forward after tracking status changes to this tab')
@@ -245,7 +245,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward one message while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } }
+      data: { type: 'gasoline_log', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -255,7 +255,7 @@ describe('Content Script Tab Filtering', () => {
     // This message should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should drop' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should drop' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking switches away')
@@ -267,7 +267,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } }
+      data: { type: 'gasoline_log', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -277,7 +277,7 @@ describe('Content Script Tab Filtering', () => {
     // Should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking disabled')
@@ -616,15 +616,15 @@ describe('Multi-Tab Isolation Scenario', () => {
     }
 
     // Tab 1 (tracked) generates activity
-    processMessage(1, 'GASOLINE_LOG', { level: 'error', message: 'from tab 1' })
-    processMessage(1, 'GASOLINE_NETWORK_BODY', { url: '/api', method: 'GET', status: 200 })
+    processMessage(1, 'gasoline_log', { level: 'error', message: 'from tab 1' })
+    processMessage(1, 'gasoline_network_body', { url: '/api', method: 'GET', status: 200 })
 
     // Tab 2 (untracked) generates activity
-    processMessage(2, 'GASOLINE_LOG', { level: 'error', message: 'from tab 2' })
-    processMessage(2, 'GASOLINE_NETWORK_BODY', { url: '/secret', method: 'GET', status: 200 })
+    processMessage(2, 'gasoline_log', { level: 'error', message: 'from tab 2' })
+    processMessage(2, 'gasoline_network_body', { url: '/secret', method: 'GET', status: 200 })
 
     // Tab 3 (untracked) generates activity
-    processMessage(3, 'GASOLINE_LOG', { level: 'error', message: 'from tab 3' })
+    processMessage(3, 'gasoline_log', { level: 'error', message: 'from tab 3' })
 
     // Verify only tab 1 data captured
     assert.strictEqual(messagesSent.tab1.length, 2, 'Tab 1 (tracked) should have 2 messages')
@@ -653,8 +653,8 @@ describe('Multi-Tab Isolation Scenario', () => {
     }
 
     // Tab 1 tracked, send messages
-    processMessage(1, 'GASOLINE_LOG', { level: 'info', message: 'tab1 msg1' })
-    processMessage(2, 'GASOLINE_LOG', { level: 'info', message: 'tab2 msg1' })
+    processMessage(1, 'gasoline_log', { level: 'info', message: 'tab1 msg1' })
+    processMessage(2, 'gasoline_log', { level: 'info', message: 'tab2 msg1' })
 
     assert.strictEqual(allMessages.length, 1)
     assert.strictEqual(allMessages[0].tabId, 1)
@@ -662,8 +662,8 @@ describe('Multi-Tab Isolation Scenario', () => {
     // Switch tracking to tab 2
     trackedTabId = 2
 
-    processMessage(1, 'GASOLINE_LOG', { level: 'info', message: 'tab1 msg2' })
-    processMessage(2, 'GASOLINE_LOG', { level: 'info', message: 'tab2 msg2' })
+    processMessage(1, 'gasoline_log', { level: 'info', message: 'tab1 msg2' })
+    processMessage(2, 'gasoline_log', { level: 'info', message: 'tab2 msg2' })
 
     assert.strictEqual(allMessages.length, 2)
     assert.strictEqual(allMessages[1].tabId, 2, 'After switch, only tab 2 messages forwarded')
@@ -687,7 +687,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     // Mock chrome APIs as they exist in content script context
     const mockChromeRuntime = {
       sendMessage: async (msg) => {
-        if (msg.type === 'GET_TAB_ID') {
+        if (msg.type === 'get_tab_id') {
           return { tabId: expectedTabId }
         }
         return {}
@@ -703,7 +703,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     async function updateTrackingStatus() {
       try {
         const storage = await mockStorage.local.get(['trackedTabId'])
-        const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
+        const response = await mockChromeRuntime.sendMessage({ type: 'get_tab_id' })
         currentTabId = response?.tabId
         isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
@@ -723,7 +723,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
 
     const mockChromeRuntime = {
       sendMessage: async (msg) => {
-        if (msg.type === 'GET_TAB_ID') {
+        if (msg.type === 'get_tab_id') {
           return { tabId: 99 } // This tab
         }
         return {}
@@ -738,7 +738,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     async function updateTrackingStatus() {
       try {
         const storage = await mockStorage.local.get(['trackedTabId'])
-        const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
+        const response = await mockChromeRuntime.sendMessage({ type: 'get_tab_id' })
         currentTabId = response?.tabId
         isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
@@ -770,7 +770,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     async function updateTrackingStatus() {
       try {
         const storage = await mockStorage.local.get(['trackedTabId'])
-        const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
+        const response = await mockChromeRuntime.sendMessage({ type: 'get_tab_id' })
         currentTabId = response?.tabId
         isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
@@ -799,7 +799,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     async function updateTrackingStatus() {
       try {
         const storage = await mockStorage.local.get(['trackedTabId'])
-        const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
+        const response = await mockChromeRuntime.sendMessage({ type: 'get_tab_id' })
         currentTabId = response?.tabId
         isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {

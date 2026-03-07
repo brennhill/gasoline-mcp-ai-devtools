@@ -92,7 +92,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     globalThis.window = {
       ...createMockWindow({ withFetch: true }),
       postMessage: (data) => {
-        if (data && data.type === 'GASOLINE_NETWORK_BODY') {
+        if (data && data.type === 'gasoline_network_body') {
           capturedBodyEvents.push(data.payload)
         }
       },

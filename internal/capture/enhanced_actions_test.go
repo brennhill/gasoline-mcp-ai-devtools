@@ -276,28 +276,28 @@ func TestNewAddEnhancedActions_IncrementalOverflow(t *testing.T) {
 // Parallel Array Mismatch Recovery Tests
 // ============================================
 
-func TestNewAddEnhancedActions_MismatchRecovery(t *testing.T) {
+func TestNewAddEnhancedActions_AppendAfterDirectBufferSet(t *testing.T) {
 	t.Parallel()
 
 	c := NewCapture()
 	t.Cleanup(c.Close)
 
-	// Simulate a mismatch between enhancedActions and actionAddedAt
+	// Pre-populate buffer with entries using entry wrapper structs
+	now := time.Now()
 	c.mu.Lock()
-	c.buffers.enhancedActions = []EnhancedAction{
-		{Type: "click"},
-		{Type: "type"},
-		{Type: "navigate"},
+	c.buffers.enhancedActions = []enhancedActionEntry{
+		{Action: EnhancedAction{Type: "click"}, AddedAt: now},
+		{Action: EnhancedAction{Type: "type"}, AddedAt: now},
+		{Action: EnhancedAction{Type: "navigate"}, AddedAt: now},
 	}
-	c.buffers.actionAddedAt = []time.Time{time.Now()} // Only 1 timestamp for 3 actions
 	c.mu.Unlock()
 
-	// Adding should trigger recovery, truncating to min(3,1) = 1
+	// Adding appends to existing entries
 	c.AddEnhancedActions([]EnhancedAction{{Type: "scroll"}})
 
-	// After recovery: 1 surviving + 1 new = 2
-	if got := c.GetEnhancedActionCount(); got != 2 {
-		t.Fatalf("GetEnhancedActionCount() after mismatch recovery = %d, want 2", got)
+	// 3 existing + 1 new = 4
+	if got := c.GetEnhancedActionCount(); got != 4 {
+		t.Fatalf("GetEnhancedActionCount() after append = %d, want 4", got)
 	}
 }
 

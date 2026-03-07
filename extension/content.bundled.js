@@ -29,21 +29,21 @@
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
-    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-    ACTION_REPLAY: "setActionReplayEnabled",
-    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-    DEFERRAL: "setDeferralEnabled",
-    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-    ACTION_TOASTS: "setActionToastsEnabled",
-    SUBTITLES: "setSubtitlesEnabled",
-    SERVER_URL: "setServerUrl"
+    NETWORK_WATERFALL: "set_network_waterfall_enabled",
+    PERFORMANCE_MARKS: "set_performance_marks_enabled",
+    ACTION_REPLAY: "set_action_replay_enabled",
+    WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+    WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+    PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+    DEFERRAL: "set_deferral_enabled",
+    NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+    ACTION_TOASTS: "set_action_toasts_enabled",
+    SUBTITLES: "set_subtitles_enabled",
+    SERVER_URL: "set_server_url"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+    SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -76,6 +76,7 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
+    ACTION_RECORDING: "gasoline_action_recording",
     RECORDING: "gasoline_recording",
     TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
     PENDING_RECORDING: "gasoline_pending_recording",
@@ -90,15 +91,69 @@
     TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
   };
 
+  // extension/lib/storage-utils.js
+  function getStorageWithSession() {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return null;
+    return chrome.storage;
+  }
+  async function getLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return void 0;
+    const result = await chrome.storage.local.get([key]);
+    return result[key];
+  }
+  async function getLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return {};
+    return await chrome.storage.local.get(keys);
+  }
+  async function setLocal(key, value) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.set({ [key]: value });
+  }
+  async function removeLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await chrome.storage.local.remove([key]);
+  }
+  async function getSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return void 0;
+    const result = await storage.session.get([key]);
+    return result[key];
+  }
+  async function setSession(key, value) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return;
+    await storage.session.set({ [key]: value });
+  }
+  async function removeSessions(keys) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return;
+    await storage.session.remove(keys);
+  }
+  function onStorageChanged(listener) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return () => {
+      };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }
+
   // extension/content/tab-tracking.js
   var isTrackedTab = false;
   var currentTabId = null;
   async function updateTrackingStatus() {
     try {
-      const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
-      const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
+      const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+      const response = await chrome.runtime.sendMessage({ type: "get_tab_id" });
       currentTabId = response?.tabId ?? null;
-      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === storage.trackedTabId;
+      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === trackedTabId;
     } catch {
       isTrackedTab = false;
     }
@@ -113,7 +168,7 @@
     const ready = updateTrackingStatus().then(() => {
       onChange?.(isTrackedTab);
     });
-    chrome.storage.onChanged.addListener(async (changes) => {
+    onStorageChanged(async (changes) => {
       if (changes[StorageKey.TRACKED_TAB_ID]) {
         await updateTrackingStatus();
         onChange?.(isTrackedTab);
@@ -144,25 +199,24 @@
     { storageKey: "actionReplayEnabled", messageType: SettingName.ACTION_REPLAY },
     { storageKey: "networkBodyCaptureEnabled", messageType: SettingName.NETWORK_BODY_CAPTURE }
   ];
-  function syncStoredSettings() {
+  async function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    chrome.storage.local.get(storageKeys, (result) => {
-      for (const setting of SYNC_SETTINGS) {
-        const value = result[setting.storageKey];
-        if (value === void 0)
-          continue;
-        if (setting.isMode) {
-          window.postMessage({
-            type: "GASOLINE_SETTING",
-            setting: setting.messageType,
-            mode: value,
-            _nonce: pageNonce
-          }, window.location.origin);
-        } else {
-          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
-        }
+    const result = await getLocals(storageKeys);
+    for (const setting of SYNC_SETTINGS) {
+      const value = result[setting.storageKey];
+      if (value === void 0)
+        continue;
+      if (setting.isMode) {
+        window.postMessage({
+          type: "gasoline_setting",
+          setting: setting.messageType,
+          mode: value,
+          _nonce: pageNonce
+        }, window.location.origin);
+      } else {
+        window.postMessage({ type: "gasoline_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
       }
-    });
+    }
   }
   function injectAxeCore() {
     if (document.getElementById("gasoline-axe-loader"))
@@ -269,7 +323,7 @@
       const onMessage = (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
           return;
-        if (event.data?.type !== "GASOLINE_INJECT_BRIDGE_PONG")
+        if (event.data?.type !== "gasoline_inject_bridge_pong")
           return;
         if (event.data?.requestId !== requestId)
           return;
@@ -281,7 +335,7 @@
       timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
       try {
         window.postMessage({
-          type: "GASOLINE_INJECT_BRIDGE_PING",
+          type: "gasoline_inject_bridge_ping",
           requestId,
           _nonce: pageNonce
         }, window.location.origin);
@@ -429,11 +483,11 @@
 
   // extension/content/message-forwarding.js
   var MESSAGE_MAP = {
-    GASOLINE_LOG: "log",
-    GASOLINE_WS: "ws_event",
-    GASOLINE_NETWORK_BODY: "network_body",
-    GASOLINE_ENHANCED_ACTION: "enhanced_action",
-    GASOLINE_PERFORMANCE_SNAPSHOT: "performance_snapshot"
+    gasoline_log: "log",
+    gasoline_ws: "ws_event",
+    gasoline_network_body: "network_body",
+    gasoline_enhanced_action: "enhanced_action",
+    gasoline_performance_snapshot: "performance_snapshot"
   };
   var contextValid = true;
   function safeSendMessage(msg) {
@@ -451,10 +505,10 @@
 
   // extension/content/window-message-listener.js
   var RESPONSE_HANDLERS = {
-    GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
-    GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
-    GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id, result),
-    GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id, result)
+    gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
+    gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
+    gasoline_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
+    gasoline_dom_query_response: (id, result) => resolveDomRequest(id, result)
   };
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
@@ -503,15 +557,17 @@
       this.name = "TimeoutError";
     }
   };
-  async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback, cleanup) {
+  async function withTimeoutAndCleanup(promise, timeoutMs, options) {
+    const fallback = options?.fallback;
+    const cleanup = options?.cleanup;
     try {
       return await Promise.race([
         promise,
         new Promise((_, reject) => {
           setTimeout(() => {
             cleanup?.();
-            if (timeoutFallback !== void 0) {
-              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+            if (fallback !== void 0) {
+              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
             } else {
               reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
             }
@@ -935,13 +991,16 @@
       const requestId = registerHighlightRequest((result) => deferred.resolve(result));
       const deferred = createDeferredPromise();
       postToInject({
-        type: "GASOLINE_HIGHLIGHT_REQUEST",
+        type: "gasoline_highlight_request",
         requestId,
         params: message.params
       });
-      return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
-        if (hasHighlightRequest(requestId)) {
-          deleteHighlightRequest(requestId);
+      return withTimeoutAndCleanup(deferred.promise, 3e4, {
+        fallback: { success: false, error: "timeout" },
+        cleanup: () => {
+          if (hasHighlightRequest(requestId)) {
+            deleteHighlightRequest(requestId);
+          }
         }
       });
     });
@@ -953,21 +1012,24 @@
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "GASOLINE_STATE_RESPONSE" && event.data?.messageId === messageId) {
+      if (event.data?.type === "gasoline_state_response" && event.data?.messageId === messageId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve(event.data.result || { error: "No result from state command" });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_STATE_COMMAND",
+      type: "gasoline_state_command",
       messageId,
       action,
       name,
       state: state2,
       include_url
     });
-    return promiseRaceWithCleanup(deferred.promise, 5e3, { error: "State command timeout" }, () => window.removeEventListener("message", responseHandler));
+    return withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { error: "State command timeout" },
+      cleanup: () => window.removeEventListener("message", responseHandler)
+    });
   }
   function handlePing(sendResponse) {
     sendResponse({ status: "alive", timestamp: Date.now() });
@@ -976,7 +1038,7 @@
   function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
       return;
-    const payload = { type: "GASOLINE_SETTING", setting: message.type };
+    const payload = { type: "gasoline_setting", setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
       payload.mode = message.mode;
     } else if (message.type === SettingName.SERVER_URL) {
@@ -1001,7 +1063,7 @@
       }
     }, safetyTimeoutMs);
     postToInject({
-      type: "GASOLINE_EXECUTE_JS",
+      type: "gasoline_execute_js",
       requestId,
       script: params.script || "",
       timeoutMs
@@ -1046,7 +1108,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_A11Y_QUERY",
+      type: "gasoline_a11y_query",
       requestId,
       params: parsedParams
     });
@@ -1062,7 +1124,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_DOM_QUERY",
+      type: "gasoline_dom_query",
       requestId,
       params: parsedParams
     });
@@ -1077,18 +1139,19 @@
       const nonce = event.data?._nonce;
       if (nonce && nonce !== getPageNonce())
         return;
-      if (event.data?.type === "GASOLINE_WATERFALL_RESPONSE" && event.data?.requestId === requestId) {
+      if (event.data?.type === "gasoline_waterfall_response" && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve({ entries: event.data.entries || [] });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_GET_WATERFALL",
+      type: "gasoline_get_waterfall",
       requestId
     });
-    promiseRaceWithCleanup(deferred.promise, 5e3, { entries: [] }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { entries: [] },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => {
       sendResponse(result);
     }, () => {
@@ -1113,25 +1176,26 @@
     };
     window.addEventListener("message", responseHandler);
     postToInject({ type: queryType, requestId, params: parsedParams });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, {
+      fallback: { error: `${label} timeout` },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
   }
   function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_COMPUTED_STYLES_QUERY", "GASOLINE_COMPUTED_STYLES_RESPONSE", "Computed styles query", params, sendResponse);
+    return forwardInjectQuery("gasoline_computed_styles_query", "gasoline_computed_styles_response", "Computed styles query", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_DISCOVERY_QUERY", "GASOLINE_FORM_DISCOVERY_RESPONSE", "Form discovery", params, sendResponse);
+    return forwardInjectQuery("gasoline_form_discovery_query", "gasoline_form_discovery_response", "Form discovery", params, sendResponse);
   }
   function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_STATE_QUERY", "GASOLINE_FORM_STATE_RESPONSE", "Form state", params, sendResponse);
+    return forwardInjectQuery("gasoline_form_state_query", "gasoline_form_state_response", "Form state", params, sendResponse);
   }
   function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_DATA_TABLE_QUERY", "GASOLINE_DATA_TABLE_RESPONSE", "Data table extraction", params, sendResponse);
+    return forwardInjectQuery("gasoline_data_table_query", "gasoline_data_table_response", "Data table extraction", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
+    return forwardInjectQuery("gasoline_link_health_query", "gasoline_link_health_response", "Link health check", params, sendResponse);
   }
   function handleGetReadable(sendResponse) {
     try {
@@ -1699,7 +1763,7 @@
       statusEl.style.color = "#60a5fa";
     }
     chrome.runtime.sendMessage({
-      type: "GASOLINE_PUSH_CHAT",
+      type: "gasoline_push_chat",
       message,
       page_url: window.location.href
     }, (response) => {
@@ -1734,17 +1798,16 @@
   // extension/content/runtime-message-listener.js
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
-  function initRuntimeMessageListener() {
-    chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
-      if (result.actionToastsEnabled !== void 0)
-        actionToastsEnabled = result.actionToastsEnabled;
-      if (result.subtitlesEnabled !== void 0)
-        subtitlesEnabled = result.subtitlesEnabled;
-    });
+  async function initRuntimeMessageListener() {
+    const result = await getLocals(["actionToastsEnabled", "subtitlesEnabled"]);
+    if (result.actionToastsEnabled !== void 0)
+      actionToastsEnabled = result.actionToastsEnabled;
+    if (result.subtitlesEnabled !== void 0)
+      subtitlesEnabled = result.subtitlesEnabled;
     const syncHandlers = {
-      GASOLINE_PING: () => {
+      gasoline_ping: () => {
       },
-      GASOLINE_ACTION_TOAST: (msg) => {
+      gasoline_action_toast: (msg) => {
         if (!actionToastsEnabled)
           return false;
         const m = msg;
@@ -1752,15 +1815,15 @@
           showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
         return false;
       },
-      GASOLINE_TOGGLE_CHAT: (msg) => {
+      gasoline_toggle_chat: (msg) => {
         toggleChatWidget(msg.client_name);
         return false;
       },
-      GASOLINE_RECORDING_WATERMARK: (msg) => {
+      gasoline_recording_watermark: (msg) => {
         toggleRecordingWatermark(msg.visible ?? false);
         return false;
       },
-      GASOLINE_SUBTITLE: (msg) => {
+      gasoline_subtitle: (msg) => {
         if (!subtitlesEnabled)
           return false;
         showSubtitle(msg.text ?? "");
@@ -1776,28 +1839,28 @@
       }
     };
     const delegatedHandlers = {
-      GASOLINE_DRAW_MODE_START: (msg, sr) => {
+      gasoline_draw_mode_start: (msg, sr) => {
         const m = msg;
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
-          sr(result);
+          const result2 = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
+          sr(result2);
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+      gasoline_draw_mode_stop: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
-          sr(result || { status: "stopped" });
+          const result2 = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
+          sr(result2 || { status: "stopped" });
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+      gasoline_get_annotations: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1806,34 +1869,34 @@
         }).catch(() => sr({ draw_mode_active: false }));
         return true;
       },
-      GASOLINE_HIGHLIGHT: (msg, sr) => {
+      gasoline_highlight: (msg, sr) => {
         forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;
       },
-      GASOLINE_MANAGE_STATE: (msg, sr) => {
+      gasoline_manage_state: (msg, sr) => {
         handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
         return true;
       },
-      GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-      GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
-      A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
-      DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
-      GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
-      COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
-      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
-      FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
-      DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
-      GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
-      GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
-      GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
+      gasoline_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      gasoline_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+      dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+      get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
+      link_health_query: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
+      computed_styles_query: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
+      form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
+      data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
+      gasoline_get_readable: (_msg, sr) => handleGetReadable(sr),
+      gasoline_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+      gasoline_page_summary: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
         console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
         return false;
       }
-      if (message.type === "GASOLINE_PING")
+      if (message.type === "gasoline_ping")
         return handlePing(sendResponse);
       const syncHandler = syncHandlers[message.type];
       if (syncHandler) {
@@ -1855,13 +1918,13 @@
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       if (sender.id !== chrome.runtime.id)
         return false;
-      if (message.type === "trackingStateChanged") {
+      if (message.type === "tracking_state_changed") {
         const newState = message.state;
         updateFavicon(newState);
       }
       return false;
     });
-    chrome.runtime.sendMessage({ type: "getTrackingState" }, (response) => {
+    chrome.runtime.sendMessage({ type: "get_tracking_state" }, (response) => {
       if (response && response.state) {
         updateFavicon(response.state);
       }
@@ -2524,110 +2587,70 @@
   }
 
   // extension/content/ui/terminal-widget-session.js
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve(DEFAULT_SERVER_URL);
-            return;
-          }
-          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
-          state.serverUrl = url;
-          resolve(url);
-        });
-      } catch {
-        resolve(DEFAULT_SERVER_URL);
-      }
-    });
+  async function getServerUrl() {
+    try {
+      const value = await getLocal(StorageKey.SERVER_URL);
+      const url = value || DEFAULT_SERVER_URL;
+      state.serverUrl = url;
+      return url;
+    } catch {
+      return DEFAULT_SERVER_URL;
+    }
   }
-  function getTerminalConfig() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({});
-            return;
-          }
-          const config = result[StorageKey.TERMINAL_CONFIG] || {};
-          resolve(config);
-        });
-      } catch {
-        resolve({});
-      }
-    });
+  async function getTerminalConfig() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_CONFIG);
+      const config = value || {};
+      return config;
+    } catch {
+      return {};
+    }
   }
-  function getTerminalAICommand() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("claude");
-            return;
-          }
-          const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || "claude";
-          resolve(cmd);
-        });
-      } catch {
-        resolve("claude");
-      }
-    });
+  async function getTerminalAICommand() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND);
+      const cmd = value || "claude";
+      return cmd;
+    } catch {
+      return "claude";
+    }
   }
-  function getTerminalDevRoot() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("");
-            return;
-          }
-          resolve(result[StorageKey.TERMINAL_DEV_ROOT] || "");
-        });
-      } catch {
-        resolve("");
-      }
-    });
+  async function getTerminalDevRoot() {
+    try {
+      const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT);
+      return value || "";
+    } catch {
+      return "";
+    }
   }
   function persistSession(ss) {
     try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-        void chrome.runtime.lastError;
-      });
+      void setSession(StorageKey.TERMINAL_SESSION, ss);
     } catch {
     }
   }
   function clearPersistedSession() {
     try {
-      chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-        void chrome.runtime.lastError;
-      });
+      void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE]);
     } catch {
     }
   }
   function persistUIState(uiState) {
     try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-        void chrome.runtime.lastError;
-      });
+      void setSession(StorageKey.TERMINAL_UI_STATE, uiState);
     } catch {
     }
   }
-  function loadPersistedSession() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: "closed" });
-            return;
-          }
-          const session = result[StorageKey.TERMINAL_SESSION];
-          const uiState = result[StorageKey.TERMINAL_UI_STATE] || "closed";
-          resolve({ session: session || null, uiState });
-        });
-      } catch {
-        resolve({ session: null, uiState: "closed" });
-      }
-    });
+  async function loadPersistedSession() {
+    try {
+      const sessionValue = await getSession(StorageKey.TERMINAL_SESSION);
+      const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE);
+      const session = sessionValue;
+      const uiState = uiValue || "closed";
+      return { session: session || null, uiState };
+    } catch {
+      return { session: null, uiState: "closed" };
+    }
   }
   async function validateSession(token) {
     try {
@@ -2933,22 +2956,15 @@
   var hiddenUntilPopupOpen = false;
   var hideTimer = null;
   var recordingStorageListener = null;
+  var recordingStorageUnsubscribe = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
   async function checkTerminalReachable() {
     try {
       let baseUrl = DEFAULT_SERVER_URL;
       try {
-        const result = await new Promise((resolve) => {
-          chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-            if (chrome.runtime.lastError) {
-              resolve({});
-              return;
-            }
-            resolve(r);
-          });
-        });
-        baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
+        const value = await getLocal(StorageKey.SERVER_URL);
+        baseUrl = value || DEFAULT_SERVER_URL;
       } catch {
       }
       const url = new URL(baseUrl);
@@ -2999,15 +3015,12 @@
       return;
     stopButtonEl.style.display = active ? "flex" : "none";
   }
-  function syncRecordingStateFromStorage() {
+  async function syncRecordingStateFromStorage() {
     try {
-      chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-        if (chrome.runtime.lastError)
-          return;
-        const rec = result[StorageKey.RECORDING];
-        const active = rec != null && typeof rec === "object" && Boolean(rec.active);
-        updateStopButtonVisibility(active);
-      });
+      const value = await getLocal(StorageKey.RECORDING);
+      const rec = value;
+      const active = rec != null && typeof rec === "object" && Boolean(rec.active);
+      updateStopButtonVisibility(active);
     } catch {
     }
   }
@@ -3024,39 +3037,31 @@
       const active = rec != null && typeof rec === "object" && Boolean(rec.active);
       updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
   }
   function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
       return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+      recordingStorageUnsubscribe();
+      recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
   }
-  function syncHiddenStateFromStorage(onSynced) {
+  async function syncHiddenStateFromStorage() {
     try {
-      chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-        if (chrome.runtime.lastError) {
-          onSynced();
-          return;
-        }
-        hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
-        onSynced();
-      });
+      const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+      hiddenUntilPopupOpen = Boolean(value);
     } catch {
-      onSynced();
     }
   }
   function persistHiddenState(hidden) {
     try {
       if (hidden) {
-        chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-          void chrome.runtime.lastError;
-        });
+        void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
         return;
       }
-      chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-        void chrome.runtime.lastError;
-      });
+      void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     } catch {
     }
   }
@@ -3201,7 +3206,7 @@
       }
     }
     try {
-      chrome.runtime.sendMessage({ type: "captureScreenshot" }, (response) => {
+      chrome.runtime.sendMessage({ type: "capture_screenshot" }, (response) => {
         const err = chrome.runtime.lastError;
         const success = !err && response !== void 0 && response.success !== false;
         showScreenshotFlash(success);
@@ -3579,10 +3584,11 @@
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
   }
-  function setTrackedHoverLauncherEnabled(enabled) {
+  async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
   }
 
   // extension/content.js

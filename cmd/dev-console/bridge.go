@@ -51,7 +51,7 @@ var mcpStdoutMu sync.Mutex
 func (s *daemonState) buildDaemonCmd() (*exec.Cmd, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("Cannot find executable: %w", err)
+		return nil, fmt.Errorf("find executable: %w. Verify gasoline is installed correctly", err)
 	}
 
 	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}

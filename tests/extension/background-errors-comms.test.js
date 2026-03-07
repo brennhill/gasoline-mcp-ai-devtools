@@ -649,7 +649,7 @@ describe('GET_TAB_ID Message Handler', () => {
     const sendResponse = mock.fn()
     // Sender must pass isValidMessageSender: needs tab.id and tab.url
     const sender = { tab: { id: 42, url: 'http://localhost:3000' } }
-    const message = { type: 'GET_TAB_ID' }
+    const message = { type: 'get_tab_id' }
 
     // Invoke the real handler registered by installMessageListener
     handler(message, sender, sendResponse)
@@ -666,7 +666,7 @@ describe('GET_TAB_ID Message Handler', () => {
     // Sender from popup/extension page: uses chrome.runtime.id for validation
     mockChrome.runtime.id = 'test-extension-id'
     const sender = { id: 'test-extension-id' } // No tab (e.g., from popup)
-    const message = { type: 'GET_TAB_ID' }
+    const message = { type: 'get_tab_id' }
 
     handler(message, sender, sendResponse)
 
@@ -683,7 +683,7 @@ describe('GET_TAB_ID Message Handler', () => {
 
     const sendResponse = mock.fn()
     const sender = { tab: { id: 99, url: 'http://localhost:3000' } }
-    const message = { type: 'GET_TAB_ID' }
+    const message = { type: 'get_tab_id' }
 
     // The real handler returns true to keep the sendResponse channel open
     const returnValue = handler(message, sender, sendResponse)

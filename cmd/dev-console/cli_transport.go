@@ -34,7 +34,7 @@ func buildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) 
 	params := map[string]any{"name": toolName, "arguments": mcpArgs}
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
+		return nil, fmt.Errorf("marshal params: %w. Check argument types", err)
 	}
 
 	rpcReq := JSONRPCRequest{
@@ -45,7 +45,7 @@ func buildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) 
 	}
 	body, err := json.Marshal(rpcReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("marshal request: %w. Check argument types", err)
 	}
 	return body, nil
 }
@@ -57,20 +57,20 @@ func postToolCall(endpoint string, body []byte, timeoutMs int) ([]byte, error) {
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("create HTTP request: %w. Verify endpoint URL", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(httpReq) // #nosec G704 -- endpoint comes from ensureDaemon() and is localhost-only
 	if err != nil {
-		return nil, fmt.Errorf("server connection error: %w", err)
+		return nil, fmt.Errorf("connect to server: %w. Verify daemon is running on the target port", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, fmt.Errorf("read response: %w. Server may have disconnected", err)
 	}
 
 	if resp.StatusCode != 200 {

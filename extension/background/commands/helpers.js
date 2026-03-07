@@ -6,6 +6,7 @@ import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { delay } from '../../lib/timeout-utils.js';
+import { setLocals } from '../../lib/storage-utils.js';
 export function debugLog(category, message, data = null) {
     const globalLogger = globalThis
         .__GASOLINE_DEBUG_LOG__;
@@ -116,7 +117,7 @@ export function actionToast(tabId, action, detail, state = 'success', durationMs
     const toastCopy = resolveToastCopy(action, detail, state);
     chrome.tabs
         .sendMessage(tabId, {
-        type: 'GASOLINE_ACTION_TOAST',
+        type: 'gasoline_action_toast',
         text: toastCopy.text,
         detail: toastCopy.detail,
         state,
@@ -250,7 +251,7 @@ function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
 export async function persistTrackedTab(tab) {
     if (!tab.id)
         return;
-    await chrome.storage.local.set({
+    await setLocals({
         trackedTabId: tab.id,
         trackedTabUrl: tab.url || '',
         trackedTabTitle: tab.title || ''
@@ -502,7 +503,7 @@ export async function resolveTargetTab(query, paramsObj) {
             if (toastTab?.id) {
                 chrome.tabs
                     .sendMessage(toastTab.id, {
-                    type: 'GASOLINE_ACTION_TOAST',
+                    type: 'gasoline_action_toast',
                     text: 'Tracked tab unavailable',
                     detail: "Provide tab_id or use 'use_active_tab=true'",
                     state: 'warning',

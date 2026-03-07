@@ -21,8 +21,8 @@ func (h *stateInteractHandler) handleStateSave(req JSONRPCRequest, args json.Raw
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if snapshotName == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
+	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+		return resp
 	}
 
 	if resp, blocked := h.deps.requireSessionStore(req); blocked {
@@ -87,8 +87,8 @@ func (h *stateInteractHandler) handleStateLoad(req JSONRPCRequest, args json.Raw
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if snapshotName == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
+	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+		return resp
 	}
 
 	if resp, blocked := h.deps.requireSessionStore(req); blocked {

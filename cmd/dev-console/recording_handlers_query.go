@@ -53,8 +53,8 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 		}
 	}
 
-	if params.RecordingID == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from a previous event_recording_start call", withParam("recording_id"))
+	if resp, blocked := requireString(req, params.RecordingID, "recording_id", "Provide the recording_id from a previous event_recording_start call"); blocked {
+		return resp
 	}
 
 	// Load recording

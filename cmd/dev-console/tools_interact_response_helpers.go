@@ -77,7 +77,7 @@ func (h *interactActionHandler) appendScreenshotToResponse(resp JSONRPCResponse,
 // appendInteractiveToResponse appends list_interactive text to the response.
 func (h *interactActionHandler) appendInteractiveToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
 	listReq := JSONRPCRequest{JSONRPC: JSONRPCVersion, ID: req.ID, ClientID: req.ClientID}
-	listArgs, _ := json.Marshal(map[string]any{"what": "list_interactive", "visible_only": true})
+	listArgs := buildQueryParams(map[string]any{"what": "list_interactive", "visible_only": true})
 	listResp := h.handleListInteractive(listReq, listArgs)
 
 	var listResult MCPToolResult

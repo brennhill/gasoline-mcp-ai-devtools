@@ -67,8 +67,8 @@ func (h *stateInteractHandler) handleStateDelete(req JSONRPCRequest, args json.R
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if snapshotName == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))
+	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+		return resp
 	}
 
 	if resp, blocked := h.deps.requireSessionStore(req); blocked {

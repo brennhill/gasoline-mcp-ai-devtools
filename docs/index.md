@@ -4,7 +4,7 @@ description: "Autonomously debug and fix issues in real time. Streams console lo
 layout: home
 permalink: /
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-06
 ---
 
 <div class="hero">
@@ -81,8 +81,27 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 | **No debug port** | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
 | **Privacy** | ✅ Localhost only | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
 | **Performance overhead** | < 0.1ms | ~5ms | ~5ms | Unknown |
+| **[Token efficiency](/token-efficiency/)** | ~9,750 (5 tools) | ~30,000+ (20+ tools) | ~25,000+ (15+ tools) | Unknown |
 
 [Full comparison →](/alternatives/)
+
+## Absurdly Token Efficient
+
+Every MCP tool your agent loads eats into its context window. Most browser MCP tools register 15–30 individual tools, each burning ~1,500 tokens of schema. That's **30,000+ tokens gone** before a single call.
+
+Gasoline loads **5 tools in ~9,750 tokens** — full browser observability, automation, test generation, accessibility auditing, and more. Resources are lazy-loaded and cost zero tokens until read.
+
+| | Gasoline | Typical 20-Tool MCP |
+|---|---:|---:|
+| **Init (schemas)** | ~9,750 | ~30,000+ |
+| **Debug cycle (5 calls)** | ~11,000 | ~35,000+ |
+| **With summary mode** | ~10,400 | N/A |
+
+A complete debug-and-fix cycle — error triage, DOM inspection, code fix, reload, verification — stays **under 15,000 tokens total**. Enable `summary=true` and responses shrink another 60–70%.
+
+Fewer tokens = more room for your codebase, faster responses, lower cost.
+
+[Token efficiency deep dive →](/token-efficiency/)
 
 ## Enterprise Ready — Zero Data Leakage
 

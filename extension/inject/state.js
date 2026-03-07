@@ -249,12 +249,12 @@ if (typeof window !== 'undefined') {
             return;
         if (pageNonce && event.data?._nonce !== pageNonce)
             return;
-        if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
+        if (event.data?.type === 'gasoline_highlight_request') {
             const { requestId, params } = event.data;
             const { selector, duration_ms } = params || { selector: '' };
             const result = highlightElement(selector, duration_ms);
             window.postMessage({
-                type: 'GASOLINE_HIGHLIGHT_RESPONSE',
+                type: 'gasoline_highlight_response',
                 requestId,
                 result
             }, window.location.origin);

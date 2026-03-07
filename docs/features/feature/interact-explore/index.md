@@ -4,8 +4,9 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 code_paths:
+  - cmd/dev-console/tools_interact_command_builder.go
   - cmd/dev-console/tools_interact_action_handler.go
   - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
@@ -51,6 +52,9 @@ code_paths:
   - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
   - src/background/dom-primitives-list-interactive.ts
+  - src/background/dom-primitives-intent.ts
+  - src/background/dom-primitives-overlay.ts
+  - src/background/dom-primitives-stability.ts
   - scripts/templates/partials/_dom-intent.tpl
   - scripts/templates/partials/_dom-selectors.tpl
   - scripts/templates/dom-primitives.ts.tpl
@@ -58,6 +62,7 @@ code_paths:
   - cmd/dev-console/tools_async_formatting.go
   - cmd/dev-console/tools_summary_pref.go
 test_paths:
+  - cmd/dev-console/tools_interact_command_builder_test.go
   - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_pending_query_enqueue_test.go
   - cmd/dev-console/tools_interact_rich_test.go

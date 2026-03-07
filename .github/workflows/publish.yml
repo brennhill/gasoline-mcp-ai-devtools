@@ -1,4 +1,4 @@
-name: Publish to NPM
+name: Publish Packages
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-and-publish:
-    name: Build binaries and publish to NPM
+    name: Build binaries and publish packages
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -69,7 +69,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
 
-      - name: Copy binaries to npm packages
+      - name: Copy binaries to package directories
         run: |
           mkdir -p npm/darwin-arm64/bin
           mkdir -p npm/darwin-x64/bin
@@ -77,15 +77,15 @@ jobs:
           mkdir -p npm/linux-arm64/bin
           mkdir -p npm/win32-x64/bin
 
-          cp dist/gasoline-darwin-arm64 npm/darwin-arm64/bin/gasoline
-          cp dist/gasoline-darwin-x64 npm/darwin-x64/bin/gasoline
-          cp dist/gasoline-linux-x64 npm/linux-x64/bin/gasoline
-          cp dist/gasoline-linux-arm64 npm/linux-arm64/bin/gasoline
-          cp dist/gasoline-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+          cp dist/gasoline-agentic-devtools-darwin-arm64 npm/darwin-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-darwin-x64 npm/darwin-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-x64 npm/linux-x64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-linux-arm64 npm/linux-arm64/bin/gasoline
+          cp dist/gasoline-agentic-devtools-win32-x64.exe npm/win32-x64/bin/gasoline.exe
 
           chmod +x npm/*/bin/*
 
-          echo "✅ Binaries copied to npm packages"
+          echo "✅ Binaries staged for package publishing"
           ls -lh npm/*/bin/
 
       - name: Publish darwin-arm64
@@ -123,7 +123,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish gasoline-agentic-browser (main package)
+      - name: Publish aggregate package
         run: |
           cd npm/gasoline-agentic-browser
           npm publish --access public
@@ -133,15 +133,7 @@ jobs:
       - name: Summary
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Published v${{ steps.version.outputs.VERSION }} to NPM"
+          echo "Published v${{ steps.version.outputs.VERSION }} package set"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Packages published:"
-          echo "  - @brennhill/gasoline-agentic-browser-darwin-arm64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-darwin-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-linux-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-linux-arm64@${{ steps.version.outputs.VERSION }}"
-          echo "  - @brennhill/gasoline-agentic-browser-win32-x64@${{ steps.version.outputs.VERSION }}"
-          echo "  - gasoline-agentic-browser@${{ steps.version.outputs.VERSION }}"
-          echo ""
-          echo "Install with: npx gasoline-agentic-browser@${{ steps.version.outputs.VERSION }}"
+          echo "Platform and aggregate packages were published."

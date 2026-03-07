@@ -32,7 +32,7 @@ export function initFaviconReplacer(): void {
   chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
     // Only accept messages from the extension itself (background script)
     if (sender.id !== chrome.runtime.id) return false
-    if (message.type === 'trackingStateChanged') {
+    if (message.type === 'tracking_state_changed') {
       const newState: TrackingState = message.state
       updateFavicon(newState)
     }
@@ -42,7 +42,7 @@ export function initFaviconReplacer(): void {
   })
 
   // Request initial tracking state
-  chrome.runtime.sendMessage({ type: 'getTrackingState' }, (response: { state?: TrackingState }) => {
+  chrome.runtime.sendMessage({ type: 'get_tracking_state' }, (response: { state?: TrackingState }) => {
     if (response && response.state) {
       updateFavicon(response.state)
     }

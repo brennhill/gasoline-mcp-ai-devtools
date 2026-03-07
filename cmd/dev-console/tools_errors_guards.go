@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
@@ -148,4 +149,39 @@ func (h *ToolHandler) requireTabTracking(req JSONRPCRequest, extraOpts ...func(*
 		"Open a page in the browser, or call interact(what='navigate', url='...').",
 		opts...,
 	), true
+}
+
+// requireString returns (resp, true) if value is empty, short-circuiting the caller.
+// Usage: if resp, blocked := requireString(req, params.Name, "name", "Add the 'name' parameter"); blocked { return resp }
+func requireString(req JSONRPCRequest, value, paramName, hint string) (JSONRPCResponse, bool) {
+	if value == "" {
+		return fail(req, ErrMissingParam,
+			fmt.Sprintf("Required parameter '%s' is missing", paramName),
+			hint, withParam(paramName)), true
+	}
+	return JSONRPCResponse{}, false
+}
+
+// requirePositiveInt returns (resp, true) if value is not a positive integer, short-circuiting the caller.
+// Usage: if resp, blocked := requirePositiveInt(req, params.Count, "count", "Add a positive 'count'"); blocked { return resp }
+func requirePositiveInt(req JSONRPCRequest, value int, paramName, hint string) (JSONRPCResponse, bool) {
+	if value <= 0 {
+		return fail(req, ErrMissingParam,
+			fmt.Sprintf("Required parameter '%s' must be a positive integer", paramName),
+			hint, withParam(paramName)), true
+	}
+	return JSONRPCResponse{}, false
+}
+
+// requireOneOf returns (resp, true) if value is not in validValues, short-circuiting the caller.
+// Usage: if resp, blocked := requireOneOf(req, params.Mode, "mode", []string{"a","b"}, "Use a valid mode"); blocked { return resp }
+func requireOneOf(req JSONRPCRequest, value string, paramName string, validValues []string, hint string) (JSONRPCResponse, bool) {
+	for _, v := range validValues {
+		if value == v {
+			return JSONRPCResponse{}, false
+		}
+	}
+	return fail(req, ErrMissingParam,
+		fmt.Sprintf("Parameter '%s' must be one of: %s", paramName, strings.Join(validValues, ", ")),
+		hint, withParam(paramName)), true
 }

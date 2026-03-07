@@ -61,23 +61,23 @@ export declare const MAX_URL_LENGTH = 80;
  * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
  */
 export declare const SettingName: {
-    readonly NETWORK_WATERFALL: "setNetworkWaterfallEnabled";
-    readonly PERFORMANCE_MARKS: "setPerformanceMarksEnabled";
-    readonly ACTION_REPLAY: "setActionReplayEnabled";
-    readonly WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled";
-    readonly WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode";
-    readonly PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled";
-    readonly DEFERRAL: "setDeferralEnabled";
-    readonly NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled";
-    readonly ACTION_TOASTS: "setActionToastsEnabled";
-    readonly SUBTITLES: "setSubtitlesEnabled";
-    readonly SERVER_URL: "setServerUrl";
+    readonly NETWORK_WATERFALL: "set_network_waterfall_enabled";
+    readonly PERFORMANCE_MARKS: "set_performance_marks_enabled";
+    readonly ACTION_REPLAY: "set_action_replay_enabled";
+    readonly WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled";
+    readonly WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode";
+    readonly PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled";
+    readonly DEFERRAL: "set_deferral_enabled";
+    readonly NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled";
+    readonly ACTION_TOASTS: "set_action_toasts_enabled";
+    readonly SUBTITLES: "set_subtitles_enabled";
+    readonly SERVER_URL: "set_server_url";
 };
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
 /** All valid setting names as a Set (for runtime validation) */
 export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
 export declare const RuntimeMessageName: {
-    readonly SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
+    readonly SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher";
 };
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
@@ -110,6 +110,7 @@ export declare const StorageKey: {
     readonly NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled";
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
+    readonly ACTION_RECORDING: "gasoline_action_recording";
     readonly RECORDING: "gasoline_recording";
     readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
     readonly PENDING_RECORDING: "gasoline_pending_recording";

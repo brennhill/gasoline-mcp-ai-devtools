@@ -59,12 +59,12 @@ func tryAcquireBridgeStartupLock(port int) (*bridgeStartupLock, bool, error) {
 		return nil, false, err
 	}
 	if _, err := f.Write(payload); err != nil {
-		_ = f.Close()
-		_ = os.Remove(path)
+		_ = f.Close()       //nolint:errcheck // best-effort cleanup on write failure
+		_ = os.Remove(path) //nolint:errcheck // best-effort cleanup on write failure
 		return nil, false, err
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(path)
+		_ = os.Remove(path) //nolint:errcheck // best-effort cleanup on close failure
 		return nil, false, err
 	}
 	return &bridgeStartupLock{path: path, pid: os.Getpid()}, true, nil
@@ -78,7 +78,7 @@ func (l *bridgeStartupLock) release() {
 	if err == nil && rec != nil && rec.PID != l.pid {
 		return
 	}
-	_ = os.Remove(l.path)
+	_ = os.Remove(l.path) //nolint:errcheck // best-effort ownership release
 }
 
 func readBridgeStartupLockRecord(path string) (*bridgeStartupLockRecord, error) {
@@ -104,7 +104,7 @@ func clearStaleBridgeStartupLock(port int, staleAfter time.Duration) bool {
 	}
 	rec, err := readBridgeStartupLockRecord(path)
 	if err != nil {
-		_ = os.Remove(path)
+		_ = os.Remove(path) //nolint:errcheck // best-effort stale lock cleanup
 		return true
 	}
 	if rec == nil {
@@ -112,17 +112,17 @@ func clearStaleBridgeStartupLock(port int, staleAfter time.Duration) bool {
 	}
 
 	if rec.PID <= 0 || !isProcessAlive(rec.PID) {
-		_ = os.Remove(path)
+		_ = os.Remove(path) //nolint:errcheck // best-effort stale lock cleanup
 		return true
 	}
 
 	createdAt, err := parseBridgeStartupLockTime(rec.CreatedAt)
 	if err != nil {
-		_ = os.Remove(path)
+		_ = os.Remove(path) //nolint:errcheck // best-effort stale lock cleanup
 		return true
 	}
 	if staleAfter > 0 && time.Since(createdAt) > staleAfter {
-		_ = os.Remove(path)
+		_ = os.Remove(path) //nolint:errcheck // best-effort stale lock cleanup
 		return true
 	}
 	return false

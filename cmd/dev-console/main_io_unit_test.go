@@ -68,4 +68,10 @@ func TestRunSetupCheckPortInUseBranch(t *testing.T) {
 	if !strings.Contains(output, "Port "+strconv.Itoa(port)+" is already in use.") {
 		t.Fatalf("setup check output missing in-use message: %q", output)
 	}
+	if !strings.Contains(output, "Quick stop (Gasoline): gasoline --stop --port "+strconv.Itoa(port)) {
+		t.Fatalf("setup check output missing quick-stop guidance: %q", output)
+	}
+	if !strings.Contains(output, "Suggested free port: --port ") {
+		t.Fatalf("setup check output missing suggested free port guidance: %q", output)
+	}
 }

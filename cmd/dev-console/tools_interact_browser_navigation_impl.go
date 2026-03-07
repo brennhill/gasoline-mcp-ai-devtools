@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -20,8 +18,8 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 		return resp
 	}
 
-	if params.URL == "" {
-		return fail(req, ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))
+	if resp, blocked := requireString(req, params.URL, "url", "Add the 'url' parameter and call again"); blocked {
+		return resp
 	}
 	resolvedURL, err := h.resolveNavigateURLImpl(params.URL)
 	if err != nil {
@@ -31,38 +29,27 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 			withParam("url"))
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("nav")
-	h.armEvidenceForCommand(correlationID, "navigate", args, req.ClientID)
-
-	h.stashPerfSnapshotImpl(correlationID)
-
 	actionParams := make(map[string]any)
 	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "navigate"
 	// Ensure required URL is present even if caller used alias forms.
 	actionParams["url"] = resolvedURL
-	actionPayload, _ := json.Marshal(actionParams)
+	actionPayload := buildQueryParams(actionParams)
 
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        actionPayload,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("navigate", resolvedURL, map[string]any{
-		"target_url":    resolvedURL,
-		"requested_url": params.URL,
-	})
-
-	resp := h.parent.MaybeWaitForCommand(req, correlationID, args, "Navigate queued")
+	resp := h.newCommand("navigate").
+		correlationPrefix("nav").
+		reason("navigate").
+		queryType("browser_action").
+		queryParams(actionPayload).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension).
+		preEnqueue(h.stashPerfSnapshotImpl).
+		recordAction("navigate", resolvedURL, map[string]any{
+			"target_url":    resolvedURL,
+			"requested_url": params.URL,
+		}).
+		queuedMessage("Navigate queued").
+		execute(req, args)
 
 	// If include_content is requested and navigate succeeded, enrich with page content.
 	if params.IncludeContent {
@@ -84,31 +71,17 @@ func (h *interactActionHandler) handleBrowserActionRefreshImpl(req JSONRPCReques
 		return resp
 	}
 
-	if resp, blocked := checkGuards(req, h.parent.requirePilot, h.parent.requireExtension); blocked {
-		return resp
-	}
-	if resp, blocked := h.parent.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	correlationID := newCorrelationID("refresh")
-	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
-
-	h.stashPerfSnapshotImpl(correlationID)
-
-	query := queries.PendingQuery{
-		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"refresh"}`),
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
-		return enqueueResp
-	}
-
-	h.parent.recordAIAction("refresh", "", nil)
-
-	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Refresh queued")
+	return h.newCommand("refresh").
+		correlationPrefix("refresh").
+		reason("refresh").
+		queryType("browser_action").
+		buildParams(map[string]any{"action": "refresh"}).
+		tabID(params.TabID).
+		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
+		preEnqueue(h.stashPerfSnapshotImpl).
+		recordAction("refresh", "", nil).
+		queuedMessage("Refresh queued").
+		execute(req, args)
 }
 
 func (h *interactActionHandler) handleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
