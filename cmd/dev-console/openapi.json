@@ -339,6 +339,52 @@
         }
       }
     },
+    "/api/token-savings": {
+      "post": {
+        "tags": [
+          "Control"
+        ],
+        "summary": "Record token savings from hook compression",
+        "description": "Records token savings metrics from the gasoline-hooks compress-output hook. The hook POSTs category, tokens_before, and tokens_after after compressing verbose test/build output. Stats are tracked per-session and persisted to lifetime totals.",
+        "operationId": "postTokenSavings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["category", "tokens_before", "tokens_after"],
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "description": "Compression category (e.g. test_output, build_output, generic_truncation)"
+                  },
+                  "tokens_before": {
+                    "type": "integer",
+                    "description": "Estimated token count before compression"
+                  },
+                  "tokens_after": {
+                    "type": "integer",
+                    "description": "Estimated token count after compression"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Savings recorded"
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "405": {
+            "description": "Method not allowed (only POST accepted)"
+          }
+        }
+      }
+    },
     "/api/status": {
       "get": {
         "tags": [

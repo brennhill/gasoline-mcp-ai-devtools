@@ -2,10 +2,13 @@
 
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline-agentic-devtools
+HOOKS_BINARY_NAME := gasoline-hooks
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION)
+HOOKS_LDFLAGS := -s -w -X main.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
+HOOKS_PKG := ./cmd/hooks
 
 # Build targets
 PLATFORMS := \
@@ -171,22 +174,27 @@ build: $(PLATFORMS)
 darwin-amd64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 $(CMD_PKG)
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(HOOKS_LDFLAGS)" -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 $(HOOKS_PKG)
 
 darwin-arm64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_PKG)
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(HOOKS_LDFLAGS)" -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 $(HOOKS_PKG)
 
 linux-amd64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 $(CMD_PKG)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(HOOKS_LDFLAGS)" -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 $(HOOKS_PKG)
 
 linux-arm64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(CMD_PKG)
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(HOOKS_LDFLAGS)" -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 $(HOOKS_PKG)
 
 windows-amd64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe $(CMD_PKG)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(HOOKS_LDFLAGS)" -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe $(HOOKS_PKG)
 
 # Build and copy binaries to NPM package directories (for releases)
 npm-binaries: build compile-ts
@@ -196,6 +204,12 @@ npm-binaries: build compile-ts
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+	@echo "=== Copying hooks binaries to NPM packages ==="
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/gasoline-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/gasoline-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline-hooks.exe
 	@echo "=== Copying extension to main NPM package ==="
 	@mkdir -p npm/gasoline-agentic-browser/extension
 	@cp -r extension/* npm/gasoline-agentic-browser/extension/
@@ -211,6 +225,7 @@ npm-binaries: build compile-ts
 # Build for current platform only (for development)
 dev:
 	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PKG)
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(HOOKS_BINARY_NAME) $(HOOKS_PKG)
 
 # Run the server locally
 run:
@@ -465,9 +480,9 @@ sync-version:
 		tests/extension/background.test.js
 	@perl -pi -e "s/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'/VERSION = '$(VERSION)'/g" \
 		server/scripts/install.js
-	@# Go version fallback
+	@# Go version fallback (both binaries)
 	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
-		$(CMD_DIR)/main.go
+		$(CMD_DIR)/main.go cmd/hooks/main.go
 	@# Shell wrapper version
 	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
 		npm/gasoline-agentic-browser/bin/gasoline-agentic-browser
@@ -519,6 +534,12 @@ pypi-binaries: build
 	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline
 	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline
 	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline.exe
+	@echo "Copying hooks binaries to PyPI platform packages..."
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/gasoline-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/gasoline-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline-hooks.exe
 	@echo "Binaries copied successfully"
 
 pypi-preflight:

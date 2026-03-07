@@ -32,6 +32,27 @@ test('powershell installer keeps canonical binary and legacy aliases', () => {
   assert.match(source, /Sync-BinaryCompatAliases/, 'expected install.ps1 alias compatibility helper')
 })
 
+test('shell installer supports --hooks-only mode', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(source, /HOOKS_ONLY/, 'expected HOOKS_ONLY variable in install.sh')
+  assert.match(source, /--hooks-only/, 'expected --hooks-only flag handling')
+  assert.match(source, /gasoline-hooks/, 'expected gasoline-hooks binary name')
+  assert.match(source, /download_and_verify/, 'expected download_and_verify helper')
+})
+
+test('shell installer downloads both binaries by default', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  // gasoline-agentic-devtools is downloaded when HOOKS_ONLY != 1
+  assert.match(source, /gasoline-agentic-devtools-\$PLATFORM/, 'expected main binary download')
+  // gasoline-hooks is always downloaded
+  assert.match(source, /gasoline-hooks-\$PLATFORM/, 'expected hooks binary download')
+})
+
+test('shell installer skips extension and daemon for hooks-only', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(source, /HOOKS_ONLY.*guard/, 'expected HOOKS_ONLY guard comment')
+})
+
 test('npm wrapper exposes gasoline-agentic-devtools command alias', () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'npm', 'gasoline-agentic-browser', 'package.json'), 'utf8')

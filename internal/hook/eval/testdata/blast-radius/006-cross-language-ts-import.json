@@ -1,0 +1,14 @@
+{
+  "description": "ASPIRATIONAL: Edit exported TS function should detect TS importers via relative imports",
+  "hook": "blast-radius",
+  "project_root": "REPO_ROOT",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "src/content/window-message-listener.ts", "new_string": "export function handleMessage(event: MessageEvent) {\n  return event.data;\n}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["Blast Radius", "imported by"],
+    "max_latency_ms": 5000
+  }
+}

@@ -486,6 +486,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# 16. Eval packages must not be imported by production binaries
+# ─────────────────────────────────────────────
+bold "16. Checking eval packages are not imported by production code..."
+
+EVAL_IMPORTS=$(grep -rn 'hook/eval' cmd/ internal/ \
+  --include='*.go' \
+  | grep -v '_test.go' \
+  | grep -v 'internal/hook/eval/' \
+  || true)
+
+if [ -n "$EVAL_IMPORTS" ]; then
+  fail "Production code imports eval package (eval must stay test-only):"
+  echo "$EVAL_IMPORTS" | while IFS= read -r line; do echo "    $line"; done
+else
+  pass "Eval packages are test-only — not imported by any production binary"
+fi
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 echo ""

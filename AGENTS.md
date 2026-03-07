@@ -1,88 +1,41 @@
-# Gasoline MCP — Core Rules
+<!-- gitnexus:start -->
+# GitNexus MCP
 
-Browser extension + MCP server for real-time browser telemetry.
-**Stack:** Go (zero deps) | Chrome Extension (MV3) | MCP (JSON-RPC 2.0)
+This project is indexed by GitNexus as **gasoline** (18052 symbols, 51068 relationships, 300 execution flows).
 
----
+## Always Start Here
 
-## 🔴 Mandatory Rules
+1. **Read `gitnexus://repo/{name}/context`** — codebase overview + check index freshness
+2. **Match your task to a skill below** and **read that skill file**
+3. **Follow the skill's workflow and checklist**
 
-1. **TDD** — Write tests first, then implementation
-2. **No `any`** — TypeScript strict mode, no implicit any
-3. **Zero Deps** — No production dependencies in Go or extension
-4. **Compile TS** — Run `make compile-ts` after ANY src/ change
-5. **5 Tools** — observe, generate, configure, interact, analyze
-6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
-7. **Privacy** — All data stays local, no external transmission
-8. **Wire Types** — `wire_*.go` and `wire-*.ts` are the source of truth for HTTP payloads. Changes to either side MUST update the counterpart. Run `make check-wire-drift`
-9. **Docs Cross-Ref (Required)** — EVERY feature and EVERY refactor MUST ship with cross-referenced docs updates (flow map + feature pointers + code/test paths)
+> If step 1 warns the index is stale, run `npx gitnexus analyze` in the terminal first.
 
-## Git Workflow
+## Skills
 
-- Branch from `UNSTABLE`, PR to `UNSTABLE`
-- Never push directly to `stable`
-- Squash commits before merge
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
----
-
-## Commands
-
-```bash
-make compile-ts    # REQUIRED after src/ changes
-make test          # All tests
-make ci-local      # Full CI locally
-npm run typecheck  # TypeScript check
-npm run lint       # ESLint
-```
-
-## Testing
-
-**Primary UAT Script:** [`scripts/test-all-tools-comprehensive.sh`](scripts/test-all-tools-comprehensive.sh)
-
-Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, graceful shutdown.
-
-```bash
-./scripts/test-all-tools-comprehensive.sh  # Run full UAT
-```
-
-**UAT Rules:**
-
-- **NEVER modify tests during UAT** — run tests as-is, report results
-- If tests have issues, note them and propose changes AFTER UAT completes
-- UAT validates the npm-installed version (`gasoline-mcp` from PATH)
-- Extension must be connected for data flow tests to pass
-
-## Code Standards
-
-**JSON API fields:** ALL JSON fields use `snake_case`. No exceptions. External spec fields (MCP protocol, SARIF) are tagged with `// SPEC:<name>` comments.
-
-**TypeScript:**
-
-- No dynamic imports in service worker (background/)
-- No circular dependencies
-- Content scripts must be bundled (MV3 limitation)
-- All fetch() needs try/catch + response.ok check
-
-**Go:**
-
-- Append-only I/O on hot paths
-- Single-pass eviction (never loop-remove-recheck)
-- File headers required: `// filename.go — Purpose summary.`
-
-**File size:** Max 800 LOC. Refactor if larger.
+<!-- gitnexus:end -->
 
 ## Documentation Cross-Reference Contract (Required)
 
-For every feature and every refactor, update docs in the same change:
+For EVERY feature and EVERY refactor, documentation updates are mandatory in the same change:
 
 1. Add or update the canonical flow map in `docs/architecture/flow-maps/`.
-2. Add or update the feature-local `flow-map.md` pointer under `docs/features/feature/<feature>/` when a feature folder exists.
+2. Add or update the feature-local `flow-map.md` pointer in `docs/features/feature/<feature>/` when a feature folder exists.
 3. Update the feature `index.md`:
    - `last_reviewed`
    - `code_paths` and `test_paths`
    - link to `flow-map.md`
 4. Update `docs/architecture/flow-maps/README.md` when adding a new canonical flow map.
-5. Keep cross-links bidirectional (feature -> canonical map, and canonical map lists code/test anchors).
+5. Keep links bidirectional (feature -> canonical flow map, and canonical flow map -> concrete code/test paths).
 
 No code-only refactor is considered complete until this documentation contract is satisfied.
 
@@ -113,92 +66,11 @@ No code-only refactor is considered complete until this documentation contract i
 23. Behavior-replacing refactors must update or delete obsolete tests in the same change (for example, replacing watermark behavior with badge behavior).
 24. See `docs/core/common-patterns.md` for the canonical patterns and review checklist.
 
-## Finding Things
+## Pre-Commit Checklist
 
-| Need                  | Location                                         |
-| --------------------- | ------------------------------------------------ |
-| Feature specs         | `docs/features/<name>/`                          |
-| Test plans            | `docs/features/<name>/{name}-test-plan.md`       |
-| Test plan template    | `docs/features/_template/template-test-plan.md`  |
-| Architecture          | `.claude/refs/architecture.md`                   |
-| Known issues          | `docs/core/known-issues.md`                      |
-| All features          | `docs/features/feature-navigation.md`            |
+Before presenting code as complete:
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
-
-This project is indexed by GitNexus as **gasoline** (16927 symbols, 20322 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
-
-## Always Do
-
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-
-## When Debugging
-
-1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
-2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ gitnexus://repo/gasoline/process/{processName}` — trace the full execution flow step by step
-4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "stable"})` — see what your branch changed
-
-## When Refactoring
-
-- **Renaming**: MUST use `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
-- **Extracting/Splitting**: MUST run `gitnexus_context({name: "target"})` to see all incoming/outgoing refs, then `gitnexus_impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
-- After any refactor: run `gitnexus_detect_changes({scope: "all"})` to verify only expected files changed.
-
-## Never Do
-
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Tools Quick Reference
-
-| Tool | When to use | Command |
-|------|-------------|---------|
-| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
-
-## Impact Risk Levels
-
-| Depth | Meaning | Action |
-|-------|---------|--------|
-| d=1 | WILL BREAK — direct callers/importers | MUST update these |
-| d=2 | LIKELY AFFECTED — indirect deps | Should test |
-| d=3 | MAY NEED TESTING — transitive | Test if critical path |
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/gasoline/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/gasoline/clusters` | All functional areas |
-| `gitnexus://repo/gasoline/processes` | All execution flows |
-| `gitnexus://repo/gasoline/process/{name}` | Step-by-step execution trace |
-
-## Self-Check Before Finishing
-
-Before completing any code modification task, verify:
-1. `gitnexus_impact` was run for all modified symbols
-2. No HIGH/CRITICAL risk warnings were ignored
-3. `gitnexus_detect_changes()` confirms changes match expected scope
-4. All d=1 (WILL BREAK) dependents were updated
-
-## CLI
-
-- Re-index: `npx gitnexus analyze`
-- Check freshness: `npx gitnexus status`
-- Generate docs: `npx gitnexus wiki`
-
-<!-- gitnexus:end -->
+- Grep for existing patterns before introducing new ones (http.Client, handler maps, error format)
+- No duplicated types/constants across packages — export from source of truth
+- 3+ similar functions → extract helper before continuing
+- Data structs must not do I/O — keep I/O at the call site
