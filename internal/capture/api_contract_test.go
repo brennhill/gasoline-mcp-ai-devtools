@@ -52,7 +52,9 @@ func TestAPIContract_NetworkBodies_AcceptsPOST(t *testing.T) {
 	}
 
 	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Errorf("Expected status 'ok', got %v", resp["status"])
 	}
@@ -94,7 +96,9 @@ func TestAPIContract_EnhancedActions_AcceptsPOST(t *testing.T) {
 	}
 
 	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Errorf("Expected status 'ok', got %v", resp["status"])
 	}
@@ -136,7 +140,9 @@ func TestAPIContract_PerformanceSnapshots_AcceptsPOST(t *testing.T) {
 	}
 
 	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if resp["status"] != "ok" {
 		t.Errorf("Expected status 'ok', got %v", resp["status"])
 	}

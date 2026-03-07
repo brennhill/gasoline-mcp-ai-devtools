@@ -287,7 +287,9 @@ func TestHandleClientByID_GET_ExistingClient(t *testing.T) {
 	csAny := cap.GetClientRegistry().Register("/tmp/project")
 	csJSON, _ := json.Marshal(csAny)
 	var cs map[string]any
-	_ = json.Unmarshal(csJSON, &cs)
+	if err := json.Unmarshal(csJSON, &cs); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	clientID, _ := cs["id"].(string)
 
 	if clientID == "" {

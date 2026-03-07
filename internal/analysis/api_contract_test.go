@@ -1340,7 +1340,9 @@ func TestAPIContractReport_LastCalledAtRename(t *testing.T) {
 	// Verify JSON serialization uses last_called_at (not last_called)
 	data, _ := json.Marshal(ep)
 	var parsed map[string]any
-	_ = json.Unmarshal(data, &parsed)
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if _, ok := parsed["last_called_at"]; !ok {
 		t.Error("Expected 'last_called_at' key in JSON output")
 	}
@@ -1436,7 +1438,9 @@ func TestAPIContractReport_ConsistencyLevels(t *testing.T) {
 	// Should contain keys mapping score ranges to descriptions
 	data, _ := json.Marshal(result.ConsistencyLevels)
 	var parsed map[string]any
-	_ = json.Unmarshal(data, &parsed)
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	// Should have at least some standard level descriptions
 	if len(parsed) == 0 {

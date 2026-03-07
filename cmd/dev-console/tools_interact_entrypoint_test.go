@@ -54,8 +54,12 @@ func TestMergeAsyncAlias_NoAsyncNoChange(t *testing.T) {
 	result := mergeAsyncAlias(input)
 
 	var orig, parsed map[string]any
-	json.Unmarshal(input, &orig)
-	json.Unmarshal(result, &parsed)
+	if err := json.Unmarshal(input, &orig); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
+	if err := json.Unmarshal(result, &parsed); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if len(orig) != len(parsed) {
 		t.Errorf("args changed unexpectedly: orig=%v result=%v", orig, parsed)

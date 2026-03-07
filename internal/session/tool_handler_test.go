@@ -77,7 +77,9 @@ func TestSessionHandleTool_CaptureSuccess(t *testing.T) {
 	// Marshal + unmarshal to check JSON structure
 	data, _ := json.Marshal(result)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if resp["action"] != "captured" {
 		t.Errorf("Expected action='captured', got %v", resp["action"])
@@ -179,7 +181,9 @@ func TestSessionHandleTool_CompareSuccess(t *testing.T) {
 
 	data, _ := json.Marshal(result)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if resp["action"] != "compared" {
 		t.Errorf("Expected action='compared', got %v", resp["action"])
@@ -244,7 +248,9 @@ func TestSessionHandleTool_ListEmpty(t *testing.T) {
 
 	data, _ := json.Marshal(result)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if resp["action"] != "listed" {
 		t.Errorf("Expected action='listed', got %v", resp["action"])
@@ -274,7 +280,9 @@ func TestSessionHandleTool_ListMultiple(t *testing.T) {
 
 	data, _ := json.Marshal(result)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	snapshots := resp["snapshots"].([]any)
 	if len(snapshots) != 3 {
@@ -300,7 +308,9 @@ func TestSessionHandleTool_DeleteSuccess(t *testing.T) {
 
 	data, _ := json.Marshal(result)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if resp["action"] != "deleted" {
 		t.Errorf("Expected action='deleted', got %v", resp["action"])
@@ -366,7 +376,9 @@ func TestSessionHandleTool_JSONFieldsAreSnakeCase(t *testing.T) {
 		}
 		// Parse to check key exists
 		var parsed map[string]any
-		json.Unmarshal(data, &parsed)
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			t.Fatalf("json.Unmarshal error: %v", err)
+		}
 		snapshot, ok := parsed["snapshot"].(map[string]any)
 		if !ok {
 			continue
@@ -381,7 +393,9 @@ func TestSessionHandleTool_JSONFieldsAreSnakeCase(t *testing.T) {
 	compareResult, _ := sm.HandleTool(compareParams)
 	compareData, _ := json.Marshal(compareResult)
 	var compareResp map[string]any
-	json.Unmarshal(compareData, &compareResp)
+	if err := json.Unmarshal(compareData, &compareResp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	// Check diff contains expected snake_case keys
 	diff, ok := compareResp["diff"].(map[string]any)
@@ -428,7 +442,9 @@ func TestSessionHandleTool_CaptureCompareIntegration(t *testing.T) {
 
 	data, _ := json.Marshal(compareResult)
 	var resp map[string]any
-	json.Unmarshal(data, &resp)
+	if err := json.Unmarshal(data, &resp); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	summary, ok := resp["summary"].(map[string]any)
 	if !ok {

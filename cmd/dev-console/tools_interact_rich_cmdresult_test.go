@@ -352,7 +352,9 @@ func TestQueuedResponse_HasQueuedAndFinalMarkers(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if responseData["status"] != "queued" {
 		t.Fatalf("status = %v, want queued", responseData["status"])
@@ -372,7 +374,9 @@ func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
 	// Queue async to avoid sync-wait-for-extension
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
@@ -382,7 +386,9 @@ func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -401,7 +407,9 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, nil, "element_not_found")
@@ -411,7 +419,9 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -434,7 +444,9 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","tab_id":42,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	extensionResult := json.RawMessage(`{
@@ -452,7 +464,9 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -480,7 +494,9 @@ func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
@@ -490,7 +506,9 @@ func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -512,7 +530,9 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.ExpireCommand(corrID)
@@ -522,7 +542,9 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -554,7 +576,9 @@ func TestCommandResult_TimeoutHasFinalTrue(t *testing.T) {
 	resp := env.handler.formatCommandResult(req, cmd, cmd.CorrelationID)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -843,7 +867,9 @@ func TestCommandResult_AmbiguousTarget_SuggestedElementID(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -886,7 +912,9 @@ func TestCommandResult_AmbiguousTarget_RetryGuidanceMentionsCandidates(t *testin
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -929,7 +957,9 @@ func TestCommandResult_AmbiguousTarget_NoCandidates_NoSuggestedElementID(t *test
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {

@@ -742,7 +742,9 @@ func TestRedactJSONMultipleContentBlocks(t *testing.T) {
 
 	redacted := engine.RedactJSON(resultJSON)
 	var redactedResult MCPToolResult
-	json.Unmarshal(redacted, &redactedResult)
+	if err := json.Unmarshal(redacted, &redactedResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if !strings.Contains(redactedResult.Content[0].Text, "[REDACTED:bearer-token]") {
 		t.Errorf("First block should be redacted: %s", redactedResult.Content[0].Text)

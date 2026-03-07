@@ -56,11 +56,15 @@ func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 
 	// Verify data was returned
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	resultEntries := data["entries"].([]any)
 	if len(resultEntries) != 1 {
@@ -146,11 +150,15 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 
 	// Verify fresh data was returned
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	resultEntries := data["entries"].([]any)
 	// Should have both old and new entries (buffer accumulates)

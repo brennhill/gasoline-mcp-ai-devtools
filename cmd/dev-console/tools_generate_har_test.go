@@ -127,7 +127,9 @@ func TestToolExportHAR_Filters(t *testing.T) {
 	resp := handler.toolExportHAR(req, args)
 
 	var result MCPToolResult
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	text := result.Content[0].Text
 	jsonPart := text
@@ -135,7 +137,9 @@ func TestToolExportHAR_Filters(t *testing.T) {
 		jsonPart = lines[1]
 	}
 	var harLog export.HARLog
-	json.Unmarshal([]byte(jsonPart), &harLog)
+	if err := json.Unmarshal([]byte(jsonPart), &harLog); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if len(harLog.Log.Entries) != 1 {
 		t.Fatalf("expected 1 entry with filters, got %d", len(harLog.Log.Entries))
@@ -154,7 +158,9 @@ func TestToolExportHAR_PathTraversal(t *testing.T) {
 	resp := handler.toolExportHAR(req, args)
 
 	var result MCPToolResult
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if !result.IsError {
 		t.Error("expected error response for path traversal")
 	}
@@ -169,7 +175,9 @@ func TestToolExportHAR_EmptyCapture(t *testing.T) {
 	resp := handler.toolExportHAR(req, args)
 
 	var result MCPToolResult
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if result.IsError {
 		t.Errorf("Expected no error for empty HAR export, got: %s", result.Content[0].Text)

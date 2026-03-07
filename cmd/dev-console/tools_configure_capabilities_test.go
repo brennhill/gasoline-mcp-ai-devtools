@@ -92,7 +92,9 @@ func TestDescribeCapabilities_ToolsHaveModes(t *testing.T) {
 	text := result.Content[0].Text
 	idx := strings.Index(text, "{")
 	var data map[string]any
-	json.Unmarshal([]byte(text[idx:]), &data)
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	tools := data["tools"].(map[string]any)
 
 	// observe tool should have modes (what enum)

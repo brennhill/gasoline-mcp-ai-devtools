@@ -290,7 +290,9 @@ func TestObserveAudit_MissingWhat_ReturnsError(t *testing.T) {
 	}
 
 	var result MCPToolResult
-	_ = json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	// ASSERTION: IsError is true
 	if !result.IsError {
@@ -313,7 +315,9 @@ func TestObserveAudit_InvalidJSON_ReturnsParseError(t *testing.T) {
 	// If result, should be error
 	if resp.Result != nil {
 		var result MCPToolResult
-		_ = json.Unmarshal(resp.Result, &result)
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			t.Fatalf("json.Unmarshal error: %v", err)
+		}
 		if !result.IsError {
 			t.Error("invalid JSON MUST return isError:true")
 		}

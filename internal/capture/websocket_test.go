@@ -769,7 +769,9 @@ func TestV4HandleWebSocketStatus_WithClosedConnections(t *testing.T) {
 	capture.HandleWebSocketStatus(rec, req)
 
 	var status WebSocketStatusResponse
-	json.Unmarshal(rec.Body.Bytes(), &status)
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if len(status.Connections) != 0 {
 		t.Errorf("expected 0 open connections, got %d", len(status.Connections))

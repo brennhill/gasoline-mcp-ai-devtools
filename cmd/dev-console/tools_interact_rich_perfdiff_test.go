@@ -123,7 +123,9 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	// Call refresh to stash the before-snapshot
 	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension sending the "after" snapshot (overwrites the old one)
@@ -200,7 +202,9 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	// Call refresh — no before-snapshot available
 	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Complete the command
@@ -212,10 +216,14 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if _, exists := responseData["perf_diff"]; exists {
 		t.Error("perf_diff should NOT be present when no before-snapshot exists")
@@ -229,7 +237,9 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	// Click action
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension completing the click after a small delay
@@ -241,10 +251,14 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
 	resp := env.handler.toolObserveCommandResult(req, args)
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	timingMs, exists := responseData["timing_ms"]
 	if !exists {
@@ -286,7 +300,9 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	// Call refresh to stash before-snapshot
 	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate improved "after" snapshot with all Web Vitals
@@ -315,10 +331,14 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	perfDiff, exists := responseData["perf_diff"]
 	if !exists {
@@ -438,7 +458,9 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	// Click without analyze:true (compact mode)
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension responding WITH dom_summary (compact mode, no analyze)
@@ -456,7 +478,9 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {

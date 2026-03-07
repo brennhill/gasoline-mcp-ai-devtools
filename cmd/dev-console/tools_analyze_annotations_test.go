@@ -620,7 +620,9 @@ func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore(t *testing.T) {
 	text := unmarshalMCPText(t, resp.Result)
 	jsonText := extractJSONFromText(text)
 	var data map[string]any
-	_ = json.Unmarshal([]byte(jsonText), &data)
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := data["correlation_id"].(string)
 
 	// Now store annotations — should trigger the waiter completion
@@ -658,7 +660,9 @@ func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore_UsesURLFilter(t *tes
 	text := unmarshalMCPText(t, resp.Result)
 	jsonText := extractJSONFromText(text)
 	var data map[string]any
-	_ = json.Unmarshal([]byte(jsonText), &data)
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if data["status"] != "waiting_for_user" {
 		t.Fatalf("expected waiting response, got %v", data["status"])
 	}
@@ -701,7 +705,9 @@ func TestToolGetAnnotations_WaitTrue_NamedWaiterCompletedOnStore_UsesURLFilter(t
 	text := unmarshalMCPText(t, resp.Result)
 	jsonText := extractJSONFromText(text)
 	var data map[string]any
-	_ = json.Unmarshal([]byte(jsonText), &data)
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	if data["status"] != "waiting_for_user" {
 		t.Fatalf("expected waiting response, got %v", data["status"])
 	}

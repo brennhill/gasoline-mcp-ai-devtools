@@ -378,7 +378,9 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	// Click with analyze:true
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension result with analyze enrichment fields
@@ -397,7 +399,9 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -447,7 +451,9 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Extension result WITHOUT analyze fields (compact mode)
@@ -459,7 +465,9 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -484,7 +492,9 @@ func TestRichAction_MatchedDiagnosticsSurfacedTopLevel(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"text=Submit","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	extensionResult := json.RawMessage(`{
@@ -506,7 +516,9 @@ func TestRichAction_MatchedDiagnosticsSurfacedTopLevel(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -546,7 +558,9 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","tab_id":77,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	extensionResult := json.RawMessage(`{
@@ -570,7 +584,9 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
@@ -617,7 +633,9 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	// Click with analyze:true
 	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension result with dom_summary and analyze fields
@@ -637,7 +655,9 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	_ = json.Unmarshal(resp.Result, &observeResult)
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	var responseData map[string]any
 	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {

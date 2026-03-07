@@ -187,12 +187,16 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 	resp := observe.GetBrowserLogs(th, mcpReq, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	logs := data["logs"].([]any)
 	if len(logs) != 3 {
@@ -222,11 +226,15 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	resp := observe.GetBrowserLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	logs := data["logs"].([]any)
 	if len(logs) != 2 {
@@ -255,11 +263,15 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	entries := data["entries"].([]any)
 	if len(entries) != 1 {
@@ -300,11 +312,15 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	resultEntries := data["entries"].([]any)
 	if len(resultEntries) != 2 {
@@ -333,11 +349,15 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 	resp := observe.GetExtensionLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	logs := data["logs"].([]any)
 	if len(logs) != 1 {
@@ -373,11 +393,15 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 	resp := observe.GetPageInfo(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	pageURL := data["url"].(string)
 	if pageURL != "https://example.com/dashboard" {
@@ -432,11 +456,15 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 	resp := observe.GetPageInfo(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	pageURL := data["url"].(string)
 
@@ -483,11 +511,15 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 	resp := observe.GetNetworkBodies(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	entries := data["entries"].([]any)
 	if len(entries) != 1 {
@@ -533,11 +565,15 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 	resp := observe.GetWSEvents(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
-	json.Unmarshal(resp.Result, &result)
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 	content := result["content"].([]any)
 	textBlock := content[0].(map[string]any)
 	var data map[string]any
-	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+	if err := json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	entries := data["entries"].([]any)
 	if len(entries) != 1 {
