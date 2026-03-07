@@ -6,7 +6,7 @@
 # The hook reads JSON input from stdin (Claude Code hook protocol).
 #
 # Output: JSON with additionalContext containing compressed results.
-# Stats appended to ~/.gasoline/stats/session.jsonl.
+# Stats posted to daemon at POST /api/token-savings (best-effort).
 
 set -euo pipefail
 
@@ -18,7 +18,6 @@ cat > "$TMPFILE"
 # All logic in python3 — reads from temp file, outputs JSON or exits silently.
 python3 - "$TMPFILE" << 'PYEOF'
 import sys, json, re, os
-from datetime import datetime, timezone
 
 input_file = sys.argv[1]
 

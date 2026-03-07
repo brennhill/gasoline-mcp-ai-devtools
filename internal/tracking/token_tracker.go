@@ -110,7 +110,7 @@ func categoryDisplayName(category string) string {
 		return "Build output"
 	case "search":
 		return "Search"
-	case "generic":
+	case "generic", "generic_truncation":
 		return "Generic"
 	case "quality_gates":
 		return "Quality gates"
