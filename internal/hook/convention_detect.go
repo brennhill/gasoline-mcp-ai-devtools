@@ -1,6 +1,11 @@
 // convention_detect.go — Detects patterns in edited code and searches the codebase
 // for existing usage, so the AI sees how the project already handles that pattern.
 // If 2+ instances exist, suggests extracting a shared helper.
+//
+// Two detection modes:
+// 1. Direct match — edit contains a discovered/static probe → search for examples
+// 2. Convention summary — top discovered patterns injected on every edit so the
+//    LLM can judge drift even when the edit doesn't contain the pattern
 
 package hook
 
@@ -18,6 +23,7 @@ const (
 	maxConventionsToReport = 3
 	maxFileSizeForScan     = 100 * 1024 // 100KB — skip generated/bundled files
 	helperThreshold        = 2          // suggest extracting a helper at this many instances
+	maxSummaryConventions  = 10         // top conventions to inject as context
 )
 
 // ConventionMatch holds examples of an existing codebase pattern.
@@ -26,34 +32,16 @@ type ConventionMatch struct {
 	Examples []string // "relative/path.go:42: matched line content"
 }
 
-// conventionProbes are literal strings that, when found in new code, trigger a codebase search.
-// Type declarations (e.g. `type Foo struct`) are also detected via regex — see DetectConventions.
-// These are patterns most likely to cause convention drift when introduced without
-// checking existing usage. Language-agnostic where possible.
-var conventionProbes = []string{
-	// Go patterns
+// staticProbes are non-call-site patterns that the discovery regex can't find.
+// These complement discovered probes — they catch structural patterns like
+// type declarations, data structures, and concurrency primitives.
+var staticProbes = []string{
 	"http.Client{",
 	"map[string]func",
 	"sync.Mutex",
 	"sync.RWMutex",
-	"regexp.MustCompile(",
-	"os.WriteFile(",
-	"os.ReadFile(",
-	"json.MarshalIndent(",
-	"json.NewEncoder(",
-	"json.NewDecoder(",
-	"http.HandleFunc(",
-	"http.HandlerFunc",
-	"fmt.Errorf(",
-	"errors.New(",
-	"filepath.Walk",
-	"exec.Command(",
-	// TypeScript/JavaScript patterns
 	"new Map<",
 	"new Set<",
-	"fetch(",
-	"addEventListener(",
-	"querySelector(",
 	"chrome.storage.",
 	"chrome.runtime.",
 }
@@ -68,7 +56,8 @@ var skipDirs = map[string]bool{
 }
 
 // DetectConventions finds patterns in newContent and searches the project for existing usage.
-// Returns nil if no conventions found or if newContent is empty.
+// Uses discovered probes (from automatic codebase analysis) plus static probes for
+// non-call-site patterns. Returns nil if no conventions found or if newContent is empty.
 func DetectConventions(filePath, projectRoot, newContent string) []ConventionMatch {
 	if newContent == "" || projectRoot == "" {
 		return nil
@@ -77,9 +66,13 @@ func DetectConventions(filePath, projectRoot, newContent string) []ConventionMat
 	ext := filepath.Ext(filePath)
 	exts := extensionFamily(ext)
 
-	// Collect patterns to search for.
+	// Merge discovered probes with static probes.
+	discovered := DiscoveredProbes(projectRoot, ext)
+	allProbes := append(discovered, staticProbes...)
+
+	// Collect probes that match the edit content.
 	var probes []string
-	for _, probe := range conventionProbes {
+	for _, probe := range allProbes {
 		if strings.Contains(newContent, probe) {
 			probes = append(probes, probe)
 		}
@@ -112,6 +105,30 @@ func DetectConventions(filePath, projectRoot, newContent string) []ConventionMat
 	}
 
 	return results
+}
+
+// ConventionSummary returns a compact summary of the top discovered conventions
+// for the given file's language. Injected on every edit so the LLM can judge
+// convention drift even when the edit doesn't contain a matching pattern.
+func ConventionSummary(projectRoot, ext string) string {
+	conventions := DiscoverConventions(projectRoot, ext)
+	if len(conventions) == 0 {
+		return ""
+	}
+
+	limit := maxSummaryConventions
+	if len(conventions) < limit {
+		limit = len(conventions)
+	}
+
+	var b strings.Builder
+	b.WriteString("=== PROJECT CONVENTIONS (auto-discovered) ===")
+	b.WriteString("\nThis project consistently uses these patterns — align new code accordingly:")
+	for _, c := range conventions[:limit] {
+		fmt.Fprintf(&b, "\n  %s (%d files)", c.Pattern, c.FileCount)
+	}
+	b.WriteString("\n=== END PROJECT CONVENTIONS ===")
+	return b.String()
 }
 
 // searchProject walks the project tree and finds lines containing the search term.

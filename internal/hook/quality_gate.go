@@ -83,13 +83,21 @@ func RunQualityGate(input Input) *QualityGateResult {
 		}
 	}
 
-	// 3. Convention detection — reuse already-parsed fields to avoid double-unmarshal.
+	// 3. Convention summary — always inject top discovered conventions so the
+	//    LLM can judge drift even when the edit doesn't contain a matching pattern.
+	ext := filepath.Ext(filePath)
+	if summary := ConventionSummary(projectRoot, ext); summary != "" {
+		parts = append(parts, summary)
+	}
+
+	// 4. Convention detection — reuse already-parsed fields to avoid double-unmarshal.
+	//    If the edit contains a known pattern, show specific examples from the codebase.
 	newContent := extractNewContent(input, fields)
 	if conventions := DetectConventions(filePath, projectRoot, newContent); len(conventions) > 0 {
 		parts = append(parts, FormatConventions(conventions))
 	}
 
-	// 4. Review instruction.
+	// 5. Review instruction.
 	if len(parts) > 0 {
 		parts = append(parts,
 			"QUALITY GATE: Review your change against the standards and conventions above. Fix any violations before proceeding.")
