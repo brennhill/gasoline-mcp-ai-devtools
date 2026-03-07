@@ -673,9 +673,16 @@ site-search kbd {
 
 .gmodern-solution-panel-visual {
   position: relative;
-  padding: clamp(1rem, 2.5vw, 1.8rem);
   border-right: 1px solid color-mix(in srgb, var(--g-border-strong) 24%, var(--g-border));
   overflow: hidden;
+}
+
+.gmodern-solution-panel-visual:has(.gmodern-solution-visual-image) {
+  padding: 0;
+}
+
+.gmodern-solution-panel-visual:not(:has(.gmodern-solution-visual-image)) {
+  padding: clamp(1rem, 2.5vw, 1.8rem);
 }
 
 .gmodern-solution-panel-visual .gmodern-solution-visual-image {
