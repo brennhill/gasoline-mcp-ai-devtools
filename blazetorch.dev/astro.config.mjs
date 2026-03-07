@@ -16,11 +16,11 @@ export default defineConfig({
   ],
   integrations: [
     starlight({
-      title: 'Gasoline Agentic Devtools',
+      title: 'BlazeTorch AI DevTools',
       description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
         src: './src/assets/logo.png',
-        alt: 'Gasoline Agentic Devtools'
+        alt: 'BlazeTorch AI DevTools'
       },
       favicon: '/images/logo.png',
       social: [

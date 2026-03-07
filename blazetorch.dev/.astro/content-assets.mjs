@@ -1,0 +1,8 @@
+
+import __ASTRO_IMAGE_IMPORT_Z1qkbBG from "../../assets/diagrams/architecture-main.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md";
+import __ASTRO_IMAGE_IMPORT_9L0JP from "../../assets/diagrams/architecture-communication-forward.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md";
+import __ASTRO_IMAGE_IMPORT_1HRxXa from "../../assets/diagrams/architecture-communication-reverse.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md";
+import __ASTRO_IMAGE_IMPORT_27VGhW from "../../assets/diagrams/execute-scripts-csp-fallback.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Fexecute-scripts.md";
+import __ASTRO_IMAGE_IMPORT_Z1YkanO from "../../assets/diagrams/security-localhost-boundary.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Fsecurity.md";
+export default new Map([["../../assets/diagrams/architecture-main.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md", __ASTRO_IMAGE_IMPORT_Z1qkbBG], ["../../assets/diagrams/architecture-communication-forward.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md", __ASTRO_IMAGE_IMPORT_9L0JP], ["../../assets/diagrams/architecture-communication-reverse.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Farchitecture.md", __ASTRO_IMAGE_IMPORT_1HRxXa], ["../../assets/diagrams/execute-scripts-csp-fallback.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Fexecute-scripts.md", __ASTRO_IMAGE_IMPORT_27VGhW], ["../../assets/diagrams/security-localhost-boundary.svg?astroContentImageFlag=&importer=src%2Fcontent%2Fdocs%2Fsecurity.md", __ASTRO_IMAGE_IMPORT_Z1YkanO]]);
+		
