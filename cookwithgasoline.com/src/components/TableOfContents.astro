@@ -1,37 +1,37 @@
 ---
-// Sidebar.astro — Custom Gasoline sidebar with Sparky mascot at bottom
-import Default from '@astrojs/starlight/components/Sidebar.astro';
+// TableOfContents.astro — Custom TOC with Sparky at bottom
+import Default from '@astrojs/starlight/components/TableOfContents.astro';
 ---
 
-<div class="sidebar-wrapper">
+<div class="toc-wrapper">
   <Default><slot /></Default>
-  <aside class="sparky-sidebar-widget">
+  <aside class="sparky-toc-widget">
     <img 
       src="/images/sparky-reading-sidebar.png" 
       alt="Sparky the Salamander reading Cook with Gasoline" 
-      class="sparky-sidebar-image"
+      class="sparky-toc-image"
     />
   </aside>
 </div>
 
 <style>
-  .sidebar-wrapper {
+  .toc-wrapper {
     display: flex;
     flex-direction: column;
     height: 100%;
   }
 
-  .sparky-sidebar-widget {
+  .sparky-toc-widget {
     margin-top: auto;
-    padding: 1rem;
+    padding: 0.75rem 0;
     display: flex;
     justify-content: center;
     border-top: 1px solid var(--sl-color-gray-5);
   }
 
-  .sparky-sidebar-image {
+  .sparky-toc-image {
     max-width: 100%;
     height: auto;
-    max-height: 180px;
+    max-height: 150px;
   }
 </style>
