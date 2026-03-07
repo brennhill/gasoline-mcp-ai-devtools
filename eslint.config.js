@@ -25,8 +25,8 @@ export default [
       'pypi/**/dist/',
       'pypi/**/*.egg-info/',
       // Generated framework smoke artifacts
-      'cmd/dev-console/testpages/frameworks/**',
-      'cmd/dev-console/testpages/_next/**',
+      'cmd/browser-agent/testpages/frameworks/**',
+      'cmd/browser-agent/testpages/_next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/.next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/out/**',
       // Compiled TypeScript output (linted at the .ts source level)
@@ -44,9 +44,9 @@ export default [
       'extension/offscreen.bundled.js',
       'extension/popup.bundled.js',
       // Vendored terminal assets (xterm.js)
-      'cmd/dev-console/terminal_assets/**',
+      'cmd/browser-agent/terminal_assets/**',
       // Generated smoke fixture bundles
-      'cmd/dev-console/testpages/frameworks/*.bundle.js'
+      'cmd/browser-agent/testpages/frameworks/*.bundle.js'
     ]
   },
 

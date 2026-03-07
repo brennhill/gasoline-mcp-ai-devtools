@@ -8,12 +8,12 @@ last_reviewed: 2026-03-05
 code_paths:
   - extension/content/draw-mode.js
   - internal/annotation/store.go
-  - cmd/dev-console/tools_analyze_annotations_handlers.go
-  - cmd/dev-console/tools_analyze_annotations_hints.go
-  - cmd/dev-console/server_routes_media_draw_mode.go
-  - cmd/dev-console/tools_generate_annotations.go
-  - cmd/dev-console/tools_generate_annotations_visual.go
-  - cmd/dev-console/annotation_store.go
+  - cmd/browser-agent/tools_analyze_annotations_handlers.go
+  - cmd/browser-agent/tools_analyze_annotations_hints.go
+  - cmd/browser-agent/server_routes_media_draw_mode.go
+  - cmd/browser-agent/tools_generate_annotations.go
+  - cmd/browser-agent/tools_generate_annotations_visual.go
+  - cmd/browser-agent/annotation_store.go
   - internal/schema/analyze.go
   - internal/tools/configure/mode_specs_analyze.go
   - scripts/smoke-tests/31-annotation-parity.sh
@@ -23,8 +23,8 @@ code_paths:
 test_paths:
   - tests/extension/draw-mode.test.js
   - internal/annotation/store_test.go
-  - cmd/dev-console/tools_analyze_annotations_test.go
-  - cmd/dev-console/tools_generate_annotations_test.go
+  - cmd/browser-agent/tools_analyze_annotations_test.go
+  - cmd/browser-agent/tools_generate_annotations_test.go
   - scripts/smoke-tests/31-annotation-parity.sh
   - npm run smoke:annotation-parity
   - npm run smoke:annotation-parity-suite
@@ -66,16 +66,16 @@ last_verified_date: 2026-03-05
 ### Go (store + handler)
 - `internal/annotation/store.go` — `Detail` struct with ParentContext, Siblings, CSSFramework fields; session TTL = 2 hours
 - `internal/annotation/store_clear.go` — `ClearAll()` resets anonymous sessions, named sessions, details, and waiters (used by `configure(what:"clear", buffer:"all")` to prevent stale replay)
-- `cmd/dev-console/tools_analyze_annotations_handlers.go` — detail response enrichment, error correlation, LLM hints, and cross-project scope safety metadata (`projects`, `scope_ambiguous`, `scope_warning`, `filter_applied`)
-- `cmd/dev-console/tools_analyze_annotations_hints.go` — framework-aware detail hints (`design_system`, `runtime_framework`, `error_context`)
-- `cmd/dev-console/tools_generate_annotations_visual.go` — resilient visual test generation via locator fallback candidates (`css`, `testid`, `role`, `label`, `placeholder`, `text`)
+- `cmd/browser-agent/tools_analyze_annotations_handlers.go` — detail response enrichment, error correlation, LLM hints, and cross-project scope safety metadata (`projects`, `scope_ambiguous`, `scope_warning`, `filter_applied`)
+- `cmd/browser-agent/tools_analyze_annotations_hints.go` — framework-aware detail hints (`design_system`, `runtime_framework`, `error_context`)
+- `cmd/browser-agent/tools_generate_annotations_visual.go` — resilient visual test generation via locator fallback candidates (`css`, `testid`, `role`, `label`, `placeholder`, `text`)
 - `internal/schema/analyze.go` + `internal/tools/configure/mode_specs_analyze.go` — analyze annotations schema/capability metadata for `url` / `url_pattern` filters
 
 ### Tests
 - `tests/extension/draw-mode.test.js` — "Element Detail Enrichment" describe block
 - `internal/annotation/store_test.go` — `TestStore_SessionTTL_Is2Hours`
-- `cmd/dev-console/tools_analyze_annotations_test.go` — enrichment fields (`selector_candidates`, `js_framework`, `component`), error correlation, hints tests
-- `cmd/dev-console/tools_generate_annotations_test.go` — resilient locator fallback generation tests
+- `cmd/browser-agent/tools_analyze_annotations_test.go` — enrichment fields (`selector_candidates`, `js_framework`, `component`), error correlation, hints tests
+- `cmd/browser-agent/tools_generate_annotations_test.go` — resilient locator fallback generation tests
 - `scripts/smoke-tests/31-annotation-parity.sh` — deterministic end-to-end ingest/retrieval/generation gate with bounded retries for transient startup/no_data windows
 - `scripts/smoke-tests/annotation-parity-benchmark.sh` — repeated pass-rate benchmark with threshold enforcement
 - `scripts/smoke-test.sh` — resume-mode daemon version parity guard prevents stale-daemon false negatives in `--only/--start-from` runs

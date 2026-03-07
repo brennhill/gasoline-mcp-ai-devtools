@@ -119,7 +119,7 @@ graph TB
   - Bridges stdio (MCP) to HTTP (server)
   - Handles process lifecycle
   - Manages port allocation
-- **Key Code:** `cmd/dev-console/main.go:handleMCPConnection()`
+- **Key Code:** `cmd/browser-agent/main.go:handleMCPConnection()`
 
 ### 3. Go Server (HTTP + MCP Handler)
 - **Technology:** Go, zero dependencies
@@ -130,8 +130,8 @@ graph TB
   - **Capture Manager** - Telemetry ring buffers, memory enforcement
   - **Session Manager** - Multi-client isolation, token verification
 - **Key Files:**
-  - `cmd/dev-console/handler.go` - MCP routing
-  - `cmd/dev-console/tools_*.go` - Tool implementations
+  - `cmd/browser-agent/handler.go` - MCP routing
+  - `cmd/browser-agent/tools_*.go` - Tool implementations
   - `internal/capture/` - Telemetry buffering
   - `internal/session/` - Client management
 
@@ -230,8 +230,8 @@ AI Agent
 
 ### Implementation Files
 - **Wrapper:** `bin/gasoline-mcp`
-- **Server Entry:** `cmd/dev-console/main.go:handleMCPConnection()`
-- **MCP Handler:** `cmd/dev-console/handler.go`
+- **Server Entry:** `cmd/browser-agent/main.go:handleMCPConnection()`
+- **MCP Handler:** `cmd/browser-agent/handler.go`
 - **Capture:** `internal/capture/types.go:Capture`
 - **Session:** `internal/session/client_registry.go`
 - **Extension Background:** `src/background/index.ts`

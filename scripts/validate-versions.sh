@@ -3,7 +3,7 @@
 set -euo pipefail
 
 VERSION=$(tr -d '[:space:]' < VERSION)
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

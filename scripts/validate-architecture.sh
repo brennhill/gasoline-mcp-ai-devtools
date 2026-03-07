@@ -3,7 +3,7 @@
 # Run in CI to catch architecture violations before merge
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 echo "🏗️  Validating Gasoline architecture..."

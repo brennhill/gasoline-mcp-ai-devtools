@@ -586,5 +586,5 @@ This feature ships with **zero new code**.
 
 - [Gasoline Architecture](./architecture.md)
 - [v5.1 Completed Features](../roadmap.md#completed-features-canonical-list)
-- [Timeline Implementation](../../cmd/dev-console/codegen.go#L256)
+- [Timeline Implementation](../../cmd/browser-agent/codegen.go#L256)
 - [v6.0 Roadmap](../roadmap.md)

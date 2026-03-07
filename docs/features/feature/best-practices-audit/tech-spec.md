@@ -58,7 +58,7 @@ Return audit report to server
 - `extension/inject.js` (modified): Invoke audit on query
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add handler
+- `cmd/browser-agent/queries.go`: Add handler
 
 **Trade-offs**:
 - Extension-side analysis because requires DOM and network access

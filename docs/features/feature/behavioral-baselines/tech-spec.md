@@ -182,4 +182,4 @@ If a baseline exceeds the size limit, the save fails with an error and the file 
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_baselines.go` with tests in `cmd/dev-console/ai_baselines_test.go`.
+Implementation goes in `cmd/browser-agent/ai_baselines.go` with tests in `cmd/browser-agent/ai_baselines_test.go`.

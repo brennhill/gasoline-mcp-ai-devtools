@@ -273,7 +273,7 @@ export function executeDOMQuery(script: string): Result {
 **When:** Site has Trusted Types CSP (Gmail) AND no other option works
 
 ```go
-// In cmd/dev-console/tools_interact.go
+// In cmd/browser-agent/tools_interact.go
 // Only used as last resort on high-CSP sites
 func executeWithDebugger(tabID int, script string) error {
   // Attaches debugger to tab (shows yellow banner)
@@ -593,7 +593,7 @@ Content-Security-Policy:
 
 ## Implementation: World Parameter Handling
 
-### Server Side (cmd/dev-console/tools_interact.ts)
+### Server Side (cmd/browser-agent/tools_interact.ts)
 
 ```go
 func (h *MCPHandler) ExecuteJS(req ExecuteJSRequest) {

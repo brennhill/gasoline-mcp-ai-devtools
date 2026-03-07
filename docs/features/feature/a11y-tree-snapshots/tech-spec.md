@@ -90,9 +90,9 @@ Server returns response to AI with tree text, uidMap, metadata
 - `extension/inject.js`: Import a11y-tree.js module, handle tree query message
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add `toolObserveA11yTree()` handler, creates pending query, waits for result
-- `cmd/dev-console/types.go`: Add `A11yTreeResult` struct
-- `cmd/dev-console/tools_core.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
+- `cmd/browser-agent/queries.go`: Add `toolObserveA11yTree()` handler, creates pending query, waits for result
+- `cmd/browser-agent/types.go`: Add `A11yTreeResult` struct
+- `cmd/browser-agent/tools_core.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
 
 **Trade-offs**:
 - Text format vs JSON: Text is 3-5x more token-efficient but harder to parse programmatically. Chosen because token efficiency is core value proposition.

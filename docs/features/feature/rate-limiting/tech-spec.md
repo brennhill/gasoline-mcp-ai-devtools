@@ -197,6 +197,6 @@ The extension can poll this cheaply to detect circuit state changes without wait
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/rate_limit.go` with tests in `cmd/dev-console/rate_limit_test.go`.
+Server implementation: `cmd/browser-agent/rate_limit.go` with tests in `cmd/browser-agent/rate_limit_test.go`.
 
 Extension implementation: backoff logic in `extension/background.js` with tests in `extension-tests/rate-limit.test.js`.

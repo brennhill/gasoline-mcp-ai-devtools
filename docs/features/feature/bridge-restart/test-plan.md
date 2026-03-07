@@ -60,7 +60,7 @@ last_verified_date: 2026-03-05
 
 ### Unit Tests
 
-**Test File:** `cmd/dev-console/bridge_test.go`
+**Test File:** `cmd/browser-agent/bridge_test.go`
 
 | Test | Status |
 |------|--------|

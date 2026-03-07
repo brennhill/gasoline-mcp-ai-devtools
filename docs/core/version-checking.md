@@ -98,7 +98,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 - **GitHub API limit**: 60 requests/hour (unauthenticated)
 - **Server strategy**: Daily checks (1 request/day) with 6-hour cache
 - **Fallback**: If GitHub unreachable, keeps previous cached value (or server version if no previous check)
-- **Location**: [cmd/dev-console/main.go](../../cmd/dev-console/main.go#L1542)
+- **Location**: [cmd/browser-agent/main.go](../../cmd/browser-agent/main.go#L1542)
 
 #### `/health` Response Example
 
@@ -173,7 +173,7 @@ The server logs version mismatches (e.g., when extension and server versions dif
 
 ### Server GitHub Check Interval
 
-Edit [cmd/dev-console/main.go:42-52](../../cmd/dev-console/main.go#L42-L52):
+Edit [cmd/browser-agent/main.go:42-52](../../cmd/browser-agent/main.go#L42-L52):
 
 ```go
 const (
@@ -191,7 +191,7 @@ const (
 
 ### Custom GitHub Repository
 
-To use a different GitHub repository (fork), edit [cmd/dev-console/main.go:47](../../cmd/dev-console/main.go#L47):
+To use a different GitHub repository (fork), edit [cmd/browser-agent/main.go:47](../../cmd/browser-agent/main.go#L47):
 
 ```go
 const githubAPIURL = "https://api.github.com/repos/YOUR-ORG/YOUR-REPO/releases/latest"
@@ -206,10 +206,10 @@ const githubAPIURL = "https://api.github.com/repos/YOUR-ORG/YOUR-REPO/releases/l
 
 ```bash
 # Build with custom version
-go build -ldflags "-X main.version=5.2.6" ./cmd/dev-console
+go build -ldflags "-X main.version=5.2.6" ./cmd/browser-agent
 ```
 
-If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30](../../cmd/dev-console/main.go#L30)).
+If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/browser-agent/main.go:30](../../cmd/browser-agent/main.go#L30)).
 
 ## Troubleshooting
 
@@ -287,7 +287,7 @@ Fetches the latest version from GitHub. Called automatically on startup and ever
 - Updates `availableVersion` global variable
 - Non-blocking; silently fails if GitHub unreachable
 
-**Implementation**: [cmd/dev-console/main.go#L1542](../../cmd/dev-console/main.go#L1542)
+**Implementation**: [cmd/browser-agent/main.go#L1542](../../cmd/browser-agent/main.go#L1542)
 
 #### `startVersionCheckLoop()`
 
@@ -298,7 +298,7 @@ Starts the periodic version checking loop. Called once during server initializat
 - Schedules periodic checks every 24 hours
 - Runs in background goroutine
 
-**Implementation**: [cmd/dev-console/main.go#L1588](../../cmd/dev-console/main.go#L1588)
+**Implementation**: [cmd/browser-agent/main.go#L1588](../../cmd/browser-agent/main.go#L1588)
 
 #### `GET /health` Response
 
@@ -426,7 +426,7 @@ resetVersionCheck();
 ## Files Involved
 
 ### Server (Go)
-- [cmd/dev-console/main.go](../../cmd/dev-console/main.go) - GitHub checking, `/health` endpoint
+- [cmd/browser-agent/main.go](../../cmd/browser-agent/main.go) - GitHub checking, `/health` endpoint
 
 ### Extension (TypeScript)
 - [src/lib/version.ts](../src/lib/version.ts) - Semver parsing & comparison

@@ -208,4 +208,4 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_persistence.go` with tests in `cmd/dev-console/ai_persistence_test.go`.
+Implementation goes in `cmd/browser-agent/ai_persistence.go` with tests in `cmd/browser-agent/ai_persistence_test.go`.

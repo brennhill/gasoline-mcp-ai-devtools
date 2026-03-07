@@ -62,7 +62,7 @@ Every requirement in the specification has corresponding tests:
 ### Gate 4: Static Analysis
 
 ```bash
-go vet ./cmd/dev-console/    # No warnings
+go vet ./cmd/browser-agent/    # No warnings
 make build                   # Cross-platform build succeeds
 ```
 
@@ -86,7 +86,7 @@ All platforms must build: darwin-arm64, darwin-x64, linux-arm64, linux-x64, wind
 | Per-file (statements) | 90% |
 
 ```bash
-go test -coverprofile=coverage.out ./cmd/dev-console/
+go test -coverprofile=coverage.out ./cmd/browser-agent/
 go tool cover -func=coverage.out | grep total
 ```
 
@@ -128,13 +128,13 @@ git push origin HEAD --follow-tags
 
 ```bash
 # Review all MCP tool definitions
-grep -r "tools\|inputSchema" cmd/dev-console/tools_*.go
+grep -r "tools\|inputSchema" cmd/browser-agent/tools_*.go
 
 # Ensure no stub implementations
-grep -rn "TODO\|FIXME\|not implemented" cmd/dev-console/tools_*.go
+grep -rn "TODO\|FIXME\|not implemented" cmd/browser-agent/tools_*.go
 
 # Cross-reference with test coverage
-go test -v ./cmd/dev-console/ | grep -E "^--- (PASS|FAIL)"
+go test -v ./cmd/browser-agent/ | grep -E "^--- (PASS|FAIL)"
 ```
 
 **Why this matters:** Clients (Claude Code, IDEs, automation) rely on MCP tool schemas to understand capabilities. Advertising unimplemented commands breaks client expectations and causes confusing errors.
@@ -148,8 +148,8 @@ go test -v ./cmd/dev-console/ | grep -E "^--- (PASS|FAIL)"
 The server MUST NOT output anything to stdio except JSON-RPC messages. Any non-JSON-RPC output breaks LLM communication.
 
 ```bash
-go test ./cmd/dev-console -run "TestToolHandler.*Stdout" -v
-go test ./cmd/dev-console -run "TestStdioSilence" -v
+go test ./cmd/browser-agent -run "TestToolHandler.*Stdout" -v
+go test ./cmd/browser-agent -run "TestStdioSilence" -v
 ```
 
 See: `.claude/refs/mcp-stdio-invariant.md`
@@ -159,7 +159,7 @@ See: `.claude/refs/mcp-stdio-invariant.md`
 The HTTP server MUST stay alive as long as stdin remains open. This ensures browser extension connectivity throughout the MCP session.
 
 ```bash
-go test ./cmd/dev-console -run "TestServerPersistence" -v
+go test ./cmd/browser-agent -run "TestServerPersistence" -v
 ```
 
 **Key invariants tested:**
@@ -176,7 +176,7 @@ See: `.claude/refs/mcp-stdio-invariant.md#server-persistence-invariant---critica
 All MCP tools must have comprehensive behavioral tests verifying actual functionality, not just "doesn't crash".
 
 ```bash
-go test ./cmd/dev-console -run "Test.*Audit" -v
+go test ./cmd/browser-agent -run "Test.*Audit" -v
 ```
 
 **Test coverage required:**
@@ -200,13 +200,13 @@ make test
 node --test tests/extension/*.test.js
 
 # Static analysis
-go vet ./cmd/dev-console/
+go vet ./cmd/browser-agent/
 
 # Cross-platform build
 make build
 
 # Coverage check
-go test -coverprofile=coverage.out ./cmd/dev-console/
+go test -coverprofile=coverage.out ./cmd/browser-agent/
 go tool cover -func=coverage.out | grep total
 ```
 
@@ -232,7 +232,7 @@ All locations updated by bump-version:
 | File | Field |
 |------|-------|
 | `Makefile` | `VERSION :=` |
-| `cmd/dev-console/main.go` | `version` constant |
+| `cmd/browser-agent/main.go` | `version` constant |
 | `extension/manifest.json` | `"version"` |
 | `extension/package.json` | `"version"` |
 | `server/package.json` | `"version"` |
@@ -243,7 +243,7 @@ All locations updated by bump-version:
 | `npm/linux-arm64/package.json` | `"version"` |
 | `npm/linux-x64/package.json` | `"version"` |
 | `npm/win32-x64/package.json` | `"version"` |
-| `cmd/dev-console/testdata/mcp-initialize.golden.json` | `"version"` |
+| `cmd/browser-agent/testdata/mcp-initialize.golden.json` | `"version"` |
 | `README.md` | Version badge |
 | `tests/extension/background.test.js` | Test assertions (2 locations) |
 | `extension/background/index.test.js` | Mock manifest version |

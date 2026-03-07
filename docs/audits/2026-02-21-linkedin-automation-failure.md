@@ -39,8 +39,8 @@ Observed output excerpts:
 - Reproducible: Yes.
 - Impact: Core browser control actions are unusable from CLI in normal flow.
 - Likely root cause:
-  - `cmd/dev-console/tools_interact.go:271` (`handleBrowserActionNavigate`) forwards raw args as `browser_action` params.
-  - `cmd/dev-console/tools_interact.go:395` (`handleBrowserActionNewTab`) does the same.
+  - `cmd/browser-agent/tools_interact.go:271` (`handleBrowserActionNavigate`) forwards raw args as `browser_action` params.
+  - `cmd/browser-agent/tools_interact.go:395` (`handleBrowserActionNewTab`) does the same.
   - Extension side expects `action`, while CLI path provides `what`; result is `Unknown action: undefined`.
 
 ### F2: `list_interactive` returns null payload

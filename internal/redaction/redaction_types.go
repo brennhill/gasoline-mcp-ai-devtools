@@ -5,7 +5,7 @@ package redaction
 import "regexp"
 
 // MCPContentBlock represents a single content block in an MCP tool response.
-// This is duplicated from cmd/dev-console/tools_core.go to avoid circular imports.
+// This is duplicated from cmd/browser-agent/tools_core.go to avoid circular imports.
 // IMPORTANT: Must stay in sync with the main package's MCPContentBlock.
 // Note: text is NOT omitempty here because the redaction engine re-marshals
 // content blocks and must preserve empty text fields (B2 regression guard).
@@ -17,7 +17,7 @@ type MCPContentBlock struct {
 }
 
 // MCPToolResult represents the result of an MCP tool call.
-// This is duplicated from cmd/dev-console/tools_core.go to avoid circular imports.
+// This is duplicated from cmd/browser-agent/tools_core.go to avoid circular imports.
 // IMPORTANT: Must stay in sync with the main package's MCPToolResult.
 type MCPToolResult struct {
 	Content  []MCPContentBlock `json:"content"`

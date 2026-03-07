@@ -110,9 +110,9 @@ last_verified_date: 2026-03-05
 - `UpgradeMarkerFile()`: path correctness
 
 **Test Files:**
-- `cmd/dev-console/version_compare_test.go`
-- `cmd/dev-console/binary_watcher_test.go`
-- `cmd/dev-console/handler_unit_test.go`
+- `cmd/browser-agent/version_compare_test.go`
+- `cmd/browser-agent/binary_watcher_test.go`
+- `cmd/browser-agent/handler_unit_test.go`
 - `internal/state/paths_coverage_test.go`
 
 ### Integration Tests
@@ -126,7 +126,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. `make dev` to start daemon
-2. `go build -ldflags "-X main.version=99.0.0" -o $(which gasoline-mcp) ./cmd/dev-console/`
+2. `go build -ldflags "-X main.version=99.0.0" -o $(which gasoline-mcp) ./cmd/browser-agent/`
 3. Wait ~35 seconds
 4. Verify daemon restarted via `curl localhost:9160/health`
 5. Verify upgrade warning in next tool call
@@ -137,9 +137,9 @@ last_verified_date: 2026-03-05
 
 | Test Type | File | Status | Notes |
 |-----------|------|--------|-------|
-| Unit (version) | `cmd/dev-console/version_compare_test.go` | Passing | 3 test functions |
-| Unit (watcher) | `cmd/dev-console/binary_watcher_test.go` | Passing | 14 test functions |
-| Unit (handler) | `cmd/dev-console/handler_unit_test.go` | Passing | 2 upgrade test functions |
+| Unit (version) | `cmd/browser-agent/version_compare_test.go` | Passing | 3 test functions |
+| Unit (watcher) | `cmd/browser-agent/binary_watcher_test.go` | Passing | 14 test functions |
+| Unit (handler) | `cmd/browser-agent/handler_unit_test.go` | Passing | 2 upgrade test functions |
 | Unit (paths) | `internal/state/paths_coverage_test.go` | Passing | 2 test functions |
 | Integration | Manual | Pending | Requires two-binary setup |
 | Manual | N/A | Pending | Requires running daemon |

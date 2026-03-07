@@ -96,10 +96,10 @@ Clients can verify pilot state via three independent paths:
 ### Phase 1: Server-Side Query Endpoints ✅
 
 **Files Modified:**
-- `cmd/dev-console/pilot.go`: Added `GetPilotStatus()`, `PilotStatusResponse`, `HandlePilotStatus()`, `toolObservePilot()`
-- `cmd/dev-console/health.go`: Added `PilotInfo` type, extended `MCPHealthResponse`
-- `cmd/dev-console/tools_core.go`: Added `observe {what: "pilot"}` handler
-- `cmd/dev-console/main.go`: Registered `/pilot-status` HTTP endpoint
+- `cmd/browser-agent/pilot.go`: Added `GetPilotStatus()`, `PilotStatusResponse`, `HandlePilotStatus()`, `toolObservePilot()`
+- `cmd/browser-agent/health.go`: Added `PilotInfo` type, extended `MCPHealthResponse`
+- `cmd/browser-agent/tools_core.go`: Added `observe {what: "pilot"}` handler
+- `cmd/browser-agent/main.go`: Registered `/pilot-status` HTTP endpoint
 
 **Key Implementations:**
 
@@ -159,7 +159,7 @@ async function verifyPilotStorageConsistency() {
 
 ## Testing Strategy
 
-### Go Tests (cmd/dev-console/pilot_test.go)
+### Go Tests (cmd/browser-agent/pilot_test.go)
 
 ✅ `TestObservePilotMode` — Observe tool supports "pilot" mode
 ✅ `TestObservePilotResponseSchema` — Response includes enabled, source, extension_connected
@@ -169,7 +169,7 @@ async function verifyPilotStorageConsistency() {
 ✅ `TestGetPilotStatusThreadSafety` — Concurrent reads/writes safe under RWMutex
 ✅ `TestHealthResponseIncludesPilot` — get_health includes pilot field
 
-**Run:** `go test -run "Pilot" ./cmd/dev-console/`
+**Run:** `go test -run "Pilot" ./cmd/browser-agent/`
 
 ### Extension Tests (extension-tests/pilot-toggle.test.js)
 
@@ -185,7 +185,7 @@ async function verifyPilotStorageConsistency() {
 
 ## Quality Gates ✅
 
-- `go vet ./cmd/dev-console/` — No issues
+- `go vet ./cmd/browser-agent/` — No issues
 - `make test` — All tests pass
 - `node --test extension-tests/*.test.js` — All extension tests pass
 
@@ -309,7 +309,7 @@ If issues arise post-deployment:
 - ✅ MCP tool `observe {what: "pilot"}` returns correct state
 - ✅ HTTP endpoint `/pilot-status` accessible
 - ✅ Health response includes pilot field with correct structure
-- ✅ `go vet ./cmd/dev-console/` clean
+- ✅ `go vet ./cmd/browser-agent/` clean
 - ✅ `make test` passes (all tests)
 - ✅ `node --test extension-tests/*.test.js` passes
 - ✅ No race conditions (tested with concurrent reads/writes)

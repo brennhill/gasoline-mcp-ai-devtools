@@ -8,7 +8,7 @@ import (
 )
 
 // Deps provides all dependencies the analyze handlers need.
-// *ToolHandler in cmd/dev-console/ satisfies this interface.
+// *ToolHandler in cmd/browser-agent/ satisfies this interface.
 type Deps interface {
 	mcp.CaptureProvider
 	mcp.LogBufferReader

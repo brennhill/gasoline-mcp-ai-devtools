@@ -6,16 +6,16 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/terminal_handlers.go
-  - cmd/dev-console/terminal_server.go
-  - cmd/dev-console/terminal_assets/terminal.html
+  - cmd/browser-agent/terminal_handlers.go
+  - cmd/browser-agent/terminal_server.go
+  - cmd/browser-agent/terminal_assets/terminal.html
   - extension/content/ui/terminal-widget.js
   - src/content/ui/terminal-widget.ts
   - src/content/ui/tracked-hover-launcher.ts
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
-  - cmd/dev-console/terminal_handlers_test.go
+  - cmd/browser-agent/terminal_handlers_test.go
   - tests/extension/terminal-widget.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
@@ -340,13 +340,13 @@ Note: `/config/active-codebase` is on the **main** daemon server (not terminal s
 
 | File | Responsibility |
 |------|---------------|
-| `cmd/dev-console/terminal_server.go` | Dedicated server setup: `setupTerminalMux()`, `startTerminalServer()` |
-| `cmd/dev-console/terminal_handlers.go` | All HTTP handlers: page, WS, start, stop, validate, config |
-| `cmd/dev-console/terminal_assets/terminal.html` | xterm.js terminal page with WS reconnect and postMessage bridge |
+| `cmd/browser-agent/terminal_server.go` | Dedicated server setup: `setupTerminalMux()`, `startTerminalServer()` |
+| `cmd/browser-agent/terminal_handlers.go` | All HTTP handlers: page, WS, start, stop, validate, config |
+| `cmd/browser-agent/terminal_assets/terminal.html` | xterm.js terminal page with WS reconnect and postMessage bridge |
 | `src/content/ui/terminal-widget.ts` | Widget UI: state machine, session persistence, iframe lifecycle |
 | `src/content/ui/tracked-hover-launcher.ts` | Terminal button in hover launcher + CSP reachability check |
 | `src/lib/constants.ts` | `TERMINAL_PORT_OFFSET`, storage keys |
 | `internal/pty/manager.go` | Session manager: create, get, destroy, token auth |
 | `internal/pty/session.go` | PTY session: spawn, I/O, resize, scrollback, close |
-| `cmd/dev-console/main_connection_mcp.go` | Terminal server startup wiring |
-| `cmd/dev-console/main_connection_mcp_shutdown.go` | Terminal server graceful shutdown |
+| `cmd/browser-agent/main_connection_mcp.go` | Terminal server startup wiring |
+| `cmd/browser-agent/main_connection_mcp_shutdown.go` | Terminal server graceful shutdown |

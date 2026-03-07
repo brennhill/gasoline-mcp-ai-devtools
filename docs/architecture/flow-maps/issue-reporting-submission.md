@@ -8,16 +8,16 @@ owners:
 feature_ids:
   - feature-issue-reporting
 entrypoints:
-  - cmd/dev-console/tools_configure_report_issue.go:toolConfigureReportIssue
+  - cmd/browser-agent/tools_configure_report_issue.go:toolConfigureReportIssue
 code_paths:
-  - cmd/dev-console/tools_configure_report_issue.go
-  - cmd/dev-console/tools_configure_registry.go
+  - cmd/browser-agent/tools_configure_report_issue.go
+  - cmd/browser-agent/tools_configure_registry.go
   - internal/issuereport/types.go
   - internal/issuereport/templates.go
   - internal/issuereport/sanitize.go
   - internal/issuereport/submit.go
 test_paths:
-  - cmd/dev-console/tools_configure_report_issue_test.go
+  - cmd/browser-agent/tools_configure_report_issue_test.go
   - internal/issuereport/templates_test.go
   - internal/issuereport/sanitize_test.go
   - internal/issuereport/submit_test.go
@@ -33,7 +33,7 @@ Covers the end-to-end flow from `configure(what="report_issue")` through diagnos
 
 ## Entrypoints
 
-- `toolConfigureReportIssue()` in `cmd/dev-console/tools_configure_report_issue.go`
+- `toolConfigureReportIssue()` in `cmd/browser-agent/tools_configure_report_issue.go`
 
 ## Primary Flow
 
@@ -76,8 +76,8 @@ Covers the end-to-end flow from `configure(what="report_issue")` through diagnos
 
 ## Code Paths
 
-- `cmd/dev-console/tools_configure_report_issue.go`
-- `cmd/dev-console/tools_configure_registry.go`
+- `cmd/browser-agent/tools_configure_report_issue.go`
+- `cmd/browser-agent/tools_configure_registry.go`
 - `internal/issuereport/types.go`
 - `internal/issuereport/templates.go`
 - `internal/issuereport/sanitize.go`
@@ -85,7 +85,7 @@ Covers the end-to-end flow from `configure(what="report_issue")` through diagnos
 
 ## Test Paths
 
-- `cmd/dev-console/tools_configure_report_issue_test.go`
+- `cmd/browser-agent/tools_configure_report_issue_test.go`
 - `internal/issuereport/templates_test.go`
 - `internal/issuereport/sanitize_test.go`
 - `internal/issuereport/submit_test.go`

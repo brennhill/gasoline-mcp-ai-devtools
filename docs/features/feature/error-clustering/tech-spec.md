@@ -212,6 +212,6 @@ Framework frames are identified by path patterns: `node_modules/react`, `node_mo
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/clustering.go` (cluster formation, matching, lifecycle, MCP tool handler).
+Server implementation: `cmd/browser-agent/clustering.go` (cluster formation, matching, lifecycle, MCP tool handler).
 
-Tests: `cmd/dev-console/clustering_test.go`.
+Tests: `cmd/browser-agent/clustering_test.go`.

@@ -6,16 +6,16 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_configure.go
-  - cmd/dev-console/tools_configure_registry.go
-  - cmd/dev-console/tools_configure_session_handler.go
-  - cmd/dev-console/tools_configure_state_impl.go
-  - cmd/dev-console/tools_configure_sessions.go
+  - cmd/browser-agent/tools_configure.go
+  - cmd/browser-agent/tools_configure_registry.go
+  - cmd/browser-agent/tools_configure_session_handler.go
+  - cmd/browser-agent/tools_configure_state_impl.go
+  - cmd/browser-agent/tools_configure_sessions.go
   - internal/tools/configure/boundaries.go
   - internal/tools/configure/rewrite.go
 test_paths:
-  - cmd/dev-console/tools_configure_handler_test.go
-  - cmd/dev-console/tools_configure_session_test.go
+  - cmd/browser-agent/tools_configure_handler_test.go
+  - cmd/browser-agent/tools_configure_session_test.go
   - internal/tools/configure/boundaries_test.go
   - internal/tools/configure/rewrite_test.go
 last_verified_version: 0.7.12
@@ -47,17 +47,17 @@ last_verified_date: 2026-03-05
 ## Code and Tests
 
 - Configure dispatch and action registry:
-  - `cmd/dev-console/tools_configure.go`
-  - `cmd/dev-console/tools_configure_registry.go`
+  - `cmd/browser-agent/tools_configure.go`
+  - `cmd/browser-agent/tools_configure_registry.go`
 - Session/store sub-handler and implementations:
-  - `cmd/dev-console/tools_configure_session_handler.go`
-  - `cmd/dev-console/tools_configure_state_impl.go`
-  - `cmd/dev-console/tools_configure_sessions.go`
+  - `cmd/browser-agent/tools_configure_session_handler.go`
+  - `cmd/browser-agent/tools_configure_state_impl.go`
+  - `cmd/browser-agent/tools_configure_sessions.go`
 - Shared configure argument normalization/parsing:
   - `internal/tools/configure/boundaries.go`
   - `internal/tools/configure/rewrite.go`
 - Tests:
-  - `cmd/dev-console/tools_configure_handler_test.go`
-  - `cmd/dev-console/tools_configure_session_test.go`
+  - `cmd/browser-agent/tools_configure_handler_test.go`
+  - `cmd/browser-agent/tools_configure_session_test.go`
   - `internal/tools/configure/boundaries_test.go`
   - `internal/tools/configure/rewrite_test.go`

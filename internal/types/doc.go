@@ -24,7 +24,7 @@
 //   Layer 1: types (zero deps) ← YOU ARE HERE
 //   Layer 2: Domain packages (capture, ai, security, session, etc.)
 //   Layer 3: Composite packages (analysis, observation)
-//   Layer 4: Wiring (cmd/dev-console main, integration tests)
+//   Layer 4: Wiring (cmd/browser-agent main, integration tests)
 //
 // This layering ensures dependency flows only downward, preventing circular imports.
 package types

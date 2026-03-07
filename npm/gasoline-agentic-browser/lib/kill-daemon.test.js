@@ -41,13 +41,13 @@ test('cleanup targets legacy and current daemon names', () => {
   const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
   if (process.platform === 'win32') {
     assert.match(log, /gasoline\*\.exe/, 'expected cleanup to target gasoline*.exe');
-    assert.match(log, /dev-console\*\.exe/, 'expected cleanup to target legacy dev-console*.exe');
+    assert.match(log, /browser-agent\*\.exe/, 'expected cleanup to target legacy browser-agent*.exe');
     assert.match(log, /\[execFile\] gasoline-mcp --force/, 'expected cleanup to invoke gasoline-mcp --force');
     return;
   }
 
   assert.match(log, /\[pattern\] gasoline-mcp/, 'expected cleanup to target gasoline-mcp');
-  assert.match(log, /\[pattern\] dev-console/, 'expected cleanup to target legacy dev-console');
+  assert.match(log, /\[pattern\] browser-agent/, 'expected cleanup to target legacy browser-agent');
 });
 
 test('cleanup removes modern and legacy pid files', () => {

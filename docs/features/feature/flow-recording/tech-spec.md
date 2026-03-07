@@ -398,7 +398,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### Server Recording Storage (Go)
 
-**File:** `cmd/dev-console/recording.go` (new)
+**File:** `cmd/browser-agent/recording.go` (new)
 
 #### Responsibilities:
 - In-memory recording buffer (ring, max 100 recordings)
@@ -416,7 +416,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### Playback Engine (Go)
 
-**File:** `cmd/dev-console/playback.go` (new)
+**File:** `cmd/browser-agent/playback.go` (new)
 
 #### Responsibilities:
 - Load recording by ID
@@ -451,7 +451,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### WebSocket Migration (Go + TypeScript) — Phase 1
 
-**Files:** `cmd/dev-console/websocket.go` (new), `extension/src/ws.ts` (new)
+**Files:** `cmd/browser-agent/websocket.go` (new), `extension/src/ws.ts` (new)
 
 **Problem:** Current polling-based recording (extension polls GET /pending-queries every 200ms) introduces timing inaccuracy (~100-200ms jitter). Recording needs millisecond precision for accurate playback.
 
@@ -501,7 +501,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Element Selector Self-Healing (Go)
 
-**File:** `cmd/dev-console/playback.go` (in Playback section)
+**File:** `cmd/browser-agent/playback.go` (in Playback section)
 
 #### Strategy (Priority Order):
 1. Try data-testid match: `querySelector('[data-testid=X]')`
@@ -514,7 +514,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Log Diffing Engine (Go)
 
-**File:** `cmd/dev-console/log-diff.go` (new)
+**File:** `cmd/browser-agent/log-diff.go` (new)
 
 #### Responsibilities:
 - Query logs from both test boundaries
@@ -543,7 +543,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Test Boundary Tagging (Go)
 
-**File:** `cmd/dev-console/types.go` (modify existing)
+**File:** `cmd/browser-agent/types.go` (modify existing)
 
 Already implemented in prior work:
 - `Capture.activeTestIDs map[string]bool`
@@ -738,20 +738,20 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 | `extension/background/recording.js` | Recording lifecycle + metadata + server communication | ~150 LOC |
 | `extension/inject/recording.ts` | Extend action capture with recording metadata | ~150 LOC |
 | `extension/background/ws.js` | WebSocket client + fallback to polling | ~150 LOC |
-| `cmd/dev-console/recording.go` | Store + query recordings (disk I/O, file management) | ~250 LOC |
-| `cmd/dev-console/websocket.go` | WebSocket upgrade + broadcast + buffer management | ~150 LOC |
-| `cmd/dev-console/playback.go` | Replay actions + self-healing selectors | ~250 LOC |
-| `cmd/dev-console/log-diff.go` | Compare logs, detect regressions | ~180 LOC |
-| `cmd/dev-console/recording_test.go` | Unit tests (storage, playback, diffing) | ~450 LOC |
+| `cmd/browser-agent/recording.go` | Store + query recordings (disk I/O, file management) | ~250 LOC |
+| `cmd/browser-agent/websocket.go` | WebSocket upgrade + broadcast + buffer management | ~150 LOC |
+| `cmd/browser-agent/playback.go` | Replay actions + self-healing selectors | ~250 LOC |
+| `cmd/browser-agent/log-diff.go` | Compare logs, detect regressions | ~180 LOC |
+| `cmd/browser-agent/recording_test.go` | Unit tests (storage, playback, diffing) | ~450 LOC |
 | `tests/extension/recording.test.js` | Extension tests (capture, playback, metadata) | ~300 LOC |
 
 ### Modified Files
 
 | File | Changes | Impact |
 |------|---------|--------|
-| `cmd/dev-console/tools_core.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
-| `cmd/dev-console/queries.go` | Add handlers for recordings, recording_actions, WebSocket upgrade | ~60 LOC |
-| `cmd/dev-console/main.go` | Initialize WebSocket router | ~20 LOC |
+| `cmd/browser-agent/tools_core.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
+| `cmd/browser-agent/queries.go` | Add handlers for recordings, recording_actions, WebSocket upgrade | ~60 LOC |
+| `cmd/browser-agent/main.go` | Initialize WebSocket router | ~20 LOC |
 | `extension/inject/action-capture.ts` | Extend with recording metadata (selector, x/y, screenshots) | ~30 LOC |
 | `extension/background/index.js` | Initialize recording module | ~15 LOC |
 

@@ -263,7 +263,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/network-diff"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/actions-diff"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/performance-diff"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/dev-console/internal/session/dom-diff"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/browser-agent/internal/session/dom-diff"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/fragile-selectors"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session/playback"
 )

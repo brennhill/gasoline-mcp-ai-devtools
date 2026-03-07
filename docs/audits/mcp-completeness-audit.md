@@ -189,7 +189,7 @@ highlight, subtitle, save_state, load_state, list_states, delete_state, execute_
 
 ### 2.1 Grep Results
 
-Searched all Go source files in `cmd/dev-console/` for:
+Searched all Go source files in `cmd/browser-agent/` for:
 - `"not_implemented"` -- **0 matches** in source (only in test assertions that verify absence)
 - `"not implemented"` (case-insensitive) -- **0 matches** in source (only in test code that rejects them)
 - `"stub"` -- **0 matches** in source
@@ -235,7 +235,7 @@ Note: `toolAnalyzeLinkHealth` itself is NOT a stub -- it correctly queues a pend
 |----------|-----------|-------|
 | `toolCheckPerformance` | tools_observe.go:516-522 | **NOT dead** -- Referenced by `analyzeHandlers["performance"]` in tools_analyze.go:43. However, it is defined in tools_observe.go despite being exclusively used by the analyze tool. This is a code organization issue, not dead code. |
 
-No other unreferenced `tool*` or `handle*` functions found. All functions with `tool` or `handle` prefix in `cmd/dev-console/` are referenced by at least one handler map or called by another function.
+No other unreferenced `tool*` or `handle*` functions found. All functions with `tool` or `handle` prefix in `cmd/browser-agent/` are referenced by at least one handler map or called by another function.
 
 ### 3.2 Stale Integration Test References
 

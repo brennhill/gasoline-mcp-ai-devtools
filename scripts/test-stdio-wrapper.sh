@@ -5,7 +5,7 @@ set -euo pipefail
 
 PORT="${1:-7890}"
 NUM_CLIENTS=10
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 
 echo "════════════════════════════════════════════════════════════"
 echo "  MCP Wrapper Stdio Test - Connection Lifecycle Validation"

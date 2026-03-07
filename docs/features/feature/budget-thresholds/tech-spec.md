@@ -228,8 +228,8 @@ The server checks the config file's modification time every 30 seconds. If chang
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/budgets.go` (config loading, evaluation, MCP tool).
+Server implementation: `cmd/browser-agent/budgets.go` (config loading, evaluation, MCP tool).
 
 Config file: `.gasoline.json` or `.gasoline/budgets.json` at project root.
 
-Tests: `cmd/dev-console/budgets_test.go`.
+Tests: `cmd/browser-agent/budgets_test.go`.

@@ -22,9 +22,9 @@ canonical: true
 - require polling via `observe(command_result)`.
 
 Primary components:
-- Transport + MCP routing: `cmd/dev-console/handler.go`
-- Tool dispatch: `cmd/dev-console/tools_core.go`
-- Tool schemas: `cmd/dev-console/tools_schema.go`
+- Transport + MCP routing: `cmd/browser-agent/handler.go`
+- Tool dispatch: `cmd/browser-agent/tools_core.go`
+- Tool schemas: `cmd/browser-agent/tools_schema.go`
 - Queue/command lifecycle: `internal/capture/queries.go`
 - Unified extension sync channel: `internal/capture/sync.go`
 - Extension sync client: `src/background/sync-client.ts`
@@ -34,7 +34,7 @@ Primary components:
 
 ### 1. Passive read flow (`observe`)
 1. Client calls `tools/call` with `name:"observe"`.
-2. `toolObserve` dispatches by `what` in `cmd/dev-console/tools_observe.go`.
+2. `toolObserve` dispatches by `what` in `cmd/browser-agent/tools_observe.go`.
 3. Handler returns JSON payload from server buffers and metadata.
 
 ### 2. Active command flow (`analyze`/`interact`)
@@ -62,7 +62,7 @@ Primary components:
 - on extension disconnect, pending commands are marked `expired` with reason `extension_disconnected`.
 
 ## Sync-by-Default Behavior
-`maybeWaitForCommand` in `cmd/dev-console/tools_core.go` governs command waiting.
+`maybeWaitForCommand` in `cmd/browser-agent/tools_core.go` governs command waiting.
 - Default wait budget: 15s.
 - If still pending after wait: returns `status:"still_processing"` + `correlation_id`.
 - If `background=true` or `sync=false`/`wait=false`: returns queued response immediately.
@@ -76,13 +76,13 @@ Primary components:
 - `/query-result` remains available as compatibility endpoint.
 
 ## Canonical Code Paths
-- MCP route + methods: `cmd/dev-console/handler.go`
-- Tool dispatch switch: `cmd/dev-console/tools_core.go`
-- Observe dispatch map: `cmd/dev-console/tools_observe.go`
-- Analyze dispatch map: `cmd/dev-console/tools_analyze.go`
-- Configure dispatch map: `cmd/dev-console/tools_configure.go`
-- Interact dispatch map: `cmd/dev-console/tools_interact.go`
-- Generate dispatch map: `cmd/dev-console/tools_generate.go`
+- MCP route + methods: `cmd/browser-agent/handler.go`
+- Tool dispatch switch: `cmd/browser-agent/tools_core.go`
+- Observe dispatch map: `cmd/browser-agent/tools_observe.go`
+- Analyze dispatch map: `cmd/browser-agent/tools_analyze.go`
+- Configure dispatch map: `cmd/browser-agent/tools_configure.go`
+- Interact dispatch map: `cmd/browser-agent/tools_interact.go`
+- Generate dispatch map: `cmd/browser-agent/tools_generate.go`
 - Query dispatcher and command tracker: `internal/capture/queries.go`
 - Extension sync endpoint: `internal/capture/sync.go`
 - Extension command execution: `src/background/pending-queries.ts`

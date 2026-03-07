@@ -9,7 +9,7 @@ entrypoints:
   - scripts/install.sh
   - scripts/install.ps1
   - scripts/build-crx.js
-  - cmd/dev-console/native_install.go:runNativeInstall
+  - cmd/browser-agent/native_install.go:runNativeInstall
   - npm/gasoline-agentic-browser/lib/install.js:executeInstall
   - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py:run_install
 code_paths:
@@ -18,14 +18,14 @@ code_paths:
   - scripts/install.sh
   - scripts/install.ps1
   - server/scripts/install.js
-  - cmd/dev-console/native_install.go
+  - cmd/browser-agent/native_install.go
   - npm/gasoline-agentic-browser/lib/config.js
   - npm/gasoline-agentic-browser/lib/install.js
   - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
   - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
-  - cmd/dev-console/native_install_test.go
+  - cmd/browser-agent/native_install_test.go
   - npm/gasoline-agentic-browser/lib/install.test.js
   - pypi/gasoline-agentic-browser/tests/test_install.py
   - tests/extension/release-extension-zip.test.js
@@ -98,7 +98,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `scripts/install.sh`
 - `scripts/install.ps1`
 - `server/scripts/install.js`
-- `cmd/dev-console/native_install.go`
+- `cmd/browser-agent/native_install.go`
 - `npm/gasoline-agentic-browser/lib/config.js`
 - `npm/gasoline-agentic-browser/lib/install.js`
 - `pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py`
@@ -107,7 +107,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 
 ## Test Paths
 
-- `cmd/dev-console/native_install_test.go`
+- `cmd/browser-agent/native_install_test.go`
 - `npm/gasoline-agentic-browser/lib/install.test.js`
 - `pypi/gasoline-agentic-browser/tests/test_install.py`
 - `tests/extension/release-extension-zip.test.js`

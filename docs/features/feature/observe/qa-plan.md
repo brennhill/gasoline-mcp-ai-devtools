@@ -16,9 +16,9 @@ last_verified_date: 2026-03-05
 # Observe QA Plan (TARGET)
 
 ## Automated Coverage
-- `cmd/dev-console/tools_observe_handler_test.go`
-- `cmd/dev-console/tools_observe_blackbox_test.go`
-- `cmd/dev-console/tools_observe_audit_test.go`
+- `cmd/browser-agent/tools_observe_handler_test.go`
+- `cmd/browser-agent/tools_observe_blackbox_test.go`
+- `cmd/browser-agent/tools_observe_audit_test.go`
 - `extension/background/commands/observe.fullpage.test.js`
 
 ## Required Scenarios

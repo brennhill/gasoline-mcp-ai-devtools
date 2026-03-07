@@ -16,14 +16,14 @@ code_paths:
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
-  - cmd/dev-console/tools_schema_parity_test.go
-  - cmd/dev-console/tools_interact_navigate_document_test.go
-  - cmd/dev-console/tools_contract_enforcement_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_interact_navigate_document_test.go
+  - cmd/browser-agent/tools_contract_enforcement_test.go
 test_paths:
   - scripts/docs/check-feature-bundles.test.mjs
-  - cmd/dev-console/tools_schema_parity_test.go
-  - cmd/dev-console/tools_interact_navigate_document_test.go
-  - cmd/dev-console/tools_contract_enforcement_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_interact_navigate_document_test.go
+  - cmd/browser-agent/tools_contract_enforcement_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -75,16 +75,16 @@ Covers the fast, high-signal `verify-llm` quality gate for LLM maintenance loops
 - `scripts/docs/check-feature-bundles.js`
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
-- `cmd/dev-console/tools_schema_parity_test.go`
-- `cmd/dev-console/tools_interact_navigate_document_test.go`
-- `cmd/dev-console/tools_contract_enforcement_test.go`
+- `cmd/browser-agent/tools_schema_parity_test.go`
+- `cmd/browser-agent/tools_interact_navigate_document_test.go`
+- `cmd/browser-agent/tools_contract_enforcement_test.go`
 
 ## Test Paths
 
 - `scripts/docs/check-feature-bundles.test.mjs`
-- `cmd/dev-console/tools_schema_parity_test.go`
-- `cmd/dev-console/tools_interact_navigate_document_test.go`
-- `cmd/dev-console/tools_contract_enforcement_test.go`
+- `cmd/browser-agent/tools_schema_parity_test.go`
+- `cmd/browser-agent/tools_interact_navigate_document_test.go`
+- `cmd/browser-agent/tools_contract_enforcement_test.go`
 
 ## Edit Guardrails
 

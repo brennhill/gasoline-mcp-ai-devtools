@@ -6,17 +6,17 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/main_connection_mcp_upgrade.go:installBinaryUpgradeHooks
-  - cmd/dev-console/binary_watcher.go:startBinaryWatcher
+  - cmd/browser-agent/main_connection_mcp_upgrade.go:installBinaryUpgradeHooks
+  - cmd/browser-agent/binary_watcher.go:startBinaryWatcher
 code_paths:
-  - cmd/dev-console/main_connection_mcp_upgrade.go
-  - cmd/dev-console/binary_watcher.go
-  - cmd/dev-console/config_modes.go
-  - cmd/dev-console/binary_watcher_marker.go
-  - cmd/dev-console/health_response_builders.go
-  - cmd/dev-console/server_routes_health_diagnostics.go
+  - cmd/browser-agent/main_connection_mcp_upgrade.go
+  - cmd/browser-agent/binary_watcher.go
+  - cmd/browser-agent/config_modes.go
+  - cmd/browser-agent/binary_watcher_marker.go
+  - cmd/browser-agent/health_response_builders.go
+  - cmd/browser-agent/server_routes_health_diagnostics.go
 test_paths:
-  - cmd/dev-console/binary_watcher_test.go
+  - cmd/browser-agent/binary_watcher_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -56,16 +56,16 @@ Covers daemon self-upgrade detection based on on-disk binary changes, version ve
 
 ## Code Paths
 
-- `cmd/dev-console/main_connection_mcp_upgrade.go`
-- `cmd/dev-console/binary_watcher.go`
-- `cmd/dev-console/config_modes.go`
-- `cmd/dev-console/binary_watcher_marker.go`
-- `cmd/dev-console/health_response_builders.go`
-- `cmd/dev-console/server_routes_health_diagnostics.go`
+- `cmd/browser-agent/main_connection_mcp_upgrade.go`
+- `cmd/browser-agent/binary_watcher.go`
+- `cmd/browser-agent/config_modes.go`
+- `cmd/browser-agent/binary_watcher_marker.go`
+- `cmd/browser-agent/health_response_builders.go`
+- `cmd/browser-agent/server_routes_health_diagnostics.go`
 
 ## Test Paths
 
-- `cmd/dev-console/binary_watcher_test.go`
+- `cmd/browser-agent/binary_watcher_test.go`
 
 ## Edit Guardrails
 

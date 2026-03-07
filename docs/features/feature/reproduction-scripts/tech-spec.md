@@ -13,9 +13,9 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Replace the `toolGetReproductionScript()` stub in [tools_generate.go](cmd/dev-console/tools_generate.go) with a complete implementation that generates reproduction scripts from captured `EnhancedAction` data. Two output formats: Playwright (test code) and Gasoline (natural language).
+Replace the `toolGetReproductionScript()` stub in [tools_generate.go](cmd/browser-agent/tools_generate.go) with a complete implementation that generates reproduction scripts from captured `EnhancedAction` data. Two output formats: Playwright (test code) and Gasoline (natural language).
 
-All logic lives in a single new file: `cmd/dev-console/reproduction.go` (~250 LOC).
+All logic lives in a single new file: `cmd/browser-agent/reproduction.go` (~250 LOC).
 
 ---
 
@@ -69,7 +69,7 @@ The generation code reads from this map to produce the best possible description
 
 ## Implementation
 
-### New File: `cmd/dev-console/reproduction.go`
+### New File: `cmd/browser-agent/reproduction.go`
 
 **Size target:** ~250 LOC
 
@@ -279,9 +279,9 @@ func selectorRole(selectors map[string]any) (role, name string) {
 
 | File | Change | LOC |
 |------|--------|-----|
-| `cmd/dev-console/reproduction.go` | **NEW** — Core generation logic | ~250 |
-| `cmd/dev-console/reproduction_test.go` | **NEW** — Tests | ~300 |
-| `cmd/dev-console/tools_generate.go` | Update `toolGetReproductionScript()` to delegate to reproduction.go | ~5 |
+| `cmd/browser-agent/reproduction.go` | **NEW** — Core generation logic | ~250 |
+| `cmd/browser-agent/reproduction_test.go` | **NEW** — Tests | ~300 |
+| `cmd/browser-agent/tools_generate.go` | Update `toolGetReproductionScript()` to delegate to reproduction.go | ~5 |
 
 **Total new code:** ~555 LOC
 
@@ -308,7 +308,7 @@ func selectorRole(selectors map[string]any) (role, name string) {
 
 ### Integration Test
 
-Run via existing `go test ./cmd/dev-console/...` — the generate tool dispatch in `tools_generate.go` ensures the `reproduction` format reaches the new code.
+Run via existing `go test ./cmd/browser-agent/...` — the generate tool dispatch in `tools_generate.go` ensures the `reproduction` format reaches the new code.
 
 ---
 
@@ -327,5 +327,5 @@ Run via existing `go test ./cmd/dev-console/...` — the generate tool dispatch 
 1. Write `reproduction_test.go` with tests for both formats (TDD)
 2. Write `reproduction.go` — types, helpers, `generateGasolineScript()`, `generateReproPlaywrightScript()`
 3. Update `toolGetReproductionScript()` in `tools_generate.go` to call new code
-4. Run tests: `go test ./cmd/dev-console/... -run TestReproduction`
+4. Run tests: `go test ./cmd/browser-agent/... -run TestReproduction`
 5. Run full suite: `go test ./... -timeout 120s`

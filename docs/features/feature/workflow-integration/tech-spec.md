@@ -199,8 +199,8 @@ Agent: Here's the PR with the performance impact included.
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/workflow.go` (summary generation, HTTP endpoint, MCP tool).
+Server implementation: `cmd/browser-agent/workflow.go` (summary generation, HTTP endpoint, MCP tool).
 
 Persistent storage: `.gasoline/sessions/latest.json` and `.gasoline/sessions/archive/<timestamp>.json`.
 
-Tests: `cmd/dev-console/workflow_test.go`.
+Tests: `cmd/browser-agent/workflow_test.go`.

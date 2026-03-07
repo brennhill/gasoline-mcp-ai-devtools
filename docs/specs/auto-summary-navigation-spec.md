@@ -269,7 +269,7 @@ Silently ignored on non-navigation actions (click, type, etc.). Silently ignored
 
 ### 5.1 Go Changes
 
-**New file: `cmd/dev-console/tools_page_summary.go`**
+**New file: `cmd/browser-agent/tools_page_summary.go`**
 
 Extract `pageSummaryScript` from `tools_analyze.go` into its own file. Refactor to accept `mode` parameter. Add `login` and `error_page` classification. Add CTA extraction for compact mode.
 
@@ -293,7 +293,7 @@ func fullSummaryScript() string {
 }
 ```
 
-**Modify: `cmd/dev-console/tools_interact.go`**
+**Modify: `cmd/browser-agent/tools_interact.go`**
 
 Update `handleBrowserActionNavigate` to embed the compact summary script in the browser_action params:
 
@@ -324,11 +324,11 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 Same pattern for `handleBrowserActionRefresh`, `handleBrowserActionBack`, `handleBrowserActionForward`.
 
-**Modify: `cmd/dev-console/tools_analyze.go`**
+**Modify: `cmd/browser-agent/tools_analyze.go`**
 
 Update `toolAnalyzePageSummary` to use `fullSummaryScript()` instead of the raw constant.
 
-**Modify: `cmd/dev-console/tools_schema.go`**
+**Modify: `cmd/browser-agent/tools_schema.go`**
 
 Add `summary` parameter to the interact tool schema:
 
@@ -339,7 +339,7 @@ Add `summary` parameter to the interact tool schema:
 },
 ```
 
-**Modify: `cmd/dev-console/handler.go`**
+**Modify: `cmd/browser-agent/handler.go`**
 
 Update `serverInstructions` to mention auto-summary:
 
@@ -380,11 +380,11 @@ if (params.summary_script) {
 
 | File | Change | LOC Delta |
 |------|--------|-----------|
-| `cmd/dev-console/tools_page_summary.go` | **New** — extracted + refactored script | ~250 |
-| `cmd/dev-console/tools_interact.go` | Modify — embed script in navigate params | +30 |
-| `cmd/dev-console/tools_analyze.go` | Modify — use `fullSummaryScript()` | -165, +3 |
-| `cmd/dev-console/tools_schema.go` | Modify — add `summary` param | +4 |
-| `cmd/dev-console/handler.go` | Modify — update serverInstructions | +2 |
+| `cmd/browser-agent/tools_page_summary.go` | **New** — extracted + refactored script | ~250 |
+| `cmd/browser-agent/tools_interact.go` | Modify — embed script in navigate params | +30 |
+| `cmd/browser-agent/tools_analyze.go` | Modify — use `fullSummaryScript()` | -165, +3 |
+| `cmd/browser-agent/tools_schema.go` | Modify — add `summary` param | +4 |
+| `cmd/browser-agent/handler.go` | Modify — update serverInstructions | +2 |
 | `src/background/browser-actions.ts` | Modify — run summary_script after nav | +20 |
 
 ---
@@ -437,14 +437,14 @@ if (params.summary_script) {
 
 ### 8.1 Go Unit Tests
 
-**New file: `cmd/dev-console/tools_page_summary_test.go`**
+**New file: `cmd/browser-agent/tools_page_summary_test.go`**
 
 - `compactSummaryScript()` and `fullSummaryScript()` return valid JS (syntax check via `goja` or string validation)
 - Script string contains `mode` parameter handling
 - Compact mode omits `nav_links`, `word_count`
 - Full mode includes all fields
 
-**Modify: `cmd/dev-console/tools_interact_handler_test.go`**
+**Modify: `cmd/browser-agent/tools_interact_handler_test.go`**
 
 - Navigate with default params includes `summary_script` in queued query params
 - Navigate with `summary: false` omits `summary_script`
@@ -452,7 +452,7 @@ if (params.summary_script) {
 - Refresh/back/forward include `summary_script` by default
 - Click/type do NOT include `summary_script`
 
-**Modify: `cmd/dev-console/tools_interact_nav_test.go`**
+**Modify: `cmd/browser-agent/tools_interact_nav_test.go`**
 
 - Response with `summary` field passes through `formatCommandResult` unchanged
 - Response with `summary: null, summary_error: "..."` passes through correctly

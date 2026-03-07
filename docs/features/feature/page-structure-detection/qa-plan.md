@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 # Page Structure Detection QA Plan
 
 ## Automated Coverage
-- `cmd/dev-console/tools_analyze_page_structure_test.go`
+- `cmd/browser-agent/tools_analyze_page_structure_test.go`
 
 ## Required Scenarios
 1. Framework/global detection success path.

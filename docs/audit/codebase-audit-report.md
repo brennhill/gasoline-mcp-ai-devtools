@@ -874,7 +874,7 @@ export const DOM_QUERY_MAX_ELEMENTS = 100  // Why 100?
 ## Appendix: Files Reviewed
 
 ### Go Backend
-- `cmd/dev-console/main.go`
+- `cmd/browser-agent/main.go`
 - `internal/capture/types.go`
 - `internal/capture/handlers.go`
 - `internal/capture/queries.go`

@@ -24,7 +24,7 @@ Enhance reproduction scripts with screenshot insertion, data fixture generation,
 
 ### 1. Screenshot Insertion
 
-**File:** `cmd/dev-console/reproduction.go`
+**File:** `cmd/browser-agent/reproduction.go`
 
 When generating reproduction script, insert screenshot capture at key points:
 ```javascript
@@ -41,7 +41,7 @@ Option in MCP tool: `include_screenshots: true` (default false to keep scripts c
 
 ### 2. Data Fixture Generation
 
-**File:** `cmd/dev-console/reproduction.go`
+**File:** `cmd/browser-agent/reproduction.go`
 
 Extract API response data used during the session and generate fixture files:
 ```javascript
@@ -58,7 +58,7 @@ Option: `generate_fixtures: true`.
 
 ### 3. Visual Assertions
 
-**File:** `cmd/dev-console/reproduction.go`
+**File:** `cmd/browser-agent/reproduction.go`
 
 Add visual snapshot assertions at key checkpoints:
 ```javascript
@@ -69,7 +69,7 @@ Option: `visual_assertions: true`.
 
 ### 4. MCP Tool Updates
 
-**File:** `cmd/dev-console/tools_core.go`
+**File:** `cmd/browser-agent/tools_core.go`
 
 Update `generate` tool schema:
 ```json
@@ -87,7 +87,7 @@ Update `generate` tool schema:
 
 ## Tests
 
-**File:** `cmd/dev-console/reproduction_test.go`
+**File:** `cmd/browser-agent/reproduction_test.go`
 
 1. Screenshot insertion at correct points
 2. Fixture file generation from network data
@@ -100,7 +100,7 @@ Update `generate` tool schema:
 ## Verification
 
 ```bash
-go test -v ./cmd/dev-console/ -run Reproduction
+go test -v ./cmd/browser-agent/ -run Reproduction
 ```
 
 ---
@@ -109,6 +109,6 @@ go test -v ./cmd/dev-console/ -run Reproduction
 
 | File | Change |
 |------|--------|
-| `cmd/dev-console/reproduction.go` | Screenshot, fixture, assertion generation |
-| `cmd/dev-console/tools_core.go` | Update generate tool schema |
-| `cmd/dev-console/reproduction_test.go` | Test new options |
+| `cmd/browser-agent/reproduction.go` | Screenshot, fixture, assertion generation |
+| `cmd/browser-agent/tools_core.go` | Update generate tool schema |
+| `cmd/browser-agent/reproduction_test.go` | Test new options |

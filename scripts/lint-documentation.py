@@ -24,8 +24,8 @@ DOCS_DIR = CODE_DIR / "docs"
 
 # Historic code/doc path aliases after refactors.
 LEGACY_CODE_PATH_MAP = {
-    "cmd/dev-console/tools.go": "cmd/dev-console/tools_schema.go",
-    "cmd/dev-console/codegen.go": "cmd/dev-console/testgen.go",
+    "cmd/browser-agent/tools.go": "cmd/browser-agent/tools_schema.go",
+    "cmd/browser-agent/codegen.go": "cmd/browser-agent/testgen.go",
     "internal/session/sessions.go": "internal/session/types.go",
     "internal/capture/queries.go": "internal/capture/query_dispatcher.go",
     "internal/capture/recording.go": "internal/capture/recording_manager.go",

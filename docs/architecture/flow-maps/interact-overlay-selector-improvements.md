@@ -9,8 +9,8 @@ entrypoints:
   - scripts/templates/partials/_dom-overlay-helpers.tpl:findTopmostOverlay
   - src/background/dom-primitives-overlay.ts:domPrimitiveOverlay
   - scripts/templates/partials/_dom-selectors.tpl:resolveByText
-  - cmd/dev-console/tools_interact_dom.go:normalizeDOMActionArgs
-  - cmd/dev-console/tools_async_formatting.go:formatCompleteCommand
+  - cmd/browser-agent/tools_interact_dom.go:normalizeDOMActionArgs
+  - cmd/browser-agent/tools_async_formatting.go:formatCompleteCommand
   - src/background/dom-primitives-list-interactive.ts:domPrimitiveListInteractive
 code_paths:
   - scripts/templates/partials/_dom-overlay-helpers.tpl
@@ -20,14 +20,14 @@ code_paths:
   - src/background/dom-primitives-list-interactive.ts
   - src/background/dom-dispatch.ts
   - src/background/dom-types.ts
-  - cmd/dev-console/tools_interact_dom.go
-  - cmd/dev-console/tools_async_formatting.go
-  - cmd/dev-console/tools_async_result_normalization.go
-  - cmd/dev-console/tools_summary_pref.go
+  - cmd/browser-agent/tools_interact_dom.go
+  - cmd/browser-agent/tools_async_formatting.go
+  - cmd/browser-agent/tools_async_result_normalization.go
+  - cmd/browser-agent/tools_summary_pref.go
 test_paths:
   - extension/background/dom-primitives-overlay.test.js
-  - cmd/dev-console/tools_interact_handler_test.go
-  - cmd/dev-console/tools_async_enrich_test.go
+  - cmd/browser-agent/tools_interact_handler_test.go
+  - cmd/browser-agent/tools_async_enrich_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -95,15 +95,15 @@ Covers overlay dismiss loop detection (#444), cross-extension overlay detection 
 - `scripts/templates/partials/_dom-selectors.tpl` — Interactive child fallback in resolveByText
 - `src/background/dom-primitives-list-interactive.ts` — Distance calculation, proximity sort
 - `src/background/dom-dispatch.ts` — Routes overlay/intent/stability actions to extracted modules
-- `cmd/dev-console/tools_interact_dom.go` — near_* to scope_rect conversion
-- `cmd/dev-console/tools_async_result_normalization.go` — stripSummaryModeFields
-- `cmd/dev-console/tools_async_formatting.go` — Summary mode integration
+- `cmd/browser-agent/tools_interact_dom.go` — near_* to scope_rect conversion
+- `cmd/browser-agent/tools_async_result_normalization.go` — stripSummaryModeFields
+- `cmd/browser-agent/tools_async_formatting.go` — Summary mode integration
 
 ## Test Paths
 
 - `extension/background/dom-primitives-overlay.test.js` — 10 tests: loop detection (5), extension overlay (2), text= resolve (3)
-- `cmd/dev-console/tools_interact_handler_test.go` — Near params conversion (2 tests)
-- `cmd/dev-console/tools_async_enrich_test.go` — Summary mode stripping (3 tests)
+- `cmd/browser-agent/tools_interact_handler_test.go` — Near params conversion (2 tests)
+- `cmd/browser-agent/tools_async_enrich_test.go` — Summary mode stripping (3 tests)
 
 ## Edit Guardrails
 

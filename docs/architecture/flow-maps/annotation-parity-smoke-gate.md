@@ -81,9 +81,9 @@ This gate validates:
 2. `scripts/smoke-test.sh`
 3. `scripts/smoke-tests/annotation-parity-benchmark.sh`
 4. `package.json` (`smoke:annotation-parity`, `smoke:annotation-parity-suite`, `smoke:annotation-parity-benchmark`)
-5. `cmd/dev-console/server_routes_media_draw_mode.go`
-6. `cmd/dev-console/tools_analyze_annotations_handlers.go`
-7. `cmd/dev-console/tools_generate_annotations.go`
+5. `cmd/browser-agent/server_routes_media_draw_mode.go`
+6. `cmd/browser-agent/tools_analyze_annotations_handlers.go`
+7. `cmd/browser-agent/tools_generate_annotations.go`
 8. `scripts/tests/framework.sh`
 
 ## Test Paths

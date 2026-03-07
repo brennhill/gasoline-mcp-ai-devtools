@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 # Query DOM Tech Spec (TARGET)
 
 ## Server Path
-1. `toolQueryDOM` in `cmd/dev-console/tools_analyze.go` validates `selector`.
+1. `toolQueryDOM` in `cmd/browser-agent/tools_analyze.go` validates `selector`.
 2. Server queues pending query type `dom` with correlation ID.
 3. Wait/queue behavior is governed by `maybeWaitForCommand`.
 
@@ -43,7 +43,7 @@ last_verified_date: 2026-03-05
 - Content/inject failure -> structured command error in command result payload.
 
 ## Code Anchors
-- `cmd/dev-console/tools_analyze.go`
+- `cmd/browser-agent/tools_analyze.go`
 - `src/background/pending-queries.ts`
 - `src/content/message-handlers.ts`
 - `src/inject/message-handlers.ts`

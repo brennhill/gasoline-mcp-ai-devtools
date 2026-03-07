@@ -262,7 +262,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 | File | Changes |
 |------|---------|
 | `internal/capture/sync.go` | NEW - HandleSync implementation |
-| `cmd/dev-console/main.go` | Register /sync route |
+| `cmd/browser-agent/main.go` | Register /sync route |
 | `src/background/sync.ts` | NEW - Sync client implementation |
 | `src/background/polling.ts` | Remove consolidated polling loops |
 | `src/background/index.ts` | Switch to sync client |

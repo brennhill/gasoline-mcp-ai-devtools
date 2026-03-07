@@ -13,7 +13,7 @@ last_verified_date: 2026-03-05
 
 ## Automated Gates
 
-1. `go test ./cmd/dev-console -run Terminal -count=1`
+1. `go test ./cmd/browser-agent -run Terminal -count=1`
 2. `go test ./internal/pty/...`
 3. `node --test tests/extension/terminal-widget.test.js`
 4. `npm run docs:check:strict`

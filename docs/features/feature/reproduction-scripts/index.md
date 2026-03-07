@@ -6,7 +6,7 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/reproduction.go
+  - cmd/browser-agent/reproduction.go
   - src/lib/reproduction.ts
 test_paths: []
 last_verified_version: 0.7.12

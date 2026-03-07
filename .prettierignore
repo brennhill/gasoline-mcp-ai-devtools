@@ -5,7 +5,7 @@ coverage/
 coverage.out
 .gasoline/
 .worktrees/
-dev-console
+browser-agent
 gasoline-mcp
 extension.zip
 *.crx
@@ -21,12 +21,12 @@ go.mod
 go.sum
 *.md
 package-lock.json
-cmd/dev-console/testdata/
-cmd/dev-console/*.html
-cmd/dev-console/openapi.json
-cmd/dev-console/testpages/frameworks/*.bundle.js
-cmd/dev-console/testpages/frameworks/next/
-cmd/dev-console/testpages/_next/
+cmd/browser-agent/testdata/
+cmd/browser-agent/*.html
+cmd/browser-agent/openapi.json
+cmd/browser-agent/testpages/frameworks/*.bundle.js
+cmd/browser-agent/testpages/frameworks/next/
+cmd/browser-agent/testpages/_next/
 scripts/smoke-tests/*.sh
 scripts/smoke-test.sh
 scripts/smoke-tests/framework-fixtures/*.svelte

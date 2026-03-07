@@ -20,7 +20,7 @@ cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 set -e
 
 echo "🔍 Pre-commit checks..."
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 
 # Check if TypeScript source was modified
 if git diff --cached --name-only | grep -q "^src/.*\.ts$"; then

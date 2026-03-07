@@ -17,7 +17,7 @@ last_verified_date: 2026-03-05
 
 ## Dispatcher
 
-- Entry: `toolConfigureReportIssue` in `cmd/dev-console/tools_configure_report_issue.go`
+- Entry: `toolConfigureReportIssue` in `cmd/browser-agent/tools_configure_report_issue.go`
 - Registry: `configureHandlers["report_issue"]` in `tools_configure_registry.go`
 - Schema: `report_issue` in `internal/schema/configure_properties_runtime.go`
 - Mode spec: `report_issue` in `internal/tools/configure/mode_specs_configure.go`
@@ -58,8 +58,8 @@ The `Redact(string) string` method was added to the `RedactionEngine` interface 
 
 ## Code Anchors
 
-- `cmd/dev-console/tools_configure_report_issue.go`
-- `cmd/dev-console/tools_configure_report_issue_test.go`
+- `cmd/browser-agent/tools_configure_report_issue.go`
+- `cmd/browser-agent/tools_configure_report_issue_test.go`
 - `internal/issuereport/types.go`
 - `internal/issuereport/templates.go`
 - `internal/issuereport/sanitize.go`

@@ -88,10 +88,10 @@ Bridge startup now uses a single-host, lock-file startup leader election to conv
 
 Reference implementation:
 
-- `cmd/dev-console/bridge_startup_orchestration.go`
-- `cmd/dev-console/bridge_startup_lock.go`
-- `cmd/dev-console/bridge_startup_state.go`
-- `cmd/dev-console/bridge.go`
+- `cmd/browser-agent/bridge_startup_orchestration.go`
+- `cmd/browser-agent/bridge_startup_lock.go`
+- `cmd/browser-agent/bridge_startup_state.go`
+- `cmd/browser-agent/bridge.go`
 
 ## Response Format
 

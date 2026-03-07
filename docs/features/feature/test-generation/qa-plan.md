@@ -24,7 +24,7 @@ last_verified_date: 2026-03-05
 
 ### Test Location
 
-- **Go Server:** `cmd/dev-console/testgen_test.go`
+- **Go Server:** `cmd/browser-agent/testgen_test.go`
 
 ---
 

@@ -17,8 +17,8 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Entrypoints
 
-1. `analyze({what:"form_state"})` in `cmd/dev-console/tools_analyze_dispatch.go`.
-2. `analyze({what:"data_table"})` in `cmd/dev-console/tools_analyze_dispatch.go`.
+1. `analyze({what:"form_state"})` in `cmd/browser-agent/tools_analyze_dispatch.go`.
+2. `analyze({what:"data_table"})` in `cmd/browser-agent/tools_analyze_dispatch.go`.
 
 ## Primary Flow
 
@@ -49,9 +49,9 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Code Paths
 
-- `cmd/dev-console/tools_analyze_dispatch.go`
-- `cmd/dev-console/tools_analyze_inspect_forms.go`
-- `cmd/dev-console/tools_pending_query_enqueue.go`
+- `cmd/browser-agent/tools_analyze_dispatch.go`
+- `cmd/browser-agent/tools_analyze_inspect_forms.go`
+- `cmd/browser-agent/tools_pending_query_enqueue.go`
 - `internal/schema/analyze.go`
 - `internal/tools/configure/mode_specs_analyze.go`
 - `src/background/commands/analyze.ts`
@@ -65,9 +65,9 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Test Paths
 
-- `cmd/dev-console/tools_analyze_structured_extraction_test.go`
-- `cmd/dev-console/tools_analyze_inspect_test.go`
-- `cmd/dev-console/tools_pending_query_enqueue_test.go`
+- `cmd/browser-agent/tools_analyze_structured_extraction_test.go`
+- `cmd/browser-agent/tools_analyze_inspect_test.go`
+- `cmd/browser-agent/tools_pending_query_enqueue_test.go`
 - `internal/tools/analyze/forms_test.go`
 - `tests/extension/data-table.test.js`
 

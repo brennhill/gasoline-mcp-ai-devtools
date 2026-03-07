@@ -22,7 +22,7 @@ UPGRADE_PORT=19160
 build_version() {
     local ver="$1"
     local output="$2"
-    go build -ldflags "-X main.version=$ver" -o "$output" "$PROJECT_ROOT/cmd/dev-console/" 2>/dev/null
+    go build -ldflags "-X main.version=$ver" -o "$output" "$PROJECT_ROOT/cmd/browser-agent/" 2>/dev/null
 }
 
 # Kill any leftover on the upgrade test port

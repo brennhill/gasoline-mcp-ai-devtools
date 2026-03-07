@@ -6,15 +6,15 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/mcp_identity.go
-  - cmd/dev-console/bridge.go
-  - cmd/dev-console/bridge_startup_orchestration.go
+  - cmd/browser-agent/mcp_identity.go
+  - cmd/browser-agent/bridge.go
+  - cmd/browser-agent/bridge_startup_orchestration.go
   - internal/identity/mcp.go
   - internal/util/proc_unix.go
   - internal/util/proc_windows.go
 test_paths:
-  - cmd/dev-console/bridge_startup_contention_test.go
-  - cmd/dev-console/bridge_faststart_extended_test.go
+  - cmd/browser-agent/bridge_startup_contention_test.go
+  - cmd/browser-agent/bridge_faststart_extended_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

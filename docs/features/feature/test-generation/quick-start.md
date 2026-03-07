@@ -110,7 +110,7 @@ npm run demo
 
 ```bash
 # Run all tests
-go test -short ./cmd/dev-console/
+go test -short ./cmd/browser-agent/
 
 # Expected: 77 tests, all passing, ~2.9 seconds
 ```

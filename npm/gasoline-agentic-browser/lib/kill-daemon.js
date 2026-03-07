@@ -48,7 +48,7 @@ function safeExecFile(file, args) {
 
 function runForceCleanupCommands() {
   // Try installed CLIs first. --force uses the binary's own stop logic.
-  for (const binary of ['gasoline-mcp', 'gasoline', 'dev-console']) {
+  for (const binary of ['gasoline-mcp', 'gasoline', 'browser-agent']) {
     safeExecFile(binary, ['--force']);
   }
 }
@@ -56,7 +56,7 @@ function runForceCleanupCommands() {
 function killByProcessName() {
   if (process.platform === 'win32') {
     // Use wildcards so renamed test binaries (e.g. gasoline-old.exe) are cleaned too.
-    for (const image of ['gasoline*.exe', 'gasoline-mcp*.exe', 'dev-console*.exe']) {
+    for (const image of ['gasoline*.exe', 'gasoline-mcp*.exe', 'browser-agent*.exe']) {
       safeExec(`taskkill /F /IM ${image} 2>nul`);
     }
     return;
@@ -67,7 +67,7 @@ function killByProcessName() {
   const parentPid = process.ppid;
   const isNodeCmd = (cmd) => /\bnode(\s|$)/.test(cmd) || /\bnpm(\s|$)/.test(cmd);
 
-  for (const pattern of ['gasoline-mcp', 'dev-console', 'gasoline']) {
+  for (const pattern of ['gasoline-mcp', 'browser-agent', 'gasoline']) {
     logLine(`[pattern] ${pattern}`);
     if (DRY_RUN) continue;
     let output = '';
@@ -148,7 +148,7 @@ function cleanupPIDFiles() {
         if (entry.startsWith('gasoline-') && entry.endsWith('.pid')) {
           pidFiles.add(path.join(root, entry));
         }
-        if (entry.startsWith('dev-console-') && entry.endsWith('.pid')) {
+        if (entry.startsWith('browser-agent-') && entry.endsWith('.pid')) {
           pidFiles.add(path.join(root, entry));
         }
       }
@@ -162,7 +162,7 @@ function cleanupPIDFiles() {
       if (entry.startsWith('.gasoline-') && entry.endsWith('.pid')) {
         pidFiles.add(path.join(home, entry));
       }
-      if (entry.startsWith('.dev-console-') && entry.endsWith('.pid')) {
+      if (entry.startsWith('.browser-agent-') && entry.endsWith('.pid')) {
         pidFiles.add(path.join(home, entry));
       }
     }
@@ -173,10 +173,10 @@ function cleanupPIDFiles() {
   for (const port of KNOWN_PORTS) {
     for (const root of roots) {
       pidFiles.add(path.join(root, `gasoline-${port}.pid`));
-      pidFiles.add(path.join(root, `dev-console-${port}.pid`));
+      pidFiles.add(path.join(root, `browser-agent-${port}.pid`));
     }
     pidFiles.add(path.join(home, `.gasoline-${port}.pid`));
-    pidFiles.add(path.join(home, `.dev-console-${port}.pid`));
+    pidFiles.add(path.join(home, `.browser-agent-${port}.pid`));
   }
 
   for (const pidPath of pidFiles) {

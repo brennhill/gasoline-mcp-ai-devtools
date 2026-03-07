@@ -6,26 +6,26 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_observe.go:toolObserve
-  - cmd/dev-console/tool_dispatch_helpers.go:resolveToolMode
+  - cmd/browser-agent/tools_observe.go:toolObserve
+  - cmd/browser-agent/tool_dispatch_helpers.go:resolveToolMode
 code_paths:
-  - cmd/dev-console/tools_observe.go
-  - cmd/dev-console/tool_dispatch_helpers.go
-  - cmd/dev-console/tools_observe_registry.go
-  - cmd/dev-console/tools_observe_response.go
-  - cmd/dev-console/tools_observe_analysis.go
-  - cmd/dev-console/tools_shared_queries.go
+  - cmd/browser-agent/tools_observe.go
+  - cmd/browser-agent/tool_dispatch_helpers.go
+  - cmd/browser-agent/tools_observe_registry.go
+  - cmd/browser-agent/tools_observe_response.go
+  - cmd/browser-agent/tools_observe_analysis.go
+  - cmd/browser-agent/tools_shared_queries.go
   - internal/a11ysummary/summary.go
-  - cmd/dev-console/tools_observe_bundling.go
+  - cmd/browser-agent/tools_observe_bundling.go
   - internal/tools/observe/
 test_paths:
-  - cmd/dev-console/tools_observe_handler_test.go
-  - cmd/dev-console/tools_observe_blackbox_test.go
-  - cmd/dev-console/tools_observe_audit_test.go
-  - cmd/dev-console/tools_observe_analysis_test.go
+  - cmd/browser-agent/tools_observe_handler_test.go
+  - cmd/browser-agent/tools_observe_blackbox_test.go
+  - cmd/browser-agent/tools_observe_audit_test.go
+  - cmd/browser-agent/tools_observe_analysis_test.go
   - internal/a11ysummary/summary_test.go
-  - cmd/dev-console/tools_observe_unit_test.go
-  - cmd/dev-console/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_observe_unit_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -73,25 +73,25 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 
 ## Code Paths
 
-- `cmd/dev-console/tools_observe.go`
-- `cmd/dev-console/tool_dispatch_helpers.go`
-- `cmd/dev-console/tools_observe_registry.go`
-- `cmd/dev-console/tools_observe_response.go`
-- `cmd/dev-console/tools_observe_analysis.go`
-- `cmd/dev-console/tools_shared_queries.go`
-- `cmd/dev-console/tools_observe_bundling.go`
+- `cmd/browser-agent/tools_observe.go`
+- `cmd/browser-agent/tool_dispatch_helpers.go`
+- `cmd/browser-agent/tools_observe_registry.go`
+- `cmd/browser-agent/tools_observe_response.go`
+- `cmd/browser-agent/tools_observe_analysis.go`
+- `cmd/browser-agent/tools_shared_queries.go`
+- `cmd/browser-agent/tools_observe_bundling.go`
 - `internal/a11ysummary/summary.go`
 - `internal/tools/observe/`
 
 ## Test Paths
 
-- `cmd/dev-console/tools_observe_handler_test.go`
-- `cmd/dev-console/tools_observe_blackbox_test.go`
-- `cmd/dev-console/tools_observe_audit_test.go`
-- `cmd/dev-console/tools_observe_analysis_test.go`
+- `cmd/browser-agent/tools_observe_handler_test.go`
+- `cmd/browser-agent/tools_observe_blackbox_test.go`
+- `cmd/browser-agent/tools_observe_audit_test.go`
+- `cmd/browser-agent/tools_observe_analysis_test.go`
 - `internal/a11ysummary/summary_test.go`
-- `cmd/dev-console/tools_observe_unit_test.go`
-- `cmd/dev-console/tools_schema_parity_test.go`
+- `cmd/browser-agent/tools_observe_unit_test.go`
+- `cmd/browser-agent/tools_schema_parity_test.go`
 
 ## Edit Guardrails
 

@@ -123,7 +123,7 @@ Fix by running: make sync-version
 
 ### Go Binary: `--force` Flag
 
-**File:** `cmd/dev-console/main.go` and `cmd/dev-console/main_connection.go`
+**File:** `cmd/browser-agent/main.go` and `cmd/browser-agent/main_connection.go`
 
 The `--force` flag invokes `runForceCleanup()` which:
 
@@ -288,7 +288,7 @@ The sync-version Makefile target will automatically update:
 
 - `npm/gasoline-mcp/package.json` - Main package with daemon cleanup hooks
 - `npm/gasoline-mcp/lib/validate-versions.js` - Version validation script
-- `cmd/dev-console/main.go` - `--force` flag definition
-- `cmd/dev-console/main_connection.go` - `runForceCleanup()` implementation
+- `cmd/browser-agent/main.go` - `--force` flag definition
+- `cmd/browser-agent/main_connection.go` - `runForceCleanup()` implementation
 - `scripts/clean-old-daemons.sh` - User-friendly cleanup script
 - `Makefile` - sync-version and validate-deps-versions targets

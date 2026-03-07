@@ -13,9 +13,9 @@ last_verified_date: 2026-03-05
 
 ## Primary Components
 
-- `cmd/dev-console/terminal_server.go`
-- `cmd/dev-console/terminal_handlers.go`
-- `cmd/dev-console/terminal_assets/terminal.html`
+- `cmd/browser-agent/terminal_server.go`
+- `cmd/browser-agent/terminal_handlers.go`
+- `cmd/browser-agent/terminal_assets/terminal.html`
 - `src/content/ui/terminal-widget.ts`
 - `extension/content/ui/terminal-widget.js`
 - `internal/pty/manager.go`

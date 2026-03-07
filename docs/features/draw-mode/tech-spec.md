@@ -25,7 +25,7 @@ AI (MCP Client)
     v
 +---------------------+
 |   Go Server         |  <- Receives draw_mode_start via interact
-|  (cmd/dev-console)  |     Serves annotations via analyze
+|  (cmd/browser-agent)  |     Serves annotations via analyze
 +---------+-----------+
           | WebSocket + HTTP (localhost only)
           v
@@ -409,23 +409,23 @@ When `analyze({what: "annotations", wait: true})` is called:
 | `extension/content/draw-mode.js` | Canvas overlay, rectangle drawing, text input, DOM capture, annotation CRUD, persistence | ~500 |
 | `extension/content/draw-mode-export.js` | Screenshot capture with annotations, base64 encoding, result packaging | ~150 |
 | `extension/background/draw-mode-handler.js` | Message routing between content script and server, PendingQuery polling, result POST | ~100 |
-| `cmd/dev-console/tools_interact_draw.go` | `draw_mode_start` action handler in interact tool, PendingQuery creation | ~100 |
-| `cmd/dev-console/tools_analyze_annotations.go` | `annotations` and `annotation_detail` handlers in analyze tool, blocking wait logic | ~80 |
-| `cmd/dev-console/annotation_store.go` | In-memory annotation storage with TTL, correlation_id lookup, cleanup | ~100 |
+| `cmd/browser-agent/tools_interact_draw.go` | `draw_mode_start` action handler in interact tool, PendingQuery creation | ~100 |
+| `cmd/browser-agent/tools_analyze_annotations.go` | `annotations` and `annotation_detail` handlers in analyze tool, blocking wait logic | ~80 |
+| `cmd/browser-agent/annotation_store.go` | In-memory annotation storage with TTL, correlation_id lookup, cleanup | ~100 |
 
 ### Modified Files
 
 | File | Changes | LOC Added |
 |------|---------|-----------|
-| `cmd/dev-console/tools_interact.go` | Add `draw_mode_start` case to action switch | ~10 |
-| `cmd/dev-console/tools_analyze.go` | Add `annotations` and `annotation_detail` cases to what switch | ~15 |
-| `cmd/dev-console/tools_schema.go` | Register draw mode parameters in interact and analyze schemas | ~20 |
-| `cmd/dev-console/queries.go` | Add `/draw-mode-result` and `/annotation-detail-result` HTTP handlers | ~30 |
+| `cmd/browser-agent/tools_interact.go` | Add `draw_mode_start` case to action switch | ~10 |
+| `cmd/browser-agent/tools_analyze.go` | Add `annotations` and `annotation_detail` cases to what switch | ~15 |
+| `cmd/browser-agent/tools_schema.go` | Register draw mode parameters in interact and analyze schemas | ~20 |
+| `cmd/browser-agent/queries.go` | Add `/draw-mode-result` and `/annotation-detail-result` HTTP handlers | ~30 |
 | `extension/background/index.js` | Initialize draw-mode-handler, register message listeners | ~10 |
 | `extension/manifest.json` | No new permissions needed (uses existing activeTab + scripting) | ~5 |
 | `extension/popup/popup.js` | Add Draw Mode toggle button and state sync | ~20 |
 | `extension/popup/popup.html` | Add Draw Mode toggle UI element | ~6 |
-| `cmd/dev-console/testdata/mcp-tools-list.golden.json` | Update golden test data with new parameters | ~10 |
+| `cmd/browser-agent/testdata/mcp-tools-list.golden.json` | Update golden test data with new parameters | ~10 |
 
 ### Total
 

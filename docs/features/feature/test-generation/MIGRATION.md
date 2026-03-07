@@ -24,7 +24,7 @@ This document outlines the migration plan for adding test generation capabilitie
 
 #### Files to Create:
 ```
-cmd/dev-console/
+cmd/browser-agent/
 ├── testgen.go           # Test generation from context
 ├── testgen_heal.go      # Selector healing
 ├── testgen_classify.go  # Failure classification
@@ -33,7 +33,7 @@ cmd/dev-console/
 
 #### Files to Modify:
 ```
-cmd/dev-console/tools_core.go  # Add dispatch for new generate modes
+cmd/browser-agent/tools_core.go  # Add dispatch for new generate modes
 ```
 
 **Estimated LOC:** ~800-1000
@@ -140,7 +140,7 @@ Add to `getToolSchema()` for the generate tool:
 
 Run with:
 ```bash
-go test -v ./cmd/dev-console/ -run TestGen
+go test -v ./cmd/browser-agent/ -run TestGen
 ```
 
 Coverage targets:
@@ -151,7 +151,7 @@ Coverage targets:
 ### Integration Tests
 
 ```bash
-go test -v ./cmd/dev-console/ -run TestGenIntegration
+go test -v ./cmd/browser-agent/ -run TestGenIntegration
 ```
 
 ### Manual Testing

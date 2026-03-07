@@ -89,22 +89,22 @@ AI stops watchdog (or duration elapses)
 
 **Server changes** (files affected):
 
-`cmd/dev-console/types.go`:
+`cmd/browser-agent/types.go`:
 - Add `WatchdogSession` struct containing session state
 - Add `WatchdogAlert` struct containing alert details
 - Add `WatchdogThresholds` struct containing configurable thresholds
 
-`cmd/dev-console/configure.go`:
+`cmd/browser-agent/configure.go`:
 - Add handler for `action: "watchdog"` with sub-actions: `start`, `status`, `stop`
 - Start creates session, captures baseline, spawns checker goroutine
 - Status returns current session state with alerts
 - Stop terminates session, generates summary
 
-`cmd/dev-console/observe.go`:
+`cmd/browser-agent/observe.go`:
 - Add handler for `what: "deployment_status"` returning active watchdogs and recent completions
 - Modify `what: "changes"` to include `deployment_alerts` field from active watchdogs
 
-`cmd/dev-console/watchdog.go` (new file):
+`cmd/browser-agent/watchdog.go` (new file):
 - `WatchdogManager` struct with mutex-protected map of active sessions
 - `captureBaseline()` function: captures current telemetry snapshot
 - `regressionChecker()` goroutine: evaluates telemetry every 30s

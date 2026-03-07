@@ -1,6 +1,6 @@
 # Build artifacts
 dist/
-/dev-console
+/browser-agent
 /gasoline-mcp*
 /verify-bin
 *.test
@@ -81,7 +81,7 @@ cookwithgasoline.com/dist/
 cookwithgasoline.com/.astro/
 
 # Generated framework smoke fixtures
-cmd/dev-console/testpages/frameworks/
-cmd/dev-console/testpages/_next/
+cmd/browser-agent/testpages/frameworks/
+cmd/browser-agent/testpages/_next/
 scripts/smoke-tests/framework-fixtures/next-app/.next/
 scripts/smoke-tests/framework-fixtures/next-app/out/

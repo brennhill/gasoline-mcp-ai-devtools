@@ -7,7 +7,7 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
 cd "$PROJECT_ROOT"
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 VERSION_RAW="$(tr -d '[:space:]' < "$PROJECT_ROOT/VERSION" 2>/dev/null || true)"
 VERSION_TAG="$(echo "$VERSION_RAW" | tr -cd '0-9')"

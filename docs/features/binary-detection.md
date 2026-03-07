@@ -24,7 +24,7 @@ Detect binary formats (protobuf, MessagePack, CBOR, etc.) in network bodies and 
 
 ### 1. Format Detection
 
-**File:** `cmd/dev-console/binary.go` (new)
+**File:** `cmd/browser-agent/binary.go` (new)
 
 ```go
 // binary.go — Binary format detection via magic bytes.
@@ -71,7 +71,7 @@ func DetectBinaryFormat(data []byte) *BinaryFormat {
 
 ### 2. Integration Points
 
-**File:** `cmd/dev-console/network.go`
+**File:** `cmd/browser-agent/network.go`
 
 When body is binary (not UTF-8), call `DetectBinaryFormat()` and include in response:
 ```go
@@ -81,7 +81,7 @@ if format := DetectBinaryFormat(body); format != nil {
 }
 ```
 
-**File:** `cmd/dev-console/websocket.go`
+**File:** `cmd/browser-agent/websocket.go`
 
 Same for WebSocket binary messages.
 
@@ -89,7 +89,7 @@ Same for WebSocket binary messages.
 
 ## Tests
 
-**File:** `cmd/dev-console/binary_test.go` (new)
+**File:** `cmd/browser-agent/binary_test.go` (new)
 
 1. MessagePack detection with sample payloads
 2. Protobuf detection with wire-type patterns
@@ -103,7 +103,7 @@ Same for WebSocket binary messages.
 ## Verification
 
 ```bash
-go test -v ./cmd/dev-console/ -run Binary
+go test -v ./cmd/browser-agent/ -run Binary
 ```
 
 ---
@@ -112,7 +112,7 @@ go test -v ./cmd/dev-console/ -run Binary
 
 | File | Change |
 |------|--------|
-| `cmd/dev-console/binary.go` | New file — format detection |
-| `cmd/dev-console/network.go` | Call DetectBinaryFormat |
-| `cmd/dev-console/websocket.go` | Call DetectBinaryFormat |
-| `cmd/dev-console/binary_test.go` | New file |
+| `cmd/browser-agent/binary.go` | New file — format detection |
+| `cmd/browser-agent/network.go` | Call DetectBinaryFormat |
+| `cmd/browser-agent/websocket.go` | Call DetectBinaryFormat |
+| `cmd/browser-agent/binary_test.go` | New file |

@@ -118,11 +118,11 @@ Tutorial snippets (`configure(what:"examples")`) include a filtering example.
 | `internal/tools/configure/mode_specs.go` | `toolModeSpecs` — per-mode `{Hint, Required, Optional}` for all 5 tools |
 | `internal/tools/configure/capabilities.go` | `BuildCapabilitiesSummary`, `BuildCapabilitiesMap`, `BuildCapabilitiesForTool`, `FilterToolByMode` |
 | `internal/tools/configure/mode_specs_test.go` | Validates specs match schemas, all modes have hints, no unknown params |
-| `cmd/dev-console/tools_configure.go` | `handleDescribeCapabilities` handler |
-| `cmd/dev-console/tools_configure_capabilities_test.go` | Handler integration tests |
-| `cmd/dev-console/playbooks.go` + `cmd/dev-console/playbooks_*.go` | `capabilityIndex` plus capability-specific playbook content |
-| `cmd/dev-console/playbooks_resolver.go` | Canonical playbook URI resolution + alias normalization |
-| `cmd/dev-console/tools_configure_tutorial.go` | Tutorial snippet with filtering example |
+| `cmd/browser-agent/tools_configure.go` | `handleDescribeCapabilities` handler |
+| `cmd/browser-agent/tools_configure_capabilities_test.go` | Handler integration tests |
+| `cmd/browser-agent/playbooks.go` + `cmd/browser-agent/playbooks_*.go` | `capabilityIndex` plus capability-specific playbook content |
+| `cmd/browser-agent/playbooks_resolver.go` | Canonical playbook URI resolution + alias normalization |
+| `cmd/browser-agent/tools_configure_tutorial.go` | Tutorial snippet with filtering example |
 
 ### Data flow
 

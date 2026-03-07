@@ -6,15 +6,15 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_configure_network_recording.go:toolConfigureNetworkRecording
+  - cmd/browser-agent/tools_configure_network_recording.go:toolConfigureNetworkRecording
 code_paths:
-  - cmd/dev-console/tools_configure_network_recording.go
-  - cmd/dev-console/tools_configure_network_recording_state.go
-  - cmd/dev-console/tools_configure_network_recording_filters.go
+  - cmd/browser-agent/tools_configure_network_recording.go
+  - cmd/browser-agent/tools_configure_network_recording_state.go
+  - cmd/browser-agent/tools_configure_network_recording_filters.go
   - internal/capture/network_bodies.go
 test_paths:
-  - cmd/dev-console/tools_configure_network_recording_test.go
-  - cmd/dev-console/tools_configure_handler_test.go
+  - cmd/browser-agent/tools_configure_network_recording_test.go
+  - cmd/browser-agent/tools_configure_handler_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -53,15 +53,15 @@ Covers `configure(what:"network_recording")` lifecycle and filtering of captured
 
 ## Code Paths
 
-- `cmd/dev-console/tools_configure_network_recording.go`
-- `cmd/dev-console/tools_configure_network_recording_state.go`
-- `cmd/dev-console/tools_configure_network_recording_filters.go`
+- `cmd/browser-agent/tools_configure_network_recording.go`
+- `cmd/browser-agent/tools_configure_network_recording_state.go`
+- `cmd/browser-agent/tools_configure_network_recording_filters.go`
 - `internal/capture/network_bodies.go`
 
 ## Test Paths
 
-- `cmd/dev-console/tools_configure_network_recording_test.go`
-- `cmd/dev-console/tools_configure_handler_test.go`
+- `cmd/browser-agent/tools_configure_network_recording_test.go`
+- `cmd/browser-agent/tools_configure_handler_test.go`
 
 ## Edit Guardrails
 

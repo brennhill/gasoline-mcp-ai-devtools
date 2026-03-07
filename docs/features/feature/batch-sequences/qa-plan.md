@@ -10,8 +10,8 @@ last_verified_date: 2026-03-05
 # Batch Sequences QA Plan
 
 ## Automated Coverage
-- `cmd/dev-console/tools_interact_batch_test.go`
-- `cmd/dev-console/tools_configure_sequence_test.go`
+- `cmd/browser-agent/tools_interact_batch_test.go`
+- `cmd/browser-agent/tools_configure_sequence_test.go`
 
 ## Required Scenarios
 1. Successful ordered batch execution with mixed actions.

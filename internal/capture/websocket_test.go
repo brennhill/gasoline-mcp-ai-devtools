@@ -405,22 +405,22 @@ func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
 
 func TestMCPGetWebSocketEvents(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestMCPGetWebSocketStatus(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestV4ConnectionDurationFormatted(t *testing.T) {
@@ -875,19 +875,19 @@ func TestV4FormatDuration_Zero(t *testing.T) {
 // Test: toolGetWSStatus with connection_id filter.
 func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 // Test: toolGetWSStatus with url filter.
 func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 // Test: toolGetWSStatus with both connection_id and url filter (connection_id takes precedence).
 func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 // ============================================
@@ -1034,5 +1034,5 @@ func TestV4FormatDuration_ExactHours(t *testing.T) {
 // Test: toolGetWSStatus with invalid arguments JSON returns error message.
 func TestV4ToolGetWSStatus_InvalidArgs(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("MCPHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }

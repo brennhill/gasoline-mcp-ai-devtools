@@ -18,7 +18,7 @@ Enrichment of annotation detail responses with parent/sibling DOM context, CSS f
 ## Entrypoints
 
 1. **Extension:** `buildElementDetail()` in `extension/content/draw-mode.js` — captures DOM context when user draws annotations
-2. **Go Handler:** `toolGetAnnotationDetail()` in `cmd/dev-console/tools_analyze_annotations_handlers.go` — returns enriched detail to LLM
+2. **Go Handler:** `toolGetAnnotationDetail()` in `cmd/browser-agent/tools_analyze_annotations_handlers.go` — returns enriched detail to LLM
 3. **Session Hints:** `buildAnnotationSessionResult()` / `buildNamedAnnotationSessionResult()` — adds LLM checklist hints
 
 ## Primary Flow
@@ -71,10 +71,10 @@ When LLM calls `analyze({what:'annotations'})`:
 |-----------|------|
 | Extension DOM capture | `extension/content/draw-mode.js` — `buildElementDetail()`, `detectCSSFramework()`, `collectSelectorCandidates()`, `detectComponentSource()` |
 | Go Detail struct | `internal/annotation/store.go` — `Detail` struct |
-| Go handler + enrichment | `cmd/dev-console/tools_analyze_annotations_handlers.go` |
-| Detail/session hints | `cmd/dev-console/tools_analyze_annotations_hints.go` — `buildSessionHints()`, `buildDetailHints()` |
-| Visual test generation | `cmd/dev-console/tools_generate_annotations_visual.go` — `resolveAnnotationLocator` output + selector fallback |
-| Error correlation | `cmd/dev-console/tools_analyze_annotations_handlers.go` — `findAnnotationTimestamp()`, `findErrorsNearTimestamp()` |
+| Go handler + enrichment | `cmd/browser-agent/tools_analyze_annotations_handlers.go` |
+| Detail/session hints | `cmd/browser-agent/tools_analyze_annotations_hints.go` — `buildSessionHints()`, `buildDetailHints()` |
+| Visual test generation | `cmd/browser-agent/tools_generate_annotations_visual.go` — `resolveAnnotationLocator` output + selector fallback |
+| Error correlation | `cmd/browser-agent/tools_analyze_annotations_handlers.go` — `findAnnotationTimestamp()`, `findErrorsNearTimestamp()` |
 
 ## Test Paths
 
@@ -82,10 +82,10 @@ When LLM calls `analyze({what:'annotations'})`:
 |-----------|------|
 | Extension enrichments | `tests/extension/draw-mode.test.js` — "Element Detail Enrichment" describe block (`selector_candidates`, `js_framework`, `component`) |
 | Go TTL change | `internal/annotation/store_test.go` — `TestStore_SessionTTL_Is2Hours` |
-| Go handler fields | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_NewEnrichmentFields`, `*_NewFieldsAbsentWhenEmpty`, `*_Hints_RuntimeFramework` |
-| Generated locator fallback | `cmd/dev-console/tools_generate_annotations_test.go` — `TestGenerate_VisualTest_UsesSelectorCandidates` |
-| Error correlation | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_ErrorCorrelation`, `*_ErrorCorrelation_NoErrors` |
-| LLM hints | `cmd/dev-console/tools_analyze_annotations_test.go` — `TestToolGetAnnotations_SessionHints_*`, `TestToolGetAnnotationDetail_Hints_*`, `*_NoHints_*`, `*_NamedSessionHints` |
+| Go handler fields | `cmd/browser-agent/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_NewEnrichmentFields`, `*_NewFieldsAbsentWhenEmpty`, `*_Hints_RuntimeFramework` |
+| Generated locator fallback | `cmd/browser-agent/tools_generate_annotations_test.go` — `TestGenerate_VisualTest_UsesSelectorCandidates` |
+| Error correlation | `cmd/browser-agent/tools_analyze_annotations_test.go` — `TestToolGetAnnotationDetail_ErrorCorrelation`, `*_ErrorCorrelation_NoErrors` |
+| LLM hints | `cmd/browser-agent/tools_analyze_annotations_test.go` — `TestToolGetAnnotations_SessionHints_*`, `TestToolGetAnnotationDetail_Hints_*`, `*_NoHints_*`, `*_NamedSessionHints` |
 
 ## Edit Guardrails
 

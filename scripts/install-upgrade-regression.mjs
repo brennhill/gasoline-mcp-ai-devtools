@@ -252,7 +252,7 @@ async function main() {
     GASOLINE_RELEASES_URL: 'http://127.0.0.1:1/releases/latest'
   }
 
-  const cmdPkg = process.env.GASOLINE_CMD_PKG || './cmd/dev-console'
+  const cmdPkg = process.env.GASOLINE_CMD_PKG || './cmd/browser-agent'
   info('building old/new binaries')
   run('go', ['build', '-ldflags', '-X main.version=0.0.1', '-o', oldBinary, cmdPkg], {
     env: envBase
@@ -264,7 +264,7 @@ async function main() {
   writeShim(binDir, 'gasoline-mcp', newBinary)
   writeShim(binDir, 'gasoline-agentic-devtools', newBinary)
   writeShim(binDir, 'gasoline', newBinary)
-  writeShim(binDir, 'dev-console', newBinary)
+  writeShim(binDir, 'browser-agent', newBinary)
   const envWithShims = {
     ...envBase,
     PATH: `${binDir}${path.delimiter}${process.env.PATH || ''}`

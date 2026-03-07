@@ -64,7 +64,7 @@ class BinaryNotFoundError(GasolineError):
         msg = f"Gasoline binary not found at {expected_path}"
         recovery = (
             "Reinstall: pip install -U gasoline-agentic-browser\n"
-            "Or build from source: go build ./cmd/dev-console"
+            "Or build from source: go build ./cmd/browser-agent"
         )
         super().__init__(msg, recovery)
         self.name = "BinaryNotFoundError"

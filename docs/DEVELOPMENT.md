@@ -154,7 +154,7 @@ npx eslint extension/ --fix
 make security-check
 
 # Verbose gosec output
-gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
+gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/browser-agent/
 ```
 
 ### Update Dependencies
@@ -171,9 +171,9 @@ make verify-zero-deps
 
 | Target | Description |
 |--------|-------------|
-| `test-go-quick` | Fast Go lane (`-short`) with sharded `cmd/dev-console` |
-| `test-go-long` | Full Go lane with sharded `cmd/dev-console` |
-| `test-go-sharded` | Run only `cmd/dev-console` tests in parallel shards |
+| `test-go-quick` | Fast Go lane (`-short`) with sharded `cmd/browser-agent` |
+| `test-go-long` | Full Go lane with sharded `cmd/browser-agent` |
+| `test-go-sharded` | Run only `cmd/browser-agent` tests in parallel shards |
 | `lint` | Run all linters (lint-go + lint-js) |
 | `lint-go` | Go vet + golangci-lint |
 | `lint-js` | ESLint on extension code |
@@ -207,6 +207,6 @@ go install github.com/securego/gosec/v2/cmd/gosec@latest
 Add tests for uncovered code paths. Check coverage report:
 
 ```bash
-go test -coverprofile=coverage.out ./cmd/dev-console/...
+go test -coverprofile=coverage.out ./cmd/browser-agent/...
 go tool cover -html=coverage.out
 ```

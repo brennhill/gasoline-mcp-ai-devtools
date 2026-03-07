@@ -794,11 +794,11 @@ test('handles 401 response gracefully', async () => {
 
 | File | Changes |
 |------|---------|
-| `cmd/dev-console/auth.go` | Replace existing middleware with enhanced version |
-| `cmd/dev-console/auth_test.go` | New test file for auth middleware |
-| `cmd/dev-console/main.go` | Add CLI flags, wire up middleware |
-| `cmd/dev-console/config.go` | Add auth config parsing (env, flags, key file) |
-| `cmd/dev-console/audit.go` | Add auth attempt logging |
+| `cmd/browser-agent/auth.go` | Replace existing middleware with enhanced version |
+| `cmd/browser-agent/auth_test.go` | New test file for auth middleware |
+| `cmd/browser-agent/main.go` | Add CLI flags, wire up middleware |
+| `cmd/browser-agent/config.go` | Add auth config parsing (env, flags, key file) |
+| `cmd/browser-agent/audit.go` | Add auth attempt logging |
 | `extension/background.js` | Include API key in requests |
 | `extension/options.html` | Add API key input field |
 | `extension/options.js` | Handle API key storage |

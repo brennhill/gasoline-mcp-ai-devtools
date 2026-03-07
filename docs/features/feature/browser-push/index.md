@@ -7,19 +7,19 @@ owners: []
 last_reviewed: 2026-03-05
 code_paths:
   - internal/push/
-  - cmd/dev-console/push_state.go
-  - cmd/dev-console/push_sender.go
-  - cmd/dev-console/push_handlers.go
-  - cmd/dev-console/tools_observe_inbox.go
+  - cmd/browser-agent/push_state.go
+  - cmd/browser-agent/push_sender.go
+  - cmd/browser-agent/push_handlers.go
+  - cmd/browser-agent/tools_observe_inbox.go
   - src/background/push-handler.ts
   - src/content/ui/chat-widget.ts
 test_paths:
   - internal/push/inbox_test.go
   - internal/push/router_test.go
   - internal/push/sampling_test.go
-  - cmd/dev-console/push_state_test.go
-  - cmd/dev-console/push_handlers_test.go
-  - cmd/dev-console/tools_observe_inbox_test.go
+  - cmd/browser-agent/push_state_test.go
+  - cmd/browser-agent/push_handlers_test.go
+  - cmd/browser-agent/tools_observe_inbox_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -62,10 +62,10 @@ Push browser content (annotations, screenshots, chat messages) to the AI automat
 | `internal/push/inbox.go` | Bounded FIFO queue (50 events) | `inbox_test.go` (8 tests) |
 | `internal/push/router.go` | Delivery router: sampling→notification→inbox | `router_test.go` (6 tests) |
 | `internal/push/sampling.go` | MCP sampling/createMessage builder | `sampling_test.go` (5 tests) |
-| `cmd/dev-console/push_state.go` | Bridge↔daemon shared capability state | `push_state_test.go` (5 tests) |
-| `cmd/dev-console/push_sender.go` | Stdio sampling sender and notifier | — |
-| `cmd/dev-console/push_handlers.go` | HTTP endpoint handlers | `push_handlers_test.go` (10 tests) |
-| `cmd/dev-console/tools_observe_inbox.go` | observe(inbox) handler + piggyback | `tools_observe_inbox_test.go` (6 tests) |
+| `cmd/browser-agent/push_state.go` | Bridge↔daemon shared capability state | `push_state_test.go` (5 tests) |
+| `cmd/browser-agent/push_sender.go` | Stdio sampling sender and notifier | — |
+| `cmd/browser-agent/push_handlers.go` | HTTP endpoint handlers | `push_handlers_test.go` (10 tests) |
+| `cmd/browser-agent/tools_observe_inbox.go` | observe(inbox) handler + piggyback | `tools_observe_inbox_test.go` (6 tests) |
 
 ### TypeScript (extension)
 

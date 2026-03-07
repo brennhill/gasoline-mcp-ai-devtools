@@ -12,11 +12,11 @@ last_verified_date: 2026-03-05
 # Analyze Tech Spec
 
 ## Dispatcher and Handler Topology
-- Dispatch entrypoint: `toolAnalyze` in `cmd/dev-console/tools_analyze_dispatch.go`.
-- Mode routing table: `analyzeHandlers` in `cmd/dev-console/tools_analyze_dispatch.go`.
-- Annotation handlers: `cmd/dev-console/tools_analyze_annotations_handlers.go`.
-- API validation handlers: `cmd/dev-console/tools_analyze_api_validation.go`.
-- Async command-result polling: `cmd/dev-console/tools_async_observe_commands.go`.
+- Dispatch entrypoint: `toolAnalyze` in `cmd/browser-agent/tools_analyze_dispatch.go`.
+- Mode routing table: `analyzeHandlers` in `cmd/browser-agent/tools_analyze_dispatch.go`.
+- Annotation handlers: `cmd/browser-agent/tools_analyze_annotations_handlers.go`.
+- API validation handlers: `cmd/browser-agent/tools_analyze_api_validation.go`.
+- Async command-result polling: `cmd/browser-agent/tools_async_observe_commands.go`.
 
 ## Query-Type Mapping
 - `dom` -> pending query type `dom`
@@ -59,10 +59,10 @@ last_verified_date: 2026-03-05
   - `annotations`: `flush`
 
 ## Code Anchors
-- `cmd/dev-console/tools_analyze_dispatch.go`
-- `cmd/dev-console/tools_analyze_annotations_handlers.go`
-- `cmd/dev-console/tools_async_observe_commands.go`
-- `cmd/dev-console/tools_async_formatting.go`
+- `cmd/browser-agent/tools_analyze_dispatch.go`
+- `cmd/browser-agent/tools_analyze_annotations_handlers.go`
+- `cmd/browser-agent/tools_async_observe_commands.go`
+- `cmd/browser-agent/tools_async_formatting.go`
 - `internal/annotation/store.go`
 - `internal/annotation/store_results.go`
 - `internal/annotation/store_wait.go`

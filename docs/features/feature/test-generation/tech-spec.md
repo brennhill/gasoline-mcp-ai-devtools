@@ -141,7 +141,7 @@ Concurrency is enforced via semaphores in the Go server. Excess requests are que
 **Rationale:** This reduces `ToolHandler` coupling and keeps parsing/dispatch concerns separate from testgen domain logic. The split is now established and preferred.
 
 ```
-cmd/dev-console/
+cmd/browser-agent/
 ├── tools_generate.go                    # generate mode router (calls h.testGen())
 ├── tools_generate_testgen_handler.go    # testGenHandler wiring/accessor
 ├── testgen.go                           # test_from_context

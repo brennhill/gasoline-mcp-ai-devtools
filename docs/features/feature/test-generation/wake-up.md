@@ -160,8 +160,8 @@ Any of these are fair questions:
 ## Files Created
 
 ### Implementation
-- `cmd/dev-console/testgen.go` (1,693 lines)
-- `cmd/dev-console/testgen_test.go` (2,996 lines)
+- `cmd/browser-agent/testgen.go` (1,693 lines)
+- `cmd/browser-agent/testgen_test.go` (2,996 lines)
 
 ### Documentation
 1. `product-spec.md` — Feature requirements
@@ -186,10 +186,10 @@ Any of these are fair questions:
 ```bash
 # Verify implementation compiles
 cd ~/dev/gasoline
-go build ./cmd/dev-console/
+go build ./cmd/browser-agent/
 
 # Verify tests pass
-go test -short ./cmd/dev-console/
+go test -short ./cmd/browser-agent/
 
 # Expected: All tests pass in ~2.5 seconds
 ```

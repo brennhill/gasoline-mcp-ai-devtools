@@ -319,8 +319,8 @@ sequenceDiagram
 
 **Result Storage:**
 - `internal/capture/types.go:Capture.completedResults`
-- `cmd/dev-console/tools_interact.go` - Query creation
-- `cmd/dev-console/tools_core.go:CompleteCommand()` - Result storage
+- `cmd/browser-agent/tools_interact.go` - Query creation
+- `cmd/browser-agent/tools_core.go:CompleteCommand()` - Result storage
 
 **Extension Polling:**
 - `src/background/pending-queries.ts` - Poll logic
@@ -329,8 +329,8 @@ sequenceDiagram
 
 **Session Management:**
 - `internal/session/client_registry.go` - Token verification
-- `cmd/dev-console/handler.go` - Request routing
-- `cmd/dev-console/server_middleware.go` - Auth middleware
+- `cmd/browser-agent/handler.go` - Request routing
+- `cmd/browser-agent/server_middleware.go` - Auth middleware
 
 **Timeout & Cleanup:**
 - `internal/capture/ttl.go` - TTL enforcement

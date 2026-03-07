@@ -71,7 +71,7 @@ Server returns audit report to AI
 - `extension/inject.js` (modified): Import and invoke performance audit on query
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add `toolObservePerformanceAudit()` handler
+- `cmd/browser-agent/queries.go`: Add `toolObservePerformanceAudit()` handler
 
 **Trade-offs**:
 - Extension-side analysis (not server-side) because requires DOM access and Resource Timing API. Server only receives final audit report.

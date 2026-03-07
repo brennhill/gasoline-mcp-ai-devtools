@@ -223,6 +223,6 @@ The agent can do this as part of the PR creation workflow (see workflow integrat
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/export_sarif.go` (SARIF generation, MCP tool handler).
+Server implementation: `cmd/browser-agent/export_sarif.go` (SARIF generation, MCP tool handler).
 
-Tests: `cmd/dev-console/export_sarif_test.go`.
+Tests: `cmd/browser-agent/export_sarif_test.go`.

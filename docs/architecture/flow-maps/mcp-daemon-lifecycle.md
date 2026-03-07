@@ -6,24 +6,24 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/main.go:dispatchMode
-  - cmd/dev-console/main_connection_mcp.go:runMCPMode
+  - cmd/browser-agent/main.go:dispatchMode
+  - cmd/browser-agent/main_connection_mcp.go:runMCPMode
 code_paths:
-  - cmd/dev-console/mcp_identity.go
-  - cmd/dev-console/main_connection_mcp.go
-  - cmd/dev-console/main_connection_mcp_bootstrap.go
-  - cmd/dev-console/main_connection_mcp_upgrade.go
-  - cmd/dev-console/main_connection_mcp_shutdown.go
-  - cmd/dev-console/daemon_lifecycle.go
-  - cmd/dev-console/daemon_lock_file.go
-  - cmd/dev-console/server_routes.go
+  - cmd/browser-agent/mcp_identity.go
+  - cmd/browser-agent/main_connection_mcp.go
+  - cmd/browser-agent/main_connection_mcp_bootstrap.go
+  - cmd/browser-agent/main_connection_mcp_upgrade.go
+  - cmd/browser-agent/main_connection_mcp_shutdown.go
+  - cmd/browser-agent/daemon_lifecycle.go
+  - cmd/browser-agent/daemon_lock_file.go
+  - cmd/browser-agent/server_routes.go
   - internal/identity/mcp.go
 test_paths:
-  - cmd/dev-console/main_connection_coverage_test.go
-  - cmd/dev-console/main_connection_diag_test.go
-  - cmd/dev-console/main_connection_pid_contract_test.go
-  - cmd/dev-console/daemon_lifecycle_policy_test.go
-  - cmd/dev-console/runtime_mode_test.go
+  - cmd/browser-agent/main_connection_coverage_test.go
+  - cmd/browser-agent/main_connection_diag_test.go
+  - cmd/browser-agent/main_connection_pid_contract_test.go
+  - cmd/browser-agent/daemon_lifecycle_policy_test.go
+  - cmd/browser-agent/runtime_mode_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -69,22 +69,22 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 
 ## Code Paths
 
-- `cmd/dev-console/mcp_identity.go`
-- `cmd/dev-console/main_connection_mcp.go`
-- `cmd/dev-console/main_connection_mcp_bootstrap.go`
-- `cmd/dev-console/main_connection_mcp_upgrade.go`
-- `cmd/dev-console/main_connection_mcp_shutdown.go`
-- `cmd/dev-console/daemon_lifecycle.go`
-- `cmd/dev-console/daemon_lock_file.go`
+- `cmd/browser-agent/mcp_identity.go`
+- `cmd/browser-agent/main_connection_mcp.go`
+- `cmd/browser-agent/main_connection_mcp_bootstrap.go`
+- `cmd/browser-agent/main_connection_mcp_upgrade.go`
+- `cmd/browser-agent/main_connection_mcp_shutdown.go`
+- `cmd/browser-agent/daemon_lifecycle.go`
+- `cmd/browser-agent/daemon_lock_file.go`
 - `internal/identity/mcp.go`
 
 ## Test Paths
 
-- `cmd/dev-console/main_connection_coverage_test.go`
-- `cmd/dev-console/main_connection_diag_test.go`
-- `cmd/dev-console/main_connection_pid_contract_test.go`
-- `cmd/dev-console/daemon_lifecycle_policy_test.go`
-- `cmd/dev-console/runtime_mode_test.go`
+- `cmd/browser-agent/main_connection_coverage_test.go`
+- `cmd/browser-agent/main_connection_diag_test.go`
+- `cmd/browser-agent/main_connection_pid_contract_test.go`
+- `cmd/browser-agent/daemon_lifecycle_policy_test.go`
+- `cmd/browser-agent/runtime_mode_test.go`
 
 ## Edit Guardrails
 

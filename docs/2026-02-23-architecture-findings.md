@@ -4,18 +4,18 @@
 
 Architecture-focused review of Gasoline control-plane reliability and failure modes across:
 
-- Go MCP bridge/daemon server (`cmd/dev-console`, `internal/*`)
+- Go MCP bridge/daemon server (`cmd/browser-agent`, `internal/*`)
 - Chrome extension runtime (`src/background`, `src/content`, `src/inject`)
 - Command lifecycle and sync protocol (`/sync`, async queue, correlation tracking)
 
 ## What Is Good
 
-- Strong bridge/daemon resilience patterns including respawn and compatibility checks (`cmd/dev-console/bridge.go:127`, `cmd/dev-console/bridge.go:220`, `cmd/dev-console/bridge.go:477`).
-- Correct stdout serialization discipline for MCP responses (single write gate) (`cmd/dev-console/mcp_stdout.go:17`).
+- Strong bridge/daemon resilience patterns including respawn and compatibility checks (`cmd/browser-agent/bridge.go:127`, `cmd/browser-agent/bridge.go:220`, `cmd/browser-agent/bridge.go:477`).
+- Correct stdout serialization discipline for MCP responses (single write gate) (`cmd/browser-agent/mcp_stdout.go:17`).
 - Clear backpressure behavior in command queue (reject on saturation, no silent queue drops) (`internal/queries/dispatcher_queries.go:60`).
 - Command-loss reconciliation exists via in-progress heartbeat tracking (`internal/capture/sync.go:309`).
 - Contract-first wire typing with generation + drift checks (`Makefile:43`, `Makefile:243`, `internal/types/wire_network.go:1`, `src/types/wire-network.ts:1`).
-- Localhost boundary hardening with Host + Origin checks (`cmd/dev-console/server_middleware.go:107`).
+- Localhost boundary hardening with Host + Origin checks (`cmd/browser-agent/server_middleware.go:107`).
 - High automated test density (substantial Go + extension test coverage footprint).
 
 ## What Is Weak
@@ -69,7 +69,7 @@ Architecture-focused review of Gasoline control-plane reliability and failure mo
 
 8. Low — Extension endpoint trust is header-based unless API key is configured.
 - `X-Gasoline-Client` alone is spoofable by local processes in same-host threat models.
-- Evidence: `cmd/dev-console/server_middleware.go:146`, `cmd/dev-console/server_middleware.go:149`, `cmd/dev-console/auth.go:21`.
+- Evidence: `cmd/browser-agent/server_middleware.go:146`, `cmd/browser-agent/server_middleware.go:149`, `cmd/browser-agent/auth.go:21`.
 
 ## Suggested Next Hardening Priorities
 

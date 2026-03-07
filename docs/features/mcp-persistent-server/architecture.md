@@ -141,7 +141,7 @@ execFileSync(binary, args);
 
 **Why:** Killing the server forced respawn on every connection. Now the server persists.
 
-### 2. Go Binary Connection Logic (cmd/dev-console/main.go)
+### 2. Go Binary Connection Logic (cmd/browser-agent/main.go)
 
 ```go
 func handleMCPConnection(server *Server, port int, apiKey string) {

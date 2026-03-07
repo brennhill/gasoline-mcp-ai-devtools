@@ -3,7 +3,7 @@ doc_type: component_spec
 component_id: server-core
 last_reviewed: 2026-02-16
 code_paths:
-  - cmd/dev-console/
+  - cmd/browser-agent/
 ---
 
 # Server Core

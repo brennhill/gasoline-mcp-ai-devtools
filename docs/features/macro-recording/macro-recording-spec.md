@@ -550,7 +550,7 @@ Sequences are limited to 50 steps to prevent runaway macros. The JSON payload fo
 
 ### Go server changes
 
-#### New file: `cmd/dev-console/tools_configure_sequence.go` (~200 LOC)
+#### New file: `cmd/browser-agent/tools_configure_sequence.go` (~200 LOC)
 
 Handlers for all sequence actions:
 - `toolConfigureSaveSequence()` -- validates input, serializes to JSON, persists via session store
@@ -559,7 +559,7 @@ Handlers for all sequence actions:
 - `toolConfigureListSequences()` -- lists all sequences in namespace with metadata
 - `toolConfigureDeleteSequence()` -- removes sequence from store
 
-#### Modified file: `cmd/dev-console/tools_configure.go` (~20 LOC)
+#### Modified file: `cmd/browser-agent/tools_configure.go` (~20 LOC)
 
 Add cases to the configure action switch for: `save_sequence`, `replay_sequence`, `get_sequence`, `list_sequences`, `delete_sequence`.
 
@@ -567,7 +567,7 @@ Add cases to the configure action switch for: `save_sequence`, `replay_sequence`
 
 Add new actions to the configure tool schema enum and add parameter definitions for sequence-related fields.
 
-#### Modified file: `cmd/dev-console/tools_registry.go` (~5 LOC)
+#### Modified file: `cmd/browser-agent/tools_registry.go` (~5 LOC)
 
 No changes needed -- configure tool is already registered.
 

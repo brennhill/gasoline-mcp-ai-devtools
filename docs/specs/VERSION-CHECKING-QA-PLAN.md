@@ -275,7 +275,7 @@ chrome.storage.local.get(['aiWebPilotEnabled'], result => console.log(result));
 
 **Steps**:
 1. [ ] `make compile-ts` - TypeScript compiles without errors
-2. [ ] `go build ./cmd/dev-console` - Server builds successfully
+2. [ ] `go build ./cmd/browser-agent` - Server builds successfully
 3. [ ] Check for version flag: `go build -ldflags "-X main.version=5.2.5"`
 4. [ ] Verify version appears in `/health` response
 

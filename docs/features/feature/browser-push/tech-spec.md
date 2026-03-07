@@ -485,7 +485,7 @@ export function installPushCommandListener() {
 | `internal/push/router_test.go` | ~150 | Router tests (capability detection, fallback chain) |
 | `internal/push/sampling.go` | ~100 | MCP sampling request builder and sender |
 | `internal/push/sampling_test.go` | ~80 | Sampling message format tests |
-| `cmd/dev-console/tools_observe_inbox.go` | ~60 | observe({what: "inbox"}) handler |
+| `cmd/browser-agent/tools_observe_inbox.go` | ~60 | observe({what: "inbox"}) handler |
 | `extension/background/push-handler.js` | ~120 | Screenshot push hotkey handler |
 | `extension/content/push-note.js` | ~80 | Toast input UI for screenshot notes |
 
@@ -495,12 +495,12 @@ export function installPushCommandListener() {
 
 | File | Changes | LOC Delta |
 |------|---------|-----------|
-| `cmd/dev-console/tools_mcp.go` | Extract client capabilities from initialize handshake | +20 |
-| `cmd/dev-console/tools_observe.go` | Route `what: "inbox"` to handler | +5 |
-| `cmd/dev-console/tool_handler.go` | Add PushInbox + PushRouter to ToolHandler struct | +10 |
-| `cmd/dev-console/tools_analyze_annotations.go` | After annotation store, also call push router | +15 |
-| `cmd/dev-console/http_routes.go` | Add `/push/screenshot` endpoint | +20 |
-| `cmd/dev-console/response_builder.go` | Add `_pending_push` piggyback to all tool responses | +25 |
+| `cmd/browser-agent/tools_mcp.go` | Extract client capabilities from initialize handshake | +20 |
+| `cmd/browser-agent/tools_observe.go` | Route `what: "inbox"` to handler | +5 |
+| `cmd/browser-agent/tool_handler.go` | Add PushInbox + PushRouter to ToolHandler struct | +10 |
+| `cmd/browser-agent/tools_analyze_annotations.go` | After annotation store, also call push router | +15 |
+| `cmd/browser-agent/http_routes.go` | Add `/push/screenshot` endpoint | +20 |
+| `cmd/browser-agent/response_builder.go` | Add `_pending_push` piggyback to all tool responses | +25 |
 | `extension/manifest.json` | Add `push_screenshot` command | +6 |
 | `extension/background/init.js` | Call `installPushCommandListener()` | +2 |
 

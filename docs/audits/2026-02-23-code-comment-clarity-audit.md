@@ -3,7 +3,7 @@
 ## Scope
 
 Audited authored source in:
-- `cmd/dev-console/`
+- `cmd/browser-agent/`
 - `internal/`
 - `src/`
 - `npm/gasoline-mcp/lib/`

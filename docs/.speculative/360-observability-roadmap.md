@@ -31,7 +31,7 @@ The remaining 20% is better context, not more data sources.
 One call replaces 3-4 separate observe() calls. Go-side only, no extension changes.
 
 **Tech spec:** [docs/features/feature/error-bundling/tech-spec.md](../feature/error-bundling/tech-spec.md)
-**Implementation:** `cmd/dev-console/tools_observe_bundling.go` (~130 lines)
+**Implementation:** `cmd/browser-agent/tools_observe_bundling.go` (~130 lines)
 **Tests:** 11 behavioral tests in `tools_observe_bundling_test.go`
 
 ---

@@ -34,14 +34,14 @@ Ensure every MCP tool command and documented option is valid end-to-end: schema 
 
 ## Required Automated Coverage
 - MCP handler and tool call routing:
-- `cmd/dev-console/handler_consistency_test.go`
+- `cmd/browser-agent/handler_consistency_test.go`
 - Observe coverage and mode handlers:
-- `cmd/dev-console/tools_observe_handler_test.go`
-- `cmd/dev-console/tools_observe_blackbox_test.go`
+- `cmd/browser-agent/tools_observe_handler_test.go`
+- `cmd/browser-agent/tools_observe_blackbox_test.go`
 - Interact async and command result behavior:
-- `cmd/dev-console/tools_interact_rich_test.go`
+- `cmd/browser-agent/tools_interact_rich_test.go`
 - Analyze command paths:
-- `cmd/dev-console/tools_analyze_*test.go`
+- `cmd/browser-agent/tools_analyze_*test.go`
 - Sync endpoint + queue lifecycle:
 - `internal/capture/sync_test.go`
 - `internal/capture/async_queue_integration_test.go`

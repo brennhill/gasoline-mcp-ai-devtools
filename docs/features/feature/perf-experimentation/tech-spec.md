@@ -422,7 +422,7 @@ Inside the `domPrimitive` mega-function:
 
 ### Go (daemon)
 
-#### 6. `cmd/dev-console/tools_schema.go` (MODIFIED, ~5 lines)
+#### 6. `cmd/browser-agent/tools_schema.go` (MODIFIED, ~5 lines)
 
 - Add `analyze` boolean param to interact tool:
 
@@ -430,11 +430,11 @@ Inside the `domPrimitive` mega-function:
   "analyze": { "type": "boolean", "description": "Include detailed performance analysis (timing breakdown, network, long tasks, DOM changes) in the action result. Use for profiling interactions." }
   ```
 
-#### 7. `cmd/dev-console/tools_interact.go` (MODIFIED, ~3 lines)
+#### 7. `cmd/browser-agent/tools_interact.go` (MODIFIED, ~3 lines)
 
 - Pass `analyze` param through to pending query
 
-#### 8. `cmd/dev-console/tools_observe_analysis.go` (MODIFIED, ~10 lines)
+#### 8. `cmd/browser-agent/tools_observe_analysis.go` (MODIFIED, ~10 lines)
 
 - Include `user_timing` (marks + measures) in performance snapshot response
 

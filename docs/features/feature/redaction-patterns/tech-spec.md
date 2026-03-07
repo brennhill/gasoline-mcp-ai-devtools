@@ -939,11 +939,11 @@ func (c *RedactionCache) Invalidate() {
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/redaction.go` | Existing redaction engine (extend) |
-| `cmd/dev-console/redaction_config.go` | New: Pattern configuration management |
-| `cmd/dev-console/redaction_test.go` | Existing tests (extend) |
-| `cmd/dev-console/redaction_config_test.go` | New: Configuration tests |
-| `cmd/dev-console/tools_core.go` | Add `configure_redaction` tool registration |
+| `cmd/browser-agent/redaction.go` | Existing redaction engine (extend) |
+| `cmd/browser-agent/redaction_config.go` | New: Pattern configuration management |
+| `cmd/browser-agent/redaction_test.go` | Existing tests (extend) |
+| `cmd/browser-agent/redaction_config_test.go` | New: Configuration tests |
+| `cmd/browser-agent/tools_core.go` | Add `configure_redaction` tool registration |
 
 ---
 

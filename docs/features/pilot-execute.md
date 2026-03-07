@@ -165,7 +165,7 @@ Forward `GASOLINE_EXECUTE_JS` to page, return response.
 
 ### 3. MCP Tool Handler
 
-**File:** `cmd/dev-console/pilot.go`
+**File:** `cmd/browser-agent/pilot.go`
 
 ```go
 func (v *Capture) handleExecuteJavaScript(params map[string]any) (any, error) {
@@ -211,7 +211,7 @@ func (v *Capture) handleExecuteJavaScript(params map[string]any) (any, error) {
 
 ```bash
 node --test extension-tests/pilot-execute.test.js
-go test -v ./cmd/dev-console/ -run ExecuteJavaScript
+go test -v ./cmd/browser-agent/ -run ExecuteJavaScript
 ```
 
 ---
@@ -232,5 +232,5 @@ go test -v ./cmd/dev-console/ -run ExecuteJavaScript
 | `extension/inject.js` | `executeJavaScript()`, `safeSerializeForExecute()` |
 | `extension/background.js` | Route GASOLINE_EXECUTE_JS |
 | `extension/content.js` | Forward execute message |
-| `cmd/dev-console/pilot.go` | `handleExecuteJavaScript()` |
+| `cmd/browser-agent/pilot.go` | `handleExecuteJavaScript()` |
 | `extension-tests/pilot-execute.test.js` | New file |

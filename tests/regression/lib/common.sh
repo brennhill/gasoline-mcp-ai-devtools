@@ -42,7 +42,7 @@ start_server() {
     # Check if binary exists
     if [[ ! -x "$GASOLINE_BINARY" ]]; then
         echo -e "${RED}ERROR: Binary not found at $GASOLINE_BINARY${NC}" >&2
-        echo "Run: go build -o dist/gasoline ./cmd/dev-console" >&2
+        echo "Run: go build -o dist/gasoline ./cmd/browser-agent" >&2
         return 1
     fi
 

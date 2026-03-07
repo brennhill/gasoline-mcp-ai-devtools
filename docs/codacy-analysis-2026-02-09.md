@@ -170,17 +170,17 @@ go 1.23.1
 
 #### Issue 6: cleanup_old_processes (Lizard score: 11)
 
-**File:** `cmd/dev-console/lifecycle_unix.go`
+**File:** `cmd/browser-agent/lifecycle_unix.go`
 **Risk:** Complex control flow, hard to test all paths
 
 #### Issue 7: execute_install (Lizard score: 19)
 
-**File:** `cmd/dev-console/setup.go`
+**File:** `cmd/browser-agent/setup.go`
 **Risk:** Very high complexity, multiple nested conditions
 
 #### Issue 8: captureStateSnapshot (Lizard score: 22)
 
-**File:** `cmd/dev-console/state_snapshot.go`
+**File:** `cmd/browser-agent/state_snapshot.go`
 **Risk:** Extremely high complexity, needs refactoring
 
 #### Issue 9: TypeScript functions

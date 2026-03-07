@@ -205,6 +205,6 @@ Entries reference their page via `pageref`. This allows HAR viewers to display p
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/export_har.go` (HAR generation, MCP tool handler).
+Server implementation: `cmd/browser-agent/export_har.go` (HAR generation, MCP tool handler).
 
-Tests: `cmd/dev-console/export_har_test.go`.
+Tests: `cmd/browser-agent/export_har_test.go`.

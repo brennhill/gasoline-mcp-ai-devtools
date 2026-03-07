@@ -285,7 +285,7 @@ last_verified_date: 2026-03-05
 - Concurrent writes + reads: log entries arriving during aggregation produce consistent results
 - Pagination: `since_cursor` incremental aggregation returns only new entries
 
-**Test File:** `cmd/dev-console/tools_observe_summarized_test.go`
+**Test File:** `cmd/browser-agent/tools_observe_summarized_test.go`
 
 ### UAT/Acceptance Tests
 
@@ -326,7 +326,7 @@ last_verified_date: 2026-03-05
 | Test Type | File | Status | Notes |
 |-----------|------|--------|-------|
 | Unit | `internal/tools/observe/summarized_logs_test.go` | Pending | Awaiting implementation |
-| Integration | `cmd/dev-console/tools_observe_summarized_test.go` | Pending | Awaiting implementation |
+| Integration | `cmd/browser-agent/tools_observe_summarized_test.go` | Pending | Awaiting implementation |
 | UAT | `scripts/test-all-tools-comprehensive.sh` | Pending | Addition to existing script |
 | Manual | N/A | Pending | Awaiting implementation |
 

@@ -617,7 +617,7 @@ observe({what: "logs", after_cursor: 12450, limit: 50})
 **Goal:** Every paginated response includes cursor field
 
 #### Files:
-- `cmd/dev-console/tools_core.go` - Add cursor to response metadata
+- `cmd/browser-agent/tools_core.go` - Add cursor to response metadata
 - Calculate cursor = last entry's ID
 
 **No breaking changes** - just add new fields to existing responses.
@@ -627,9 +627,9 @@ observe({what: "logs", after_cursor: 12450, limit: 50})
 **Goal:** Accept after_cursor in observe() calls
 
 #### Files:
-- `cmd/dev-console/tools_core.go` - Parse after_cursor parameter
-- `cmd/dev-console/main.go` (GetLogs) - Implement cursor-based retrieval
-- `cmd/dev-console/websocket.go` (GetWSEvents) - Implement cursor-based retrieval
+- `cmd/browser-agent/tools_core.go` - Parse after_cursor parameter
+- `cmd/browser-agent/main.go` (GetLogs) - Implement cursor-based retrieval
+- `cmd/browser-agent/websocket.go` (GetWSEvents) - Implement cursor-based retrieval
 
 #### Logic:
 ```go

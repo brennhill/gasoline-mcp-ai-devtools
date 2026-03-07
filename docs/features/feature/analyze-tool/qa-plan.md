@@ -11,10 +11,10 @@ last_verified_date: 2026-03-05
 # Analyze QA Plan (TARGET)
 
 ## Automated Coverage
-- `cmd/dev-console/tools_analyze_validation_test.go`
-- `cmd/dev-console/tools_analyze_route_test.go`
-- `cmd/dev-console/tools_analyze_handler_test.go`
-- `cmd/dev-console/tools_analyze_page_summary_test.go`
+- `cmd/browser-agent/tools_analyze_validation_test.go`
+- `cmd/browser-agent/tools_analyze_route_test.go`
+- `cmd/browser-agent/tools_analyze_handler_test.go`
+- `cmd/browser-agent/tools_analyze_page_summary_test.go`
 
 ## Required Scenarios
 1. Mode dispatch

@@ -50,7 +50,7 @@ class BinaryNotFoundError extends GasolineError {
   constructor(expectedPath) {
     super(
       `Gasoline binary not found at ${expectedPath}`,
-      `Reinstall: npm install -g gasoline-mcp@latest\nOr build from source: go build ./cmd/dev-console`
+      `Reinstall: npm install -g gasoline-mcp@latest\nOr build from source: go build ./cmd/browser-agent`
     );
     this.name = 'BinaryNotFoundError';
   }

@@ -206,7 +206,7 @@ This lets the AI agent understand memory pressure and adjust its behavior (e.g.,
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/memory.go` with tests in `cmd/dev-console/memory_test.go`.
+Server implementation: `cmd/browser-agent/memory.go` with tests in `cmd/browser-agent/memory_test.go`.
 
 Extension implementation: memory check in `extension/background.js` with tests in `extension-tests/memory.test.js`.
 

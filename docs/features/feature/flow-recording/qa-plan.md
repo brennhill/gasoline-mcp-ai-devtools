@@ -36,7 +36,7 @@ last_verified_date: 2026-03-05
 make test
 
 # Go tests only
-go test ./cmd/dev-console/...
+go test ./cmd/browser-agent/...
 
 # Extension tests only
 node --test tests/extension/recording.test.js
@@ -51,7 +51,7 @@ make ci-local
 
 ### Module 1: WebSocket Migration
 
-**File:** `cmd/dev-console/websocket_test.go` (new)
+**File:** `cmd/browser-agent/websocket_test.go` (new)
 
 #### Test Case 1.1: WebSocket Connection Established
 ```
@@ -128,7 +128,7 @@ AND: Resumes streaming (no polling after reconnect)
 
 ### Module 2: Recording Storage (Server)
 
-**File:** `cmd/dev-console/recording_test.go` (new)
+**File:** `cmd/browser-agent/recording_test.go` (new)
 
 #### Test Case 2.1: Create Recording Metadata
 ```
@@ -264,7 +264,7 @@ AND: Timestamps in order
 
 ### Module 3: Playback Engine
 
-**File:** `cmd/dev-console/playback_test.go` (new)
+**File:** `cmd/browser-agent/playback_test.go` (new)
 
 #### Test Case 3.1: Load Recording
 ```
@@ -423,7 +423,7 @@ AND: Playback completes successfully
 
 ### Module 4: Log Diffing Engine
 
-**File:** `cmd/dev-console/log_diff_test.go` (new)
+**File:** `cmd/browser-agent/log_diff_test.go` (new)
 
 #### Test Case 4.1: Compare Identical Logs
 ```
@@ -678,7 +678,7 @@ AND: ID matches generated name
 
 ## Integration Tests (End-to-End)
 
-**File:** `cmd/dev-console/integration_test.go` (new)
+**File:** `cmd/browser-agent/integration_test.go` (new)
 
 ### Integration Test 1: Full Recording → Playback → Diff Workflow
 
@@ -817,7 +817,7 @@ THEN:
 ### Environment Setup:
 ```bash
 # Start server
-go run ./cmd/dev-console/main.go
+go run ./cmd/browser-agent/main.go
 
 # Load extension in Chrome
 - chrome://extensions → Load unpacked → extension/ directory

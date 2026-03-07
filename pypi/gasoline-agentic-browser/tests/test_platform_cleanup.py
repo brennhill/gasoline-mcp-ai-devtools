@@ -49,7 +49,7 @@ class PlatformCleanupTests(unittest.TestCase):
         commands = [call.args[0] for call in mock_run.call_args_list if call.args]
         self.assertIn(["pgrep", "-af", "gasoline-agentic-browser"], commands)
         self.assertIn(["pgrep", "-af", "gasoline-mcp"], commands)
-        self.assertIn(["pgrep", "-af", "dev-console"], commands)
+        self.assertIn(["pgrep", "-af", "browser-agent"], commands)
         self.assertIn(["pgrep", "-af", "gasoline"], commands)
 
     @patch("gasoline_agentic_browser.platform.subprocess.run")
@@ -88,7 +88,7 @@ class PlatformCleanupTests(unittest.TestCase):
     def test_cleanup_windows_falls_back_to_userprofile_when_home_missing(self, mock_run):
         with tempfile.TemporaryDirectory() as userprofile, tempfile.TemporaryDirectory() as expanded_home:
             modern_pid = os.path.join(userprofile, ".gasoline", "run", "gasoline-7890.pid")
-            legacy_pid = os.path.join(userprofile, ".dev-console-7890.pid")
+            legacy_pid = os.path.join(userprofile, ".browser-agent-7890.pid")
             os.makedirs(os.path.dirname(modern_pid), exist_ok=True)
             with open(modern_pid, "w", encoding="utf-8") as f:
                 f.write("111")

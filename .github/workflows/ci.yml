@@ -45,7 +45,7 @@ jobs:
           echo "Changed files:"
           echo "$CHANGED_FILES"
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(cmd/dev-console/|internal/schema/|internal/types/|internal/performance/|scripts/docs/|scripts/generate-wire-types\.js|docs/features/|docs/architecture/flow-maps/|package\.json|Makefile|\.github/workflows/ci\.yml)'; then
+          if echo "$CHANGED_FILES" | grep -Eq '^(cmd/browser-agent/|internal/schema/|internal/types/|internal/performance/|scripts/docs/|scripts/generate-wire-types\.js|docs/features/|docs/architecture/flow-maps/|package\.json|Makefile|\.github/workflows/ci\.yml)'; then
             echo "run_gate=true" >> "$GITHUB_OUTPUT"
             echo "verify-llm gate enabled for this PR."
           else
@@ -85,7 +85,7 @@ jobs:
           python-version: "3.12"
 
       - name: Go mismatch guard
-        run: go test ./cmd/dev-console -run TestConnectWithRetriesRejectsVersionMismatch -count=1
+        run: go test ./cmd/browser-agent -run TestConnectWithRetriesRejectsVersionMismatch -count=1
 
       - name: Upgrade script contract tests
         run: node --test scripts/install-upgrade-regression.contract.test.mjs
@@ -112,7 +112,7 @@ jobs:
           go-version: "1.24"
 
       - name: Go vet
-        run: go vet ./cmd/dev-console/
+        run: go vet ./cmd/browser-agent/
 
       - name: Validate Codex skill frontmatter
         run: ./scripts/validate-codex-skills.sh
@@ -122,21 +122,21 @@ jobs:
 
       - name: Depguard import boundary gate
         run: |
-          golangci-lint run --enable-only depguard ./cmd/dev-console/... ./internal/...
+          golangci-lint run --enable-only depguard ./cmd/browser-agent/... ./internal/...
 
       - name: Go tests with race detection
-        run: go test -race -v ./cmd/dev-console/...
+        run: go test -race -v ./cmd/browser-agent/...
 
       - name: Reliability soak gate (bridge fast-start)
         run: |
           STATE_DIR="$(mktemp -d)"
           echo "Using state dir: ${STATE_DIR}"
-          GASOLINE_STATE_DIR="${STATE_DIR}" go test -race ./cmd/dev-console -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
-          go run ./cmd/dev-console --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
+          GASOLINE_STATE_DIR="${STATE_DIR}" go test -race ./cmd/browser-agent -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
+          go run ./cmd/browser-agent --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
 
       - name: Go test coverage (70% minimum)
         run: |
-          go test -coverprofile=coverage.out ./cmd/dev-console/...
+          go test -coverprofile=coverage.out ./cmd/browser-agent/...
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 70" | bc -l) )); then
@@ -235,7 +235,7 @@ jobs:
 
       - name: Go security scan (gosec)
         run: |
-          gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/
+          gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/browser-agent/
 
       - name: JS security lint
         run: |

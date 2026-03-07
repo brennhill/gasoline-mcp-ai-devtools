@@ -31,7 +31,7 @@ jobs:
 
           # Critical files that MUST match VERSION
           declare -A CRITICAL_FILES=(
-            ["cmd/dev-console/main.go"]="version = \"$VERSION\""
+            ["cmd/browser-agent/main.go"]="version = \"$VERSION\""
             ["npm/gasoline-agentic-browser/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-arm64/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-x64/package.json"]="\"version\": \"$VERSION\""
@@ -97,7 +97,7 @@ jobs:
           VERSION=$(cat VERSION)
 
           # Check the version constant in main.go
-          GO_VERSION=$(grep -o 'version = "[^"]*"' cmd/dev-console/main.go | head -1 | cut -d'"' -f2)
+          GO_VERSION=$(grep -o 'version = "[^"]*"' cmd/browser-agent/main.go | head -1 | cut -d'"' -f2)
 
           if [ "$GO_VERSION" != "$VERSION" ]; then
             echo "❌ Go binary version mismatch: $GO_VERSION (expected $VERSION)"

@@ -6,13 +6,13 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_observe.go
-  - cmd/dev-console/tools_observe_registry.go
-  - cmd/dev-console/tools_observe_response.go
-  - cmd/dev-console/tools_observe_analysis.go
-  - cmd/dev-console/tools_shared_queries.go
-  - cmd/dev-console/tools_observe_bundling.go
-  - cmd/dev-console/observe_filtering.go
+  - cmd/browser-agent/tools_observe.go
+  - cmd/browser-agent/tools_observe_registry.go
+  - cmd/browser-agent/tools_observe_response.go
+  - cmd/browser-agent/tools_observe_analysis.go
+  - cmd/browser-agent/tools_shared_queries.go
+  - cmd/browser-agent/tools_observe_bundling.go
+  - cmd/browser-agent/observe_filtering.go
   - internal/a11ysummary/summary.go
   - internal/tools/observe/analysis_a11y.go
   - internal/tools/observe/analysis_screenshot.go
@@ -26,11 +26,11 @@ code_paths:
   - internal/capture/queries.go
   - internal/capture/sync.go
 test_paths:
-  - cmd/dev-console/tools_observe_handler_test.go
-  - cmd/dev-console/tools_observe_blackbox_test.go
-  - cmd/dev-console/tools_observe_audit_test.go
-  - cmd/dev-console/tools_observe_screenshot_test.go
-  - cmd/dev-console/tools_observe_analysis_test.go
+  - cmd/browser-agent/tools_observe_handler_test.go
+  - cmd/browser-agent/tools_observe_blackbox_test.go
+  - cmd/browser-agent/tools_observe_audit_test.go
+  - cmd/browser-agent/tools_observe_screenshot_test.go
+  - cmd/browser-agent/tools_observe_analysis_test.go
   - extension/background/commands/observe.fullpage.test.js
   - internal/a11ysummary/summary_test.go
   - internal/tools/observe/analysis_test.go
@@ -49,7 +49,7 @@ last_verified_date: 2026-03-05
 - Status: shipped
 - Tool: `observe`
 - Mode key: `what`
-- Contract source: `cmd/dev-console/tools_schema.go`
+- Contract source: `cmd/browser-agent/tools_schema.go`
 
 ## Specs
 - Product: `product-spec.md`

@@ -143,7 +143,7 @@ async function deleteStateSnapshot(name) {
 
 ### 3. MCP Tool Handler
 
-**File:** `cmd/dev-console/pilot.go`
+**File:** `cmd/browser-agent/pilot.go`
 
 ```go
 func (v *Capture) handleManageState(params map[string]any) (any, error) {
@@ -205,7 +205,7 @@ func (v *Capture) handleManageState(params map[string]any) (any, error) {
 
 ```bash
 node --test extension-tests/pilot-state.test.js
-go test -v ./cmd/dev-console/ -run ManageState
+go test -v ./cmd/browser-agent/ -run ManageState
 ```
 
 ---
@@ -217,5 +217,5 @@ go test -v ./cmd/dev-console/ -run ManageState
 | `extension/inject.js` | `captureState()`, `restoreState()` |
 | `extension/background.js` | Snapshot CRUD in chrome.storage.local |
 | `extension/content.js` | Forward state messages |
-| `cmd/dev-console/pilot.go` | `handleManageState()` |
+| `cmd/browser-agent/pilot.go` | `handleManageState()` |
 | `extension-tests/pilot-state.test.js` | New file |

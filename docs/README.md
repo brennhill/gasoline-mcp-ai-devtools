@@ -27,9 +27,9 @@ last-verified: 2026-02-17
 - `docs/templates/`: spec templates
 
 ## Canonical Code Anchors
-- MCP request handling: `cmd/dev-console/handler.go`
-- Tool schemas: `cmd/dev-console/tools_schema.go`
-- Tool dispatch: `cmd/dev-console/tools_core.go`
+- MCP request handling: `cmd/browser-agent/handler.go`
+- Tool schemas: `cmd/browser-agent/tools_schema.go`
+- Tool dispatch: `cmd/browser-agent/tools_core.go`
 - Extension background runtime: `src/background/index.ts`
 - Extension sync client: `src/background/sync-client.ts`
 

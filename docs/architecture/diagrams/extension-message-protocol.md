@@ -24,7 +24,7 @@ graph TB
         BGState["State Manager<br/>chrome.storage.local"]
     end
 
-    subgraph Server["🟠 Go Server (cmd/dev-console/)"]
+    subgraph Server["🟠 Go Server (cmd/browser-agent/)"]
         Handler["HTTP Handler<br/>handler.go"]
         Capture["Capture Manager<br/>internal/capture/"]
         Session["Session Manager<br/>internal/session/"]
@@ -603,7 +603,7 @@ If extension posts too many errors:
 - `src/types/messages.ts` - TS message types
 
 **Middleware:**
-- `cmd/dev-console/server_middleware.go` - Auth, rate limit
+- `cmd/browser-agent/server_middleware.go` - Auth, rate limit
 - `internal/session/verify.go` - Token verification
 
 ### Related Diagrams

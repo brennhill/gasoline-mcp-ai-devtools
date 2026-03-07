@@ -25,7 +25,7 @@ last_verified_date: 2026-03-05
 ### Test Locations
 
 - **Extension:** `tests/extension/draw-mode.test.js`, `tests/extension/draw-mode-export.test.js`
-- **Go Server:** `cmd/dev-console/draw_mode_test.go`, `cmd/dev-console/annotation_store_test.go`
+- **Go Server:** `cmd/browser-agent/draw_mode_test.go`, `cmd/browser-agent/annotation_store_test.go`
 - **Integration:** `tests/integration/draw_mode_test.go`
 
 ---
@@ -148,7 +148,7 @@ last_verified_date: 2026-03-05
 
 ## Unit Tests: Go Server
 
-**Location:** `cmd/dev-console/draw_mode_test.go`
+**Location:** `cmd/browser-agent/draw_mode_test.go`
 
 ### 1. Interact Handler (draw_mode_start)
 
@@ -198,7 +198,7 @@ last_verified_date: 2026-03-05
 
 ## Unit Tests: Go Server -- Annotation Store
 
-**Location:** `cmd/dev-console/annotation_store_test.go`
+**Location:** `cmd/browser-agent/annotation_store_test.go`
 
 ### 1. Storage and Retrieval
 
@@ -411,8 +411,8 @@ After any changes to draw mode:
 ```bash
 node --test tests/extension/draw-mode.test.js
 node --test tests/extension/draw-mode-export.test.js
-go test -short ./cmd/dev-console/... -run DrawMode
-go test -short ./cmd/dev-console/... -run AnnotationStore
+go test -short ./cmd/browser-agent/... -run DrawMode
+go test -short ./cmd/browser-agent/... -run AnnotationStore
 ```
 
 ### 2. Full Test Suite (8 min)

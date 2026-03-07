@@ -30,7 +30,7 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
 
 1. Module `29-framework-selector-resilience.sh` calls `build-framework-fixtures.mjs` once.
 2. Builder compiles React/Vue/Svelte fixture bundles and exports a static Next.js fixture app.
-3. Builder writes generated assets into `cmd/dev-console/testpages/frameworks/`.
+3. Builder writes generated assets into `cmd/browser-agent/testpages/frameworks/`.
 4. Smoke harness serves generated pages via local harness (`http://127.0.0.1:<port>/frameworks/...`).
 5. For each framework page, smoke test verifies:
    - `analyze({what:"page_structure"})` detects expected framework.
@@ -55,10 +55,10 @@ Build and run real-framework smoke fixtures that validate hard browser automatio
 ## State and Contracts
 
 1. Generated fixture output contract:
-   - `cmd/dev-console/testpages/frameworks/react.html + react.bundle.js`
-   - `cmd/dev-console/testpages/frameworks/vue.html + vue.bundle.js`
-   - `cmd/dev-console/testpages/frameworks/svelte.html + svelte.bundle.js`
-   - `cmd/dev-console/testpages/frameworks/next/` static export
+   - `cmd/browser-agent/testpages/frameworks/react.html + react.bundle.js`
+   - `cmd/browser-agent/testpages/frameworks/vue.html + vue.bundle.js`
+   - `cmd/browser-agent/testpages/frameworks/svelte.html + svelte.bundle.js`
+   - `cmd/browser-agent/testpages/frameworks/next/` static export
 2. Required fixture selectors and semantics:
    - `#hydrated-ready`, `#selector-token`, `#mount-token`, `#async-result`, `#deep-result`
    - `text=Accept Cookies`, `text=Profile Tab`, `text=Settings Tab`

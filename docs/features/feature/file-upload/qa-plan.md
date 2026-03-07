@@ -10,9 +10,9 @@ last_verified_date: 2026-03-05
 # File Upload QA Plan
 
 ## Automated Coverage
-- `cmd/dev-console/tools_interact_upload_test.go`
-- `cmd/dev-console/upload_handlers_test.go`
-- `cmd/dev-console/upload_integration_test.go`
+- `cmd/browser-agent/tools_interact_upload_test.go`
+- `cmd/browser-agent/upload_handlers_test.go`
+- `cmd/browser-agent/upload_integration_test.go`
 - `internal/upload/security_test.go`
 - `internal/upload/os_automation_test.go`
 

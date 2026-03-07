@@ -17,8 +17,8 @@ Gasoline MCP is a local-first system that allows AI clients to inspect and autom
 
 | Component | Responsibility | Primary Code |
 | --- | --- | --- |
-| AI client (Codex/Claude/Gemini) | Sends MCP JSON-RPC tool requests | External client + `cmd/dev-console/handler.go` |
-| Bridge/daemon binary (`gasoline-mcp`) | MCP transport, tool execution, persistence, and extension integration | `cmd/dev-console/` |
+| AI client (Codex/Claude/Gemini) | Sends MCP JSON-RPC tool requests | External client + `cmd/browser-agent/handler.go` |
+| Bridge/daemon binary (`gasoline-mcp`) | MCP transport, tool execution, persistence, and extension integration | `cmd/browser-agent/` |
 | Capture + tool internals | Buffer state, async queue, tool-specific logic | `internal/capture/`, `internal/tools/` |
 | Chrome extension | Captures telemetry and executes browser actions | `src/background/`, `src/content/`, `src/popup/` |
 | Runtime state | Local logs, pid, artifacts | `internal/state/` |

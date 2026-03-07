@@ -225,6 +225,6 @@ The push notification on regression includes INP alerts: "INP regressed from 120
 
 Extension implementation: `extension/inject.js` (INP observer, LCP finalization, vitals collection).
 
-Server implementation: `cmd/dev-console/performance.go` (vitals storage, MCP tool handler, threshold classification).
+Server implementation: `cmd/browser-agent/performance.go` (vitals storage, MCP tool handler, threshold classification).
 
-Tests: `extension-tests/web-vitals.test.js` (extension-side), `cmd/dev-console/performance_test.go` (server-side).
+Tests: `extension-tests/web-vitals.test.js` (extension-side), `cmd/browser-agent/performance_test.go` (server-side).

@@ -291,8 +291,8 @@ By default, only `on_error` is true (screenshots on errors are the highest-value
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/codegen.go` (enhanced script generation, fixture derivation, bug report).
+Server implementation: `cmd/browser-agent/codegen.go` (enhanced script generation, fixture derivation, bug report).
 
 Extension implementation: `extension/background.js` (screenshot capture, auto-capture configuration).
 
-Tests: `cmd/dev-console/codegen_test.go` (server-side), `extension-tests/screenshot.test.js` (extension-side).
+Tests: `cmd/browser-agent/codegen_test.go` (server-side), `extension-tests/screenshot.test.js` (extension-side).

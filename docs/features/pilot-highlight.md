@@ -112,7 +112,7 @@ Forward `GASOLINE_HIGHLIGHT` to page context, return response.
 
 ### 3. MCP Tool Handler
 
-**File:** `cmd/dev-console/pilot.go`
+**File:** `cmd/browser-agent/pilot.go`
 
 ```go
 func (v *Capture) handleHighlightElement(params map[string]any) (any, error) {
@@ -155,7 +155,7 @@ func (v *Capture) handleHighlightElement(params map[string]any) (any, error) {
 
 ```bash
 node --test extension-tests/pilot-highlight.test.js
-go test -v ./cmd/dev-console/ -run Highlight
+go test -v ./cmd/browser-agent/ -run Highlight
 ```
 
 ---
@@ -167,5 +167,5 @@ go test -v ./cmd/dev-console/ -run Highlight
 | `extension/inject.js` | `highlightElement()` function |
 | `extension/background.js` | Route GASOLINE_HIGHLIGHT |
 | `extension/content.js` | Forward highlight message |
-| `cmd/dev-console/pilot.go` | `handleHighlightElement()` |
+| `cmd/browser-agent/pilot.go` | `handleHighlightElement()` |
 | `extension-tests/pilot-highlight.test.js` | New file |

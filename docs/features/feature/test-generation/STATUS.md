@@ -16,35 +16,35 @@ last_verified_date: 2026-03-05
 #### All 7 modes fully implemented with comprehensive tests:
 
 1. ✅ **test_from_context.error** — Generate tests from console errors
-   - [Implementation](../../../cmd/dev-console/testgen.go:461)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:461)
    - 12 tests passing
 
 2. ✅ **test_from_context.interaction** — Generate tests from user actions
-   - [Implementation](../../../cmd/dev-console/testgen.go:555)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:555)
    - 10 tests passing
 
 3. ✅ **test_from_context.regression** — Generate regression tests
-   - [Implementation](../../../cmd/dev-console/testgen.go:653)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:653)
    - 8 tests passing
 
 4. ✅ **test_heal.analyze** — Find selectors in test files
-   - [Implementation](../../../cmd/dev-console/testgen.go:818)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:818)
    - 3 tests passing
 
 5. ✅ **test_heal.repair** — Heal broken selectors
-   - [Implementation](../../../cmd/dev-console/testgen.go:922)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:922)
    - 6 tests passing
 
 6. ✅ **test_heal.batch** — Heal entire test directories
-   - [Implementation](../../../cmd/dev-console/testgen.go:1067)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:1067)
    - 11 tests passing
 
 7. ✅ **test_classify.failure** — Classify single test failure
-   - [Implementation](../../../cmd/dev-console/testgen.go:1512)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:1512)
    - 12 tests passing
 
 8. ✅ **test_classify.batch** — Classify multiple failures
-   - [Implementation](../../../cmd/dev-console/testgen.go:1554)
+   - [Implementation](../../../cmd/browser-agent/testgen.go:1554)
    - 7 tests passing
 
 #### Total: 1,693 lines of implementation + 2,996 lines of tests
@@ -61,8 +61,8 @@ last_verified_date: 2026-03-05
 **All tests passing:** ✅
 
 ```bash
-$ go test -short ./cmd/dev-console/
-ok      github.com/brennhill/gasoline-agentic-browser-devtools-mcp/cmd/dev-console     2.438s
+$ go test -short ./cmd/browser-agent/
+ok      github.com/brennhill/gasoline-agentic-browser-devtools-mcp/cmd/browser-agent     2.438s
 ```
 
 ### Documentation
@@ -263,8 +263,8 @@ Gasoline can generate tests that verify WebSocket behavior automatically — no 
 
 ### New Files Created
 
-1. `cmd/dev-console/testgen.go` (1,693 lines)
-2. `cmd/dev-console/testgen_test.go` (2,996 lines)
+1. `cmd/browser-agent/testgen.go` (1,693 lines)
+2. `cmd/browser-agent/testgen_test.go` (2,996 lines)
 3. `docs/features/feature/test-generation/product-spec.md`
 4. `docs/features/feature/test-generation/tech-spec.md`
 5. `docs/features/feature/test-generation/review.md`
@@ -278,7 +278,7 @@ Gasoline can generate tests that verify WebSocket behavior automatically — no 
 
 ### Modified Files
 
-1. `cmd/dev-console/tools_core.go` — Added dispatch for test generation modes
+1. `cmd/browser-agent/tools_core.go` — Added dispatch for test generation modes
 
 ### Lines of Code
 

@@ -42,7 +42,7 @@ We declare the async queue-and-poll architecture **IMMUTABLE** and enforce it wi
 ### Layer 1: Pre-Commit Hook (Immediate Feedback)
 
 `.git/hooks/pre-commit` blocks commits that:
-- Delete critical files ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/dev-console/tools_core.go))
+- Delete critical files ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/browser-agent/tools_core.go))
 - Introduce stub implementations
 - Remove required methods
 

@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  *
  * SYNC NOTE: The Go side maintains a parallel readOnlyInteractActions map in
- * cmd/dev-console/tools_interact_dispatch.go for jitter gating. When adding or
+ * cmd/browser-agent/tools_interact_dispatch.go for jitter gating. When adding or
  * reclassifying actions here, update the Go map to match.
  */
 export interface ActionMeta {

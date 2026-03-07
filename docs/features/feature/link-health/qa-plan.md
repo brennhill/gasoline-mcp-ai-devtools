@@ -16,8 +16,8 @@ last_verified_date: 2026-03-05
 # Link Health QA Plan (TARGET)
 
 ## Automated Coverage
-- `cmd/dev-console/tools_analyze_validation_test.go`
-- `cmd/dev-console/tools_analyze_route_test.go`
+- `cmd/browser-agent/tools_analyze_validation_test.go`
+- `cmd/browser-agent/tools_analyze_route_test.go`
 - Extension/unit coverage for `src/lib/link-health.ts`
 
 ## Required Scenarios

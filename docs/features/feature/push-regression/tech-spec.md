@@ -179,6 +179,6 @@ The alert's `recommendation` field suggests this: "Use `check_performance` for f
 
 ## File Locations
 
-Server implementation: Changes to `cmd/dev-console/performance.go` (alert detection and storage) and `cmd/dev-console/ai_checkpoint.go` (alert inclusion in `get_changes_since` response).
+Server implementation: Changes to `cmd/browser-agent/performance.go` (alert detection and storage) and `cmd/browser-agent/ai_checkpoint.go` (alert inclusion in `get_changes_since` response).
 
-Tests: `cmd/dev-console/performance_test.go` (alert detection) and `cmd/dev-console/ai_checkpoint_test.go` (delivery lifecycle).
+Tests: `cmd/browser-agent/performance_test.go` (alert detection) and `cmd/browser-agent/ai_checkpoint_test.go` (delivery lifecycle).

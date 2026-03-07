@@ -316,7 +316,7 @@ def _cleanup_unix():
     def _should_skip(cmdline):
         return "python" in cmdline or "node" in cmdline or "npm" in cmdline
 
-    for pattern in ["gasoline-agentic-browser", "gasoline-mcp", "dev-console", "gasoline"]:
+    for pattern in ["gasoline-agentic-browser", "gasoline-mcp", "browser-agent", "gasoline"]:
         result = subprocess.run(
             ["pgrep", "-af", pattern],
             capture_output=True,
@@ -435,17 +435,17 @@ def _cleanup_pid_files():
     roots = _pid_roots()
 
     # Glob-based: scan directories for any PID files matching our prefixes
-    _remove_matching_pid_files(roots, ("gasoline-", "dev-console-"))
-    _remove_matching_pid_files(homes, (".gasoline-", ".dev-console-"))
+    _remove_matching_pid_files(roots, ("gasoline-", "browser-agent-"))
+    _remove_matching_pid_files(homes, (".gasoline-", ".browser-agent-"))
 
     # Targeted: remove by known port (catches files even if dir listing failed)
     for port in KNOWN_PORTS:
         for root in roots:
             _best_effort_remove(os.path.join(root, f"gasoline-{port}.pid"))
-            _best_effort_remove(os.path.join(root, f"dev-console-{port}.pid"))
+            _best_effort_remove(os.path.join(root, f"browser-agent-{port}.pid"))
         for home in homes:
             _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
-            _best_effort_remove(os.path.join(home, f".dev-console-{port}.pid"))
+            _best_effort_remove(os.path.join(home, f".browser-agent-{port}.pid"))
 
     # Clean up empty PID directories
     for root in roots:

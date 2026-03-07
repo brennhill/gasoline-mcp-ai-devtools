@@ -1,5 +1,5 @@
 {
-  "name": "dev-console-extension",
+  "name": "browser-agent-extension",
   "version": "0.8.1",
   "private": true,
   "type": "module",

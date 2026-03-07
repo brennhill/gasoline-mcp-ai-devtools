@@ -154,7 +154,7 @@ main() {
         else
             echo "ERROR: Gasoline binary not found"
             echo "Expected: $GASOLINE_BINARY"
-            echo "Run: go build -o dist/gasoline ./cmd/dev-console"
+            echo "Run: go build -o dist/gasoline ./cmd/browser-agent"
             exit 1
         fi
     fi

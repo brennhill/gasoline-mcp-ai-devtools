@@ -213,6 +213,6 @@ Normalization uses heuristics: segments that are purely numeric are replaced wit
 
 Extension implementation: `extension/inject.js` (pushState/popstate interception, quiescence detection, metric collection).
 
-Server implementation: `cmd/dev-console/performance.go` (route metrics storage, baseline computation, MCP tool handler).
+Server implementation: `cmd/browser-agent/performance.go` (route metrics storage, baseline computation, MCP tool handler).
 
-Tests: `extension-tests/spa-routes.test.js` (extension-side), `cmd/dev-console/performance_test.go` (server-side).
+Tests: `extension-tests/spa-routes.test.js` (extension-side), `cmd/browser-agent/performance_test.go` (server-side).

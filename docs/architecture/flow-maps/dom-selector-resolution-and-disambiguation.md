@@ -63,16 +63,16 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 - `src/background/dom-primitives-overlay.ts`
 - `src/background/dom-primitives-stability.ts`
 - `src/background/dom-types.ts`
-- `cmd/dev-console/tools_async_result_enrichment.go`
-- `cmd/dev-console/tools_async_result_normalization.go`
+- `cmd/browser-agent/tools_async_result_enrichment.go`
+- `cmd/browser-agent/tools_async_result_normalization.go`
 
 ## Test Paths
 
 - `extension/background/dom-primitives.test.js`
 - `tests/extension/list-interactive-selector-roundtrip.test.js`
-- `cmd/dev-console/tools_async_enrich_test.go`
-- `cmd/dev-console/tools_interact_rich_test.go`
-- `cmd/dev-console/cli_test.go`
+- `cmd/browser-agent/tools_async_enrich_test.go`
+- `cmd/browser-agent/tools_interact_rich_test.go`
+- `cmd/browser-agent/cli_test.go`
 
 ## Edit Guardrails
 

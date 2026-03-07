@@ -550,7 +550,7 @@ Common TTL configurations can be applied via presets:
 
 ### Test File Location
 
-Tests go in `cmd/dev-console/ttl_test.go` (extending existing file).
+Tests go in `cmd/browser-agent/ttl_test.go` (extending existing file).
 
 ---
 
@@ -605,13 +605,13 @@ New capabilities are additive:
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/ttl.go` | TTL types, parsing, resolution logic |
-| `cmd/dev-console/ttl_test.go` | TTL tests |
-| `cmd/dev-console/types.go` | TTLConfig struct definition |
-| `cmd/dev-console/tools_core.go` | MCP tool schema update |
-| `cmd/dev-console/configure.go` | TTL action handler |
-| `cmd/dev-console/health.go` | Health endpoint TTL section |
-| `cmd/dev-console/main.go` | CLI flag parsing |
+| `cmd/browser-agent/ttl.go` | TTL types, parsing, resolution logic |
+| `cmd/browser-agent/ttl_test.go` | TTL tests |
+| `cmd/browser-agent/types.go` | TTLConfig struct definition |
+| `cmd/browser-agent/tools_core.go` | MCP tool schema update |
+| `cmd/browser-agent/configure.go` | TTL action handler |
+| `cmd/browser-agent/health.go` | Health endpoint TTL section |
+| `cmd/browser-agent/main.go` | CLI flag parsing |
 
 ---
 

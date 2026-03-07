@@ -193,8 +193,8 @@ The AI's natural workflow becomes:
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/performance.go` (resource fingerprinting, diff computation, MCP tool handler).
+Server implementation: `cmd/browser-agent/performance.go` (resource fingerprinting, diff computation, MCP tool handler).
 
 Extension changes: Minor addition to the performance snapshot — include `renderBlockingStatus` field from resource timing entries. File: `extension/inject.js`.
 
-Tests: `cmd/dev-console/performance_test.go`.
+Tests: `cmd/browser-agent/performance_test.go`.

@@ -76,7 +76,7 @@ Developer's Machine (single)
 └─ All communication: localhost only
 ```
 
-**Deployment:** Dev installs extension + runs `go run ./cmd/dev-console`
+**Deployment:** Dev installs extension + runs `go run ./cmd/browser-agent`
 
 ---
 

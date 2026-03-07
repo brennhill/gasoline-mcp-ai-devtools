@@ -134,9 +134,9 @@ Screenshot archival and queryable design system compliance tool that allows LLMs
 
 ### Key Files to Modify
 
-- **cmd/dev-console/main.go** — HTTP routes, screenshot handler
-- **cmd/dev-console/types.go** — Screenshot types, constants
-- **cmd/dev-console/queries.go** — Query handlers
+- **cmd/browser-agent/main.go** — HTTP routes, screenshot handler
+- **cmd/browser-agent/types.go** — Screenshot types, constants
+- **cmd/browser-agent/queries.go** — Query handlers
 - **extension/background/communication.js** — Parallel capture, batch upload
 - **.claude/refs/architecture.md** — Document SQLite layer, concurrency model
 

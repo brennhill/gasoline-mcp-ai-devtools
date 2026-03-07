@@ -206,7 +206,7 @@ last_verified_date: 2026-03-05
 - Tag-based filtering for list_sequences
 - Concurrent replay guard (mutex/flag)
 
-**Test File:** `cmd/dev-console/tools_configure_sequence_test.go`
+**Test File:** `cmd/browser-agent/tools_configure_sequence_test.go`
 
 #### Unit Test Cases:
 
@@ -358,7 +358,7 @@ THEN:
   - Second replay succeeds
 ```
 
-**Test File:** `cmd/dev-console/tools_configure_sequence_integration_test.go`
+**Test File:** `cmd/browser-agent/tools_configure_sequence_integration_test.go`
 
 ### UAT/Acceptance Tests
 
@@ -499,8 +499,8 @@ THEN:
 
 | Test Type | File | Status | Notes |
 |-----------|------|--------|-------|
-| Unit | `cmd/dev-console/tools_configure_sequence_test.go` | Pending | 30 test cases |
-| Integration | `cmd/dev-console/tools_configure_sequence_integration_test.go` | Pending | 3 scenarios |
+| Unit | `cmd/browser-agent/tools_configure_sequence_test.go` | Pending | 30 test cases |
+| Integration | `cmd/browser-agent/tools_configure_sequence_integration_test.go` | Pending | 3 scenarios |
 | UAT | Manual via Claude Code | Pending | 5 scenarios |
 | Manual | Manual browser verification | Pending | 1 walkthrough |
 

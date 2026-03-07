@@ -20,7 +20,7 @@ This plan is based on:
 - `docs/features/feature/annotated-screenshots/index.md`
 - `docs/architecture/flow-maps/analyze-annotations-waiter-and-flush.md`
 - `extension/content/draw-mode.js`
-- `cmd/dev-console/tools_analyze_annotations_handlers.go`
+- `cmd/browser-agent/tools_analyze_annotations_handlers.go`
 
 ## Target Definition (Parity-Plus)
 

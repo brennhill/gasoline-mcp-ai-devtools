@@ -7,17 +7,17 @@ owners:
   - Brenn
 entrypoints:
   - internal/push/inbox.go:Enqueue
-  - cmd/dev-console/tools_observe_inbox.go:appendPushPiggyback
-  - cmd/dev-console/tools_configure_state_impl.go:clearConfiguredBuffer
+  - cmd/browser-agent/tools_observe_inbox.go:appendPushPiggyback
+  - cmd/browser-agent/tools_configure_state_impl.go:clearConfiguredBuffer
 code_paths:
   - internal/push/inbox.go
   - internal/push/types.go
-  - cmd/dev-console/tools_observe_inbox.go
-  - cmd/dev-console/tools_configure_state_impl.go
+  - cmd/browser-agent/tools_observe_inbox.go
+  - cmd/browser-agent/tools_configure_state_impl.go
 test_paths:
   - internal/push/inbox_test.go
-  - cmd/dev-console/tools_observe_inbox_test.go
-  - cmd/dev-console/tools_configure_handler_test.go
+  - cmd/browser-agent/tools_observe_inbox_test.go
+  - cmd/browser-agent/tools_configure_handler_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -59,14 +59,14 @@ Covers screenshot deduplication at the inbox level and screenshot capping at the
 ## Code Paths
 
 - `internal/push/inbox.go` — Enqueue dedup logic
-- `cmd/dev-console/tools_observe_inbox.go` — Piggyback cap logic
-- `cmd/dev-console/tools_configure_state_impl.go` — Clear buffer inbox case
+- `cmd/browser-agent/tools_observe_inbox.go` — Piggyback cap logic
+- `cmd/browser-agent/tools_configure_state_impl.go` — Clear buffer inbox case
 
 ## Test Paths
 
 - `internal/push/inbox_test.go` — TestInbox_ScreenshotDedup_* (6 tests)
-- `cmd/dev-console/tools_observe_inbox_test.go` — TestAppendPushPiggyback_Caps*, _NonScreenshot*, _Skipped*, _SingleScreenshotNoSkip* (4 tests)
-- `cmd/dev-console/tools_configure_handler_test.go` — TestToolsConfigureClear_AllDrainsInbox, _InboxBuffer, _SpecificBuffers/inbox (3 tests)
+- `cmd/browser-agent/tools_observe_inbox_test.go` — TestAppendPushPiggyback_Caps*, _NonScreenshot*, _Skipped*, _SingleScreenshotNoSkip* (4 tests)
+- `cmd/browser-agent/tools_configure_handler_test.go` — TestToolsConfigureClear_AllDrainsInbox, _InboxBuffer, _SpecificBuffers/inbox (3 tests)
 
 ## Edit Guardrails
 

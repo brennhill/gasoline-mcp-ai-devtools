@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 All timeouts in the Gasoline MCP stack, organized by layer. Understanding the timeout hierarchy is critical — an outer timeout shorter than an inner wait causes EOF/connection-reset errors.
 
-## HTTP Server (`cmd/dev-console/main_connection_mcp.go`)
+## HTTP Server (`cmd/browser-agent/main_connection_mcp.go`)
 
 | Timeout | Value | Purpose |
 |---------|-------|---------|
@@ -18,7 +18,7 @@ All timeouts in the Gasoline MCP stack, organized by layer. Understanding the ti
 
 **Why WriteTimeout is 40s:** Tool handlers block while waiting for extension round-trips. The slowest paths are annotation polling (55s, but served via streaming), interact commands (up to 35s), and screenshots (up to 20s). WriteTimeout must exceed these or the server kills the connection mid-flight, producing EOF errors on the client side.
 
-## Bridge / stdio Proxy (`cmd/dev-console/bridge.go`)
+## Bridge / stdio Proxy (`cmd/browser-agent/bridge.go`)
 
 The bridge forwards JSON-RPC from stdin to the HTTP daemon. Each request gets a context timeout based on the tool type:
 

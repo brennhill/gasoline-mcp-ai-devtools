@@ -71,7 +71,7 @@ Gate 5: Implementation with TDD
 - Refactor only if tests still pass
 
 **Context:**
-- Review existing MCP tools in cmd/dev-console/tools_observe.go for patterns
+- Review existing MCP tools in cmd/browser-agent/tools_observe.go for patterns
 - Check docs/features/feature-navigation.md for similar features
 - Follow MCP protocol correctness rules from docs/core/mcp-correctness.md
 
@@ -201,7 +201,7 @@ Prevents quality drift through specific limits.
 
 ### 5. **Context References**
 ```
-"Review existing MCP tools in cmd/dev-console/tools_observe.go"
+"Review existing MCP tools in cmd/browser-agent/tools_observe.go"
 "Check docs/features/ for similar features"
 ```
 Ensures consistency with existing codebase.
@@ -539,9 +539,9 @@ Creating docs/features/feature/request-replay/tech-spec.md
 4. Create tests in tools_test.go
 
 **Files Affected:**
-- cmd/dev-console/tools_schema.go (+30 lines)
-- cmd/dev-console/tools_generate.go (+80 lines)
-- cmd/dev-console/tools_test.go (+50 lines)
+- cmd/browser-agent/tools_schema.go (+30 lines)
+- cmd/browser-agent/tools_generate.go (+80 lines)
+- cmd/browser-agent/tools_test.go (+50 lines)
 
 All files stay under 800 lines ✅
 
@@ -605,11 +605,11 @@ Review qa-plan.md. Approve to start implementation.
 
 **Step 1: Write Failing Tests**
 
-Creating test in cmd/dev-console/tools_test.go:
+Creating test in cmd/browser-agent/tools_test.go:
 
 [Shows test code]
 
-Running: `go test ./cmd/dev-console -run TestGenerateReplay`
+Running: `go test ./cmd/browser-agent -run TestGenerateReplay`
 Result: ❌ FAIL (expected - no implementation yet)
 
 **Step 2: Implement Minimal Code**
@@ -618,7 +618,7 @@ Result: ❌ FAIL (expected - no implementation yet)
 
 **Step 3: Verify Tests Pass**
 
-Running: `go test ./cmd/dev-console -run TestGenerateReplay`
+Running: `go test ./cmd/browser-agent -run TestGenerateReplay`
 Result: ✅ PASS
 
 **Step 4: Run Quality Gate**

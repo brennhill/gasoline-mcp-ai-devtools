@@ -21,7 +21,7 @@ Mode selection: `main()` checks for CLI mode first (args match a tool name), oth
 ## Package Layout
 
 ```
-cmd/dev-console/               Main binary
+cmd/browser-agent/               Main binary
   main.go                      Entry point, flag parsing, mode dispatch
   bridge.go                    Bridge mode: stdio-to-HTTP forwarding, daemon spawn/respawn
   main_connection_mcp.go       Daemon mode: HTTP server startup, PID management, signals
@@ -146,7 +146,7 @@ internal/
 | Add a dependency interface              | `internal/mcp/deps.go` (interface), `internal/tools/<tool>/deps.go` (embed it)                            |
 | Add a CLI command                       | `cli_commands.go` (parser), `cli.go` (if new output format needed)                                        |
 | Change MCP protocol handling            | `handler.go` (MCPHandler), `tools_core.go` (ToolHandler)                                                 |
-| Add an internal package                 | `internal/<name>/`, import from `cmd/dev-console/` -- keep it zero-dep                                    |
+| Add an internal package                 | `internal/<name>/`, import from `cmd/browser-agent/` -- keep it zero-dep                                    |
 | Change bridge behavior                  | `bridge.go` (spawn/respawn), `internal/bridge/` (timeout logic)                                           |
 | Add a resource (gasoline://*)           | `handler.go` (resource registration in MCPHandler)                                                        |
 
@@ -156,7 +156,7 @@ internal/
 
 ```bash
 make test              # All Go + extension tests
-go test ./cmd/dev-console/...   # Server tests only
+go test ./cmd/browser-agent/...   # Server tests only
 go test ./internal/...          # Internal package tests only
 ```
 

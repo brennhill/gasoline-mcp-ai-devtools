@@ -181,7 +181,7 @@ last_verified_date: 2026-03-05
 
 #### M2-1: Test file locations inconsistent
 - QA_PLAN specifies:
-  - `cmd/dev-console/analyze_test.go` (matches existing pattern)
+  - `cmd/browser-agent/analyze_test.go` (matches existing pattern)
   - `tests/extension/analyze.test.js` (correct)
   - `tests/integration/analyze_test.go` (no integration test folder exists currently)
 - **Suggestion**: Clarify integration test location or create the folder
@@ -222,10 +222,10 @@ The change from 4-tool to 5-tool maximum is **well-reasoned**:
 3. Re-review updated spec
 
 ### Phase 1: Core Infrastructure
-1. Add `analyze` tool registration to `cmd/dev-console/tools_core.go`
-2. Create `cmd/dev-console/analyze.go`
+1. Add `analyze` tool registration to `cmd/browser-agent/tools_core.go`
+2. Create `cmd/browser-agent/analyze.go`
 3. Create endpoint `/analyze-result` in `main.go`
-4. Write unit tests: `cmd/dev-console/analyze_test.go`
+4. Write unit tests: `cmd/browser-agent/analyze_test.go`
 
 ### Phase 2: Extension Infrastructure
 1. Create `extension/lib/analyze.js` (dispatcher)
@@ -279,8 +279,8 @@ Once these are addressed in an updated TECH_SPEC, re-submit for final approval.
 
 ## Key Implementation Files
 
-- `cmd/dev-console/tools_core.go` — Tool registration pattern
-- `cmd/dev-console/pilot.go` — Pending query pattern for extension communication
-- `cmd/dev-console/types.go` — PendingQuery struct
+- `cmd/browser-agent/tools_core.go` — Tool registration pattern
+- `cmd/browser-agent/pilot.go` — Pending query pattern for extension communication
+- `cmd/browser-agent/types.go` — PendingQuery struct
 - `extension/content.js` — Message bridge
 - `extension/lib/axe.min.js` — Already bundled (527KB)

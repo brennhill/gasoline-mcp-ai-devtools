@@ -8,7 +8,7 @@ last_reviewed: 2026-03-06
 code_paths:
   - Makefile
   - scripts/build-crx.js
-  - cmd/dev-console/native_install.go
+  - cmd/browser-agent/native_install.go
   - scripts/install.sh
   - scripts/install.ps1
   - server/scripts/install.js
@@ -19,7 +19,7 @@ code_paths:
   - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
-  - cmd/dev-console/native_install_test.go
+  - cmd/browser-agent/native_install_test.go
   - npm/gasoline-agentic-browser/lib/install.test.js
   - pypi/gasoline-agentic-browser/tests/test_install.py
   - pypi/gasoline-mcp/tests/test_install.py

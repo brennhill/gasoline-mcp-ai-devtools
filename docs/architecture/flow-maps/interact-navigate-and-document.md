@@ -6,21 +6,21 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_interact_workflow_navigate_document.go:handleNavigateAndDocument
+  - cmd/browser-agent/tools_interact_workflow_navigate_document.go:handleNavigateAndDocument
 code_paths:
-  - cmd/dev-console/tools_interact_workflow_navigate_document.go
-  - cmd/dev-console/tools_interact_response_helpers.go
-  - cmd/dev-console/tools_interact_dispatch.go
-  - cmd/dev-console/tools_pending_query_enqueue.go
+  - cmd/browser-agent/tools_interact_workflow_navigate_document.go
+  - cmd/browser-agent/tools_interact_response_helpers.go
+  - cmd/browser-agent/tools_interact_dispatch.go
+  - cmd/browser-agent/tools_pending_query_enqueue.go
   - internal/tools/interact/workflow.go
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_output_batch.go
   - internal/schema/interact_properties_targeting.go
   - internal/tools/configure/mode_specs_interact.go
 test_paths:
-  - cmd/dev-console/tools_interact_navigate_document_test.go
-  - cmd/dev-console/tools_pending_query_enqueue_test.go
-  - cmd/dev-console/tools_interact_screenshot_test.go
+  - cmd/browser-agent/tools_interact_navigate_document_test.go
+  - cmd/browser-agent/tools_pending_query_enqueue_test.go
+  - cmd/browser-agent/tools_interact_screenshot_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -70,9 +70,9 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 
 ## Code Paths
 
-- `cmd/dev-console/tools_interact_workflow_navigate_document.go`
-- `cmd/dev-console/tools_interact_response_helpers.go`
-- `cmd/dev-console/tools_interact_dispatch.go`
+- `cmd/browser-agent/tools_interact_workflow_navigate_document.go`
+- `cmd/browser-agent/tools_interact_response_helpers.go`
+- `cmd/browser-agent/tools_interact_dispatch.go`
 - `internal/tools/interact/workflow.go`
 - `internal/schema/interact_actions.go`
 - `internal/schema/interact_properties_output_batch.go`
@@ -81,8 +81,8 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 
 ## Test Paths
 
-- `cmd/dev-console/tools_interact_navigate_document_test.go`
-- `cmd/dev-console/tools_interact_screenshot_test.go`
+- `cmd/browser-agent/tools_interact_navigate_document_test.go`
+- `cmd/browser-agent/tools_interact_screenshot_test.go`
 
 ## Edit Guardrails
 

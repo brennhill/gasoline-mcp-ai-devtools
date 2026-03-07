@@ -6,18 +6,18 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_interact_batch.go
-  - cmd/dev-console/tools_interact_dispatch.go
-  - cmd/dev-console/tools_configure_sequence.go
-  - cmd/dev-console/tools_configure_sequence_replay.go
-  - cmd/dev-console/tools_configure_sequence_replay_steps.go
-  - cmd/dev-console/tools_configure_sequence_types.go
+  - cmd/browser-agent/tools_interact_batch.go
+  - cmd/browser-agent/tools_interact_dispatch.go
+  - cmd/browser-agent/tools_configure_sequence.go
+  - cmd/browser-agent/tools_configure_sequence_replay.go
+  - cmd/browser-agent/tools_configure_sequence_replay_steps.go
+  - cmd/browser-agent/tools_configure_sequence_types.go
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_output_batch.go
   - internal/tools/configure/mode_specs_interact.go
 test_paths:
-  - cmd/dev-console/tools_interact_batch_test.go
-  - cmd/dev-console/tools_configure_sequence_test.go
+  - cmd/browser-agent/tools_interact_batch_test.go
+  - cmd/browser-agent/tools_configure_sequence_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---

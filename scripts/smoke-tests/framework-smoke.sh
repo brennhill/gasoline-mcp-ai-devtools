@@ -87,7 +87,7 @@ _resolve_harness_root() {
 
     local candidates=(
         "$SMOKE_FRAMEWORK_DIR/../../tests/pages"
-        "$SMOKE_FRAMEWORK_DIR/../../cmd/dev-console/testpages"
+        "$SMOKE_FRAMEWORK_DIR/../../cmd/browser-agent/testpages"
     )
     local candidate
     for candidate in "${candidates[@]}"; do

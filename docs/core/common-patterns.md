@@ -6,16 +6,16 @@ Use this as a hard checklist during design, coding, and review.
 ## 0) 0.8 Helper Inventory (Use These First)
 
 - Server dispatch and mode resolution:
-  - `cmd/dev-console/tool_dispatch_helpers.go`
-  - `cmd/dev-console/tools_observe_registry.go`
-  - `cmd/dev-console/tools_configure_registry.go`
+  - `cmd/browser-agent/tool_dispatch_helpers.go`
+  - `cmd/browser-agent/tools_observe_registry.go`
+  - `cmd/browser-agent/tools_configure_registry.go`
 - Shared async query path:
-  - `cmd/dev-console/tools_pending_query_enqueue.go`
-  - `cmd/dev-console/tools_shared_queries.go`
+  - `cmd/browser-agent/tools_pending_query_enqueue.go`
+  - `cmd/browser-agent/tools_shared_queries.go`
 - Interact response shaping:
-  - `cmd/dev-console/tools_interact_response_helpers.go`
+  - `cmd/browser-agent/tools_interact_response_helpers.go`
 - Recording helper seams:
-  - `cmd/dev-console/recording_helpers.go`
+  - `cmd/browser-agent/recording_helpers.go`
 - Extension command routing:
   - `src/background/commands/registry.ts`
   - `src/background/commands/helpers.ts`

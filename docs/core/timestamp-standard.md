@@ -43,7 +43,7 @@ Timezone: ALWAYS UTC (Z suffix required)
 
 ### Implementation
 
-**Normalize at response serialization time** (in `cmd/dev-console/tools_core.go`):
+**Normalize at response serialization time** (in `cmd/browser-agent/tools_core.go`):
 
 ```go
 // For Actions (int64 → RFC3339)

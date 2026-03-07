@@ -210,4 +210,4 @@ The observation function is called from the existing `AddNetworkBodies` method. 
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_schema.go` with tests in `cmd/dev-console/ai_schema_test.go`.
+Implementation goes in `cmd/browser-agent/ai_schema.go` with tests in `cmd/browser-agent/ai_schema_test.go`.

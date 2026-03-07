@@ -2,7 +2,7 @@
 
 ## Current State
 
-The gasoline codebase has two major architectural pain points: a monolithic Go backend (`cmd/dev-console/`) and a flat Chrome extension (`src/`). Both suffer from poor modularity, but for different reasons.
+The gasoline codebase has two major architectural pain points: a monolithic Go backend (`cmd/browser-agent/`) and a flat Chrome extension (`src/`). Both suffer from poor modularity, but for different reasons.
 
 ---
 
@@ -31,10 +31,10 @@ Shared test helpers consolidated into `tools_test_helpers_test.go`. Shared cross
 
 ## Phase 2: Internal Sub-Packages (Next — Option A)
 
-Break `cmd/dev-console/` from a 207-file `package main` into focused internal packages:
+Break `cmd/browser-agent/` from a 207-file `package main` into focused internal packages:
 
 ```
-cmd/dev-console/
+cmd/browser-agent/
   main.go                    # CLI entry, wiring
   tools.go                   # ToolHandler + HandleToolCall dispatch
 
@@ -63,7 +63,7 @@ internal/
 
 1. **ToolHandler dependency**: Every tool method is on `*ToolHandler` (199 methods). Sub-packages can't reference `main.ToolHandler`. Need to extract a `ToolContext` interface that sub-packages accept.
 
-2. **Capture god object**: `*capture.Capture` has 149 methods across 22 files and is imported 65 times from `cmd/dev-console/`. Tools need it for state access. Solution: define narrow interfaces per tool (`ObserveState`, `ConfigureState`) so each package depends only on what it uses.
+2. **Capture god object**: `*capture.Capture` has 149 methods across 22 files and is imported 65 times from `cmd/browser-agent/`. Tools need it for state access. Solution: define narrow interfaces per tool (`ObserveState`, `ConfigureState`) so each package depends only on what it uses.
 
 3. **Server access**: Tools read from `*Server` (log entries, audit). Need to extract a read interface.
 

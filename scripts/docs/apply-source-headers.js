@@ -34,18 +34,18 @@ function inferDocs(rel) {
   const docs = new Set()
   const add = (slug) => docs.add(`docs/features/feature/${slug}/index.md`)
 
-  if (rel.startsWith('cmd/dev-console/bridge')) add('bridge-restart')
-  if (rel.startsWith('cmd/dev-console/upload')) add('file-upload')
-  if (rel.startsWith('cmd/dev-console/testgen')) add('test-generation')
-  if (rel.startsWith('cmd/dev-console/tools_configure')) add('config-profiles')
-  if (rel.startsWith('cmd/dev-console/recording_') || rel.startsWith('cmd/dev-console/tools_recording_video')) {
+  if (rel.startsWith('cmd/browser-agent/bridge')) add('bridge-restart')
+  if (rel.startsWith('cmd/browser-agent/upload')) add('file-upload')
+  if (rel.startsWith('cmd/browser-agent/testgen')) add('test-generation')
+  if (rel.startsWith('cmd/browser-agent/tools_configure')) add('config-profiles')
+  if (rel.startsWith('cmd/browser-agent/recording_') || rel.startsWith('cmd/browser-agent/tools_recording_video')) {
     add('playback-engine')
   }
 
-  if (rel.startsWith('cmd/dev-console/tools_analyze')) add('analyze-tool')
-  if (rel.startsWith('cmd/dev-console/tools_interact')) add('interact-explore')
-  if (rel.startsWith('cmd/dev-console/tools_observe')) add('observe')
-  if (rel.startsWith('cmd/dev-console/tools_generate') || rel.includes('/testgen')) add('test-generation')
+  if (rel.startsWith('cmd/browser-agent/tools_analyze')) add('analyze-tool')
+  if (rel.startsWith('cmd/browser-agent/tools_interact')) add('interact-explore')
+  if (rel.startsWith('cmd/browser-agent/tools_observe')) add('observe')
+  if (rel.startsWith('cmd/browser-agent/tools_generate') || rel.includes('/testgen')) add('test-generation')
   if (rel.includes('reproduction')) add('reproduction-scripts')
   if (rel.startsWith('internal/bridge/')) add('bridge-restart')
   if (rel.startsWith('internal/buffers/')) add('ring-buffer')
@@ -110,17 +110,17 @@ function inferDocs(rel) {
 }
 
 function inferPurpose(rel) {
-  if (rel.startsWith('cmd/dev-console/bridge')) return 'Implements bridge transport lifecycle, forwarding, and reconnect behavior.'
-  if (rel.startsWith('cmd/dev-console/upload')) return 'Implements upload command handling, validation, and OS automation wiring.'
-  if (rel.startsWith('cmd/dev-console/testgen')) return 'Implements test generation, classification, and healing command handlers.'
-  if (rel.startsWith('cmd/dev-console/tools_configure')) return 'Implements configure tool handlers for policy, profiles, and session controls.'
-  if (rel.startsWith('cmd/dev-console/recording_') || rel.startsWith('cmd/dev-console/tools_recording_video')) {
+  if (rel.startsWith('cmd/browser-agent/bridge')) return 'Implements bridge transport lifecycle, forwarding, and reconnect behavior.'
+  if (rel.startsWith('cmd/browser-agent/upload')) return 'Implements upload command handling, validation, and OS automation wiring.'
+  if (rel.startsWith('cmd/browser-agent/testgen')) return 'Implements test generation, classification, and healing command handlers.'
+  if (rel.startsWith('cmd/browser-agent/tools_configure')) return 'Implements configure tool handlers for policy, profiles, and session controls.'
+  if (rel.startsWith('cmd/browser-agent/recording_') || rel.startsWith('cmd/browser-agent/tools_recording_video')) {
     return 'Implements recording and playback command handlers for captured browser sessions.'
   }
-  if (rel.startsWith('cmd/dev-console/tools_analyze')) return 'Implements analyze tool handlers and response shaping.'
-  if (rel.startsWith('cmd/dev-console/tools_interact')) return 'Implements interact tool handlers and browser action orchestration.'
-  if (rel.startsWith('cmd/dev-console/tools_observe')) return 'Implements observe tool queries against captured runtime buffers.'
-  if (rel.startsWith('cmd/dev-console/tools_generate')) return 'Implements generate tool formats and output assembly.'
+  if (rel.startsWith('cmd/browser-agent/tools_analyze')) return 'Implements analyze tool handlers and response shaping.'
+  if (rel.startsWith('cmd/browser-agent/tools_interact')) return 'Implements interact tool handlers and browser action orchestration.'
+  if (rel.startsWith('cmd/browser-agent/tools_observe')) return 'Implements observe tool queries against captured runtime buffers.'
+  if (rel.startsWith('cmd/browser-agent/tools_generate')) return 'Implements generate tool formats and output assembly.'
   if (rel.startsWith('internal/bridge/')) return 'Implements framed stdio transport, timeouts, and bridge connection lifecycle.'
   if (rel.startsWith('internal/buffers/')) return 'Implements ring buffer storage primitives and cursor-safe access patterns.'
   if (rel.startsWith('internal/export/')) return 'Implements export serializers and format-specific output builders.'

@@ -6,14 +6,14 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_analyze_dispatch.go
-  - cmd/dev-console/tools_analyze_annotations_handlers.go
-  - cmd/dev-console/tools_analyze_api_validation.go
-  - cmd/dev-console/tools_analyze_inspect_forms.go
-  - cmd/dev-console/tools_pending_query_enqueue.go
-  - cmd/dev-console/tools_async_observe_commands.go
-  - cmd/dev-console/tools_async_formatting.go
-  - cmd/dev-console/tools_security_audit.go
+  - cmd/browser-agent/tools_analyze_dispatch.go
+  - cmd/browser-agent/tools_analyze_annotations_handlers.go
+  - cmd/browser-agent/tools_analyze_api_validation.go
+  - cmd/browser-agent/tools_analyze_inspect_forms.go
+  - cmd/browser-agent/tools_pending_query_enqueue.go
+  - cmd/browser-agent/tools_async_observe_commands.go
+  - cmd/browser-agent/tools_async_formatting.go
+  - cmd/browser-agent/tools_security_audit.go
   - internal/annotation/store.go
   - internal/annotation/store_results.go
   - internal/annotation/store_wait.go
@@ -32,11 +32,11 @@ code_paths:
   - src/inject/message-handlers.ts
   - src/types/runtime-messages.ts
 test_paths:
-  - cmd/dev-console/tools_analyze_annotations_test.go
-  - cmd/dev-console/tools_analyze_inspect_test.go
-  - cmd/dev-console/tools_analyze_structured_extraction_test.go
-  - cmd/dev-console/tools_analyze_handler_test.go
-  - cmd/dev-console/tools_pending_query_enqueue_test.go
+  - cmd/browser-agent/tools_analyze_annotations_test.go
+  - cmd/browser-agent/tools_analyze_inspect_test.go
+  - cmd/browser-agent/tools_analyze_structured_extraction_test.go
+  - cmd/browser-agent/tools_analyze_handler_test.go
+  - cmd/browser-agent/tools_pending_query_enqueue_test.go
   - internal/annotation/store_test.go
   - internal/tools/analyze/computed_styles_test.go
   - internal/tools/analyze/forms_test.go
@@ -52,7 +52,7 @@ last_verified_date: 2026-03-05
 - Status: shipped
 - Tool: `analyze`
 - Mode key: `what`
-- Contract source: `cmd/dev-console/tools_schema.go`
+- Contract source: `cmd/browser-agent/tools_schema.go`
 
 ## Specs
 - Product: `product-spec.md`

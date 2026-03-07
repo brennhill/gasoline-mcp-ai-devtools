@@ -58,7 +58,7 @@ Return audit report
 - Constants: Recommended title length (30-60), description length (120-160)
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add handler
+- `cmd/browser-agent/queries.go`: Add handler
 
 **Trade-offs**:
 - Basic validation only (not full Lighthouse-level SEO audit)

@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 **Date:** 2026-02-14
 **Auditor:** Senior Reliability Engineer (automated)
-**Scope:** Go server (`cmd/dev-console/`), capture package (`internal/capture/`), utility packages
+**Scope:** Go server (`cmd/browser-agent/`), capture package (`internal/capture/`), utility packages
 **Version audited:** 0.7.12
 
 ---
@@ -32,7 +32,7 @@ last_reviewed: 2026-02-16
 
 ### FINDING 1.1 -- Connect mode stdout writes lack serialization
 
-- **Location:** `cmd/dev-console/connect_mode.go:130` and `cmd/dev-console/connect_mode.go:174`
+- **Location:** `cmd/browser-agent/connect_mode.go:130` and `cmd/browser-agent/connect_mode.go:174`
 - **Category:** Concurrency
 - **Severity:** HIGH
 
@@ -122,7 +122,7 @@ All code paths verified during this audit follow this hierarchy. Methods like `c
 
 ### FINDING 2.1 -- globalAnnotationStore starts background goroutine at package init
 
-- **Location:** `cmd/dev-console/annotation_store.go:14`
+- **Location:** `cmd/browser-agent/annotation_store.go:14`
 - **Category:** Resource Leak
 - **Severity:** MEDIUM
 
@@ -190,7 +190,7 @@ No action needed. The current pattern is the result of a previous optimization.
 
 ### FINDING 2.3 -- HTTP response body not drained in stopViaHTTP error path
 
-- **Location:** `cmd/dev-console/main_connection_stop.go:119-131`
+- **Location:** `cmd/browser-agent/main_connection_stop.go:119-131`
 - **Category:** Resource Leak
 - **Severity:** LOW
 
@@ -224,7 +224,7 @@ Add `io.Copy(io.Discard, resp.Body)` before closing, and check the `http.NewRequ
 
 ### FINDING 3.1 -- HTTP WriteTimeout conflicts with slow MCP tools
 
-- **Location:** `cmd/dev-console/main_connection_mcp.go:171-174`
+- **Location:** `cmd/browser-agent/main_connection_mcp.go:171-174`
 - **Category:** Blocking Operations
 - **Severity:** CRITICAL
 
@@ -264,7 +264,7 @@ Set `WriteTimeout: 0` (disable) or set it to at least 70 seconds (above the maxi
 
 ### FINDING 3.2 -- Preflight port check has TOCTOU race with daemon bind
 
-- **Location:** `cmd/dev-console/main_connection_mcp.go:155-163`
+- **Location:** `cmd/browser-agent/main_connection_mcp.go:155-163`
 - **Category:** Blocking Operations
 - **Severity:** LOW
 
@@ -297,7 +297,7 @@ No action needed. The defense-in-depth approach is acceptable.
 
 ### FINDING 4.1 -- Bare goroutine in production code (upload_form_submit.go)
 
-- **Location:** `cmd/dev-console/upload_form_submit.go:175`
+- **Location:** `cmd/browser-agent/upload_form_submit.go:175`
 - **Category:** Error Handling
 - **Severity:** MEDIUM
 
@@ -322,7 +322,7 @@ Replace `go func()` with `util.SafeGo(func() { ... })`. The error channel patter
 
 ### FINDING 4.2 -- sendStartupError writes to stdout without mcpStdoutMu
 
-- **Location:** `cmd/dev-console/main.go:573-589`
+- **Location:** `cmd/browser-agent/main.go:573-589`
 - **Category:** Error Handling
 - **Severity:** LOW
 
@@ -349,7 +349,7 @@ Acquire the lock for consistency, even though the race window is non-existent.
 
 ### FINDING 4.3 -- Server.addEntries file I/O can race with clearEntries
 
-- **Location:** `cmd/dev-console/server.go:175-231`
+- **Location:** `cmd/browser-agent/server.go:175-231`
 - **Category:** Error Handling
 - **Severity:** LOW
 
@@ -385,7 +385,7 @@ No action needed. The tradeoff is intentional and well-documented.
 
 ### FINDING 5.1 -- screenshotRateLimiter map can grow unbounded between cleanup cycles
 
-- **Location:** `cmd/dev-console/main.go:67`, `cmd/dev-console/server_routes.go:56-79`
+- **Location:** `cmd/browser-agent/main.go:67`, `cmd/browser-agent/server_routes.go:56-79`
 - **Category:** Memory
 - **Severity:** LOW
 
@@ -421,7 +421,7 @@ No action needed. The dual cleanup strategy (periodic + inline eviction) is robu
 
 ### FINDING 5.2 -- StreamState.SeenMessages map grows during dedup window
 
-- **Location:** `cmd/dev-console/streaming.go:47`, `cmd/dev-console/streaming.go:284-296`
+- **Location:** `cmd/browser-agent/streaming.go:47`, `cmd/browser-agent/streaming.go:284-296`
 - **Category:** Memory
 - **Severity:** LOW
 
@@ -514,7 +514,7 @@ Add `cap.Close()` to the shutdown path in `awaitShutdownSignal`, before `server.
 
 ### FINDING 6.2 -- Async logger shutdown has 2-second timeout that may drop logs
 
-- **Location:** `cmd/dev-console/server.go:339-355`
+- **Location:** `cmd/browser-agent/server.go:339-355`
 - **Category:** Shutdown
 - **Severity:** LOW
 
@@ -545,7 +545,7 @@ No action needed. The current behavior is appropriate for a graceful-best-effort
 
 ### FINDING 6.3 -- Bridge mode does not stop the daemon on exit
 
-- **Location:** `cmd/dev-console/bridge.go:225-295`
+- **Location:** `cmd/browser-agent/bridge.go:225-295`
 - **Category:** Shutdown
 - **Severity:** N/A (Design decision)
 
@@ -567,7 +567,7 @@ Intentional design. Users who expect the daemon to die with the bridge may be su
 
 ### FINDING 7.1 -- findProcessOnPort and getProcessCommand lack context timeout
 
-- **Location:** `cmd/dev-console/platform_errors.go:71-88` and `cmd/dev-console/platform_errors.go:92-115`
+- **Location:** `cmd/browser-agent/platform_errors.go:71-88` and `cmd/browser-agent/platform_errors.go:92-115`
 - **Category:** External Process
 - **Severity:** HIGH
 
@@ -614,7 +614,7 @@ Use `exec.CommandContext` with a 5-second timeout, consistent with the pattern u
 
 ### FINDING 7.2 -- killUnixGasolineProcesses lsof and pkill lack context timeout
 
-- **Location:** `cmd/dev-console/main_connection_stop.go:189-212`
+- **Location:** `cmd/browser-agent/main_connection_stop.go:189-212`
 - **Category:** External Process
 - **Severity:** HIGH
 
@@ -645,7 +645,7 @@ Use `exec.CommandContext` with a 10-second timeout for `lsof` and a 5-second tim
 
 ### FINDING 7.3 -- OS automation commands use proper timeouts
 
-- **Location:** `cmd/dev-console/upload_os_automation.go:122-137`, `cmd/dev-console/upload_os_automation.go:407-409`
+- **Location:** `cmd/browser-agent/upload_os_automation.go:122-137`, `cmd/browser-agent/upload_os_automation.go:407-409`
 - **Category:** External Process
 - **Severity:** N/A (Positive finding)
 
@@ -669,7 +669,7 @@ Input sanitization is also thorough:
 
 ### FINDING 7.4 -- stopViaHTTP creates request without context
 
-- **Location:** `cmd/dev-console/main_connection_stop.go:119`
+- **Location:** `cmd/browser-agent/main_connection_stop.go:119`
 - **Category:** External Process
 - **Severity:** LOW
 
@@ -726,27 +726,27 @@ Use `http.NewRequestWithContext` with a 3-second context for consistency.
 ## Top 5 Priority Fixes
 
 ### 1. Increase HTTP WriteTimeout to accommodate slow tools
-**File:** `cmd/dev-console/main_connection_mcp.go:173`
+**File:** `cmd/browser-agent/main_connection_mcp.go:173`
 **Change:** `WriteTimeout: 10 * time.Second` -> `WriteTimeout: 70 * time.Second` (or `0` to disable)
 **Why:** This is the single most impactful bug. The `analyze` and `interact` tools -- the two most complex tools in the system -- silently fail for any operation exceeding 10 seconds. Annotation polling (up to 65s) is completely broken. Users experience this as random, unreproducible failures with no clear error message.
 
 ### 2. Add context timeouts to exec.Command in platform_errors.go
-**File:** `cmd/dev-console/platform_errors.go:72-100`
+**File:** `cmd/browser-agent/platform_errors.go:72-100`
 **Change:** Replace `exec.Command(...)` with `exec.CommandContext(ctx, ...)` using a 5-second timeout
 **Why:** A hung `lsof` or `ps` command during `--stop` makes the CLI appear frozen. This is user-facing and erodes trust in the tool.
 
 ### 3. Add context timeouts to exec.Command in killUnixGasolineProcesses
-**File:** `cmd/dev-console/main_connection_stop.go:189-210`
+**File:** `cmd/browser-agent/main_connection_stop.go:189-210`
 **Change:** Replace `exec.Command(...)` with `exec.CommandContext(ctx, ...)` using 10-second and 5-second timeouts
 **Why:** This runs during npm package install. A hung command blocks the entire installation pipeline.
 
 ### 4. Add mcpStdoutMu to connect mode stdout writes
-**File:** `cmd/dev-console/connect_mode.go:130` and `cmd/dev-console/connect_mode.go:173-174`
+**File:** `cmd/browser-agent/connect_mode.go:130` and `cmd/browser-agent/connect_mode.go:173-174`
 **Change:** Wrap stdout writes with `mcpStdoutMu.Lock()`/`mcpStdoutMu.Unlock()`
 **Why:** Prevents a latent bug from becoming critical if connect mode is ever made concurrent.
 
 ### 5. Replace bare goroutine with SafeGo in upload_form_submit.go
-**File:** `cmd/dev-console/upload_form_submit.go:175`
+**File:** `cmd/browser-agent/upload_form_submit.go:175`
 **Change:** Replace `go func()` with `util.SafeGo(func() { ... })`
 **Why:** Maintains consistency with the codebase-wide SafeGo convention and ensures panic recovery on a path that processes external data.
 

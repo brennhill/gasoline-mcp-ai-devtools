@@ -3,7 +3,7 @@
 # Run this before every commit or deployment
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 echo "⚡ Quick Regression Check"

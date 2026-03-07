@@ -99,7 +99,7 @@ setup_go_uat_coverage() {
     echo "Preparing coverage-instrumented UAT daemon binary..."
     (
         cd "$PROJECT_ROOT"
-        go build -cover -coverpkg=./... -o "$GO_UAT_BINARY" ./cmd/dev-console
+        go build -cover -coverpkg=./... -o "$GO_UAT_BINARY" ./cmd/browser-agent
     )
 
     export GASOLINE_UAT_WRAPPER="$GO_UAT_BINARY"

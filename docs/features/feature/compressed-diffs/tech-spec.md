@@ -211,4 +211,4 @@ Implementation is TBD. Could be a CLI output mode, a browser extension panel, a 
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_checkpoint.go` with tests in `cmd/dev-console/ai_checkpoint_test.go`.
+Implementation goes in `cmd/browser-agent/ai_checkpoint.go` with tests in `cmd/browser-agent/ai_checkpoint_test.go`.

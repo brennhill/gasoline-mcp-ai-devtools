@@ -6,17 +6,17 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/main_connection_stop.go:runStopMode
-  - cmd/dev-console/main_connection_stop.go:runForceCleanup
+  - cmd/browser-agent/main_connection_stop.go:runStopMode
+  - cmd/browser-agent/main_connection_stop.go:runForceCleanup
 code_paths:
-  - cmd/dev-console/main_connection_stop.go
-  - cmd/dev-console/main_connection_stop_strategies.go
-  - cmd/dev-console/main_connection_force_cleanup_strategies.go
+  - cmd/browser-agent/main_connection_stop.go
+  - cmd/browser-agent/main_connection_stop_strategies.go
+  - cmd/browser-agent/main_connection_force_cleanup_strategies.go
 test_paths:
-  - cmd/dev-console/main_connection_diag_test.go
-  - cmd/dev-console/main_connection_coverage_test.go
-  - cmd/dev-console/main_connection_pid_contract_test.go
-  - cmd/dev-console/test_daemon_cleanup_test.go
+  - cmd/browser-agent/main_connection_diag_test.go
+  - cmd/browser-agent/main_connection_coverage_test.go
+  - cmd/browser-agent/main_connection_pid_contract_test.go
+  - cmd/browser-agent/test_daemon_cleanup_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -55,16 +55,16 @@ Covers graceful single-port daemon shutdown (`--stop`) and broad process cleanup
 
 ## Code Paths
 
-- `cmd/dev-console/main_connection_stop.go`
-- `cmd/dev-console/main_connection_stop_strategies.go`
-- `cmd/dev-console/main_connection_force_cleanup_strategies.go`
+- `cmd/browser-agent/main_connection_stop.go`
+- `cmd/browser-agent/main_connection_stop_strategies.go`
+- `cmd/browser-agent/main_connection_force_cleanup_strategies.go`
 
 ## Test Paths
 
-- `cmd/dev-console/main_connection_diag_test.go`
-- `cmd/dev-console/main_connection_coverage_test.go`
-- `cmd/dev-console/main_connection_pid_contract_test.go`
-- `cmd/dev-console/test_daemon_cleanup_test.go`
+- `cmd/browser-agent/main_connection_diag_test.go`
+- `cmd/browser-agent/main_connection_coverage_test.go`
+- `cmd/browser-agent/main_connection_pid_contract_test.go`
+- `cmd/browser-agent/test_daemon_cleanup_test.go`
 
 ## Edit Guardrails
 

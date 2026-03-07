@@ -170,7 +170,7 @@ if (response.status === 0) {
 }
 ```
 
-### Server-Side Tool (`cmd/dev-console/tools_analyze.go`)
+### Server-Side Tool (`cmd/browser-agent/tools_analyze.go`)
 
 ```go
 // New analyze mode: link_validation

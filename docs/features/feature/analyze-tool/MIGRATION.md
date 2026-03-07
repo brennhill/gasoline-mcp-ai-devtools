@@ -59,19 +59,19 @@ However, cramming analysis capabilities into `observe` would violate principle #
 
 #### Files to create/modify:
 
-1. **`cmd/dev-console/analyze.go`** (new)
+1. **`cmd/browser-agent/analyze.go`** (new)
    - Tool registration
    - Request handling
    - Result correlation
 
-2. **`cmd/dev-console/mcp.go`** (modify)
+2. **`cmd/browser-agent/mcp.go`** (modify)
    - Add `analyze` to tool list
    - Register analyze handlers
 
-3. **`cmd/dev-console/pending.go`** (modify)
+3. **`cmd/browser-agent/pending.go`** (modify)
    - Extend pending query system for analyze requests
 
-4. **`cmd/dev-console/analyze_test.go`** (new)
+4. **`cmd/browser-agent/analyze_test.go`** (new)
    - Unit tests for analyze tool
 
 ### Phase 3: Extension Implementation

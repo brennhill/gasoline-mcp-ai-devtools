@@ -51,7 +51,7 @@ Both operate asynchronously without blocking main functionality.
 
 ### Server Side
 
-**`cmd/dev-console/main.go`** - Version Header Processing
+**`cmd/browser-agent/main.go`** - Version Header Processing
 - Extracts `X-Gasoline-Extension-Version` from request headers
 - Compares with server version
 - Logs mismatch to stderr for diagnostics

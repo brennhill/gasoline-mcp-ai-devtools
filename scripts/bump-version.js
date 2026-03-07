@@ -106,11 +106,11 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
 // Key files that MUST be updated (validation purposes)
 const CRITICAL_FILES = [
   'VERSION',
-  'cmd/dev-console/main.go',
+  'cmd/browser-agent/main.go',
   'npm/gasoline-agentic-browser/package.json',
   'extension/inject.bundled.js',
   'server/package.json',
-  'cmd/dev-console/openapi.json',
+  'cmd/browser-agent/openapi.json',
   'docs/core/async-command-api.yaml',
   'packages/gasoline-playwright/package.json',
   'packages/gasoline-ci/package.json',

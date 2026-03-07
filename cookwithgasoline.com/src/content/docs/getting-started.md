@@ -94,7 +94,7 @@ npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
 ```bash
 git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
 cd gasoline-agentic-browser-devtools-mcp
-go run ./cmd/dev-console
+go run ./cmd/browser-agent
 ```
 Requires [Go 1.24+](https://go.dev/).
 

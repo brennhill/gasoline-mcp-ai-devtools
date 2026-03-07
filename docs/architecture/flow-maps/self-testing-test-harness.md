@@ -6,15 +6,15 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/server_routes.go:registerRoutes
-  - cmd/dev-console/testpages_http.go:handleTestPages
-  - cmd/dev-console/testpages_websocket.go:handleTestHarnessWS
+  - cmd/browser-agent/server_routes.go:registerRoutes
+  - cmd/browser-agent/testpages_http.go:handleTestPages
+  - cmd/browser-agent/testpages_websocket.go:handleTestHarnessWS
 code_paths:
-  - cmd/dev-console/server_routes.go
-  - cmd/dev-console/testpages_http.go
-  - cmd/dev-console/testpages_websocket.go
+  - cmd/browser-agent/server_routes.go
+  - cmd/browser-agent/testpages_http.go
+  - cmd/browser-agent/testpages_websocket.go
 test_paths:
-  - cmd/dev-console/testpages_test.go
+  - cmd/browser-agent/testpages_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -58,13 +58,13 @@ Covers deterministic `/tests/*` HTTP fixtures and the `/tests/ws` WebSocket echo
 
 ## Code Paths
 
-- `cmd/dev-console/testpages_http.go`
-- `cmd/dev-console/testpages_websocket.go`
-- `cmd/dev-console/server_routes.go`
+- `cmd/browser-agent/testpages_http.go`
+- `cmd/browser-agent/testpages_websocket.go`
+- `cmd/browser-agent/server_routes.go`
 
 ## Test Paths
 
-- `cmd/dev-console/testpages_test.go`
+- `cmd/browser-agent/testpages_test.go`
 
 ## Edit Guardrails
 

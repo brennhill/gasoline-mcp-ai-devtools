@@ -6,7 +6,7 @@ set -euo pipefail
 
 PORT=${GASOLINE_PORT:-47152}
 SERVER_URL="http://localhost:$PORT"
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
 
 echo "=== On-Demand Waterfall UAT ==="
 echo ""

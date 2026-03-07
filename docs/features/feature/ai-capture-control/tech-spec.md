@@ -220,8 +220,8 @@ The `/settings` endpoint response adds a `capture_overrides` field. The extensio
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/capture_control.go` (override storage, settings endpoint enhancement, audit logger).
+Server implementation: `cmd/browser-agent/capture_control.go` (override storage, settings endpoint enhancement, audit logger).
 
 Extension integration: `extension/background.js` (settings poll response handling, override application).
 
-Tests: `cmd/dev-console/capture_control_test.go`, `extension-tests/capture-control.test.js`.
+Tests: `cmd/browser-agent/capture_control_test.go`, `extension-tests/capture-control.test.js`.

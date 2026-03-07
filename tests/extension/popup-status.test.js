@@ -488,10 +488,10 @@ describe('Server URL Display', () => {
 
     updateConnectionStatus({
       connected: true,
-      logFile: '/Users/dev/dev-console-logs.jsonl'
+      logFile: '/Users/dev/browser-agent-logs.jsonl'
     })
 
     const logFileEl = mockDocument.getElementById('log-file-path')
-    assert.ok(logFileEl.textContent.includes('dev-console-logs.jsonl'))
+    assert.ok(logFileEl.textContent.includes('browser-agent-logs.jsonl'))
   })
 })

@@ -1,7 +1,7 @@
 # MCP Maintainability Refactor Review (Go + TypeScript)
 
 Date: 2026-02-17  
-Scope: `cmd/dev-console`, `internal/*`, `src/*` (Go server + TypeScript extension/background)  
+Scope: `cmd/browser-agent`, `internal/*`, `src/*` (Go server + TypeScript extension/background)  
 Constraint used during review: read-only analysis, no code edits
 
 ## Goal
@@ -26,8 +26,8 @@ The proper design is:
 
 The same command/mode/action sets are represented separately in multiple places:
 
-- Tool schemas: `cmd/dev-console/tools_schema.go`
-- Server dispatch: `cmd/dev-console/tools_core.go`, `cmd/dev-console/tools_observe.go`, `cmd/dev-console/tools_analyze.go`, `cmd/dev-console/tools_configure.go`, `cmd/dev-console/tools_interact.go`
+- Tool schemas: `cmd/browser-agent/tools_schema.go`
+- Server dispatch: `cmd/browser-agent/tools_core.go`, `cmd/browser-agent/tools_observe.go`, `cmd/browser-agent/tools_analyze.go`, `cmd/browser-agent/tools_configure.go`, `cmd/browser-agent/tools_interact.go`
 - Sync command types: `internal/capture/sync.go`
 - Extension sync types: `src/background/sync-client.ts`
 - Extension execution router: `src/background/pending-queries.ts`
@@ -60,9 +60,9 @@ Impact:
 Hotspots:
 
 - `src/background/pending-queries.ts` (~1299 lines)
-- `cmd/dev-console/tools_schema.go` (~727 lines)
-- `cmd/dev-console/tools_core.go` (~405 lines with broad cross-cutting wiring)
-- `cmd/dev-console/handler.go` (core request/response path)
+- `cmd/browser-agent/tools_schema.go` (~727 lines)
+- `cmd/browser-agent/tools_core.go` (~405 lines with broad cross-cutting wiring)
+- `cmd/browser-agent/handler.go` (core request/response path)
 
 Impact:
 
@@ -73,9 +73,9 @@ Impact:
 
 Evidence:
 
-- Lenient parser helper: `cmd/dev-console/tools_response.go` (`lenientUnmarshal`)
-- Tool-level unknown-arg warning based on top-level schema: `cmd/dev-console/handler.go`
-- Structured warning parser exists but is limited in use: `cmd/dev-console/tools_validation.go`
+- Lenient parser helper: `cmd/browser-agent/tools_response.go` (`lenientUnmarshal`)
+- Tool-level unknown-arg warning based on top-level schema: `cmd/browser-agent/handler.go`
+- Structured warning parser exists but is limited in use: `cmd/browser-agent/tools_validation.go`
 - Many extension params parsed from `unknown`/string JSON at execution time: `src/background/pending-queries.ts`
 
 Impact:
@@ -124,21 +124,21 @@ Impact:
 
 ## End-to-end data flow (current)
 
-1. MCP request enters via `/mcp`: `cmd/dev-console/handler.go`.
-2. Tool dispatch occurs in `ToolHandler.HandleToolCall`: `cmd/dev-console/tools_core.go`.
-3. Tool-specific handlers enqueue `queries.PendingQuery`: `cmd/dev-console/tools_*.go`.
+1. MCP request enters via `/mcp`: `cmd/browser-agent/handler.go`.
+2. Tool dispatch occurs in `ToolHandler.HandleToolCall`: `cmd/browser-agent/tools_core.go`.
+3. Tool-specific handlers enqueue `queries.PendingQuery`: `cmd/browser-agent/tools_*.go`.
 4. Pending queries are surfaced through `/sync`: `internal/capture/sync.go`.
 5. Extension `SyncClient` receives commands: `src/background/sync-client.ts`.
 6. Extension executes in `handlePendingQuery`: `src/background/pending-queries.ts`.
 7. Command results are sent back via `/sync` `command_results`.
 8. Server correlates via query ID/correlation ID: `internal/capture/sync.go`, `internal/capture/queries.go`.
-9. Tool response is post-processed (redaction/warnings/telemetry): `cmd/dev-console/handler.go`, `cmd/dev-console/telemetry_passive.go`.
+9. Tool response is post-processed (redaction/warnings/telemetry): `cmd/browser-agent/handler.go`, `cmd/browser-agent/telemetry_passive.go`.
 
 ## Current accuracy posture
 
 - Tool-level mode/action sets are mostly aligned today between schema and dispatch.
 - Alignment is convention-based, not compile-time guaranteed.
-- Golden tests protect schema snapshots (`cmd/dev-console/golden_test.go`) but do not fully enforce execution coverage for every option combination.
+- Golden tests protect schema snapshots (`cmd/browser-agent/golden_test.go`) but do not fully enforce execution coverage for every option combination.
 
 ## Proper Target Design
 

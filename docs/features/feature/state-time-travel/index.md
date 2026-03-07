@@ -6,13 +6,13 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_interact_state_handler.go
-  - cmd/dev-console/tools_interact_state_capture.go
-  - cmd/dev-console/tools_interact_state_save_load.go
-  - cmd/dev-console/tools_interact_state_list_delete.go
+  - cmd/browser-agent/tools_interact_state_handler.go
+  - cmd/browser-agent/tools_interact_state_capture.go
+  - cmd/browser-agent/tools_interact_state_save_load.go
+  - cmd/browser-agent/tools_interact_state_list_delete.go
 test_paths:
-  - cmd/dev-console/tools_interact_state_test.go
-  - cmd/dev-console/tools_interact_gate_test.go
+  - cmd/browser-agent/tools_interact_state_test.go
+  - cmd/browser-agent/tools_interact_gate_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -41,13 +41,13 @@ last_verified_date: 2026-03-05
 ## Code and Tests
 
 - State sub-handler wiring:
-  - `cmd/dev-console/tools_interact_state_handler.go`
+  - `cmd/browser-agent/tools_interact_state_handler.go`
 - State capture and restore queueing:
-  - `cmd/dev-console/tools_interact_state_capture.go`
+  - `cmd/browser-agent/tools_interact_state_capture.go`
 - Save/load handlers:
-  - `cmd/dev-console/tools_interact_state_save_load.go`
+  - `cmd/browser-agent/tools_interact_state_save_load.go`
 - List/delete handlers:
-  - `cmd/dev-console/tools_interact_state_list_delete.go`
+  - `cmd/browser-agent/tools_interact_state_list_delete.go`
 - Tests:
-  - `cmd/dev-console/tools_interact_state_test.go`
-  - `cmd/dev-console/tools_interact_gate_test.go`
+  - `cmd/browser-agent/tools_interact_state_test.go`
+  - `cmd/browser-agent/tools_interact_gate_test.go`
