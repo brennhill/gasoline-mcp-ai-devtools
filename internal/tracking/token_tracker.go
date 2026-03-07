@@ -112,8 +112,6 @@ func categoryDisplayName(category string) string {
 		return "Search"
 	case "generic", "generic_truncation":
 		return "Generic"
-	case "quality_gates":
-		return "Quality gates"
 	default:
 		return category
 	}

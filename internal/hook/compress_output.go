@@ -5,17 +5,15 @@ package hook
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 )
 
 const (
-	minLinesForCompression = 50
+	minLinesForCompression  = 50
 	minLinesForGenericTrunc = 100
-	genericHeadLines       = 30
-	genericTailLines       = 20
+	genericHeadLines        = 30
+	genericTailLines        = 20
 )
 
 // CompressResult holds the outcome of output compression.
@@ -87,73 +85,46 @@ func (r *CompressResult) FormatContext() string {
 		r.OrigLines, r.CompLines, r.TokensBefore, r.TokensAfter, r.Compressed)
 }
 
-// PostStats sends token savings to the daemon (best-effort, non-blocking).
-func (r *CompressResult) PostStats(port string) {
-	body := fmt.Sprintf(`{"category":%q,"tokens_before":%d,"tokens_after":%d}`,
-		r.Category, r.TokensBefore, r.TokensAfter)
-	client := &http.Client{Timeout: 1e9} // 1 second
-	u := fmt.Sprintf("http://127.0.0.1:%s/api/token-savings", url.PathEscape(port))
-	resp, err := client.Post(u, "application/json", strings.NewReader(body))
-	if err == nil {
-		resp.Body.Close()
-	}
+// --- Compressor registry ---
+
+// compressorEntry defines a single output compressor with its match condition and handler.
+type compressorEntry struct {
+	category string
+	match    func(cmd string, lines []string) bool
+	compress func(lines []string) string
 }
 
-// detectAndCompress tries each compression pattern and returns (category, compressed).
-func detectAndCompress(lines []string, command string) (string, string) {
-	cmdLower := strings.ToLower(command)
-
+// compressors is the ordered registry of output compressors. Order matters:
+// cargo test must come before pytest because pytest's regex (`\d+ passed`) also
+// matches cargo test's "test result:" summary line, causing a false category match.
+var compressors = []compressorEntry{
 	// Test runners.
-	if strings.Contains(cmdLower, "go test") || hasGoTestMarkers(lines) {
-		if result := compressGoTest(lines); result != "" {
-			return "test_output", result
-		}
-	}
-	if containsAny(cmdLower, "jest", "vitest") || hasJestMarkers(lines) {
-		if result := compressJestVitest(lines); result != "" {
-			return "test_output", result
-		}
-	}
-	if strings.Contains(cmdLower, "cargo test") || hasCargoTestMarkers(lines) {
-		if result := compressCargoTest(lines); result != "" {
-			return "test_output", result
-		}
-	}
-	if strings.Contains(cmdLower, "pytest") || hasPytestMarkers(lines) {
-		if result := compressPytest(lines); result != "" {
-			return "test_output", result
-		}
-	}
-
+	{"test_output", matchGoTest, compressGoTest},
+	{"test_output", matchJest, compressJestVitest},
+	{"test_output", matchCargoTest, compressCargoTest},
+	{"test_output", matchPytest, compressPytest},
 	// Build tools.
-	if containsAny(cmdLower, "go build", "go vet") {
-		if result := compressGoBuild(lines); result != "" {
-			return "build_output", result
-		}
-	}
-	if makeCmdPattern.MatchString(cmdLower) {
-		if result := compressMake(lines); result != "" {
-			return "build_output", result
-		}
-	}
-	if strings.Contains(cmdLower, "tsc") {
-		if result := compressTsc(lines); result != "" {
-			return "build_output", result
-		}
-	}
-	if containsAny(cmdLower, "npm run build", "webpack") {
-		if result := compressNpmBuild(lines); result != "" {
-			return "build_output", result
-		}
-	}
-	if strings.Contains(cmdLower, "cargo build") {
-		if result := compressCargoBuild(lines); result != "" {
-			return "build_output", result
-		}
-	}
+	{"build_output", matchGoBuild, compressByGoBuild},
+	{"build_output", matchMake, compressByMake},
+	{"build_output", matchTsc, compressByTsc},
+	{"build_output", matchNpmBuild, compressByNpmBuild},
+	{"build_output", matchCargoBuild, compressByCargoBuild},
+}
 
+// detectAndCompress tries each registered compressor and returns the first match.
+func detectAndCompress(lines []string, command string) (string, string) {
+	cmd := strings.ToLower(command)
+	for _, c := range compressors {
+		if c.match(cmd, lines) {
+			if result := c.compress(lines); result != "" {
+				return c.category, result
+			}
+		}
+	}
 	return "", ""
 }
+
+// --- Match functions ---
 
 var (
 	makeCmdPattern  = regexp.MustCompile(`^make\b`)
@@ -161,6 +132,42 @@ var (
 	durationPattern = regexp.MustCompile(`(\d+\.\d+s)`)
 	pytestPattern   = regexp.MustCompile(`\d+ passed|\d+ failed|\d+ error`)
 )
+
+func matchGoTest(cmd string, lines []string) bool {
+	return strings.Contains(cmd, "go test") || hasGoTestMarkers(lines)
+}
+
+func matchJest(cmd string, lines []string) bool {
+	return containsAny(cmd, "jest", "vitest") || hasJestMarkers(lines)
+}
+
+func matchCargoTest(cmd string, lines []string) bool {
+	return strings.Contains(cmd, "cargo test") || hasCargoTestMarkers(lines)
+}
+
+func matchPytest(cmd string, lines []string) bool {
+	return strings.Contains(cmd, "pytest") || hasPytestMarkers(lines)
+}
+
+func matchGoBuild(cmd string, _ []string) bool {
+	return containsAny(cmd, "go build", "go vet")
+}
+
+func matchMake(cmd string, _ []string) bool {
+	return makeCmdPattern.MatchString(cmd)
+}
+
+func matchTsc(cmd string, _ []string) bool {
+	return strings.Contains(cmd, "tsc")
+}
+
+func matchNpmBuild(cmd string, _ []string) bool {
+	return containsAny(cmd, "npm run build", "webpack")
+}
+
+func matchCargoBuild(cmd string, _ []string) bool {
+	return strings.Contains(cmd, "cargo build")
+}
 
 func containsAny(s string, substrs ...string) bool {
 	for _, sub := range substrs {
@@ -170,6 +177,8 @@ func containsAny(s string, substrs ...string) bool {
 	}
 	return false
 }
+
+// --- Marker detection (content-based, no command needed) ---
 
 func hasGoTestMarkers(lines []string) bool {
 	for _, l := range lines {
@@ -213,7 +222,7 @@ func hasCargoTestMarkers(lines []string) bool {
 	return false
 }
 
-// --- Compression functions ---
+// --- Test runner compressors (complex, bespoke logic) ---
 
 func compressGoTest(lines []string) string {
 	var passed, failed, summaryLines []string
@@ -362,98 +371,55 @@ func compressCargoTest(lines []string) string {
 	return b.String()
 }
 
-func compressGoBuild(lines []string) string {
-	var errors []string
+// --- Build tool compressors (uniform predicate pattern) ---
+
+// compressByPredicate extracts matching lines and formats them as "header: N issue(s):".
+func compressByPredicate(lines []string, header string, match func(string) bool) string {
+	var matched []string
 	for _, line := range lines {
 		s := strings.TrimSpace(line)
-		if goErrorPattern.MatchString(s) || strings.HasPrefix(s, "#") {
-			errors = append(errors, s)
+		if match(s) {
+			matched = append(matched, s)
 		}
 	}
-	if len(errors) == 0 {
+	if len(matched) == 0 {
 		return ""
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "go build/vet: %d error(s):", len(errors))
-	for _, e := range errors {
-		fmt.Fprintf(&b, "\n%s", e)
+	fmt.Fprintf(&b, "%s: %d issue(s):", header, len(matched))
+	for _, m := range matched {
+		fmt.Fprintf(&b, "\n%s", m)
 	}
 	return b.String()
 }
 
-func compressMake(lines []string) string {
-	var important []string
-	for _, line := range lines {
-		s := strings.TrimSpace(line)
-		if strings.Contains(s, "Error") || strings.Contains(s, "make: ***") ||
-			strings.Contains(strings.ToLower(s), "warning:") {
-			important = append(important, s)
-		}
-	}
-	if len(important) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "make: %d issue(s):", len(important))
-	for _, s := range important {
-		fmt.Fprintf(&b, "\n%s", s)
-	}
-	return b.String()
+func compressByGoBuild(lines []string) string {
+	return compressByPredicate(lines, "go build/vet", func(s string) bool {
+		return goErrorPattern.MatchString(s) || strings.HasPrefix(s, "#")
+	})
 }
 
-func compressTsc(lines []string) string {
-	var errors []string
-	for _, line := range lines {
-		s := strings.TrimSpace(line)
-		if strings.Contains(s, "error TS") {
-			errors = append(errors, s)
-		}
-	}
-	if len(errors) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "tsc: %d error(s):", len(errors))
-	for _, e := range errors {
-		fmt.Fprintf(&b, "\n%s", e)
-	}
-	return b.String()
+func compressByMake(lines []string) string {
+	return compressByPredicate(lines, "make", func(s string) bool {
+		return strings.Contains(s, "Error") || strings.Contains(s, "make: ***") ||
+			strings.Contains(strings.ToLower(s), "warning:")
+	})
 }
 
-func compressNpmBuild(lines []string) string {
-	var errors []string
-	for _, line := range lines {
-		s := strings.TrimSpace(line)
-		if strings.Contains(s, "ERROR") || strings.Contains(s, "Module not found") {
-			errors = append(errors, s)
-		}
-	}
-	if len(errors) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "build: %d error(s):", len(errors))
-	for _, e := range errors {
-		fmt.Fprintf(&b, "\n%s", e)
-	}
-	return b.String()
+func compressByTsc(lines []string) string {
+	return compressByPredicate(lines, "tsc", func(s string) bool {
+		return strings.Contains(s, "error TS")
+	})
 }
 
-func compressCargoBuild(lines []string) string {
-	var errors []string
-	for _, line := range lines {
-		s := strings.TrimSpace(line)
-		if strings.Contains(s, "error[E") {
-			errors = append(errors, s)
-		}
-	}
-	if len(errors) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "cargo build: %d error(s):", len(errors))
-	for _, e := range errors {
-		fmt.Fprintf(&b, "\n%s", e)
-	}
-	return b.String()
+func compressByNpmBuild(lines []string) string {
+	return compressByPredicate(lines, "build", func(s string) bool {
+		return strings.Contains(s, "ERROR") || strings.Contains(s, "Module not found")
+	})
+}
+
+func compressByCargoBuild(lines []string) string {
+	return compressByPredicate(lines, "cargo build", func(s string) bool {
+		return strings.Contains(s, "error[E")
+	})
 }

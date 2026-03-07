@@ -58,3 +58,12 @@ No code-only refactor is complete until this documentation contract is satisfied
 14. New dependencies require explicit justification; remove unused dependencies promptly.
 15. Reviews and handoffs must cover correctness, modularity, performance, testability, docs quality, and DRY adherence.
 16. CI must block merges on broken docs links, missing required docs, or failing quality gates.
+
+## Pre-Commit Checklist
+
+Before presenting code as complete:
+
+- Grep for existing patterns before introducing new ones (http.Client, handler maps, error format)
+- No duplicated types/constants across packages — export from source of truth
+- 3+ similar functions → extract helper before continuing
+- Data structs must not do I/O — keep I/O at the call site

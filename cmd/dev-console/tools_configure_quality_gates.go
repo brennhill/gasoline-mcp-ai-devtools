@@ -6,24 +6,18 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
 )
 
-const (
-	gasolineConfigFile         = ".gasoline.json"
-	defaultCodeStandardsFile   = "gasoline-code-standards.md"
-	defaultFileSizeLimit       = 800
-	defaultDuplicateThreshold  = 3
-)
+const defaultDuplicateThreshold = 3
 
-// gasolineConfig is the structure of .gasoline.json.
-type gasolineConfig struct {
-	CodeStandards      string `json:"code_standards"`
-	FileSizeLimit      int    `json:"file_size_limit"`
-	DuplicateThreshold int    `json:"duplicate_threshold"`
-}
+const gasolineHookQualityGate = "gasoline-hooks quality-gate"
+const gasolineHookCompressOutput = "gasoline-hooks compress-output"
 
 // toolConfigureSetupQualityGates handles configure(what="setup_quality_gates").
 // Creates .gasoline.json and gasoline-code-standards.md in the target directory.
@@ -69,7 +63,7 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 			"Provide an existing directory path", withParam("target_dir"))
 	}
 
-	configPath := filepath.Join(absTarget, gasolineConfigFile)
+	configPath := filepath.Join(absTarget, hook.GasolineConfigFile)
 	configExisted := false
 	standardsCreated := false
 	standardsPath := ""
@@ -78,9 +72,9 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 	if _, err := os.Stat(configPath); err == nil {
 		configExisted = true
 	} else {
-		cfg := gasolineConfig{
-			CodeStandards:      defaultCodeStandardsFile,
-			FileSizeLimit:      defaultFileSizeLimit,
+		cfg := hook.GasolineConfig{
+			CodeStandards:      hook.DefaultCodeStandardsFile,
+			FileSizeLimit:      hook.DefaultFileSizeLimit,
 			DuplicateThreshold: defaultDuplicateThreshold,
 		}
 		cfgJSON, err := json.MarshalIndent(cfg, "", "  ")
@@ -89,16 +83,16 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 		}
 		cfgJSON = append(cfgJSON, '\n')
 		if err := os.WriteFile(configPath, cfgJSON, 0644); err != nil {
-			return fail(req, ErrInternal, "Failed to write "+gasolineConfigFile+": "+err.Error(), "Check file system permissions")
+			return fail(req, ErrInternal, "Failed to write "+hook.GasolineConfigFile+": "+err.Error(), "Check file system permissions")
 		}
 	}
 
 	// Determine code_standards path from config.
-	codeStandardsRef := defaultCodeStandardsFile
+	codeStandardsRef := hook.DefaultCodeStandardsFile
 	if configExisted {
 		existingCfg, err := os.ReadFile(configPath)
 		if err == nil {
-			var parsed gasolineConfig
+			var parsed hook.GasolineConfig
 			if json.Unmarshal(existingCfg, &parsed) == nil && parsed.CodeStandards != "" {
 				codeStandardsRef = parsed.CodeStandards
 			}
@@ -106,50 +100,51 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 	}
 
 	// Only create the standards file if it's the default name (not a custom path).
-	if codeStandardsRef == defaultCodeStandardsFile {
-		standardsPath = filepath.Join(absTarget, defaultCodeStandardsFile)
+	if codeStandardsRef == hook.DefaultCodeStandardsFile {
+		standardsPath = filepath.Join(absTarget, hook.DefaultCodeStandardsFile)
 		if _, err := os.Stat(standardsPath); err != nil {
 			if err := os.WriteFile(standardsPath, []byte(defaultCodeStandardsContent), 0644); err != nil {
-				return fail(req, ErrInternal, "Failed to write "+defaultCodeStandardsFile+": "+err.Error(), "Check file system permissions")
+				return fail(req, ErrInternal, "Failed to write "+hook.DefaultCodeStandardsFile+": "+err.Error(), "Check file system permissions")
 			}
 			standardsCreated = true
 		}
 	}
 
+	// Install Claude Code hooks into .claude/settings.json.
+	hooksInstalled, settingsPath, hookErr := installClaudeCodeHooks(absTarget)
+
 	// Build response.
 	defaults := map[string]any{
 		"code_standards":      codeStandardsRef,
-		"file_size_limit":     defaultFileSizeLimit,
+		"file_size_limit":     hook.DefaultFileSizeLimit,
 		"duplicate_threshold": defaultDuplicateThreshold,
 	}
 
-	suggestions := buildQualityGateSuggestions(configExisted, standardsCreated, codeStandardsRef)
-
-	// Build the recommended hook config for the user's .claude/settings.json.
-	hookConfig := buildQualityGateHookConfig(absTarget, codeStandardsRef)
+	suggestions := buildQualityGateSuggestions(configExisted, standardsCreated, codeStandardsRef, hooksInstalled)
 
 	responseData := map[string]any{
-		"config_path":    configPath,
-		"config_existed": configExisted,
-		"defaults":       defaults,
-		"suggestions":    suggestions,
-		"hook_config":    hookConfig,
+		"config_path":      configPath,
+		"config_existed":   configExisted,
+		"defaults":         defaults,
+		"suggestions":      suggestions,
+		"hooks_installed":  hooksInstalled,
+		"settings_path":    settingsPath,
+	}
+	if hookErr != nil {
+		responseData["hooks_error"] = hookErr.Error()
 	}
 	if standardsPath != "" {
 		responseData["standards_path"] = standardsPath
 		responseData["standards_created"] = standardsCreated
 	}
 
-	summary := "Quality gates configured"
-	if configExisted {
-		summary = "Quality gates already configured — existing config preserved"
-	}
+	summary := buildSetupSummary(configExisted, hooksInstalled, hookErr)
 
 	return succeed(req, summary, responseData)
 }
 
 // buildQualityGateSuggestions returns contextual suggestions based on setup state.
-func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStandardsRef string) []string {
+func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStandardsRef string, hooksInstalled bool) []string {
 	suggestions := []string{}
 
 	if !configExisted {
@@ -163,77 +158,130 @@ func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStand
 			"Edit gasoline-code-standards.md to add your project's coding patterns and conventions",
 		)
 	}
-	if codeStandardsRef != defaultCodeStandardsFile {
+	if codeStandardsRef != hook.DefaultCodeStandardsFile {
 		suggestions = append(suggestions,
 			"Your config points to "+codeStandardsRef+" — ensure this file exists",
 		)
 	}
-
-	suggestions = append(suggestions,
-		"Configure a Claude Code prompt hook to use Haiku for automatic code review on every edit",
-	)
+	if hooksInstalled {
+		suggestions = append(suggestions,
+			"Hooks installed — quality gate runs automatically on every Edit/Write, output compression on every Bash",
+			"Optionally add a Haiku prompt hook for belt-and-suspenders AI review",
+		)
+	}
 
 	return suggestions
 }
 
-// buildQualityGateHookConfig returns the recommended Claude Code hook configuration.
-// Hook config uses Claude Code's naming conventions (PascalCase event names), so it's
-// returned as a pre-formatted JSON string to avoid snake_case field validation.
-func buildQualityGateHookConfig(projectDir, codeStandardsRef string) map[string]any {
-	// `gasoline hook quality-gate` reads .gasoline.json, loads the standards doc,
-	// checks file size, and injects all findings as additionalContext.
-	// `gasoline hook compress-output` compresses verbose Bash output to summary + errors.
-	commandHook := `{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook quality-gate",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "gasoline hook compress-output",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
-}`
-
-	promptHook := `{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Review this code change against these project standards. Only flag clear violations, not style preferences. If the change looks good, respond {\"ok\": true}. If there are issues, respond {\"ok\": false, \"reason\": \"specific findings\"}.\n\nProject standards from ` + codeStandardsRef + ` apply.",
-            "model": "haiku",
-            "timeout": 30
-          }
-        ]
-      }
-    ]
-  }
-}`
-
-	return map[string]any{
-		"description":       "Add one of these hook configs to .claude/settings.json for automatic code review on every Edit/Write",
-		"settings_path":     filepath.Join(projectDir, ".claude", "settings.json"),
-		"command_hook_json": commandHook,
-		"prompt_hook_json":  promptHook,
+// buildSetupSummary returns a human-readable summary of what was done.
+func buildSetupSummary(configExisted, hooksInstalled bool, hookErr error) string {
+	parts := []string{}
+	if configExisted {
+		parts = append(parts, "existing config preserved")
+	} else {
+		parts = append(parts, "config + standards created")
 	}
+	if hooksInstalled {
+		parts = append(parts, "hooks installed to .claude/settings.json")
+	} else if hookErr != nil {
+		parts = append(parts, "hooks failed: "+hookErr.Error())
+	} else {
+		parts = append(parts, "hooks already installed")
+	}
+	return "Quality gates: " + strings.Join(parts, ", ")
+}
+
+// installClaudeCodeHooks writes gasoline-hooks entries into .claude/settings.json.
+// Merges with existing settings — does not overwrite. Returns (installed, settingsPath, error).
+// If hooks are already present, returns (false, path, nil).
+func installClaudeCodeHooks(projectDir string) (bool, string, error) {
+	settingsDir := filepath.Join(projectDir, ".claude")
+	settingsPath := filepath.Join(settingsDir, "settings.json")
+
+	// Read existing settings.
+	var settings map[string]any
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return false, settingsPath, fmt.Errorf("invalid JSON in %s: %v", settingsPath, err)
+		}
+	} else if !os.IsNotExist(err) {
+		return false, settingsPath, err
+	} else {
+		settings = make(map[string]any)
+	}
+
+	// Check if already installed.
+	if containsGasolineHooks(settings) {
+		return false, settingsPath, nil
+	}
+
+	// Ensure hooks.PostToolUse exists.
+	hooks, _ := settings["hooks"].(map[string]any)
+	if hooks == nil {
+		hooks = make(map[string]any)
+		settings["hooks"] = hooks
+	}
+	postToolUse, _ := hooks["PostToolUse"].([]any)
+
+	// Add quality gate for Edit/Write.
+	postToolUse = append(postToolUse, map[string]any{
+		"matcher": "Edit|Write",
+		"hooks": []any{
+			map[string]any{
+				"type":    "command",
+				"command": gasolineHookQualityGate,
+				"timeout": 10,
+			},
+		},
+	})
+
+	// Add output compression for Bash.
+	postToolUse = append(postToolUse, map[string]any{
+		"matcher": "Bash",
+		"hooks": []any{
+			map[string]any{
+				"type":    "command",
+				"command": gasolineHookCompressOutput,
+				"timeout": 10,
+			},
+		},
+	})
+
+	hooks["PostToolUse"] = postToolUse
+
+	// Write back.
+	if err := os.MkdirAll(settingsDir, 0755); err != nil {
+		return false, settingsPath, fmt.Errorf("cannot create %s: %v", settingsDir, err)
+	}
+	out, _ := json.MarshalIndent(settings, "", "  ")
+	out = append(out, '\n')
+	if err := os.WriteFile(settingsPath, out, 0644); err != nil {
+		return false, settingsPath, fmt.Errorf("cannot write %s: %v", settingsPath, err)
+	}
+
+	return true, settingsPath, nil
+}
+
+// containsGasolineHooks checks if .claude/settings.json already has gasoline hooks.
+func containsGasolineHooks(settings map[string]any) bool {
+	hooks, _ := settings["hooks"].(map[string]any)
+	if hooks == nil {
+		return false
+	}
+	postToolUse, _ := hooks["PostToolUse"].([]any)
+	for _, entry := range postToolUse {
+		entryMap, _ := entry.(map[string]any)
+		hooksList, _ := entryMap["hooks"].([]any)
+		for _, h := range hooksList {
+			hMap, _ := h.(map[string]any)
+			// Trailing space in "gasoline hook " distinguishes the old format from
+			// "gasoline-hooks" — prevents false match on the new binary name.
+			if cmd, _ := hMap["command"].(string); strings.Contains(cmd, "gasoline-hooks") || strings.Contains(cmd, "gasoline hook ") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // defaultCodeStandardsContent is the starter content for gasoline-code-standards.md.
