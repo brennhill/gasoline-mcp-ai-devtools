@@ -1,0 +1,13 @@
+{
+  "description": "Edit with no decision violations — should not trigger",
+  "hook": "decision-guard",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO", "new_string": "func HandleNewEndpoint(w http.ResponseWriter, r *http.Request) {\n\tw.WriteHeader(200)\n}"}
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 200
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "Edit a Go file in a project with standards — should inject standards doc",
+  "hook": "quality-gate",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO", "new_string": "func HandleUser(w http.ResponseWriter, r *http.Request) {"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["PROJECT CODE STANDARDS", "exported functions must have doc comments"],
+    "max_latency_ms": 500
+  }
+}

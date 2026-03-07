@@ -1,0 +1,300 @@
+// eval.go — Eval runner library for gasoline-hooks.
+// Loads JSON test fixtures, runs hooks, and validates output against expectations.
+
+package eval
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
+)
+
+// Fixture represents a single eval test case loaded from a JSON file.
+type Fixture struct {
+	Description  string        `json:"description"`
+	Hook         string        `json:"hook"`
+	ProjectRoot  string        `json:"project_root"`
+	SessionState *SessionState `json:"session_state,omitempty"`
+	Input        FixtureInput  `json:"input"`
+	Expect       Expectation   `json:"expect"`
+
+	// Set by the loader, not from JSON.
+	FixturePath string `json:"-"`
+}
+
+// FixtureInput holds the hook input fields for a fixture.
+type FixtureInput struct {
+	ToolName     string          `json:"tool_name"`
+	ToolInput    json.RawMessage `json:"tool_input"`
+	ToolResponse json.RawMessage `json:"tool_response,omitempty"`
+}
+
+// SessionState describes pre-existing session state for a fixture.
+type SessionState struct {
+	Touches []hook.TouchEntry `json:"touches"`
+}
+
+// Expectation defines what to validate about the hook output.
+type Expectation struct {
+	HasOutput   bool     `json:"has_output"`
+	Contains    []string `json:"contains,omitempty"`
+	NotContains []string `json:"not_contains,omitempty"`
+	MaxTokens   int      `json:"max_tokens,omitempty"`
+	MaxLatencyMs int    `json:"max_latency_ms,omitempty"`
+}
+
+// Result holds the outcome of running a single fixture.
+type Result struct {
+	Fixture    *Fixture
+	Output     string
+	LatencyMs  int64
+	Passed     bool
+	Failures   []string
+}
+
+// fixtureHookDirs are the subdirectories of testdata/ that contain eval fixtures.
+// Other directories (like codebase-go-web) are test codebases, not fixtures.
+var fixtureHookDirs = []string{
+	"quality-gate",
+	"compress-output",
+	"session-track",
+	"blast-radius",
+	"decision-guard",
+}
+
+// LoadFixtures loads all JSON fixture files from the hook subdirectories.
+func LoadFixtures(dir string) ([]*Fixture, error) {
+	var fixtures []*Fixture
+
+	for _, hookDir := range fixtureHookDirs {
+		hookPath := filepath.Join(dir, hookDir)
+		entries, err := os.ReadDir(hookPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read dir %s: %w", hookPath, err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+				continue
+			}
+			path := filepath.Join(hookPath, e.Name())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("read fixture %s: %w", path, err)
+			}
+			var fix Fixture
+			if err := json.Unmarshal(data, &fix); err != nil {
+				return nil, fmt.Errorf("parse fixture %s: %w", path, err)
+			}
+			fix.FixturePath = path
+			fixtures = append(fixtures, &fix)
+		}
+	}
+	return fixtures, nil
+}
+
+// RunFixture executes a single fixture and validates the result.
+func RunFixture(fix *Fixture, testdataDir string) *Result {
+	result := &Result{Fixture: fix}
+
+	// Build hook input.
+	input := hook.Input{
+		ToolName:     fix.Input.ToolName,
+		ToolInput:    fix.Input.ToolInput,
+		ToolResponse: fix.Input.ToolResponse,
+	}
+
+	// Resolve project root relative to testdata dir.
+	projectRoot := ""
+	if fix.ProjectRoot != "" {
+		projectRoot = filepath.Join(testdataDir, fix.ProjectRoot)
+	}
+
+	// Setup session state if needed.
+	sessionDir := ""
+	if fix.SessionState != nil {
+		dir, err := os.MkdirTemp("", "eval-session-*")
+		if err == nil {
+			sessionDir = dir
+			defer os.RemoveAll(dir)
+			for _, touch := range fix.SessionState.Touches {
+				_ = hook.AppendTouch(dir, touch)
+			}
+		}
+	}
+
+	// Run the hook and measure latency.
+	start := time.Now()
+	output := runHook(fix.Hook, input, projectRoot, sessionDir)
+	elapsed := time.Since(start)
+
+	result.Output = output
+	result.LatencyMs = elapsed.Milliseconds()
+
+	// Validate.
+	result.Failures = validate(fix.Expect, output, elapsed)
+	result.Passed = len(result.Failures) == 0
+
+	return result
+}
+
+// runHook dispatches to the correct hook function.
+func runHook(hookName string, input hook.Input, projectRoot, sessionDir string) string {
+	switch hookName {
+	case "quality-gate":
+		r := hook.RunQualityGate(input)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "compress-output":
+		r := hook.CompressOutput(input)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "session-track":
+		if sessionDir == "" {
+			dir, err := os.MkdirTemp("", "eval-session-*")
+			if err != nil {
+				return ""
+			}
+			sessionDir = dir
+			defer os.RemoveAll(dir)
+		}
+		r := hook.RunSessionTrack(input, sessionDir)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "blast-radius":
+		r := hook.RunBlastRadius(input, projectRoot, sessionDir)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "decision-guard":
+		r := hook.RunDecisionGuard(input, projectRoot)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	default:
+		return ""
+	}
+}
+
+// validate checks expectations against actual output.
+func validate(expect Expectation, output string, elapsed time.Duration) []string {
+	var failures []string
+
+	if expect.HasOutput && output == "" {
+		failures = append(failures, "expected output but got empty")
+	}
+	if !expect.HasOutput && output != "" {
+		failures = append(failures, fmt.Sprintf("expected no output but got: %s", truncate(output, 200)))
+	}
+
+	for _, s := range expect.Contains {
+		if !strings.Contains(output, s) {
+			failures = append(failures, fmt.Sprintf("output missing %q", s))
+		}
+	}
+
+	for _, s := range expect.NotContains {
+		if strings.Contains(output, s) {
+			failures = append(failures, fmt.Sprintf("output should not contain %q", s))
+		}
+	}
+
+	if expect.MaxTokens > 0 {
+		tokens := len(output) / 4
+		if tokens > expect.MaxTokens {
+			failures = append(failures, fmt.Sprintf("output ~%d tokens exceeds budget %d", tokens, expect.MaxTokens))
+		}
+	}
+
+	if expect.MaxLatencyMs > 0 && elapsed.Milliseconds() > int64(expect.MaxLatencyMs) {
+		failures = append(failures, fmt.Sprintf("latency %dms exceeds budget %dms", elapsed.Milliseconds(), expect.MaxLatencyMs))
+	}
+
+	return failures
+}
+
+func truncate(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "..."
+	}
+	return s
+}
+
+// Report holds aggregate eval results.
+type Report struct {
+	Total   int            `json:"total"`
+	Passed  int            `json:"passed"`
+	Failed  int            `json:"failed"`
+	ByHook  map[string]*HookReport `json:"by_hook"`
+}
+
+// HookReport holds per-hook aggregate results.
+type HookReport struct {
+	Total     int     `json:"total"`
+	Passed    int     `json:"passed"`
+	AvgLatMs  float64 `json:"avg_latency_ms"`
+	MaxLatMs  int64   `json:"max_latency_ms"`
+}
+
+// Aggregate builds a report from a list of results.
+func Aggregate(results []*Result) *Report {
+	report := &Report{
+		ByHook: make(map[string]*HookReport),
+	}
+
+	for _, r := range results {
+		report.Total++
+		if r.Passed {
+			report.Passed++
+		} else {
+			report.Failed++
+		}
+
+		hr, ok := report.ByHook[r.Fixture.Hook]
+		if !ok {
+			hr = &HookReport{}
+			report.ByHook[r.Fixture.Hook] = hr
+		}
+		hr.Total++
+		if r.Passed {
+			hr.Passed++
+		}
+		hr.AvgLatMs = (hr.AvgLatMs*float64(hr.Total-1) + float64(r.LatencyMs)) / float64(hr.Total)
+		if r.LatencyMs > hr.MaxLatMs {
+			hr.MaxLatMs = r.LatencyMs
+		}
+	}
+
+	return report
+}
+
+// FormatReport produces a human-readable eval summary.
+func FormatReport(report *Report) string {
+	var b strings.Builder
+	for hookName, hr := range report.ByHook {
+		fmt.Fprintf(&b, "  %-20s %d/%d passed (avg %.0fms, max %dms)\n",
+			hookName+":", hr.Passed, hr.Total, hr.AvgLatMs, hr.MaxLatMs)
+	}
+	fmt.Fprintf(&b, "\nAll evals: %d/%d passed.\n", report.Passed, report.Total)
+	return b.String()
+}

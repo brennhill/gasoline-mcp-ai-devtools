@@ -1,0 +1,13 @@
+{
+  "description": "Edit an unexported function — should not trigger blast radius",
+  "hook": "blast-radius",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_DB_GO", "new_string": "func getConnection() *sql.DB {\n\treturn nil\n}"}
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 1000
+  }
+}

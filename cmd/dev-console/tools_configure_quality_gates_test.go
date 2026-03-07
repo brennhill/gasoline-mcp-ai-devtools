@@ -311,17 +311,22 @@ func TestSetupQualityGates_InstallsHooks(t *testing.T) {
 		t.Fatal("settings.json missing hooks key")
 	}
 	postToolUse, _ := hooks["PostToolUse"].([]any)
-	if len(postToolUse) != 2 {
-		t.Fatalf("expected 2 PostToolUse entries, got %d", len(postToolUse))
+	if len(postToolUse) != 3 {
+		t.Fatalf("expected 3 PostToolUse entries (Edit|Write, Read, Bash), got %d", len(postToolUse))
 	}
 
-	// Verify quality gate hook.
+	// Verify all hook commands are present.
 	settingsStr := string(settingsBytes)
-	if !strings.Contains(settingsStr, "gasoline-hooks quality-gate") {
-		t.Error("settings.json missing quality-gate hook command")
-	}
-	if !strings.Contains(settingsStr, "gasoline-hooks compress-output") {
-		t.Error("settings.json missing compress-output hook command")
+	for _, cmd := range []string{
+		"gasoline-hooks quality-gate",
+		"gasoline-hooks compress-output",
+		"gasoline-hooks session-track",
+		"gasoline-hooks blast-radius",
+		"gasoline-hooks decision-guard",
+	} {
+		if !strings.Contains(settingsStr, cmd) {
+			t.Errorf("settings.json missing %s hook command", cmd)
+		}
 	}
 }
 
@@ -345,7 +350,7 @@ func TestSetupQualityGates_DoesNotDuplicateHooks(t *testing.T) {
 		t.Fatal("hooks_installed should be false on second run")
 	}
 
-	// Verify only 2 PostToolUse entries (not 4).
+	// Verify only 3 PostToolUse entries (not 6).
 	settingsBytes, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
 	var settings map[string]any
 	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
@@ -353,8 +358,8 @@ func TestSetupQualityGates_DoesNotDuplicateHooks(t *testing.T) {
 	}
 	hooks, _ := settings["hooks"].(map[string]any)
 	postToolUse, _ := hooks["PostToolUse"].([]any)
-	if len(postToolUse) != 2 {
-		t.Fatalf("expected 2 PostToolUse entries after double-run, got %d", len(postToolUse))
+	if len(postToolUse) != 3 {
+		t.Fatalf("expected 3 PostToolUse entries after double-run, got %d", len(postToolUse))
 	}
 }
 

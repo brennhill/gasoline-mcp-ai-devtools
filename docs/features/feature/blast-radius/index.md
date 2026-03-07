@@ -1,17 +1,16 @@
 ---
 doc_type: feature_index
 feature_id: feature-blast-radius
-status: proposed
+status: implemented
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-07
 code_paths:
   - internal/hook/blast_radius.go
-  - internal/hook/import_graph.go
   - cmd/hooks/main.go
 test_paths:
   - internal/hook/blast_radius_test.go
-  - internal/hook/import_graph_test.go
+  - internal/hook/eval/testdata/blast-radius/
   - cmd/hooks/main_test.go
 ---
 
@@ -19,7 +18,7 @@ test_paths:
 
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
-| **Status**    | proposed                                |
+| **Status**    | implemented                             |
 | **Binary**    | gasoline-hooks                          |
 | **Command**   | `gasoline-hooks blast-radius`           |
 | **Hook**      | PostToolUse on Edit, Write              |

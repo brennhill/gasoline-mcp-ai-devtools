@@ -1,15 +1,18 @@
 ---
 doc_type: feature_index
 feature_id: feature-session-tracking
-status: proposed
+status: implemented
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-07
 code_paths:
   - internal/hook/session_track.go
+  - internal/hook/session_store.go
   - cmd/hooks/main.go
 test_paths:
   - internal/hook/session_track_test.go
+  - internal/hook/session_store_test.go
+  - internal/hook/eval/testdata/session-track/
   - cmd/hooks/main_test.go
 ---
 
@@ -17,7 +20,7 @@ test_paths:
 
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
-| **Status**    | proposed                                |
+| **Status**    | implemented                             |
 | **Binary**    | gasoline-hooks                          |
 | **Command**   | `gasoline-hooks session-track`          |
 | **Hook**      | PostToolUse on Read, Edit, Write, Bash  |

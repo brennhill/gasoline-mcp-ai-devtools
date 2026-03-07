@@ -1,15 +1,17 @@
 ---
 doc_type: feature_index
 feature_id: feature-multi-agent-hooks
-status: proposed
+status: implemented
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-07
 code_paths:
   - internal/hook/protocol.go
+  - internal/hook/session_store.go
   - cmd/hooks/main.go
 test_paths:
   - internal/hook/protocol_test.go
+  - internal/hook/session_store_test.go
   - cmd/hooks/main_test.go
 ---
 
@@ -17,7 +19,7 @@ test_paths:
 
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
-| **Status**    | proposed                                |
+| **Status**    | implemented                             |
 | **Binary**    | gasoline-hooks                          |
 | **Agents**    | Claude Code, Gemini CLI, Codex (future) |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |

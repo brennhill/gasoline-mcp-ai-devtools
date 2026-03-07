@@ -1,0 +1,14 @@
+{
+  "description": "Edit an exported function in a file that is imported — should warn about importers",
+  "hook": "blast-radius",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO", "new_string": "func HandleUser(w http.ResponseWriter, r *http.Request) {\n\tw.WriteHeader(200)\n}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["Blast Radius", "imported by"],
+    "max_latency_ms": 1000
+  }
+}

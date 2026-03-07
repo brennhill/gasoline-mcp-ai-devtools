@@ -1,7 +1,7 @@
 ---
 doc_type: feature_index
 feature_id: feature-decision-guard
-status: proposed
+status: implemented
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-07
@@ -10,6 +10,7 @@ code_paths:
   - cmd/hooks/main.go
 test_paths:
   - internal/hook/decision_guard_test.go
+  - internal/hook/eval/testdata/decision-guard/
   - cmd/hooks/main_test.go
 ---
 
@@ -17,7 +18,7 @@ test_paths:
 
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
-| **Status**    | proposed                                |
+| **Status**    | implemented                             |
 | **Binary**    | gasoline-hooks                          |
 | **Command**   | `gasoline-hooks decision-guard`         |
 | **Hook**      | PostToolUse on Edit, Write              |

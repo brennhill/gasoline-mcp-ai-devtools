@@ -51,7 +51,7 @@ func RunQualityGate(input Input) *QualityGateResult {
 		return nil
 	}
 
-	projectRoot := findProjectRoot(filePath)
+	projectRoot := FindProjectRoot(filePath)
 	if projectRoot == "" {
 		return nil
 	}
@@ -104,8 +104,8 @@ func RunQualityGate(input Input) *QualityGateResult {
 	}
 }
 
-// findProjectRoot walks up from filePath looking for .gasoline.json.
-func findProjectRoot(filePath string) string {
+// FindProjectRoot walks up from filePath looking for .gasoline.json.
+func FindProjectRoot(filePath string) string {
 	dir := filepath.Dir(filePath)
 	for {
 		if _, err := os.Stat(filepath.Join(dir, GasolineConfigFile)); err == nil {

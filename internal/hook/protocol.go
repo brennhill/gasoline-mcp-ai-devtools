@@ -1,5 +1,5 @@
-// protocol.go — Claude Code hook protocol types and helpers.
-// Handles JSON input from stdin and JSON output to stdout for PostToolUse hooks.
+// protocol.go — Hook protocol types and helpers for Claude Code, Gemini CLI, and Codex.
+// Handles JSON input from stdin and JSON output to stdout for PostToolUse/AfterTool hooks.
 
 package hook
 
@@ -7,7 +7,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 )
+
+// Agent identifies which AI coding agent is calling the hook.
+type Agent string
+
+const (
+	AgentClaude Agent = "claude"
+	AgentGemini Agent = "gemini"
+	AgentCodex  Agent = "codex"
+)
+
+// DetectAgent identifies the calling agent from environment variables.
+func DetectAgent() Agent {
+	if os.Getenv("GEMINI_SESSION_ID") != "" {
+		return AgentGemini
+	}
+	if os.Getenv("CODEX_SESSION_ID") != "" {
+		return AgentCodex
+	}
+	return AgentClaude
+}
 
 // Input is the JSON structure Claude Code sends to PostToolUse hooks via stdin.
 type Input struct {
@@ -84,11 +105,25 @@ func (in Input) ResponseText() string {
 }
 
 // WriteOutput writes the hook output JSON to a writer (typically os.Stdout).
+// Auto-detects the calling agent and adapts the JSON format accordingly.
 // Returns nil if context is empty (nothing to output).
 func WriteOutput(w io.Writer, context string) error {
 	if context == "" {
 		return nil
 	}
-	out := Output{AdditionalContext: context}
+	agent := DetectAgent()
+	var out any
+	switch agent {
+	case AgentGemini:
+		// SPEC:gemini-cli-hooks — nested under hookSpecificOutput.
+		out = map[string]any{
+			"hookSpecificOutput": map[string]string{
+				"additionalContext": context,
+			},
+		}
+	default:
+		// SPEC:claude-code-hooks — flat additionalContext.
+		out = Output{AdditionalContext: context}
+	}
 	return json.NewEncoder(w).Encode(out) //nolint: error returned to caller
 }

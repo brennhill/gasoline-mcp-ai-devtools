@@ -1,0 +1,13 @@
+{
+  "description": "Read tool should not trigger blast radius",
+  "hook": "blast-radius",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO"}
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 50
+  }
+}

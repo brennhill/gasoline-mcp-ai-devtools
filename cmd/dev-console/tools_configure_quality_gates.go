@@ -18,6 +18,9 @@ const defaultDuplicateThreshold = 3
 
 const gasolineHookQualityGate = "gasoline-hooks quality-gate"
 const gasolineHookCompressOutput = "gasoline-hooks compress-output"
+const gasolineHookSessionTrack = "gasoline-hooks session-track"
+const gasolineHookBlastRadius = "gasoline-hooks blast-radius"
+const gasolineHookDecisionGuard = "gasoline-hooks decision-guard"
 
 // toolConfigureSetupQualityGates handles configure(what="setup_quality_gates").
 // Creates .gasoline.json and gasoline-code-standards.md in the target directory.
@@ -223,27 +226,31 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	}
 	postToolUse, _ := hooks["PostToolUse"].([]any)
 
-	// Add quality gate for Edit/Write.
+	// Add hooks for Edit/Write: quality gate, blast radius, decision guard, session track.
 	postToolUse = append(postToolUse, map[string]any{
 		"matcher": "Edit|Write",
 		"hooks": []any{
-			map[string]any{
-				"type":    "command",
-				"command": gasolineHookQualityGate,
-				"timeout": 10,
-			},
+			map[string]any{"type": "command", "command": gasolineHookQualityGate, "timeout": 10},
+			map[string]any{"type": "command", "command": gasolineHookBlastRadius, "timeout": 10},
+			map[string]any{"type": "command", "command": gasolineHookDecisionGuard, "timeout": 10},
+			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
 		},
 	})
 
-	// Add output compression for Bash.
+	// Add session tracking for Read.
+	postToolUse = append(postToolUse, map[string]any{
+		"matcher": "Read",
+		"hooks": []any{
+			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
+		},
+	})
+
+	// Add output compression + session tracking for Bash.
 	postToolUse = append(postToolUse, map[string]any{
 		"matcher": "Bash",
 		"hooks": []any{
-			map[string]any{
-				"type":    "command",
-				"command": gasolineHookCompressOutput,
-				"timeout": 10,
-			},
+			map[string]any{"type": "command", "command": gasolineHookCompressOutput, "timeout": 10},
+			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
 		},
 	})
 

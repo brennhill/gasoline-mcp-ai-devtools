@@ -1,0 +1,15 @@
+{
+  "description": "Edit introduces direct SQL — should trigger regex decision",
+  "hook": "decision-guard",
+  "project_root": "codebase-go-web",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "PLACEHOLDER_HANDLERS_GO", "new_string": "import \"database/sql\"\n\nfunc directQuery() {\n\tdb, _ := sql.Open(\"postgres\", connStr)\n}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["DECISION-002", "database queries must go through the db package"],
+    "not_contains": ["DECISION-003"],
+    "max_latency_ms": 200
+  }
+}
