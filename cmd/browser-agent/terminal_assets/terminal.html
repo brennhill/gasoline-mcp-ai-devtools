@@ -148,6 +148,11 @@
           statusDot.className = 'status connected';
           reconnectDelay = 1000;
 
+          // Reset the terminal before scrollback replay to prevent duplicate
+          // output. The server sends the full scrollback history followed by
+          // a replay_end marker, so we start with a clean slate.
+          term.reset();
+
           // Send initial resize
           sendResize();
 

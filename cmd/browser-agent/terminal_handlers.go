@@ -163,6 +163,12 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 	// Get or create relay for multi-subscriber fan-out.
 	relay := relays.getOrCreate(sess.ID, sess, "")
 
+	// Capture scrollback BEFORE subscribing to the fanout to avoid duplicate
+	// data. The readLoop appends to scrollback then broadcasts, so any data
+	// arriving after this snapshot will be delivered only via the subscriber
+	// channel, not replayed from scrollback.
+	history := sess.Scrollback()
+
 	subID := nextWSSubID()
 	sub, subErr := relay.fanout.Subscribe(subID)
 	if subErr != nil {
@@ -171,7 +177,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 	}
 
 	// Replay scrollback so the reconnecting terminal sees prior output.
-	if history := sess.Scrollback(); len(history) > 0 {
+	if len(history) > 0 {
 		// Send in chunks to avoid oversized frames.
 		for off := 0; off < len(history); off += terminalReadBufSize {
 			end := off + terminalReadBufSize
