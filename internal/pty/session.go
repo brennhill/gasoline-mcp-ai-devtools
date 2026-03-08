@@ -7,6 +7,7 @@
 package pty
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -20,6 +21,26 @@ import (
 // maxScrollback is the maximum size of the terminal output scrollback buffer (256 KB).
 const maxScrollback = 256 * 1024
 
+// Alt-screen escape sequences (e.g., vim, htop).
+var (
+	altScreenEnter = []byte("\x1b[?1049h")
+	altScreenExit  = []byte("\x1b[?1049l")
+)
+
+// ScrollbackSentinel is appended after replaying scrollback to distinguish
+// historical data from live output. Frontends use this as a visual separator.
+const ScrollbackSentinel = "\x1b]133;REPLAY_END\x07"
+
+// defaultInputIDMax is the default capacity for the input dedup deque.
+const defaultInputIDMax = 256
+
+// IdleConfig configures idle detection for a session. The callback fires when
+// the session produces output and then goes quiet for the specified duration.
+type IdleConfig struct {
+	Timeout  time.Duration
+	Callback func(sessionID string)
+}
+
 // Session wraps a PTY master + child process for interactive terminal I/O.
 type Session struct {
 	ID         string
@@ -29,7 +50,25 @@ type Session struct {
 	closed     bool
 	done       chan struct{} // closed before ptmx.Close to signal in-flight I/O
 	scrollback []byte        // ring buffer of recent PTY output for reconnect replay
-	scrollMu   sync.Mutex    // protects scrollback
+	scrollMu   sync.Mutex    // protects scrollback, altScreen, idle, lastOutputAt
+
+	// Alt-screen tracking (protected by scrollMu).
+	altScreen    bool
+	lastOutputAt time.Time
+
+	// Idle detection (protected by scrollMu).
+	idleTimeout time.Duration
+	idleCb      func(string)
+	idleTimer   *time.Timer
+
+	// Input tracking (protected by mu).
+	lastInputAt time.Time
+	inputIDs    []string
+	inputIDMax  int
+
+	// Child process reaping (set by reaper goroutine started in Spawn).
+	reaped   chan struct{} // closed when child process has been reaped
+	exitCode int          // set before reaped is closed
 }
 
 // winsize matches the C struct winsize for TIOCSWINSZ.
@@ -114,12 +153,22 @@ func Spawn(cfg SpawnConfig) (*Session, error) {
 	// Slave fd is now owned by the child process; close our copy.
 	slave.Close()
 
-	return &Session{
-		ID:   cfg.ID,
-		ptmx: ptmx,
-		cmd:  cmd,
-		done: make(chan struct{}),
-	}, nil
+	s := &Session{
+		ID:         cfg.ID,
+		ptmx:       ptmx,
+		cmd:        cmd,
+		done:       make(chan struct{}),
+		inputIDMax: defaultInputIDMax,
+		reaped:     make(chan struct{}),
+	}
+	go func() { // lint:allow-bare-goroutine — sole reaper for child process, exits when child exits
+		_ = cmd.Wait()
+		if cmd.ProcessState != nil {
+			s.exitCode = cmd.ProcessState.ExitCode()
+		}
+		close(s.reaped)
+	}()
+	return s, nil
 }
 
 // Read reads from the PTY master (child's stdout/stderr).
@@ -156,6 +205,7 @@ func (s *Session) Write(data []byte) (int, error) {
 		s.mu.Unlock()
 		return 0, ErrSessionClosed
 	}
+	s.lastInputAt = time.Now()
 	ptmx := s.ptmx
 	s.mu.Unlock()
 
@@ -202,6 +252,14 @@ func (s *Session) Close() error {
 	// of a raw OS error from a potentially recycled fd number.
 	close(s.done)
 
+	// Stop idle timer if running. Lock ordering: mu (held) → scrollMu (safe).
+	s.scrollMu.Lock()
+	if s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = nil
+	}
+	s.scrollMu.Unlock()
+
 	// Signal the child to terminate.
 	if s.cmd.Process != nil {
 		_ = s.cmd.Process.Signal(syscall.SIGTERM)
@@ -209,36 +267,58 @@ func (s *Session) Close() error {
 	// Close PTY master — this also signals EOF to the child.
 	err := s.ptmx.Close()
 
-	// Reap the child process with a timeout. If SIGTERM + PTY close aren't
-	// enough, escalate to SIGKILL. Without this timeout, cmd.Wait() blocks
-	// indefinitely and deadlocks the Manager (which holds its write lock).
-	done := make(chan struct{})
-	go func() { // lint:allow-bare-goroutine — one-shot reaper, closes done channel
-		_ = s.cmd.Wait()
-		close(done)
-	}()
+	// Wait for the reaper goroutine (started in Spawn) with a timeout. If
+	// SIGTERM + PTY close aren't enough, escalate to SIGKILL. Without this
+	// timeout the reaper blocks indefinitely and deadlocks the Manager.
 	select {
-	case <-done:
+	case <-s.reaped:
 		// Child exited cleanly.
 	case <-time.After(2 * time.Second):
 		// Escalate to SIGKILL.
 		if s.cmd.Process != nil {
 			_ = s.cmd.Process.Kill()
 		}
-		<-done // Wait for reap after SIGKILL.
+		<-s.reaped // Wait for reap after SIGKILL.
 	}
 	return err
 }
 
-// Wait waits for the child process to exit and returns its error (nil on clean exit).
+// Wait blocks until the child process exits.
 func (s *Session) Wait() error {
-	return s.cmd.Wait()
+	<-s.reaped
+	return nil
 }
 
 // AppendScrollback appends data to the scrollback buffer, evicting oldest bytes
-// if the buffer exceeds maxScrollback.
+// if the buffer exceeds maxScrollback. Also tracks alt-screen state and resets
+// the idle timer.
 func (s *Session) AppendScrollback(data []byte) {
 	s.scrollMu.Lock() // lint:manual-unlock — simple lock/unlock in same function
+
+	// Track alt-screen state — last sequence in the chunk wins.
+	if enterIdx := bytes.LastIndex(data, altScreenEnter); enterIdx >= 0 {
+		if exitIdx := bytes.LastIndex(data, altScreenExit); exitIdx > enterIdx {
+			s.altScreen = false
+		} else {
+			s.altScreen = true
+		}
+	} else if bytes.Contains(data, altScreenExit) {
+		s.altScreen = false
+	}
+
+	// Track output time and reset idle timer.
+	s.lastOutputAt = time.Now()
+	if s.idleCb != nil && s.idleTimeout > 0 {
+		if s.idleTimer != nil {
+			s.idleTimer.Reset(s.idleTimeout)
+		} else {
+			id := s.ID
+			cb := s.idleCb
+			timeout := s.idleTimeout
+			s.idleTimer = time.AfterFunc(timeout, func() { cb(id) })
+		}
+	}
+
 	s.scrollback = append(s.scrollback, data...)
 	if len(s.scrollback) > maxScrollback {
 		// Allocate a new slice to release the old backing array.
@@ -295,4 +375,104 @@ func (s *Session) ForceRedraw() {
 	proc := s.cmd.Process
 	s.mu.Unlock()
 	_ = proc.Signal(syscall.SIGWINCH)
+}
+
+// AltScreenActive returns true if the terminal is in alt-screen mode
+// (e.g., vim, htop). The frontend uses this to toggle scrollbar visibility
+// and copy-paste behavior.
+func (s *Session) AltScreenActive() bool {
+	s.scrollMu.Lock()
+	defer s.scrollMu.Unlock()
+	return s.altScreen
+}
+
+// SetIdleConfig configures idle detection. The callback fires when no output
+// is produced for the given timeout duration after the most recent output.
+// Pass zero Timeout to disable.
+func (s *Session) SetIdleConfig(cfg IdleConfig) {
+	s.scrollMu.Lock()
+	defer s.scrollMu.Unlock()
+	if s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = nil
+	}
+	s.idleTimeout = cfg.Timeout
+	s.idleCb = cfg.Callback
+}
+
+// LastOutputAt returns the last time PTY output was received.
+func (s *Session) LastOutputAt() time.Time {
+	s.scrollMu.Lock()
+	defer s.scrollMu.Unlock()
+	return s.lastOutputAt
+}
+
+// LastInputAt returns the last time input was written to the session.
+func (s *Session) LastInputAt() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastInputAt
+}
+
+// ScrollbackWithSentinel returns the scrollback buffer followed by a sentinel
+// marker. Subscribers use the sentinel to distinguish replayed history from
+// live data on reconnect.
+func (s *Session) ScrollbackWithSentinel() []byte {
+	s.scrollMu.Lock()
+	defer s.scrollMu.Unlock()
+	if len(s.scrollback) == 0 {
+		return []byte(ScrollbackSentinel)
+	}
+	out := make([]byte, len(s.scrollback)+len(ScrollbackSentinel))
+	copy(out, s.scrollback)
+	copy(out[len(s.scrollback):], ScrollbackSentinel)
+	return out
+}
+
+// ExitCode returns the child process exit code, or -1 if the process hasn't
+// been reaped yet. Non-blocking — returns immediately.
+func (s *Session) ExitCode() int {
+	select {
+	case <-s.reaped:
+		return s.exitCode
+	default:
+		return -1
+	}
+}
+
+// WriteWithID writes to the PTY with input deduplication. If the inputID has
+// been seen recently, the write is silently dropped (returns 0, nil). This
+// prevents duplicate keystrokes on WebSocket reconnect/retry.
+func (s *Session) WriteWithID(data []byte, inputID string) (int, error) {
+	if inputID == "" {
+		return s.Write(data)
+	}
+	s.mu.Lock() // lint:manual-unlock — unlock before blocking I/O
+	if s.closed {
+		s.mu.Unlock()
+		return 0, ErrSessionClosed
+	}
+	for _, id := range s.inputIDs {
+		if id == inputID {
+			s.mu.Unlock()
+			return 0, nil
+		}
+	}
+	s.inputIDs = append(s.inputIDs, inputID)
+	if len(s.inputIDs) > s.inputIDMax {
+		s.inputIDs = s.inputIDs[1:]
+	}
+	s.lastInputAt = time.Now()
+	ptmx := s.ptmx
+	s.mu.Unlock()
+
+	n, err := ptmx.Write(data)
+	if err != nil {
+		select {
+		case <-s.done:
+			return 0, ErrSessionClosed
+		default:
+		}
+	}
+	return n, err
 }

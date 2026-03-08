@@ -102,7 +102,8 @@ func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	handleTerminalStart(rec, req, nil, mgr, nil)
+	relays := newTerminalRelayMap()
+	handleTerminalStart(rec, req, nil, mgr, nil, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -132,10 +133,12 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 		"args": []string{"-c", "exec cat"},
 	})
 
+	relays := newTerminalRelayMap()
+
 	// First start.
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil, relays)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("first start: expected 200, got %d", rec.Code)
 	}
@@ -143,7 +146,7 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	// Second start with same ID.
 	req = httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec = httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil, relays)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("duplicate start: expected 409, got %d", rec.Code)
 	}
@@ -158,7 +161,8 @@ func TestHandleTerminalStart_DefaultsToShell(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	handleTerminalStart(rec, req, nil, mgr, nil)
+	relays := newTerminalRelayMap()
+	handleTerminalStart(rec, req, nil, mgr, nil, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -174,15 +178,16 @@ func TestHandleTerminalStop_DestroysSession(t *testing.T) {
 		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
+	relays := newTerminalRelayMap()
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(startBody))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil)
+	handleTerminalStart(rec, req, nil, mgr, nil, relays)
 
 	// Stop it.
 	stopBody, _ := json.Marshal(map[string]any{"id": "default"})
 	req = httptest.NewRequest("POST", "/terminal/stop", bytes.NewReader(stopBody))
 	rec = httptest.NewRecorder()
-	handleTerminalStop(rec, req, mgr)
+	handleTerminalStop(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -200,7 +205,8 @@ func TestHandleTerminalStop_NotFound(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{"id": "nonexistent"})
 	req := httptest.NewRequest("POST", "/terminal/stop", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	handleTerminalStop(rec, req, mgr)
+	relays := newTerminalRelayMap()
+	handleTerminalStop(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)
@@ -223,7 +229,8 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/config", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalConfig(rec, req, mgr)
+	relays := newTerminalRelayMap()
+	handleTerminalConfig(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -236,6 +243,28 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 	count := resp["count"].(float64)
 	if count != 1 {
 		t.Fatalf("expected count 1, got %v", count)
+	}
+
+	// Validate the new rich session objects.
+	sessions, ok := resp["sessions"].([]any)
+	if !ok {
+		t.Fatalf("expected sessions array, got %T", resp["sessions"])
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+	sess := sessions[0].(map[string]any)
+	if sess["id"] != "test" {
+		t.Fatalf("expected id 'test', got %v", sess["id"])
+	}
+	if sess["alive"] != true {
+		t.Fatalf("expected alive=true, got %v", sess["alive"])
+	}
+	if sess["pid"] == nil {
+		t.Fatal("expected pid in session info")
+	}
+	if _, hasAlt := sess["alt_screen"]; !hasAlt {
+		t.Fatal("expected alt_screen field in session info")
 	}
 }
 
@@ -342,7 +371,8 @@ func TestHandleTerminalWS_MissingToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/ws", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalWS(rec, req, mgr)
+	relays := newTerminalRelayMap()
+	handleTerminalWS(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -354,7 +384,8 @@ func TestHandleTerminalWS_InvalidToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/ws?token=bogus", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalWS(rec, req, mgr)
+	relays := newTerminalRelayMap()
+	handleTerminalWS(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -376,9 +407,87 @@ func TestHandleTerminalWS_NoUpgradeHeader(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/ws?token="+result.Token, nil)
 	rec := httptest.NewRecorder()
-	handleTerminalWS(rec, req, mgr)
+	relays := newTerminalRelayMap()
+	handleTerminalWS(rec, req, mgr, relays)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+}
+
+func TestHandleTerminalUpload_Success(t *testing.T) {
+	mgr := pty.NewManager()
+	defer mgr.StopAll()
+
+	_, err := mgr.Start(pty.StartConfig{
+		ID:   "upload-test",
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	sess, _ := mgr.Get("upload-test")
+	relays := newTerminalRelayMap()
+	relays.getOrCreate("upload-test", sess, t.TempDir())
+
+	imgData := bytes.Repeat([]byte{0xFF, 0xD8, 0xFF}, 10)
+	req := httptest.NewRequest("POST", "/terminal/upload?session_id=upload-test&filename=test.png", bytes.NewReader(imgData))
+	req.Header.Set("Content-Type", "image/png")
+	rec := httptest.NewRecorder()
+	handleTerminalUpload(rec, req, mgr, relays)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["path"] == nil || resp["path"] == "" {
+		t.Fatal("expected non-empty path in response")
+	}
+}
+
+func TestHandleTerminalUpload_InvalidContentType(t *testing.T) {
+	mgr := pty.NewManager()
+	defer mgr.StopAll()
+
+	_, err := mgr.Start(pty.StartConfig{
+		ID:   "upload-bad",
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	sess, _ := mgr.Get("upload-bad")
+	relays := newTerminalRelayMap()
+	relays.getOrCreate("upload-bad", sess, t.TempDir())
+
+	req := httptest.NewRequest("POST", "/terminal/upload?session_id=upload-bad&filename=test.txt", bytes.NewReader([]byte("not an image")))
+	req.Header.Set("Content-Type", "text/plain")
+	rec := httptest.NewRecorder()
+	handleTerminalUpload(rec, req, mgr, relays)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleTerminalUpload_SessionNotFound(t *testing.T) {
+	mgr := pty.NewManager()
+	relays := newTerminalRelayMap()
+
+	req := httptest.NewRequest("POST", "/terminal/upload?session_id=nonexistent", bytes.NewReader([]byte("data")))
+	req.Header.Set("Content-Type", "image/png")
+	rec := httptest.NewRecorder()
+	handleTerminalUpload(rec, req, mgr, relays)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }
