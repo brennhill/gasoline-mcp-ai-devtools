@@ -171,30 +171,39 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 
 	subID := nextWSSubID()
 	sub, subErr := relay.fanout.Subscribe(subID)
-	if subErr != nil {
-		_ = conn.Close()
-		return
-	}
 
-	// Replay scrollback so the reconnecting terminal sees prior output.
+	// Replay scrollback so the reconnecting (or first-connecting) terminal sees prior output.
 	if len(history) > 0 {
-		// Send in chunks to avoid oversized frames.
 		for off := 0; off < len(history); off += terminalReadBufSize {
 			end := off + terminalReadBufSize
 			if end > len(history) {
 				end = len(history)
 			}
 			if err := wsWriteFrame(bufrw, 0x2, history[off:end]); err != nil {
-				relay.fanout.Unsubscribe(subID)
+				if subErr == nil {
+					relay.fanout.Unsubscribe(subID)
+				}
 				_ = conn.Close()
 				return
 			}
 		}
 	}
-	// Send replay_end marker so the frontend distinguishes replay from live data.
 	replayEnd, _ := json.Marshal(map[string]string{"type": "replay_end"})
 	if err := wsWriteFrame(bufrw, 0x1, replayEnd); err != nil {
-		relay.fanout.Unsubscribe(subID)
+		if subErr == nil {
+			relay.fanout.Unsubscribe(subID)
+		}
+		_ = conn.Close()
+		return
+	}
+
+	// If subscribe failed (fanout already closed — process exited before reconnect),
+	// send the final scrollback, exit notification, and close. The browser receives
+	// the full output history plus the exited message and stops reconnecting.
+	if subErr != nil {
+		exitMsg, _ := json.Marshal(map[string]any{"type": "exited", "code": relay.exitCode})
+		_ = wsWriteFrame(bufrw, 0x1, exitMsg)
+		_ = wsWriteFrame(bufrw, 0x8, nil)
 		_ = conn.Close()
 		return
 	}
@@ -240,7 +249,10 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 			select {
 			case data, ok := <-sub:
 				if !ok {
-					// Fanout closed (session ended) — send close frame.
+					// Fanout closed (session ended) — send exit notification
+					// so the browser can display the message and stop reconnecting.
+					exitMsg, _ := json.Marshal(map[string]any{"type": "exited", "code": relay.exitCode})
+					_ = writeFrame(0x1, exitMsg)
 					_ = writeFrame(0x8, nil)
 					closeConn()
 					return

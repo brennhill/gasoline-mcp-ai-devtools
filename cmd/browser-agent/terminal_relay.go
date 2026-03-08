@@ -22,6 +22,7 @@ type terminalRelay struct {
 	writeBuf     *pty.WriteBuffer
 	workspaceDir string
 	done         chan struct{}
+	exitCode     int // set by readLoop before closing fanout; read by downstream after channel close
 }
 
 // newTerminalRelay creates a relay and starts the PTY reader loop.
@@ -39,6 +40,8 @@ func newTerminalRelay(sess *pty.Session, workspaceDir string) *terminalRelay {
 
 // readLoop continuously reads PTY output, appends to scrollback, and broadcasts
 // to all subscribers. Exits when the session closes or the process exits.
+// Before closing the fanout, it reaps the child process to capture the exit code
+// so downstream subscribers can notify the browser.
 func (r *terminalRelay) readLoop() {
 	defer close(r.done)
 	defer r.fanout.Close()
@@ -51,9 +54,22 @@ func (r *terminalRelay) readLoop() {
 			r.fanout.Broadcast(buf[:n])
 		}
 		if err != nil {
+			// Reap child process to capture exit code before fanout closes.
+			// The write to exitCode happens-before fanout.Close() (in defers),
+			// which closes subscriber channels, creating a happens-before edge
+			// to the downstream goroutine's read of exitCode.
+			r.reapExitCode()
 			return
 		}
 	}
+}
+
+// reapExitCode waits for the child process exit code. Called after PTY read
+// returns an error (typically EOF when the child exits), so the Session's
+// reaper goroutine has usually already captured the exit code.
+func (r *terminalRelay) reapExitCode() {
+	r.sess.Wait() // blocks until child exits — usually instant since PTY EOF already received
+	r.exitCode = r.sess.ExitCode()
 }
 
 // Close stops the write buffer. The readLoop exits when the session closes,

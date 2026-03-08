@@ -113,6 +113,9 @@ func (s *Session) LastInputAt() time.Time { return time.Time{} }
 // ScrollbackWithSentinel returns sentinel only on unsupported platforms.
 func (s *Session) ScrollbackWithSentinel() []byte { return []byte(ScrollbackSentinel) }
 
+// ExitCode returns -1 on unsupported platforms.
+func (s *Session) ExitCode() int { return -1 }
+
 // WriteWithID is unsupported on non-Unix platforms.
 func (s *Session) WriteWithID(data []byte, inputID string) (int, error) {
 	return 0, errUnsupportedPTY

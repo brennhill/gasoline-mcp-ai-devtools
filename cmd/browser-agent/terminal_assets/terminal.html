@@ -102,6 +102,7 @@
       var ws = null;
       var reconnectTimer = null;
       var reconnectDelay = 1000;
+      var processExited = false;
       var lastTypingNotifyAt = 0;
 
       function notifyFocusState(focused) {
@@ -185,6 +186,11 @@
               } else if (msg.type === 'exited') {
                 term.write('\r\n\x1b[90m[Process exited with code ' + (msg.code || 0) + ']\x1b[0m\r\n');
                 statusDot.className = 'status';
+                processExited = true;
+                if (reconnectTimer) {
+                  clearTimeout(reconnectTimer);
+                  reconnectTimer = null;
+                }
                 notifyParent('exited', { code: msg.code });
               }
             } catch(e) {
@@ -206,7 +212,7 @@
       }
 
       function scheduleReconnect() {
-        if (reconnectTimer) return;
+        if (reconnectTimer || processExited) return;
         reconnectTimer = setTimeout(function() {
           reconnectTimer = null;
           connect();

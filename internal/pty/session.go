@@ -65,6 +65,10 @@ type Session struct {
 	lastInputAt time.Time
 	inputIDs    []string
 	inputIDMax  int
+
+	// Child process reaping (set by reaper goroutine started in Spawn).
+	reaped   chan struct{} // closed when child process has been reaped
+	exitCode int          // set before reaped is closed
 }
 
 // winsize matches the C struct winsize for TIOCSWINSZ.
@@ -149,13 +153,22 @@ func Spawn(cfg SpawnConfig) (*Session, error) {
 	// Slave fd is now owned by the child process; close our copy.
 	slave.Close()
 
-	return &Session{
+	s := &Session{
 		ID:         cfg.ID,
 		ptmx:       ptmx,
 		cmd:        cmd,
 		done:       make(chan struct{}),
 		inputIDMax: defaultInputIDMax,
-	}, nil
+		reaped:     make(chan struct{}),
+	}
+	go func() { // lint:allow-bare-goroutine — sole reaper for child process, exits when child exits
+		_ = cmd.Wait()
+		if cmd.ProcessState != nil {
+			s.exitCode = cmd.ProcessState.ExitCode()
+		}
+		close(s.reaped)
+	}()
+	return s, nil
 }
 
 // Read reads from the PTY master (child's stdout/stderr).
@@ -254,30 +267,26 @@ func (s *Session) Close() error {
 	// Close PTY master — this also signals EOF to the child.
 	err := s.ptmx.Close()
 
-	// Reap the child process with a timeout. If SIGTERM + PTY close aren't
-	// enough, escalate to SIGKILL. Without this timeout, cmd.Wait() blocks
-	// indefinitely and deadlocks the Manager (which holds its write lock).
-	done := make(chan struct{})
-	go func() { // lint:allow-bare-goroutine — one-shot reaper, closes done channel
-		_ = s.cmd.Wait()
-		close(done)
-	}()
+	// Wait for the reaper goroutine (started in Spawn) with a timeout. If
+	// SIGTERM + PTY close aren't enough, escalate to SIGKILL. Without this
+	// timeout the reaper blocks indefinitely and deadlocks the Manager.
 	select {
-	case <-done:
+	case <-s.reaped:
 		// Child exited cleanly.
 	case <-time.After(2 * time.Second):
 		// Escalate to SIGKILL.
 		if s.cmd.Process != nil {
 			_ = s.cmd.Process.Kill()
 		}
-		<-done // Wait for reap after SIGKILL.
+		<-s.reaped // Wait for reap after SIGKILL.
 	}
 	return err
 }
 
-// Wait waits for the child process to exit and returns its error (nil on clean exit).
+// Wait blocks until the child process exits.
 func (s *Session) Wait() error {
-	return s.cmd.Wait()
+	<-s.reaped
+	return nil
 }
 
 // AppendScrollback appends data to the scrollback buffer, evicting oldest bytes
@@ -418,6 +427,17 @@ func (s *Session) ScrollbackWithSentinel() []byte {
 	copy(out, s.scrollback)
 	copy(out[len(s.scrollback):], ScrollbackSentinel)
 	return out
+}
+
+// ExitCode returns the child process exit code, or -1 if the process hasn't
+// been reaped yet. Non-blocking — returns immediately.
+func (s *Session) ExitCode() int {
+	select {
+	case <-s.reaped:
+		return s.exitCode
+	default:
+		return -1
+	}
 }
 
 // WriteWithID writes to the PTY with input deduplication. If the inputID has
