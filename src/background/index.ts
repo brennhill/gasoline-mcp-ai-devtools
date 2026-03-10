@@ -414,7 +414,7 @@ export async function checkConnectionAndUpdate(): Promise<void> {
 // STATUS PING (still used for tracked tab change notifications)
 // =============================================================================
 
-export async function sendStatusPingWrapper(): Promise<void> {
+export async function sendTrackingStatus(): Promise<void> {
   const trackingInfo = await getTrackedTabInfo()
 
   const statusMessage = {

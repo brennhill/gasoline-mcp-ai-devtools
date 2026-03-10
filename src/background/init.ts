@@ -25,7 +25,7 @@ import {
   checkConnectionAndUpdate,
   exportDebugLog,
   clearDebugLog,
-  sendStatusPingWrapper,
+  sendTrackingStatus,
   DEFAULT_SERVER_URL
 } from './index.js'
 import {
@@ -171,7 +171,7 @@ async function initializeExtensionAsync(): Promise<void> {
         broadcastTrackingState().catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
       },
       onTrackedTabChanged: (newTabId, oldTabId) => {
-        sendStatusPingWrapper()
+        sendTrackingStatus()
         if (newTabId !== null) {
           resetSyncClientConnection()
           console.log('[Gasoline] Sync client reset due to tracking enabled')
