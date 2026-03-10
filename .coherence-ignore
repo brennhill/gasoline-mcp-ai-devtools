@@ -1,0 +1,15 @@
+# Build output — compiled JS mirrors of src/ TypeScript files
+extension/
+
+# Third-party dependencies
+node_modules/
+
+# Distribution bundles
+dist/
+
+# Test fixtures and smoke test apps
+scripts/smoke-tests/
+e2e/
+
+# Generated coverage reports
+coverage.out
