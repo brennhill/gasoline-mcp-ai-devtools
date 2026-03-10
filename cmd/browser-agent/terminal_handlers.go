@@ -48,6 +48,7 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 	}
 
 	// Serve terminal HTML page.
+	// @coherence-hidden-spec-intentional
 	mux.HandleFunc("/terminal", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalPage(w, r)
 	}))
@@ -58,6 +59,7 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 		stderrf("[gasoline] failed to create terminal static FS: %v\n", err)
 		return
 	}
+	// @coherence-hidden-spec-intentional
 	mux.Handle("/terminal/static/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/terminal/static")
 		http.FileServer(http.FS(staticFS)).ServeHTTP(w, r)

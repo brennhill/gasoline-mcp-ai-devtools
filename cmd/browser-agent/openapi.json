@@ -22,10 +22,10 @@
   ],
   "x-planes": {
     "control": "Server lifecycle, health, and protocol endpoints",
-    "data-ingest": "Extension → Server telemetry ingestion (POST only)",
-    "data-read": "Server → MCP client telemetry reads (GET only)",
-    "data-sync": "Bidirectional extension ↔ server sync",
-    "data-results": "Extension → Server query/command result submission",
+    "data-ingest": "Extension \u2192 Server telemetry ingestion (POST only)",
+    "data-read": "Server \u2192 MCP client telemetry reads (GET only)",
+    "data-sync": "Bidirectional extension \u2194 server sync",
+    "data-results": "Extension \u2192 Server query/command result submission",
     "management": "Multi-client and session management",
     "media": "Screenshot, video recording, and annotation capture",
     "ci": "CI/CD infrastructure: snapshots, buffer clear, test boundaries",
@@ -39,7 +39,7 @@
     },
     {
       "name": "Data Ingest",
-      "description": "Extension → Server telemetry ingestion (POST only)",
+      "description": "Extension \u2192 Server telemetry ingestion (POST only)",
       "x-plane": "data-ingest"
     },
     {
@@ -76,6 +76,11 @@
       "name": "Automation",
       "description": "Upload automation endpoints (Stage 4 requires --enable-os-upload-automation flag)",
       "x-plane": "automation"
+    },
+    {
+      "name": "Terminal",
+      "description": "In-browser terminal session lifecycle, WebSocket relay, and configuration",
+      "x-plane": "management"
     }
   ],
   "paths": {
@@ -232,7 +237,7 @@
           "Control"
         ],
         "summary": "JSON diagnostics (alias)",
-        "description": "Alias for /diagnostics that returns identical diagnostic data. Exists for explicit content-type signaling — some HTTP clients and browser URL bars prefer the .json extension to trigger JSON formatting. Handled by the same handler as /diagnostics.",
+        "description": "Alias for /diagnostics that returns identical diagnostic data. Exists for explicit content-type signaling \u2014 some HTTP clients and browser URL bars prefer the .json extension to trigger JSON formatting. Handled by the same handler as /diagnostics.",
         "operationId": "getDiagnosticsJson",
         "responses": {
           "200": {
@@ -364,10 +369,10 @@
     "/config/active-codebase": {
       "get": {
         "tags": [
-          "Control"
+          "Configuration"
         ],
         "summary": "Get active codebase path",
-        "description": "Returns the active codebase path used as the default terminal working directory. The extension reads this to know which project directory the terminal should open in.",
+        "description": "Returns the active codebase directory path used as the default terminal CWD. Extension-only endpoint.",
         "operationId": "getActiveCodebase",
         "responses": {
           "200": {
@@ -379,7 +384,7 @@
                   "properties": {
                     "active_codebase": {
                       "type": "string",
-                      "description": "Absolute path to the active codebase directory"
+                      "description": "Filesystem path to the active codebase directory"
                     }
                   }
                 }
@@ -390,10 +395,10 @@
       },
       "put": {
         "tags": [
-          "Control"
+          "Configuration"
         ],
         "summary": "Set active codebase path",
-        "description": "Sets the active codebase path used as the default terminal working directory. The extension writes this when the user selects a project.",
+        "description": "Sets the active codebase directory path used as the default terminal CWD. Extension-only endpoint. Also accepts POST.",
         "operationId": "setActiveCodebase",
         "requestBody": {
           "required": true,
@@ -404,7 +409,7 @@
                 "properties": {
                   "path": {
                     "type": "string",
-                    "description": "Absolute path to set as active codebase"
+                    "description": "Filesystem path to set as the active codebase directory"
                   }
                 },
                 "required": [
@@ -416,16 +421,33 @@
         },
         "responses": {
           "200": {
-            "description": "Updated active codebase path",
+            "description": "Active codebase updated successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "status": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Operation result status"
                     },
                     "active_codebase": {
+                      "type": "string",
+                      "description": "Filesystem path to the active codebase directory after update"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
                       "type": "string"
                     }
                   }
@@ -973,7 +995,7 @@
             }
           },
           "429": {
-            "description": "Rate limited — max 1 screenshot per second per client"
+            "description": "Rate limited \u2014 max 1 screenshot per second per client"
           }
         }
       }
@@ -1539,98 +1561,6 @@
         }
       }
     },
-    "/config/active-codebase": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get active codebase path",
-        "description": "Returns the active codebase directory path used as the default terminal CWD. Extension-only endpoint.",
-        "operationId": "getActiveCodebase",
-        "responses": {
-          "200": {
-            "description": "Current active codebase path",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "active_codebase": {
-                      "type": "string",
-                      "description": "Filesystem path to the active codebase directory"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Set active codebase path",
-        "description": "Sets the active codebase directory path used as the default terminal CWD. Extension-only endpoint. Also accepts POST.",
-        "operationId": "setActiveCodebase",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string",
-                    "description": "Filesystem path to set as the active codebase directory"
-                  }
-                },
-                "required": [
-                  "path"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Active codebase updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "description": "Operation result status"
-                    },
-                    "active_codebase": {
-                      "type": "string",
-                      "description": "Filesystem path to the active codebase directory after update"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid JSON body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/tests/": {
       "get": {
         "tags": [
@@ -2144,6 +2074,296 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/terminal/ws": {
+      "get": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "WebSocket upgrade for PTY I/O",
+        "description": "Upgrades to a WebSocket connection that relays raw PTY I/O between the browser's xterm.js terminal emulator and a server-side PTY session. Requires a valid session token. On connect, replays scrollback history followed by a replay_end control message. Binary frames carry raw terminal output (downstream) and keystrokes (upstream). Text frames carry JSON control messages (e.g., resize). Server sends ping frames every 30s; connections without any frame within 60s are closed. The PTY session survives disconnects for reconnection.",
+        "operationId": "getTerminalWs",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session token returned by POST /terminal/start"
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket upgrade successful \u2014 binary frames relay PTY I/O"
+          },
+          "400": {
+            "description": "Missing Sec-WebSocket-Key or Upgrade header"
+          },
+          "401": {
+            "description": "Missing or invalid session token"
+          }
+        }
+      }
+    },
+    "/terminal/start": {
+      "post": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "Create a terminal session",
+        "description": "Starts a new PTY session with the specified command (defaults to /bin/zsh). Returns a session ID, authentication token, and process PID. The token is used to connect via WebSocket at /terminal/ws. If a session with the same ID already exists, returns 409 with the existing token for reconnection. Returns 503 if the daemon is running under macOS sandbox restrictions that prevent process spawning.",
+        "operationId": "postTerminalStart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminalStartRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalStartResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Session already exists \u2014 includes existing token for reconnection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sandbox restricted \u2014 daemon cannot spawn processes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "sandbox_restricted"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "instruction": {
+                      "type": "string"
+                    },
+                    "command": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/terminal/stop": {
+      "post": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "Destroy a terminal session",
+        "description": "Kills the PTY process and removes the session. If no ID is provided, stops the 'default' session. Connected WebSocket clients receive an exited control message before disconnection.",
+        "operationId": "postTerminalStop",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Session ID to stop (defaults to 'default')"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "stopped"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found"
+          }
+        }
+      }
+    },
+    "/terminal/validate": {
+      "get": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "Validate a session token",
+        "description": "Checks whether a session token maps to a live PTY session. Returns {\"valid\": true} if the token resolves to a running session, {\"valid\": false} otherwise. Used by the browser extension to verify session liveness before attempting WebSocket reconnection.",
+        "operationId": "getTerminalValidate",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session token to validate"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/terminal/config": {
+      "get": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "List terminal sessions with configuration",
+        "description": "Returns all active terminal sessions with their configuration details including alive status, PID, alt-screen state, and WebSocket subscriber count. Used by the browser extension to display session status and manage reconnection.",
+        "operationId": "getTerminalConfig",
+        "responses": {
+          "200": {
+            "description": "Session list with configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/terminal/upload": {
+      "post": {
+        "tags": [
+          "Terminal"
+        ],
+        "summary": "Upload an image to a terminal session workspace",
+        "description": "Uploads an image file to the workspace directory of a terminal session. The image is saved to a .gasoline/ subdirectory within the session's workspace. Used for pasting screenshots into agent terminal sessions. Maximum upload size is 10MB.",
+        "operationId": "postTerminalUpload",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default"
+            },
+            "description": "Terminal session ID (defaults to 'default')"
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Desired filename for the uploaded image"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/*": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Relative path to the saved file"
+                    },
+                    "size": {
+                      "type": "integer",
+                      "description": "File size in bytes"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid content type or no workspace directory"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "413": {
+            "description": "Upload exceeds 10MB limit"
           }
         }
       }
@@ -2922,7 +3142,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Connection ID — stable across all events for a single WebSocket connection"
+            "description": "Connection ID \u2014 stable across all events for a single WebSocket connection"
           },
           "url": {
             "type": "string",
@@ -3606,6 +3826,104 @@
             "type": "string",
             "format": "date-time",
             "description": "When this status was captured"
+          }
+        }
+      },
+      "TerminalStartRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Session ID (defaults to 'default' if empty)"
+          },
+          "cmd": {
+            "type": "string",
+            "description": "Command to run (defaults to /bin/zsh)"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command arguments"
+          },
+          "dir": {
+            "type": "string",
+            "description": "Working directory (auto-detected from active codebase if empty)"
+          },
+          "cols": {
+            "type": "integer",
+            "description": "Terminal width in columns"
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Terminal height in rows"
+          },
+          "init_command": {
+            "type": "string",
+            "description": "Command to execute after shell prompt is detected"
+          },
+          "repo_path": {
+            "type": "string",
+            "description": "Repository path for the session"
+          },
+          "agent_type": {
+            "type": "string",
+            "description": "Type of AI agent using the terminal"
+          }
+        }
+      },
+      "TerminalStartResponse": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Assigned session ID"
+          },
+          "token": {
+            "type": "string",
+            "description": "Authentication token for WebSocket connection"
+          },
+          "pid": {
+            "type": "integer",
+            "description": "PTY process ID"
+          }
+        },
+        "required": [
+          "session_id",
+          "token",
+          "pid"
+        ]
+      },
+      "TerminalConfigResponse": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "alive": {
+                  "type": "boolean"
+                },
+                "pid": {
+                  "type": "integer"
+                },
+                "alt_screen": {
+                  "type": "boolean"
+                },
+                "subscribers": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Total number of active sessions"
           }
         }
       }
