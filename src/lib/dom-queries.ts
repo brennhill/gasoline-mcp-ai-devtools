@@ -18,6 +18,9 @@ import {
 // Re-export accessibility audit functions for backward compatibility
 export { runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from './a11y-audit.js'
 
+// Re-export page info extraction (split into its own module for coherence)
+export { getPageInfo } from './page-info.js'
+
 // DOM query parameters
 export interface DOMQueryParams {
   selector: string
@@ -54,28 +57,6 @@ interface DOMQueryResult {
   returnedCount: number
   matches: DOMElementEntry[]
 }
-
-// Page info result
-interface PageInfoResult {
-  url: string
-  title: string
-  viewport: { width: number; height: number }
-  scroll: { x: number; y: number }
-  documentHeight: number
-  headings: string[]
-  links: number
-  images: number
-  interactiveElements: number
-  forms: FormInfo[]
-}
-
-// Form info
-interface FormInfo {
-  id?: string
-  action?: string
-  fields: string[]
-}
-
 
 /**
  * Execute a DOM query and return structured results
@@ -193,43 +174,4 @@ function serializeDOMElement(
   return entry
 }
 
-/**
- * Get comprehensive page info
- */
-export async function getPageInfo(): Promise<PageInfoResult> {
-  const headings: string[] = []
-  const headingEls = document.querySelectorAll('h1,h2,h3,h4,h5,h6')
-  for (const h of headingEls) {
-    headings.push((h.textContent || '').slice(0, DOM_QUERY_MAX_TEXT))
-  }
-
-  const forms: FormInfo[] = []
-  const formEls = document.querySelectorAll('form')
-  for (const form of formEls) {
-    const fields: string[] = []
-    const inputs = form.querySelectorAll('input,select,textarea')
-    for (const input of inputs) {
-      const inputEl = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      if (inputEl.name) fields.push(inputEl.name)
-    }
-    forms.push({
-      id: form.id || undefined,
-      action: form.action || undefined,
-      fields
-    })
-  }
-
-  return {
-    url: window.location.href,
-    title: document.title,
-    viewport: { width: window.innerWidth, height: window.innerHeight },
-    scroll: { x: window.scrollX, y: window.scrollY },
-    documentHeight: document.documentElement.scrollHeight,
-    headings,
-    links: document.querySelectorAll('a').length,
-    images: document.querySelectorAll('img').length,
-    interactiveElements: document.querySelectorAll('button,input,select,textarea,a[href]').length,
-    forms
-  }
-}
 
