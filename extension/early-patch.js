@@ -12,6 +12,13 @@
     'use strict';
     if (typeof window === 'undefined')
         return;
+    // Cloaked domains — bail out before patching any globals.
+    // Must be sync (MAIN world, no chrome APIs). Manifest exclude_matches is
+    // the primary guard; this is a defense-in-depth fallback.
+    const CLOAKED_DOMAINS = ['cloudflare.com'];
+    const host = location.hostname;
+    if (CLOAKED_DOMAINS.some((d) => host === d || host.endsWith('.' + d)))
+        return;
     // Guard: only install once (extension reloads, multiple frames)
     if (window.__GASOLINE_ORIGINAL_WS__ || window.__GASOLINE_ORIGINAL_FETCH__ || window.__GASOLINE_EARLY_BODIES__)
         return;

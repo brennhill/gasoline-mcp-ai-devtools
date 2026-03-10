@@ -97,7 +97,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 **Works with every MCP tool.** Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
 
-**Enterprise-safe by design.** Binds to `127.0.0.1` only. Auth headers are stripped automatically. No telemetry, no accounts, no cloud. Audit the source — it's AGPL-3.0.
+**Enterprise-safe by design.** Binds to `127.0.0.1` only. Auth headers are stripped automatically. No accounts, no cloud. Anonymous usage stats only (see Privacy). Audit the source — it's AGPL-3.0.
 
 ## What It Does
 
@@ -122,7 +122,9 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 ## Privacy
 
-100% local. No cloud, no analytics, no telemetry. Logs never leave your machine.
+All captured data (logs, network, actions) stays 100% local — nothing leaves your machine. No cloud, no accounts.
+
+We collect anonymous usage statistics (feature usage flags, extension version) using a random identifier not linked to your identity. No URLs, browsing data, or personal information is collected.
 
 **[Privacy details →](https://cookwithgasoline.com/privacy/)**
 

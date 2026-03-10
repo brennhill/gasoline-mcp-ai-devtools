@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { StorageKey } from '../lib/constants.js';
+import { ALARM_NAME_ANALYTICS } from './analytics.js';
 import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js';
 import { clearTrackedTab as clearTrackedTabState } from './tab-state.js';
 // Re-export split modules so existing consumers keep working
@@ -92,6 +93,9 @@ export function installAlarmListener(handlers) {
                 break;
             case ALARM_NAMES.ERROR_GROUP_CLEANUP:
                 handlers.onErrorGroupCleanup();
+                break;
+            case ALARM_NAME_ANALYTICS:
+                await handlers.onAnalyticsPing();
                 break;
         }
     });

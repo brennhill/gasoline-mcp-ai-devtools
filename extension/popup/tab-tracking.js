@@ -10,6 +10,7 @@
 import { isInternalUrl } from './ui-utils.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocal, getLocals, setLocals, removeLocals, onStorageChanged } from '../lib/storage-utils.js'; // async API only
+import { isDomainCloaked } from '../lib/cloaked-domains.js';
 let trackingStorageSyncInstalled = false;
 /**
  * Initialize the Track This Tab button.
@@ -23,6 +24,15 @@ function showInternalPageState(btn) {
     btn.disabled = true;
     btn.textContent = 'Cannot Track Internal Pages';
     btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:';
+    Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' });
+}
+function showCloakedState(btn) {
+    const trackingBar = document.getElementById('tracking-bar');
+    if (trackingBar)
+        trackingBar.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Tracking Disabled on This Site';
+    btn.title = 'This domain is in the cloaked domains list. Gasoline is disabled here to prevent interference.';
     Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' });
 }
 function showTrackingState(btn, trackedTabUrl, trackedTabId) {
@@ -92,7 +102,20 @@ function syncTrackButtonState(btn) {
                 showInternalPageState(btn);
             }
             else {
-                showIdleState(btn);
+                // Check cloaked domains (async)
+                let hostname = '';
+                try {
+                    hostname = currentUrl ? new URL(currentUrl).hostname : '';
+                }
+                catch { /* malformed URL */ }
+                isDomainCloaked(hostname).then((cloaked) => {
+                    if (cloaked) {
+                        showCloakedState(btn);
+                    }
+                    else {
+                        showIdleState(btn);
+                    }
+                }).catch(() => showIdleState(btn));
             }
         });
     });
@@ -188,11 +211,19 @@ export async function handleTrackPageClick() {
         return;
     // Block tracking on internal Chrome pages
     if (isInternalUrl(tab.url)) {
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = 'Cannot Track Internal Pages';
-            btn.style.opacity = '0.5';
-        }
+        if (btn)
+            showInternalPageState(btn);
+        return;
+    }
+    // Block tracking on cloaked domains
+    let hostname = '';
+    try {
+        hostname = tab.url ? new URL(tab.url).hostname : '';
+    }
+    catch { /* malformed URL */ }
+    if (await isDomainCloaked(hostname)) {
+        if (btn)
+            showCloakedState(btn);
         return;
     }
     await setLocals({

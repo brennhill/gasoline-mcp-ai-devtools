@@ -17,6 +17,7 @@
  * tracked tab. Validates message origin (event.source === window) to prevent
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
+import { isDomainCloaked } from './lib/cloaked-domains.js';
 import { initTabTracking } from './content/tab-tracking.js';
 import { initScriptInjection } from './content/script-injection.js';
 import { initRequestTracking, getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking.js';
@@ -29,22 +30,28 @@ export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking };
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-// Track whether scripts have been injected
-let scriptsInjected = false;
-// Initialize tab tracking first, with callback for injection
-initTabTracking((tracked) => {
-    if (tracked && !scriptsInjected) {
-        initScriptInjection();
-        scriptsInjected = true;
-    }
-    setTrackedHoverLauncherEnabled(tracked);
+// Bail out early on cloaked domains — prevents interference with sites
+// that break when content scripts are present (e.g. Cloudflare dashboard).
+isDomainCloaked().then((cloaked) => {
+    if (cloaked)
+        return;
+    // Track whether scripts have been injected
+    let scriptsInjected = false;
+    // Initialize tab tracking first, with callback for injection
+    initTabTracking((tracked) => {
+        if (tracked && !scriptsInjected) {
+            initScriptInjection();
+            scriptsInjected = true;
+        }
+        setTrackedHoverLauncherEnabled(tracked);
+    });
+    // Initialize request tracking (cleanup handlers)
+    initRequestTracking();
+    // Initialize window message listener
+    initWindowMessageListener();
+    // Initialize runtime message listener
+    initRuntimeMessageListener();
+    // Initialize favicon replacer (visual indicator for tracked tabs)
+    initFaviconReplacer();
 });
-// Initialize request tracking (cleanup handlers)
-initRequestTracking();
-// Initialize window message listener
-initWindowMessageListener();
-// Initialize runtime message listener
-initRuntimeMessageListener();
-// Initialize favicon replacer (visual indicator for tracked tabs)
-initFaviconReplacer();
 //# sourceMappingURL=content.js.map
