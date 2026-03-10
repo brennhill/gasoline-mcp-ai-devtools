@@ -12,17 +12,5 @@ scripts/smoke-tests/
 e2e/
 tests/
 
-# Build/release scripts (not product code)
-scripts/
-
-# Documentation site (separate codebase)
-cookwithgasoline.com/
-
-# CLI package (separate package with independent architecture)
-npm/
-
-# Server install scripts (separate concern)
-server/
-
 # Generated coverage reports
 coverage.out
