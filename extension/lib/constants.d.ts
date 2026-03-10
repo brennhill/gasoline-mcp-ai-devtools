@@ -123,5 +123,6 @@ export declare const StorageKey: {
     readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
     readonly TERMINAL_SESSION: "gasoline_terminal_session";
     readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
+    readonly CLOAKED_DOMAINS: "gasoline_cloaked_domains";
 };
 //# sourceMappingURL=constants.d.ts.map

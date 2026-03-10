@@ -37,6 +37,7 @@ export declare function installAlarmListener(handlers: {
     onErrorGroupFlush: () => void;
     onMemoryCheck: () => void;
     onErrorGroupCleanup: () => void;
+    onAnalyticsPing: () => void | Promise<void>;
 }): void;
 /**
  * Install tab removed listener

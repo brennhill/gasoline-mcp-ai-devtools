@@ -88,7 +88,8 @@
     TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root",
     POPUP_LAST_STATUS: "gasoline_popup_last_status",
     TERMINAL_SESSION: "gasoline_terminal_session",
-    TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
+    TERMINAL_UI_STATE: "gasoline_terminal_ui_state",
+    CLOAKED_DOMAINS: "gasoline_cloaked_domains"
   };
 
   // extension/lib/storage-utils.js
@@ -143,6 +144,35 @@
       };
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
+  }
+
+  // extension/lib/cloaked-domains.js
+  var BUILTIN_CLOAKED = [
+    "cloudflare.com",
+    "dash.cloudflare.com"
+  ];
+  function matchesDomain(hostname, domain) {
+    return hostname === domain || hostname.endsWith("." + domain);
+  }
+  async function isDomainCloaked(hostname) {
+    const host = hostname || (typeof location !== "undefined" ? location.hostname : "");
+    if (!host)
+      return false;
+    for (const domain of BUILTIN_CLOAKED) {
+      if (matchesDomain(host, domain))
+        return true;
+    }
+    try {
+      const userDomains = await getLocal(StorageKey.CLOAKED_DOMAINS);
+      if (userDomains && Array.isArray(userDomains)) {
+        for (const domain of userDomains) {
+          if (matchesDomain(host, domain))
+            return true;
+        }
+      }
+    } catch {
+    }
+    return false;
   }
 
   // extension/content/tab-tracking.js
@@ -3592,17 +3622,21 @@
   }
 
   // extension/content.js
-  var scriptsInjected = false;
-  initTabTracking((tracked) => {
-    if (tracked && !scriptsInjected) {
-      initScriptInjection();
-      scriptsInjected = true;
-    }
-    setTrackedHoverLauncherEnabled(tracked);
+  isDomainCloaked().then((cloaked) => {
+    if (cloaked)
+      return;
+    let scriptsInjected = false;
+    initTabTracking((tracked) => {
+      if (tracked && !scriptsInjected) {
+        initScriptInjection();
+        scriptsInjected = true;
+      }
+      setTrackedHoverLauncherEnabled(tracked);
+    });
+    initRequestTracking();
+    initWindowMessageListener();
+    initRuntimeMessageListener();
+    initFaviconReplacer();
   });
-  initRequestTracking();
-  initWindowMessageListener();
-  initRuntimeMessageListener();
-  initFaviconReplacer();
 })();
 //# sourceMappingURL=content.bundled.js.map

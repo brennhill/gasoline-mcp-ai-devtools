@@ -12,6 +12,7 @@ import { initReady } from '../state.js'
 import { DebugCategory } from '../debug.js'
 import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js'
 import { errorMessage } from '../../lib/error-utils.js'
+import { trackCommandUsage, trackAiConnected } from '../analytics.js'
 import {
   debugLog,
   sendResult,
@@ -199,6 +200,12 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
     return withTargetContext(result, target)
   }
   const lifecycle = createDispatchLifecycle(query, syncClient, wrapResult)
+
+  // Track feature usage for anonymous daily analytics.
+  // trackAiConnected fires here because dispatch only runs when an actual
+  // AI client sends a command through the sync client — not on health checks.
+  trackAiConnected()
+  trackCommandUsage(queryType)
 
   const handler = handlers.get(queryType)
   if (!handler) {
