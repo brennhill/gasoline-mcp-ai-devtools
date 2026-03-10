@@ -1,5 +1,5 @@
 /**
- * Purpose: Facade re-exporting state management functions from error-groups, cache-limits, and snapshots sub-modules.
+ * Purpose: Facade re-exporting state management functions from specialized sub-modules.
  * Why: Provides a single import point so consumers do not need to know which sub-module owns each function.
  */
 
@@ -8,7 +8,9 @@
  * Re-exports all state management functions from specialized submodules:
  * - error-groups.ts: Error deduplication and grouping
  * - cache-limits.ts: Memory management and source map caching
- * - snapshots.ts: Stack trace resolution and processing queries
+ * - source-map-resolver.ts: VLQ decoding, source map fetching, stack trace resolution
+ * - context-monitor.ts: Context annotation size monitoring
+ * - processing-queries.ts: Query processing state tracking
  */
 
 // Re-export error grouping functions and types
@@ -49,12 +51,8 @@ export {
   MAX_PENDING_BUFFER
 } from './cache-limits.js'
 
-// Re-export source map and context monitoring
+// Re-export source map resolution
 export {
-  measureContextSize,
-  checkContextAnnotations,
-  getContextWarning,
-  resetContextWarning,
   decodeVLQ,
   parseMappings,
   parseStackFrame,
@@ -63,13 +61,25 @@ export {
   findOriginalLocation,
   fetchSourceMap,
   resolveStackFrame,
-  resolveStackTrace,
+  resolveStackTrace
+} from './source-map-resolver.js'
+
+// Re-export context annotation monitoring
+export {
+  measureContextSize,
+  checkContextAnnotations,
+  getContextWarning,
+  resetContextWarning
+} from './context-monitor.js'
+
+// Re-export processing query tracking
+export {
   getProcessingQueriesState,
   addProcessingQuery,
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries
-} from './snapshots.js'
+} from './processing-queries.js'
 
 // Debug log functions are defined and exported below
 
