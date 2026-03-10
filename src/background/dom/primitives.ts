@@ -19,10 +19,10 @@
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
 
-import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types.js'
+import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './types.js'
 
 // Re-export list_interactive primitive for backward compatibility
-export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
+export { domPrimitiveListInteractive } from './primitives-list-interactive.js'
 
 /**
  * Single self-contained function for all DOM primitives.

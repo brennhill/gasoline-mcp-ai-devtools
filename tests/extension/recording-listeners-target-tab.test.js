@@ -64,7 +64,7 @@ describe('recording listeners popup target selection', () => {
   })
 
   test('popup screen_recording_start targets tracked tab when available', async () => {
-    const { installRecordingListeners } = await import('../../extension/background/recording-listeners.js')
+    const { installRecordingListeners } = await import('../../extension/background/recording/listeners.js')
 
     const deps = {
       startRecording: mock.fn(async () => ({ status: 'recording', name: 'tracked', startTime: Date.now() })),

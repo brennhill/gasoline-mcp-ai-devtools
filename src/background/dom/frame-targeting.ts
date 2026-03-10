@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 
-import { normalizeFrameTarget } from '../lib/frame-utils.js'
+import { normalizeFrameTarget } from '../../lib/frame-utils.js'
 
 export const INVALID_FRAME_ERROR =
   'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value'

@@ -8,14 +8,14 @@
 // mic permission grant flow, and file reveal requests.
 // Deps are injected to avoid circular imports with recording.ts.
 
-import { scaleTimeout } from '../lib/timeouts.js'
-import { StorageKey } from '../lib/constants.js'
-import { getLocal } from '../lib/storage-utils.js'
-import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
-import { errorMessage } from '../lib/error-utils.js'
-import { postDaemonJSON } from '../lib/daemon-http.js'
-import { buildScreenRecordingSlug, stopRecordingBadgeTimer } from './recording-utils.js'
-import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
+import { scaleTimeout } from '../../lib/timeouts.js'
+import { StorageKey } from '../../lib/constants.js'
+import { getLocal } from '../../lib/storage-utils.js'
+import type { OffscreenRecordingStoppedMessage } from '../../types/runtime-messages.js'
+import { errorMessage } from '../../lib/error-utils.js'
+import { postDaemonJSON } from '../../lib/daemon-http.js'
+import { buildScreenRecordingSlug, stopRecordingBadgeTimer } from './utils.js'
+import type { ScreenRecordingHandlers } from '../keyboard-shortcuts.js'
 
 const LOG = '[Gasoline REC]'
 

@@ -8,21 +8,21 @@
 // Script builders stay self-contained because chrome.scripting.executeScript
 // serializes injected functions independently.
 
-import type { PendingQuery } from '../types/queries.js'
-import type { SyncClient } from './sync-client.js'
-import type { DOMActionParams, DOMResult } from './dom-types.js'
-import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
-import { domFrameProbe } from './dom-frame-probe.js'
-import { domPrimitive } from './dom-primitives.js'
-import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
-import { domPrimitiveQuery } from './dom-primitives-query.js'
-import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './dom-primitives-stability.js'
-import { domPrimitiveOverlay } from './dom-primitives-overlay.js'
-import { domPrimitiveIntent } from './dom-primitives-intent.js'
-import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
+import type { PendingQuery } from '../../types/queries.js'
+import type { SyncClient } from '../sync-client.js'
+import type { DOMActionParams, DOMResult } from './types.js'
+import type { SendAsyncResultFn, ActionToastFn } from '../commands/helpers.js'
+import { domFrameProbe } from './frame-probe.js'
+import { domPrimitive } from './primitives.js'
+import { domPrimitiveListInteractive } from './primitives-list-interactive.js'
+import { domPrimitiveQuery } from './primitives-query.js'
+import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './primitives-stability.js'
+import { domPrimitiveOverlay } from './primitives-overlay.js'
+import { domPrimitiveIntent } from './primitives-intent.js'
+import { isCDPEscalatable, tryCDPEscalation } from '../cdp/dispatch.js'
 import { isReadOnlyAction } from './action-metadata.js'
-import { errorMessage } from '../lib/error-utils.js'
-import { delay } from '../lib/timeout-utils.js'
+import { errorMessage } from '../../lib/error-utils.js'
+import { delay } from '../../lib/timeout-utils.js'
 import { normalizeFrameArg, resolveMatchedFrameIds } from './frame-targeting.js'
 import {
   toDOMResult,
@@ -31,7 +31,7 @@ import {
   deriveAsyncStatusFromDOMResult,
   enrichWithEffectiveContext,
   sendToastForResult
-} from './dom-result-reconcile.js'
+} from './result-reconcile.js'
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {

@@ -80,7 +80,7 @@ import {
   handleTrackedTabUrlChange
 } from './event-listeners.js'
 import { installPushCommandListener, installChatCommandListener } from './push-handler.js'
-import { isRecording, startRecording, stopRecording } from './recording.js'
+import { isRecording, startRecording, stopRecording } from './recording/recording.js'
 import type { MessageHandlerDependencies } from './message-handlers.js'
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
 import { captureScreenshot, updateBadge } from './communication.js'

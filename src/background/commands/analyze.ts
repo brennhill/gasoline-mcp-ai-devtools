@@ -10,8 +10,8 @@
 import { registerCommand, type CommandContext } from './registry.js'
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
 import { errorMessage } from '../../lib/error-utils.js'
-import { domFrameProbe } from '../dom-frame-probe.js'
-import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js'
+import { domFrameProbe } from '../dom/frame-probe.js'
+import { normalizeFrameArg, resolveMatchedFrameIds } from '../dom/frame-targeting.js'
 
 // =============================================================================
 // FRAME ROUTING TYPES

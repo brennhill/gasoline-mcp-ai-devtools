@@ -4,8 +4,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 
-import type { DOMResult } from './dom-types.js'
-import type { ActionToastFn } from './commands/helpers.js'
+import type { DOMResult } from './types.js'
+import type { ActionToastFn } from '../commands/helpers.js'
 import { isMutatingAction } from './action-metadata.js'
 
 export function toDOMResult(value: unknown): DOMResult | null {
