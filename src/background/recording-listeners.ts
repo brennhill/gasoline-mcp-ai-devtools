@@ -14,9 +14,8 @@ import { getLocal } from '../lib/storage-utils.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
-import { buildScreenRecordingSlug } from './recording-utils.js'
+import { buildScreenRecordingSlug, stopRecordingBadgeTimer } from './recording-utils.js'
 import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
-import { stopRecordingBadgeTimer } from './recording-badge.js'
 
 const LOG = '[Gasoline REC]'
 

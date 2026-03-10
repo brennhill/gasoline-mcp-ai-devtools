@@ -1,11 +1,7 @@
 /**
- * Purpose: Listens for window.postMessage events from inject.js and resolves pending request promises or forwards telemetry to the background.
+ * Purpose: Listens for window.postMessage events from inject.js, resolves pending request promises, and forwards telemetry to the background via chrome.runtime.sendMessage.
+ * Why: Consolidates message forwarding and message listening into one module since they share the same data flow.
  * Docs: docs/features/feature/observe/index.md
- */
-
-/**
- * @fileoverview Window Message Listener Module
- * Handles window.postMessage events from inject.js
  */
 
 import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types/index.js'
@@ -16,14 +12,56 @@ import {
   resolveA11yRequest,
   resolveDomRequest
 } from './request-tracking.js'
-import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js'
 import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js'
 import { getPageNonce } from './script-injection.js'
 
+// =============================================================================
+// MESSAGE FORWARDING — page postMessage → background chrome.runtime.sendMessage
+// =============================================================================
+
+/** Dispatch table: page postMessage type -> background message type */
+export const MESSAGE_MAP: Record<string, string> = {
+  gasoline_log: 'log',
+  gasoline_ws: 'ws_event',
+  gasoline_network_body: 'network_body',
+  gasoline_enhanced_action: 'enhanced_action',
+  gasoline_performance_snapshot: 'performance_snapshot'
+} as const
+
+// Track whether the extension context is still valid
+let contextValid = true
+
 /**
- * Initialize consolidated window message listener
- * Handles all messages from inject.js
+ * Safely send a message to the background script.
+ * Handles extension context invalidation gracefully.
  */
+export function safeSendMessage(msg: BackgroundMessageFromContent): void {
+  if (!contextValid) return
+  try {
+    chrome.runtime.sendMessage(msg)
+  } catch (e) {
+    if (e instanceof Error && e.message?.includes('Extension context invalidated')) {
+      contextValid = false
+      console.warn(
+        '[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
+          'and this page still has the old content script. A page refresh will ' +
+          'reconnect capture automatically.'
+      )
+    }
+  }
+}
+
+/**
+ * Check if the extension context is still valid
+ */
+export function isContextValid(): boolean {
+  return contextValid
+}
+
+// =============================================================================
+// WINDOW MESSAGE LISTENER — dispatches incoming postMessage events
+// =============================================================================
+
 type ResponseResolver = (requestId: number | string, result: unknown) => void
 
 const RESPONSE_HANDLERS: Record<string, ResponseResolver> = {
