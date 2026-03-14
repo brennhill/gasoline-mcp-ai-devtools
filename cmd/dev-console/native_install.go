@@ -114,7 +114,9 @@ func runNativeInstall() {
 	extDir := extensionInstallDir(home)
 
 	// 2. Claude Code
-	installClaudeCode(exe)
+	if err := installClaudeCode(exe); err != nil {
+		stderrf("⚠️  Claude Code config: %v\n", err)
+	}
 
 	// 3. File-based configs
 	configs := []struct {
@@ -183,7 +185,9 @@ func runNativeInstall() {
 			continue // Client directory doesn't exist, skip
 		}
 
-		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom) //nolint:errcheck // best-effort per-client config
+		if err := mergeJSONConfig(path, cfg.key, exe, cfg.isCustom); err != nil {
+			stderrf("⚠️  %s config: %v\n", cfg.name, err)
+		}
 	}
 
 	// 3b. Codex (TOML-based config)
@@ -230,9 +234,9 @@ func startDaemonSilently(exe string) {
 	}
 }
 
-func installClaudeCode(exePath string) {
+func installClaudeCode(exePath string) error {
 	if _, err := exec.LookPath("claude"); err != nil {
-		return
+		return nil // claude CLI not installed, nothing to do
 	}
 
 	// Remove legacy MCP server registrations before adding the canonical one.
@@ -251,7 +255,11 @@ func installClaudeCode(exePath string) {
 	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", mcpServerName)
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
-	_ = cmd.Run() //nolint:errcheck // best-effort Claude Code MCP registration
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("claude mcp add-json failed: %v\n%s", err, out)
+	}
+	return nil
 }
 
 // installCodex updates ~/.codex/config.toml to register the MCP server.
@@ -312,7 +320,11 @@ func installCodex(home, exePath string) {
 func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	data := make(map[string]any)
 	if bytes, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(bytes, &data) //nolint:errcheck // start with empty map if unmarshal fails
+		if len(bytes) > 0 {
+			if err := json.Unmarshal(bytes, &data); err != nil {
+				return fmt.Errorf("refusing to overwrite %s: existing file has invalid JSON (%v). Fix the file manually or back it up before retrying", path, err)
+			}
+		}
 	}
 
 	if _, ok := data[key]; !ok {
@@ -351,6 +363,11 @@ func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
+	}
+
+	// Back up existing file before overwriting.
+	if existing, err := os.ReadFile(path); err == nil && len(existing) > 0 {
+		_ = os.WriteFile(path+".bak", existing, 0600)
 	}
 
 	return os.WriteFile(path, append(out, '\n'), 0600)
