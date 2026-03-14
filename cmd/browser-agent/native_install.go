@@ -81,7 +81,9 @@ func runNativeInstall() {
 	extDir := extensionInstallDir(home)
 
 	// 2. Claude Code
-	installClaudeCode(exe)
+	if err := installClaudeCode(exe); err != nil {
+		stderrf("  ⚠️  Claude Code: %v\n", err)
+	}
 
 	// 3. File-based configs
 	configs := []struct {
@@ -150,7 +152,9 @@ func runNativeInstall() {
 			continue // Client directory doesn't exist, skip
 		}
 
-		_ = mergeJSONConfig(path, cfg.key, exe, cfg.isCustom)
+		if err := mergeJSONConfig(path, cfg.key, exe, cfg.isCustom); err != nil {
+			stderrf("  ⚠️  %s: %v\n", cfg.name, err)
+		}
 	}
 
 	// 4. Start the Daemon
@@ -194,9 +198,9 @@ func startDaemonSilently(exe string) {
 	}
 }
 
-func installClaudeCode(exePath string) {
+func installClaudeCode(exePath string) error {
 	if _, err := exec.LookPath("claude"); err != nil {
-		return
+		return nil // Claude Code not installed, skip silently
 	}
 
 	entry := map[string]any{
@@ -208,13 +212,21 @@ func installClaudeCode(exePath string) {
 	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", mcpServerName)
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
-	_ = cmd.Run()
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("claude mcp add-json failed: %v (output: %s)", err, strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
 func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	data := make(map[string]any)
 	if bytes, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(bytes, &data)
+		if len(bytes) > 0 {
+			if err := json.Unmarshal(bytes, &data); err != nil {
+				return fmt.Errorf("refusing to overwrite %s: existing file has invalid JSON (%v). Fix the file manually or back it up before retrying", path, err)
+			}
+		}
 	}
 
 	if _, ok := data[key]; !ok {
@@ -253,6 +265,11 @@ func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
+	}
+
+	// Back up existing file before overwriting.
+	if existing, err := os.ReadFile(path); err == nil && len(existing) > 0 {
+		_ = os.WriteFile(path+".bak", existing, 0600)
 	}
 
 	return os.WriteFile(path, append(out, '\n'), 0600)
