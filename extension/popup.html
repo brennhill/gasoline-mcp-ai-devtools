@@ -14,7 +14,7 @@
 
     <div class="status-row">
       <span class="status-label">Status</span>
-      <span id="status" class="status-value disconnected">Disconnected</span>
+      <span id="status" class="status-value disconnected">Offline</span>
     </div>
     <div id="record-top-notice" class="record-top-notice" style="display: none"></div>
 
@@ -23,44 +23,52 @@
       <div
         style="
           padding: 12px;
-          background: rgba(248, 81, 73, 0.1);
-          border: 1px solid #f85149;
+          background: rgba(210, 153, 34, 0.1);
+          border: 1px solid #d29922;
           border-radius: 6px;
           font-size: 12px;
           line-height: 1.6;
         "
       >
-        <p style="margin-bottom: 8px; color: #f85149; font-weight: 600">Server not running</p>
-        <p style="color: #ccc; margin-bottom: 8px">
-          Run in terminal:
-          <code
-            style="
-              background: #333;
-              padding: 2px 6px;
-              border-radius: 3px;
-              color: #58a6ff;
-              display: inline-block;
-              margin-top: 4px;
-            "
-            >npx gasoline-agentic-browser</code
-          >
+        <p style="margin-bottom: 8px; color: #d29922; font-weight: 600">Server offline</p>
+        <p style="color: #ccc; margin-bottom: 4px">
+          Tab tracking works offline. The server starts automatically when your AI tool invokes a command.
         </p>
-        <p style="color: #888; font-size: 11px">
-          Port in use?
-          <code style="background: #333; padding: 1px 4px; border-radius: 2px; color: #aaa"
-            >lsof -ti :7890 | xargs kill</code
-          >
-        </p>
-        <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
-          <a
-            href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp#quick-start"
-            target="_blank"
-            style="color: #58a6ff; text-decoration: none; font-size: 11px"
-            >Setup guide →</a
-          >
-          <span style="color: #444; margin: 0 6px">|</span>
-          <a href="options.html" style="color: #58a6ff; text-decoration: none; font-size: 11px">Custom port →</a>
-        </p>
+        <details style="margin-top: 8px">
+          <summary style="color: #888; font-size: 11px; cursor: pointer">Manual start &amp; troubleshooting</summary>
+          <div style="margin-top: 8px">
+            <p style="color: #ccc; margin-bottom: 8px">
+              Run in terminal:
+              <code
+                style="
+                  background: #333;
+                  padding: 2px 6px;
+                  border-radius: 3px;
+                  color: #58a6ff;
+                  display: inline-block;
+                  margin-top: 4px;
+                "
+                >npx gasoline-agentic-browser</code
+              >
+            </p>
+            <p style="color: #888; font-size: 11px">
+              Port in use?
+              <code style="background: #333; padding: 1px 4px; border-radius: 2px; color: #aaa"
+                >lsof -ti :7890 | xargs kill</code
+              >
+            </p>
+            <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
+              <a
+                href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp#quick-start"
+                target="_blank"
+                style="color: #58a6ff; text-decoration: none; font-size: 11px"
+                >Setup guide →</a
+              >
+              <span style="color: #444; margin: 0 6px">|</span>
+              <a href="options.html" style="color: #58a6ff; text-decoration: none; font-size: 11px">Custom port →</a>
+            </p>
+          </div>
+        </details>
       </div>
     </div>
 

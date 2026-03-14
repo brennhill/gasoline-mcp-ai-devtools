@@ -76,7 +76,7 @@
       }
 
       #status.disconnected::before {
-        background: #f85149;
+        background: #d29922;
       }
 
       #status.disconnected::after {
@@ -89,8 +89,8 @@
         margin-left: 4px;
         font-size: 12px;
         font-weight: 700;
-        color: #f85149;
-        background: rgba(248, 81, 73, 0.15);
+        color: #d29922;
+        background: rgba(210, 153, 34, 0.15);
         border-radius: 3px;
       }
 
@@ -633,12 +633,12 @@
       }
 
       body.light-theme #status.disconnected::before {
-        background: #cf222e;
+        background: #9a6700;
       }
 
       body.light-theme #status.disconnected::after {
-        color: #cf222e;
-        background: rgba(207, 34, 46, 0.12);
+        color: #9a6700;
+        background: rgba(154, 103, 0, 0.12);
       }
 
       body.light-theme .section-title {
