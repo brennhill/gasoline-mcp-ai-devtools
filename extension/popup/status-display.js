@@ -37,7 +37,7 @@ export function updateConnectionStatus(status) {
     }
     else {
         if (statusEl) {
-            statusEl.textContent = 'Disconnected';
+            statusEl.textContent = 'Offline';
             statusEl.classList.remove('connected');
             statusEl.classList.add('disconnected');
         }
