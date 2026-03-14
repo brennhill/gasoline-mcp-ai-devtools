@@ -9,8 +9,8 @@
  * Manages recording controls, timer display, and mic permission flow.
  */
 import { StorageKey } from '../lib/constants.js';
-import { errorMessage } from '../lib/error-utils.js';
-import { getLocal, setLocal, removeLocal, onStorageChanged } from '../lib/storage-utils.js';
+import { getLocal, removeLocal, onStorageChanged } from '../lib/storage-utils.js';
+import { sendRecordingGestureDecision, handleStartClick, handleStopClick } from './recording-io.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
@@ -121,11 +121,6 @@ function setApprovalPendingState(els, approvalEls, state, pending) {
     if (!state.isRecording && els.optionsEl)
         els.optionsEl.style.display = 'block';
 }
-function sendRecordingGestureDecision(type) {
-    chrome.runtime.sendMessage({ type }, () => {
-        void chrome.runtime.lastError;
-    });
-}
 function showTopNotice(els, text) {
     const notice = els.topNoticeEl;
     if (!notice)
@@ -191,89 +186,6 @@ function showStartError(saveInfoEl, errorText) {
         saveInfoEl.style.background = 'rgba(63, 185, 80, 0.1)';
         saveInfoEl.style.color = '#3fb950';
     }, 5000);
-}
-function showMicPermissionPrompt(saveInfoEl, audioMode) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
-        void setLocal(StorageKey.PENDING_MIC_RECORDING, { audioMode, returnTabId: activeTabs[0]?.id });
-    });
-    saveInfoEl.innerHTML =
-        'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
-    saveInfoEl.style.display = 'block';
-    saveInfoEl.style.background = 'rgba(248, 81, 73, 0.1)';
-    saveInfoEl.style.color = '#f85149';
-    const link = document.getElementById('grant-mic-link');
-    if (link) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            chrome.tabs.create({ url: chrome.runtime.getURL('mic-permission.html') });
-        });
-    }
-}
-function sendRecordStart(els, state, audioMode) {
-    console.log('[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:', audioMode);
-    chrome.runtime.sendMessage({ type: 'screen_recording_start', audio: audioMode }, (resp) => {
-        console.log('[Gasoline REC] Popup: screen_recording_start response:', resp);
-        if (chrome.runtime.lastError) {
-            console.error('[Gasoline REC] Popup: screen_recording_start lastError:', chrome.runtime.lastError.message);
-        }
-        if (resp?.status === 'recording' && resp.name) {
-            showRecording(els, state, resp.name, resp.startTime ?? Date.now());
-        }
-        else {
-            showIdle(els, state);
-            if (resp?.error)
-                showStartError(els.saveInfoEl, resp.error);
-        }
-    });
-}
-// #lizard forgives
-function tryMicPermissionThenStart(els, state, audioMode) {
-    console.log('[Gasoline REC] Popup: trying getUserMedia from popup...');
-    navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((micStream) => {
-        console.log('[Gasoline REC] Popup: getUserMedia succeeded from popup');
-        micStream.getTracks().forEach((t) => t.stop());
-        void setLocal(StorageKey.MIC_GRANTED, true);
-        sendRecordStart(els, state, audioMode);
-    })
-        .catch((err) => {
-        console.log('[Gasoline REC] Popup: getUserMedia FAILED:', err.name, errorMessage(err));
-        void removeLocal(StorageKey.MIC_GRANTED);
-        showIdle(els, state);
-        if (els.saveInfoEl)
-            showMicPermissionPrompt(els.saveInfoEl, audioMode);
-    });
-}
-function handleStartClick(els, state) {
-    const audioSelect = document.getElementById('record-audio-mode');
-    const audioMode = audioSelect?.value ?? '';
-    void setLocal(StorageKey.RECORD_AUDIO_PREF, audioMode);
-    if (els.optionsEl)
-        els.optionsEl.style.display = 'none';
-    if (els.saveInfoEl)
-        els.saveInfoEl.style.display = 'none';
-    els.label.textContent = 'Starting...';
-    if (audioMode === 'mic' || audioMode === 'both') {
-        console.log('[Gasoline REC] Popup: mic/both mode — checking gasoline_mic_granted');
-        tryMicPermissionThenStart(els, state, audioMode);
-    }
-    else {
-        sendRecordStart(els, state, audioMode);
-    }
-}
-function handleStopClick(els, state) {
-    els.row.classList.remove('is-recording');
-    els.label.textContent = 'Saving...';
-    console.log('[Gasoline REC] Popup: sending screen_recording_stop');
-    chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, (resp) => {
-        console.log('[Gasoline REC] Popup: screen_recording_stop response:', resp);
-        if (chrome.runtime.lastError) {
-            console.error('[Gasoline REC] Popup: screen_recording_stop lastError:', chrome.runtime.lastError.message);
-        }
-        showIdle(els, state);
-        showSaveResult(els.saveInfoEl, resp);
-    });
 }
 export function setupRecordingUI() {
     const row = document.getElementById('record-row');
@@ -396,10 +308,10 @@ export function setupRecordingUI() {
         }
         removeRecordHighlight(els);
         if (state.isRecording) {
-            handleStopClick(els, state);
+            handleStopClick(els, state, showIdle, showSaveResult);
         }
         else {
-            handleStartClick(els, state);
+            handleStartClick(els, state, showRecording, showIdle, showStartError);
         }
     });
 }
