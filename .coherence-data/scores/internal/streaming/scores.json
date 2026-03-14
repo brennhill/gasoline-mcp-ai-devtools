@@ -1,0 +1,158 @@
+{
+  "directory": "internal/streaming",
+  "composite": 74.85243770240015,
+  "grade": "B",
+  "total_functions": 66,
+  "files": [
+    {
+      "file": "alerts.go",
+      "functions": 9,
+      "composite": 78.83871830893294,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "alerts_anomaly.go",
+      "functions": 5,
+      "composite": 73.46732630513759,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "alerts_buffer.go",
+      "functions": 2,
+      "composite": 73.08651569767754,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "alerts_ci.go",
+      "functions": 3,
+      "composite": 75.38485755126324,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "alerts_test.go",
+      "functions": 9,
+      "composite": 75.94793558137813,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stream.go",
+      "functions": 6,
+      "composite": 81.7532986312047,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "stream_dedup.go",
+      "functions": 4,
+      "composite": 70.31514653035975,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stream_emit.go",
+      "functions": 2,
+      "composite": 70.11199234688667,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stream_filters.go",
+      "functions": 4,
+      "composite": 77.19818876526476,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "stream_rate_limit.go",
+      "functions": 5,
+      "composite": 69.22011254634563,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "stream_test.go",
+      "functions": 16,
+      "composite": 72.8963046219507,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "types.go",
+      "functions": 1,
+      "composite": 74.27821342433674,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 6
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,290 @@
+{
+  "directory": "internal/util",
+  "composite": 71.48458587296555,
+  "grade": "B",
+  "total_functions": 137,
+  "files": [
+    {
+      "file": "binary.go",
+      "functions": 2,
+      "composite": 76.87024244192517,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "binary_bson.go",
+      "functions": 3,
+      "composite": 83.71298760890147,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "binary_cbor.go",
+      "functions": 2,
+      "composite": 86.03355253583575,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "binary_coverage_test.go",
+      "functions": 28,
+      "composite": 70.17620523399924,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "binary_fuzz_test.go",
+      "functions": 1,
+      "composite": 62.1152902607492,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "Composable"
+      ]
+    },
+    {
+      "file": "binary_messagepack.go",
+      "functions": 2,
+      "composite": 86.40349962578284,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "binary_property_test.go",
+      "functions": 6,
+      "composite": 67.61596685282471,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "binary_protobuf.go",
+      "functions": 5,
+      "composite": 74.27138655610113,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "binary_protobuf_bson_test.go",
+      "functions": 36,
+      "composite": 72.59175458318957,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "binary_test.go",
+      "functions": 11,
+      "composite": 70.401097279116,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "duration.go",
+      "functions": 1,
+      "composite": 66.59765802360721,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "maps.go",
+      "functions": 1,
+      "composite": 69.2993429990675,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "SAP",
+        "REP"
+      ]
+    },
+    {
+      "file": "media.go",
+      "functions": 3,
+      "composite": 68.63462686401277,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "proc_windows.go",
+      "functions": 1,
+      "composite": 71.1393768450647,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "HighCohesion",
+        "ISP"
+      ]
+    },
+    {
+      "file": "response.go",
+      "functions": 2,
+      "composite": 71.18779909514183,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "SAP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "response_proc_test.go",
+      "functions": 3,
+      "composite": 67.97695347611597,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "SRP"
+      ]
+    },
+    {
+      "file": "safego.go",
+      "functions": 1,
+      "composite": 69.14087600473935,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "safego_test.go",
+      "functions": 3,
+      "composite": 68.48477124484377,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "strings.go",
+      "functions": 1,
+      "composite": 69.85158199205118,
+      "grade": "B",
+      "weak_principles": [
+        "ProtectedVar",
+        "ISP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "strings_test.go",
+      "functions": 1,
+      "composite": 70.47131254034248,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "time.go",
+      "functions": 1,
+      "composite": 83.22221916438934,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "time_test.go",
+      "functions": 6,
+      "composite": 73.67823433943252,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "url.go",
+      "functions": 2,
+      "composite": 66.684497688482,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "url_test.go",
+      "functions": 15,
+      "composite": 67.93281899061299,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 15
+    },
+    {
+      "principle": "Indirection",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

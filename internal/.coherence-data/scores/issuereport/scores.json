@@ -1,0 +1,92 @@
+{
+  "directory": "issuereport",
+  "composite": 77.35923153375663,
+  "grade": "B",
+  "total_functions": 31,
+  "files": [
+    {
+      "file": "sanitize.go",
+      "functions": 3,
+      "composite": 82.24329977914343,
+      "grade": "A",
+      "weak_principles": [
+        "LoDChain",
+        "SAP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "sanitize_test.go",
+      "functions": 6,
+      "composite": 78.17416556333608,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "submit.go",
+      "functions": 6,
+      "composite": 74.18064759039392,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "submit_test.go",
+      "functions": 9,
+      "composite": 76.73470647945108,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "templates.go",
+      "functions": 2,
+      "composite": 80.81862460877304,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "templates_test.go",
+      "functions": 5,
+      "composite": 77.00555835080799,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 4
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "Creator",
+      "count": 1
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "directory": "checkpoint",
+  "composite": 75.86385873996075,
+  "grade": "B",
+  "total_functions": 140,
+  "files": [
+    {
+      "file": "checkpoint_alerts.go",
+      "functions": 10,
+      "composite": 80.05319829164657,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "checkpoint_alerts_test.go",
+      "functions": 23,
+      "composite": 71.78265906210964,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_alerts_unit_test.go",
+      "functions": 6,
+      "composite": 70.37551621215985,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "Creator"
+      ]
+    },
+    {
+      "file": "checkpoint_classify_test.go",
+      "functions": 14,
+      "composite": 70.77373772161184,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_compute.go",
+      "functions": 4,
+      "composite": 71.37711432310604,
+      "grade": "B",
+      "weak_principles": [
+        "ISP",
+        "ProtectedVar",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_compute_test.go",
+      "functions": 15,
+      "composite": 75.73228211956447,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_console_helpers.go",
+      "functions": 4,
+      "composite": 86.1394768384124,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "checkpoint_manager.go",
+      "functions": 9,
+      "composite": 74.89786172189457,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "checkpoint_network_helpers.go",
+      "functions": 6,
+      "composite": 81.80375658622692,
+      "grade": "A",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "checkpoint_resolution.go",
+      "functions": 5,
+      "composite": 78.06006526623696,
+      "grade": "B",
+      "weak_principles": [
+        "ISP",
+        "ProtectedVar",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_resolution_test.go",
+      "functions": 19,
+      "composite": 74.70427684410042,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "checkpoint_summary.go",
+      "functions": 8,
+      "composite": 77.78457840646035,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "checkpoint_unit_test.go",
+      "functions": 11,
+      "composite": 77.74523134563057,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Creator"
+      ]
+    },
+    {
+      "file": "checkpoint_utils.go",
+      "functions": 4,
+      "composite": 90.06717820455269,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "checkpoint_ws_helpers.go",
+      "functions": 2,
+      "composite": 88.97164708955391,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 46
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 12
+    },
+    {
+      "principle": "DeadCode",
+      "count": 11
+    },
+    {
+      "principle": "LoD",
+      "count": 11
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

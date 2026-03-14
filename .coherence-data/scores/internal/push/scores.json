@@ -1,0 +1,92 @@
+{
+  "directory": "internal/push",
+  "composite": 72.26087018231226,
+  "grade": "B",
+  "total_functions": 40,
+  "files": [
+    {
+      "file": "inbox.go",
+      "functions": 5,
+      "composite": 77.42264967925234,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "LoDChain",
+        "ADP"
+      ]
+    },
+    {
+      "file": "inbox_test.go",
+      "functions": 14,
+      "composite": 71.63272173966476,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "router.go",
+      "functions": 6,
+      "composite": 77.6888035640445,
+      "grade": "B",
+      "weak_principles": [
+        "LoDChain",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "router_test.go",
+      "functions": 8,
+      "composite": 72.04357538277645,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "sampling.go",
+      "functions": 2,
+      "composite": 63.93829278919715,
+      "grade": "C",
+      "weak_principles": [
+        "SAP",
+        "ADP",
+        "ProtectedVar"
+      ]
+    },
+    {
+      "file": "sampling_test.go",
+      "functions": 5,
+      "composite": 66.02108890321004,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 15
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 2
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    }
+  ]
+}

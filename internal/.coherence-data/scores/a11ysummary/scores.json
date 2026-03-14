@@ -1,0 +1,40 @@
+{
+  "directory": "a11ysummary",
+  "composite": 82.0435730372763,
+  "grade": "A",
+  "total_functions": 11,
+  "files": [
+    {
+      "file": "summary.go",
+      "functions": 6,
+      "composite": 83.09785662439043,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "summary_test.go",
+      "functions": 5,
+      "composite": 80.77843273273933,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

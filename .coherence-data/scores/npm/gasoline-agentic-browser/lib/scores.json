@@ -1,0 +1,132 @@
+{
+  "directory": "npm/gasoline-agentic-browser/lib",
+  "composite": 76.48174512717404,
+  "grade": "B",
+  "total_functions": 97,
+  "files": [
+    {
+      "file": "cli.js",
+      "functions": 9,
+      "composite": 74.03775303088119,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "config.js",
+      "functions": 17,
+      "composite": 77.17221814782854,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "doctor.js",
+      "functions": 7,
+      "composite": 75.03260052784414,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "errors.js",
+      "functions": 9,
+      "composite": 84.4507678016285,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "install.js",
+      "functions": 6,
+      "composite": 73.89279213335227,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "kill-daemon.js",
+      "functions": 10,
+      "composite": 75.56081394151212,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "output.js",
+      "functions": 8,
+      "composite": 79.71846135315012,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "LoDChain"
+      ]
+    },
+    {
+      "file": "postinstall-skills.js",
+      "functions": 1,
+      "composite": 72.91433233393363,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "skills.js",
+      "functions": 25,
+      "composite": 74.8693267944912,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "uninstall.js",
+      "functions": 5,
+      "composite": 74.76331847973086,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 4
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

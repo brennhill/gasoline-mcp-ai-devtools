@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- No container — raw mark -->
+  <g filter="url(#gl)">
+    <path fill="none" stroke="#f97316" stroke-width="7" stroke-linecap="butt">
+      <animate attributeName="d" dur="0.4s" repeatCount="indefinite" values="
+        M40,10 C40,10 40,65 40,65 Q40,85 64,85;
+        M40,10 C35,25 45,50 40,65 Q40,85 64,85;
+        M40,10 C45,25 35,50 40,65 Q40,85 64,85;
+        M40,10 C40,10 40,65 40,65 Q40,85 64,85
+      "/>
+    </path>
+    <path fill="none" stroke="#fbbf24" stroke-width="5" stroke-linecap="butt">
+      <animate attributeName="d" dur="0.4s" repeatCount="indefinite" values="
+        M88,10 C88,10 88,65 88,65 Q88,85 64,85;
+        M88,10 C93,25 83,50 88,65 Q88,85 64,85;
+        M88,10 C83,25 93,50 88,65 Q88,85 64,85;
+        M88,10 C88,10 88,65 88,65 Q88,85 64,85
+      "/>
+    </path>
+    <line x1="64" y1="85" x2="64" y2="120" stroke="#fde047" stroke-width="3.5" stroke-linecap="butt"/>
+  </g>
+</svg>

@@ -1,0 +1,95 @@
+{
+  "directory": "reproduction",
+  "composite": 72.86655413539596,
+  "grade": "B",
+  "total_functions": 79,
+  "files": [
+    {
+      "file": "golden_test.go",
+      "functions": 1,
+      "composite": 65.32065073950568,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "reproduction.go",
+      "functions": 6,
+      "composite": 72.734545594989,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "reproduction_gasoline.go",
+      "functions": 9,
+      "composite": 73.8668776175944,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "reproduction_playwright.go",
+      "functions": 10,
+      "composite": 66.94803590473751,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Predictable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "reproduction_selectors.go",
+      "functions": 7,
+      "composite": 69.61544530873292,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "reproduction_test.go",
+      "functions": 42,
+      "composite": 74.74664173519209,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "reproduction_utils.go",
+      "functions": 4,
+      "composite": 73.44513118547982,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "SAP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 4
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

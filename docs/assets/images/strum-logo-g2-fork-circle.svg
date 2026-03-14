@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+  <g filter="url(#gl)">
+    <path fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="butt">
+      <animate attributeName="d" dur="0.4s" repeatCount="indefinite" values="
+        M48,20 C48,20 48,60 48,60 Q48,75 64,75;
+        M48,20 C44,30 52,50 48,60 Q48,75 64,75;
+        M48,20 C52,30 44,50 48,60 Q48,75 64,75;
+        M48,20 C48,20 48,60 48,60 Q48,75 64,75
+      "/>
+    </path>
+    <path fill="none" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="butt">
+      <animate attributeName="d" dur="0.4s" repeatCount="indefinite" values="
+        M80,20 C80,20 80,60 80,60 Q80,75 64,75;
+        M80,20 C84,30 76,50 80,60 Q80,75 64,75;
+        M80,20 C76,30 84,50 80,60 Q80,75 64,75;
+        M80,20 C80,20 80,60 80,60 Q80,75 64,75
+      "/>
+    </path>
+    <line x1="64" y1="75" x2="64" y2="110" stroke="#fde047" stroke-width="3" stroke-linecap="butt"/>
+  </g>
+</svg>

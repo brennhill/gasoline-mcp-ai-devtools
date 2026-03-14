@@ -1,0 +1,2977 @@
+{
+  "timestamp": "2026-03-10T14:54:33Z",
+  "commit_sha": "5d433a4f276664a62be60665d7074f39e4faa87e",
+  "repo_path": "/Users/brenn/dev/gasoline",
+  "language": "ts",
+  "functions": 2381,
+  "files": 308,
+  "packages": 35,
+  "edges": 8886,
+  "blob_pct": 3.485930281394372,
+  "config_found": false,
+  "internal_only_shared_callees": false,
+  "shared_external_callee_weight": 1,
+  "max_component_size": 50,
+  "min_shared_callees": 2,
+  "clusters": 951,
+  "edges_internal": 1616,
+  "edges_dangling": 7270,
+  "edges_intra_cluster": 1118,
+  "edges_inter_cluster": 498,
+  "modularity": 0.6918316831683168,
+  "god_nodes": 40,
+  "domain_coherence": 0.7857581338244322,
+  "mechanism_coherence": 0.9551872314303254,
+  "role_coherence": 0.6416532637116752,
+  "multi_axis_score": 0.7838373137470238,
+  "health_score": 76.20999244152588,
+  "health_interpretation": {
+    "label": "structure-sensitive",
+    "reason": "recipe health covers 68.4% of functions with only a 0.0-point coverage gap vs multi-axis scoring",
+    "recipe_coverage_pct": 68.41663166736666,
+    "multi_axis_coverage_pct": 68.41663166736666,
+    "coverage_gap_pct": 0
+  },
+  "recipe": {
+    "core_engine": 0.4020871700429711,
+    "domain_logic": 0.012277470841006752,
+    "io_boundary": 0.4229588704726826,
+    "mixed": 0.04358502148557397,
+    "ui": 0.1190914671577655
+  },
+  "recipe_funcs": {
+    "core_engine": 655,
+    "domain_logic": 20,
+    "io_boundary": 689,
+    "mixed": 71,
+    "ui": 194
+  },
+  "hierarchy": {
+    "families": {
+      "io": 883,
+      "mixed": 91,
+      "pure": 655
+    },
+    "positions": {
+      "@entry": 708,
+      "@mixed": 243,
+      "@private": 678
+    },
+    "subtypes": {
+      "database_io": 116,
+      "disk_io": 79,
+      "network_io": 494,
+      "orchestrator": 20,
+      "presentation": 194,
+      "stateful_compute": 450,
+      "stateless_compute": 205
+    }
+  },
+  "single_responsibility": 162,
+  "single_responsibility_pct": 81.4070351758794,
+  "measured_clusters": 199,
+  "measured_functions": 1629,
+  "total_functions": 2381,
+  "recipe_coverage_pct": 68.41663166736666,
+  "multi_axis_coverage_pct": 68.41663166736666,
+  "closest_archetype": "fullstack_framework",
+  "archetype_conformance": 0.9800022341079229,
+  "archetype_distribution": {
+    "analyzer": 0.05983438480844559,
+    "build_tool": 0.06938019091537002,
+    "cli_tool": 0.0639888457984669,
+    "compiler": 0.05220041079746305,
+    "crypto_library": 0.05757364904224139,
+    "database_engine": 0.0598142499158507,
+    "embedded_driver": 0.05188245118597381,
+    "game_engine": 0.06543990356437746,
+    "language_server": 0.06910779591397893,
+    "messaging": 0.06106442043889577,
+    "ml_framework": 0.05445872279721633,
+    "orm": 0.03656617558785128,
+    "scientific_computing": 0.043833621825864394,
+    "server_framework": 0.06841027571718933,
+    "test_framework": 0.04508671534461746,
+    "ui_framework": 0.0648755967470416,
+    "web_application": 0.07648258959915606
+  },
+  "fingerprint": {
+    "ast_parsing_ratio": 0.019319613607727847,
+    "complex_sig_ratio": 0.0020999580008399833,
+    "concurrency_density": 0.18563628727425452,
+    "database_io_ratio": 0.09365812683746325,
+    "disk_io_ratio": 0.056698866022679546,
+    "entry_point_ratio": 0.501889962200756,
+    "event_driven_ratio": 0.23057538849223017,
+    "exported_ratio": 0.46955060898782025,
+    "framework_model_ratio": 0,
+    "io_function_ratio": 0.5275094498110038,
+    "library_ratio": 0.9143217135657287,
+    "long_running_ratio": 0.061318773624527506,
+    "mean_signature_width": 0.13305333893322133,
+    "network_io_ratio": 0.375052498950021,
+    "orchestrator_ratio": 0.23981520369592607,
+    "parallel_ratio": 0,
+    "pipeline_process_ratio": 0.034019319613607726,
+    "stateful_ratio": 0.3994120117597648,
+    "test_visibility_ratio": 0.023519529609407813
+  },
+  "fingerprint_features": [
+    "io_function_ratio",
+    "network_io_ratio",
+    "disk_io_ratio",
+    "database_io_ratio",
+    "exported_ratio",
+    "orchestrator_ratio",
+    "entry_point_ratio",
+    "stateful_ratio",
+    "concurrency_density",
+    "mean_signature_width",
+    "complex_sig_ratio",
+    "library_ratio",
+    "long_running_ratio",
+    "parallel_ratio",
+    "ast_parsing_ratio",
+    "pipeline_process_ratio",
+    "event_driven_ratio",
+    "framework_model_ratio",
+    "test_visibility_ratio"
+  ],
+  "raw_sharpness": 0.19145736292980362,
+  "normalized_sharpness": 0.7658294517192145,
+  "median_sharpness": 0.1702127659574468,
+  "isolated_clusters": 2,
+  "leaky_clusters": 129,
+  "bug_risk": {
+    "total_functions": 2381,
+    "high_risk_count": 113,
+    "top_risks": [
+      {
+        "func_id": "extension/background.charToKeyInfo",
+        "file": "extension/background/cdp-dispatch.js",
+        "score": 0.6773080760348564,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "66 LOC (7x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 4,
+        "cluster_id": 215,
+        "cluster_role": "mixed",
+        "body_loc": 66
+      },
+      {
+        "func_id": "npm/gasoline-agentic-browser/lib.diagnosticReport",
+        "file": "npm/gasoline-agentic-browser/lib/output.js",
+        "score": 0.6666664127590568,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "89 LOC (9x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 1429,
+        "cluster_role": "",
+        "body_loc": 89
+      },
+      {
+        "func_id": "extension/background.cdpResolveAndPrepare",
+        "file": "extension/background/cdp-dispatch.js",
+        "score": 0.6666659764754291,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "84 LOC (8x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 215,
+        "cluster_role": "mixed",
+        "body_loc": 84
+      },
+      {
+        "func_id": "extension/background.tryCDPEscalation",
+        "file": "extension/background/cdp-dispatch.js",
+        "score": 0.6666289890771517,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "64 LOC (6x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 215,
+        "cluster_role": "mixed",
+        "body_loc": 64
+      },
+      {
+        "func_id": "src/background.tryCDPEscalation",
+        "file": "src/background/cdp-dispatch.ts",
+        "score": 0.6665642748754201,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "59 LOC (6x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 305,
+        "cluster_role": "",
+        "body_loc": 59
+      },
+      {
+        "func_id": "extension/content.ensureInjectBridgeReady",
+        "file": "extension/content/script-injection.js",
+        "score": 0.6663270366790595,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "53 LOC (5x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 463,
+        "cluster_role": "mixed",
+        "body_loc": 53
+      },
+      {
+        "func_id": "src/background.reconcileDOMLifecycle",
+        "file": "src/background/dom-result-reconcile.ts",
+        "score": 0.6663012245872648,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "42 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 829,
+        "cluster_role": "",
+        "body_loc": 42
+      },
+      {
+        "func_id": "src/background.findOriginalLocation",
+        "file": "src/background/source-map-resolver.ts",
+        "score": 0.6656398254100151,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "41 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 790,
+        "cluster_role": "",
+        "body_loc": 41
+      },
+      {
+        "func_id": "extension/background.findOriginalLocation",
+        "file": "extension/background/source-map-resolver.js",
+        "score": 0.6656398254100151,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "41 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 361,
+        "cluster_role": "",
+        "body_loc": 41
+      },
+      {
+        "func_id": "src/popup.handleClearLogs",
+        "file": "src/popup/settings.ts",
+        "score": 0.6655425983764314,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "47 LOC (5x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 1084,
+        "cluster_role": "",
+        "body_loc": 47
+      },
+      {
+        "func_id": "src/lib.formatAxeResults",
+        "file": "src/lib/a11y-audit.ts",
+        "score": 0.6648367808428104,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "40 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 1023,
+        "cluster_role": "",
+        "body_loc": 40
+      },
+      {
+        "func_id": "extension/background.cdpDispatchSingleKey",
+        "file": "extension/background/cdp-dispatch.js",
+        "score": 0.6638630155993007,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "39 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 222,
+        "cluster_role": "",
+        "body_loc": 39
+      },
+      {
+        "func_id": "src/lib.getReactComponentAncestry",
+        "file": "src/lib/ai-context-enrichment.ts",
+        "score": 0.6626840849391169,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "38 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 1034,
+        "cluster_role": "",
+        "body_loc": 38
+      },
+      {
+        "func_id": "src/background.cdpDispatchSingleKey",
+        "file": "src/background/cdp-dispatch.ts",
+        "score": 0.6626840849391169,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "38 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 280,
+        "cluster_role": "",
+        "body_loc": 38
+      },
+      {
+        "func_id": "src/lib.extractSourceSnippets",
+        "file": "src/lib/ai-context-parsing.ts",
+        "score": 0.6621701141761438,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "40 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 1019,
+        "cluster_role": "",
+        "body_loc": 40
+      },
+      {
+        "func_id": "extension/lib.formatAxeResults",
+        "file": "extension/lib/dom-queries.js",
+        "score": 0.6574768650389416,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "35 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 655,
+        "cluster_role": "",
+        "body_loc": 35
+      },
+      {
+        "func_id": "extension/lib.extractSourceSnippets",
+        "file": "extension/lib/ai-context-parsing.js",
+        "score": 0.6568752359674757,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "36 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 651,
+        "cluster_role": "",
+        "body_loc": 36
+      },
+      {
+        "func_id": "extension.handleA11yQuery",
+        "file": "extension/inject.bundled.js",
+        "score": 0.6550022893586162,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "34 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 78,
+        "cluster_role": "mixed",
+        "body_loc": 34
+      },
+      {
+        "func_id": "extension.handleDomQuery",
+        "file": "extension/inject.bundled.js",
+        "score": 0.6550022893586162,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "34 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 78,
+        "cluster_role": "mixed",
+        "body_loc": 34
+      },
+      {
+        "func_id": "extension/background.Parser.parseArray",
+        "file": "extension/background/csp-safe-parser.js",
+        "score": 0.6548101983722749,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "35 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 215,
+        "cluster_role": "mixed",
+        "body_loc": 35
+      }
+    ]
+  },
+  "patterns": {
+    "total_detected": 1090,
+    "total_mismatches": 25,
+    "by_pattern": {
+      "builder": 355,
+      "data_access": 143,
+      "factory": 16,
+      "middleware": 120,
+      "sink": 20,
+      "wrapper": 436
+    },
+    "mismatches": [
+      {
+        "func_id": "extension/background.isQueryProcessing",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"isQueryProcessing\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/background.addProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"addProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/inject.parseRGBColor",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRGBColor\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.removeProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"removeProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/background.ConnectionStateMachine.computeNextState",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"computeNextState\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension.parseRGBColor",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRGBColor\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/inject.parseRGBColor",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRGBColor\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/background.removeProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"removeProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/content.handleComputedStylesQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"handleComputedStylesQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.addProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"addProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.isQueryProcessing",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"isQueryProcessing\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/lib.parseVersion",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseVersion\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/background.parseSourceMapData",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseSourceMapData\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/background.Parser.parseNumber",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseNumber\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/content.parseRGBColor",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRGBColor\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/lib.parseVersion",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseVersion\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "npm/gasoline-agentic-browser/lib.parseManifest",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseManifest\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/content.handleComputedStylesQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"handleComputedStylesQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.parseSourceMapData",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseSourceMapData\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.Parser.parseNumber",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseNumber\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "extension/inject.postResponse",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"postResponse\" has 10 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/background.sendStatusPingWrapper",
+        "pattern": "wrapper",
+        "confidence": "definite",
+        "mismatch": "named \"sendStatusPingWrapper\" but has 4 callees — adapters should delegate to 1-2 targets"
+      },
+      {
+        "func_id": "extension/background.sendStatusPingWrapper",
+        "pattern": "wrapper",
+        "confidence": "definite",
+        "mismatch": "named \"sendStatusPingWrapper\" but has 4 callees — adapters should delegate to 1-2 targets"
+      },
+      {
+        "func_id": "extension.postResponse",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"postResponse\" has 10 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/inject.postResponse",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"postResponse\" has 10 callers and 1 LOC — consider renaming to reflect its utility role"
+      }
+    ]
+  },
+  "fractal_coherence": {
+    "files_analyzed": 179,
+    "files_incoherent": 54,
+    "functions_analyzed": 632,
+    "functions_mixing_roles": 0,
+    "file_violations": [
+      {
+        "file": "src/content/ui/terminal-widget.ts",
+        "func_count": 16,
+        "coherence": 0.375,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "_resetForTesting",
+              "flushQueuedWrites",
+              "hideTerminal",
+              "scheduleQueuedSubmit",
+              "showTerminal",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isTerminalVisible",
+              "maybeShowQueuedWriteToast",
+              "resetWriteGuardState",
+              "scheduleQueuedWriteFlush",
+              "shouldDeferQueuedWrite",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "exitTerminalSession",
+              "restoreTerminalIfNeeded",
+              "toggleTerminal"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "mountWidget"
+            ]
+          }
+        ],
+        "suggestion": "File has 16 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/ui/terminal-widget.js",
+        "func_count": 16,
+        "coherence": 0.375,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "_resetForTesting",
+              "flushQueuedWrites",
+              "hideTerminal",
+              "scheduleQueuedSubmit",
+              "showTerminal",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isTerminalVisible",
+              "maybeShowQueuedWriteToast",
+              "resetWriteGuardState",
+              "scheduleQueuedWriteFlush",
+              "shouldDeferQueuedWrite",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "exitTerminalSession",
+              "restoreTerminalIfNeeded",
+              "toggleTerminal"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "mountWidget"
+            ]
+          }
+        ],
+        "suggestion": "File has 16 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/content-fallback-scripts.ts",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "extractCleanMainText",
+              "pageSummaryFallbackScript"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "markdownFallbackScript",
+              "pickMainElement"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "readableFallbackScript"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/inject/data-table.ts",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractDataTables",
+              "normalizeText"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "collectHeaders",
+              "collectRows"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildTableSelector"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/content-fallback-scripts.js",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "extractCleanMainText",
+              "pageSummaryFallbackScript"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "markdownFallbackScript",
+              "pickMainElement"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "readableFallbackScript"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/inject/data-table.js",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "collectHeaders",
+              "collectRows"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractDataTables",
+              "normalizeText"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildTableSelector"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/doctor.js",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkLegacyPaths",
+              "checkPort",
+              "diagnoseFileClient"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "checkPortSync",
+              "diagnoseCliClient",
+              "testBinary"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "runDiagnostics"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/popup/recording.js",
+        "func_count": 18,
+        "coherence": 0.4444444444444444,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "applyRecordHighlight",
+              "handleStartClick",
+              "handleStopClick",
+              "removeRecordHighlight",
+              "sendRecordStart",
+              "... +3 more",
+              "showSavedLink",
+              "tryMicPermissionThenStart"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "describePendingRecording",
+              "getRecordSection",
+              "showSaveResult",
+              "showStartError",
+              "showTopNotice"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "setApprovalPendingState",
+              "showIdle",
+              "showRecording"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "setupRecordingUI",
+              "showMicPermissionPrompt"
+            ]
+          }
+        ],
+        "suggestion": "File has 18 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/draw-mode.js",
+        "func_count": 65,
+        "coherence": 0.4461538461538462,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "activateDrawMode",
+              "buildCSSSelector",
+              "buildElementSummary",
+              "collectUIContextMetadata",
+              "contrastRatio",
+              "... +24 more",
+              "detectTheme",
+              "drawRoundRect",
+              "injectStyles",
+              "isDrawModeActive",
+              "luminance",
+              "normalizeRect",
+              "onActionChange",
+              "onActionClick",
+              "onActionInput",
+              "onActionNavigation",
+              "onBeforeUnload",
+              "onMouseDown",
+              "onMouseMove",
+              "onResize",
+              "onScroll",
+              "parseRGBColor",
+              "pickBestElement",
+              "renderFrame",
+              "safeBuildSelector",
+              "scrollOffsets",
+              "snapshotActionTrail",
+              "toDocumentRect",
+              "toViewportRect"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildElementDetail",
+              "cancelTextInput",
+              "captureElementsUnderRect",
+              "captureIframeElements",
+              "collectSelectorCandidates",
+              "... +18 more",
+              "createOverlay",
+              "deactivateAndSendResults",
+              "destroyOverlay",
+              "detectComponentSource",
+              "getElementDetail",
+              "inferImplicitRole",
+              "isSidebarOpen",
+              "loadAnnotations",
+              "onKeyDown",
+              "recordRecentAction",
+              "refreshElementDetails",
+              "runA11yChecks",
+              "showTextInput",
+              "submitActiveTextInputBeforeExit",
+              "summarizeActionTarget",
+              "summarizeFocusedElement",
+              "traceMatchedCSSRules"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "clearAnnotations",
+              "drawExistingAnnotations",
+              "getAnnotations",
+              "normalizeLoadedAnnotation",
+              "persistAnnotations",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "deactivateDrawMode",
+              "onMouseUp",
+              "onTextInputBlur",
+              "onTextInputKeyDown"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearPersistedAnnotations",
+              "removeInputHint",
+              "removeStyles"
+            ]
+          }
+        ],
+        "suggestion": "File has 65 functions spanning 5 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/dom-dispatch.js",
+        "func_count": 20,
+        "coherence": 0.45,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "deriveAsyncStatusFromDOMResult",
+              "hasMatchedTargetEvidence",
+              "mergeListInteractive",
+              "parseDOMParams",
+              "pickFrameResult",
+              "... +4 more",
+              "resolveWaitForAction",
+              "sendToastForResult",
+              "toDOMResult"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMAction",
+              "executeIntentAction",
+              "executeListInteractive",
+              "executeOverlayAction",
+              "executeQuery",
+              "... +3 more",
+              "executeStandardAction",
+              "executeWaitFor"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "enrichWithEffectiveContext",
+              "executeWaitForURL",
+              "reconcileDOMLifecycle"
+            ]
+          }
+        ],
+        "suggestion": "File has 20 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/popup/recording-ui-state.ts",
+        "func_count": 11,
+        "coherence": 0.45454545454545453,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "describePendingRecording",
+              "getRecordSection",
+              "showSaveResult",
+              "showStartError",
+              "showTopNotice"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "setApprovalPendingState",
+              "showIdle",
+              "showRecording"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "applyRecordHighlight",
+              "removeRecordHighlight",
+              "showSavedLink"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "server/scripts/install.js",
+        "func_count": 17,
+        "coherence": 0.47058823529411764,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "cleanupOldProcesses",
+              "extractExpectedChecksum",
+              "getBinaryName",
+              "normalizeVersion",
+              "printPanel",
+              "resolveServiceName",
+              "verifyDownloadedBinary",
+              "verifyVersion"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "autoStartServer",
+              "checkServerIdentity",
+              "download",
+              "downloadText",
+              "main",
+              "readHealth"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "installStagedBinary",
+              "sha256File"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "printBanner"
+            ]
+          }
+        ],
+        "suggestion": "File has 17 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/dom-queries.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "collectBoundingBox",
+              "collectStyles",
+              "serializeDOMElement"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "collectAttributes",
+              "collectChildren"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQuery"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/check-feature-bundles.js",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "isStaleReviewDate",
+              "parseISODate"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "checkFeatureBundles",
+              "runCheckFeatureBundlesCLI"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/performance.js",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCapturedMarks",
+              "getCapturedMeasures",
+              "isPerformanceCaptureActive",
+              "isPerformanceMarksEnabled",
+              "setPerformanceMarksEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getPerformanceMarks",
+              "getPerformanceMeasures",
+              "getPerformanceSnapshotForError",
+              "installPerformanceCapture",
+              "uninstallPerformanceCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/cdp-dispatch.js",
+        "func_count": 18,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "cdpClearField",
+              "cdpClick",
+              "cdpDispatchKeySequence",
+              "cdpDispatchSingleKey",
+              "cdpSend",
+              "dispatchCDPKeyPair",
+              "executeCDPAction",
+              "resolveCoordinates",
+              "tryCDPEscalation"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildCDPResult",
+              "cdpKeyPress",
+              "cdpType",
+              "charToKeyInfo",
+              "isCDPEscalatable",
+              "mapCDPError",
+              "parseCDPParams"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "cdpResolveAndPrepare",
+              "resolveElement"
+            ]
+          }
+        ],
+        "suggestion": "File has 18 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/transient-capture.ts",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classifyCandidates",
+              "dedupKey",
+              "extractText",
+              "recordDedup",
+              "recordPendingTransients"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "classifyTransient",
+              "installTransientCapture",
+              "isDuplicate",
+              "mutationCallback",
+              "uninstallTransientCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cookwithgasoline.com/src/pages/markdown/[...slug].md.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GET",
+              "getStaticPaths",
+              "renderFrontmatter"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "slugToPath",
+              "toYamlArray",
+              "toYamlString"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/tab-tracking.js",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCurrentTabId",
+              "getIsTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "initTabTracking"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "updateTrackingStatus"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/favicon-replacer.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "initFaviconReplacer",
+              "replaceFaviconWithFlame",
+              "startFlicker"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "stopFlicker",
+              "updateFavicon"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "restoreOriginalFavicon"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/performance.ts",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCapturedMarks",
+              "getCapturedMeasures",
+              "isPerformanceCaptureActive",
+              "isPerformanceMarksEnabled",
+              "setPerformanceMarksEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getPerformanceMarks",
+              "getPerformanceMeasures",
+              "getPerformanceSnapshotForError",
+              "installPerformanceCapture",
+              "uninstallPerformanceCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/transient-capture.js",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classifyCandidates",
+              "dedupKey",
+              "extractText",
+              "recordDedup",
+              "recordPendingTransients"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "classifyTransient",
+              "installTransientCapture",
+              "isDuplicate",
+              "mutationCallback",
+              "uninstallTransientCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/exceptions.js",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractRejectionInfo",
+              "uninstallExceptionCapture"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "enrichAndPost",
+              "installExceptionCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/icon-manager.js",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "initializeIconState",
+              "startAnimation",
+              "updateIcon",
+              "updateTrackedTabIcon"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "cleanup",
+              "stopAnimation",
+              "updatePilotIcon"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "updateAllTabIcons"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/exceptions.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "enrichAndPost",
+              "installExceptionCapture"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractRejectionInfo",
+              "uninstallExceptionCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/favicon-replacer.js",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "initFaviconReplacer",
+              "replaceFaviconWithFlame",
+              "startFlicker"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "stopFlicker",
+              "updateFavicon"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "restoreOriginalFavicon"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/install.js",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildMcpEntry",
+              "generateDefaultConfig",
+              "installToClient"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "executeInstall",
+              "installViaFile"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "installViaCli"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cookwithgasoline.com/src/utils/markdownPaths.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "toHtmlPath",
+              "toLegacyMarkdownPath"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getAllMarkdownPaths"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "toAgentMarkdownPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/tab-tracking.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCurrentTabId",
+              "getIsTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "initTabTracking"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "updateTrackingStatus"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/commands/analyze.js",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "aggregateA11yFrameResults",
+              "aggregateDOMFrameResults",
+              "buildSingleFrameResult",
+              "isFrameRoutingError",
+              "resolveAnalyzeFrameSelection",
+              "stripFrameParam",
+              "toNonNegativeInt"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQueryFallbackViaScripting",
+              "executeDOMQueryInIsolatedWorld",
+              "runFrameAwareAnalyzeQuery",
+              "runMainDOMAnalyzeQuery"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "registerPassthrough",
+              "sendFrameQueries"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/inject/message-handlers.js",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleA11yQuery",
+              "handleComputedStylesMessage",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleLinkHealthMessage",
+              "handleLinkHealthQuery",
+              "installMessageListener"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleBridgePingMessage",
+              "handleDataTableMessage",
+              "handleFormDiscoveryMessage",
+              "handleFormStateMessage",
+              "handleGetWaterfall"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "postResponse"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/inject/message-handlers.ts",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleA11yQuery",
+              "handleComputedStylesMessage",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleLinkHealthMessage",
+              "handleLinkHealthQuery",
+              "installMessageListener"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleBridgePingMessage",
+              "handleDataTableMessage",
+              "handleFormDiscoveryMessage",
+              "handleFormStateMessage",
+              "handleGetWaterfall"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "postResponse"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/commands/analyze.ts",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "aggregateA11yFrameResults",
+              "aggregateDOMFrameResults",
+              "buildSingleFrameResult",
+              "isFrameRoutingError",
+              "resolveAnalyzeFrameSelection",
+              "stripFrameParam",
+              "toNonNegativeInt"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQueryFallbackViaScripting",
+              "executeDOMQueryInIsolatedWorld",
+              "runFrameAwareAnalyzeQuery",
+              "runMainDOMAnalyzeQuery"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "registerPassthrough",
+              "sendFrameQueries"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/analytics.js",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "generateFingerprint",
+              "getOrCreateFingerprint",
+              "handleAnalyticsAlarm",
+              "initAnalytics",
+              "loadFlags",
+              "sendPing"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "persistFlags",
+              "resetFlags",
+              "todayDateString",
+              "trackAiConnected",
+              "trackCommandUsage"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/browser-actions.js",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "coerceNonNegativeInt",
+              "enrichCSPFailure",
+              "getLastCSPStatus",
+              "handleNewTabAction",
+              "isCSPFailure",
+              "withTimeout"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleAsyncBrowserAction",
+              "handleNavigateAction"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleAsyncExecuteCommand",
+              "handleBrowserAction"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "enrichWithCSP"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/browser-actions.ts",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "coerceNonNegativeInt",
+              "enrichCSPFailure",
+              "getLastCSPStatus",
+              "handleNewTabAction",
+              "isCSPFailure",
+              "withTimeout"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleAsyncBrowserAction",
+              "handleNavigateAction"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleAsyncExecuteCommand",
+              "handleBrowserAction"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "enrichWithCSP"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/message-handlers.js",
+        "func_count": 22,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeInMainWorld",
+              "forwardInjectQuery",
+              "handleA11yQuery",
+              "handleComputedStylesQuery",
+              "handleDataTableQuery",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleExecuteQuery",
+              "handleFormDiscoveryQuery",
+              "handleFormStateQuery",
+              "handleLinkHealthQuery",
+              "parseQueryParams"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "forwardHighlightMessage",
+              "handleGetMarkdown",
+              "handleGetNetworkWaterfall",
+              "handleGetReadable",
+              "handlePageSummary",
+              "handlePing",
+              "handleStateCommand",
+              "handleToggleMessage",
+              "postToInject"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isValidBackgroundSender"
+            ]
+          }
+        ],
+        "suggestion": "File has 22 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/message-handlers.ts",
+        "func_count": 22,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeInMainWorld",
+              "forwardInjectQuery",
+              "handleA11yQuery",
+              "handleComputedStylesQuery",
+              "handleDataTableQuery",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleExecuteQuery",
+              "handleFormDiscoveryQuery",
+              "handleFormStateQuery",
+              "handleLinkHealthQuery",
+              "parseQueryParams"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "forwardHighlightMessage",
+              "handleGetMarkdown",
+              "handleGetNetworkWaterfall",
+              "handleGetReadable",
+              "handlePageSummary",
+              "handlePing",
+              "handleStateCommand",
+              "handleToggleMessage",
+              "postToInject"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isValidBackgroundSender"
+            ]
+          }
+        ],
+        "suggestion": "File has 22 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/analytics.ts",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "generateFingerprint",
+              "getOrCreateFingerprint",
+              "handleAnalyticsAlarm",
+              "initAnalytics",
+              "loadFlags",
+              "sendPing"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "persistFlags",
+              "resetFlags",
+              "todayDateString",
+              "trackAiConnected",
+              "trackCommandUsage"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/ui/tracked-hover-launcher.js",
+        "func_count": 31,
+        "coherence": 0.5483870967741935,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkTerminalReachable",
+              "createActionButton",
+              "createLauncherUi",
+              "createSettingsMenuItem",
+              "createSettingsMenuLink",
+              "installAnnotationListener",
+              "installRuntimeListener",
+              "mountLauncher",
+              "playShutterSound",
+              "runScreenshotCapture",
+              "setTrackedHoverLauncherEnabled",
+              "startDrawMode",
+              "stopRecordingAction",
+              "syncHiddenStateFromStorage",
+              "syncRecordingStateFromStorage",
+              "uninstallAnnotationListener",
+              "unmountLauncher"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "applyVisibilityFromState",
+              "clearHideTimer",
+              "injectPulseKeyframes",
+              "installRecordingStorageSync",
+              "setPanelOpen",
+              "setSettingsMenuOpen",
+              "uninstallRecordingStorageSync",
+              "updateStopButtonVisibility"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "handleReshowRequest",
+              "hideLauncherUntilPopupReopen",
+              "persistHiddenState",
+              "showScreenshotFlash"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "formatAnnotationsForTerminal",
+              "handleAnnotationsReady"
+            ]
+          }
+        ],
+        "suggestion": "File has 31 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/ui/tracked-hover-launcher.ts",
+        "func_count": 31,
+        "coherence": 0.5483870967741935,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkTerminalReachable",
+              "createActionButton",
+              "createLauncherUi",
+              "createSettingsMenuItem",
+              "createSettingsMenuLink",
+              "installAnnotationListener",
+              "installRuntimeListener",
+              "mountLauncher",
+              "playShutterSound",
+              "runScreenshotCapture",
+              "setTrackedHoverLauncherEnabled",
+              "startDrawMode",
+              "stopRecordingAction",
+              "syncHiddenStateFromStorage",
+              "syncRecordingStateFromStorage",
+              "uninstallAnnotationListener",
+              "unmountLauncher"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "applyVisibilityFromState",
+              "clearHideTimer",
+              "injectPulseKeyframes",
+              "installRecordingStorageSync",
+              "setPanelOpen",
+              "setSettingsMenuOpen",
+              "uninstallRecordingStorageSync",
+              "updateStopButtonVisibility"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "handleReshowRequest",
+              "hideLauncherUntilPopupReopen",
+              "persistHiddenState",
+              "showScreenshotFlash"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "formatAnnotationsForTerminal",
+              "handleAnnotationsReady"
+            ]
+          }
+        ],
+        "suggestion": "File has 31 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/content/ui/terminal-widget-ui.js",
+        "func_count": 9,
+        "coherence": 0.5555555555555556,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "createWidget",
+              "handleIframeMessage",
+              "notifyIframe",
+              "setupResize",
+              "showSandboxError"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "redrawTerminal",
+              "toggleMinimize"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "registerUICallbacks"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "updateStatusDot"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/ui/terminal-widget-ui.ts",
+        "func_count": 9,
+        "coherence": 0.5555555555555556,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "createWidget",
+              "handleIframeMessage",
+              "notifyIframe",
+              "setupResize",
+              "showSandboxError"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "redrawTerminal",
+              "toggleMinimize"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "registerUICallbacks"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "updateStatusDot"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/inject.bundled.js",
+        "func_count": 231,
+        "coherence": 0.5627705627705628,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "aggregateResults",
+              "applyAiContext",
+              "buildRelevantSlice",
+              "buildSelector",
+              "captureState",
+              "checkLinkHealth",
+              "checkMemoryPressure",
+              "chunkArray",
+              "classifyCandidates",
+              "classifyStatus",
+              "classifyValueType",
+              "clearActionBuffer",
+              "clearAllCookies",
+              "clearEnhancedActionBuffer",
+              "clearPendingRequests",
+              "collectAttributes",
+              "collectChildren",
+              "completePendingRequest",
+              "computeContrastRatio",
+              "computeCssPath",
+              "dedupKey",
+              "detectFramework",
+              "emptyPartialResult",
+              "enrichErrorWithAiContext",
+              "errorMessage",
+              "escapeString",
+              "extractDataTables",
+              "extractFetchInfo",
+              "extractRejectionInfo",
+              "extractSnippet",
+              "extractSourceSnippets",
+              "extractText",
+              "extractUniqueLinks",
+              "formatAxeResults",
+              "formatPayload",
+              "generateAiSummary",
+              "generatePlaywrightScript",
+              "getActionBuffer",
+              "getCLS",
+              "getCapturedMarks",
+              "getCapturedMeasures",
+              "getDeferralState",
+              "getEnhancedActionBuffer",
+              "getFCP",
+              "getINP",
+              "getLCP",
+              "getPendingRequests",
+              "getPlaywrightLocator",
+              "getReactComponentAncestry",
+              "getSize",
+              "getSourceMapCacheSize",
+              "getValidationConstraints",
+              "handleChange",
+              "handleKeydown",
+              "handleSetting",
+              "installActionCapture",
+              "installNavigationCapture",
+              "installPhase1",
+              "installXHRCapture",
+              "isCorsOrNetworkError",
+              "isDynamicClass",
+              "isIgnoredLink",
+              "isNetworkBodyCaptureEnabled",
+              "isNetworkWaterfallEnabled",
+              "isPerformanceCaptureActive",
+              "isPerformanceMarksEnabled",
+              "isPerformanceSnapshotEnabled",
+              "isSensitiveInput",
+              "isValidSettingPayload",
+              "isValidStorageKey",
+              "loadAxeCore",
+              "mapInitiatorType",
+              "matchesAny",
+              "matchesDomain",
+              "navigateSameOrigin",
+              "normalizeDomainFilter",
+              "normalizeText",
+              "parseChromeFrame",
+              "parseFirefoxFrame",
+              "parseRGBColor",
+              "parseResourceTiming",
+              "parseSourceMap",
+              "parseStackFrames",
+              "postLifecycleEvent",
+              "postResponse",
+              "readTestScale",
+              "rebaseUrl",
+              "recordAction",
+              "recordDedup",
+              "recordEnhancedAction",
+              "recordPendingTransients",
+              "relativeLuminance",
+              "resetCaptureModeForTesting",
+              "resetForTesting",
+              "restoreCookies",
+              "restoreState",
+              "restoreStorageEntries",
+              "runAxeAudit",
+              "runAxeAuditWithTimeout",
+              "sanitizeHeaders",
+              "scaleTimeout",
+              "sendPerformanceSnapshot",
+              "setActionCaptureEnabled",
+              "setAiContextEnabled",
+              "setAiContextStateSnapshot",
+              "setDeferralEnabled",
+              "setNativeValue",
+              "setNetworkBodyCaptureEnabled",
+              "setNetworkWaterfallEnabled",
+              "setPerformanceMarksEnabled",
+              "setPerformanceSnapshotEnabled",
+              "setSourceMapCache",
+              "setWithNativeSetter",
+              "shouldCaptureUrl",
+              "shouldDeferIntercepts",
+              "shouldFallbackToGet",
+              "trackPendingRequest",
+              "truncateRequestBody",
+              "truncateResponseBody",
+              "truncateWsMessage",
+              "tryFetch",
+              "tryNoCors",
+              "uninstallActionCapture",
+              "uninstallConsoleCapture",
+              "uninstallExceptionCapture",
+              "uninstallFetchCapture",
+              "uninstallGasolineAPI",
+              "uninstallNavigationCapture",
+              "uninstallXHRCapture",
+              "unwrapXHR"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "actionToPlaywrightStep",
+              "adoptEarlyBodies",
+              "adoptEarlyConnections",
+              "aggregateResourceTiming",
+              "attachLifecycleCapture",
+              "attachMessageCapture",
+              "buildAiContext",
+              "buildFieldSelector",
+              "buildFormSelector",
+              "buildTableSelector",
+              "capturePerformanceSnapshot",
+              "captureStateSnapshot",
+              "checkLink",
+              "classifyTransient",
+              "collectBoundingBox",
+              "collectStyles",
+              "computeSelectors",
+              "createConnectionTracker",
+              "enrichAndPost",
+              "extractComponentAncestry",
+              "findLabel",
+              "getElementSelector",
+              "getImplicitRole",
+              "getNetworkWaterfall",
+              "getNetworkWaterfallForError",
+              "getPerformanceMarks",
+              "getPerformanceMeasures",
+              "getPerformanceSnapshotForError",
+              "getSourceMapCache",
+              "getWebSocketCaptureMode",
+              "getWebSocketCaptureModeInternal",
+              "handleBridgePingMessage",
+              "handleClick",
+              "handleDataTableMessage",
+              "handleFormDiscoveryMessage",
+              "handleFormStateMessage",
+              "handleGetWaterfall",
+              "handleInput",
+              "handleScroll",
+              "highlightElement",
+              "install",
+              "installConsoleCapture",
+              "installExceptionCapture",
+              "installFetchCapture",
+              "installGasolineAPI",
+              "installPerfObservers",
+              "installPerformanceCapture",
+              "installPhase2",
+              "installTransientCapture",
+              "installWebSocketCapture",
+              "isDuplicate",
+              "mutationCallback",
+              "postLog",
+              "postMessageEvent",
+              "postNetworkBody",
+              "readCapturedBody",
+              "readResponseBody",
+              "readResponseBodyWithTimeout",
+              "scheduleSnapshotResend",
+              "serializeDOMElement",
+              "setServerUrl",
+              "setWebSocketCaptureEnabled",
+              "setWebSocketCaptureMode",
+              "setWebSocketCaptureModeInternal",
+              "uninstall",
+              "uninstallPerfObservers",
+              "uninstallPerformanceCapture",
+              "uninstallTransientCapture",
+              "uninstallWebSocketCapture",
+              "wrapFetch",
+              "wrapFetchWithBodies",
+              "wrapXHRWithBodies"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "collectHeaders",
+              "collectRows",
+              "discoverForms",
+              "executeDOMQuery",
+              "executeJavaScript",
+              "getPageInfo",
+              "handleA11yQuery",
+              "handleComputedStylesMessage",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleLinkHealthMessage",
+              "handleLinkHealthQuery",
+              "installMessageListener",
+              "queryComputedStyles",
+              "serializeObject2"
+            ]
+          },
+          {
+            "role": "json",
+            "family": "pure",
+            "functions": [
+              "safeSerialize",
+              "safeSerializeForExecute",
+              "serializeDOMNode",
+              "serializeObject",
+              "serializePrimitive"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "clearContextAnnotations",
+              "getContextAnnotations",
+              "removeContextAnnotation",
+              "setContextAnnotation"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "buildResult",
+              "clearHighlight",
+              "handleStateCommand"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "createDeferredPromise",
+              "getLongTaskMetrics"
+            ]
+          }
+        ],
+        "suggestion": "File has 231 functions spanning 7 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/tab-state.ts",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getAllConfigSettings",
+              "getTrackedTabInfo",
+              "loadAiWebPilotState",
+              "loadDebugModeState",
+              "loadSavedSettings",
+              "pingContentScript",
+              "sendTabToast",
+              "waitForTabLoad"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "captureVisibleTabSafe",
+              "forwardToAllContentScripts",
+              "getActiveTab"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "saveSetting",
+              "setTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearTrackedTab"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/websocket-tracking.js",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "websocket",
+            "family": "pure",
+            "functions": [
+              "formatPayload",
+              "getSize",
+              "resetCaptureModeForTesting",
+              "truncateWsMessage"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "createConnectionTracker",
+              "getWebSocketCaptureModeInternal",
+              "setWebSocketCaptureModeInternal"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/version-check.ts",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getExtensionVersion",
+              "getUpdateInfo",
+              "updateVersionBadge",
+              "updateVersionFromHealth"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getAvailableVersion",
+              "isNewVersionAvailable",
+              "resetVersionCheck"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/tab-state.js",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getAllConfigSettings",
+              "getTrackedTabInfo",
+              "loadAiWebPilotState",
+              "loadDebugModeState",
+              "loadSavedSettings",
+              "pingContentScript",
+              "sendTabToast",
+              "waitForTabLoad"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "captureVisibleTabSafe",
+              "forwardToAllContentScripts",
+              "getActiveTab"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "saveSetting",
+              "setTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearTrackedTab"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/perf-snapshot.js",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCLS",
+              "getFCP",
+              "getINP",
+              "getLCP",
+              "isPerformanceSnapshotEnabled",
+              "mapInitiatorType",
+              "sendPerformanceSnapshot",
+              "setPerformanceSnapshotEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "aggregateResourceTiming",
+              "capturePerformanceSnapshot",
+              "installPerfObservers",
+              "scheduleSnapshotResend",
+              "uninstallPerfObservers"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "getLongTaskMetrics"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/popup/tab-tracking.js",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "showCloakedState",
+              "showIdleState",
+              "showInternalPageState",
+              "showTrackingState"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "initTrackPageButton"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "installTrackingStorageSync"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "syncTrackButtonState"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/background/version-check.js",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getExtensionVersion",
+              "getUpdateInfo",
+              "updateVersionBadge",
+              "updateVersionFromHealth"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getAvailableVersion",
+              "isNewVersionAvailable",
+              "resetVersionCheck"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/perf-snapshot.ts",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCLS",
+              "getFCP",
+              "getINP",
+              "getLCP",
+              "isPerformanceSnapshotEnabled",
+              "mapInitiatorType",
+              "sendPerformanceSnapshot",
+              "setPerformanceSnapshotEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "aggregateResourceTiming",
+              "capturePerformanceSnapshot",
+              "installPerfObservers",
+              "scheduleSnapshotResend",
+              "uninstallPerfObservers"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "getLongTaskMetrics"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "extension/lib/dom-queries.js",
+        "func_count": 12,
+        "coherence": 0.5833333333333334,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "collectAttributes",
+              "collectChildren",
+              "emptyPartialResult",
+              "formatAxeResults",
+              "loadAxeCore",
+              "runAxeAudit",
+              "runAxeAuditWithTimeout"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "collectBoundingBox",
+              "collectStyles",
+              "serializeDOMElement"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQuery",
+              "getPageInfo"
+            ]
+          }
+        ],
+        "suggestion": "File has 12 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/config.js",
+        "func_count": 17,
+        "coherence": 0.5882352941176471,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "expandPath",
+              "getClientById",
+              "getClientConfigPath",
+              "getClientDetectDir",
+              "getDetectedClients",
+              "getValidAliases",
+              "mergeGassolineConfig",
+              "parseEnvVar",
+              "resolveManagedBinaryPath",
+              "validateMCPConfig"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getClientByAlias",
+              "getConfigCandidates",
+              "getToolNameFromPath",
+              "isClientInstalled"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "readConfigFile",
+              "writeConfigFile"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "commandExistsOnPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 17 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      }
+    ]
+  },
+  "smells": {
+    "has_smells": true,
+    "smell_types": [
+      "orphans",
+      "file_mismatch",
+      "file_scatter",
+      "role_flip_flop",
+      "dependency_chains",
+      "duplicate_clusters",
+      "import_bloat"
+    ]
+  },
+  "top_priority": {
+    "summary": "Address 113 high-risk bug source(s), starting with extension/background.charToKeyInfo",
+    "category": "bug_risk",
+    "impact": 0.4,
+    "why": "113 functions have structural risk scores above 0.50. These are structurally predisposed to defects: they have high fan-in (changes break many callers), sit in mixed-role clusters (responsibility confusion), or are in junk-drawer files (merge conflicts). Splitting and relocating them reduces defect risk.",
+    "steps": [
+      "Start with extension/background.charToKeyInfo (risk 0.68) — mixed-role cluster (responsibility confusion), 66 LOC (7x median), junk-drawer file (multi-concern).",
+      "Extract distinct concerns into separate functions with clear input/output contracts.",
+      "Add targeted tests for functions with high fan-in — a bug there affects many callers.",
+      "Move functions out of junk-drawer files into files matching their cluster's role.",
+      "Repeat for the remaining 112 high-risk functions."
+    ]
+  },
+  "gate": {
+    "overall": "FAIL",
+    "thresholds": [
+      {
+        "name": "normalized_sharpness",
+        "value": 0.7658294517192145,
+        "target": 0.8,
+        "met": false
+      },
+      {
+        "name": "multi_axis_coherence",
+        "value": 0.7838373137470238,
+        "target": 0.8,
+        "met": false
+      },
+      {
+        "name": "health_score",
+        "value": 76.20999244152588,
+        "target": 80,
+        "met": false
+      },
+      {
+        "name": "recipe_coverage",
+        "value": 68.41663166736666,
+        "target": 80,
+        "met": false
+      }
+    ]
+  }
+}

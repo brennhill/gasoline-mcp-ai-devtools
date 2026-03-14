@@ -1,0 +1,197 @@
+{
+  "timestamp": "2026-03-11T20:03:02Z",
+  "commit_sha": "22fa3c48fffc6a6e70d9f85f9b892891a01cbd15",
+  "servers": null,
+  "clients": [
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/_next/static/${this.buildId}/${p.TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST}",
+      "method": "GET",
+      "func_id": "cmd.browser-agent.testpages._next.static.chunks.d45d23dcada26fad.fetch",
+      "file": "cmd/browser-agent/testpages/_next/static/chunks/d45d23dcada26fad.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/_next/static/${this.buildId}/${p.TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST}",
+      "method": "GET",
+      "func_id": "cmd.browser-agent.testpages.frameworks.next._next.static.chunks.d45d23dcada26fad.fetch",
+      "file": "cmd/browser-agent/testpages/frameworks/next/_next/static/chunks/d45d23dcada26fad.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/test-boundary",
+      "method": "GET",
+      "func_id": "packages.gasoline-playwright.index.fetch",
+      "file": "packages/gasoline-playwright/index.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/snapshot",
+      "method": "GET",
+      "func_id": "packages.gasoline-playwright.index.fetch",
+      "file": "packages/gasoline-playwright/index.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/clear",
+      "method": "GET",
+      "func_id": "packages.gasoline-playwright.index.fetch",
+      "file": "packages/gasoline-playwright/index.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/test-boundary",
+      "method": "GET",
+      "func_id": "packages.gasoline-playwright.index.fetch",
+      "file": "packages/gasoline-playwright/index.js",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/logs",
+      "method": "GET",
+      "func_id": "src.background.index.fetch",
+      "file": "src/background/index.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/screenshots",
+      "method": "GET",
+      "func_id": "src.background.screenshot-capture.fetch",
+      "file": "src/background/screenshot-capture.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "${serverUrl}${endpoint}",
+      "method": "GET",
+      "func_id": "src.background.server.fetch",
+      "file": "src/background/server.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/health",
+      "method": "GET",
+      "func_id": "src.background.server.fetch",
+      "file": "src/background/server.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/api/extension-status",
+      "method": "GET",
+      "func_id": "src.background.server.fetch",
+      "file": "src/background/server.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/terminal/validate",
+      "method": "GET",
+      "func_id": "src.content.ui.terminal-widget-session.fetch",
+      "file": "src/content/ui/terminal-widget-session.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/terminal/start",
+      "method": "GET",
+      "func_id": "src.content.ui.terminal-widget-session.fetch",
+      "file": "src/content/ui/terminal-widget-session.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/terminal/stop",
+      "method": "GET",
+      "func_id": "src.content.ui.terminal-widget.fetch",
+      "file": "src/content/ui/terminal-widget.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/terminal/config",
+      "method": "GET",
+      "func_id": "src.content.ui.tracked-hover-launcher.fetch",
+      "file": "src/content/ui/tracked-hover-launcher.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/recordings/save",
+      "method": "GET",
+      "func_id": "src.offscreen.recording-worker.fetch",
+      "file": "src/offscreen/recording-worker.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/config/active-codebase",
+      "method": "GET",
+      "func_id": "src.options.fetch",
+      "file": "src/options.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/config/active-codebase",
+      "method": "GET",
+      "func_id": "src.options.fetch",
+      "file": "src/options.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    },
+    {
+      "kind": "http",
+      "direction": "client",
+      "pattern": "/health",
+      "method": "GET",
+      "func_id": "src.options.fetch",
+      "file": "src/options.ts",
+      "lang": "ts",
+      "framework": "fetch"
+    }
+  ]
+}

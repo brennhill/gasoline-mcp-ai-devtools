@@ -1,0 +1,129 @@
+{
+  "directory": "pypi/gasoline-agentic-browser/gasoline_agentic_browser",
+  "composite": 71.58324384265936,
+  "grade": "B",
+  "total_functions": 96,
+  "files": [
+    {
+      "file": "__main__.py",
+      "functions": 1,
+      "composite": 82.79746716116546,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "config.py",
+      "functions": 20,
+      "composite": 72.94758853480323,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "doctor.py",
+      "functions": 7,
+      "composite": 62.99540107279248,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "errors.py",
+      "functions": 9,
+      "composite": 83.3749300591241,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "ADP"
+      ]
+    },
+    {
+      "file": "install.py",
+      "functions": 6,
+      "composite": 65.30458712317431,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "output.py",
+      "functions": 12,
+      "composite": 79.44893030274518,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "platform.py",
+      "functions": 24,
+      "composite": 69.27218065582167,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "skills.py",
+      "functions": 12,
+      "composite": 67.55614474703019,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "uninstall.py",
+      "functions": 5,
+      "composite": 64.09584678406652,
+      "grade": "C",
+      "weak_principles": [
+        "ADP",
+        "REP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Idiomatic",
+      "count": 39
+    },
+    {
+      "principle": "DeadCode",
+      "count": 13
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 11
+    },
+    {
+      "principle": "Creator",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "directory": "internal/a11ysummary",
+  "composite": 74.49945665463848,
+  "grade": "B",
+  "total_functions": 11,
+  "files": [
+    {
+      "file": "summary.go",
+      "functions": 6,
+      "composite": 77.00649795547517,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "SAP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "summary_test.go",
+      "functions": 5,
+      "composite": 71.49100709363448,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    }
+  ]
+}

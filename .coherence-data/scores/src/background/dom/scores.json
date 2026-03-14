@@ -1,0 +1,158 @@
+{
+  "directory": "src/background/dom",
+  "composite": 64.44110470123303,
+  "grade": "C",
+  "total_functions": 34,
+  "files": [
+    {
+      "file": "action-metadata.ts",
+      "functions": 2,
+      "composite": 75.76999460907692,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "dispatch.ts",
+      "functions": 12,
+      "composite": 64.77379893959656,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "frame-probe.ts",
+      "functions": 1,
+      "composite": 74.17423483793314,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "frame-targeting.ts",
+      "functions": 2,
+      "composite": 72.67458395448267,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "primitives-intent.ts",
+      "functions": 1,
+      "composite": 54.08529954204644,
+      "grade": "C",
+      "weak_principles": [
+        "Cognitive",
+        "Cyclomatic",
+        "CRP"
+      ]
+    },
+    {
+      "file": "primitives-list-interactive.ts",
+      "functions": 1,
+      "composite": 52.65479615817619,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "Cognitive",
+        "Cyclomatic"
+      ]
+    },
+    {
+      "file": "primitives-nav-discovery.ts",
+      "functions": 1,
+      "composite": 53.00122831692001,
+      "grade": "C",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "primitives-overlay.ts",
+      "functions": 1,
+      "composite": 54.14984071510563,
+      "grade": "C",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "Cognitive"
+      ]
+    },
+    {
+      "file": "primitives-query.ts",
+      "functions": 1,
+      "composite": 55.7829350590228,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "Cognitive",
+        "Composable"
+      ]
+    },
+    {
+      "file": "primitives-stability.ts",
+      "functions": 2,
+      "composite": 56.53575930696483,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "Composable"
+      ]
+    },
+    {
+      "file": "primitives.ts",
+      "functions": 2,
+      "composite": 57.41763880655647,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "FuncSize"
+      ]
+    },
+    {
+      "file": "result-reconcile.ts",
+      "functions": 8,
+      "composite": 68.13346057292478,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 10
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

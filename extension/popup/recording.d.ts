@@ -1,6 +1,6 @@
 /**
- * Purpose: Implements popup recording controls, mic-permission flow, and saved-recording reveal behavior.
- * Why: Gives users reliable start/stop control with explicit permission/error handling for tab capture sessions.
+ * Purpose: Implements popup recording controls setup, storage-driven state sync, and approval flow wiring.
+ * Why: Owns the wiring/lifecycle for recording UI while delegating rendering to recording-ui-state.ts.
  * Docs: docs/features/feature/playback-engine/index.md
  * Docs: docs/features/feature/tab-recording/index.md
  */

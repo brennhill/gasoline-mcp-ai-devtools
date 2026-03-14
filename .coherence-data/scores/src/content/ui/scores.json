@@ -1,0 +1,118 @@
+{
+  "directory": "src/content/ui",
+  "composite": 75.17964405426888,
+  "grade": "B",
+  "total_functions": 82,
+  "files": [
+    {
+      "file": "chat-widget.ts",
+      "functions": 4,
+      "composite": 71.37051229200648,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "subtitle.ts",
+      "functions": 6,
+      "composite": 73.9487668575568,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "terminal-widget-session.ts",
+      "functions": 11,
+      "composite": 69.95903899276884,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "terminal-widget-types.ts",
+      "functions": 2,
+      "composite": 79.2000335750341,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "terminal-widget-ui.ts",
+      "functions": 9,
+      "composite": 73.20050783622999,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "terminal-widget.ts",
+      "functions": 16,
+      "composite": 74.5236993841201,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "toast.ts",
+      "functions": 3,
+      "composite": 69.99470841606974,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "tracked-hover-launcher.ts",
+      "functions": 31,
+      "composite": 78.91738000470822,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 12
+    },
+    {
+      "principle": "DeadCode",
+      "count": 5
+    },
+    {
+      "principle": "Indirection",
+      "count": 4
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    },
+    {
+      "principle": "Idiomatic",
+      "count": 1
+    }
+  ]
+}

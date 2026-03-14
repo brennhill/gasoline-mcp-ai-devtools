@@ -1,12 +1,7 @@
 /**
- * Purpose: CRUD operations for saving, loading, listing, and deleting browser state snapshots in chrome.storage.local.
- * Docs: docs/features/feature/state-time-travel/index.md
- */
-/**
- * @fileoverview State Snapshot Storage
- * Provides CRUD operations for saving/loading/listing/deleting browser state
- * snapshots in chrome.storage.local. Used by the interact tool's state_*
- * actions (save_state, load_state, list_states, delete_state).
+ * Purpose: CRUD operations for browser state snapshots persisted to chrome.storage.
+ * Why: Separates snapshot persistence from message routing so each concern can evolve independently.
+ * Docs: docs/features/feature/interact-explore/index.md
  */
 import type { BrowserStateSnapshot } from '../types/index.js';
 interface StoredStateSnapshot extends BrowserStateSnapshot {
@@ -14,7 +9,7 @@ interface StoredStateSnapshot extends BrowserStateSnapshot {
     size_bytes: number;
 }
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export declare function saveStateSnapshot(name: string, state: BrowserStateSnapshot): Promise<{
     success: boolean;
@@ -22,7 +17,7 @@ export declare function saveStateSnapshot(name: string, state: BrowserStateSnaps
     size_bytes: number;
 }>;
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export declare function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null>;
 /**
@@ -35,7 +30,7 @@ export declare function listStateSnapshots(): Promise<Array<{
     size_bytes: number;
 }>>;
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export declare function deleteStateSnapshot(name: string): Promise<{
     success: boolean;

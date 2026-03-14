@@ -1,0 +1,150 @@
+{
+  "directory": "internal/export",
+  "composite": 71.33308380464258,
+  "grade": "B",
+  "total_functions": 93,
+  "files": [
+    {
+      "file": "export_coverage_test.go",
+      "functions": 22,
+      "composite": 70.94597626096318,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "export_har.go",
+      "functions": 4,
+      "composite": 69.714822745357,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "export_har_conversion.go",
+      "functions": 6,
+      "composite": 83.5741287147111,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "export_har_filters.go",
+      "functions": 2,
+      "composite": 69.39112338271957,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "export_har_helpers.go",
+      "functions": 4,
+      "composite": 74.44622450133045,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "export_har_test.go",
+      "functions": 10,
+      "composite": 70.13769872909015,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "export_sarif.go",
+      "functions": 1,
+      "composite": 71.88045240129082,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "SAP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "export_sarif_convert.go",
+      "functions": 6,
+      "composite": 74.27470283903031,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "export_sarif_file.go",
+      "functions": 4,
+      "composite": 72.16285696083477,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "export_sarif_golden_test.go",
+      "functions": 2,
+      "composite": 66.32164037518109,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "export_sarif_test.go",
+      "functions": 27,
+      "composite": 69.32361692312244,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "export_sarif_unit_test.go",
+      "functions": 5,
+      "composite": 68.87121716114586,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 5
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

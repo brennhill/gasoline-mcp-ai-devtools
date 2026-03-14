@@ -1,0 +1,158 @@
+{
+  "directory": "src/popup",
+  "composite": 75.29566205032917,
+  "grade": "B",
+  "total_functions": 49,
+  "files": [
+    {
+      "file": "action-recording.ts",
+      "functions": 8,
+      "composite": 72.16389891627878,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ai-web-pilot.ts",
+      "functions": 2,
+      "composite": 74.91925309692745,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "draw-mode.ts",
+      "functions": 2,
+      "composite": 79.75837987183525,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "LoDChain"
+      ]
+    },
+    {
+      "file": "feature-toggles.ts",
+      "functions": 2,
+      "composite": 76.82205914802356,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "recording-io.ts",
+      "functions": 6,
+      "composite": 71.84707496413348,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "recording-ui-state.ts",
+      "functions": 11,
+      "composite": 80.43538150722509,
+      "grade": "A",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "recording.ts",
+      "functions": 1,
+      "composite": 54.7669247229872,
+      "grade": "C",
+      "weak_principles": [
+        "LowCoupling",
+        "Cognitive",
+        "TellDontAsk"
+      ]
+    },
+    {
+      "file": "settings.ts",
+      "functions": 4,
+      "composite": 69.13469152454921,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "status-display.ts",
+      "functions": 1,
+      "composite": 68.75225507459353,
+      "grade": "B",
+      "weak_principles": [
+        "Cognitive",
+        "Cyclomatic",
+        "ADP"
+      ]
+    },
+    {
+      "file": "tab-tracking-api.ts",
+      "functions": 2,
+      "composite": 73.08733744922233,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "tab-tracking.ts",
+      "functions": 8,
+      "composite": 77.34735127567038,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ui-utils.ts",
+      "functions": 2,
+      "composite": 84.14689376923224,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 9
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

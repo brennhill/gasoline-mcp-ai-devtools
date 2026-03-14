@@ -1,0 +1,202 @@
+{
+  "directory": "tools/analyze",
+  "composite": 74.22616566495859,
+  "grade": "B",
+  "total_functions": 58,
+  "files": [
+    {
+      "file": "args_parse.go",
+      "functions": 1,
+      "composite": 64.22558765239567,
+      "grade": "C",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "computed_styles.go",
+      "functions": 1,
+      "composite": 82.45245561800641,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "computed_styles_test.go",
+      "functions": 4,
+      "composite": 73.51329386699243,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "forms.go",
+      "functions": 3,
+      "composite": 86.2399393130659,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "forms_test.go",
+      "functions": 6,
+      "composite": 70.67717704508227,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "image_diff.go",
+      "functions": 1,
+      "composite": 72.15617885010082,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "SAP",
+        "REP"
+      ]
+    },
+    {
+      "file": "image_diff_grid.go",
+      "functions": 2,
+      "composite": 73.59664092253641,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "SAP",
+        "REP"
+      ]
+    },
+    {
+      "file": "image_diff_io.go",
+      "functions": 1,
+      "composite": 72.88700590823235,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "SAP"
+      ]
+    },
+    {
+      "file": "image_diff_math.go",
+      "functions": 2,
+      "composite": 74.97399932212099,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "image_diff_regions.go",
+      "functions": 1,
+      "composite": 72.51014386144348,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "image_diff_render.go",
+      "functions": 1,
+      "composite": 67.3321307382182,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "REP"
+      ]
+    },
+    {
+      "file": "image_diff_test.go",
+      "functions": 9,
+      "composite": 75.09923858237333,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "link_validation.go",
+      "functions": 8,
+      "composite": 73.06715937302346,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "link_validation_test.go",
+      "functions": 10,
+      "composite": 75.56333872138968,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "visual_diff.go",
+      "functions": 2,
+      "composite": 76.00337531735153,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "visual_diff_test.go",
+      "functions": 6,
+      "composite": 71.91770161634615,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Predictable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 2
+    },
+    {
+      "principle": "Creator",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

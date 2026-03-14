@@ -1,8 +1,12 @@
 /**
- * Purpose: Shared recording helpers used by context menus, keyboard shortcuts, and runtime listeners.
- * Why: Keep recording slug generation consistent across all recording entry points.
+ * Purpose: Shared recording helpers: slug generation, toast labels, and badge timer lifecycle.
+ * Why: Consolidates all recording utility functions so callers have a single import point.
  * Docs: docs/features/feature/flow-recording/index.md
+ * Docs: docs/features/feature/tab-recording/index.md
  */
+// =============================================================================
+// SLUG & LABEL GENERATION
+// =============================================================================
 /**
  * Build a filesystem-safe recording slug from the current tab URL.
  */
@@ -32,6 +36,54 @@ export function buildRecordingToastLabel(url) {
     }
     catch {
         return 'Recording started';
+    }
+}
+// =============================================================================
+// RECORDING BADGE TIMER
+// =============================================================================
+let badgeTimerInterval = null;
+let badgeStartTime = null;
+function updateRecordingBadge() {
+    if (!chrome?.action || !badgeStartTime)
+        return;
+    const elapsed = Math.round((Date.now() - badgeStartTime) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    const text = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+    try {
+        chrome.action.setBadgeText({ text });
+    }
+    catch {
+        // Badge updates are best-effort.
+    }
+}
+export function startRecordingBadgeTimer(startTime) {
+    stopRecordingBadgeTimer();
+    badgeStartTime = startTime;
+    if (!chrome?.action)
+        return;
+    try {
+        chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
+    }
+    catch {
+        // Badge updates are best-effort.
+    }
+    updateRecordingBadge();
+    badgeTimerInterval = setInterval(updateRecordingBadge, 1000);
+}
+export function stopRecordingBadgeTimer() {
+    if (badgeTimerInterval) {
+        clearInterval(badgeTimerInterval);
+        badgeTimerInterval = null;
+    }
+    badgeStartTime = null;
+    if (!chrome?.action)
+        return;
+    try {
+        chrome.action.setBadgeText({ text: '' });
+    }
+    catch {
+        // Badge updates are best-effort.
     }
 }
 //# sourceMappingURL=recording-utils.js.map

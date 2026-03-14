@@ -1,0 +1,162 @@
+{
+  "directory": "streaming",
+  "composite": 78.27950442123961,
+  "grade": "B",
+  "total_functions": 66,
+  "files": [
+    {
+      "file": "alerts.go",
+      "functions": 9,
+      "composite": 81.22349205426501,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "alerts_anomaly.go",
+      "functions": 5,
+      "composite": 76.10102450060631,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "alerts_buffer.go",
+      "functions": 2,
+      "composite": 77.26589210733994,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "alerts_ci.go",
+      "functions": 3,
+      "composite": 66.53122136737892,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "alerts_test.go",
+      "functions": 9,
+      "composite": 75.95439666296049,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "stream.go",
+      "functions": 6,
+      "composite": 83.29537917560778,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "stream_dedup.go",
+      "functions": 4,
+      "composite": 78.4098199809132,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "stream_emit.go",
+      "functions": 2,
+      "composite": 79.62073760160447,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "stream_filters.go",
+      "functions": 4,
+      "composite": 82.88254205595764,
+      "grade": "A",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stream_rate_limit.go",
+      "functions": 5,
+      "composite": 77.14094104231299,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "stream_test.go",
+      "functions": 16,
+      "composite": 78.10995761369729,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "types.go",
+      "functions": 1,
+      "composite": 77.56849709187328,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "Creator"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 12
+    },
+    {
+      "principle": "Creator",
+      "count": 8
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

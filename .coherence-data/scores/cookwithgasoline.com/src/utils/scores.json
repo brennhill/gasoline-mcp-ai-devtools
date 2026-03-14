@@ -1,0 +1,47 @@
+{
+  "directory": "cookwithgasoline.com/src/utils",
+  "composite": 73.94634904284824,
+  "grade": "B",
+  "total_functions": 6,
+  "files": [
+    {
+      "file": "contentSlugs.ts",
+      "functions": 1,
+      "composite": 68.29848521550403,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "LoDChain",
+        "REP"
+      ]
+    },
+    {
+      "file": "markdownPaths.ts",
+      "functions": 4,
+      "composite": 72.45747038485304,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "siteVersion.ts",
+      "functions": 1,
+      "composite": 85.54972750217334,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

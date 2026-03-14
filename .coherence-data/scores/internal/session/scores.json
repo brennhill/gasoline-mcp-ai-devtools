@@ -1,0 +1,316 @@
+{
+  "directory": "internal/session",
+  "composite": 75.57690538188484,
+  "grade": "B",
+  "total_functions": 361,
+  "files": [
+    {
+      "file": "actions-diff.go",
+      "functions": 4,
+      "composite": 81.21327137173796,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "actions_diff_test.go",
+      "functions": 32,
+      "composite": 76.2936856900704,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "client_registry.go",
+      "functions": 10,
+      "composite": 74.54069614393998,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "client_registry_test.go",
+      "functions": 21,
+      "composite": 75.64376091709008,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "client_state.go",
+      "functions": 10,
+      "composite": 78.86949772524336,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "LoDChain"
+      ]
+    },
+    {
+      "file": "comparison.go",
+      "functions": 1,
+      "composite": 69.73857419349575,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "comparison_test.go",
+      "functions": 8,
+      "composite": 77.68262055851483,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "helpers.go",
+      "functions": 2,
+      "composite": 79.99838219581262,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "network-diff.go",
+      "functions": 3,
+      "composite": 75.83929484870589,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "network_diff_test.go",
+      "functions": 22,
+      "composite": 75.50591982785032,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "performance-diff.go",
+      "functions": 4,
+      "composite": 77.65345791619546,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "performance_diff_test.go",
+      "functions": 22,
+      "composite": 74.16828568702675,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "sessions_test.go",
+      "functions": 50,
+      "composite": 77.32410540055548,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "snapshot-manager.go",
+      "functions": 5,
+      "composite": 79.46818328040241,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "LoDChain"
+      ]
+    },
+    {
+      "file": "snapshot_manager_test.go",
+      "functions": 19,
+      "composite": 76.55767083590271,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "tool-handler.go",
+      "functions": 4,
+      "composite": 71.28408724573224,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "tool_handler_test.go",
+      "functions": 17,
+      "composite": 69.42871643071939,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "types.go",
+      "functions": 6,
+      "composite": 85.54972750217335,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "verify.go",
+      "functions": 2,
+      "composite": 85.48615635585605,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "verify_actions.go",
+      "functions": 6,
+      "composite": 74.57653147930256,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "verify_compute.go",
+      "functions": 12,
+      "composite": 78.749874174188,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "verify_compute_test.go",
+      "functions": 45,
+      "composite": 71.60330312530503,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "verify_session_lifecycle.go",
+      "functions": 2,
+      "composite": 77.71167330047908,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "verify_snapshot.go",
+      "functions": 6,
+      "composite": 73.57145466005045,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "verify_test.go",
+      "functions": 42,
+      "composite": 76.06381408738687,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "verify_tool.go",
+      "functions": 6,
+      "composite": 73.04243876181512,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 160
+    },
+    {
+      "principle": "DeadCode",
+      "count": 16
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 15
+    },
+    {
+      "principle": "LoD",
+      "count": 8
+    },
+    {
+      "principle": "Indirection",
+      "count": 5
+    }
+  ]
+}

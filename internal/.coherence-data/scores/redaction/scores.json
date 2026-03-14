@@ -1,0 +1,117 @@
+{
+  "directory": "redaction",
+  "composite": 72.36967793577298,
+  "grade": "B",
+  "total_functions": 80,
+  "files": [
+    {
+      "file": "redaction_coverage_test.go",
+      "functions": 16,
+      "composite": 70.62418576505523,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "Creator"
+      ]
+    },
+    {
+      "file": "redaction_engine.go",
+      "functions": 4,
+      "composite": 72.55419352548145,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "redaction_fuzz_test.go",
+      "functions": 2,
+      "composite": 77.65063410214904,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "SAP"
+      ]
+    },
+    {
+      "file": "redaction_keys.go",
+      "functions": 2,
+      "composite": 73.8778312626837,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "redaction_luhn.go",
+      "functions": 2,
+      "composite": 78.5722300216291,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "redaction_map.go",
+      "functions": 2,
+      "composite": 77.7823670915235,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "redaction_property_test.go",
+      "functions": 7,
+      "composite": 72.69495428812023,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "redaction_test.go",
+      "functions": 31,
+      "composite": 71.60526957938109,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "redaction_unit_test.go",
+      "functions": 14,
+      "composite": 73.21259475610012,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 59
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    }
+  ]
+}

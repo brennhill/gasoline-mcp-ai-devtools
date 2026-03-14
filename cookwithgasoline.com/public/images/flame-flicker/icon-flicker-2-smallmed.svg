@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="64" cy="64" r="60"/>
+    </clipPath>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="s1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="s2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#fde047"/>
+    </linearGradient>
+    <linearGradient id="s3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#fb923c" stroke-width="1.5" opacity="0.55"/>
+  <g clip-path="url(#circleClip)" filter="url(#glow)">
+    <path d="M23,-10 Q31,58 76,138 L89,138 Q41,58 31,-10 Z" fill="url(#s1)"/>
+    <path d="M43,-10 Q49,58 92,138 L104,138 Q59,58 51,-10 Z" fill="url(#s2)"/>
+    <path d="M63,-10 Q67,58 108,138 L119,138 Q77,58 71,-10 Z" fill="url(#s3)"/>
+  </g>
+</svg>

@@ -1,0 +1,63 @@
+{
+  "directory": "internal/tools/generate",
+  "composite": 71.68840649489438,
+  "grade": "B",
+  "total_functions": 18,
+  "files": [
+    {
+      "file": "csp.go",
+      "functions": 4,
+      "composite": 73.74667618807263,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "csp_test.go",
+      "functions": 2,
+      "composite": 71.65047442613552,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "deps.go",
+      "functions": 1,
+      "composite": 85.54972750217334,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "test_script.go",
+      "functions": 6,
+      "composite": 69.71485809911269,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "test_script_test.go",
+      "functions": 5,
+      "composite": 69.65295744133755,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    }
+  ]
+}

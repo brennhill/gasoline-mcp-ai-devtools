@@ -1,0 +1,40 @@
+{
+  "directory": "src/background/csp",
+  "composite": 78.5149022515654,
+  "grade": "B",
+  "total_functions": 24,
+  "files": [
+    {
+      "file": "executor.ts",
+      "functions": 1,
+      "composite": 68.30687154988019,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Cyclomatic",
+        "Cognitive"
+      ]
+    },
+    {
+      "file": "parser.ts",
+      "functions": 23,
+      "composite": 78.9587296733778,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 1
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

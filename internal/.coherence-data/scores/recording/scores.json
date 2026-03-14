@@ -1,0 +1,217 @@
+{
+  "directory": "recording",
+  "composite": 74.08230464914062,
+  "grade": "B",
+  "total_functions": 91,
+  "files": [
+    {
+      "file": "logdiff_compare.go",
+      "functions": 6,
+      "composite": 77.31670332093425,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "logdiff_helpers.go",
+      "functions": 3,
+      "composite": 82.86522709112224,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "logdiff_report.go",
+      "functions": 1,
+      "composite": 84.23586696830878,
+      "grade": "A",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "logdiff_unit_test.go",
+      "functions": 4,
+      "composite": 77.19320622489525,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "manager.go",
+      "functions": 5,
+      "composite": 69.48688192772106,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "manager_storage.go",
+      "functions": 8,
+      "composite": 71.31210022870363,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "ADP"
+      ]
+    },
+    {
+      "file": "manager_store.go",
+      "functions": 8,
+      "composite": 68.91903732911555,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "manager_test.go",
+      "functions": 25,
+      "composite": 75.43136167626696,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "playback.go",
+      "functions": 1,
+      "composite": 64.00505056175973,
+      "grade": "C",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "playback_engine_actions.go",
+      "functions": 3,
+      "composite": 70.33264578391406,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "playback_engine_fragile.go",
+      "functions": 1,
+      "composite": 62.96622860727512,
+      "grade": "C",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "playback_engine_session.go",
+      "functions": 3,
+      "composite": 69.26031052791332,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "CRP"
+      ]
+    },
+    {
+      "file": "playback_logdiff_test.go",
+      "functions": 12,
+      "composite": 80.50070581315504,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "Creator"
+      ]
+    },
+    {
+      "file": "playback_test.go",
+      "functions": 1,
+      "composite": 76.23648913790927,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "playback_unit_test.go",
+      "functions": 4,
+      "composite": 73.39034514189935,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "state_path_test.go",
+      "functions": 3,
+      "composite": 68.63437403608508,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "testing_helpers.go",
+      "functions": 3,
+      "composite": 64.48598944032105,
+      "grade": "C",
+      "weak_principles": [
+        "LoDChain",
+        "DeadCode",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 30
+    },
+    {
+      "principle": "DeadCode",
+      "count": 16
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

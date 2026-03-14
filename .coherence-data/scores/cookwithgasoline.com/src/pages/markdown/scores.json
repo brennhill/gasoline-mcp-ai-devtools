@@ -1,0 +1,25 @@
+{
+  "directory": "cookwithgasoline.com/src/pages/markdown",
+  "composite": 73.45364943076811,
+  "grade": "B",
+  "total_functions": 6,
+  "files": [
+    {
+      "file": "[...slug].md.ts",
+      "functions": 6,
+      "composite": 73.45364943076811,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 2
+    }
+  ]
+}

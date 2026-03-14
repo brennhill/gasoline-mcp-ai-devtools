@@ -1,0 +1,4666 @@
+{
+  "timestamp": "2026-03-10T17:30:19Z",
+  "commit_sha": "d59678a6bb4ffae8482318e5a23eb4338eeed9c3",
+  "repo_path": "/Users/brenn/dev/gasoline",
+  "language": "go",
+  "functions": 2687,
+  "files": 641,
+  "packages": 38,
+  "edges": 8514,
+  "blob_pct": 5.582433941198363,
+  "config_found": false,
+  "internal_only_shared_callees": false,
+  "shared_external_callee_weight": 1,
+  "max_component_size": 50,
+  "min_shared_callees": 2,
+  "clusters": 825,
+  "edges_internal": 3269,
+  "edges_dangling": 5245,
+  "edges_intra_cluster": 1409,
+  "edges_inter_cluster": 1860,
+  "modularity": 0.4310186601407158,
+  "god_nodes": 22,
+  "domain_coherence": 0.7485294117647059,
+  "mechanism_coherence": 0.913235294117647,
+  "role_coherence": 0.6564241478693067,
+  "multi_axis_score": 0.7655825666125481,
+  "health_score": 73.74002598968315,
+  "health_interpretation": {
+    "label": "structure-sensitive",
+    "reason": "recipe health covers 75.9% of functions with only a 0.0-point coverage gap vs multi-axis scoring",
+    "recipe_coverage_pct": 75.92110160029773,
+    "multi_axis_coverage_pct": 75.92110160029773,
+    "coverage_gap_pct": 0
+  },
+  "recipe": {
+    "core_engine": 0.765686274509804,
+    "domain_logic": 0.020098039215686276,
+    "io_boundary": 0.1450980392156863,
+    "mixed": 0.06911764705882353
+  },
+  "recipe_funcs": {
+    "core_engine": 1562,
+    "domain_logic": 41,
+    "io_boundary": 296,
+    "mixed": 141
+  },
+  "hierarchy": {
+    "families": {
+      "io": 296,
+      "mixed": 182,
+      "pure": 1562
+    },
+    "positions": {
+      "@entry": 527,
+      "@mixed": 234,
+      "@private": 1279
+    },
+    "subtypes": {
+      "database_io": 9,
+      "disk_io": 58,
+      "mixed_io": 75,
+      "network_io": 154,
+      "orchestrator": 41,
+      "stateful_compute": 1316,
+      "stateless_compute": 246
+    }
+  },
+  "single_responsibility": 146,
+  "single_responsibility_pct": 82.02247191011236,
+  "measured_clusters": 178,
+  "measured_functions": 2040,
+  "total_functions": 2687,
+  "recipe_coverage_pct": 75.92110160029773,
+  "multi_axis_coverage_pct": 75.92110160029773,
+  "closest_archetype": "crypto_library",
+  "archetype_conformance": 0.994625834715949,
+  "archetype_distribution": {
+    "analyzer": 0.06965288418358505,
+    "build_tool": 0.07943577290516188,
+    "cli_tool": 0.04727820661022238,
+    "compiler": 0.04229134035125767,
+    "crypto_library": 0.07375176372922586,
+    "database_engine": 0.06924709160016103,
+    "embedded_driver": 0.050090612311106175,
+    "game_engine": 0.061582231635021946,
+    "language_server": 0.07177507730522638,
+    "messaging": 0.06244202949781486,
+    "ml_framework": 0.05386693683649482,
+    "orm": 0.03827737485978617,
+    "scientific_computing": 0.04459329564462799,
+    "server_framework": 0.053294455164594516,
+    "test_framework": 0.04637812726164076,
+    "ui_framework": 0.06403435071150426,
+    "web_application": 0.0720084493925684
+  },
+  "fingerprint": {
+    "ast_parsing_ratio": 0,
+    "complex_sig_ratio": 0.00893189430591738,
+    "concurrency_density": 0.20878302940081872,
+    "database_io_ratio": 0.05359136583550428,
+    "disk_io_ratio": 0.06773353181987346,
+    "entry_point_ratio": 0.29698548567175287,
+    "event_driven_ratio": 0.23185708969110533,
+    "exported_ratio": 0.33308522515816896,
+    "framework_model_ratio": 0.09750651283959806,
+    "io_function_ratio": 0.43059173799776707,
+    "library_ratio": 0.9400818756978042,
+    "long_running_ratio": 0.043542984741347227,
+    "mean_signature_width": 0.24776702642352064,
+    "network_io_ratio": 0.22553033122441385,
+    "orchestrator_ratio": 0.23781168589505025,
+    "parallel_ratio": 0,
+    "pipeline_process_ratio": 0.040565686639374765,
+    "stateful_ratio": 0.36806847785634533,
+    "test_visibility_ratio": 0.030889467807964272
+  },
+  "fingerprint_features": [
+    "io_function_ratio",
+    "network_io_ratio",
+    "disk_io_ratio",
+    "database_io_ratio",
+    "exported_ratio",
+    "orchestrator_ratio",
+    "entry_point_ratio",
+    "stateful_ratio",
+    "concurrency_density",
+    "mean_signature_width",
+    "complex_sig_ratio",
+    "library_ratio",
+    "long_running_ratio",
+    "parallel_ratio",
+    "ast_parsing_ratio",
+    "pipeline_process_ratio",
+    "event_driven_ratio",
+    "framework_model_ratio",
+    "test_visibility_ratio"
+  ],
+  "raw_sharpness": 0.1811950014445653,
+  "normalized_sharpness": 1,
+  "median_sharpness": 0.14705882352941177,
+  "isolated_clusters": 3,
+  "leaky_clusters": 158,
+  "bug_risk": {
+    "total_functions": 2687,
+    "high_risk_count": 81,
+    "top_risks": [
+      {
+        "func_id": "main.buildInteractHandlers",
+        "file": "cmd/browser-agent/tools_interact_dispatch.go",
+        "score": 0.6679790026133523,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "153 LOC (14x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 1090,
+        "cluster_role": "",
+        "body_loc": 153
+      },
+      {
+        "func_id": "main.runNativeInstall",
+        "file": "cmd/browser-agent/native_install.go",
+        "score": 0.6679789444037967,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "106 LOC (10x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 106
+      },
+      {
+        "func_id": "main.dispatchMode",
+        "file": "cmd/browser-agent/main_runtime_mode.go",
+        "score": 0.6679676531574963,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "77 LOC (7x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 71,
+        "cluster_role": "mixed",
+        "body_loc": 77
+      },
+      {
+        "func_id": "main.cleanupStalePIDFile",
+        "file": "cmd/browser-agent/main_connection_mcp_bootstrap.go",
+        "score": 0.6678055690018343,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "62 LOC (6x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 71,
+        "cluster_role": "mixed",
+        "body_loc": 62
+      },
+      {
+        "func_id": "checkpoint.CheckpointManager.DetectAndStoreAlerts",
+        "file": "internal/checkpoint/checkpoint_alerts.go",
+        "score": 0.6644734340168519,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "48 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 48
+      },
+      {
+        "func_id": "main.buildDetailHints",
+        "file": "cmd/browser-agent/tools_analyze_annotations_hints.go",
+        "score": 0.663482450134149,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "44 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 1087,
+        "cluster_role": "",
+        "body_loc": 44
+      },
+      {
+        "func_id": "main.mergeJSONConfig",
+        "file": "cmd/browser-agent/native_install.go",
+        "score": 0.663482450134149,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "44 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 44
+      },
+      {
+        "func_id": "main.tutorialIssues",
+        "file": "cmd/browser-agent/tools_configure_tutorial.go",
+        "score": 0.6616329403504282,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "41 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 2,
+        "cluster_id": 1376,
+        "cluster_role": "",
+        "body_loc": 41
+      },
+      {
+        "func_id": "recording.RecordingManager.persistRecordingToDisk",
+        "file": "internal/recording/manager_store.go",
+        "score": 0.6615611060372151,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "42 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 42
+      },
+      {
+        "func_id": "security.SRIGenerator.Generate",
+        "file": "internal/security/sri_generate.go",
+        "score": 0.6612927918947833,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "43 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 1692,
+        "cluster_role": "",
+        "body_loc": 43
+      },
+      {
+        "func_id": "main.recordFastPathEvent",
+        "file": "cmd/browser-agent/bridge_fastpath_telemetry.go",
+        "score": 0.6603206043924228,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "41 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 41
+      },
+      {
+        "func_id": "main.ToolHandler.injectCSPBlockedActions",
+        "file": "cmd/browser-agent/tools_response.go",
+        "score": 0.6602487700792099,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "42 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 42
+      },
+      {
+        "func_id": "main.Server.saveEntriesCopy",
+        "file": "cmd/browser-agent/server_persistence.go",
+        "score": 0.6588493157640192,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "40 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 378,
+        "cluster_role": "mixed",
+        "body_loc": 40
+      },
+      {
+        "func_id": "main.tryAcquireBridgeStartupLock",
+        "file": "cmd/browser-agent/bridge_startup_lock.go",
+        "score": 0.655052504552533,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "38 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 38
+      },
+      {
+        "func_id": "main.testGenHandler.handleGenerateTestFromContext",
+        "file": "cmd/browser-agent/testgen.go",
+        "score": 0.6537401685945277,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "38 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 547,
+        "cluster_role": "mixed",
+        "body_loc": 38
+      },
+      {
+        "func_id": "analysis.SchemaStore.buildEndpoint",
+        "file": "internal/analysis/api_schema_builder_endpoints.go",
+        "score": 0.649795890835605,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "36 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 714,
+        "cluster_role": "",
+        "body_loc": 36
+      },
+      {
+        "func_id": "session.diffNetworkErrors",
+        "file": "internal/session/verify_compute.go",
+        "score": 0.649795890835605,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "36 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 1811,
+        "cluster_role": "",
+        "body_loc": 36
+      },
+      {
+        "func_id": "persistence.SessionStore.flushDirty",
+        "file": "internal/persistence/persistence_dirty.go",
+        "score": 0.6477943467328693,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "35 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 2,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 35
+      },
+      {
+        "func_id": "main.MCPHandler.buildTelemetrySummary",
+        "file": "cmd/browser-agent/telemetry_passive.go",
+        "score": 0.646482010774864,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "35 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 66,
+        "cluster_role": "mixed",
+        "body_loc": 35
+      },
+      {
+        "func_id": "export.waterfallToHAREntry",
+        "file": "internal/export/export_har_conversion.go",
+        "score": 0.6426302162078017,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "34 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 969,
+        "cluster_role": "",
+        "body_loc": 34
+      }
+    ]
+  },
+  "patterns": {
+    "total_detected": 1513,
+    "total_mismatches": 37,
+    "by_pattern": {
+      "builder": 582,
+      "data_access": 109,
+      "facade": 117,
+      "factory": 46,
+      "middleware": 192,
+      "sink": 42,
+      "wrapper": 425
+    },
+    "mismatches": [
+      {
+        "func_id": "session.computeMetricIfNonZero",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"computeMetricIfNonZero\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "main.parseHardwareClickParams",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseHardwareClickParams\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "main.getValidAnalyzeModes",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"getValidAnalyzeModes\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "capture.Capture.RecalculateStorageUsed",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"RecalculateStorageUsed\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "analysis.computeConsistency",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"computeConsistency\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "main.parseBridgeStartupLockTime",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseBridgeStartupLockTime\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "performance.parsePctAbs",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"parsePctAbs\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "analysis.analyzeHint",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"analyzeHint\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "main.parseJSONOrString",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseJSONOrString\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "main.parseDOMPrimitiveParams",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseDOMPrimitiveParams\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "analyze.ParseComputedStylesArgs",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"ParseComputedStylesArgs\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "configure.parseRawArgsMap",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRawArgsMap\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "analyze.ParseVisualBaselineArgs",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"ParseVisualBaselineArgs\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "analyze.parseAnalyzeArgs",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"parseAnalyzeArgs\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "main.parseToolResultForPostProcessing",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseToolResultForPostProcessing\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "reproduction.ParseParams",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"ParseParams\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "util.ParseTimestamp",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"ParseTimestamp\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "security.redactSecret",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"redactSecret\" has 9 callers and 10 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "buffers.ReverseFilterLimit",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"ReverseFilterLimit\" has 8 callers and 10 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "mcp.Succeed",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"Succeed\" has 23 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.fail",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"fail\" has 116 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.Server.handleInsecureProxy",
+        "pattern": "wrapper",
+        "confidence": "definite",
+        "mismatch": "named \"handleInsecureProxy\" but has 23 callees — adapters should delegate to 1-2 targets"
+      },
+      {
+        "func_id": "main.withParam",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"withParam\" has 59 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.buildQueryParams",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"buildQueryParams\" has 20 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.withHint",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"withHint\" has 12 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.succeed",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"succeed\" has 77 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "observe.clampLimit",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"clampLimit\" has 11 callers and 7 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "reproduction.EscapeJS",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"EscapeJS\" has 10 callers and 6 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "main.configureSessionHandler.toolDiffSessionsWrapper",
+        "pattern": "wrapper",
+        "confidence": "definite",
+        "mismatch": "named \"toolDiffSessionsWrapper\" but has 4 callees — adapters should delegate to 1-2 targets"
+      },
+      {
+        "func_id": "main.resolveBridgeWrapperLogPath",
+        "pattern": "wrapper",
+        "confidence": "definite",
+        "mismatch": "named \"resolveBridgeWrapperLogPath\" but has 5 callees — adapters should delegate to 1-2 targets"
+      },
+      {
+        "func_id": "main.revealInFileManagerWithRunner",
+        "pattern": "facade",
+        "confidence": "likely",
+        "mismatch": "named \"revealInFileManagerWithRunner\" but only 2 callees — facades coordinate multiple subsystems"
+      },
+      {
+        "func_id": "session.NewSessionManager",
+        "pattern": "facade",
+        "confidence": "likely",
+        "mismatch": "named \"NewSessionManager\" but only 0 callees — facades coordinate multiple subsystems"
+      },
+      {
+        "func_id": "pty.NewManager",
+        "pattern": "facade",
+        "confidence": "likely",
+        "mismatch": "named \"NewManager\" but only 0 callees — facades coordinate multiple subsystems"
+      },
+      {
+        "func_id": "observe.buildErrorBundlesSummary",
+        "pattern": "builder",
+        "confidence": "definite",
+        "mismatch": "named \"buildErrorBundlesSummary\" but no method chaining detected (fanOut=2) — is this actually a builder?"
+      },
+      {
+        "func_id": "observe.buildErrorsSummary",
+        "pattern": "builder",
+        "confidence": "definite",
+        "mismatch": "named \"buildErrorsSummary\" but no method chaining detected (fanOut=2) — is this actually a builder?"
+      },
+      {
+        "func_id": "observe.buildErrorClusters",
+        "pattern": "builder",
+        "confidence": "definite",
+        "mismatch": "named \"buildErrorClusters\" but no method chaining detected (fanOut=1) — is this actually a builder?"
+      },
+      {
+        "func_id": "main.revealInFileManager",
+        "pattern": "facade",
+        "confidence": "likely",
+        "mismatch": "named \"revealInFileManager\" but only 1 callees — facades coordinate multiple subsystems"
+      }
+    ]
+  },
+  "interface_patterns": {
+    "strategies": 4,
+    "decorators": 0,
+    "naming_issues": 1,
+    "matches": [
+      {
+        "pattern": "strategy",
+        "interface_id": "capture.ExtensionLogStore",
+        "type_ids": [
+          "capture.networkWaterfallView",
+          "capture.extensionLogView"
+        ],
+        "confidence": "inferred",
+        "description": "2 types implement ExtensionLogStore — interchangeable strategies"
+      },
+      {
+        "pattern": "strategy",
+        "interface_id": "mcp.NoiseFilterer",
+        "type_ids": [
+          "noise.NoiseConfig",
+          "main.ToolHandler"
+        ],
+        "confidence": "inferred",
+        "description": "2 types implement NoiseFilterer — interchangeable strategies",
+        "mismatch": "types [NoiseConfig ToolHandler] implement NoiseFilterer but share no naming convention — consider a common suffix like *NoiseFilterer"
+      },
+      {
+        "pattern": "strategy",
+        "interface_id": "capture.ClientRegistry",
+        "type_ids": [
+          "main.sessionClientRegistryAdapter",
+          "session.ClientRegistry"
+        ],
+        "confidence": "inferred",
+        "description": "2 types implement ClientRegistry — interchangeable strategies"
+      },
+      {
+        "pattern": "strategy",
+        "interface_id": "pagination.Sequenced",
+        "type_ids": [
+          "pagination.WebSocketEntryWithSequence",
+          "pagination.ActionEntryWithSequence",
+          "pagination.LogEntryWithSequence"
+        ],
+        "confidence": "inferred",
+        "description": "3 types implement Sequenced — interchangeable strategies"
+      }
+    ]
+  },
+  "fractal_coherence": {
+    "files_analyzed": 298,
+    "files_incoherent": 90,
+    "functions_analyzed": 727,
+    "functions_mixing_roles": 48,
+    "file_violations": [
+      {
+        "file": "cmd/browser-agent/native_install.go",
+        "func_count": 8,
+        "coherence": 0.25,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "extensionInstallDir",
+              "startDaemonSilently"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "printInstallerPanel",
+              "printManualExtensionSetupChecklist"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "installClaudeCode",
+              "mergeJSONConfig"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "runNativeInstall"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "manualExtensionSetupChecklist"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 5 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_recording_video_save.go",
+        "func_count": 4,
+        "coherence": 0.25,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "writeVideoToDisk"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleVideoRecordingSave"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "parseVideoMetadata"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "parseVideoUpload"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/session/verify_actions.go",
+        "func_count": 6,
+        "coherence": 0.3333333333333333,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "Cancel",
+              "getActiveSessionLocked"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "Start",
+              "Status"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "Compare",
+              "Watch"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/issuereport/submit.go",
+        "func_count": 6,
+        "coherence": 0.3333333333333333,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "LookPath",
+              "Run"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "LookPath",
+              "Run"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "SubmitViaGH"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "FormatIssueBody"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/testgen/heal_batch.go",
+        "func_count": 6,
+        "coherence": 0.3333333333333333,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "FindTestFiles",
+              "processTestFile"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "CheckBatchFileSize",
+              "HealTestBatch"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "IsTestFile",
+              "skipFileWithReason"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/server_routes_media_draw_mode.go",
+        "func_count": 6,
+        "coherence": 0.3333333333333333,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleDrawModeComplete",
+              "saveDrawScreenshot"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "storeAnnotationSessionInStore"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "storeElementDetails"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "parseAnnotations"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "persistDrawSession"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 5 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/export/export_har_conversion.go",
+        "func_count": 6,
+        "coherence": 0.3333333333333333,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "computeWaterfallTimings",
+              "enrichTimingsFromWaterfall"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "buildHARRequest",
+              "waterfallToHAREntry"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "buildHARResponse"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "networkBodyToHAREntry"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_configure_noise_actions.go",
+        "func_count": 8,
+        "coherence": 0.375,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "noiseActionAdd",
+              "noiseActionReset",
+              "toolConfigureNoise"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "noiseActionAutoDetect",
+              "noiseActionList",
+              "toolConfigureNoiseRule"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "dispatchNoiseAction",
+              "noiseActionRemove"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_recording_video_reveal.go",
+        "func_count": 8,
+        "coherence": 0.375,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isPathInAnyDir",
+              "revealInFileManager",
+              "revealInFileManagerWithRunner"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "defaultRevealCommandRunner",
+              "resolveRevealPath",
+              "revealCommandForOS"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleRevealRecording",
+              "validateRevealPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/capture/query_dispatcher.go",
+        "func_count": 29,
+        "coherence": 0.3793103448275862,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "AcknowledgePendingQuery",
+              "CreatePendingQuery",
+              "CreatePendingQueryWithClient",
+              "CreatePendingQueryWithTimeout",
+              "GetQueryResult",
+              "... +6 more",
+              "GetQueryTimeout",
+              "SetQueryResult",
+              "SetQueryResultWithClient",
+              "SetQueryResultWithClientNoCommandComplete",
+              "SetQueryTimeout"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "ApplyCommandResult",
+              "CompleteCommand",
+              "ExpireCommand",
+              "QueueDepth",
+              "QueuePosition",
+              "... +5 more",
+              "WaitForCommand",
+              "WaitForPendingQueries",
+              "WaitForResult",
+              "WaitForResultWithClient"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GetCommandResult",
+              "GetCompletedCommands",
+              "GetFailedCommands",
+              "GetPendingCommands",
+              "GetPendingQueries",
+              "... +3 more",
+              "GetPendingQueriesForClient",
+              "GetRecentCommandTraces"
+            ]
+          }
+        ],
+        "suggestion": "File has 29 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_configure_sequence_replay.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "buildReplayContext",
+              "summarizeReplayOutcome"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeReplaySteps",
+              "toolConfigureReplaySequence"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "parseReplaySequenceParams"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/interact/workflow.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "ResponseStatus",
+              "WorkflowResult"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "IsErrorResponse",
+              "IsNonFinalResponse"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "BuildWorkflowTraceEnvelope"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge_transport_errors.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "sendBridgeError",
+              "sendBridgeParseError"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleDaemonNotReady",
+              "sendToolErrorWithOptions"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "bridgeRequestIDString"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/session/snapshot-manager.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "Capture",
+              "Delete"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "List",
+              "NewSessionManager"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "captureCurrentState"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/testgen/heal_selectors.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "ContainsDangerousPattern",
+              "isValidSelectorStart"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "ExtractSelectorsFromTestFile"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "ValidateSelector"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "AnalyzeTestFile"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/security/security_diff_helpers_headers_cookies.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "diffSingleCookieFlag",
+              "flagAbsentValue"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "diffCookieFlags",
+              "headerRemovedRecommendation"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "diffHeadersForOrigin"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/launch_mode.go",
+        "func_count": 10,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classifyLaunchMode",
+              "getCurrentLaunchMode",
+              "isPersistentModeRequired",
+              "setCurrentLaunchMode"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "detectParentProcessName",
+              "isSupervisedLaunch",
+              "truthyEnv"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "buildLaunchModeWarning",
+              "enforcePersistentMode"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "isLikelyAdHocShell"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_generate_annotations.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "resolveAnnotationPages",
+              "toolGenerateAnnotationReport"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "toolGenerateAnnotationIssues"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "collectAnnotationPages"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "toolGenerateVisualTest"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/testgen_classify.go",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "dispatchClassifyAction",
+              "validateClassifyParams"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "classifyBatchFailures",
+              "classifySingleFailure"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleGenerateTestClassify"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_errors_guards.go",
+        "func_count": 10,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "checkGuards",
+              "checkGuardsWithOpts",
+              "requirePilot",
+              "requireSessionStore"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "requireOneOf",
+              "requirePositiveInt",
+              "requireString"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "requireCSPClear",
+              "requireExtension",
+              "requireTabTracking"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/persistence/persistence_handler.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "handleList",
+              "handleSave",
+              "requireFields"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "handleDelete",
+              "handleLoad"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "HandleSessionStore",
+              "handleStats"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/persistence/persistence_store.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "GetMeta",
+              "NewSessionStore",
+              "NewSessionStoreWithInterval"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "loadOrCreateMeta",
+              "newSessionStoreInDir",
+              "saveMeta"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "resolveProjectDir"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/platform_errors.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "findProcessOnPort",
+              "getProcessCommand",
+              "killProcessByPID"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "parseNetstatPIDs",
+              "portKillHint",
+              "portKillHintForce"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "parseLsofPIDs"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/upload/validators.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "SanitizeForAppleScript",
+              "SanitizeForContentDisposition",
+              "SanitizeForSendKeys"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "ValidateFormActionURL",
+              "ValidateHTTPMethod"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "ValidateCookieHeader",
+              "ValidatePathForOSAutomation"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_workflow_navigate_document.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "filterNavigateAndDocumentClickArgs",
+              "remainingNavigateAndDocumentTimeoutMs",
+              "waitForTrackedURLChange"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "currentTrackedURL",
+              "handleNavigateAndDocument",
+              "validateNavigateAndDocumentTab"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "navigateAndDocumentTimeoutBudgetExceeded"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/security/sri_generate.go",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "Generate",
+              "isPlaceholderBody",
+              "shouldIncludeResourceType"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "evaluateBody",
+              "newSRIFilterConfig"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "buildSRIWarnings"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "hasVaryUserAgent"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_recording_video_paths.go",
+        "func_count": 9,
+        "coherence": 0.4444444444444444,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "clampFPS",
+              "collapseHyphens",
+              "isSlugChar",
+              "sanitizeVideoSlug"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "pathWithinDir",
+              "resolveRecordingPath"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "recordingsDir",
+              "recordingsReadDirs"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "generateVideoFilename"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/binary_watcher.go",
+        "func_count": 9,
+        "coherence": 0.4444444444444444,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "UpgradeInfo",
+              "checkForUpgrade",
+              "normalizedBinaryWatcherConfig",
+              "startBinaryWatcher"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "parseVersionCommandOutput",
+              "parseVersionOutput"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "binaryChanged",
+              "verifyBinaryVersionWithTimeout"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "startBinaryWatcherWithConfig"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/server_logging_async.go",
+        "func_count": 9,
+        "coherence": 0.4444444444444444,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "addEntries",
+              "appendToFile",
+              "asyncLoggerWorker",
+              "shutdownAsyncLogger"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "appendToFileSync",
+              "clearEntries",
+              "maybeRotateLogFile"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "addEntriesInMemory",
+              "clearEntriesInMemory"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/analysis/api_schema_observe_http.go",
+        "func_count": 11,
+        "coherence": 0.45454545454545453,
+        "role_groups": [
+          {
+            "role": "http",
+            "family": "pure",
+            "functions": [
+              "containsStr",
+              "getOrCreateAccumulator",
+              "getOrCreateParam",
+              "recordStatusOnly",
+              "trackParamValue"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "Observe",
+              "observeRequestBody",
+              "observeResponseBody",
+              "recordBodyObservations"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "observeQueryParams",
+              "recordBasicObservation"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/analysis/thirdparty_origins.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "addInternalDomains",
+              "buildFirstPartySet",
+              "groupByThirdPartyOrigin"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildAllEntries",
+              "filterAndSort",
+              "resolveCustomLists"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_analyze_draw_sessions.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "toolGetDrawSession",
+              "toolListDrawHistory"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "hydrateAnnotationStoreFromDrawSession"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "namedSessionHasPage"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/health_response_builders.go",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildBuffersInfo",
+              "buildPilotInfo",
+              "buildRateLimitInfo",
+              "buildServerInfo",
+              "getConsoleStats"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildAuditInfo",
+              "buildUpgradeInfo",
+              "calcUtilization"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "buildMemoryInfo"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "GetHealth"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_retry_contract_state.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getRetryState",
+              "pruneRetryStatesLocked"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "armRetryContract"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "storeRetryState"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_generate_annotations_report.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "generateMarkdownReport",
+              "writePageSection"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "writeAnnotationDetail"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "writeAnnotationSection"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_state_list_delete.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildStateEntry",
+              "resolveStateSnapshotName"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "handleStateDelete",
+              "handleStateList"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_workflow_forms.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "executeFillFieldStep",
+              "handleFillForm",
+              "isNotTypeableError"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "workflowFieldLabel"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleFillFormAndSubmit"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "fillWorkflowFields"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/redaction/redaction_engine.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "NewRedactionEngine",
+              "Redact"
+            ]
+          },
+          {
+            "role": "json",
+            "family": "pure",
+            "functions": [
+              "RedactJSON"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "loadConfig"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/handler_tools_call.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkToolRateLimit",
+              "handleToolsCall"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "warnUnknownToolArguments"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "allowedToolArgumentKeys"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/handler_http.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "HandleHTTP",
+              "logDebugEntry",
+              "newHTTPRequestContext"
+            ]
+          },
+          {
+            "role": "json",
+            "family": "pure",
+            "functions": [
+              "jsonResponse",
+              "writeJSONRPCError"
+            ]
+          },
+          {
+            "role": "http",
+            "family": "pure",
+            "functions": [
+              "truncatePreview"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_recording_video_observe.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "collectRecordingMetadata",
+              "loadAndFilterRecordings"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "recordingMatchesFilter"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "toolObserveSavedVideos"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/security/security_url_helpers.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "isLocalhostURL",
+              "isThirdPartyURL"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isHTMLResponse",
+              "isJavaScriptContent"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/noise/noise_persistence.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "filterUserRulesLocked",
+              "isRuleRegexValid",
+              "restoreStatistics",
+              "restoreUserIDCounter"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "persistRulesLocked",
+              "readPersistedData",
+              "validatePersistedRules"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "loadPersistedRules"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/export/export_har_helpers.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "isPathSafe",
+              "writeHARData"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "httpStatusText"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "parseQueryString"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/recording/manager_storage.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "CalculateRecordingSize",
+              "GetStorageInfo",
+              "RecalculateStorageUsed",
+              "calculateStorageFromDisk"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "deleteRecordingFromRoot",
+              "scanRootForStorage"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "getDirectorySize"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "DeleteRecording"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/server/main_entries.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getEntries",
+              "getEntryCount"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "addEntries"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearEntries"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/config.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "parseAndValidateFlags",
+              "registerFlags"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "Set",
+              "String"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/cli_tool_parsers_interact.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "cli",
+            "family": "pure",
+            "functions": [
+              "hasTargetingParam",
+              "parseInteractArgs"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "parseInteractFilePath",
+              "validateInteractArgs"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge_fingerprint.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "fileSHA256",
+              "readGoBuildID"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "bridgeLaunchFingerprint"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractGoBuildID"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/observe/filtering.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "ApplyNetworkBodyFilter",
+              "ContainsIgnoreCase",
+              "LogLevelRank"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "encodeFilteredNetworkBody",
+              "parseJSONPath"
+            ]
+          },
+          {
+            "role": "json",
+            "family": "pure",
+            "functions": [
+              "extractJSONPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/security/security_credentials_scan.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "scanBodyForCredentials",
+              "scanURLForAPIKeys",
+              "scanURLForGenericSecrets"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "checkCredentials",
+              "scanURLForCredentials"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "scanConsoleForCredentials"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/checkpoint/checkpoint_network_helpers.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "capNetworkDiff",
+              "classifyFailedRequest",
+              "classifySuccessfulRequest"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildKnownEndpoints",
+              "classifyNetworkBody"
+            ]
+          },
+          {
+            "role": "http",
+            "family": "pure",
+            "functions": [
+              "appendUniqueEndpoint"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/session/verify_tool.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "handleVerifyCancel",
+              "handleVerifyCompare",
+              "handleVerifyWatch"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "HandleTool",
+              "handleVerifyStatus"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "requireVerifSessionID"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/checkpoint/checkpoint_console_helpers.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "addToFingerprintMap",
+              "classifyLogEntries"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildConsoleEntries",
+              "extractLogMessage"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/generate/test_script.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GenerateTestScript",
+              "testLabelForGroup",
+              "writeTestSteps"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "FilterLastN",
+              "GroupActionsByNavigation",
+              "writeTestAssertions"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/cli_transport.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "callTool",
+              "postToolCall"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "buildToolCallBody",
+              "parseToolCallResponse"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/main_helpers_pid.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "legacyPIDFilePath",
+              "pidFilePath",
+              "writePIDFile"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "isProcessAlive",
+              "readPIDFile",
+              "removePIDFile"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge_startup_lock.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearStaleBridgeStartupLock",
+              "readBridgeStartupLockRecord",
+              "release"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "bridgeStartupLockPath",
+              "tryAcquireBridgeStartupLock"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "parseBridgeStartupLockTime"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_browser_navigation_impl.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleBrowserActionNavigateImpl",
+              "handleBrowserActionRefreshImpl"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "handleBrowserActionBackImpl",
+              "handleBrowserActionForwardImpl"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/terminal_handlers.go",
+        "func_count": 14,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "autoDetectCWD",
+              "handleActiveCodebase",
+              "handleTerminalConfig",
+              "handleTerminalPage",
+              "handleTerminalStart",
+              "handleTerminalStop",
+              "registerTerminalRoutes"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "handleTerminalControlMessage",
+              "isSandboxError",
+              "newTerminalFrameWriter",
+              "terminalWSLoop"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleTerminalUpload",
+              "handleTerminalValidate",
+              "handleTerminalWS"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/analysis/thirdparty_summary.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildRecommendations",
+              "buildThirdPartySummary",
+              "countEntries",
+              "riskOrder"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "cookieSetterRecs",
+              "dataReceiverRecs",
+              "piiOutboundRecs",
+              "suspiciousScriptRecs"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/pty/upload.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extForContentType",
+              "isAllowedContentType"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "Upload",
+              "sanitizeFilename"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_content.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "enrichNavigateResponse",
+              "handleContentExtraction"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "handleGetMarkdown",
+              "handleGetReadable"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/queries/dispatcher_results.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "GetQueryTimeout",
+              "SetQueryTimeout"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "QueueDepth",
+              "QueuePosition"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_interact_response_helpers.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "appendScreenshotToResponse",
+              "appendWorkflowTraceToResponse",
+              "readPageContext"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "appendPageContextToResponse",
+              "isResponseQueued"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "appendInteractiveToResponse"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "bridgeStdioToHTTPFast",
+              "isConnectionError",
+              "toolCallTimeout"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "flushStdout",
+              "isGasolineService"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "buildDaemonCmd"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/cli.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "cli",
+            "family": "pure",
+            "functions": [
+              "IsCLIMode",
+              "applyCLIFlagOverrides",
+              "resolveCLIConfig"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "ensureDaemon"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "applyCLIEnvOverrides"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "runCLIMode"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/capture/ws_connection_tracker.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "websocket",
+            "family": "pure",
+            "functions": [
+              "trackConnOpen",
+              "trackEvent"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "trackConnClose"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "trackConnMessage"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/cli_flag_parsing.go",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "parseFlagsBySpec",
+              "parseIntValue",
+              "requireFlagValue"
+            ]
+          },
+          {
+            "role": "cli",
+            "family": "pure",
+            "functions": [
+              "cliParseFlag",
+              "parseCSVList"
+            ]
+          },
+          {
+            "role": "json",
+            "family": "pure",
+            "functions": [
+              "parseJSONOrString"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge_push_relay.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "relayPendingPushEvents",
+              "relayPushEvent"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "startBridgePushRelay"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "buildPushNotification"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_analyze_security.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildSecurityAuditSummary",
+              "buildThirdPartySummary"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "toolAnalyzeSecurityAudit",
+              "toolAuditThirdParties"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/recording/manager_store.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "collectRecordingsFromRoots",
+              "loadRecordingFromDisk",
+              "persistRecordingToDisk",
+              "recordingReadRoots"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "legacyRecordingsDir",
+              "primaryRecordingsDir"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "GetRecording",
+              "ListRecordings"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_session_audit_reader.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GetCurrentPageURL",
+              "GetNetworkRequests",
+              "GetPerformance",
+              "GetWSConnections"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "GetConsoleErrors",
+              "GetConsoleWarnings",
+              "collectConsoleByLevel",
+              "newToolCaptureStateReader"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/persistence/persistence_dirty.go",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "Shutdown",
+              "backgroundFlush"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "MarkDirty"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "flushDirty"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_analyze_inspect_forms.go",
+        "func_count": 8,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "toolComputedStyles",
+              "toolDataTable",
+              "toolFormDiscovery",
+              "toolFormState"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildFormValidationSummary",
+              "extractFormsList"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "queueAnalyzeInspectAction",
+              "toolFormValidation"
+            ]
+          }
+        ],
+        "suggestion": "File has 8 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/state/paths.go",
+        "func_count": 19,
+        "coherence": 0.5263157894736842,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "InRoot",
+              "LegacyCrashLogFile",
+              "LegacyDefaultLogFile",
+              "LegacyPIDFile",
+              "LegacyRecordingsDir",
+              "LegacyRootDir",
+              "LegacySecurityConfigFile",
+              "LegacySettingsFile",
+              "ProjectDir",
+              "normalizePath"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "CrashLogFile",
+              "DefaultLogFile",
+              "PIDFile",
+              "RecordingsDir",
+              "ScreenshotsDir",
+              "SecurityConfigFile",
+              "SettingsFile",
+              "UpgradeMarkerFile"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "RootDir"
+            ]
+          }
+        ],
+        "suggestion": "File has 19 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/bridge_startup_state.go",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "reclaimRespawnLeadership",
+              "resetSignalsLocked",
+              "setFailedState",
+              "setReadyState",
+              "waitForDaemonReadinessSignal",
+              "waitForRespawnPeerSignals"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "planRespawnAttempt",
+              "respawnIfNeeded",
+              "spawnDaemonAsync"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "markFailed",
+              "markReady"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/upload/security.go",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "Error",
+              "IsWithinDir",
+              "NewSecurity",
+              "ValidateUploadDir",
+              "checkDenylists",
+              "checkUploadDirConstraint"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "rejectRootOrHome",
+              "resolveAndValidateDir",
+              "resolveCleanPath"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "Error"
+            ]
+          },
+          {
+            "role": "file_io",
+            "family": "pure",
+            "functions": [
+              "ValidateFilePath"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/observe/analysis.go",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GetNetworkWaterfall",
+              "GetTabs",
+              "GetWSStatus",
+              "GetWebVitals",
+              "filterWaterfallEntries",
+              "filterWaterfallSummaryEntries"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildVitalsMap",
+              "buildWSStatusSummary",
+              "waterfallEntryToMap",
+              "waterfallSummaryEntry"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "refreshWaterfallIfStale"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/server.go",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "http",
+            "family": "pure",
+            "functions": [
+              "Close",
+              "GetActiveCodebase",
+              "SetActiveCodebase",
+              "SetOnEntries",
+              "getTerminalPort",
+              "setTerminalPort"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "NewServer",
+              "getListenPort",
+              "setListenPort"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "closeAnnotationStore",
+              "getAnnotationStore"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/observe/empty_hints.go",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "formatNetworkBodiesFilterSummary",
+              "logsEmptyHint",
+              "networkBodiesEmptyHint",
+              "networkWaterfallEmptyHint",
+              "transientsEmptyHint",
+              "wsEventsEmptyHint"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "actionsEmptyHint",
+              "errorBundlesEmptyHint",
+              "errorsEmptyHint",
+              "timelineEmptyHint",
+              "wsStatusEmptyHint"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/capture/store_views.go",
+        "func_count": 20,
+        "coherence": 0.55,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "Count",
+              "EnhancedActions",
+              "Entries",
+              "Entries",
+              "EventBuffers",
+              "ExtensionLogStore",
+              "NetworkBodies",
+              "NetworkWaterfallStore",
+              "PerformanceSnapshotStore",
+              "SnapshotByURL",
+              "Snapshots"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "Count",
+              "EnhancedActions",
+              "Entries",
+              "Entries",
+              "NetworkBodies",
+              "SnapshotByURL",
+              "Snapshots",
+              "WebSocketEvents",
+              "WebSocketEvents"
+            ]
+          }
+        ],
+        "suggestion": "File has 20 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/analysis/api_contract_violations.go",
+        "func_count": 9,
+        "coherence": 0.5555555555555556,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "classifyFieldTypeChange",
+              "detectErrorSpike",
+              "detectMissingFields",
+              "detectNewFields",
+              "detectTopLevelTypeChange"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "addViolation",
+              "compareShapes",
+              "detectFieldTypeChanges",
+              "violationSeverity"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/capture/websocket_status.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GetWebSocketStatus",
+              "buildWSConnection",
+              "formatAge",
+              "formatDuration"
+            ]
+          },
+          {
+            "role": "websocket",
+            "family": "pure",
+            "functions": [
+              "appendAndPrune",
+              "calcRate",
+              "updateDirectionStats"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/main_connection_diag.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "diagnoseHealthEndpoint",
+              "diagnoseMCPEndpoint",
+              "diagnosePortStatus",
+              "diagnoseProcessOnPort"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classifyHealthError"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "summarizeDiagnosis"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "gatherConnectionDiagnostics"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/reproduction/reproduction_selectors.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "PlaywrightLocator",
+              "describeWithRole",
+              "describeWithoutRole",
+              "pwRoleLocator"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "DescribeElement",
+              "selectorRole",
+              "selectorStr"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/noise/noise_rules.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "AddRules",
+              "DismissNoise",
+              "RemoveRule",
+              "validateRegexPattern"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "ListRules",
+              "Reset"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "validateAllRulePatterns"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/tools_analyze_api_validation.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "apiContractAnalyze",
+              "apiContractReport",
+              "apiContractValidatorSnapshot",
+              "apiValidationFilter"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "clearAPIValidationState",
+              "processAPIValidationBodies"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "toolValidateAPI"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cmd/browser-agent/daemon_lock_file.go",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "readDaemonLockFile",
+              "removeDaemonLockFile",
+              "removeDaemonLockIfOwned",
+              "writeDaemonLockFile"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "daemonLockFilePath",
+              "persistCurrentDaemonLock"
+            ]
+          },
+          {
+            "role": "file_io",
+            "family": "pure",
+            "functions": [
+              "daemonLockFilePathForError"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "internal/tools/observe/bundling.go",
+        "func_count": 12,
+        "coherence": 0.5833333333333334,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildBundles",
+              "errorEntryToMap",
+              "filterActionsByTab",
+              "filterNetworkBodiesByTab",
+              "matchActions",
+              "matchLogs",
+              "matchWaterfall"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GetErrorBundles",
+              "collectErrorsAndLogs",
+              "filterWaterfallByTab",
+              "matchNetworkBodies",
+              "parseEntryTimestamp"
+            ]
+          }
+        ],
+        "suggestion": "File has 12 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      }
+    ],
+    "function_violations": [
+      {
+        "func_id": "main.interactActionHandler.handleBatch",
+        "file": "cmd/browser-agent/tools_interact_batch.go",
+        "body_loc": 185,
+        "compute_callees": [
+          "main.checkGuards",
+          "main.extractCorrelationIDFromToolResponse",
+          "main.extractErrorMessage",
+          "main.fail",
+          "main.forceReplayAsyncInteractStep",
+          "main.isErrorResponse",
+          "main.parseArgs",
+          "main.stripComposableScreenshotFromStep",
+          "main.succeed",
+          "main.withParam"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleBatch calls 10 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.interactActionHandler.handleNavigateAndDocument",
+        "file": "cmd/browser-agent/tools_interact_workflow_navigate_document.go",
+        "body_loc": 149,
+        "compute_callees": [
+          "main.fail",
+          "main.filterNavigateAndDocumentClickArgs",
+          "main.interactActionHandler.appendPageContextToResponse",
+          "main.interactActionHandler.appendWorkflowTraceToResponse",
+          "main.interactActionHandler.currentTrackedURL",
+          "main.interactActionHandler.handleDOMPrimitive",
+          "main.interactActionHandler.handleWaitForStable",
+          "main.interactActionHandler.validateNavigateAndDocumentTab",
+          "main.interactActionHandler.waitForTrackedURLChange",
+          "main.isErrorResponse",
+          "main.isNonFinalResponse",
+          "main.navigateAndDocumentTimeoutBudgetExceeded",
+          "main.remainingNavigateAndDocumentTimeoutMs",
+          "main.responseStatus",
+          "main.withParam"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleNavigateAndDocument calls 15 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.bridgeForwardRequest",
+        "file": "cmd/browser-agent/bridge_forward.go",
+        "body_loc": 139,
+        "compute_callees": [
+          "main.bridgeDoHTTP",
+          "main.daemonState.respawnIfNeeded",
+          "main.isConnectionError",
+          "main.sendBridgeError",
+          "main.sendToolErrorWithOptions",
+          "main.writeMCPPayload"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "io.ReadAll",
+          "resp.Body.Close"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "bridgeForwardRequest calls 6 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.terminalWSLoop",
+        "file": "cmd/browser-agent/terminal_handlers.go",
+        "body_loc": 111,
+        "compute_callees": [
+          "main.handleTerminalControlMessage",
+          "main.newTerminalFrameWriter",
+          "main.wsReadFrame",
+          "pty.Session.AltScreenActive"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "net.Conn.Close",
+          "net.Conn.SetReadDeadline",
+          "relay.writeBuf.Write"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "terminalWSLoop calls 4 computation functions AND 4 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.runNativeInstall",
+        "file": "cmd/browser-agent/native_install.go",
+        "body_loc": 106,
+        "compute_callees": [
+          "main.extensionInstallDir",
+          "main.installClaudeCode",
+          "main.mergeJSONConfig",
+          "main.printInstallerPanel",
+          "main.printManualExtensionSetupChecklist",
+          "main.runForceCleanupQuietly",
+          "main.startDaemonSilently",
+          "main.stderrf"
+        ],
+        "io_callees": [
+          "fmt.Fprintf",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "runNativeInstall calls 8 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.bridgeStdioToHTTPFast",
+        "file": "cmd/browser-agent/bridge.go",
+        "body_loc": 106,
+        "compute_callees": [
+          "main.bridgeForwardRequest",
+          "main.bridgeShutdown",
+          "main.checkDaemonStatus",
+          "main.debugf",
+          "main.handleBridgeRestart",
+          "main.handleDaemonNotReady",
+          "main.handleFastPath",
+          "main.readMCPStdioMessage",
+          "main.sendBridgeError",
+          "main.sendBridgeParseError",
+          "main.startBridgePushRelay",
+          "main.toolCallTimeout",
+          "schema.AllTools",
+          "util.SafeGo"
+        ],
+        "io_callees": [
+          "bufio.NewReaderSize",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "bridgeStdioToHTTPFast calls 14 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "observe.GetScreenshot",
+        "file": "internal/tools/observe/analysis_screenshot.go",
+        "body_loc": 106,
+        "compute_callees": [
+          "mcp.AppendImageToResponse",
+          "mcp.LenientUnmarshal",
+          "mcp.StructuredErrorResponse",
+          "mcp.Succeed",
+          "mcp.WithHint",
+          "mcp.WithParam",
+          "mcp.WithRecoveryToolCall",
+          "observe.parseDataURL",
+          "observe.saveScreenshotToPath"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "GetScreenshot calls 9 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.handleTerminalWS",
+        "file": "cmd/browser-agent/terminal_handlers.go",
+        "body_loc": 97,
+        "compute_callees": [
+          "main.jsonResponse",
+          "main.nextWSSubID",
+          "main.terminalRelayMap.getOrCreate",
+          "main.terminalWSLoop",
+          "main.wsAcceptKey",
+          "main.wsWriteFrame",
+          "pty.Manager.GetByToken"
+        ],
+        "io_callees": [
+          "bufrw.Flush",
+          "bufrw.WriteString",
+          "conn.Close",
+          "json.Marshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleTerminalWS calls 7 computation functions AND 4 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.handleFastPath",
+        "file": "cmd/browser-agent/bridge_fastpath.go",
+        "body_loc": 94,
+        "compute_callees": [
+          "main.extractClientCapabilities",
+          "main.mcpResourceTemplates",
+          "main.mcpResources",
+          "main.negotiateProtocolVersion",
+          "main.recordFastPathEvent",
+          "main.recordFastPathResourceRead",
+          "main.resolveResourceContent",
+          "main.sendBridgeError",
+          "main.sendFastError",
+          "main.sendFastResponse",
+          "main.setPushClientCapabilities",
+          "main.storeBridgeFraming"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleFastPath calls 12 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "upload.HandleFileRead",
+        "file": "internal/upload/handlers.go",
+        "body_loc": 86,
+        "compute_callees": [
+          "upload.CheckHardlink",
+          "upload.DetectMimeType",
+          "upload.Security.ValidateFilePath"
+        ],
+        "io_callees": [
+          "file.Close",
+          "io.ReadAll",
+          "os.Open"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleFileRead calls 3 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ToolHandler.toolVisualDiff",
+        "file": "cmd/browser-agent/tools_analyze_visual.go",
+        "body_loc": 85,
+        "compute_callees": [
+          "analyze.CompareImages",
+          "analyze.LoadImage",
+          "analyze.ParseVisualDiffArgs",
+          "analyze.RebuildChangedGrid",
+          "analyze.WriteDiffImage",
+          "main.ToolHandler.requireSessionStore",
+          "main.extractScreenshotPath",
+          "main.fail",
+          "main.isErrorResponse",
+          "main.succeed",
+          "main.withParam",
+          "observe.GetScreenshot",
+          "state.ScreenshotsDir"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "toolVisualDiff calls 13 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.dispatchMode",
+        "file": "cmd/browser-agent/main_runtime_mode.go",
+        "body_loc": 77,
+        "compute_callees": [
+          "main.Server.AddWarning",
+          "main.Server.logLifecycle",
+          "main.appendExitDiagnostic",
+          "main.bridgeLaunchFingerprint",
+          "main.buildLaunchModeWarning",
+          "main.classifyLaunchMode",
+          "main.detectStdinMode",
+          "main.enforcePersistentMode",
+          "main.ensureBridgeIOIsolation",
+          "main.findMCPConfig",
+          "main.runBridgeMode",
+          "main.runMCPMode",
+          "main.selectRuntimeMode",
+          "main.sendStartupError",
+          "main.setCurrentLaunchMode",
+          "main.setStderrSink",
+          "main.stderrf"
+        ],
+        "io_callees": [
+          "fmt.Fprintln",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "dispatchMode calls 17 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.Server.handleScreenshot",
+        "file": "cmd/browser-agent/server_routes_media_screenshots.go",
+        "body_loc": 72,
+        "compute_callees": [
+          "main.checkScreenshotRateLimit",
+          "main.jsonResponse",
+          "main.pushEventID",
+          "main.saveImageToScreenshotsDir",
+          "util.BuildScreenshotFilename",
+          "util.DecodeDataURL"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "unknown.Decode"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleScreenshot calls 6 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.awaitShutdownSignal",
+        "file": "cmd/browser-agent/main_connection_mcp_shutdown.go",
+        "body_loc": 70,
+        "compute_callees": [
+          "main.Server.closeAnnotationStore",
+          "main.Server.logLifecycle",
+          "main.Server.shutdownAsyncLogger",
+          "main.appendExitDiagnostic",
+          "main.mapSignalSource",
+          "main.removeDaemonLockIfOwned",
+          "main.removePIDFile",
+          "main.stderrf"
+        ],
+        "io_callees": [
+          "main.ToolHandler.Close",
+          "th.capture.Close"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "awaitShutdownSignal calls 8 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ToolHandler.toolConfigureSaveSequence",
+        "file": "cmd/browser-agent/tools_configure_sequence.go",
+        "body_loc": 70,
+        "compute_callees": [
+          "main.ToolHandler.requireSessionStore",
+          "main.fail",
+          "main.parseArgs",
+          "main.requireString",
+          "main.succeed",
+          "main.withParam"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "toolConfigureSaveSequence calls 6 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.parseFlagsBySpec",
+        "file": "cmd/browser-agent/cli_flag_parsing.go",
+        "body_loc": 69,
+        "compute_callees": [
+          "main.parseCSVList",
+          "main.parseIntValue",
+          "main.parseJSONOrString",
+          "main.requireFlagValue"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "parseFlagsBySpec calls 4 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.cleanupStalePIDFile",
+        "file": "cmd/browser-agent/main_connection_mcp_bootstrap.go",
+        "body_loc": 62,
+        "compute_callees": [
+          "main.Server.logLifecycle",
+          "main.findProcessOnPort",
+          "main.pidFilePath"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "os.Remove"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "cleanupStalePIDFile calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ToolHandler.enrichNavigateResponse",
+        "file": "cmd/browser-agent/tools_interact_content.go",
+        "body_loc": 62,
+        "compute_callees": [
+          "main.ToolHandler.enqueuePendingQuery",
+          "main.buildQueryParams",
+          "main.newCorrelationID"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "enrichNavigateResponse calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.NewServer",
+        "file": "cmd/browser-agent/server.go",
+        "body_loc": 60,
+        "compute_callees": [
+          "main.NewAnnotationStore",
+          "main.Server.AddWarning",
+          "main.Server.asyncLoggerWorker",
+          "main.Server.loadEntries",
+          "main.ensureLogFileWritable",
+          "main.fallbackLogFilePath",
+          "main.getPushClientCapabilities",
+          "main.onPushCapabilitiesChange",
+          "pty.NewManager",
+          "push.NewPushInbox",
+          "push.NewRouter",
+          "util.SafeGo"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "os.MkdirAll"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "NewServer calls 12 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "queries.QueryDispatcher.CreatePendingQueryWithTimeout",
+        "file": "internal/queries/dispatcher_queries.go",
+        "body_loc": 60,
+        "compute_callees": [
+          "queries.QueryDispatcher.ApplyCommandResult",
+          "queries.QueryDispatcher.RegisterCommand",
+          "queries.deriveTraceID"
+        ],
+        "io_callees": [
+          "fmt.Fprintf",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "CreatePendingQueryWithTimeout calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.Server.handleDrawModeComplete",
+        "file": "cmd/browser-agent/server_routes_media_draw_mode.go",
+        "body_loc": 57,
+        "compute_callees": [
+          "main.Server.getAnnotationStore",
+          "main.Server.pushDrawModeCompletion",
+          "main.jsonResponse",
+          "main.parseAnnotations",
+          "main.persistDrawSession",
+          "main.saveDrawScreenshot",
+          "main.storeAnnotationSessionInStore",
+          "main.storeElementDetails"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "unknown.Decode"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleDrawModeComplete calls 8 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.recordingInteractHandler.handleRecordStop",
+        "file": "cmd/browser-agent/tools_recording_video_handlers.go",
+        "body_loc": 57,
+        "compute_callees": [
+          "main.fail",
+          "main.newCorrelationID",
+          "main.parseArgs",
+          "main.recordingInteractHandler.resolveInteractRecordingState",
+          "main.recordingInteractHandler.setInteractRecordingStopping",
+          "main.succeed"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Marshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "handleRecordStop calls 6 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ToolHandler.toolExportSARIF",
+        "file": "cmd/browser-agent/tools_generate_artifacts_sarif_impl.go",
+        "body_loc": 48,
+        "compute_callees": [
+          "export.ExportSARIF",
+          "main.ToolHandler.ExecuteA11yQuery",
+          "main.fail",
+          "main.parseArgs",
+          "main.succeed"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "toolExportSARIF calls 5 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "upload.ExecuteFormSubmit",
+        "file": "internal/upload/form_submit.go",
+        "body_loc": 46,
+        "compute_callees": [
+          "upload.StreamMultipartForm",
+          "upload.buildHTTPErrorResponse",
+          "upload.formSubmitStage3Error"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "httpResp.Body.Close",
+          "io.PipeReader.Close"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "ExecuteFormSubmit calls 3 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.runSetupCheckWithOptions",
+        "file": "cmd/browser-agent/doctor.go",
+        "body_loc": 45,
+        "compute_callees": [
+          "main.checkPortAvailability",
+          "main.checkStateDirectory",
+          "main.evaluateFastPathFailureThreshold",
+          "main.printFastPathTelemetryDiagnostics"
+        ],
+        "io_callees": [
+          "fmt.Print",
+          "fmt.Printf",
+          "fmt.Println"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "runSetupCheckWithOptions calls 4 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.MCPHandler.HandleHTTP",
+        "file": "cmd/browser-agent/handler_http.go",
+        "body_loc": 45,
+        "compute_callees": [
+          "main.MCPHandler.HandleRequest",
+          "main.MCPHandler.logDebugEntry",
+          "main.MCPHandler.writeJSONRPCError",
+          "main.jsonResponse",
+          "main.newHTTPRequestContext",
+          "main.truncatePreview"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "io.ReadAll",
+          "json.Marshal",
+          "json.NewEncoder",
+          "json.Unmarshal",
+          "unknown.Encode"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleHTTP calls 6 computation functions AND 6 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.handleTestHarnessWS",
+        "file": "cmd/browser-agent/testpages_websocket.go",
+        "body_loc": 45,
+        "compute_callees": [
+          "main.jsonResponse",
+          "main.wsAcceptKey",
+          "main.wsEchoLoop"
+        ],
+        "io_callees": [
+          "bufrw.Flush",
+          "bufrw.WriteString",
+          "conn.Close",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "io_in_compute",
+        "suggestion": "handleTestHarnessWS calls 3 computation functions AND 4 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "streaming.StreamState.EmitAlert",
+        "file": "internal/streaming/stream_emit.go",
+        "body_loc": 44,
+        "compute_callees": [
+          "streaming.FormatMCPNotification",
+          "streaming.StreamState.canEmitAtLocked",
+          "streaming.StreamState.isDuplicateLocked",
+          "streaming.StreamState.passesFiltersLocked",
+          "streaming.StreamState.recordEmissionLocked"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "plan.writer.Write"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "EmitAlert calls 5 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.checkGitHubVersion",
+        "file": "cmd/browser-agent/version_check.go",
+        "body_loc": 43,
+        "compute_callees": [
+          "main.beginVersionFetch",
+          "main.endVersionFetch",
+          "main.updateAvailableVersion"
+        ],
+        "io_callees": [
+          "resp.Body.Close",
+          "unknown.Decode"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "checkGitHubVersion calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "session.VerificationManager.Start",
+        "file": "internal/session/verify_actions.go",
+        "body_loc": 39,
+        "compute_callees": [
+          "session.VerificationManager.buildBaselineSummary",
+          "session.VerificationManager.captureSnapshot",
+          "session.VerificationManager.cleanupExpiredLocked"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "Start calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "capture.Capture.HandleQueryResult",
+        "file": "internal/capture/handlers.go",
+        "body_loc": 39,
+        "compute_callees": [
+          "capture.Capture.ApplyCommandResult",
+          "capture.Capture.SetQueryResultWithClient",
+          "capture.Capture.SetQueryResultWithClientNoCommandComplete",
+          "util.JSONResponse",
+          "util.RequireMethod"
+        ],
+        "io_callees": [
+          "fmt.Fprintf",
+          "unknown.Decode"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleQueryResult calls 5 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ensureBridgeIOIsolation",
+        "file": "cmd/browser-agent/bridge_io_isolation.go",
+        "body_loc": 37,
+        "compute_callees": [
+          "main.duplicateStdoutForTransport",
+          "main.redirectProcessStdStreams",
+          "main.resolveBridgeWrapperLogPath",
+          "main.setStderrSink",
+          "main.stderrf"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "logOut.Close",
+          "os.MkdirAll",
+          "os.OpenFile",
+          "transport.Close"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "ensureBridgeIOIsolation calls 5 computation functions AND 5 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "pty.Upload",
+        "file": "internal/pty/upload.go",
+        "body_loc": 37,
+        "compute_callees": [
+          "pty.extForContentType",
+          "pty.isAllowedContentType",
+          "pty.sanitizeFilename"
+        ],
+        "io_callees": [
+          "f.Close",
+          "fmt.Errorf",
+          "fmt.Sprintf",
+          "io.Copy",
+          "os.Create",
+          "os.MkdirAll",
+          "os.Remove"
+        ],
+        "mix_type": "io_in_compute",
+        "suggestion": "Upload calls 3 computation functions AND 7 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ToolHandler.toolQueryDOM",
+        "file": "cmd/browser-agent/tools_analyze_dom.go",
+        "body_loc": 36,
+        "compute_callees": [
+          "main.ToolHandler.MaybeWaitForCommand",
+          "main.ToolHandler.enqueuePendingQuery",
+          "main.newCorrelationID",
+          "main.parseArgs"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "toolQueryDOM calls 4 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "export.ExportSARIF",
+        "file": "internal/export/export_sarif.go",
+        "body_loc": 35,
+        "compute_callees": [
+          "export.convertPassesToResults",
+          "export.convertViolationsToResults",
+          "export.saveSARIFToFile"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "ExportSARIF calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.startHTTPServer",
+        "file": "cmd/browser-agent/main_connection_mcp_bootstrap.go",
+        "body_loc": 34,
+        "compute_callees": [
+          "main.AuthMiddleware",
+          "main.Server.logLifecycle",
+          "main.appendExitDiagnostic",
+          "main.stderrf",
+          "util.SafeGo"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "fmt.Sprintf",
+          "net.Listen"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "startHTTPServer calls 5 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.validateGenerateParams",
+        "file": "cmd/browser-agent/tools_generate_validation_dispatch.go",
+        "body_loc": 33,
+        "compute_callees": [
+          "main.fail",
+          "main.withHint",
+          "main.withParam"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "validateGenerateParams calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.stopViaPIDFile",
+        "file": "cmd/browser-agent/main_connection_stop_strategies.go",
+        "body_loc": 30,
+        "compute_callees": [
+          "main.isProcessAlive",
+          "main.readPIDFile",
+          "main.removePIDFile"
+        ],
+        "io_callees": [
+          "fmt.Printf",
+          "fmt.Println"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "stopViaPIDFile calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.toolFormValidation",
+        "file": "cmd/browser-agent/tools_analyze_inspect_forms.go",
+        "body_loc": 30,
+        "compute_callees": [
+          "analyze.ParseFormValidationArgs",
+          "main.ToolHandler.MaybeWaitForCommand",
+          "main.ToolHandler.enqueuePendingQuery",
+          "main.buildFormValidationSummary",
+          "main.fail",
+          "main.newCorrelationID"
+        ],
+        "io_callees": [
+          "json.Marshal",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "toolFormValidation calls 6 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.runningServerVersionCompatible",
+        "file": "cmd/browser-agent/bridge_startup_status.go",
+        "body_loc": 30,
+        "compute_callees": [
+          "main.decodeHealthMetadata",
+          "main.isGasolineService",
+          "main.versionsMatch"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "io.ReadAll",
+          "resp.Body.Close"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "runningServerVersionCompatible calls 3 computation functions AND 3 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "session.VerificationManager.HandleTool",
+        "file": "internal/session/verify_tool.go",
+        "body_loc": 29,
+        "compute_callees": [
+          "session.VerificationManager.Start",
+          "session.VerificationManager.handleVerifyCancel",
+          "session.VerificationManager.handleVerifyCompare",
+          "session.VerificationManager.handleVerifyStatus",
+          "session.VerificationManager.handleVerifyWatch"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleTool calls 5 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.ensureDaemon",
+        "file": "cmd/browser-agent/cli.go",
+        "body_loc": 29,
+        "compute_callees": [
+          "main.daemonProcessArgv0",
+          "main.isServerRunning",
+          "main.waitForServer",
+          "util.SetDetachedProcess"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "ensureDaemon calls 4 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "testgen.HealTestBatch",
+        "file": "internal/testgen/heal_batch.go",
+        "body_loc": 26,
+        "compute_callees": [
+          "testgen.FindTestFiles",
+          "testgen.ValidateBatchDir",
+          "testgen.processTestFile"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "fmt.Sprintf"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HealTestBatch calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "security.SecurityDiffManager.HandleDiffSecurity",
+        "file": "internal/security/security_diff_tool.go",
+        "body_loc": 22,
+        "compute_callees": [
+          "security.SecurityDiffManager.Compare",
+          "security.SecurityDiffManager.ListSnapshots",
+          "security.SecurityDiffManager.TakeSnapshot"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleDiffSecurity calls 3 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "generate.writeTestSteps",
+        "file": "internal/tools/generate/test_script.go",
+        "body_loc": 21,
+        "compute_callees": [
+          "generate.GroupActionsByNavigation",
+          "generate.testLabelForGroup",
+          "generate.writeTestAssertions",
+          "reproduction.EscapeJS",
+          "reproduction.PlaywrightStep",
+          "reproduction.WritePauseComment"
+        ],
+        "io_callees": [
+          "fmt.Fprintf",
+          "strings.Builder.WriteString"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "writeTestSteps calls 6 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.saveDrawScreenshot",
+        "file": "cmd/browser-agent/server_routes_media_draw_mode.go",
+        "body_loc": 21,
+        "compute_callees": [
+          "main.randomInt63",
+          "main.screenshotsDir",
+          "util.DecodeDataURL",
+          "util.SanitizeForFilename"
+        ],
+        "io_callees": [
+          "fmt.Sprintf",
+          "os.WriteFile"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "saveDrawScreenshot calls 4 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "session.SessionManager.HandleTool",
+        "file": "internal/session/tool-handler.go",
+        "body_loc": 20,
+        "compute_callees": [
+          "session.SessionManager.List",
+          "session.SessionManager.handleCapture",
+          "session.SessionManager.handleCompare",
+          "session.SessionManager.handleDelete"
+        ],
+        "io_callees": [
+          "fmt.Errorf",
+          "json.Unmarshal"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "HandleTool calls 4 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      },
+      {
+        "func_id": "main.stopViaProcessLookup",
+        "file": "cmd/browser-agent/main_connection_stop_strategies.go",
+        "body_loc": 20,
+        "compute_callees": [
+          "main.findProcessOnPort",
+          "main.isServerRunning",
+          "main.killProcessByPID",
+          "main.portKillHintForce",
+          "main.removePIDFile"
+        ],
+        "io_callees": [
+          "fmt.Printf",
+          "fmt.Println"
+        ],
+        "mix_type": "compute_in_formatter",
+        "suggestion": "stopViaProcessLookup calls 5 computation functions AND 2 IO functions. Extract the computation into a separate function that returns structured results, then pass those results to a formatter."
+      }
+    ]
+  },
+  "smells": {
+    "has_smells": true,
+    "smell_types": [
+      "orphans",
+      "file_mismatch",
+      "file_scatter",
+      "role_flip_flop",
+      "dependency_chains",
+      "duplicate_clusters",
+      "import_bloat"
+    ]
+  },
+  "top_priority": {
+    "summary": "Address 81 high-risk bug source(s), starting with main.buildInteractHandlers",
+    "category": "bug_risk",
+    "impact": 0.4,
+    "why": "81 functions have structural risk scores above 0.50. These are structurally predisposed to defects: they have high fan-in (changes break many callers), sit in mixed-role clusters (responsibility confusion), or are in junk-drawer files (merge conflicts). Splitting and relocating them reduces defect risk.",
+    "steps": [
+      "Start with main.buildInteractHandlers (risk 0.67) — mixed-role cluster (responsibility confusion), 153 LOC (14x median), junk-drawer file (multi-concern).",
+      "Extract distinct concerns into separate functions with clear input/output contracts.",
+      "Add targeted tests for functions with high fan-in — a bug there affects many callers.",
+      "Move functions out of junk-drawer files into files matching their cluster's role.",
+      "Repeat for the remaining 80 high-risk functions."
+    ]
+  },
+  "gate": {
+    "overall": "FAIL",
+    "thresholds": [
+      {
+        "name": "normalized_sharpness",
+        "value": 1,
+        "target": 0.8,
+        "met": true
+      },
+      {
+        "name": "multi_axis_coherence",
+        "value": 0.7655825666125481,
+        "target": 0.8,
+        "met": false
+      },
+      {
+        "name": "health_score",
+        "value": 73.74002598968315,
+        "target": 80,
+        "met": false
+      },
+      {
+        "name": "recipe_coverage",
+        "value": 75.92110160029773,
+        "target": 80,
+        "met": false
+      }
+    ]
+  }
+}

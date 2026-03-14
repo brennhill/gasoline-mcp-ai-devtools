@@ -1,94 +1,21 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
+ * Purpose: Fetches and caches source maps, parses stack frames with VLQ decoding, and resolves stack traces for better error messages.
  * Docs: docs/features/feature/observe/index.md
  */
-/**
- * @fileoverview Source Maps and Stack Trace Resolution
- * Handles source map fetching and caching, stack frame parsing,
- * VLQ decoding, and stack trace resolution for better error messages.
- */
 import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled } from './cache-limits.js';
+import { errorMessage } from '../lib/error-utils.js';
+import { fetchWithTimeout } from '../lib/timeout-utils.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 /** Source map fetch timeout */
 const SOURCE_MAP_FETCH_TIMEOUT = 5000;
-/** Context annotation thresholds */
-const CONTEXT_SIZE_THRESHOLD = 20 * 1024;
-const CONTEXT_WARNING_WINDOW_MS = 60000;
-const CONTEXT_WARNING_COUNT = 3;
-/** Debug log buffer size */
-const DEBUG_LOG_MAX_ENTRIES = 200;
-/** Processing query TTL */
-const PROCESSING_QUERY_TTL_MS = 60000;
 /** Stack frame regex patterns */
 const STACK_FRAME_REGEX = /^\s*at\s+(?:(.+?)\s+\()?(?:(.+?):(\d+):(\d+)|(.+?):(\d+))\)?$/;
 const ANONYMOUS_FRAME_REGEX = /^\s*at\s+(.+?):(\d+):(\d+)$/;
 /** VLQ character mapping */
 const VLQ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 const VLQ_CHAR_MAP = new Map(VLQ_CHARS.split('').map((c, i) => [c, i]));
-// =============================================================================
-// STATE
-// =============================================================================
-/** Context annotation monitoring state */
-let contextExcessiveTimestamps = [];
-let contextWarningState = null;
-/** Processing queries tracking */
-const processingQueries = new Map();
-// =============================================================================
-// CONTEXT ANNOTATION MONITORING
-// =============================================================================
-/**
- * Measure the serialized byte size of _context in a log entry
- */
-export function measureContextSize(entry) {
-    const context = entry._context;
-    if (!context || typeof context !== 'object')
-        return 0;
-    const keys = Object.keys(context);
-    if (keys.length === 0)
-        return 0;
-    return JSON.stringify(context).length;
-}
-/**
- * Check a batch of entries for excessive context annotation usage
- */
-export function checkContextAnnotations(entries) {
-    const now = Date.now();
-    for (const entry of entries) {
-        const size = measureContextSize(entry);
-        if (size > CONTEXT_SIZE_THRESHOLD) {
-            contextExcessiveTimestamps.push({ ts: now, size });
-        }
-    }
-    contextExcessiveTimestamps = contextExcessiveTimestamps.filter((t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS);
-    if (contextExcessiveTimestamps.length >= CONTEXT_WARNING_COUNT) {
-        const avgSize = contextExcessiveTimestamps.reduce((sum, t) => sum + t.size, 0) / contextExcessiveTimestamps.length;
-        contextWarningState = {
-            sizeKB: Math.round(avgSize / 1024),
-            count: contextExcessiveTimestamps.length,
-            triggeredAt: now
-        };
-    }
-    else if (contextWarningState && contextExcessiveTimestamps.length === 0) {
-        contextWarningState = null;
-    }
-}
-/**
- * Get the current context annotation warning state
- */
-export function getContextWarning() {
-    return contextWarningState;
-}
-/**
- * Reset the context annotation warning (for testing)
- */
-export function resetContextWarning() {
-    contextExcessiveTimestamps = [];
-    contextWarningState = null;
-}
 // =============================================================================
 // VLQ DECODING AND SOURCE MAP PARSING
 // =============================================================================
@@ -238,17 +165,6 @@ function cacheNullAndReturn(scriptUrl) {
     setSourceMapCacheEntry(scriptUrl, null);
     return null;
 }
-async function fetchWithTimeout(url) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SOURCE_MAP_FETCH_TIMEOUT);
-    try {
-        const response = await fetch(url, { signal: controller.signal });
-        return response;
-    }
-    finally {
-        clearTimeout(timeoutId);
-    }
-}
 function parseInlineSourceMap(dataUrl, scriptUrl, debugLogFn) {
     const base64Match = dataUrl.match(/^data:application\/json;base64,(.+)$/);
     if (!base64Match || !base64Match[1])
@@ -281,7 +197,7 @@ async function fetchExternalSourceMap(sourceMapUrl, scriptUrl, debugLogFn) {
         const base = scriptUrl.substring(0, scriptUrl.lastIndexOf('/') + 1);
         resolvedUrl = new URL(resolvedUrl, base).href;
     }
-    const mapResponse = await fetchWithTimeout(resolvedUrl);
+    const mapResponse = await fetchWithTimeout(resolvedUrl, {}, SOURCE_MAP_FETCH_TIMEOUT);
     if (!mapResponse.ok)
         return cacheNullAndReturn(scriptUrl);
     let sourceMap;
@@ -302,7 +218,7 @@ export async function fetchSourceMap(scriptUrl, debugLogFn) {
         return getSourceMapCacheEntry(scriptUrl) || null;
     }
     try {
-        const scriptResponse = await fetchWithTimeout(scriptUrl);
+        const scriptResponse = await fetchWithTimeout(scriptUrl, {}, SOURCE_MAP_FETCH_TIMEOUT);
         if (!scriptResponse.ok)
             return cacheNullAndReturn(scriptUrl);
         const scriptContent = await scriptResponse.text();
@@ -318,7 +234,7 @@ export async function fetchSourceMap(scriptUrl, debugLogFn) {
         if (debugLogFn) {
             debugLogFn('sourcemap', 'Source map fetch failed', {
                 scriptUrl,
-                error: err.message
+                error: errorMessage(err)
             });
         }
         return cacheNullAndReturn(scriptUrl);
@@ -380,49 +296,5 @@ export async function resolveStackTrace(stack, debugLogFn) {
         }
     }
     return resolvedLines.join('\n');
-}
-// =============================================================================
-// PROCESSING QUERY TRACKING
-// =============================================================================
-/**
- * Get current state of processing queries (for testing)
- */
-export function getProcessingQueriesState() {
-    return processingQueries;
-}
-/**
- * Add a query to the processing set with timestamp
- */
-export function addProcessingQuery(queryId, timestamp = Date.now()) {
-    processingQueries.set(queryId, timestamp);
-}
-/**
- * Remove a query from the processing set
- */
-export function removeProcessingQuery(queryId) {
-    processingQueries.delete(queryId);
-}
-/**
- * Check if a query is currently being processed
- */
-export function isQueryProcessing(queryId) {
-    return processingQueries.has(queryId);
-}
-/**
- * Clean up stale processing queries that have exceeded the TTL
- */
-export function cleanupStaleProcessingQueries(debugLogFn) {
-    const now = Date.now();
-    for (const [queryId, timestamp] of processingQueries) {
-        if (now - timestamp > PROCESSING_QUERY_TTL_MS) {
-            processingQueries.delete(queryId);
-            if (debugLogFn) {
-                debugLogFn('connection', 'Cleaned up stale processing query', {
-                    queryId,
-                    age: Math.round((now - timestamp) / 1000) + 's'
-                });
-            }
-        }
-    }
 }
 //# sourceMappingURL=source-map-resolver.js.map

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="d1" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#fb923c"/>
+    </linearGradient>
+    <linearGradient id="d2" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="d3" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fde047"/>
+    </linearGradient>
+    <clipPath id="cClip"><circle cx="64" cy="64" r="59"/></clipPath>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#555" stroke-width="3"/>
+  <g clip-path="url(#cClip)" filter="url(#gl)">
+    <path d="M20,-10 Q28,58 70,138 L86,138 Q40,58 28,-10 Z" fill="url(#d1)"/>
+    <path d="M42,-10 Q48,58 88,138 L100,138 Q56,58 48,-10 Z" fill="url(#d2)"/>
+    <path d="M62,-10 Q66,58 104,138 L113,138 Q72,58 68,-10 Z" fill="url(#d3)"/>
+  </g>
+</svg>

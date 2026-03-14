@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="b1" x1="0" y1="0" x2="128" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fde047"/>
+    </linearGradient>
+    <clipPath id="hexB">
+      <polygon points="64,5 117,34.5 117,93.5 64,123 11,93.5 11,34.5"/>
+    </clipPath>
+    <filter id="glB" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="hgB" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <polygon points="64,5 117,34.5 117,93.5 64,123 11,93.5 11,34.5" fill="#1a1a1a"/>
+  <polygon points="64,5 117,34.5 117,93.5 64,123 11,93.5 11,34.5" fill="none" stroke="#f97316" stroke-width="1" opacity="0.3" filter="url(#hgB)"/>
+  <!-- Audio waveform bars — like a visualizer -->
+  <g clip-path="url(#hexB)" filter="url(#glB)">
+    <rect x="22" y="58" width="4" height="12" rx="1" fill="#f97316"/>
+    <rect x="30" y="44" width="4" height="40" rx="1" fill="#f97316"/>
+    <rect x="38" y="34" width="4" height="60" rx="1" fill="#fb923c"/>
+    <rect x="46" y="26" width="4" height="76" rx="1" fill="#fb923c"/>
+    <rect x="54" y="20" width="5" height="88" rx="1" fill="#fbbf24"/>
+    <rect x="63" y="30" width="5" height="68" rx="1" fill="#fbbf24"/>
+    <rect x="72" y="38" width="4" height="52" rx="1" fill="#fde047"/>
+    <rect x="80" y="46" width="4" height="36" rx="1" fill="#fde047"/>
+    <rect x="88" y="52" width="4" height="24" rx="1" fill="#fef3c7"/>
+    <rect x="96" y="56" width="4" height="16" rx="1" fill="#fef3c7" opacity="0.7"/>
+  </g>
+</svg>

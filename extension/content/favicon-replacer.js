@@ -113,16 +113,16 @@ function startFlicker() {
     if (flickerInterval !== null) {
         return; // Already flickering
     }
-    // 8-frame sequence for smooth breathing effect with color temperature shift
+    // 8-frame sequence for smooth ember+breathe effect with color temperature shift
     const flameFrames = [
-        'icon-flicker-1-tiny.svg', // 85% - dark red/orange (coolest) + small dark ring
-        'icon-flicker-2-small.svg', // 92% - orange + small orange ring
-        'icon-flicker-3-normal.svg', // 100% - orange-yellow (base) + medium orange ring
-        'icon-flicker-4-medium.svg', // 105% - yellow + medium yellow ring
-        'icon-flicker-5-large.svg', // 112% - yellow/white (PEAK - hottest) + large bright ring
-        'icon-flicker-6-medium.svg', // 105% - yellow + medium yellow ring (shrinking)
-        'icon-flicker-7-smallmed.svg', // 96% - orange-yellow + medium ring
-        'icon-flicker-8-small.svg' // 92% - orange + small orange ring (back to small)
+        'icon-flicker-1-tiny.svg', // resting/cool - base colors, low glow
+        'icon-flicker-2-smallmed.svg', // warming - slightly warmer, wider
+        'icon-flicker-3-medium.svg', // hot - warm colors, bright glow
+        'icon-flicker-4-large.svg', // peak - hottest, widest, brightest
+        'icon-flicker-5-medlarge.svg', // cooling - warm but narrowing
+        'icon-flicker-6-small.svg', // cool - back to base
+        'icon-flicker-7-smallmed.svg', // secondary pulse - slight warmth
+        'icon-flicker-8-small.svg' // settling - near base
     ];
     let currentFrameIndex = 0;
     // Use setInterval instead of requestAnimationFrame so animation continues

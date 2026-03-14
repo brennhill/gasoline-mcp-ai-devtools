@@ -1,0 +1,213 @@
+{
+  "directory": "noise",
+  "composite": 76.05241079397554,
+  "grade": "B",
+  "total_functions": 142,
+  "files": [
+    {
+      "file": "noise.go",
+      "functions": 3,
+      "composite": 80.78356907058644,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "noise_builtin.go",
+      "functions": 2,
+      "composite": 76.90355131042489,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "noise_builtin_analytics.go",
+      "functions": 1,
+      "composite": 87.92980785482612,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_builtin_browser.go",
+      "functions": 1,
+      "composite": 87.92980785482612,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_builtin_devtooling.go",
+      "functions": 1,
+      "composite": 87.92980785482612,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_builtin_framework.go",
+      "functions": 1,
+      "composite": 87.92980785482612,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_builtin_websocket.go",
+      "functions": 1,
+      "composite": 87.92980785482612,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_detect.go",
+      "functions": 11,
+      "composite": 74.8063178706453,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "noise_detect_test.go",
+      "functions": 20,
+      "composite": 77.15977186197135,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "noise_edge_test.go",
+      "functions": 22,
+      "composite": 77.16131603454745,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "noise_filter.go",
+      "functions": 6,
+      "composite": 76.53656907352736,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "noise_persistence.go",
+      "functions": 8,
+      "composite": 70.76571481277675,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "noise_persistence_test.go",
+      "functions": 5,
+      "composite": 81.18798259215976,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "noise_rules.go",
+      "functions": 7,
+      "composite": 74.1064178363773,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "noise_stats.go",
+      "functions": 3,
+      "composite": 67.34711040306809,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "SAP",
+        "REP"
+      ]
+    },
+    {
+      "file": "noise_test.go",
+      "functions": 40,
+      "composite": 75.66983311935749,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "noise_validation_test.go",
+      "functions": 10,
+      "composite": 72.1156970318892,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 78
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 11
+    },
+    {
+      "principle": "DeadCode",
+      "count": 10
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    }
+  ]
+}

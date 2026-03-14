@@ -1,0 +1,216 @@
+{
+  "directory": "internal/schema",
+  "composite": 79.63495077656553,
+  "grade": "B",
+  "total_functions": 35,
+  "files": [
+    {
+      "file": "analyze.go",
+      "functions": 1,
+      "composite": 87.24595220268773,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "configure.go",
+      "functions": 1,
+      "composite": 85.3256816480201,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "configure_properties.go",
+      "functions": 2,
+      "composite": 82.00646608712,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "configure_properties_core.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "configure_properties_runtime.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "generate.go",
+      "functions": 2,
+      "composite": 85.96696573042111,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact.go",
+      "functions": 1,
+      "composite": 78.64780185894806,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "interact_actions.go",
+      "functions": 2,
+      "composite": 86.88469539024207,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties.go",
+      "functions": 2,
+      "composite": 79.78424386489777,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties_core.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties_dispatch.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties_form_wait.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties_output_batch.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_properties_targeting.go",
+      "functions": 1,
+      "composite": 86.60824981282212,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "interact_test.go",
+      "functions": 9,
+      "composite": 73.67073269321669,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "invariants_test.go",
+      "functions": 6,
+      "composite": 72.98782192077147,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "observe.go",
+      "functions": 1,
+      "composite": 88.2381800452856,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "schema.go",
+      "functions": 1,
+      "composite": 71.25964482615626,
+      "grade": "B",
+      "weak_principles": [
+        "LowCoupling",
+        "REP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 3
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 3
+    }
+  ]
+}

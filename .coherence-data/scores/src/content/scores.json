@@ -1,0 +1,103 @@
+{
+  "directory": "src/content",
+  "composite": 73.1904171451454,
+  "grade": "B",
+  "total_functions": 68,
+  "files": [
+    {
+      "file": "favicon-replacer.ts",
+      "functions": 6,
+      "composite": 70.26538583251039,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "SAP"
+      ]
+    },
+    {
+      "file": "message-handlers.ts",
+      "functions": 22,
+      "composite": 74.22165022312915,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "request-tracking.ts",
+      "functions": 22,
+      "composite": 74.60401420766745,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "runtime-message-listener.ts",
+      "functions": 1,
+      "composite": 51.06220020536221,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "Cognitive",
+        "CRP"
+      ]
+    },
+    {
+      "file": "script-injection.ts",
+      "functions": 10,
+      "composite": 72.84963864495191,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "tab-tracking.ts",
+      "functions": 4,
+      "composite": 74.59823163977748,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "window-message-listener.ts",
+      "functions": 3,
+      "composite": 67.74664006110358,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 14
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 4
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

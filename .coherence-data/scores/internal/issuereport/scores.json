@@ -1,0 +1,88 @@
+{
+  "directory": "internal/issuereport",
+  "composite": 74.77104708870867,
+  "grade": "B",
+  "total_functions": 31,
+  "files": [
+    {
+      "file": "sanitize.go",
+      "functions": 3,
+      "composite": 78.15248146369716,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "SAP"
+      ]
+    },
+    {
+      "file": "sanitize_test.go",
+      "functions": 6,
+      "composite": 76.51291172767044,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "SAP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "submit.go",
+      "functions": 6,
+      "composite": 74.40440607379763,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "submit_test.go",
+      "functions": 9,
+      "composite": 75.53391802384135,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "templates.go",
+      "functions": 2,
+      "composite": 72.10605551391899,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "ISP"
+      ]
+    },
+    {
+      "file": "templates_test.go",
+      "functions": 5,
+      "composite": 70.78474706153175,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 3
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

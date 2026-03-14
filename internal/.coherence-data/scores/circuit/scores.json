@@ -1,0 +1,44 @@
+{
+  "directory": "circuit",
+  "composite": 71.52489761248894,
+  "grade": "B",
+  "total_functions": 23,
+  "files": [
+    {
+      "file": "breaker.go",
+      "functions": 11,
+      "composite": 70.75741575427479,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "breaker_test.go",
+      "functions": 12,
+      "composite": 72.22842264918525,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 8
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    },
+    {
+      "principle": "Creator",
+      "count": 1
+    }
+  ]
+}

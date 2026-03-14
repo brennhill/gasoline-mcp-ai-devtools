@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="d1" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#f97316;#fde047;#f97316" dur="1.4s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fb923c;#fef3c7;#fb923c" dur="1.4s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="d2" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#fb923c;#fde047;#fb923c" dur="1.6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fbbf24;#fef3c7;#fbbf24" dur="1.6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="d3" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#fbbf24;#fef3c7;#fbbf24" dur="1.8s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fde047;#fef3c7;#fde047" dur="1.8s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <clipPath id="cClip"><circle cx="64" cy="64" r="59"/></clipPath>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#555" stroke-width="3"/>
+  <g clip-path="url(#cClip)" filter="url(#gl)">
+    <g transform-origin="51 64">
+      <animateTransform attributeName="transform" type="scale" values="1 1;1.08 1;1 1" dur="1.4s" repeatCount="indefinite"/>
+      <path d="M24,-10 Q32,58 76,138 L88,138 Q40,58 30,-10 Z" fill="url(#d1)"/>
+    </g>
+    <g transform-origin="73 64">
+      <animateTransform attributeName="transform" type="scale" values="1 1;1.08 1;1 1" dur="1.6s" repeatCount="indefinite"/>
+      <path d="M44,-10 Q50,58 92,138 L103,138 Q58,58 50,-10 Z" fill="url(#d2)"/>
+    </g>
+    <g transform-origin="90 64">
+      <animateTransform attributeName="transform" type="scale" values="1 1;1.08 1;1 1" dur="1.8s" repeatCount="indefinite"/>
+      <path d="M64,-10 Q68,58 108,138 L118,138 Q76,58 70,-10 Z" fill="url(#d3)"/>
+    </g>
+  </g>
+</svg>

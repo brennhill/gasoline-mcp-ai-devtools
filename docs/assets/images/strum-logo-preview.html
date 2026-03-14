@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strum — Logo Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --g-ink: #eef2fb;
+      --g-ink-soft: #dde5f2;
+      --g-muted: #a8b3c6;
+      --g-bg: #0e141e;
+      --g-bg-soft: #131c28;
+      --g-surface: #172232;
+      --g-border: #2f3d50;
+      --g-display: 'Space Grotesk', 'Avenir Next', sans-serif;
+      --g-body: 'DM Sans', 'Segoe UI', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--g-body);
+      color: var(--g-ink-soft);
+      background:
+        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--g-ink-soft) 8%, transparent) 1px, transparent 0),
+        var(--g-bg);
+      background-size: 14px 14px;
+      min-height: 100vh;
+      padding: 60px 40px;
+    }
+    h1 {
+      font-family: var(--g-display);
+      font-weight: 700;
+      font-size: 2.5rem;
+      color: var(--g-ink);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: var(--g-muted);
+      font-size: 1.1rem;
+      margin-bottom: 60px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--g-surface);
+      border: 1px solid var(--g-border);
+      border-radius: 18px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #f97316; }
+    .card h2 {
+      font-family: var(--g-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--g-ink);
+    }
+    .card p {
+      color: var(--g-muted);
+      font-size: 0.8rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .logo-container { width: 140px; height: 140px; }
+    .logo-container img { width: 100%; height: 100%; }
+    .section-label {
+      font-family: var(--g-display);
+      font-weight: 600;
+      font-size: 1.3rem;
+      color: var(--g-ink);
+      text-align: center;
+      margin: 50px 0 30px;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--g-border);
+    }
+    .wordmark-section {
+      margin-top: 60px;
+      text-align: center;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .wordmark {
+      font-family: var(--g-display);
+      font-weight: 700;
+      font-size: 4rem;
+      background: linear-gradient(135deg, #f97316, #fbbf24, #fde047);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    .wordmark-sub {
+      font-family: var(--g-display);
+      font-weight: 400;
+      font-size: 1.2rem;
+      color: var(--g-muted);
+      margin-top: 8px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .product-names {
+      margin-top: 60px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .product-tag {
+      background: var(--g-surface);
+      border: 1px solid var(--g-border);
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-family: var(--g-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--g-ink-soft);
+    }
+    .product-tag em {
+      font-style: normal;
+      background: linear-gradient(135deg, #f97316, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  </style>
+</head>
+<body>
+  <h1>strum</h1>
+  <p class="subtitle">Logo exploration — 14 concepts</p>
+
+  <div class="section-label">Previous iterations</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Circle — Vertical</h2>
+      <div class="logo-container">
+        <img src="strum-logo-v1-circle.svg" alt="">
+      </div>
+      <p>Vertical strings, centered</p>
+    </div>
+    <div class="card">
+      <h2>Hex — Horizontal</h2>
+      <div class="logo-container">
+        <img src="strum-logo-v2-hexagon.svg" alt="">
+      </div>
+      <p>Horizontal strings, hex glow</p>
+    </div>
+    <div class="card">
+      <h2>Circle — Horizontal</h2>
+      <div class="logo-container">
+        <img src="strum-logo-v3-circle-wider.svg" alt="">
+      </div>
+      <p>Horizontal strings, circle</p>
+    </div>
+    <div class="card">
+      <h2>Hex — Diagonal</h2>
+      <div class="logo-container">
+        <img src="strum-logo-v4-hex-subtle.svg" alt="">
+      </div>
+      <p>Diagonal strings, hex glow border</p>
+    </div>
+  </div>
+
+  <div class="section-label">D2 — Circle Slash variations</div>
+  <div class="grid">
+    <div class="card">
+      <h2>D2 — Base</h2>
+      <div class="logo-container">
+        <img src="strum-logo-d2-slash-circle.svg" alt="">
+      </div>
+      <p>Original. ±(2,6) travel, 0.5s, 12/9/6 weight.</p>
+    </div>
+    <div class="card">
+      <h2>Var 1 — Slow & Wide</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var1.svg" alt="">
+      </div>
+      <p>±(4,12) travel, 0.8s. Thinner: 10/7/4.</p>
+    </div>
+    <div class="card">
+      <h2>Var 2 — Fast & Bold</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var2.svg" alt="">
+      </div>
+      <p>±(1.5,4.5) travel, 0.3s. Heavy: 14/10/6.</p>
+    </div>
+    <div class="card">
+      <h2>Var 3 — Staggered</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var3.svg" alt="">
+      </div>
+      <p>Each line different speed: 0.4/0.55/0.7s.</p>
+    </div>
+    <div class="card">
+      <h2>Var 4 — Short Stubs</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var4.svg" alt="">
+      </div>
+      <p>Shorter lines, none edge-to-edge. 14/10/6.</p>
+    </div>
+    <div class="card">
+      <h2>Var 5 — Slow & Long</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var5.svg" alt="">
+      </div>
+      <p>±(3,9) travel, 1.2s. Dramatic breathing.</p>
+    </div>
+    <div class="card">
+      <h2>Var 6 — Even Weight</h2>
+      <div class="logo-container">
+        <img src="strum-d2-var6.svg" alt="">
+      </div>
+      <p>Nearly equal widths: 8/7/6. Tight spacing.</p>
+    </div>
+  </div>
+
+  <div class="wordmark-section">
+    <span class="wordmark">strum</span>
+    <p class="wordmark-sub">AI DevTools</p>
+  </div>
+
+  <div class="product-names">
+    <div class="product-tag">SEO<em>strum</em></div>
+    <div class="product-tag">Test<em>strum</em></div>
+    <div class="product-tag">Prod<em>strum</em></div>
+    <div class="product-tag">Acces<em>strum</em></div>
+    <div class="product-tag">Perf<em>strum</em></div>
+  </div>
+</body>
+</html>

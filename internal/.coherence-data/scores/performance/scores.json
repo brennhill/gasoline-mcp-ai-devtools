@@ -1,0 +1,66 @@
+{
+  "directory": "performance",
+  "composite": 75.50632455313404,
+  "grade": "B",
+  "total_functions": 60,
+  "files": [
+    {
+      "file": "diff.go",
+      "functions": 10,
+      "composite": 78.61040806155174,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "diff_resource.go",
+      "functions": 3,
+      "composite": 83.07536587952404,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "diff_summary.go",
+      "functions": 8,
+      "composite": 74.52900267580046,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "diff_test.go",
+      "functions": 39,
+      "composite": 74.32864803916797,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 4
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

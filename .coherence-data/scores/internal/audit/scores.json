@@ -1,0 +1,84 @@
+{
+  "directory": "internal/audit",
+  "composite": 76.97544174814327,
+  "grade": "B",
+  "total_functions": 51,
+  "files": [
+    {
+      "file": "audit_ids.go",
+      "functions": 2,
+      "composite": 65.62775335240786,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "ADP",
+        "ProtectedVar"
+      ]
+    },
+    {
+      "file": "audit_query.go",
+      "functions": 4,
+      "composite": 77.66887363401294,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "audit_recording.go",
+      "functions": 3,
+      "composite": 75.57161683220318,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "audit_redaction.go",
+      "functions": 2,
+      "composite": 77.27510429634057,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "audit_session.go",
+      "functions": 4,
+      "composite": 74.04262408783754,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "audit_trail_test.go",
+      "functions": 36,
+      "composite": 77.95502701316104,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 6
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

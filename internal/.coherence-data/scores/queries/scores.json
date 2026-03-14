@@ -1,0 +1,220 @@
+{
+  "directory": "queries",
+  "composite": 71.98351066564942,
+  "grade": "B",
+  "total_functions": 105,
+  "files": [
+    {
+      "file": "command_trace_test.go",
+      "functions": 6,
+      "composite": 75.17762328107408,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "commands_test.go",
+      "functions": 22,
+      "composite": 72.69508327299764,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "dispatcher.go",
+      "functions": 3,
+      "composite": 75.3254337143316,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "dispatcher_commands.go",
+      "functions": 8,
+      "composite": 73.15993044796352,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "dispatcher_commands_observe.go",
+      "functions": 3,
+      "composite": 68.92095607141506,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "dispatcher_commands_wait.go",
+      "functions": 3,
+      "composite": 67.5145288614498,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "dispatcher_queries.go",
+      "functions": 4,
+      "composite": 72.77760916129232,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "dispatcher_queries_expire.go",
+      "functions": 1,
+      "composite": 66.81938074635667,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "dispatcher_queries_poll.go",
+      "functions": 5,
+      "composite": 71.97401287678366,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "dispatcher_results.go",
+      "functions": 4,
+      "composite": 66.50656023353615,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "LoDChain",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "dispatcher_results_cleanup.go",
+      "functions": 2,
+      "composite": 69.9875361495055,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "dispatcher_results_store.go",
+      "functions": 6,
+      "composite": 74.95773590998382,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "dispatcher_results_wait.go",
+      "functions": 2,
+      "composite": 70.3624339369956,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "dispatcher_test.go",
+      "functions": 19,
+      "composite": 70.80309325476111,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "dispatcher_trace.go",
+      "functions": 9,
+      "composite": 71.84918963977991,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "expire_signal_test.go",
+      "functions": 6,
+      "composite": 74.40140202145803,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "testing_helpers.go",
+      "functions": 1,
+      "composite": 66.50656023353615,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "LoDChain",
+        "Composable"
+      ]
+    },
+    {
+      "file": "types.go",
+      "functions": 1,
+      "composite": 68.25991937224347,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "CRP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 24
+    },
+    {
+      "principle": "Creator",
+      "count": 16
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 6
+    }
+  ]
+}

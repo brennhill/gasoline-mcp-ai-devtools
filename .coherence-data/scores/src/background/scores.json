@@ -1,0 +1,393 @@
+{
+  "directory": "src/background",
+  "composite": 70.45469208262416,
+  "grade": "B",
+  "total_functions": 245,
+  "files": [
+    {
+      "file": "analytics.ts",
+      "functions": 11,
+      "composite": 67.74010124342195,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "analyze-feature-gates.ts",
+      "functions": 1,
+      "composite": 50.708150984870706,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "batcher-instances.ts",
+      "functions": 2,
+      "composite": 68.55032960458442,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "batchers.ts",
+      "functions": 2,
+      "composite": 68.1595335015412,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "browser-actions.ts",
+      "functions": 11,
+      "composite": 67.78617643736457,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "cache-limits.ts",
+      "functions": 14,
+      "composite": 74.42723765239032,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "circuit-breaker.ts",
+      "functions": 1,
+      "composite": 59.93842416985239,
+      "grade": "C",
+      "weak_principles": [
+        "Cognitive",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "content-fallback-scripts.ts",
+      "functions": 5,
+      "composite": 78.12889692776153,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "context-menus.ts",
+      "functions": 4,
+      "composite": 66.1040789743589,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "context-monitor.ts",
+      "functions": 4,
+      "composite": 75.97855494964438,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "draw-mode-toggle.ts",
+      "functions": 1,
+      "composite": 67.73677807931739,
+      "grade": "B",
+      "weak_principles": [
+        "LoDChain",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "error-groups.ts",
+      "functions": 7,
+      "composite": 77.30848035631948,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "event-listeners.ts",
+      "functions": 8,
+      "composite": 68.54164286473774,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "index.ts",
+      "functions": 15,
+      "composite": 67.97152670544533,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "init.ts",
+      "functions": 2,
+      "composite": 58.64940066955694,
+      "grade": "C",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "keyboard-shortcuts.ts",
+      "functions": 5,
+      "composite": 67.18832422864132,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "log-formatting.ts",
+      "functions": 3,
+      "composite": 80.54837368816159,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "message-handlers.ts",
+      "functions": 16,
+      "composite": 69.04029265359279,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "pending-queries.ts",
+      "functions": 1,
+      "composite": 73.68200301587778,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "processing-queries.ts",
+      "functions": 5,
+      "composite": 71.60543242766872,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "push-handler.ts",
+      "functions": 7,
+      "composite": 68.47088442840838,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "query-execution.ts",
+      "functions": 4,
+      "composite": 64.2855335564276,
+      "grade": "C",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "screenshot-capture.ts",
+      "functions": 1,
+      "composite": 61.97593151847085,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "server.ts",
+      "functions": 10,
+      "composite": 67.3657992271985,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "source-map-resolver.ts",
+      "functions": 12,
+      "composite": 73.04021430913993,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "state-manager.ts",
+      "functions": 3,
+      "composite": 79.03135710049753,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "state-snapshots.ts",
+      "functions": 4,
+      "composite": 66.28616079536678,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "state.ts",
+      "functions": 29,
+      "composite": 74.65764816573812,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "sync-client.ts",
+      "functions": 23,
+      "composite": 69.79263999951401,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "sync-manager.ts",
+      "functions": 3,
+      "composite": 64.38413721790461,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "tab-state.ts",
+      "functions": 14,
+      "composite": 68.88834984280683,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "upload-handler.ts",
+      "functions": 10,
+      "composite": 68.06273961157281,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "version-check.ts",
+      "functions": 7,
+      "composite": 74.03336058796451,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 36
+    },
+    {
+      "principle": "DeadCode",
+      "count": 33
+    },
+    {
+      "principle": "LoD",
+      "count": 10
+    },
+    {
+      "principle": "Indirection",
+      "count": 7
+    },
+    {
+      "principle": "Idiomatic",
+      "count": 2
+    }
+  ]
+}

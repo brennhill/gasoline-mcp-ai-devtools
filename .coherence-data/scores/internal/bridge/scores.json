@@ -1,0 +1,80 @@
+{
+  "directory": "internal/bridge",
+  "composite": 70.30684581062997,
+  "grade": "B",
+  "total_functions": 26,
+  "files": [
+    {
+      "file": "conn.go",
+      "functions": 4,
+      "composite": 68.43275447444906,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "conn_test.go",
+      "functions": 10,
+      "composite": 70.13626263069912,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stdio.go",
+      "functions": 3,
+      "composite": 67.40851939488384,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "stdio_test.go",
+      "functions": 5,
+      "composite": 76.6719251738705,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "timeout.go",
+      "functions": 2,
+      "composite": 67.44793178979968,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "timeout_test.go",
+      "functions": 2,
+      "composite": 66.20164961899417,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 10
+    }
+  ]
+}

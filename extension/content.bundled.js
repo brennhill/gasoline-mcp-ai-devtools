@@ -511,7 +511,7 @@
     cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS);
   }
 
-  // extension/content/message-forwarding.js
+  // extension/content/window-message-listener.js
   var MESSAGE_MAP = {
     gasoline_log: "log",
     gasoline_ws: "ws_event",
@@ -532,8 +532,6 @@
       }
     }
   }
-
-  // extension/content/window-message-listener.js
   var RESPONSE_HANDLERS = {
     gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
     gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
@@ -2005,21 +2003,21 @@
     }
     const flameFrames = [
       "icon-flicker-1-tiny.svg",
-      // 85% - dark red/orange (coolest) + small dark ring
-      "icon-flicker-2-small.svg",
-      // 92% - orange + small orange ring
-      "icon-flicker-3-normal.svg",
-      // 100% - orange-yellow (base) + medium orange ring
-      "icon-flicker-4-medium.svg",
-      // 105% - yellow + medium yellow ring
-      "icon-flicker-5-large.svg",
-      // 112% - yellow/white (PEAK - hottest) + large bright ring
-      "icon-flicker-6-medium.svg",
-      // 105% - yellow + medium yellow ring (shrinking)
+      // resting/cool - base colors, low glow
+      "icon-flicker-2-smallmed.svg",
+      // warming - slightly warmer, wider
+      "icon-flicker-3-medium.svg",
+      // hot - warm colors, bright glow
+      "icon-flicker-4-large.svg",
+      // peak - hottest, widest, brightest
+      "icon-flicker-5-medlarge.svg",
+      // cooling - warm but narrowing
+      "icon-flicker-6-small.svg",
+      // cool - back to base
       "icon-flicker-7-smallmed.svg",
-      // 96% - orange-yellow + medium ring
+      // secondary pulse - slight warmth
       "icon-flicker-8-small.svg"
-      // 92% - orange + small orange ring (back to small)
+      // settling - near base
     ];
     let currentFrameIndex = 0;
     flickerInterval = window.setInterval(() => {

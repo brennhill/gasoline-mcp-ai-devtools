@@ -1,0 +1,29 @@
+{
+  "directory": "src/offscreen",
+  "composite": 72.76247285271059,
+  "grade": "B",
+  "total_functions": 2,
+  "files": [
+    {
+      "file": "recording-worker.ts",
+      "functions": 2,
+      "composite": 72.76247285271059,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Cognitive",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <filter id="glC" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+  <!-- Triangle prism -->
+  <polygon points="40,88 64,32 88,88" fill="none" stroke="#fb923c" stroke-width="2.5" opacity="0.8"/>
+  <!-- Three rays splitting out of prism to the right -->
+  <g filter="url(#glC)">
+    <line x1="76" y1="60" x2="118" y2="38" stroke="#f97316" stroke-width="4" stroke-linecap="butt"/>
+    <line x1="80" y1="68" x2="120" y2="64" stroke="#fbbf24" stroke-width="3" stroke-linecap="butt"/>
+    <line x1="76" y1="76" x2="118" y2="90" stroke="#fde047" stroke-width="2" stroke-linecap="butt"/>
+  </g>
+  <!-- Single beam entering prism from left -->
+  <line x1="10" y1="64" x2="52" y2="64" stroke="#fef3c7" stroke-width="2" stroke-linecap="butt" opacity="0.5"/>
+</svg>

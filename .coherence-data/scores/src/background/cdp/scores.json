@@ -1,0 +1,59 @@
+{
+  "directory": "src/background/cdp",
+  "composite": 72.18404102287904,
+  "grade": "B",
+  "total_functions": 18,
+  "files": [
+    {
+      "file": "dispatch.ts",
+      "functions": 14,
+      "composite": 73.38191269427922,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "element-resolve.ts",
+      "functions": 3,
+      "composite": 65.6882961753206,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "key-mappings.ts",
+      "functions": 1,
+      "composite": 74.9010721659517,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "REP",
+        "SAP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 2
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

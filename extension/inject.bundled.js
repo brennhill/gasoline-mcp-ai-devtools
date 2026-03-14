@@ -2335,116 +2335,7 @@ function resetForTesting() {
   }
 }
 
-// extension/lib/dom-queries.js
-async function executeDOMQuery(params) {
-  const { selector, include_styles, properties, include_children, max_depth } = params;
-  const elements = document.querySelectorAll(selector);
-  const matchCount = elements.length;
-  const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH);
-  const matches = [];
-  for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
-    const el = elements[i];
-    if (!el)
-      continue;
-    const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0);
-    matches.push(entry);
-  }
-  return {
-    url: window.location.href,
-    title: document.title,
-    matchCount,
-    returnedCount: matches.length,
-    matches
-  };
-}
-function collectAttributes(el) {
-  if (!el.attributes || el.attributes.length === 0)
-    return void 0;
-  const attrs = {};
-  for (const attr of el.attributes) {
-    attrs[attr.name] = attr.value;
-  }
-  return attrs;
-}
-function collectBoundingBox(el) {
-  if (!el.getBoundingClientRect)
-    return void 0;
-  const rect = el.getBoundingClientRect();
-  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-}
-function collectStyles(el, includeStyles, styleProps) {
-  if (!includeStyles || typeof window.getComputedStyle !== "function")
-    return void 0;
-  const computed = window.getComputedStyle(el);
-  if (styleProps && styleProps.length > 0) {
-    const styles = {};
-    for (const prop of styleProps) {
-      styles[prop] = computed.getPropertyValue(prop);
-    }
-    return styles;
-  }
-  return { display: computed.display, color: computed.color, position: computed.position };
-}
-function collectChildren(el, includeChildren, maxDepth, currentDepth) {
-  if (!includeChildren || currentDepth >= maxDepth || !el.children || el.children.length === 0)
-    return void 0;
-  const children = [];
-  const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
-  for (let i = 0; i < maxChildren; i++) {
-    const child = el.children[i];
-    if (child) {
-      children.push(serializeDOMElement(child, false, void 0, true, maxDepth, currentDepth + 1));
-    }
-  }
-  return children;
-}
-function serializeDOMElement(el, includeStyles, styleProps, includeChildren, maxDepth, currentDepth) {
-  const entry = {
-    tag: el.tagName ? el.tagName.toLowerCase() : "",
-    text: (el.textContent || "").slice(0, DOM_QUERY_MAX_TEXT),
-    visible: el.offsetParent !== null || el.getBoundingClientRect && el.getBoundingClientRect().width > 0
-  };
-  entry.attributes = collectAttributes(el);
-  entry.boundingBox = collectBoundingBox(el);
-  entry.styles = collectStyles(el, includeStyles, styleProps);
-  entry.children = collectChildren(el, includeChildren, maxDepth, currentDepth);
-  return entry;
-}
-async function getPageInfo() {
-  const headings = [];
-  const headingEls = document.querySelectorAll("h1,h2,h3,h4,h5,h6");
-  for (const h of headingEls) {
-    headings.push((h.textContent || "").slice(0, DOM_QUERY_MAX_TEXT));
-  }
-  const forms = [];
-  const formEls = document.querySelectorAll("form");
-  for (const form of formEls) {
-    const fields = [];
-    const inputs = form.querySelectorAll("input,select,textarea");
-    for (const input of inputs) {
-      const inputEl = input;
-      if (inputEl.name)
-        fields.push(inputEl.name);
-    }
-    forms.push({
-      id: form.id || void 0,
-      action: form.action || void 0,
-      fields
-    });
-  }
-  return {
-    url: window.location.href,
-    title: document.title,
-    viewport: { width: window.innerWidth, height: window.innerHeight },
-    scroll: { x: window.scrollX, y: window.scrollY },
-    documentHeight: document.documentElement.scrollHeight,
-    headings,
-    links: document.querySelectorAll("a").length,
-    images: document.querySelectorAll("img").length,
-    interactiveElements: document.querySelectorAll("button,input,select,textarea,a[href]").length,
-    forms
-  };
-}
+// extension/lib/a11y-audit.js
 function loadAxeCore() {
   return new Promise((resolve, reject) => {
     const hasAxe = () => typeof window !== "undefined" && !!window.axe;
@@ -2548,6 +2439,119 @@ function formatAxeResults(axeResult) {
       inapplicable: (axeResult.inapplicable || []).length
     }
   };
+}
+
+// extension/lib/page-info.js
+async function getPageInfo() {
+  const headings = [];
+  const headingEls = document.querySelectorAll("h1,h2,h3,h4,h5,h6");
+  for (const h of headingEls) {
+    headings.push((h.textContent || "").slice(0, DOM_QUERY_MAX_TEXT));
+  }
+  const forms = [];
+  const formEls = document.querySelectorAll("form");
+  for (const form of formEls) {
+    const fields = [];
+    const inputs = form.querySelectorAll("input,select,textarea");
+    for (const input of inputs) {
+      const inputEl = input;
+      if (inputEl.name)
+        fields.push(inputEl.name);
+    }
+    forms.push({
+      id: form.id || void 0,
+      action: form.action || void 0,
+      fields
+    });
+  }
+  return {
+    url: window.location.href,
+    title: document.title,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    documentHeight: document.documentElement.scrollHeight,
+    headings,
+    links: document.querySelectorAll("a").length,
+    images: document.querySelectorAll("img").length,
+    interactiveElements: document.querySelectorAll("button,input,select,textarea,a[href]").length,
+    forms
+  };
+}
+
+// extension/lib/dom-queries.js
+async function executeDOMQuery(params) {
+  const { selector, include_styles, properties, include_children, max_depth } = params;
+  const elements = document.querySelectorAll(selector);
+  const matchCount = elements.length;
+  const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH);
+  const matches = [];
+  for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
+    const el = elements[i];
+    if (!el)
+      continue;
+    const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0);
+    matches.push(entry);
+  }
+  return {
+    url: window.location.href,
+    title: document.title,
+    matchCount,
+    returnedCount: matches.length,
+    matches
+  };
+}
+function collectAttributes(el) {
+  if (!el.attributes || el.attributes.length === 0)
+    return void 0;
+  const attrs = {};
+  for (const attr of el.attributes) {
+    attrs[attr.name] = attr.value;
+  }
+  return attrs;
+}
+function collectBoundingBox(el) {
+  if (!el.getBoundingClientRect)
+    return void 0;
+  const rect = el.getBoundingClientRect();
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+function collectStyles(el, includeStyles, styleProps) {
+  if (!includeStyles || typeof window.getComputedStyle !== "function")
+    return void 0;
+  const computed = window.getComputedStyle(el);
+  if (styleProps && styleProps.length > 0) {
+    const styles = {};
+    for (const prop of styleProps) {
+      styles[prop] = computed.getPropertyValue(prop);
+    }
+    return styles;
+  }
+  return { display: computed.display, color: computed.color, position: computed.position };
+}
+function collectChildren(el, includeChildren, maxDepth, currentDepth) {
+  if (!includeChildren || currentDepth >= maxDepth || !el.children || el.children.length === 0)
+    return void 0;
+  const children = [];
+  const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
+  for (let i = 0; i < maxChildren; i++) {
+    const child = el.children[i];
+    if (child) {
+      children.push(serializeDOMElement(child, false, void 0, true, maxDepth, currentDepth + 1));
+    }
+  }
+  return children;
+}
+function serializeDOMElement(el, includeStyles, styleProps, includeChildren, maxDepth, currentDepth) {
+  const entry = {
+    tag: el.tagName ? el.tagName.toLowerCase() : "",
+    text: (el.textContent || "").slice(0, DOM_QUERY_MAX_TEXT),
+    visible: el.offsetParent !== null || el.getBoundingClientRect && el.getBoundingClientRect().width > 0
+  };
+  entry.attributes = collectAttributes(el);
+  entry.boundingBox = collectBoundingBox(el);
+  entry.styles = collectStyles(el, includeStyles, styleProps);
+  entry.children = collectChildren(el, includeChildren, maxDepth, currentDepth);
+  return entry;
 }
 
 // extension/inject/api.js

@@ -1,0 +1,536 @@
+{
+  "directory": "internal/security",
+  "composite": 75.59622203493171,
+  "grade": "B",
+  "total_functions": 417,
+  "files": [
+    {
+      "file": "csp_generate.go",
+      "functions": 4,
+      "composite": 69.17191267496273,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "csp_helpers.go",
+      "functions": 16,
+      "composite": 77.1027730847456,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "csp_store.go",
+      "functions": 5,
+      "composite": 77.03754838686862,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "LoDChain",
+        "ADP"
+      ]
+    },
+    {
+      "file": "csp_test.go",
+      "functions": 47,
+      "composite": 78.42306833859891,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "csp_tooling.go",
+      "functions": 3,
+      "composite": 70.62686866286754,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "security_boundary_test.go",
+      "functions": 15,
+      "composite": 74.67311001408966,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_checks_cookies.go",
+      "functions": 2,
+      "composite": 68.85014605363395,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_checks_headers.go",
+      "functions": 3,
+      "composite": 68.07308405995796,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "security_checks_pii.go",
+      "functions": 9,
+      "composite": 73.62408060766427,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_checks_transport_auth.go",
+      "functions": 2,
+      "composite": 74.40059378070774,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_config_audit.go",
+      "functions": 3,
+      "composite": 75.01396168571044,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "security_config_mode.go",
+      "functions": 3,
+      "composite": 75.08761697922229,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "security_config_path_test.go",
+      "functions": 2,
+      "composite": 70.06682998778007,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "security_config_policy.go",
+      "functions": 8,
+      "composite": 71.58709124283826,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "security_config_unit_test.go",
+      "functions": 4,
+      "composite": 69.70000265662426,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "security_cookie_parse.go",
+      "functions": 2,
+      "composite": 68.82329783706848,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_coverage_part2_test.go",
+      "functions": 39,
+      "composite": 74.75004463035758,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_coverage_test.go",
+      "functions": 43,
+      "composite": 72.44503509993639,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_credentials_helpers.go",
+      "functions": 3,
+      "composite": 77.05896991376119,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "security_credentials_patterns.go",
+      "functions": 1,
+      "composite": 74.54345496989346,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_credentials_scan.go",
+      "functions": 6,
+      "composite": 73.57632198013803,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "security_diff.go",
+      "functions": 1,
+      "composite": 84.63435225425917,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "security_diff_compare.go",
+      "functions": 7,
+      "composite": 78.67973379812,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_diff_helpers_headers_cookies.go",
+      "functions": 5,
+      "composite": 74.9192891906881,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_diff_helpers_maps_urls.go",
+      "functions": 10,
+      "composite": 77.77989793669535,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "security_diff_helpers_summary.go",
+      "functions": 2,
+      "composite": 78.27547657372361,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_diff_snapshot.go",
+      "functions": 12,
+      "composite": 74.156922603941,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_diff_test.go",
+      "functions": 24,
+      "composite": 79.6026731395147,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_diff_tool.go",
+      "functions": 1,
+      "composite": 78.21387687956364,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_flagging.go",
+      "functions": 1,
+      "composite": 73.92255295925526,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_flagging_detectors.go",
+      "functions": 6,
+      "composite": 68.95401194512202,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "security_flagging_distance.go",
+      "functions": 2,
+      "composite": 85.0969422775962,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "DIP"
+      ]
+    },
+    {
+      "file": "security_flagging_test.go",
+      "functions": 17,
+      "composite": 69.88574322615311,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_flagging_unit_test.go",
+      "functions": 3,
+      "composite": 70.54482731548174,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "security_network_findings.go",
+      "functions": 3,
+      "composite": 83.27307612995635,
+      "grade": "A",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "security_scan.go",
+      "functions": 3,
+      "composite": 72.29112581288881,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "security_summary_filters.go",
+      "functions": 3,
+      "composite": 76.61805073639657,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_test.go",
+      "functions": 49,
+      "composite": 76.0831458588049,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_types.go",
+      "functions": 1,
+      "composite": 78.08230360143983,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_unit_test.go",
+      "functions": 11,
+      "composite": 72.68115130321786,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "security_url_helpers.go",
+      "functions": 4,
+      "composite": 67.81693799110253,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "sri_generate.go",
+      "functions": 7,
+      "composite": 73.46537100890465,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "sri_helpers.go",
+      "functions": 3,
+      "composite": 72.60552538604466,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "sri_test.go",
+      "functions": 20,
+      "composite": 87.14402585168342,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "sri_tooling.go",
+      "functions": 1,
+      "composite": 83.98305604630188,
+      "grade": "A",
+      "weak_principles": [
+        "Predictable",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "sri_types.go",
+      "functions": 1,
+      "composite": 86.92365437663672,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 92
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 30
+    },
+    {
+      "principle": "Indirection",
+      "count": 11
+    },
+    {
+      "principle": "LoD",
+      "count": 7
+    },
+    {
+      "principle": "DeadCode",
+      "count": 2
+    }
+  ]
+}

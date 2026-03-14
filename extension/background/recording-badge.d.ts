@@ -1,8 +1,6 @@
 /**
- * Purpose: Owns the recording badge timer lifecycle for the extension action icon.
- * Why: Keep badge behavior consistent across popup, keyboard, context menu, and MCP recording entry points.
- * Docs: docs/features/feature/tab-recording/index.md
+ * Purpose: Re-exports recording badge functions from recording-utils.ts for backward compatibility.
+ * @deprecated Import from './recording-utils.js' instead.
  */
-export declare function startRecordingBadgeTimer(startTime: number): void;
-export declare function stopRecordingBadgeTimer(): void;
+export { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-utils.js';
 //# sourceMappingURL=recording-badge.d.ts.map

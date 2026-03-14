@@ -1,0 +1,19 @@
+{
+  "directory": "packages/gasoline-playwright",
+  "composite": 78.15386410630995,
+  "grade": "B",
+  "total_functions": 2,
+  "files": [
+    {
+      "file": "index.js",
+      "functions": 2,
+      "composite": 78.15386410630995,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "LoDChain"
+      ]
+    }
+  ]
+}

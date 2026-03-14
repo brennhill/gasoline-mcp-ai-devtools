@@ -1,0 +1,29 @@
+{
+  "directory": "server/scripts",
+  "composite": 79.63263635470399,
+  "grade": "B",
+  "total_functions": 17,
+  "files": [
+    {
+      "file": "install.js",
+      "functions": 17,
+      "composite": 79.63263635470399,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

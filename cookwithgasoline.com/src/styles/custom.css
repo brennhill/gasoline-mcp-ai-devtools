@@ -164,9 +164,7 @@ site-search kbd {
   width: var(--g-hero-flame-badge);
   height: var(--g-hero-flame-badge);
   transform: translateX(-50%);
-  transform-origin: 50% 100%;
-  background: url('/images/flame-flicker/icon-flicker-3-normal.svg') 50% 98% / 100% 100% no-repeat;
-  animation: gmodern-flame-frame 1.2s steps(1, end) infinite;
+  background: url('/images/strum-logo.svg') center/contain no-repeat;
 }
 
 .hero h1 {
@@ -261,23 +259,23 @@ site-search kbd {
   }
 
   12.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-2-small.svg');
+    background-image: url('/images/flame-flicker/icon-flicker-2-smallmed.svg');
   }
 
   25% {
-    background-image: url('/images/flame-flicker/icon-flicker-3-normal.svg');
+    background-image: url('/images/flame-flicker/icon-flicker-3-medium.svg');
   }
 
   37.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-4-medium.svg');
+    background-image: url('/images/flame-flicker/icon-flicker-4-large.svg');
   }
 
   50% {
-    background-image: url('/images/flame-flicker/icon-flicker-5-large.svg');
+    background-image: url('/images/flame-flicker/icon-flicker-5-medlarge.svg');
   }
 
   62.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-6-medium.svg');
+    background-image: url('/images/flame-flicker/icon-flicker-6-small.svg');
   }
 
   75% {

@@ -1,0 +1,162 @@
+{
+  "directory": "internal/annotation",
+  "composite": 69.22495903459085,
+  "grade": "B",
+  "total_functions": 119,
+  "files": [
+    {
+      "file": "named_test.go",
+      "functions": 17,
+      "composite": 68.36615523083995,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "store.go",
+      "functions": 4,
+      "composite": 70.6934259563628,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "store_cleanup.go",
+      "functions": 2,
+      "composite": 65.3324790159954,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "store_clear.go",
+      "functions": 1,
+      "composite": 65.90134713698329,
+      "grade": "B",
+      "weak_principles": [
+        "LoDChain",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "store_details.go",
+      "functions": 4,
+      "composite": 72.84398135799495,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "store_named.go",
+      "functions": 7,
+      "composite": 69.44489336029237,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "store_results.go",
+      "functions": 5,
+      "composite": 67.2517348986971,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "store_results_test.go",
+      "functions": 13,
+      "composite": 69.82583215205506,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "store_sessions.go",
+      "functions": 8,
+      "composite": 69.4328433879535,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "store_sessions_test.go",
+      "functions": 2,
+      "composite": 67.06529248068026,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "store_test.go",
+      "functions": 54,
+      "composite": 69.43218807016513,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "store_wait.go",
+      "functions": 2,
+      "composite": 67.89465895973697,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "Predictable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 11
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 4
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

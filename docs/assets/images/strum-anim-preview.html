@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strum — Animation Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --g-ink: #eef2fb; --g-ink-soft: #dde5f2; --g-muted: #a8b3c6;
+      --g-bg: #0e141e; --g-surface: #172232; --g-border: #2f3d50;
+      --g-display: 'Space Grotesk', sans-serif; --g-body: 'DM Sans', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--g-body); color: var(--g-ink-soft);
+      background: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--g-ink-soft) 8%, transparent) 1px, transparent 0), var(--g-bg);
+      background-size: 14px 14px; min-height: 100vh; padding: 60px 40px;
+    }
+    h1 { font-family: var(--g-display); font-weight: 700; font-size: 2.5rem; color: var(--g-ink); text-align: center; margin-bottom: 8px; }
+    .subtitle { text-align: center; color: var(--g-muted); font-size: 1.1rem; margin-bottom: 20px; }
+    .note { text-align: center; color: var(--g-muted); font-size: 0.85rem; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    .section-label {
+      font-family: var(--g-display); font-weight: 600; font-size: 1.3rem; color: var(--g-ink);
+      text-align: center; margin: 50px auto 30px; max-width: 1200px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--g-border);
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 30px; max-width: 1200px; margin: 0 auto;
+    }
+    .card {
+      background: var(--g-surface); border: 1px solid var(--g-border); border-radius: 18px;
+      padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 18px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #f97316; }
+    .card h2 { font-family: var(--g-display); font-weight: 600; font-size: 0.95rem; color: var(--g-ink); }
+    .card p { color: var(--g-muted); font-size: 0.8rem; text-align: center; line-height: 1.5; }
+    .logo-container { width: 160px; height: 160px; }
+    .logo-container img { width: 100%; height: 100%; }
+
+    /* CSS-based animations */
+    .logo-anim { width: 160px; height: 160px; }
+    @keyframes strum-breathe {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.04); filter: brightness(1.2); }
+    }
+    .anim-breathe {
+      width: 100%; height: 100%;
+      background: url('strum-logo-d2-slash-circle.svg') center/contain no-repeat;
+      animation: strum-breathe 2s ease-in-out infinite;
+    }
+    @keyframes strum-heartbeat {
+      0%, 100% { transform: scale(1); }
+      10% { transform: scale(1.06); }
+      20% { transform: scale(0.98); }
+      30% { transform: scale(1.03); }
+      40% { transform: scale(1); }
+    }
+    .anim-heartbeat {
+      width: 100%; height: 100%;
+      background: url('strum-logo-d2-slash-circle.svg') center/contain no-repeat;
+      animation: strum-heartbeat 1.5s ease-in-out infinite;
+    }
+    @keyframes strum-ember {
+      0%, 100% { transform: translateY(0); filter: brightness(1) drop-shadow(0 0 4px #f9731600); }
+      25% { transform: translateY(-1px); filter: brightness(1.1) drop-shadow(0 0 8px #f9731644); }
+      50% { transform: translateY(0.5px); filter: brightness(1.25) drop-shadow(0 0 14px #f9731688); }
+      75% { transform: translateY(-0.5px); filter: brightness(1.1) drop-shadow(0 0 6px #f9731633); }
+    }
+    .anim-ember {
+      width: 100%; height: 100%;
+      background: url('strum-logo-d2-slash-circle.svg') center/contain no-repeat;
+      animation: strum-ember 2.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <h1>strum</h1>
+  <p class="subtitle">Animation concepts</p>
+  <p class="note">The gasoline flame works because it's frame-swapped (not interpolated), with glow + color temp + scale all changing per frame. These concepts explore that organic quality.</p>
+
+  <div class="section-label">Traveling light pulse (your idea)</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Pulse — Downward</h2>
+      <div class="logo-container"><img src="strum-lump-wave.svg" alt=""></div>
+      <p>Hot spot travels top-to-bottom, staggered across strings. 1.2s cycle.</p>
+    </div>
+    <div class="card">
+      <h2>Pulse — Slow</h2>
+      <div class="logo-container"><img src="strum-lump-wave-slow.svg" alt=""></div>
+      <p>Same but 2s cycle. More meditative.</p>
+    </div>
+    <div class="card">
+      <h2>Pulse — Wide Glow</h2>
+      <div class="logo-container"><img src="strum-lump-wide.svg" alt=""></div>
+      <p>Wider hot spot (25% of line). Softer wash.</p>
+    </div>
+    <div class="card">
+      <h2>Pulse — Upward</h2>
+      <div class="logo-container"><img src="strum-lump-upward.svg" alt=""></div>
+      <p>Pulse travels bottom-to-top. Rising energy.</p>
+    </div>
+  </div>
+
+  <div class="section-label">CSS-based (whole logo)</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Ember</h2>
+      <div class="logo-container"><img src="strum-ember-lines.svg" alt=""></div>
+      <p>Lines glow + color shift, drifting phase. Circle stays fixed.</p>
+    </div>
+    <div class="card">
+      <h2>Ember + Breathe</h2>
+      <div class="logo-container"><img src="strum-ember-breathe.svg" alt=""></div>
+      <p>Ember color shift + each line breathes (thickens) staggered via different durations.</p>
+    </div>
+    <div class="card">
+      <h2>Ember + Breathe (full)</h2>
+      <div class="logo-container"><img src="strum-ember-breathe-full.svg" alt=""></div>
+      <p>Same animation, all 3 lines span edge-to-edge across the circle.</p>
+    </div>
+    <div class="card">
+      <h2>Ember + Breathe (staggered)</h2>
+      <div class="logo-container"><img src="strum-ember-breathe-staggered.svg" alt=""></div>
+      <p>Outer lines shorter, middle spans full. Staggered length effect.</p>
+    </div>
+    <div class="card">
+      <h2>Heartbeat + Ember</h2>
+      <div class="logo-container"><img src="strum-heartbeat-ember.svg" alt=""></div>
+      <p>Double-beat per line + ember color shift. Timings matched per string.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Curved strings (reference image style)</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Curved — even (static)</h2>
+      <div class="logo-container"><img src="strum-logo-clean-vertical.svg" alt=""></div>
+      <p>Even-width curved tapered strings, our colors.</p>
+    </div>
+    <div class="card">
+      <h2>Curved — descending (static)</h2>
+      <div class="logo-container"><img src="strum-logo-clean-vertical-descending.svg" alt=""></div>
+      <p>Descending widths, same curved taper.</p>
+    </div>
+    <div class="card">
+      <h2>Curved — ember + breathe</h2>
+      <div class="logo-container"><img src="strum-logo-curved-ember-breathe.svg" alt=""></div>
+      <p>Ember + breathe, staggered (2.5/2.8/3.1s).</p>
+    </div>
+    <div class="card">
+      <h2>Curved — ember + breathe (fast)</h2>
+      <div class="logo-container"><img src="strum-logo-curved-ember-breathe-fast.svg" alt=""></div>
+      <p>Same effect, ~1.5s cycle.</p>
+    </div>
+    <div class="card">
+      <h2>Curved — ember + breathe (v.fast)</h2>
+      <div class="logo-container"><img src="strum-logo-curved-ember-breathe-vfast.svg" alt=""></div>
+      <p>Same effect, ~0.7s cycle.</p>
+    </div>
+  </div>
+
+  <div class="section-label">Static reference (D2 base)</div>
+  <div class="grid">
+    <div class="card">
+      <h2>D2 — No animation</h2>
+      <div class="logo-container"><img src="strum-logo-d2-slash-circle.svg" alt=""></div>
+      <p>The base logo for comparison.</p>
+    </div>
+  </div>
+</body>
+</html>

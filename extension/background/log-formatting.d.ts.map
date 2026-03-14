@@ -1,0 +1,1 @@
+{"version":3,"file":"log-formatting.d.ts","sourceRoot":"","sources":["../../src/background/log-formatting.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,mBAAmB,CAAA;AAyBjD;;GAEG;AACH,wBAAgB,cAAc,CAAC,KAAK,EAAE,QAAQ,GAAG,QAAQ,CAYxD;AAED;;GAEG;AACH,wBAAgB,gBAAgB,CAAC,QAAQ,EAAE,MAAM,EAAE,WAAW,EAAE,MAAM,EAAE,OAAO,CAAC,EAAE,MAAM,GAAG,OAAO,CAUjG"}

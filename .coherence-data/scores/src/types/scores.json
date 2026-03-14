@@ -1,0 +1,36 @@
+{
+  "directory": "src/types",
+  "composite": 82.01424364998769,
+  "grade": "A",
+  "total_functions": 10,
+  "files": [
+    {
+      "file": "chrome.ts",
+      "functions": 5,
+      "composite": 82.83964805444182,
+      "grade": "A",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "utils.ts",
+      "functions": 5,
+      "composite": 81.18883924553357,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DeadCode"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 3
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "directory": "testgen",
+  "composite": 76.31485011526573,
+  "grade": "B",
+  "total_functions": 98,
+  "files": [
+    {
+      "file": "classify.go",
+      "functions": 7,
+      "composite": 83.61944214952925,
+      "grade": "A",
+      "weak_principles": [
+        "HighCohesion",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "classify_test.go",
+      "functions": 4,
+      "composite": 69.49858499730065,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "generate.go",
+      "functions": 10,
+      "composite": 77.55377541506532,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "generate_test.go",
+      "functions": 30,
+      "composite": 78.99656898620931,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "heal_batch.go",
+      "functions": 6,
+      "composite": 74.59816347581481,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "heal_paths.go",
+      "functions": 3,
+      "composite": 78.86315332710558,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "heal_repair.go",
+      "functions": 4,
+      "composite": 79.49895905066666,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "SAP"
+      ]
+    },
+    {
+      "file": "heal_selectors.go",
+      "functions": 5,
+      "composite": 74.54263404367525,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "heal_summary.go",
+      "functions": 1,
+      "composite": 64.8978573168733,
+      "grade": "C",
+      "weak_principles": [
+        "Predictable",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "heal_test.go",
+      "functions": 8,
+      "composite": 70.59023272151653,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "helpers.go",
+      "functions": 8,
+      "composite": 79.57103624719632,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "helpers_test.go",
+      "functions": 12,
+      "composite": 69.08454968328188,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "CRP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 14
+    },
+    {
+      "principle": "LoD",
+      "count": 5
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

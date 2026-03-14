@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <filter id="glE" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <polygon points="64,5 117,34.5 117,93.5 64,123 11,93.5 11,34.5" fill="#1a1a1a"/>
+  <!-- Three nested hexagons, each rotated slightly -->
+  <g filter="url(#glE)">
+    <polygon points="64,18 104,41 104,87 64,110 24,87 24,41" fill="none" stroke="#f97316" stroke-width="4"/>
+    <g transform="rotate(10, 64, 64)">
+      <polygon points="64,28 94,47.5 94,80.5 64,100 34,80.5 34,47.5" fill="none" stroke="#fbbf24" stroke-width="3"/>
+    </g>
+    <g transform="rotate(20, 64, 64)">
+      <polygon points="64,38 84,53 84,75 64,90 44,75 44,53" fill="none" stroke="#fde047" stroke-width="2"/>
+    </g>
+  </g>
+</svg>

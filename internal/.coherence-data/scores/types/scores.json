@@ -1,0 +1,41 @@
+{
+  "directory": "types",
+  "composite": 75.34242208660808,
+  "grade": "B",
+  "total_functions": 4,
+  "files": [
+    {
+      "file": "buffer.go",
+      "functions": 1,
+      "composite": 88.50457890935822,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "buffer_test.go",
+      "functions": 1,
+      "composite": 72.91612597318813,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "wire_enhanced_action_test.go",
+      "functions": 2,
+      "composite": 69.97449173194299,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "CRP"
+      ]
+    }
+  ]
+}

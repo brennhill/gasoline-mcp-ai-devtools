@@ -1,0 +1,66 @@
+{
+  "directory": "internal/state",
+  "composite": 71.32822643581244,
+  "grade": "B",
+  "total_functions": 74,
+  "files": [
+    {
+      "file": "paths.go",
+      "functions": 19,
+      "composite": 72.45084378432323,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "paths_coverage_test.go",
+      "functions": 48,
+      "composite": 71.1252869168059,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "paths_more_test.go",
+      "functions": 3,
+      "composite": 69.62848621165854,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "paths_test.go",
+      "functions": 4,
+      "composite": 69.70587342658044,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Indirection",
+      "count": 7
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

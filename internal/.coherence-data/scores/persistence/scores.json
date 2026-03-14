@@ -1,0 +1,158 @@
+{
+  "directory": "persistence",
+  "composite": 72.29456496201847,
+  "grade": "B",
+  "total_functions": 65,
+  "files": [
+    {
+      "file": "persistence_branches_test.go",
+      "functions": 3,
+      "composite": 75.65886386355953,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "persistence_context.go",
+      "functions": 4,
+      "composite": 72.23188915721943,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "persistence_crud.go",
+      "functions": 4,
+      "composite": 71.98458880754984,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Predictable",
+        "Composable"
+      ]
+    },
+    {
+      "file": "persistence_dirty.go",
+      "functions": 4,
+      "composite": 68.71421530128066,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "persistence_edge_test.go",
+      "functions": 19,
+      "composite": 74.52574410067875,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "persistence_handler.go",
+      "functions": 7,
+      "composite": 69.79422073817761,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "persistence_json_test.go",
+      "functions": 3,
+      "composite": 65.57361861840882,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "persistence_maintenance.go",
+      "functions": 1,
+      "composite": 71.0325435276684,
+      "grade": "B",
+      "weak_principles": [
+        "ISP",
+        "ProtectedVar",
+        "SAP"
+      ]
+    },
+    {
+      "file": "persistence_stats.go",
+      "functions": 3,
+      "composite": 69.80992535548334,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "Composable"
+      ]
+    },
+    {
+      "file": "persistence_store.go",
+      "functions": 7,
+      "composite": 70.64347849181866,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "REP"
+      ]
+    },
+    {
+      "file": "persistence_test.go",
+      "functions": 5,
+      "composite": 73.96379481693185,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "persistence_validation.go",
+      "functions": 5,
+      "composite": 74.87843516388982,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Predictable",
+        "SAP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 4
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "Creator",
+      "count": 1
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

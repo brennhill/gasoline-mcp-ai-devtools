@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g1" x1="22" y1="-2" x2="60" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316">
+        <animate attributeName="offset" values="-0.15;0.85" dur="2s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="5%" stop-color="#fef3c7">
+        <animate attributeName="offset" values="-0.1;0.9" dur="2s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="15%" stop-color="#f97316">
+        <animate attributeName="offset" values="0;1" dur="2s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="g2" x1="50" y1="16" x2="82" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fb923c">
+        <animate attributeName="offset" values="-0.15;0.85" dur="2s" begin="0.18s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="5%" stop-color="#fef3c7">
+        <animate attributeName="offset" values="-0.1;0.9" dur="2s" begin="0.18s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="15%" stop-color="#fb923c">
+        <animate attributeName="offset" values="0;1" dur="2s" begin="0.18s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="g3" x1="70" y1="16" x2="108" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24">
+        <animate attributeName="offset" values="-0.15;0.85" dur="2s" begin="0.36s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="5%" stop-color="#fef3c7">
+        <animate attributeName="offset" values="-0.1;0.9" dur="2s" begin="0.36s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="15%" stop-color="#fbbf24">
+        <animate attributeName="offset" values="0;1" dur="2s" begin="0.36s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <clipPath id="c"><circle cx="64" cy="64" r="59"/></clipPath>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+  <g clip-path="url(#c)" filter="url(#gl)">
+    <line x1="22" y1="-2" x2="60" y2="112" stroke="url(#g1)" stroke-width="12" stroke-linecap="butt"/>
+    <line x1="50" y1="16" x2="82" y2="112" stroke="url(#g2)" stroke-width="9" stroke-linecap="butt"/>
+    <line x1="70" y1="16" x2="108" y2="130" stroke="url(#g3)" stroke-width="6" stroke-linecap="butt"/>
+  </g>
+</svg>

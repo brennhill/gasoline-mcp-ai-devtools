@@ -14,8 +14,7 @@ import { installRecordingListeners } from './recording-listeners.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { getLocal, setLocals, removeLocal } from '../lib/storage-utils.js';
 import { delay } from '../lib/timeout-utils.js';
-import { buildRecordingToastLabel } from './recording-utils.js';
-import { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-badge.js';
+import { buildRecordingToastLabel, startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-utils.js';
 import { setTrackedTab } from './tab-state.js';
 const defaultState = {
     active: false,

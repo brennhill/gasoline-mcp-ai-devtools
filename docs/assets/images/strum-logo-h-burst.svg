@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <filter id="glH" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+  <!-- Three lines radiating from a shared origin point at bottom-left -->
+  <g filter="url(#glH)">
+    <line x1="24" y1="104" x2="108" y2="20" stroke="#f97316" stroke-width="5" stroke-linecap="butt"/>
+    <line x1="24" y1="104" x2="118" y2="50" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="butt"/>
+    <line x1="24" y1="104" x2="116" y2="82" stroke="#fde047" stroke-width="2" stroke-linecap="butt"/>
+  </g>
+</svg>

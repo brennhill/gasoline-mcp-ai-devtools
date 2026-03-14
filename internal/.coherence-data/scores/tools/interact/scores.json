@@ -1,0 +1,84 @@
+{
+  "directory": "tools/interact",
+  "composite": 78.51874287779758,
+  "grade": "B",
+  "total_functions": 56,
+  "files": [
+    {
+      "file": "selector.go",
+      "functions": 3,
+      "composite": 84.91481078900375,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "selector_test.go",
+      "functions": 20,
+      "composite": 81.69287857812512,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "state.go",
+      "functions": 2,
+      "composite": 81.88531764511482,
+      "grade": "A",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "state_test.go",
+      "functions": 18,
+      "composite": 77.06970366477292,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "workflow.go",
+      "functions": 5,
+      "composite": 71.05188102051805,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "workflow_test.go",
+      "functions": 8,
+      "composite": 75.27036135855255,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Predictable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 5
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

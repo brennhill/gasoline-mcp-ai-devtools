@@ -1,0 +1,426 @@
+{
+  "directory": "analysis",
+  "composite": 75.79923477719245,
+  "grade": "B",
+  "total_functions": 280,
+  "files": [
+    {
+      "file": "api_contract.go",
+      "functions": 1,
+      "composite": 83.06867505438397,
+      "grade": "A",
+      "weak_principles": [
+        "SAP",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_contract_analysis.go",
+      "functions": 10,
+      "composite": 69.11771840285128,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "api_contract_endpoint.go",
+      "functions": 1,
+      "composite": 72.5489345048549,
+      "grade": "B",
+      "weak_principles": [
+        "Predictable",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "api_contract_learning.go",
+      "functions": 6,
+      "composite": 78.95201314017729,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_contract_test.go",
+      "functions": 50,
+      "composite": 73.37917558096593,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "api_contract_validation.go",
+      "functions": 5,
+      "composite": 76.8788223036236,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "Predictable"
+      ]
+    },
+    {
+      "file": "api_contract_violations.go",
+      "functions": 9,
+      "composite": 73.6092932847261,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema.go",
+      "functions": 2,
+      "composite": 72.97162488267047,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "LoDChain",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema_builder.go",
+      "functions": 3,
+      "composite": 70.71465596030001,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "api_schema_builder_auth.go",
+      "functions": 3,
+      "composite": 73.84050268874373,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema_builder_endpoints.go",
+      "functions": 5,
+      "composite": 77.51681103267599,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "api_schema_builder_openapi.go",
+      "functions": 8,
+      "composite": 74.86864840845766,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "api_schema_builder_unit_test.go",
+      "functions": 7,
+      "composite": 75.58971460691666,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "api_schema_builder_ws_timing.go",
+      "functions": 3,
+      "composite": 75.24413027989799,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema_coverage_test.go",
+      "functions": 23,
+      "composite": 80.00003015413968,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "api_schema_infer.go",
+      "functions": 3,
+      "composite": 71.46127487221037,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema_observe_http.go",
+      "functions": 11,
+      "composite": 79.62817254776974,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "api_schema_observe_ws.go",
+      "functions": 4,
+      "composite": 73.14735894488008,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "api_schema_path.go",
+      "functions": 1,
+      "composite": 72.84009105586088,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "api_schema_unit_test.go",
+      "functions": 2,
+      "composite": 72.95619028618735,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "binary_integration_test.go",
+      "functions": 6,
+      "composite": 81.83066239800779,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "Creator",
+        "ADP"
+      ]
+    },
+    {
+      "file": "branch_coverage_test.go",
+      "functions": 7,
+      "composite": 70.29710305888706,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "clustering.go",
+      "functions": 4,
+      "composite": 75.50914409381001,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "clustering_cluster_ops.go",
+      "functions": 5,
+      "composite": 76.66499632877384,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "clustering_helpers_matching.go",
+      "functions": 4,
+      "composite": 76.02781131396877,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "clustering_helpers_normalize.go",
+      "functions": 1,
+      "composite": 71.93305911304849,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "SAP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "clustering_helpers_stack.go",
+      "functions": 7,
+      "composite": 76.93020350935504,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "clustering_state.go",
+      "functions": 5,
+      "composite": 69.14266100057458,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "clustering_test.go",
+      "functions": 26,
+      "composite": 81.04015917499873,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "clustering_unit_test.go",
+      "functions": 1,
+      "composite": 62.07476749599188,
+      "grade": "C",
+      "weak_principles": [
+        "Predictable",
+        "CRP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "thirdparty.go",
+      "functions": 3,
+      "composite": 74.82509071247941,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Creator",
+        "Composable"
+      ]
+    },
+    {
+      "file": "thirdparty_entries.go",
+      "functions": 9,
+      "composite": 75.1387777445297,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "thirdparty_origins.go",
+      "functions": 6,
+      "composite": 83.76946218826716,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "thirdparty_reputation.go",
+      "functions": 8,
+      "composite": 76.36244092939634,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "SAP"
+      ]
+    },
+    {
+      "file": "thirdparty_summary.go",
+      "functions": 8,
+      "composite": 78.7735010843309,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "thirdparty_test.go",
+      "functions": 23,
+      "composite": 73.15486414561674,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 69
+    },
+    {
+      "principle": "DeadCode",
+      "count": 17
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 14
+    },
+    {
+      "principle": "LoD",
+      "count": 8
+    },
+    {
+      "principle": "Indirection",
+      "count": 3
+    }
+  ]
+}

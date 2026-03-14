@@ -1,0 +1,69 @@
+{
+  "directory": "tools/generate",
+  "composite": 74.43787672825407,
+  "grade": "B",
+  "total_functions": 18,
+  "files": [
+    {
+      "file": "csp.go",
+      "functions": 4,
+      "composite": 75.71304609378184,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "csp_test.go",
+      "functions": 2,
+      "composite": 72.26761754257853,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "deps.go",
+      "functions": 1,
+      "composite": 86.80835420884382,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "test_script.go",
+      "functions": 6,
+      "composite": 70.15730199139232,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "test_script_test.go",
+      "functions": 5,
+      "composite": 76.94843909821822,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 2
+    }
+  ]
+}

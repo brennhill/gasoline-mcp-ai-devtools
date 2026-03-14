@@ -1,77 +1,53 @@
 /**
- * Purpose: CRUD operations for saving, loading, listing, and deleting browser state snapshots in chrome.storage.local.
- * Docs: docs/features/feature/state-time-travel/index.md
+ * Purpose: CRUD operations for browser state snapshots persisted to chrome.storage.
+ * Why: Separates snapshot persistence from message routing so each concern can evolve independently.
+ * Docs: docs/features/feature/interact-explore/index.md
  */
+import { getLocal, setLocal } from '../lib/storage-utils.js';
 // =============================================================================
-// CONSTANTS & TYPES
+// STATE SNAPSHOT STORAGE
 // =============================================================================
 const SNAPSHOT_KEY = 'gasoline_state_snapshots';
-// =============================================================================
-// CRUD OPERATIONS
-// =============================================================================
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export async function saveStateSnapshot(name, state) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
-            snapshots[name] = {
-                ...state,
-                name,
-                size_bytes: sizeBytes
-            };
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({
-                    success: true,
-                    snapshot_name: name,
-                    size_bytes: sizeBytes
-                });
-            });
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
+    snapshots[name] = { ...state, name, size_bytes: sizeBytes };
+    await setLocal(SNAPSHOT_KEY, snapshots);
+    return { success: true, snapshot_name: name, size_bytes: sizeBytes };
 }
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export async function loadStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            resolve(snapshots[name] || null);
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    return snapshots[name] || null;
 }
 /**
  * List all state snapshots with metadata
  */
 export async function listStateSnapshots() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const list = Object.values(snapshots).map((s) => ({
-                name: s.name,
-                url: s.url,
-                timestamp: s.timestamp,
-                size_bytes: s.size_bytes
-            }));
-            resolve(list);
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    return Object.values(snapshots).map((s) => ({
+        name: s.name,
+        url: s.url,
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes
+    }));
 }
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export async function deleteStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            delete snapshots[name];
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({ success: true, deleted: name });
-            });
-        });
-    });
+    const existing = (await getLocal(SNAPSHOT_KEY));
+    const snapshots = existing || {};
+    delete snapshots[name];
+    await setLocal(SNAPSHOT_KEY, snapshots);
+    return { success: true, deleted: name };
 }
 //# sourceMappingURL=state-snapshots.js.map

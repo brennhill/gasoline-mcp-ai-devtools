@@ -1,0 +1,135 @@
+{
+  "directory": "buffers",
+  "composite": 78.50904991977521,
+  "grade": "B",
+  "total_functions": 76,
+  "files": [
+    {
+      "file": "filter.go",
+      "functions": 1,
+      "composite": 75.5378048029047,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "CRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "filter_test.go",
+      "functions": 9,
+      "composite": 80.54256851387083,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "refactoring_verification_test.go",
+      "functions": 5,
+      "composite": 78.19569336519194,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "ring_buffer.go",
+      "functions": 13,
+      "composite": 74.71780471764437,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "ring_buffer_bench_test.go",
+      "functions": 6,
+      "composite": 78.65729496450386,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "ring_buffer_filter.go",
+      "functions": 4,
+      "composite": 74.7022349733193,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    },
+    {
+      "file": "ring_buffer_property_test.go",
+      "functions": 5,
+      "composite": 82.34849402405939,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ring_buffer_resolve_test.go",
+      "functions": 1,
+      "composite": 76.05474690177621,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "ring_buffer_slo_test.go",
+      "functions": 2,
+      "composite": 85.16999271009294,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ring_buffer_stress_test.go",
+      "functions": 3,
+      "composite": 76.94891990859183,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "ring_buffer_test.go",
+      "functions": 27,
+      "composite": 79.41556564709266,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 12
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+{
+  "directory": "scripts/docs",
+  "composite": 79.71595948775594,
+  "grade": "B",
+  "total_functions": 76,
+  "files": [
+    {
+      "file": "apply-source-headers.js",
+      "functions": 6,
+      "composite": 77.30728074982326,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "SAP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "check-content-style-contract.mjs",
+      "functions": 4,
+      "composite": 83.23360491437897,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "check-cookwithgasoline-content-contract.mjs",
+      "functions": 7,
+      "composite": 80.89632255226172,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "check-docs-quality-gates.mjs",
+      "functions": 4,
+      "composite": 81.42057450334589,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "check-downloads-page-contract.mjs",
+      "functions": 1,
+      "composite": 83.07744530062024,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "check-feature-bundles.js",
+      "functions": 4,
+      "composite": 79.15900052376084,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "check-feature-bundles.test.mjs",
+      "functions": 1,
+      "composite": 82.10041091042976,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "check-light-theme-contract.mjs",
+      "functions": 2,
+      "composite": 83.5720143167832,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "check-reference-schema-sync.mjs",
+      "functions": 6,
+      "composite": 78.35655752951028,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "check-site-content-ids.mjs",
+      "functions": 1,
+      "composite": 82.93060242249983,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "generate-reference-executable-examples.mjs",
+      "functions": 11,
+      "composite": 80.81078302989991,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "normalize-docs.js",
+      "functions": 11,
+      "composite": 77.40660378941071,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "normalize-site-tags.mjs",
+      "functions": 5,
+      "composite": 81.16336575476251,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "run-vale-on-changed.mjs",
+      "functions": 3,
+      "composite": 80.17804545048332,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "sync-feature-code-paths.js",
+      "functions": 5,
+      "composite": 78.49819146251743,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "HighCohesion",
+        "ADP"
+      ]
+    },
+    {
+      "file": "sync-verification-metadata.mjs",
+      "functions": 5,
+      "composite": 77.6834498088593,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 2
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "directory": "cookwithgasoline.com/scripts",
+  "composite": 78.05995942943166,
+  "grade": "B",
+  "total_functions": 3,
+  "files": [
+    {
+      "file": "third-party-ws-server.mjs",
+      "functions": 3,
+      "composite": 78.05995942943166,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "HighCohesion",
+        "Composable"
+      ]
+    }
+  ]
+}

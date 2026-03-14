@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="d1" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#f97316;#fde047;#f97316" dur="2.5s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fb923c;#fef3c7;#fb923c" dur="2.5s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="d2" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#fb923c;#fde047;#fb923c" dur="2.8s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fbbf24;#fef3c7;#fbbf24" dur="2.8s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="d3" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%">
+        <animate attributeName="stop-color" values="#fbbf24;#fef3c7;#fbbf24" dur="3.1s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%">
+        <animate attributeName="stop-color" values="#fde047;#fef3c7;#fde047" dur="3.1s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <clipPath id="cClip"><circle cx="64" cy="64" r="59"/></clipPath>
+    <filter id="gl-lo" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#444" stroke-width="2"/>
+  <g clip-path="url(#cClip)" filter="url(#gl-lo)">
+    <line x1="22" y1="-2" x2="60" y2="112" stroke="url(#d1)" stroke-width="12" stroke-linecap="butt">
+      <animate attributeName="stroke-width" values="12;16;10;15;12;12;12;12;12;12" keyTimes="0;0.1;0.2;0.3;0.4;0.5;0.6;0.7;0.8;1" dur="2.5s" repeatCount="indefinite"/>
+    </line>
+    <line x1="50" y1="16" x2="82" y2="112" stroke="url(#d2)" stroke-width="9" stroke-linecap="butt">
+      <animate attributeName="stroke-width" values="9;13;7;12;9;9;9;9;9;9" keyTimes="0;0.1;0.2;0.3;0.4;0.5;0.6;0.7;0.8;1" dur="2.8s" repeatCount="indefinite"/>
+    </line>
+    <line x1="70" y1="16" x2="108" y2="130" stroke="url(#d3)" stroke-width="6" stroke-linecap="butt">
+      <animate attributeName="stroke-width" values="6;10;4;9;6;6;6;6;6;6" keyTimes="0;0.1;0.2;0.3;0.4;0.5;0.6;0.7;0.8;1" dur="3.1s" repeatCount="indefinite"/>
+    </line>
+  </g>
+</svg>

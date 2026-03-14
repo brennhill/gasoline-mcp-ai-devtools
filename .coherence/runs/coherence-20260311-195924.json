@@ -1,0 +1,3664 @@
+{
+  "timestamp": "2026-03-11T19:59:07Z",
+  "commit_sha": "22fa3c48fffc6a6e70d9f85f9b892891a01cbd15",
+  "repo_path": "/Users/brenn/dev/gasoline",
+  "language": "ts",
+  "functions": 1202,
+  "files": 179,
+  "packages": 25,
+  "edges": 4655,
+  "blob_pct": 14.309484193011647,
+  "config_found": false,
+  "internal_only_shared_callees": false,
+  "shared_external_callee_weight": 1,
+  "max_component_size": 50,
+  "min_shared_callees": 2,
+  "clusters": 387,
+  "edges_internal": 1474,
+  "edges_dangling": 3181,
+  "edges_intra_cluster": 999,
+  "edges_inter_cluster": 475,
+  "modularity": 0.6777476255088195,
+  "god_nodes": 16,
+  "domain_coherence": 0.876803551609323,
+  "mechanism_coherence": 0.9400665926748057,
+  "role_coherence": 0.6021421659478875,
+  "multi_axis_score": 0.7917474136452912,
+  "health_score": 72.42191039175752,
+  "health_interpretation": {
+    "label": "structure-sensitive",
+    "reason": "recipe health covers 75.0% of functions with only a 0.0-point coverage gap vs multi-axis scoring",
+    "recipe_coverage_pct": 74.95840266222962,
+    "multi_axis_coverage_pct": 74.95840266222962,
+    "coverage_gap_pct": 0
+  },
+  "recipe": {
+    "core_engine": 0.7291897891231964,
+    "domain_logic": 0.006659267480577136,
+    "io_boundary": 0.19866814650388456,
+    "mixed": 0.058823529411764705,
+    "ui": 0.003329633740288568,
+    "utility": 0.003329633740288568
+  },
+  "recipe_funcs": {
+    "core_engine": 657,
+    "domain_logic": 6,
+    "io_boundary": 179,
+    "mixed": 53,
+    "ui": 3,
+    "utility": 3
+  },
+  "hierarchy": {
+    "families": {
+      "io": 182,
+      "mixed": 59,
+      "pure": 660
+    },
+    "positions": {
+      "@entry": 140,
+      "@mixed": 97,
+      "@private": 664
+    },
+    "subtypes": {
+      "database_io": 54,
+      "disk_io": 10,
+      "network_io": 115,
+      "orchestrator": 6,
+      "presentation": 3,
+      "stateful_compute": 514,
+      "stateless_compute": 146
+    }
+  },
+  "single_responsibility": 81,
+  "single_responsibility_pct": 94.18604651162791,
+  "measured_clusters": 86,
+  "measured_functions": 901,
+  "total_functions": 1202,
+  "recipe_coverage_pct": 74.95840266222962,
+  "multi_axis_coverage_pct": 74.95840266222962,
+  "closest_archetype": "crypto_library",
+  "archetype_conformance": 0.9767549700968282,
+  "archetype_distribution": {
+    "analyzer": 0.06892737319505324,
+    "build_tool": 0.08250201696554407,
+    "cli_tool": 0.05885682738622157,
+    "compiler": 0.05198027749342805,
+    "crypto_library": 0.06306310843114284,
+    "database_engine": 0.06499728029367098,
+    "embedded_driver": 0.04513114342289413,
+    "game_engine": 0.062373740970987086,
+    "language_server": 0.071473859260475,
+    "messaging": 0.05455407089318012,
+    "ml_framework": 0.054123610271480875,
+    "orm": 0.03467387682914766,
+    "scientific_computing": 0.0429533746812559,
+    "server_framework": 0.06223105025826812,
+    "test_framework": 0.04729479942961335,
+    "ui_framework": 0.05852942275494193,
+    "web_application": 0.07633416746269521
+  },
+  "fingerprint": {
+    "ast_parsing_ratio": 0.01913477537437604,
+    "complex_sig_ratio": 0.0016638935108153079,
+    "concurrency_density": 0.14559068219633942,
+    "database_io_ratio": 0.0956738768718802,
+    "disk_io_ratio": 0.056572379367720464,
+    "entry_point_ratio": 0.28286189683860236,
+    "event_driven_ratio": 0.22296173044925124,
+    "exported_ratio": 0.4683860232945091,
+    "framework_model_ratio": 0,
+    "io_function_ratio": 0.4658901830282862,
+    "library_ratio": 0.9242928452579035,
+    "long_running_ratio": 0.051580698835274545,
+    "mean_signature_width": 0.13743760399334443,
+    "network_io_ratio": 0.3119800332778702,
+    "orchestrator_ratio": 0.2562396006655574,
+    "parallel_ratio": 0,
+    "pipeline_process_ratio": 0.03577371048252912,
+    "stateful_ratio": 0.3785357737104825,
+    "test_visibility_ratio": 0.015806988352745424
+  },
+  "fingerprint_features": [
+    "io_function_ratio",
+    "network_io_ratio",
+    "disk_io_ratio",
+    "database_io_ratio",
+    "exported_ratio",
+    "orchestrator_ratio",
+    "entry_point_ratio",
+    "stateful_ratio",
+    "concurrency_density",
+    "mean_signature_width",
+    "complex_sig_ratio",
+    "library_ratio",
+    "long_running_ratio",
+    "parallel_ratio",
+    "ast_parsing_ratio",
+    "pipeline_process_ratio",
+    "event_driven_ratio",
+    "framework_model_ratio",
+    "test_visibility_ratio"
+  ],
+  "raw_sharpness": 0.27448590953732294,
+  "normalized_sharpness": 1,
+  "median_sharpness": 0.18761088113542282,
+  "isolated_clusters": 0,
+  "leaky_clusters": 71,
+  "boundary_details": [
+    {
+      "cluster_id": 764,
+      "size": 4,
+      "intra_edges": 0,
+      "boundary_edges": 44,
+      "sharpness": 0,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 731,
+      "size": 5,
+      "intra_edges": 0,
+      "boundary_edges": 6,
+      "sharpness": 0,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 165,
+      "size": 3,
+      "intra_edges": 0,
+      "boundary_edges": 16,
+      "sharpness": 0,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 139,
+      "size": 3,
+      "intra_edges": 0,
+      "boundary_edges": 23,
+      "sharpness": 0,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 131,
+      "size": 3,
+      "intra_edges": 0,
+      "boundary_edges": 9,
+      "sharpness": 0,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 376,
+      "size": 9,
+      "intra_edges": 1,
+      "boundary_edges": 591,
+      "sharpness": 0.0016891891891891893,
+      "surface_area": 9,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 219,
+      "size": 3,
+      "intra_edges": 1,
+      "boundary_edges": 20,
+      "sharpness": 0.047619047619047616,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 319,
+      "size": 4,
+      "intra_edges": 2,
+      "boundary_edges": 39,
+      "sharpness": 0.04878048780487805,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 239,
+      "size": 5,
+      "intra_edges": 2,
+      "boundary_edges": 32,
+      "sharpness": 0.058823529411764705,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 737,
+      "size": 7,
+      "intra_edges": 5,
+      "boundary_edges": 73,
+      "sharpness": 0.0641025641025641,
+      "surface_area": 7,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 573,
+      "size": 5,
+      "intra_edges": 2,
+      "boundary_edges": 26,
+      "sharpness": 0.07142857142857142,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 30,
+      "size": 4,
+      "intra_edges": 2,
+      "boundary_edges": 25,
+      "sharpness": 0.07407407407407407,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 44,
+      "size": 3,
+      "intra_edges": 1,
+      "boundary_edges": 12,
+      "sharpness": 0.07692307692307693,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 124,
+      "size": 3,
+      "intra_edges": 1,
+      "boundary_edges": 12,
+      "sharpness": 0.07692307692307693,
+      "surface_area": 2,
+      "surface_ratio": 0.6666666666666666
+    },
+    {
+      "cluster_id": 612,
+      "size": 4,
+      "intra_edges": 1,
+      "boundary_edges": 10,
+      "sharpness": 0.09090909090909091,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 47,
+      "size": 8,
+      "intra_edges": 3,
+      "boundary_edges": 30,
+      "sharpness": 0.09090909090909091,
+      "surface_area": 8,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 12,
+      "size": 26,
+      "intra_edges": 16,
+      "boundary_edges": 148,
+      "sharpness": 0.0975609756097561,
+      "surface_area": 26,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 506,
+      "size": 6,
+      "intra_edges": 4,
+      "boundary_edges": 37,
+      "sharpness": 0.0975609756097561,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 211,
+      "size": 5,
+      "intra_edges": 2,
+      "boundary_edges": 18,
+      "sharpness": 0.1,
+      "surface_area": 4,
+      "surface_ratio": 0.8
+    },
+    {
+      "cluster_id": 41,
+      "size": 3,
+      "intra_edges": 1,
+      "boundary_edges": 8,
+      "sharpness": 0.1111111111111111,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 57,
+      "size": 4,
+      "intra_edges": 3,
+      "boundary_edges": 24,
+      "sharpness": 0.1111111111111111,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 404,
+      "size": 12,
+      "intra_edges": 5,
+      "boundary_edges": 39,
+      "sharpness": 0.11363636363636363,
+      "surface_area": 11,
+      "surface_ratio": 0.9166666666666666
+    },
+    {
+      "cluster_id": 198,
+      "size": 3,
+      "intra_edges": 2,
+      "boundary_edges": 15,
+      "sharpness": 0.11764705882352941,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 193,
+      "size": 11,
+      "intra_edges": 9,
+      "boundary_edges": 66,
+      "sharpness": 0.12,
+      "surface_area": 10,
+      "surface_ratio": 0.9090909090909091
+    },
+    {
+      "cluster_id": 520,
+      "size": 3,
+      "intra_edges": 2,
+      "boundary_edges": 14,
+      "sharpness": 0.125,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 658,
+      "size": 3,
+      "intra_edges": 1,
+      "boundary_edges": 7,
+      "sharpness": 0.125,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 536,
+      "size": 3,
+      "intra_edges": 3,
+      "boundary_edges": 20,
+      "sharpness": 0.13043478260869565,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 529,
+      "size": 3,
+      "intra_edges": 2,
+      "boundary_edges": 13,
+      "sharpness": 0.13333333333333333,
+      "surface_area": 3,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 122,
+      "size": 28,
+      "intra_edges": 21,
+      "boundary_edges": 132,
+      "sharpness": 0.13725490196078433,
+      "surface_area": 24,
+      "surface_ratio": 0.8571428571428571
+    },
+    {
+      "cluster_id": 189,
+      "size": 5,
+      "intra_edges": 5,
+      "boundary_edges": 28,
+      "sharpness": 0.15151515151515152,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 258,
+      "size": 15,
+      "intra_edges": 13,
+      "boundary_edges": 71,
+      "sharpness": 0.15476190476190477,
+      "surface_area": 14,
+      "surface_ratio": 0.9333333333333333
+    },
+    {
+      "cluster_id": 416,
+      "size": 14,
+      "intra_edges": 12,
+      "boundary_edges": 64,
+      "sharpness": 0.15789473684210525,
+      "surface_area": 12,
+      "surface_ratio": 0.8571428571428571
+    },
+    {
+      "cluster_id": 153,
+      "size": 10,
+      "intra_edges": 9,
+      "boundary_edges": 46,
+      "sharpness": 0.16363636363636364,
+      "surface_area": 10,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 763,
+      "size": 3,
+      "intra_edges": 2,
+      "boundary_edges": 10,
+      "sharpness": 0.16666666666666666,
+      "surface_area": 2,
+      "surface_ratio": 0.6666666666666666
+    },
+    {
+      "cluster_id": 83,
+      "size": 6,
+      "intra_edges": 5,
+      "boundary_edges": 23,
+      "sharpness": 0.17857142857142858,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 713,
+      "size": 6,
+      "intra_edges": 5,
+      "boundary_edges": 23,
+      "sharpness": 0.17857142857142858,
+      "surface_area": 5,
+      "surface_ratio": 0.8333333333333334
+    },
+    {
+      "cluster_id": 111,
+      "size": 10,
+      "intra_edges": 7,
+      "boundary_edges": 31,
+      "sharpness": 0.18421052631578946,
+      "surface_area": 9,
+      "surface_ratio": 0.9
+    },
+    {
+      "cluster_id": 135,
+      "size": 17,
+      "intra_edges": 17,
+      "boundary_edges": 72,
+      "sharpness": 0.19101123595505617,
+      "surface_area": 14,
+      "surface_ratio": 0.8235294117647058
+    },
+    {
+      "cluster_id": 801,
+      "size": 7,
+      "intra_edges": 5,
+      "boundary_edges": 21,
+      "sharpness": 0.19230769230769232,
+      "surface_area": 6,
+      "surface_ratio": 0.8571428571428571
+    },
+    {
+      "cluster_id": 29,
+      "size": 6,
+      "intra_edges": 4,
+      "boundary_edges": 16,
+      "sharpness": 0.2,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 777,
+      "size": 12,
+      "intra_edges": 12,
+      "boundary_edges": 48,
+      "sharpness": 0.2,
+      "surface_area": 10,
+      "surface_ratio": 0.8333333333333334
+    },
+    {
+      "cluster_id": 78,
+      "size": 5,
+      "intra_edges": 4,
+      "boundary_edges": 16,
+      "sharpness": 0.2,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 71,
+      "size": 38,
+      "intra_edges": 42,
+      "boundary_edges": 161,
+      "sharpness": 0.20689655172413793,
+      "surface_area": 36,
+      "surface_ratio": 0.9473684210526315
+    },
+    {
+      "cluster_id": 548,
+      "size": 7,
+      "intra_edges": 11,
+      "boundary_edges": 42,
+      "sharpness": 0.20754716981132076,
+      "surface_area": 7,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 70,
+      "size": 5,
+      "intra_edges": 3,
+      "boundary_edges": 11,
+      "sharpness": 0.21428571428571427,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 524,
+      "size": 10,
+      "intra_edges": 9,
+      "boundary_edges": 32,
+      "sharpness": 0.21951219512195122,
+      "surface_area": 10,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 77,
+      "size": 5,
+      "intra_edges": 6,
+      "boundary_edges": 19,
+      "sharpness": 0.24,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 618,
+      "size": 6,
+      "intra_edges": 7,
+      "boundary_edges": 21,
+      "sharpness": 0.25,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 25,
+      "size": 6,
+      "intra_edges": 6,
+      "boundary_edges": 18,
+      "sharpness": 0.25,
+      "surface_area": 5,
+      "surface_ratio": 0.8333333333333334
+    },
+    {
+      "cluster_id": 636,
+      "size": 6,
+      "intra_edges": 5,
+      "boundary_edges": 15,
+      "sharpness": 0.25,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 162,
+      "size": 16,
+      "intra_edges": 21,
+      "boundary_edges": 61,
+      "sharpness": 0.25609756097560976,
+      "surface_area": 7,
+      "surface_ratio": 0.4375
+    },
+    {
+      "cluster_id": 7,
+      "size": 6,
+      "intra_edges": 5,
+      "boundary_edges": 14,
+      "sharpness": 0.2631578947368421,
+      "surface_area": 5,
+      "surface_ratio": 0.8333333333333334
+    },
+    {
+      "cluster_id": 32,
+      "size": 4,
+      "intra_edges": 4,
+      "boundary_edges": 11,
+      "sharpness": 0.26666666666666666,
+      "surface_area": 4,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 664,
+      "size": 5,
+      "intra_edges": 5,
+      "boundary_edges": 13,
+      "sharpness": 0.2777777777777778,
+      "surface_area": 5,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 2,
+      "size": 17,
+      "intra_edges": 17,
+      "boundary_edges": 44,
+      "sharpness": 0.2786885245901639,
+      "surface_area": 13,
+      "surface_ratio": 0.7647058823529411
+    },
+    {
+      "cluster_id": 528,
+      "size": 45,
+      "intra_edges": 45,
+      "boundary_edges": 115,
+      "sharpness": 0.28125,
+      "surface_area": 28,
+      "surface_ratio": 0.6222222222222222
+    },
+    {
+      "cluster_id": 458,
+      "size": 36,
+      "intra_edges": 46,
+      "boundary_edges": 117,
+      "sharpness": 0.2822085889570552,
+      "surface_area": 33,
+      "surface_ratio": 0.9166666666666666
+    },
+    {
+      "cluster_id": 4,
+      "size": 3,
+      "intra_edges": 2,
+      "boundary_edges": 5,
+      "sharpness": 0.2857142857142857,
+      "surface_area": 2,
+      "surface_ratio": 0.6666666666666666
+    },
+    {
+      "cluster_id": 91,
+      "size": 7,
+      "intra_edges": 8,
+      "boundary_edges": 19,
+      "sharpness": 0.2962962962962963,
+      "surface_area": 6,
+      "surface_ratio": 0.8571428571428571
+    },
+    {
+      "cluster_id": 569,
+      "size": 7,
+      "intra_edges": 6,
+      "boundary_edges": 14,
+      "sharpness": 0.3,
+      "surface_area": 6,
+      "surface_ratio": 0.8571428571428571
+    },
+    {
+      "cluster_id": 508,
+      "size": 6,
+      "intra_edges": 8,
+      "boundary_edges": 18,
+      "sharpness": 0.3076923076923077,
+      "surface_area": 6,
+      "surface_ratio": 1
+    },
+    {
+      "cluster_id": 197,
+      "size": 8,
+      "intra_edges": 10,
+      "boundary_edges": 22,
+      "sharpness": 0.3125,
+      "surface_area": 6,
+      "surface_ratio": 0.75
+    },
+    {
+      "cluster_id": 363,
+      "size": 5,
+      "intra_edges": 5,
+      "boundary_edges": 11,
+      "sharpness": 0.3125,
+      "surface_area": 4,
+      "surface_ratio": 0.8
+    },
+    {
+      "cluster_id": 547,
+      "size": 14,
+      "intra_edges": 16,
+      "boundary_edges": 34,
+      "sharpness": 0.32,
+      "surface_area": 13,
+      "surface_ratio": 0.9285714285714286
+    },
+    {
+      "cluster_id": 218,
+      "size": 10,
+      "intra_edges": 13,
+      "boundary_edges": 27,
+      "sharpness": 0.325,
+      "surface_area": 9,
+      "surface_ratio": 0.9
+    },
+    {
+      "cluster_id": 459,
+      "size": 20,
+      "intra_edges": 25,
+      "boundary_edges": 41,
+      "sharpness": 0.3787878787878788,
+      "surface_area": 15,
+      "surface_ratio": 0.75
+    },
+    {
+      "cluster_id": 142,
+      "size": 172,
+      "intra_edges": 290,
+      "boundary_edges": 469,
+      "sharpness": 0.3820816864295125,
+      "surface_area": 137,
+      "surface_ratio": 0.7965116279069767
+    },
+    {
+      "cluster_id": 463,
+      "size": 7,
+      "intra_edges": 11,
+      "boundary_edges": 15,
+      "sharpness": 0.4230769230769231,
+      "surface_area": 5,
+      "surface_ratio": 0.7142857142857143
+    },
+    {
+      "cluster_id": 378,
+      "size": 20,
+      "intra_edges": 22,
+      "boundary_edges": 29,
+      "sharpness": 0.43137254901960786,
+      "surface_area": 16,
+      "surface_ratio": 0.8
+    },
+    {
+      "cluster_id": 342,
+      "size": 14,
+      "intra_edges": 16,
+      "boundary_edges": 21,
+      "sharpness": 0.43243243243243246,
+      "surface_area": 8,
+      "surface_ratio": 0.5714285714285714
+    },
+    {
+      "cluster_id": 409,
+      "size": 32,
+      "intra_edges": 42,
+      "boundary_edges": 50,
+      "sharpness": 0.45652173913043476,
+      "surface_area": 29,
+      "surface_ratio": 0.90625
+    },
+    {
+      "cluster_id": 326,
+      "size": 15,
+      "intra_edges": 22,
+      "boundary_edges": 22,
+      "sharpness": 0.5,
+      "surface_area": 11,
+      "surface_ratio": 0.7333333333333333
+    },
+    {
+      "cluster_id": 849,
+      "size": 4,
+      "intra_edges": 3,
+      "boundary_edges": 2,
+      "sharpness": 0.6,
+      "surface_area": 1,
+      "surface_ratio": 0.25
+    },
+    {
+      "cluster_id": 369,
+      "size": 22,
+      "intra_edges": 68,
+      "boundary_edges": 26,
+      "sharpness": 0.723404255319149,
+      "surface_area": 12,
+      "surface_ratio": 0.5454545454545454
+    }
+  ],
+  "bug_risk": {
+    "total_functions": 1202,
+    "high_risk_count": 52,
+    "top_risks": [
+      {
+        "func_id": "src/content.ensureInjectBridgeReady",
+        "file": "src/content/script-injection.ts",
+        "score": 0.6771439855775663,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "53 LOC (6x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 2,
+        "cluster_id": 404,
+        "cluster_role": "mixed",
+        "body_loc": 53
+      },
+      {
+        "func_id": "src/background.findOriginalLocation",
+        "file": "src/background/source-map-resolver.ts",
+        "score": 0.6704593608720515,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "41 LOC (5x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 241,
+        "cluster_role": "",
+        "body_loc": 41
+      },
+      {
+        "func_id": "src/lib.formatAxeResults",
+        "file": "src/lib/a11y-audit.ts",
+        "score": 0.6700892943738737,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "40 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 592,
+        "cluster_role": "",
+        "body_loc": 40
+      },
+      {
+        "func_id": "src/lib.extractSourceSnippets",
+        "file": "src/lib/ai-context-parsing.ts",
+        "score": 0.6700892943738737,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "40 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 588,
+        "cluster_role": "",
+        "body_loc": 40
+      },
+      {
+        "func_id": "src/lib.getReactComponentAncestry",
+        "file": "src/lib/ai-context-enrichment.ts",
+        "score": 0.6690558428463458,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "38 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 611,
+        "cluster_role": "",
+        "body_loc": 38
+      },
+      {
+        "func_id": "src/lib.installExceptionCapture",
+        "file": "src/lib/exceptions.ts",
+        "score": 0.6674611194671491,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "36 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 622,
+        "cluster_role": "",
+        "body_loc": 36
+      },
+      {
+        "func_id": "npm/gasoline-agentic-browser/lib.diagnosticReport",
+        "file": "npm/gasoline-agentic-browser/lib/output.js",
+        "score": 0.6666666315318153,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "89 LOC (10x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 110,
+        "cluster_role": "",
+        "body_loc": 89
+      },
+      {
+        "func_id": "src/popup.handleClearLogs",
+        "file": "src/popup/settings.ts",
+        "score": 0.6662699653340538,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "47 LOC (5x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 706,
+        "cluster_role": "",
+        "body_loc": 47
+      },
+      {
+        "func_id": "src/lib.buildAiContext",
+        "file": "src/lib/ai-context-enrichment.ts",
+        "score": 0.665014628281124,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "34 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 552,
+        "cluster_role": "",
+        "body_loc": 34
+      },
+      {
+        "func_id": "scripts/docs.expectedShape",
+        "file": "scripts/docs/generate-reference-executable-examples.mjs",
+        "score": 0.665014628281124,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "34 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 24,
+        "cluster_role": "",
+        "body_loc": 34
+      },
+      {
+        "func_id": "src/lib.formatPayload",
+        "file": "src/lib/websocket-tracking.ts",
+        "score": 0.6633463730411191,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "33 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 593,
+        "cluster_role": "",
+        "body_loc": 33
+      },
+      {
+        "func_id": "src/background/commands.screenshotRestoreContainers",
+        "file": "src/background/commands/observe.ts",
+        "score": 0.656003853633931,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "32 LOC (4x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 766,
+        "cluster_role": "",
+        "body_loc": 32
+      },
+      {
+        "func_id": "src/content.startFlicker",
+        "file": "src/content/favicon-replacer.ts",
+        "score": 0.655715379675506,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "30 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 404,
+        "cluster_role": "mixed",
+        "body_loc": 30
+      },
+      {
+        "func_id": "scripts/docs.failureExample",
+        "file": "scripts/docs/generate-reference-executable-examples.mjs",
+        "score": 0.655715379675506,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "30 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 28,
+        "cluster_role": "",
+        "body_loc": 30
+      },
+      {
+        "func_id": "scripts/docs.buildModeSection",
+        "file": "scripts/docs/generate-reference-executable-examples.mjs",
+        "score": 0.6519962303040184,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "29 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 17,
+        "cluster_role": "",
+        "body_loc": 29
+      },
+      {
+        "func_id": "src/content.injectScript",
+        "file": "src/content/script-injection.ts",
+        "score": 0.6519962303040184,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "29 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 404,
+        "cluster_role": "mixed",
+        "body_loc": 29
+      },
+      {
+        "func_id": "src/background/cdp.resolveCoordinates",
+        "file": "src/background/cdp/dispatch.ts",
+        "score": 0.6421569414521426,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "27 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 333,
+        "cluster_role": "",
+        "body_loc": 27
+      },
+      {
+        "func_id": "src/lib.uninstallPerformanceCapture",
+        "file": "src/lib/performance.ts",
+        "score": 0.6358132343412026,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "26 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 1,
+        "cluster_id": 690,
+        "cluster_role": "",
+        "body_loc": 26
+      },
+      {
+        "func_id": "src/content.beginInjection",
+        "file": "src/content/script-injection.ts",
+        "score": 0.6336773469540309,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "25 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 2,
+        "cluster_id": 404,
+        "cluster_role": "mixed",
+        "body_loc": 25
+      },
+      {
+        "func_id": "npm/gasoline-agentic-browser/lib.mergeGassolineConfig",
+        "file": "npm/gasoline-agentic-browser/lib/config.js",
+        "score": 0.6305222290501973,
+        "factors": [
+          "mixed-role cluster (responsibility confusion)",
+          "26 LOC (3x median)",
+          "junk-drawer file (multi-concern)"
+        ],
+        "caller_count": 0,
+        "cluster_id": 115,
+        "cluster_role": "",
+        "body_loc": 26
+      }
+    ]
+  },
+  "patterns": {
+    "total_detected": 606,
+    "total_mismatches": 17,
+    "by_pattern": {
+      "builder": 177,
+      "data_access": 68,
+      "facade": 40,
+      "factory": 11,
+      "middleware": 70,
+      "sink": 31,
+      "wrapper": 209
+    },
+    "mismatches": [
+      {
+        "func_id": "src/background.isQueryProcessing",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"isQueryProcessing\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.addProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"addProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.removeProcessingQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"removeProcessingQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/inject.parseRGBColor",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseRGBColor\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "npm/gasoline-agentic-browser/lib.parseManifest",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseManifest\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/content.handleComputedStylesQuery",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"handleComputedStylesQuery\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.parseSourceMapData",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseSourceMapData\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background/csp.Parser.parseIdentifier",
+        "pattern": "wrapper",
+        "confidence": "likely",
+        "mismatch": "topology suggests wrapper pattern but name \"parseIdentifier\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "src/lib.parseVersion",
+        "pattern": "wrapper",
+        "confidence": "maybe",
+        "mismatch": "topology suggests wrapper pattern but name \"parseVersion\" doesn't reflect delegation (common convention in this codebase)"
+      },
+      {
+        "func_id": "src/background.escalateToStage4Internal",
+        "pattern": "facade",
+        "confidence": "likely",
+        "mismatch": "topology suggests facade pattern but name \"escalateToStage4Internal\" doesn't reflect delegation"
+      },
+      {
+        "func_id": "src/background/csp.Parser.peek",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"peek\" has 13 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/background/csp.Parser.advance",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"advance\" has 12 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/inject.postResponse",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"postResponse\" has 10 callers and 1 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/background/csp.Parser.skipWhitespace",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"skipWhitespace\" has 10 callers and 3 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/lib.delay",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"delay\" has 12 callers and 3 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/lib.scaleTimeout",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"scaleTimeout\" has 9 callers and 5 LOC — consider renaming to reflect its utility role"
+      },
+      {
+        "func_id": "src/lib.fetchWithTimeout",
+        "pattern": "sink",
+        "confidence": "maybe",
+        "mismatch": "\"fetchWithTimeout\" has 9 callers and 7 LOC — consider renaming to reflect its utility role"
+      }
+    ]
+  },
+  "fractal_coherence": {
+    "files_analyzed": 109,
+    "files_incoherent": 35,
+    "functions_analyzed": 326,
+    "functions_mixing_roles": 0,
+    "file_violations": [
+      {
+        "file": "src/content/ui/terminal-widget.ts",
+        "func_count": 16,
+        "coherence": 0.375,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "_resetForTesting",
+              "flushQueuedWrites",
+              "hideTerminal",
+              "scheduleQueuedSubmit",
+              "showTerminal",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isTerminalVisible",
+              "maybeShowQueuedWriteToast",
+              "resetWriteGuardState",
+              "scheduleQueuedWriteFlush",
+              "shouldDeferQueuedWrite",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "exitTerminalSession",
+              "restoreTerminalIfNeeded",
+              "toggleTerminal"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "mountWidget"
+            ]
+          }
+        ],
+        "suggestion": "File has 16 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/content-fallback-scripts.ts",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "extractCleanMainText",
+              "pageSummaryFallbackScript"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "markdownFallbackScript",
+              "pickMainElement"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "readableFallbackScript"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/commands/observe.ts",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "captureFullPage",
+              "screenshotExpandContainers"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "postScreenshot",
+              "screenshotRestoreContainers"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "computeFullPageCaptureDimensions"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/inject/data-table.ts",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractDataTables",
+              "normalizeText"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "collectHeaders",
+              "collectRows"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "buildTableSelector"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/sync-feature-code-paths.js",
+        "func_count": 5,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "collectFeatureLinks",
+              "main"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "updateIndex",
+              "walk"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isTarget"
+            ]
+          }
+        ],
+        "suggestion": "File has 5 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/upload-handler.ts",
+        "func_count": 10,
+        "coherence": 0.4,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "checkFileOnInput",
+              "clickFileInputElement",
+              "escalateToStage4",
+              "injectFileIntoInput"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "clickFileInput",
+              "executeUpload",
+              "verifyFileOnInputOnce"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "dismissFileDialog",
+              "escalateToStage4Internal"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "verifyFileOnInput"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/doctor.js",
+        "func_count": 7,
+        "coherence": 0.42857142857142855,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "checkPortSync",
+              "diagnoseCliClient",
+              "testBinary"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkLegacyPaths",
+              "checkPort",
+              "diagnoseFileClient"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "runDiagnostics"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/popup/recording-ui-state.ts",
+        "func_count": 11,
+        "coherence": 0.45454545454545453,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "describePendingRecording",
+              "getRecordSection",
+              "showSaveResult",
+              "showStartError",
+              "showTopNotice"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "setApprovalPendingState",
+              "showIdle",
+              "showRecording"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "applyRecordHighlight",
+              "removeRecordHighlight",
+              "showSavedLink"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "server/scripts/install.js",
+        "func_count": 17,
+        "coherence": 0.47058823529411764,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "cleanupOldProcesses",
+              "extractExpectedChecksum",
+              "getBinaryName",
+              "normalizeVersion",
+              "printPanel",
+              "... +3 more",
+              "verifyDownloadedBinary",
+              "verifyVersion"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "autoStartServer",
+              "checkServerIdentity",
+              "download",
+              "downloadText",
+              "main",
+              "... +1 more"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "installStagedBinary",
+              "sha256File"
+            ]
+          },
+          {
+            "role": "io:stdio",
+            "family": "io",
+            "functions": [
+              "printBanner"
+            ]
+          }
+        ],
+        "suggestion": "File has 17 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cookwithgasoline.com/src/utils/markdownPaths.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "toHtmlPath",
+              "toLegacyMarkdownPath"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getAllMarkdownPaths"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "toAgentMarkdownPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/performance.ts",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCapturedMarks",
+              "getCapturedMeasures",
+              "isPerformanceCaptureActive",
+              "isPerformanceMarksEnabled",
+              "setPerformanceMarksEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getPerformanceMarks",
+              "getPerformanceMeasures",
+              "getPerformanceSnapshotForError",
+              "installPerformanceCapture",
+              "uninstallPerformanceCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/bump-version.js",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "findVersionReferences",
+              "getCurrentVersion",
+              "updateVersionInFile"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isValidSemver",
+              "log",
+              "parseSemver"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/check-feature-bundles.js",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "isStaleReviewDate",
+              "parseISODate"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "checkFeatureBundles"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "runCheckFeatureBundlesCLI"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "cookwithgasoline.com/src/pages/markdown/[...slug].md.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "slugToPath",
+              "toYamlArray",
+              "toYamlString"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "GET",
+              "getStaticPaths",
+              "renderFrontmatter"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/transient-capture.ts",
+        "func_count": 10,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classifyCandidates",
+              "dedupKey",
+              "extractText",
+              "recordDedup",
+              "recordPendingTransients"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "classifyTransient",
+              "installTransientCapture",
+              "isDuplicate",
+              "mutationCallback",
+              "uninstallTransientCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 10 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/exceptions.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "extractRejectionInfo",
+              "uninstallExceptionCapture"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "enrichAndPost",
+              "installExceptionCapture"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/check-content-style-contract.mjs",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getFrontmatterValue",
+              "normalizeProse"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "validateHowToContract"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "validateAcronymExpansions"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/dom-queries.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "collectBoundingBox",
+              "collectStyles",
+              "serializeDOMElement"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "collectAttributes",
+              "collectChildren"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQuery"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/favicon-replacer.ts",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "initFaviconReplacer",
+              "replaceFaviconWithFlame",
+              "startFlicker"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "stopFlicker",
+              "updateFavicon"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "restoreOriginalFavicon"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/tab-tracking.ts",
+        "func_count": 4,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCurrentTabId",
+              "getIsTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "initTabTracking"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "updateTrackingStatus"
+            ]
+          }
+        ],
+        "suggestion": "File has 4 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/install.js",
+        "func_count": 6,
+        "coherence": 0.5,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "buildMcpEntry",
+              "generateDefaultConfig",
+              "installToClient"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "executeInstall",
+              "installViaFile"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "installViaCli"
+            ]
+          }
+        ],
+        "suggestion": "File has 6 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/commands/analyze.ts",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "aggregateA11yFrameResults",
+              "aggregateDOMFrameResults",
+              "buildSingleFrameResult",
+              "isFrameRoutingError",
+              "resolveAnalyzeFrameSelection",
+              "stripFrameParam",
+              "toNonNegativeInt"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeDOMQueryFallbackViaScripting",
+              "executeDOMQueryInIsolatedWorld",
+              "runFrameAwareAnalyzeQuery",
+              "runMainDOMAnalyzeQuery"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "registerPassthrough",
+              "sendFrameQueries"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/options.ts",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "loadActiveCodebaseFromDaemon",
+              "testConnection",
+              "toggleDebugMode",
+              "toggleDeferral",
+              "toggleScreenshot",
+              "toggleSourceMap",
+              "toggleTheme"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "bootstrapTheme",
+              "handleClearDebugLog",
+              "handleExportDebugLog",
+              "loadOptions",
+              "saveOptions",
+              "syncDevRootToDaemon"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/inject/message-handlers.ts",
+        "func_count": 13,
+        "coherence": 0.5384615384615384,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleA11yQuery",
+              "handleComputedStylesMessage",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleLinkHealthMessage",
+              "handleLinkHealthQuery",
+              "installMessageListener"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleBridgePingMessage",
+              "handleDataTableMessage",
+              "handleFormDiscoveryMessage",
+              "handleFormStateMessage",
+              "handleGetWaterfall"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "postResponse"
+            ]
+          }
+        ],
+        "suggestion": "File has 13 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/message-handlers.ts",
+        "func_count": 22,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "executeInMainWorld",
+              "forwardInjectQuery",
+              "handleA11yQuery",
+              "handleComputedStylesQuery",
+              "handleDataTableQuery",
+              "handleDomQuery",
+              "handleExecuteJs",
+              "handleExecuteQuery",
+              "handleFormDiscoveryQuery",
+              "handleFormStateQuery",
+              "handleLinkHealthQuery",
+              "parseQueryParams"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "forwardHighlightMessage",
+              "handleGetMarkdown",
+              "handleGetNetworkWaterfall",
+              "handleGetReadable",
+              "handlePageSummary",
+              "handlePing",
+              "handleStateCommand",
+              "handleToggleMessage",
+              "postToInject"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "isValidBackgroundSender"
+            ]
+          }
+        ],
+        "suggestion": "File has 22 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/normalize-docs.js",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "classify",
+              "exists",
+              "makeFeatureIndex",
+              "makeSpecStub",
+              "titleFromSlug",
+              "toFeatureId"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "discoverFeatureDirs",
+              "ensureRequiredFrontmatter",
+              "isDir",
+              "normalize",
+              "readFileSafe"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/browser-actions.ts",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "coerceNonNegativeInt",
+              "enrichCSPFailure",
+              "getLastCSPStatus",
+              "handleNewTabAction",
+              "isCSPFailure",
+              "withTimeout"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "handleAsyncExecuteCommand",
+              "handleBrowserAction"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "handleAsyncBrowserAction",
+              "handleNavigateAction"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "enrichWithCSP"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/analytics.ts",
+        "func_count": 11,
+        "coherence": 0.5454545454545454,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "generateFingerprint",
+              "getOrCreateFingerprint",
+              "handleAnalyticsAlarm",
+              "initAnalytics",
+              "loadFlags",
+              "sendPing"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "persistFlags",
+              "resetFlags",
+              "todayDateString",
+              "trackAiConnected",
+              "trackCommandUsage"
+            ]
+          }
+        ],
+        "suggestion": "File has 11 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/ui/tracked-hover-launcher.ts",
+        "func_count": 31,
+        "coherence": 0.5483870967741935,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "checkTerminalReachable",
+              "createActionButton",
+              "createLauncherUi",
+              "createSettingsMenuItem",
+              "createSettingsMenuLink",
+              "installAnnotationListener",
+              "installRuntimeListener",
+              "mountLauncher",
+              "playShutterSound",
+              "runScreenshotCapture",
+              "setTrackedHoverLauncherEnabled",
+              "startDrawMode",
+              "stopRecordingAction",
+              "syncHiddenStateFromStorage",
+              "syncRecordingStateFromStorage",
+              "uninstallAnnotationListener",
+              "unmountLauncher"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "applyVisibilityFromState",
+              "clearHideTimer",
+              "injectPulseKeyframes",
+              "installRecordingStorageSync",
+              "setPanelOpen",
+              "setSettingsMenuOpen",
+              "uninstallRecordingStorageSync",
+              "updateStopButtonVisibility"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "handleReshowRequest",
+              "hideLauncherUntilPopupReopen",
+              "persistHiddenState",
+              "showScreenshotFlash"
+            ]
+          },
+          {
+            "role": "reflection",
+            "family": "pure",
+            "functions": [
+              "formatAnnotationsForTerminal",
+              "handleAnnotationsReady"
+            ]
+          }
+        ],
+        "suggestion": "File has 31 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/content/ui/terminal-widget-ui.ts",
+        "func_count": 9,
+        "coherence": 0.5555555555555556,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "createWidget",
+              "handleIframeMessage",
+              "notifyIframe",
+              "setupResize",
+              "showSandboxError"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "redrawTerminal",
+              "toggleMinimize"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "registerUICallbacks"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "updateStatusDot"
+            ]
+          }
+        ],
+        "suggestion": "File has 9 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/lib/perf-snapshot.ts",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getCLS",
+              "getFCP",
+              "getINP",
+              "getLCP",
+              "isPerformanceSnapshotEnabled",
+              "mapInitiatorType",
+              "sendPerformanceSnapshot",
+              "setPerformanceSnapshotEnabled"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "aggregateResourceTiming",
+              "capturePerformanceSnapshot",
+              "installPerfObservers",
+              "scheduleSnapshotResend",
+              "uninstallPerfObservers"
+            ]
+          },
+          {
+            "role": "concurrency",
+            "family": "pure",
+            "functions": [
+              "getLongTaskMetrics"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/tab-state.ts",
+        "func_count": 14,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getAllConfigSettings",
+              "getTrackedTabInfo",
+              "loadAiWebPilotState",
+              "loadDebugModeState",
+              "loadSavedSettings",
+              "pingContentScript",
+              "sendTabToast",
+              "waitForTabLoad"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "captureVisibleTabSafe",
+              "forwardToAllContentScripts",
+              "getActiveTab"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "saveSetting",
+              "setTrackedTab"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "clearTrackedTab"
+            ]
+          }
+        ],
+        "suggestion": "File has 14 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "scripts/docs/check-cookwithgasoline-content-contract.mjs",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "hasAnyH2",
+              "hasFrontmatterKey",
+              "requireFrontmatterBlock",
+              "validateFile"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "ensureSufficientDepth",
+              "isShallowRepository"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "validateVersionSurfaceContracts"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 3 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "src/background/version-check.ts",
+        "func_count": 7,
+        "coherence": 0.5714285714285714,
+        "role_groups": [
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getExtensionVersion",
+              "getUpdateInfo",
+              "updateVersionBadge",
+              "updateVersionFromHealth"
+            ]
+          },
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "getAvailableVersion",
+              "isNewVersionAvailable",
+              "resetVersionCheck"
+            ]
+          }
+        ],
+        "suggestion": "File has 7 functions spanning 2 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      },
+      {
+        "file": "npm/gasoline-agentic-browser/lib/config.js",
+        "func_count": 17,
+        "coherence": 0.5882352941176471,
+        "role_groups": [
+          {
+            "role": "general",
+            "family": "pure",
+            "functions": [
+              "expandPath",
+              "getClientById",
+              "getClientConfigPath",
+              "getClientDetectDir",
+              "getDetectedClients",
+              "getValidAliases",
+              "mergeGassolineConfig",
+              "parseEnvVar",
+              "resolveManagedBinaryPath",
+              "validateMCPConfig"
+            ]
+          },
+          {
+            "role": "io:network",
+            "family": "io",
+            "functions": [
+              "getClientByAlias",
+              "getConfigCandidates",
+              "getToolNameFromPath",
+              "isClientInstalled"
+            ]
+          },
+          {
+            "role": "io:disk",
+            "family": "io",
+            "functions": [
+              "readConfigFile",
+              "writeConfigFile"
+            ]
+          },
+          {
+            "role": "io:database",
+            "family": "io",
+            "functions": [
+              "commandExistsOnPath"
+            ]
+          }
+        ],
+        "suggestion": "File has 17 functions spanning 4 role groups (io, pure). Extract the minority group(s) into separate files — each file should have one concern."
+      }
+    ]
+  },
+  "smells": {
+    "has_smells": true,
+    "smell_types": [
+      "orphans",
+      "file_mismatch",
+      "file_scatter",
+      "role_flip_flop",
+      "dependency_chains",
+      "duplicate_clusters"
+    ]
+  },
+  "top_priority": {
+    "summary": "Address 52 high-risk bug source(s), starting with src/content.ensureInjectBridgeReady",
+    "category": "bug_risk",
+    "impact": 0.4,
+    "why": "52 functions have structural risk scores above 0.50. These are structurally predisposed to defects: they have high fan-in (changes break many callers), sit in mixed-role clusters (responsibility confusion), or are in junk-drawer files (merge conflicts). Splitting and relocating them reduces defect risk.",
+    "steps": [
+      "Start with src/content.ensureInjectBridgeReady (risk 0.68) — mixed-role cluster (responsibility confusion), 53 LOC (6x median), junk-drawer file (multi-concern).",
+      "Extract distinct concerns into separate functions with clear input/output contracts.",
+      "Add targeted tests for functions with high fan-in — a bug there affects many callers.",
+      "Move functions out of junk-drawer files into files matching their cluster's role.",
+      "Repeat for the remaining 51 high-risk functions."
+    ]
+  },
+  "gate": {
+    "overall": "FAIL",
+    "thresholds": [
+      {
+        "name": "normalized_sharpness",
+        "value": 1,
+        "target": 0.8,
+        "met": true
+      },
+      {
+        "name": "multi_axis_coherence",
+        "value": 0.7917474136452912,
+        "target": 0.8,
+        "met": false
+      },
+      {
+        "name": "health_score",
+        "value": 72.42191039175752,
+        "target": 80,
+        "met": false
+      },
+      {
+        "name": "recipe_coverage",
+        "value": 74.95840266222962,
+        "target": 80,
+        "met": false
+      }
+    ]
+  },
+  "endpoint_gate": {
+    "spec_found": true,
+    "spec_endpoints": 57,
+    "extracted_routes": 0,
+    "server_recall": 0,
+    "server_precision": 0,
+    "client_coverage": 0.7894736842105263,
+    "spec_drift_count": 0,
+    "missed_spec": [
+      {
+        "method": "GET",
+        "path": "/",
+        "operation_id": "getRoot"
+      },
+      {
+        "method": "POST",
+        "path": "/api/file/dialog/inject",
+        "operation_id": "postFileDialogInject"
+      },
+      {
+        "method": "POST",
+        "path": "/api/file/read",
+        "operation_id": "postFileRead"
+      },
+      {
+        "method": "POST",
+        "path": "/api/form/submit",
+        "operation_id": "postFormSubmit"
+      },
+      {
+        "method": "POST",
+        "path": "/api/os-automation/dismiss",
+        "operation_id": "postOSAutomationDismiss"
+      },
+      {
+        "method": "POST",
+        "path": "/api/os-automation/inject",
+        "operation_id": "postOSAutomationInject"
+      },
+      {
+        "method": "GET",
+        "path": "/api/status",
+        "operation_id": "getApiStatus"
+      },
+      {
+        "method": "POST",
+        "path": "/clear",
+        "operation_id": "postClear"
+      },
+      {
+        "method": "GET",
+        "path": "/clients",
+        "operation_id": "getClients"
+      },
+      {
+        "method": "POST",
+        "path": "/clients",
+        "operation_id": "postClients"
+      },
+      {
+        "method": "DELETE",
+        "path": "/clients/{id}",
+        "operation_id": "deleteClient"
+      },
+      {
+        "method": "GET",
+        "path": "/clients/{id}",
+        "operation_id": "getClient"
+      },
+      {
+        "method": "GET",
+        "path": "/config/active-codebase",
+        "operation_id": "getActiveCodebase"
+      },
+      {
+        "method": "PUT",
+        "path": "/config/active-codebase",
+        "operation_id": "setActiveCodebase"
+      },
+      {
+        "method": "GET",
+        "path": "/diagnostics",
+        "operation_id": "getDiagnostics"
+      },
+      {
+        "method": "GET",
+        "path": "/diagnostics.json",
+        "operation_id": "getDiagnosticsJson"
+      },
+      {
+        "method": "GET",
+        "path": "/docs",
+        "operation_id": "getDocs"
+      },
+      {
+        "method": "GET",
+        "path": "/doctor",
+        "operation_id": "getDoctor"
+      },
+      {
+        "method": "POST",
+        "path": "/draw-mode/complete",
+        "operation_id": "postDrawModeComplete"
+      },
+      {
+        "method": "POST",
+        "path": "/enhanced-actions",
+        "operation_id": "postEnhancedActions"
+      },
+      {
+        "method": "GET",
+        "path": "/health",
+        "operation_id": "getHealth"
+      },
+      {
+        "method": "GET",
+        "path": "/insecure-proxy",
+        "operation_id": "getInsecureProxy"
+      },
+      {
+        "method": "DELETE",
+        "path": "/logs",
+        "operation_id": "deleteLogs"
+      },
+      {
+        "method": "POST",
+        "path": "/logs",
+        "operation_id": "postLogs"
+      },
+      {
+        "method": "GET",
+        "path": "/logs.html",
+        "operation_id": "getLogsHtml"
+      },
+      {
+        "method": "POST",
+        "path": "/mcp",
+        "operation_id": "postMcp"
+      },
+      {
+        "method": "POST",
+        "path": "/network-bodies",
+        "operation_id": "postNetworkBodies"
+      },
+      {
+        "method": "POST",
+        "path": "/network-waterfall",
+        "operation_id": "postNetworkWaterfall"
+      },
+      {
+        "method": "GET",
+        "path": "/openapi.json",
+        "operation_id": "getOpenAPI"
+      },
+      {
+        "method": "POST",
+        "path": "/performance-snapshots",
+        "operation_id": "postPerformanceSnapshots"
+      },
+      {
+        "method": "GET",
+        "path": "/push/capabilities",
+        "operation_id": "getPushCapabilities"
+      },
+      {
+        "method": "GET",
+        "path": "/push/drain",
+        "operation_id": "drainPushEvents"
+      },
+      {
+        "method": "POST",
+        "path": "/push/message",
+        "operation_id": "postPushMessage"
+      },
+      {
+        "method": "POST",
+        "path": "/push/screenshot",
+        "operation_id": "postPushScreenshot"
+      },
+      {
+        "method": "POST",
+        "path": "/query-result",
+        "operation_id": "postQueryResult"
+      },
+      {
+        "method": "POST",
+        "path": "/recordings/reveal",
+        "operation_id": "postRecordingReveal"
+      },
+      {
+        "method": "POST",
+        "path": "/recordings/save",
+        "operation_id": "postRecordingSave"
+      },
+      {
+        "method": "DELETE",
+        "path": "/recordings/storage",
+        "operation_id": "deleteRecordingStorage"
+      },
+      {
+        "method": "GET",
+        "path": "/recordings/storage",
+        "operation_id": "getRecordingStorage"
+      },
+      {
+        "method": "POST",
+        "path": "/recordings/storage",
+        "operation_id": "postRecordingStorage"
+      },
+      {
+        "method": "POST",
+        "path": "/screenshots",
+        "operation_id": "postScreenshot"
+      },
+      {
+        "method": "GET",
+        "path": "/setup",
+        "operation_id": "getSetup"
+      },
+      {
+        "method": "POST",
+        "path": "/shutdown",
+        "operation_id": "postShutdown"
+      },
+      {
+        "method": "GET",
+        "path": "/snapshot",
+        "operation_id": "getSnapshot"
+      },
+      {
+        "method": "POST",
+        "path": "/sync",
+        "operation_id": "postSync"
+      },
+      {
+        "method": "GET",
+        "path": "/telemetry",
+        "operation_id": "getTelemetry"
+      },
+      {
+        "method": "GET",
+        "path": "/terminal/config",
+        "operation_id": "getTerminalConfig"
+      },
+      {
+        "method": "POST",
+        "path": "/terminal/start",
+        "operation_id": "postTerminalStart"
+      },
+      {
+        "method": "POST",
+        "path": "/terminal/stop",
+        "operation_id": "postTerminalStop"
+      },
+      {
+        "method": "POST",
+        "path": "/terminal/upload",
+        "operation_id": "postTerminalUpload"
+      },
+      {
+        "method": "GET",
+        "path": "/terminal/validate",
+        "operation_id": "getTerminalValidate"
+      },
+      {
+        "method": "GET",
+        "path": "/terminal/ws",
+        "operation_id": "getTerminalWs"
+      },
+      {
+        "method": "POST",
+        "path": "/test-boundary",
+        "operation_id": "postTestBoundary"
+      },
+      {
+        "method": "GET",
+        "path": "/tests/",
+        "operation_id": "getTestsPages"
+      },
+      {
+        "method": "GET",
+        "path": "/tests/ws",
+        "operation_id": "getTestsWebSocket"
+      },
+      {
+        "method": "POST",
+        "path": "/websocket-events",
+        "operation_id": "postWebSocketEvents"
+      },
+      {
+        "method": "GET",
+        "path": "/websocket-status",
+        "operation_id": "getWebSocketStatus"
+      }
+    ],
+    "unmatched_clients": [
+      {
+        "method": "GET",
+        "pattern": "/_next/static/${this.buildId}/${p.TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST}",
+        "func_id": "cmd.browser-agent.testpages._next.static.chunks.d45d23dcada26fad.fetch",
+        "file": "cmd/browser-agent/testpages/_next/static/chunks/d45d23dcada26fad.js",
+        "lang": "ts",
+        "framework": "fetch"
+      },
+      {
+        "method": "GET",
+        "pattern": "/_next/static/${this.buildId}/${p.TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST}",
+        "func_id": "cmd.browser-agent.testpages.frameworks.next._next.static.chunks.d45d23dcada26fad.fetch",
+        "file": "cmd/browser-agent/testpages/frameworks/next/_next/static/chunks/d45d23dcada26fad.js",
+        "lang": "ts",
+        "framework": "fetch"
+      },
+      {
+        "method": "GET",
+        "pattern": "${serverUrl}${endpoint}",
+        "func_id": "src.background.server.fetch",
+        "file": "src/background/server.ts",
+        "lang": "ts",
+        "framework": "fetch"
+      },
+      {
+        "method": "GET",
+        "pattern": "/api/extension-status",
+        "func_id": "src.background.server.fetch",
+        "file": "src/background/server.ts",
+        "lang": "ts",
+        "framework": "fetch"
+      }
+    ]
+  },
+  "endpoint_drift": {
+    "has_changes": false,
+    "added_servers": 0,
+    "removed_servers": 0,
+    "added_clients": 0,
+    "removed_clients": 0,
+    "breaking_changes": 0
+  },
+  "cluster_health": {
+    "1": {
+      "cluster_id": 1,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.25,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "111": {
+      "cluster_id": 111,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.30499999999999994,
+      "size": 10
+    },
+    "12": {
+      "cluster_id": 12,
+      "health": 0,
+      "healthy": false,
+      "is_mixed": true,
+      "is_god": false,
+      "confidence": 0,
+      "size": 26,
+      "reason": "mixed role (no dominant classification)"
+    },
+    "122": {
+      "cluster_id": 122,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.36785714285714294,
+      "size": 28
+    },
+    "124": {
+      "cluster_id": 124,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.45000000000000007,
+      "size": 3
+    },
+    "131": {
+      "cluster_id": 131,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.3833333333333335,
+      "size": 3
+    },
+    "135": {
+      "cluster_id": 135,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.24705882352941178,
+      "size": 17
+    },
+    "139": {
+      "cluster_id": 139,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2666666666666666,
+      "size": 3
+    },
+    "142": {
+      "cluster_id": 142,
+      "health": 0.5813953488372081,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.05813953488372081,
+      "size": 172
+    },
+    "153": {
+      "cluster_id": 153,
+      "health": 0.6499999999999995,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.06499999999999995,
+      "size": 10
+    },
+    "162": {
+      "cluster_id": 162,
+      "health": 0.5625000000000002,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.05625000000000002,
+      "size": 16
+    },
+    "165": {
+      "cluster_id": 165,
+      "health": 0.6666666666666654,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.06666666666666654,
+      "size": 3
+    },
+    "189": {
+      "cluster_id": 189,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.22999999999999987,
+      "size": 5
+    },
+    "193": {
+      "cluster_id": 193,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.15909090909090917,
+      "size": 11
+    },
+    "197": {
+      "cluster_id": 197,
+      "health": 0.6249999999999994,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.062499999999999944,
+      "size": 8
+    },
+    "198": {
+      "cluster_id": 198,
+      "health": 0.6666666666666654,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.06666666666666654,
+      "size": 3
+    },
+    "2": {
+      "cluster_id": 2,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.13823529411764712,
+      "size": 17
+    },
+    "21": {
+      "cluster_id": 21,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.29999999999999993,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "211": {
+      "cluster_id": 211,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.22000000000000008,
+      "size": 5
+    },
+    "218": {
+      "cluster_id": 218,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2100000000000002,
+      "size": 10
+    },
+    "219": {
+      "cluster_id": 219,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.21666666666666656,
+      "size": 3
+    },
+    "239": {
+      "cluster_id": 239,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.27,
+      "size": 5
+    },
+    "25": {
+      "cluster_id": 25,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2499999999999999,
+      "size": 6
+    },
+    "258": {
+      "cluster_id": 258,
+      "health": 0,
+      "healthy": false,
+      "is_mixed": true,
+      "is_god": false,
+      "confidence": 0,
+      "size": 15,
+      "reason": "mixed role (no dominant classification)"
+    },
+    "29": {
+      "cluster_id": 29,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.18333333333333324,
+      "size": 6
+    },
+    "30": {
+      "cluster_id": 30,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.3500000000000001,
+      "size": 4
+    },
+    "319": {
+      "cluster_id": 319,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.17499999999999993,
+      "size": 4
+    },
+    "32": {
+      "cluster_id": 32,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.34999999999999987,
+      "size": 4
+    },
+    "326": {
+      "cluster_id": 326,
+      "health": 0.7000000000000001,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.07,
+      "size": 15
+    },
+    "342": {
+      "cluster_id": 342,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.23214285714285698,
+      "size": 14
+    },
+    "363": {
+      "cluster_id": 363,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.12,
+      "size": 5
+    },
+    "369": {
+      "cluster_id": 369,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2250000000000001,
+      "size": 22
+    },
+    "376": {
+      "cluster_id": 376,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.27222222222222237,
+      "size": 9
+    },
+    "378": {
+      "cluster_id": 378,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.14750000000000008,
+      "size": 20
+    },
+    "4": {
+      "cluster_id": 4,
+      "health": 0.33333333333333215,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.033333333333333215,
+      "size": 3
+    },
+    "404": {
+      "cluster_id": 404,
+      "health": 0,
+      "healthy": false,
+      "is_mixed": true,
+      "is_god": false,
+      "confidence": 0,
+      "size": 12,
+      "reason": "mixed role (no dominant classification)"
+    },
+    "409": {
+      "cluster_id": 409,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.1671875,
+      "size": 32
+    },
+    "41": {
+      "cluster_id": 41,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.25,
+      "size": 3
+    },
+    "416": {
+      "cluster_id": 416,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2678571428571429,
+      "size": 14
+    },
+    "44": {
+      "cluster_id": 44,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.4666666666666667,
+      "size": 3
+    },
+    "458": {
+      "cluster_id": 458,
+      "health": 0.8611111111111114,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.08611111111111114,
+      "size": 36
+    },
+    "459": {
+      "cluster_id": 459,
+      "health": 0.32500000000000084,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.032500000000000084,
+      "size": 20
+    },
+    "463": {
+      "cluster_id": 463,
+      "health": 0.3571428571428559,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.03571428571428559,
+      "size": 7
+    },
+    "47": {
+      "cluster_id": 47,
+      "health": 0.2500000000000002,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.025000000000000022,
+      "size": 8
+    },
+    "506": {
+      "cluster_id": 506,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.12499999999999989,
+      "size": 6
+    },
+    "508": {
+      "cluster_id": 508,
+      "health": 0.8333333333333326,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.08333333333333326,
+      "size": 6
+    },
+    "51": {
+      "cluster_id": 51,
+      "health": 0.15000000000000047,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.050000000000000155,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "520": {
+      "cluster_id": 520,
+      "health": 0.8333333333333326,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.08333333333333326,
+      "size": 3
+    },
+    "524": {
+      "cluster_id": 524,
+      "health": 0.29999999999999916,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.029999999999999916,
+      "size": 10
+    },
+    "528": {
+      "cluster_id": 528,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.33222222222222225,
+      "size": 45
+    },
+    "529": {
+      "cluster_id": 529,
+      "health": 0.8333333333333337,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.08333333333333337,
+      "size": 3
+    },
+    "536": {
+      "cluster_id": 536,
+      "health": 0.6666666666666665,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.06666666666666665,
+      "size": 3
+    },
+    "547": {
+      "cluster_id": 547,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.15714285714285714,
+      "size": 14
+    },
+    "548": {
+      "cluster_id": 548,
+      "health": 0.642857142857145,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.0642857142857145,
+      "size": 7
+    },
+    "569": {
+      "cluster_id": 569,
+      "health": 0.49999999999999933,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.04999999999999993,
+      "size": 7
+    },
+    "57": {
+      "cluster_id": 57,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.4000000000000001,
+      "size": 4
+    },
+    "573": {
+      "cluster_id": 573,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.3600000000000001,
+      "size": 5
+    },
+    "612": {
+      "cluster_id": 612,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.32500000000000007,
+      "size": 4
+    },
+    "618": {
+      "cluster_id": 618,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.15833333333333333,
+      "size": 6
+    },
+    "636": {
+      "cluster_id": 636,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.15833333333333333,
+      "size": 6
+    },
+    "658": {
+      "cluster_id": 658,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.23333333333333317,
+      "size": 3
+    },
+    "664": {
+      "cluster_id": 664,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.41000000000000014,
+      "size": 5
+    },
+    "696": {
+      "cluster_id": 696,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.19999999999999984,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "7": {
+      "cluster_id": 7,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.21666666666666667,
+      "size": 6
+    },
+    "70": {
+      "cluster_id": 70,
+      "health": 0.8000000000000007,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.08000000000000007,
+      "size": 5
+    },
+    "71": {
+      "cluster_id": 71,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2210526315789475,
+      "size": 38
+    },
+    "713": {
+      "cluster_id": 713,
+      "health": 0.2500000000000002,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.025000000000000022,
+      "size": 6
+    },
+    "731": {
+      "cluster_id": 731,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.30000000000000004,
+      "size": 5
+    },
+    "737": {
+      "cluster_id": 737,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.1857142857142856,
+      "size": 7
+    },
+    "740": {
+      "cluster_id": 740,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.25,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "763": {
+      "cluster_id": 763,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.45000000000000007,
+      "size": 3
+    },
+    "764": {
+      "cluster_id": 764,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.26249999999999984,
+      "size": 4
+    },
+    "77": {
+      "cluster_id": 77,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.41000000000000003,
+      "size": 5
+    },
+    "772": {
+      "cluster_id": 772,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2250000000000002,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "777": {
+      "cluster_id": 777,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.19999999999999996,
+      "size": 12
+    },
+    "778": {
+      "cluster_id": 778,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.17500000000000016,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "78": {
+      "cluster_id": 78,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.14000000000000012,
+      "size": 5
+    },
+    "801": {
+      "cluster_id": 801,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.3642857142857143,
+      "size": 7
+    },
+    "803": {
+      "cluster_id": 803,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2999999999999998,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "823": {
+      "cluster_id": 823,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.4999999999999999,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "829": {
+      "cluster_id": 829,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.25,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "83": {
+      "cluster_id": 83,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.21666666666666679,
+      "size": 6
+    },
+    "840": {
+      "cluster_id": 840,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.2999999999999998,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    },
+    "849": {
+      "cluster_id": 849,
+      "health": 1,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.25,
+      "size": 4
+    },
+    "91": {
+      "cluster_id": 91,
+      "health": 0.7142857142857151,
+      "healthy": true,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.07142857142857151,
+      "size": 7
+    },
+    "96": {
+      "cluster_id": 96,
+      "health": 0.3,
+      "healthy": false,
+      "is_mixed": false,
+      "is_god": false,
+      "confidence": 0.3500000000000001,
+      "size": 2,
+      "reason": "too small for cluster-level metrics"
+    }
+  },
+  "breakdown": {
+    "level": "cluster",
+    "reason": "22 of 86 clusters need attention",
+    "mixed_cluster_pct": 0.04409317803660566,
+    "has_god_cluster": false,
+    "unhealthy_clusters": 22,
+    "total_clusters": 86
+  }
+}

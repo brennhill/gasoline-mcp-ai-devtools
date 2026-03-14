@@ -1,0 +1,132 @@
+{
+  "directory": "internal/mcp",
+  "composite": 74.777001059138,
+  "grade": "B",
+  "total_functions": 66,
+  "files": [
+    {
+      "file": "deps.go",
+      "functions": 7,
+      "composite": 85.48850301237744,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "errors.go",
+      "functions": 10,
+      "composite": 78.62852006632716,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "protocol.go",
+      "functions": 3,
+      "composite": 69.1889030423352,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "SRP"
+      ]
+    },
+    {
+      "file": "response_builders.go",
+      "functions": 1,
+      "composite": 66.17440029348735,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "response_clamp.go",
+      "functions": 2,
+      "composite": 70.5307731730177,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "response_content.go",
+      "functions": 4,
+      "composite": 76.69777581359031,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "response_json.go",
+      "functions": 8,
+      "composite": 73.0331477355331,
+      "grade": "B",
+      "weak_principles": [
+        "SAP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "response_markdown.go",
+      "functions": 1,
+      "composite": 65.30670277146476,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "DeadCode"
+      ]
+    },
+    {
+      "file": "response_test.go",
+      "functions": 27,
+      "composite": 73.22757950859814,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "validation.go",
+      "functions": 3,
+      "composite": 67.4223525814757,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 2
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "directory": "src",
+  "composite": 71.87390027195771,
+  "grade": "B",
+  "total_functions": 19,
+  "files": [
+    {
+      "file": "options.ts",
+      "functions": 13,
+      "composite": 70.53687199467369,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "popup.ts",
+      "functions": 6,
+      "composite": 74.77079487273976,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "REP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 7
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

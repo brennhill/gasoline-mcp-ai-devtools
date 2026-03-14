@@ -5,7 +5,7 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Agentic Browser Devtools - rapid e2e web development" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Strum - Agentic Browser Devtools" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
@@ -18,14 +18,14 @@
 [![Snyk Status](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp/badge.svg)](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
-[![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://cookwithgasoline.com)
+[![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://getstrum.dev)
 
-**Agentic Browser Devtools - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
+**Strum: Agentic Devtools — rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
 
-[Documentation](https://cookwithgasoline.com) •
-[Quick Start](https://cookwithgasoline.com/getting-started/) •
-[Features](https://cookwithgasoline.com/features/) •
-[MCP Setup](https://cookwithgasoline.com/mcp-integration/)
+[Documentation](https://getstrum.dev) •
+[Quick Start](https://getstrum.dev/getting-started/) •
+[Features](https://getstrum.dev/features/) •
+[MCP Setup](https://getstrum.dev/mcp-integration/)
 
 </div>
 
@@ -35,7 +35,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.12** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.8.1** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 **macOS / Linux:**
 ```bash
@@ -53,7 +53,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 
 ## Quick Start
 
-**Fire up Gasoline Agentic Browser Devtool MCP (Binary + Extension + Auto-Config) in one command:**
+**Install Strum: Agentic Devtools (Binary + Extension + Auto-Config) in one command:**
 
 **macOS / Linux:**
 ```bash
@@ -81,15 +81,15 @@ This script automatically:
 
 ### Step 2: Restart Your AI Tool
 
-Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now start automatically when needed.
+Restart Claude Code, Cursor, Windsurf, or Zed. The Strum server will now start automatically when needed.
 
-**[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
+**[Full setup guide →](https://getstrum.dev/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
 ---
 
-## Why You Cook With Gasoline Agentic Browser Devtool MCP
+## Why Strum: Agentic Devtools
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline Agentic Browser Devtool MCP uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Strum uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
@@ -118,7 +118,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 - **Noise filtering** — Auto-detect and dismiss irrelevant errors
 - **Developer API** — `window.__gasoline.annotate()` for custom context
 
-**[Full feature list →](https://cookwithgasoline.com/features/)**
+**[Full feature list →](https://getstrum.dev/features/)**
 
 ## Privacy
 
@@ -126,7 +126,7 @@ All captured data (logs, network, actions) stays 100% local — nothing leaves y
 
 We collect anonymous usage statistics (feature usage flags, extension version) using a random identifier not linked to your identity. No URLs, browsing data, or personal information is collected.
 
-**[Privacy details →](https://cookwithgasoline.com/privacy/)**
+**[Privacy details →](https://getstrum.dev/security/)**
 
 ## Performance
 
@@ -160,11 +160,11 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 <img src="docs/assets/images/sparky-wave.png" alt="Sparky the Salamander" width="120" />
 
-**[cookwithgasoline.com](https://cookwithgasoline.com)**
+**[getstrum.dev](https://getstrum.dev)**
 
-*Pouring fuel on the AI development fire*
+*Agentic devtools for the modern web*
 
-If you find Gasoline Agentic Browser Devtool MCP useful, please consider giving it a star!
+If you find Strum: Agentic Devtools useful, please consider giving it a star!
 
 [![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline-agentic-browser-devtools-mcp.svg?style=social)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 

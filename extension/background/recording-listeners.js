@@ -11,8 +11,7 @@ import { StorageKey } from '../lib/constants.js';
 import { getLocal } from '../lib/storage-utils.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
-import { buildScreenRecordingSlug } from './recording-utils.js';
-import { stopRecordingBadgeTimer } from './recording-badge.js';
+import { buildScreenRecordingSlug, stopRecordingBadgeTimer } from './recording-utils.js';
 const LOG = '[Gasoline REC]';
 async function resolvePopupRecordingTargetTab() {
     const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));

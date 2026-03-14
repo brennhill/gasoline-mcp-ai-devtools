@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="d1" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#fb923c"/>
+    </linearGradient>
+    <linearGradient id="d2" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="d3" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fde047"/>
+    </linearGradient>
+    <clipPath id="cClip"><circle cx="64" cy="64" r="59"/></clipPath>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+  <g clip-path="url(#cClip)" filter="url(#gl)">
+    <g transform-origin="64 64">
+      <animateTransform attributeName="transform" type="scale"
+        values="1;1.15;0.93;1.10;1;1;1;1;1;1"
+        keyTimes="0;0.1;0.2;0.3;0.4;0.5;0.6;0.7;0.8;1"
+        dur="1.5s" repeatCount="indefinite"/>
+      <line x1="22" y1="-2" x2="60" y2="112" stroke="url(#d1)" stroke-width="12" stroke-linecap="butt"/>
+      <line x1="50" y1="16" x2="82" y2="112" stroke="url(#d2)" stroke-width="9" stroke-linecap="butt"/>
+      <line x1="70" y1="16" x2="108" y2="130" stroke="url(#d3)" stroke-width="6" stroke-linecap="butt"/>
+    </g>
+  </g>
+</svg>

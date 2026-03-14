@@ -1,0 +1,162 @@
+{
+  "directory": "scripts",
+  "composite": 76.83159860819626,
+  "grade": "B",
+  "total_functions": 84,
+  "files": [
+    {
+      "file": "build-crx.js",
+      "functions": 6,
+      "composite": 77.43461362314385,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "REP"
+      ]
+    },
+    {
+      "file": "bump-version.js",
+      "functions": 6,
+      "composite": 79.83750043692875,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "check-ts-json-casing.js",
+      "functions": 4,
+      "composite": 77.2667175181543,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "check-wire-drift.js",
+      "functions": 2,
+      "composite": 77.20252382355659,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "generate-dom-primitives.js",
+      "functions": 3,
+      "composite": 77.20012741380566,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "SAP"
+      ]
+    },
+    {
+      "file": "generate-feature-navigation.py",
+      "functions": 8,
+      "composite": 78.44779010660064,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "generate-wire-types.js",
+      "functions": 6,
+      "composite": 79.94326456429732,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "install-upgrade-regression.mjs",
+      "functions": 17,
+      "composite": 80.791047874562,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "lint-documentation.py",
+      "functions": 11,
+      "composite": 69.77219127744688,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    },
+    {
+      "file": "migrate_ai_first_specs.py",
+      "functions": 3,
+      "composite": 83.73478497539794,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "normalize-pypi-main-pyproject.js",
+      "functions": 9,
+      "composite": 75.78349701899833,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "standardize-filenames.py",
+      "functions": 9,
+      "composite": 70.41218272351846,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "CRP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Idiomatic",
+      "count": 20
+    },
+    {
+      "principle": "Indirection",
+      "count": 3
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    },
+    {
+      "principle": "LoD",
+      "count": 2
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 2
+    }
+  ]
+}

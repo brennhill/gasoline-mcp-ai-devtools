@@ -1,11 +1,49 @@
 /**
- * Purpose: Listens for window.postMessage events from inject.js and resolves pending request promises or forwards telemetry to the background.
+ * Purpose: Listens for window.postMessage events from inject.js, resolves pending request promises, and forwards telemetry to the background via chrome.runtime.sendMessage.
+ * Why: Consolidates message forwarding and message listening into one module since they share the same data flow.
  * Docs: docs/features/feature/observe/index.md
  */
 import { resolveHighlightRequest, resolveExecuteRequest, resolveA11yRequest, resolveDomRequest } from './request-tracking.js';
-import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js';
 import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js';
 import { getPageNonce } from './script-injection.js';
+// =============================================================================
+// MESSAGE FORWARDING — page postMessage → background chrome.runtime.sendMessage
+// =============================================================================
+/** Dispatch table: page postMessage type -> background message type */
+export const MESSAGE_MAP = {
+    gasoline_log: 'log',
+    gasoline_ws: 'ws_event',
+    gasoline_network_body: 'network_body',
+    gasoline_enhanced_action: 'enhanced_action',
+    gasoline_performance_snapshot: 'performance_snapshot'
+};
+// Track whether the extension context is still valid
+let contextValid = true;
+/**
+ * Safely send a message to the background script.
+ * Handles extension context invalidation gracefully.
+ */
+export function safeSendMessage(msg) {
+    if (!contextValid)
+        return;
+    try {
+        chrome.runtime.sendMessage(msg);
+    }
+    catch (e) {
+        if (e instanceof Error && e.message?.includes('Extension context invalidated')) {
+            contextValid = false;
+            console.warn('[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
+                'and this page still has the old content script. A page refresh will ' +
+                'reconnect capture automatically.');
+        }
+    }
+}
+/**
+ * Check if the extension context is still valid
+ */
+export function isContextValid() {
+    return contextValid;
+}
 const RESPONSE_HANDLERS = {
     gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
     gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),

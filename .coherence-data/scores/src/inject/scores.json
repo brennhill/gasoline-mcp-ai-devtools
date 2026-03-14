@@ -1,0 +1,121 @@
+{
+  "directory": "src/inject",
+  "composite": 77.447318354872,
+  "grade": "B",
+  "total_functions": 82,
+  "files": [
+    {
+      "file": "api.ts",
+      "functions": 25,
+      "composite": 83.0383936151152,
+      "grade": "A",
+      "weak_principles": [
+        "DeadCode",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "computed-styles.ts",
+      "functions": 5,
+      "composite": 79.29303130785334,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "data-table.ts",
+      "functions": 5,
+      "composite": 73.97767338594451,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "execute-js.ts",
+      "functions": 3,
+      "composite": 67.70298555928004,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "SAP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "form-discovery.ts",
+      "functions": 5,
+      "composite": 71.54689966399111,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "message-handlers.ts",
+      "functions": 13,
+      "composite": 74.75287279016086,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "observers.ts",
+      "functions": 13,
+      "composite": 75.11661594983617,
+      "grade": "B",
+      "weak_principles": [
+        "ADP",
+        "Composable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "settings.ts",
+      "functions": 3,
+      "composite": 77.40835192684023,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "HighCohesion",
+        "REP"
+      ]
+    },
+    {
+      "file": "state.ts",
+      "functions": 10,
+      "composite": 76.69948768543583,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "DeadCode",
+        "REP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 14
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 6
+    },
+    {
+      "principle": "LoD",
+      "count": 3
+    }
+  ]
+}

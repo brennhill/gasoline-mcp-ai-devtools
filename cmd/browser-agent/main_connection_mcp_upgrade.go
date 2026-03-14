@@ -16,6 +16,43 @@ import (
 // Read by maybeAddUpgradeWarning() and buildUpgradeInfo() in health response builders.
 var binaryUpgradeState *BinaryWatcherState
 
+// persistUpgradeMarker writes a marker file so the next process knows it was upgraded.
+func persistUpgradeMarker() {
+	if binaryUpgradeState == nil {
+		return
+	}
+	_, newVer, _ := binaryUpgradeState.UpgradeInfo()
+	if newVer == "" {
+		return
+	}
+	if markerPath, err := state.UpgradeMarkerFile(); err == nil {
+		_ = writeUpgradeMarker(version, newVer, markerPath)
+	}
+}
+
+// selfTerminate sends SIGTERM to the current process to trigger graceful shutdown.
+func selfTerminate() {
+	p, _ := os.FindProcess(os.Getpid())
+	_ = p.Signal(syscall.SIGTERM)
+}
+
+// announceCompletedUpgrade checks for a previous upgrade marker and logs/warns if found.
+func announceCompletedUpgrade(server *Server, port int) {
+	markerPath, err := state.UpgradeMarkerFile()
+	if err != nil {
+		return
+	}
+	marker, err := readAndClearUpgradeMarker(markerPath)
+	if err != nil || marker == nil {
+		return
+	}
+	server.AddWarning(fmt.Sprintf("Upgraded from v%s to v%s", marker.FromVersion, marker.ToVersion))
+	server.logLifecycle("binary_upgrade_complete", port, map[string]any{
+		"from_version": marker.FromVersion,
+		"to_version":   marker.ToVersion,
+	})
+}
+
 func configureBinaryUpgradeMonitoring(ctx context.Context, server *Server, port int) {
 	binaryUpgradeState = startBinaryWatcher(ctx, version,
 		func(newVersion string) {
@@ -26,26 +63,11 @@ func configureBinaryUpgradeMonitoring(ctx context.Context, server *Server, port 
 			server.AddWarning("UPGRADE DETECTED: v" + newVersion + " installed. Auto-restart in ~5s.")
 		},
 		func() {
-			if binaryUpgradeState != nil {
-				if _, newVer, _ := binaryUpgradeState.UpgradeInfo(); newVer != "" {
-					if markerPath, err := state.UpgradeMarkerFile(); err == nil {
-						_ = writeUpgradeMarker(version, newVer, markerPath)
-					}
-				}
-			}
+			persistUpgradeMarker()
 			server.logLifecycle("binary_upgrade_shutdown", port, map[string]any{"version": version})
-			p, _ := os.FindProcess(os.Getpid())
-			_ = p.Signal(syscall.SIGTERM)
+			selfTerminate()
 		},
 	)
 
-	if markerPath, err := state.UpgradeMarkerFile(); err == nil {
-		if marker, err := readAndClearUpgradeMarker(markerPath); err == nil && marker != nil {
-			server.AddWarning(fmt.Sprintf("Upgraded from v%s to v%s", marker.FromVersion, marker.ToVersion))
-			server.logLifecycle("binary_upgrade_complete", port, map[string]any{
-				"from_version": marker.FromVersion,
-				"to_version":   marker.ToVersion,
-			})
-		}
-	}
+	announceCompletedUpgrade(server, port)
 }

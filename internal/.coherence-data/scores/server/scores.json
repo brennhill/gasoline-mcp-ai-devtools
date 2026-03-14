@@ -1,0 +1,118 @@
+{
+  "directory": "server",
+  "composite": 72.16233283898215,
+  "grade": "B",
+  "total_functions": 43,
+  "files": [
+    {
+      "file": "log_accessor.go",
+      "functions": 14,
+      "composite": 77.18492858122623,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "LoDChain",
+        "CRP"
+      ]
+    },
+    {
+      "file": "main_entries.go",
+      "functions": 4,
+      "composite": 65.24429174553332,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "main_handlers.go",
+      "functions": 2,
+      "composite": 70.43565695115373,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Predictable",
+        "REP"
+      ]
+    },
+    {
+      "file": "main_handlers_edge_test.go",
+      "functions": 9,
+      "composite": 68.40112697536286,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "Predictable",
+        "CRP"
+      ]
+    },
+    {
+      "file": "main_handlers_screenshot.go",
+      "functions": 2,
+      "composite": 58.843913864831265,
+      "grade": "C",
+      "weak_principles": [
+        "Predictable",
+        "HighCohesion",
+        "CRP"
+      ]
+    },
+    {
+      "file": "main_handlers_test.go",
+      "functions": 7,
+      "composite": 75.61538648010598,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "main_response.go",
+      "functions": 1,
+      "composite": 67.0167916823676,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "SRP",
+        "SAP"
+      ]
+    },
+    {
+      "file": "main_storage_io.go",
+      "functions": 4,
+      "composite": 72.73009087589689,
+      "grade": "B",
+      "weak_principles": [
+        "HighCohesion",
+        "CRP",
+        "Predictable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "Creator",
+      "count": 2
+    },
+    {
+      "principle": "DeadCode",
+      "count": 1
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 1
+    },
+    {
+      "principle": "Indirection",
+      "count": 1
+    }
+  ]
+}

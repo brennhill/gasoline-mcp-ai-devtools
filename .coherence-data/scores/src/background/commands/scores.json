@@ -1,0 +1,103 @@
+{
+  "directory": "src/background/commands",
+  "composite": 71.12280603253879,
+  "grade": "B",
+  "total_functions": 53,
+  "files": [
+    {
+      "file": "analyze-page-structure.ts",
+      "functions": 1,
+      "composite": 53.811104139461065,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "Cognitive"
+      ]
+    },
+    {
+      "file": "analyze.ts",
+      "functions": 13,
+      "composite": 76.37331095133769,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "helpers.ts",
+      "functions": 23,
+      "composite": 70.75805233690006,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "REP",
+        "ADP"
+      ]
+    },
+    {
+      "file": "interact-content.ts",
+      "functions": 1,
+      "composite": 64.43008982295979,
+      "grade": "C",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "interact.ts",
+      "functions": 5,
+      "composite": 68.0885141052964,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "observe.ts",
+      "functions": 5,
+      "composite": 67.90341342369237,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "registry.ts",
+      "functions": 5,
+      "composite": 70.20392840021998,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "REP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "InfoExpert",
+      "count": 8
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    },
+    {
+      "principle": "Indirection",
+      "count": 2
+    },
+    {
+      "principle": "LoD",
+      "count": 1
+    }
+  ]
+}

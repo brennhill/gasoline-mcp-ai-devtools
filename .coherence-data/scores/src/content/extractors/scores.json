@@ -1,0 +1,58 @@
+{
+  "directory": "src/content/extractors",
+  "composite": 67.68785247525231,
+  "grade": "B",
+  "total_functions": 12,
+  "files": [
+    {
+      "file": "markdown.ts",
+      "functions": 3,
+      "composite": 69.21805631859246,
+      "grade": "B",
+      "weak_principles": [
+        "DeadCode",
+        "CRP",
+        "REP"
+      ]
+    },
+    {
+      "file": "page-summary.ts",
+      "functions": 5,
+      "composite": 63.5578795235571,
+      "grade": "C",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "Composable"
+      ]
+    },
+    {
+      "file": "readable.ts",
+      "functions": 3,
+      "composite": 66.76817385702878,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "DeadCode",
+        "Composable"
+      ]
+    },
+    {
+      "file": "shared.ts",
+      "functions": 1,
+      "composite": 86.50614155837869,
+      "grade": "A",
+      "weak_principles": [
+        "ADP",
+        "DIP",
+        "Composable"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "DeadCode",
+      "count": 3
+    }
+  ]
+}

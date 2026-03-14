@@ -1,0 +1,143 @@
+{
+  "directory": "internal/buffers",
+  "composite": 75.24330557797795,
+  "grade": "B",
+  "total_functions": 76,
+  "files": [
+    {
+      "file": "filter.go",
+      "functions": 1,
+      "composite": 69.76049601898046,
+      "grade": "B",
+      "weak_principles": [
+        "REP",
+        "ADP",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "filter_test.go",
+      "functions": 9,
+      "composite": 71.30201502456944,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "refactoring_verification_test.go",
+      "functions": 5,
+      "composite": 74.44859201702576,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ring_buffer.go",
+      "functions": 13,
+      "composite": 75.66137177308961,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "LoDChain"
+      ]
+    },
+    {
+      "file": "ring_buffer_bench_test.go",
+      "functions": 6,
+      "composite": 76.87798259919204,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ring_buffer_filter.go",
+      "functions": 4,
+      "composite": 74.79207607058913,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "ADP",
+        "Composable"
+      ]
+    },
+    {
+      "file": "ring_buffer_property_test.go",
+      "functions": 5,
+      "composite": 79.68226290604797,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "ADP"
+      ]
+    },
+    {
+      "file": "ring_buffer_resolve_test.go",
+      "functions": 1,
+      "composite": 71.06946405491335,
+      "grade": "B",
+      "weak_principles": [
+        "CRP",
+        "Composable",
+        "HighCohesion"
+      ]
+    },
+    {
+      "file": "ring_buffer_slo_test.go",
+      "functions": 2,
+      "composite": 83.37969058139305,
+      "grade": "A",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "DIP"
+      ]
+    },
+    {
+      "file": "ring_buffer_stress_test.go",
+      "functions": 3,
+      "composite": 69.43301239500794,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "ADP",
+        "CRP"
+      ]
+    },
+    {
+      "file": "ring_buffer_test.go",
+      "functions": 27,
+      "composite": 75.7850519533501,
+      "grade": "B",
+      "weak_principles": [
+        "Composable",
+        "CRP",
+        "ADP"
+      ]
+    }
+  ],
+  "top_violations": [
+    {
+      "principle": "LoD",
+      "count": 4
+    },
+    {
+      "principle": "InfoExpert",
+      "count": 4
+    },
+    {
+      "principle": "DeadCode",
+      "count": 3
+    }
+  ]
+}
