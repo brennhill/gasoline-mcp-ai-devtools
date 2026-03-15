@@ -16,13 +16,13 @@ Capture current state before reproducing:
 
 ```bash
 # Check connection health
-bash gasoline-browser/scripts/ensure-daemon.sh
+bash scripts/ensure-daemon.sh
 
 # Capture baseline state
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"tabs"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"page"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"errors","limit":20}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_waterfall","limit":20,"summary":true}'
+bash scripts/gasoline-call.sh observe '{"what":"tabs"}'
+bash scripts/gasoline-call.sh observe '{"what":"page"}'
+bash scripts/gasoline-call.sh observe '{"what":"errors","limit":20}'
+bash scripts/gasoline-call.sh observe '{"what":"network_waterfall","limit":20,"summary":true}'
 ```
 
 ## Step 2: Reproduce Deliberately
@@ -31,11 +31,11 @@ Use small interact actions, one step at a time. Keep a correlation ID per high-l
 
 ```bash
 # Navigate to the page
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"navigate","url":"<target_url>","wait_for_stable":true}'
+bash scripts/gasoline-call.sh interact '{"what":"navigate","url":"<target_url>","wait_for_stable":true}'
 
 # Execute repro steps one at a time
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"<selector>","correlation_id":"step1"}'
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"type","selector":"<selector>","text":"<input>","correlation_id":"step2"}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"<selector>","correlation_id":"step1"}'
+bash scripts/gasoline-call.sh interact '{"what":"type","selector":"<selector>","text":"<input>","correlation_id":"step2"}'
 ```
 
 ## Step 3: Capture Failure Evidence
@@ -44,19 +44,19 @@ Collect evidence at the failure point. Start broad, then narrow.
 
 ```bash
 # Pre-assembled error context (best starting point)
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"error_bundles","window_seconds":5}'
+bash scripts/gasoline-call.sh observe '{"what":"error_bundles","window_seconds":5}'
 
 # Detailed console errors
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"errors","limit":50}'
+bash scripts/gasoline-call.sh observe '{"what":"errors","limit":50}'
 
 # Network failures
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_bodies","status_min":400,"limit":20}'
+bash scripts/gasoline-call.sh observe '{"what":"network_bodies","status_min":400,"limit":20}'
 
 # Console logs around failure
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"logs","min_level":"warn","limit":30}'
+bash scripts/gasoline-call.sh observe '{"what":"logs","min_level":"warn","limit":30}'
 
 # Async command results if relevant
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"command_result","correlation_id":"<id>"}'
+bash scripts/gasoline-call.sh observe '{"what":"command_result","correlation_id":"<id>"}'
 ```
 
 ## Step 4: Deep Analysis (if needed)
@@ -65,16 +65,16 @@ Only use analyze when evidence from observe suggests a specific mismatch.
 
 ```bash
 # DOM state inspection
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"dom","selector":"<problem_area>"}'
+bash scripts/gasoline-call.sh analyze '{"what":"dom","selector":"<problem_area>"}'
 
 # Computed styles (layout issues)
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"computed_styles","selector":"<element>"}'
+bash scripts/gasoline-call.sh analyze '{"what":"computed_styles","selector":"<element>"}'
 
 # API contract validation
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"api_validation"}'
+bash scripts/gasoline-call.sh analyze '{"what":"api_validation"}'
 
 # Visual screenshot for comparison
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"evidence.png"}'
+bash scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"evidence.png"}'
 ```
 
 ## Step 5: Classify Root Cause
@@ -104,13 +104,13 @@ After the bug is confirmed and fixed:
 
 ```bash
 # Generate test from captured session
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"test","test_name":"regression_<bug_id>"}'
+bash scripts/gasoline-call.sh generate '{"what":"test","test_name":"regression_<bug_id>"}'
 
 # Or generate from specific error context
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"test_from_context","context":"error","error_id":"<id>"}'
+bash scripts/gasoline-call.sh generate '{"what":"test_from_context","context":"error","error_id":"<id>"}'
 
 # Generate reproduction script
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"reproduction","output_format":"playwright","save_to":"repro.spec.ts"}'
+bash scripts/gasoline-call.sh generate '{"what":"reproduction","output_format":"playwright","save_to":"repro.spec.ts"}'
 ```
 
 Regression test checklist:

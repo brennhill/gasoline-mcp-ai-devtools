@@ -27,5 +27,26 @@ echo "OK: Extension connected"
 TABS=$(curl -s --max-time 5 -X POST "${GASOLINE_URL}/mcp" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"tabs"}}}')
-echo "OK: Connection healthy"
+TAB_TRACKED=$(echo "$TABS" | python3 -c "
+import sys, json
+try:
+    r = json.load(sys.stdin)
+    content = r.get('result',{}).get('content',[])
+    for item in content:
+        if item.get('type') == 'text':
+            text = item['text']
+            if 'tracked' in text.lower() and ('true' in text.lower() or '\"tracked\":true' in text.replace(' ','')):
+                print('true')
+                sys.exit(0)
+    print('false')
+except:
+    print('false')
+" 2>/dev/null)
+if [ "$TAB_TRACKED" != "true" ]; then
+  echo "WARN: No tab is being tracked"
+  echo "Fix: Open a page in Chrome, click the Gasoline extension icon, and click 'Track This Tab'"
+fi
+
+echo ""
 echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print(f'Version: {h.get(\"version\",\"?\")}'); print(f'Extension last seen: {h.get(\"capture\",{}).get(\"extension_last_seen\",\"?\")}')" 2>/dev/null
+echo "Doctor complete."

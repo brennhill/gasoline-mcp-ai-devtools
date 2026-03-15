@@ -18,12 +18,12 @@ Merges: automate, demo, reliability, test-coverage, release-readiness.
 ### Step 1: Validate Preconditions
 
 ```bash
-bash gasoline-browser/scripts/ensure-daemon.sh
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"tabs"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"page"}'
+bash scripts/ensure-daemon.sh
+bash scripts/gasoline-call.sh observe '{"what":"tabs"}'
+bash scripts/gasoline-call.sh observe '{"what":"page"}'
 
 # Check auth state
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"storage","storage_type":"cookies"}'
+bash scripts/gasoline-call.sh observe '{"what":"storage","storage_type":"cookies"}'
 ```
 
 ### Step 2: Plan Robust Selectors
@@ -32,10 +32,10 @@ Prefer semantic selectors and stable attributes over brittle CSS chains.
 
 ```bash
 # Discover interactive elements
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"list_interactive","visible_only":true}'
+bash scripts/gasoline-call.sh interact '{"what":"list_interactive","visible_only":true}'
 
 # Use element_id from list_interactive for stable targeting
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","element_id":"<stable_id>"}'
+bash scripts/gasoline-call.sh interact '{"what":"click","element_id":"<stable_id>"}'
 ```
 
 Selector priority: `element_id` > semantic (`text=Submit`, `role=button`) > CSS selector > coordinates.
@@ -46,16 +46,16 @@ After each interact call, verify the result.
 
 ```bash
 # Navigate
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"navigate","url":"<url>","wait_for_stable":true}'
+bash scripts/gasoline-call.sh interact '{"what":"navigate","url":"<url>","wait_for_stable":true}'
 
 # Interact with action_diff for mutation tracking
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"button.submit","action_diff":true}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"button.submit","action_diff":true}'
 
 # Fill and submit forms
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"fill_form_and_submit","fields":[{"selector":"#email","value":"user@example.com"},{"selector":"#password","value":"pass"}],"submit_selector":"button[type=submit]"}'
+bash scripts/gasoline-call.sh interact '{"what":"fill_form_and_submit","fields":[{"selector":"#email","value":"user@example.com"},{"selector":"#password","value":"pass"}],"submit_selector":"button[type=submit]"}'
 
 # Wait for expected state
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"wait_for","selector":".success-message","timeout_ms":5000}'
+bash scripts/gasoline-call.sh interact '{"what":"wait_for","selector":".success-message","timeout_ms":5000}'
 ```
 
 ### Step 4: Bounded Recovery
@@ -64,11 +64,11 @@ If a step fails, retry once with alternate selector or wait strategy.
 
 ```bash
 # Try alternate selector
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"text=Submit","timeout_ms":10000}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"text=Submit","timeout_ms":10000}'
 
 # Or wait for stability then retry
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"wait_for_stable","stability_ms":1000}'
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"button.submit"}'
+bash scripts/gasoline-call.sh interact '{"what":"wait_for_stable","stability_ms":1000}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"button.submit"}'
 ```
 
 ### Step 5: Batch Execution
@@ -76,17 +76,17 @@ bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","select
 For multi-step sequences, use batch mode:
 
 ```bash
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"batch","steps":[{"what":"navigate","url":"https://example.com"},{"what":"click","selector":"#login"},{"what":"type","selector":"#email","text":"user@example.com"},{"what":"click","selector":"button[type=submit]"}],"continue_on_error":false}'
+bash scripts/gasoline-call.sh interact '{"what":"batch","steps":[{"what":"navigate","url":"https://example.com"},{"what":"click","selector":"#login"},{"what":"type","selector":"#email","text":"user@example.com"},{"what":"click","selector":"button[type=submit]"}],"continue_on_error":false}'
 ```
 
 ### Step 6: Save Reusable Sequences
 
 ```bash
 # Save a sequence for reuse
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"save_sequence","name":"login_flow","steps":[{"what":"navigate","url":"https://example.com/login"},{"what":"type","selector":"#email","text":"user@example.com"},{"what":"click","selector":"button[type=submit]"}]}'
+bash scripts/gasoline-call.sh configure '{"what":"save_sequence","name":"login_flow","steps":[{"what":"navigate","url":"https://example.com/login"},{"what":"type","selector":"#email","text":"user@example.com"},{"what":"click","selector":"button[type=submit]"}]}'
 
 # Replay it later
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"replay_sequence","name":"login_flow"}'
+bash scripts/gasoline-call.sh configure '{"what":"replay_sequence","name":"login_flow"}'
 ```
 
 ---
@@ -97,17 +97,17 @@ bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"replay_sequen
 
 ```bash
 # Start recording
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"screen_recording_start","name":"demo_feature_x"}'
+bash scripts/gasoline-call.sh interact '{"what":"screen_recording_start","name":"demo_feature_x"}'
 
 # Execute steps with subtitles for narration
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"navigate","url":"<demo_url>","subtitle":"Opening the dashboard"}'
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"<feature_cta>","subtitle":"Launching Feature X"}'
+bash scripts/gasoline-call.sh interact '{"what":"navigate","url":"<demo_url>","subtitle":"Opening the dashboard"}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"<feature_cta>","subtitle":"Launching Feature X"}'
 
 # Capture proof screenshots
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"demo/step1.png"}'
+bash scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"demo/step1.png"}'
 
 # Stop recording
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"screen_recording_stop","name":"demo_feature_x"}'
+bash scripts/gasoline-call.sh interact '{"what":"screen_recording_stop","name":"demo_feature_x"}'
 ```
 
 ---
@@ -116,21 +116,21 @@ bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"screen_recordi
 
 ```bash
 # Start recording user actions
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"event_recording_start","name":"test_session"}'
+bash scripts/gasoline-call.sh configure '{"what":"event_recording_start","name":"test_session"}'
 
 # ... perform the user journey ...
 
 # Stop recording
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"event_recording_stop"}'
+bash scripts/gasoline-call.sh configure '{"what":"event_recording_stop"}'
 
 # Generate test from captured session
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"test","test_name":"user_journey","save_to":"tests/user-journey.spec.ts"}'
+bash scripts/gasoline-call.sh generate '{"what":"test","test_name":"user_journey","save_to":"tests/user-journey.spec.ts"}'
 
 # Generate test from specific context
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"test_from_context","context":"interaction","save_to":"tests/interaction.spec.ts"}'
+bash scripts/gasoline-call.sh generate '{"what":"test_from_context","context":"interaction","save_to":"tests/interaction.spec.ts"}'
 
 # Heal broken selectors in existing tests
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"test_heal","action":"batch","test_dir":"tests/"}'
+bash scripts/gasoline-call.sh generate '{"what":"test_heal","action":"batch","test_dir":"tests/"}'
 ```
 
 ---
@@ -143,16 +143,16 @@ Cover all tool paths:
 
 ```bash
 # Observe path
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"errors","limit":5}'
+bash scripts/gasoline-call.sh observe '{"what":"errors","limit":5}'
 
 # Interact path
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"explore_page"}'
+bash scripts/gasoline-call.sh interact '{"what":"explore_page"}'
 
 # Analyze path
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"page_summary"}'
+bash scripts/gasoline-call.sh analyze '{"what":"page_summary"}'
 
 # Generate path
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"pr_summary"}'
+bash scripts/gasoline-call.sh generate '{"what":"pr_summary"}'
 ```
 
 ### Stress Transitions
@@ -161,12 +161,12 @@ Test reconnect, tab switches, extension restarts:
 
 ```bash
 # Switch tabs
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"switch_tab","tab_index":1}'
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"switch_tab","tab_index":0}'
+bash scripts/gasoline-call.sh interact '{"what":"switch_tab","tab_index":1}'
+bash scripts/gasoline-call.sh interact '{"what":"switch_tab","tab_index":0}'
 
 # Verify health after stress
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"health"}'
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"doctor"}'
+bash scripts/gasoline-call.sh configure '{"what":"health"}'
+bash scripts/gasoline-call.sh configure '{"what":"doctor"}'
 ```
 
 ---
@@ -177,11 +177,11 @@ bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"doctor"}'
 
 ```bash
 # System health
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"health"}'
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"doctor"}'
+bash scripts/gasoline-call.sh configure '{"what":"health"}'
+bash scripts/gasoline-call.sh configure '{"what":"doctor"}'
 
 # Audit tool usage
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"audit_log","operation":"report"}'
+bash scripts/gasoline-call.sh configure '{"what":"audit_log","operation":"report"}'
 ```
 
 ### Integration Smoke
@@ -190,12 +190,12 @@ Run critical end-to-end flows and capture results:
 
 ```bash
 # Session diff: capture before and after
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"pre_release"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"pre_release"}'
 
 # ... run critical flows ...
 
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"post_release"}'
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"compare","compare_a":"pre_release","compare_b":"post_release"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"post_release"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"compare","compare_a":"pre_release","compare_b":"post_release"}'
 ```
 
 ### Decision

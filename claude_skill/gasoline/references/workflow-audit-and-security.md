@@ -15,9 +15,9 @@ Merges: site-audit, ux-audit, security-redaction, api-validation.
 ## Step 1: Confirm Starting State
 
 ```bash
-bash gasoline-browser/scripts/ensure-daemon.sh
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"tabs"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"page"}'
+bash scripts/ensure-daemon.sh
+bash scripts/gasoline-call.sh observe '{"what":"tabs"}'
+bash scripts/gasoline-call.sh observe '{"what":"page"}'
 ```
 
 Verify the user is logged in and on the intended start page.
@@ -26,16 +26,16 @@ Verify the user is logged in and on the intended start page.
 
 ```bash
 # Explore the current page
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"explore_page"}'
+bash scripts/gasoline-call.sh interact '{"what":"explore_page"}'
 
 # List all interactive elements
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"list_interactive","visible_only":true}'
+bash scripts/gasoline-call.sh interact '{"what":"list_interactive","visible_only":true}'
 
 # Get page structure
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"page_structure"}'
+bash scripts/gasoline-call.sh analyze '{"what":"page_structure"}'
 
 # Capture navigation architecture
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"navigation"}'
+bash scripts/gasoline-call.sh analyze '{"what":"navigation"}'
 ```
 
 Build a discovery queue from nav, sidebars, footers, and major CTAs.
@@ -46,17 +46,17 @@ For each page in the queue:
 
 ```bash
 # Navigate
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"navigate","url":"<page_url>","wait_for_stable":true}'
+bash scripts/gasoline-call.sh interact '{"what":"navigate","url":"<page_url>","wait_for_stable":true}'
 
 # Screenshot evidence (top, scrolled, bottom)
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"audit/<page_id>_top.png"}'
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"scroll_to","direction":"bottom"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"audit/<page_id>_bottom.png"}'
+bash scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"audit/<page_id>_top.png"}'
+bash scripts/gasoline-call.sh interact '{"what":"scroll_to","direction":"bottom"}'
+bash scripts/gasoline-call.sh observe '{"what":"screenshot","save_to":"audit/<page_id>_bottom.png"}'
 
 # Page summary and diagnostics
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"page_summary"}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"errors","limit":20}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_waterfall","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"page_summary"}'
+bash scripts/gasoline-call.sh observe '{"what":"errors","limit":20}'
+bash scripts/gasoline-call.sh observe '{"what":"network_waterfall","summary":true}'
 ```
 
 Per-page capture checklist:
@@ -71,17 +71,17 @@ Per-page capture checklist:
 
 ```bash
 # Full accessibility check
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"accessibility","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"accessibility","summary":true}'
 
 # Detailed check on specific area
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"accessibility","selector":"main","tags":["wcag2a","wcag2aa"]}'
+bash scripts/gasoline-call.sh analyze '{"what":"accessibility","selector":"main","tags":["wcag2a","wcag2aa"]}'
 
 # Form analysis
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"forms"}'
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"form_validation","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"forms"}'
+bash scripts/gasoline-call.sh analyze '{"what":"form_validation","summary":true}'
 
 # Export as SARIF for CI integration
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"run_a11y_and_export_sarif","save_to":"audit/a11y.sarif"}'
+bash scripts/gasoline-call.sh interact '{"what":"run_a11y_and_export_sarif","save_to":"audit/a11y.sarif"}'
 ```
 
 Check: labels, focus flow, landmarks, contrast, heading order, keyboard navigation.
@@ -90,19 +90,19 @@ Check: labels, focus flow, landmarks, contrast, heading order, keyboard navigati
 
 ```bash
 # Comprehensive security scan
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"security_audit","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"security_audit","summary":true}'
 
 # Targeted checks
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"security_audit","checks":["credentials","pii","headers","cookies"]}'
+bash scripts/gasoline-call.sh analyze '{"what":"security_audit","checks":["credentials","pii","headers","cookies"]}'
 
 # Third-party script analysis
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"third_party_audit","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"third_party_audit","summary":true}'
 
 # Generate CSP recommendation
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"csp","mode":"strict"}'
+bash scripts/gasoline-call.sh generate '{"what":"csp","mode":"strict"}'
 
 # Generate SRI hashes
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"sri"}'
+bash scripts/gasoline-call.sh generate '{"what":"sri"}'
 ```
 
 ### Security Redaction Testing
@@ -111,9 +111,9 @@ Seed synthetic secrets and verify they are redacted in all outputs:
 
 ```bash
 # Trigger flows that handle sensitive data
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_bodies","limit":20}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"logs","limit":30}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"storage"}'
+bash scripts/gasoline-call.sh observe '{"what":"network_bodies","limit":20}'
+bash scripts/gasoline-call.sh observe '{"what":"logs","limit":30}'
+bash scripts/gasoline-call.sh observe '{"what":"storage"}'
 ```
 
 Check: raw and transformed outputs for token/secret leaks.
@@ -122,17 +122,17 @@ Check: raw and transformed outputs for token/secret leaks.
 
 ```bash
 # Collect traffic
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_waterfall","limit":50}'
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_bodies","limit":30}'
+bash scripts/gasoline-call.sh observe '{"what":"network_waterfall","limit":50}'
+bash scripts/gasoline-call.sh observe '{"what":"network_bodies","limit":30}'
 
 # Run API contract validation
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"api_validation"}'
+bash scripts/gasoline-call.sh analyze '{"what":"api_validation"}'
 
 # Get validation report
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"api_validation","operation":"report"}'
+bash scripts/gasoline-call.sh analyze '{"what":"api_validation","operation":"report"}'
 
 # Link health check
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"link_health","timeout_ms":15000}'
+bash scripts/gasoline-call.sh analyze '{"what":"link_health","timeout_ms":15000}'
 ```
 
 Classify mismatches: schema drift, status drift, auth failure, routing mismatch, serialization issue.
@@ -150,10 +150,10 @@ Review across all captured evidence:
 
 ```bash
 # Generate SARIF report for all findings
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"sarif","save_to":"audit/full-report.sarif"}'
+bash scripts/gasoline-call.sh generate '{"what":"sarif","save_to":"audit/full-report.sarif"}'
 
 # Generate annotation report if draw mode was used
-bash gasoline-browser/scripts/gasoline-call.sh generate '{"what":"annotation_report","save_to":"audit/annotations.md"}'
+bash scripts/gasoline-call.sh generate '{"what":"annotation_report","save_to":"audit/annotations.md"}'
 ```
 
 ### Report Structure

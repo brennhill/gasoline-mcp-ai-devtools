@@ -14,32 +14,32 @@ Use this workflow for performance triage, regression checks, and optimization va
 List the exact navigation and interaction sequence to measure. Keep it deterministic.
 
 ```bash
-bash gasoline-browser/scripts/ensure-daemon.sh
+bash scripts/ensure-daemon.sh
 
 # Clear existing data for clean measurement
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"clear","buffer":"all"}'
+bash scripts/gasoline-call.sh configure '{"what":"clear","buffer":"all"}'
 ```
 
 ## Step 2: Capture Baseline
 
 ```bash
 # Navigate to target page
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"navigate","url":"<page_url>","wait_for_stable":true,"analyze":true}'
+bash scripts/gasoline-call.sh interact '{"what":"navigate","url":"<page_url>","wait_for_stable":true,"analyze":true}'
 
 # Collect web vitals
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"vitals"}'
+bash scripts/gasoline-call.sh observe '{"what":"vitals"}'
 
 # Capture network waterfall
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_waterfall","summary":true}'
+bash scripts/gasoline-call.sh observe '{"what":"network_waterfall","summary":true}'
 
 # Timeline of all events
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"timeline"}'
+bash scripts/gasoline-call.sh observe '{"what":"timeline"}'
 
 # Performance analysis
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"performance"}'
+bash scripts/gasoline-call.sh analyze '{"what":"performance"}'
 
 # Save baseline snapshot
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"perf_baseline"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"perf_baseline"}'
 ```
 
 ## Step 3: Execute User Journey
@@ -48,10 +48,10 @@ Run the critical interaction sequence with performance profiling enabled:
 
 ```bash
 # Each interaction with analyze:true for perf profiling
-bash gasoline-browser/scripts/gasoline-call.sh interact '{"what":"click","selector":"<cta>","analyze":true,"wait_for_stable":true}'
+bash scripts/gasoline-call.sh interact '{"what":"click","selector":"<cta>","analyze":true,"wait_for_stable":true}'
 
 # Capture vitals after each significant interaction
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"vitals"}'
+bash scripts/gasoline-call.sh observe '{"what":"vitals"}'
 ```
 
 ## Step 4: Capture Candidate Measurement
@@ -60,25 +60,25 @@ Repeat the same sequence on the candidate branch/build:
 
 ```bash
 # Clear and re-run
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"clear","buffer":"all"}'
+bash scripts/gasoline-call.sh configure '{"what":"clear","buffer":"all"}'
 
 # ... repeat exact same sequence ...
 
 # Capture candidate snapshot
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"perf_candidate"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"capture","name":"perf_candidate"}'
 ```
 
 ## Step 5: Compare Deltas
 
 ```bash
 # Session comparison
-bash gasoline-browser/scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"compare","compare_a":"perf_baseline","compare_b":"perf_candidate"}'
+bash scripts/gasoline-call.sh configure '{"what":"diff_sessions","verif_session_action":"compare","compare_a":"perf_baseline","compare_b":"perf_candidate"}'
 
 # Network body comparison for API response times
-bash gasoline-browser/scripts/gasoline-call.sh observe '{"what":"network_bodies","summary":true}'
+bash scripts/gasoline-call.sh observe '{"what":"network_bodies","summary":true}'
 
 # Third-party impact
-bash gasoline-browser/scripts/gasoline-call.sh analyze '{"what":"third_party_audit","summary":true}'
+bash scripts/gasoline-call.sh analyze '{"what":"third_party_audit","summary":true}'
 ```
 
 ## Step 6: Identify Bottlenecks
