@@ -2,15 +2,17 @@ name: DCO
 
 on:
   pull_request:
-    branches: [main, UNSTABLE]
+    branches: [main, STABLE, UNSTABLE]
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   dco:
     name: Developer Certificate of Origin
+    # Skip DCO check for repo owner
+    if: github.event.pull_request.user.login != 'brennhill'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -18,28 +20,86 @@ jobs:
           fetch-depth: 0
 
       - name: Check DCO sign-off on all PR commits
+        id: dco-check
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
 
           FAILED=0
+          MISSING=""
           while IFS= read -r sha; do
             msg=$(git log -1 --format='%B' "$sha")
             if ! echo "$msg" | grep -qiE '^Signed-off-by: .+ <.+>'; then
-              echo "FAIL: Commit $sha missing Signed-off-by"
-              echo "  $(git log -1 --format='%s' "$sha")"
+              subject=$(git log -1 --format='%s' "$sha")
+              echo "FAIL: Commit ${sha:0:8} missing Signed-off-by"
+              echo "  $subject"
+              MISSING="${MISSING}- \`${sha:0:8}\` $subject\n"
               FAILED=1
             fi
           done < <(git rev-list "$BASE".."$HEAD")
 
           if [ "$FAILED" -eq 1 ]; then
-            echo ""
-            echo "All commits must include a DCO sign-off line."
-            echo "Use: git commit -s -m \"your message\""
-            echo "To fix existing commits: git rebase --signoff HEAD~N"
-            echo ""
-            echo "See CONTRIBUTING.md for details."
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            # Write missing commits for the comment step
+            printf '%s' "$MISSING" > /tmp/dco-missing.txt
             exit 1
           fi
 
+          echo "failed=false" >> "$GITHUB_OUTPUT"
           echo "OK: All commits have DCO sign-off."
+
+      - name: Post helpful comment on failure
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const fs = require('fs');
+            let missing = '';
+            try { missing = fs.readFileSync('/tmp/dco-missing.txt', 'utf8'); } catch {}
+
+            const body = `## DCO Sign-off Required
+
+            This project requires a [Developer Certificate of Origin](https://developercertificate.org/) (DCO) sign-off on every commit.
+
+            ### Commits missing sign-off:
+            ${missing || '_(see check output for details)_'}
+
+            ### How to fix
+
+            **Option 1 — Sign off all commits in this PR:**
+            \`\`\`bash
+            git rebase --signoff HEAD~${{ github.event.pull_request.commits }}
+            git push --force-with-lease
+            \`\`\`
+
+            **Option 2 — Sign off future commits:**
+            \`\`\`bash
+            git commit -s -m "your commit message"
+            \`\`\`
+
+            The \`-s\` flag adds a \`Signed-off-by: Your Name <your@email.com>\` line using your Git \`user.name\` and \`user.email\` config.
+
+            See [CONTRIBUTING.md](../blob/UNSTABLE/CONTRIBUTING.md#developer-certificate-of-origin-dco) for full details.`;
+
+            // Check if we already posted a DCO comment to avoid duplicates
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('DCO Sign-off Required'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
