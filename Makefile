@@ -3,7 +3,7 @@
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline-agentic-devtools
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry.Version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 

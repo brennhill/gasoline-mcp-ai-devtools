@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -128,6 +129,7 @@ func tryConnectToExisting(state *daemonState, port int) bool {
 	if serviceName == "" {
 		serviceName = "unknown"
 	}
+	telemetry.BeaconError("bridge_port_blocked", map[string]string{"port": fmt.Sprintf("%d", port)})
 	state.markFailed(fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName))
 	return true // fatally blocked
 }

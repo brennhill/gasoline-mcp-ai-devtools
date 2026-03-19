@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -140,6 +141,7 @@ func runNativeInstall() {
 		}{"VS Code", filepath.Join(appData, "Code", "User", "mcp.json"), "mcpServers", false})
 	}
 
+	clientsConfigured := 0
 	for _, cfg := range configs {
 		path := cfg.path
 		if strings.HasPrefix(path, "~/") {
@@ -153,9 +155,23 @@ func runNativeInstall() {
 		}
 
 		if err := mergeJSONConfig(path, cfg.key, exe, cfg.isCustom); err != nil {
+			reason := "write_failed"
+			if strings.Contains(err.Error(), "invalid JSON") {
+				reason = "invalid_json"
+			}
+			telemetry.BeaconError("install_config_error", map[string]string{
+				"client": cfg.name,
+				"reason": reason,
+			})
 			stderrf("  ⚠️  %s: %v\n", cfg.name, err)
+		} else {
+			clientsConfigured++
 		}
 	}
+
+	telemetry.BeaconEvent("install_complete", map[string]string{
+		"clients_configured": fmt.Sprintf("%d", clientsConfigured),
+	})
 
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user

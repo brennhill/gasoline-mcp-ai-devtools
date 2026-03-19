@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // bridgeDoHTTP delegates to internal/bridge for HTTP forwarding.
@@ -43,6 +44,10 @@ func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCReque
 	}
 	defer activeCancel()
 	if err != nil {
+		telemetry.BeaconError("bridge_connection_error", map[string]string{
+			"error_code":    "bridge_connection_error",
+			"fallback_used": fmt.Sprintf("%v", fallbackUsed),
+		})
 		message := "Server connection error: " + err.Error()
 		if req.Method == "tools/call" {
 			sendToolErrorWithOptions(req.ID, message, framing, bridgeToolErrorOptions{

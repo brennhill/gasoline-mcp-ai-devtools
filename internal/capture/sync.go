@@ -7,9 +7,11 @@ package capture
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -153,6 +155,11 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	state := c.updateSyncConnectionState(req, clientID, now)
 
 	if !state.wasConnected || state.isReconnect {
+		browserHint := r.Header.Get("User-Agent")
+		if len(browserHint) > 64 {
+			browserHint = browserHint[:64]
+		}
+		telemetry.BeaconEvent("extension_connect", map[string]string{"browser": browserHint})
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_connected", map[string]any{
 				"ext_session_id":     state.extSessionID,
@@ -168,6 +175,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if state.wasDisconnected {
+		telemetry.BeaconError("extension_disconnect", map[string]string{
+			"disconnect_seconds": fmt.Sprintf("%.0f", state.timeSinceLastPoll.Seconds()),
+		})
 		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{

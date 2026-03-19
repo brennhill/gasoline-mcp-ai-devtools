@@ -5,8 +5,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -77,6 +79,11 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 		"terminal_port": termPort,
 	})
 	server.logLifecycle("mcp_transport_ready", port, nil)
+
+	telemetry.BeaconEvent("daemon_start", map[string]string{
+		"mode": "daemon",
+		"port": fmt.Sprintf("%d", port),
+	})
 
 	awaitShutdownSignal(server, srv, port, httpDone, termSrv, termDone, mcpHandler)
 	return nil

@@ -35,6 +35,17 @@ ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color (Reset)
 
+# Anonymous install error beacon (disable: STRUM_TELEMETRY=off).
+# Fire-and-forget, never blocks, never fails the install.
+beacon_error() {
+    local reason="${1:-unknown}"
+    if [ "${STRUM_TELEMETRY:-}" = "off" ]; then return; fi
+    curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+        -H "Content-Type: application/json" \
+        -d "{\"event\":\"install_error\",\"v\":\"${VERSION:-unknown}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"reason\":\"${reason}\",\"method\":\"curl\"}}" \
+        > /dev/null 2>&1 || true
+}
+
 # Cleanup: Ensure temporary files are removed even if the script crashes or is interrupted.
 # Uses mktemp to prevent predictable filename attacks.
 TEMP_ROOT=$(mktemp -d)
@@ -402,6 +413,7 @@ if ! curl_retry "$TEMP_ROOT/gasoline_dl" "$BINARY_URL"; then
     echo -e "${RED}Download failed after 3 attempts.${NC}"
     echo -e "URL: $BINARY_URL"
     echo -e "Check your network connection, proxy settings, or try again later."
+    beacon_error "download_failed"
     exit 1
 fi
 
@@ -410,6 +422,7 @@ DOWNLOADED_SIZE=$(wc -c < "$TEMP_ROOT/gasoline_dl" | tr -d ' ')
 if [ "$DOWNLOADED_SIZE" -lt "$MIN_BINARY_BYTES" ]; then
     echo -e "${RED}Downloaded file is too small (${DOWNLOADED_SIZE} bytes, expected >${MIN_BINARY_BYTES}).${NC}"
     echo -e "The download may have been truncated or intercepted by a proxy."
+    beacon_error "binary_too_small"
     exit 1
 fi
 
@@ -445,6 +458,7 @@ if curl -fsSL --max-time 15 "$CHECKSUM_URL" -o "$TEMP_ROOT/checksums.txt" 2>/dev
             echo -e "${RED}Checksum verification failed! The binary may be corrupted or tampered with.${NC}"
             echo -e "Expected: $EXPECTED_HASH"
             echo -e "Actual:   $ACTUAL_HASH"
+            beacon_error "checksum_mismatch"
             exit 1
         fi
         CHECKSUM_VERIFIED=1
@@ -472,6 +486,7 @@ if ! "$CANONICAL_GASOLINE_BIN" --version >/dev/null 2>&1; then
     echo -e "${RED}Binary smoke test failed — the downloaded binary cannot execute.${NC}"
     echo -e "This may indicate an architecture mismatch or a corrupted download."
     echo -e "Platform: $PLATFORM-$E_ARCH, Binary: $BINARY_NAME"
+    beacon_error "smoke_test_failed"
     exit 1
 fi
 
@@ -687,7 +702,18 @@ register_path() {
 register_path
 
 # ─────────────────────────────────────────────────────────────
-# 13. Final summary
+# 13. Anonymous telemetry (disable: STRUM_TELEMETRY=off)
+# ─────────────────────────────────────────────────────────────
+
+if [ "${STRUM_TELEMETRY:-}" != "off" ]; then
+    curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+        -H "Content-Type: application/json" \
+        -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"method\":\"curl\"}}" \
+        > /dev/null 2>&1 &
+fi
+
+# ─────────────────────────────────────────────────────────────
+# 14. Final summary
 # ─────────────────────────────────────────────────────────────
 
 echo ""

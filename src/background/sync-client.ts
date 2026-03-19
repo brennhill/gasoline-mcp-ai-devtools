@@ -12,6 +12,7 @@ import type { PendingQuery } from '../types/index.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { fetchWithTimeout } from '../lib/timeout-utils.js'
 import { buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
+import { beacon } from '../lib/telemetry-beacon.js'
 
 // =============================================================================
 // TYPES
@@ -314,6 +315,7 @@ export class SyncClient {
         const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.')
         const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.')
         if (serverMajorMinor !== extensionMajorMinor) {
+          beacon('extension_version_mismatch')
           this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version)
         }
       }
@@ -401,6 +403,11 @@ export class SyncClient {
 
   private onFailure(): void {
     this.state.consecutiveFailures++
+
+    // Beacon after 10 consecutive failures (debounced — not every failure)
+    if (this.state.consecutiveFailures === 10) {
+      beacon('sync_connect_failed', { consecutive_failures: '10' })
+    }
 
     // Require 2+ consecutive failures before marking disconnected
     // to prevent a single transient timeout from flipping connection state

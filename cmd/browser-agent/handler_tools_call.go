@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // handleToolsCall validates tool call payload, executes tool, then applies response guards.
@@ -37,6 +39,7 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	h.warnUnknownToolArguments(params.Name, params.Arguments)
 
 	if err := h.checkToolRateLimit(); err != nil {
+		telemetry.BeaconError("tool_rate_limited", map[string]string{"tool": params.Name})
 		return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Error: err}
 	}
 

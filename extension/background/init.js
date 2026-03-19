@@ -7,6 +7,7 @@
  * Handles startup logic: loading settings, installing listeners, and initial connection setup.
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
+import { beacon } from '../lib/telemetry-beacon.js';
 import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
@@ -38,6 +39,8 @@ export function initializeExtension() {
  */
 async function initializeExtensionAsync() {
     try {
+        // Anonymous telemetry: service worker activation (once per session)
+        beacon('extension_start');
         // ============= STEP 1: Check service worker restart =============
         const wasRestarted = await wasServiceWorkerRestarted();
         if (wasRestarted) {

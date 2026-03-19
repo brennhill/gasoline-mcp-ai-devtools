@@ -8,11 +8,20 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
 var version = "0.8.1"
+
+func init() {
+	// Sync telemetry version from main for go run (no ldflags) fallback.
+	if telemetry.Version == "dev" {
+		telemetry.Version = version
+	}
+}
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()

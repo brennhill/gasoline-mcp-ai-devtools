@@ -6,11 +6,13 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 const (
@@ -58,6 +60,14 @@ func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, s
 	time.Sleep(bridgeShutdownFlushDelay)
 
 	if stats != nil {
+		// Beacon bridge exit if there were errors during the session.
+		if stats.parseErrors > 0 || stats.methodNotFound > 0 || (readErr != nil && !errors.Is(readErr, io.EOF)) {
+			telemetry.BeaconError("bridge_exit_error", map[string]string{
+				"parse_errors":     fmt.Sprintf("%d", stats.parseErrors),
+				"forwarded":        fmt.Sprintf("%d", stats.forwarded),
+				"method_not_found": fmt.Sprintf("%d", stats.methodNotFound),
+			})
+		}
 		reason := "stdin_eof"
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
 			reason = "stdin_read_error"

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -217,10 +218,12 @@ func spawnDaemonAsync(state *daemonState) {
 	util.SafeGo(func() {
 		cmd, err := state.buildDaemonCmd()
 		if err != nil {
+			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "build_cmd_error"})
 			state.markFailed(err.Error())
 			return
 		}
 		if err := cmd.Start(); err != nil {
+			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "start_error"})
 			state.markFailed("Failed to start daemon: " + err.Error())
 			return
 		}
@@ -229,6 +232,7 @@ func spawnDaemonAsync(state *daemonState) {
 		if waitForServer(state.port, daemonStartupReadyTimeout) {
 			state.markReady()
 		} else {
+			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "startup_timeout"})
 			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after %s", state.port, daemonStartupReadyTimeout))
 		}
 	})

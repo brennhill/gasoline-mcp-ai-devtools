@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // handlePanicRecovery logs crash details and writes a crash file for diagnostic discovery.
@@ -20,6 +22,14 @@ func handlePanicRecovery(r any) {
 	stack := make([]byte, 4096)
 	n := runtime.Stack(stack, false)
 	stack = stack[:n]
+
+	// Beacon the panic type (NOT the message, which could contain PII).
+	panicType := reflect.TypeOf(r)
+	panicTypeName := "unknown"
+	if panicType != nil {
+		panicTypeName = panicType.String()
+	}
+	telemetry.BeaconError("daemon_panic", map[string]string{"type": panicTypeName})
 
 	fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL ERROR\n")
 
