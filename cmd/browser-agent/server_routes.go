@@ -191,6 +191,9 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 		handleActiveCodebase(w, r, server)
 	})))
 
+	// NOT MCP — Scaffold wizard (browser) — create new projects from /launch
+	registerScaffoldRoutes(mux)
+
 	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDashboard(w, r)

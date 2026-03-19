@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build Something New — Strum</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --bg-card: #1a1d27;
+      --bg-input: #252836;
+      --border: #2e3241;
+      --text: #e4e6eb;
+      --text-muted: #8b8fa3;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #wizard {
+      max-width: 560px;
+      width: 100%;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    #progress {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 2rem;
+    }
+
+    .progress-dot {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background 0.3s ease;
+    }
+
+    .progress-dot.active {
+      background: var(--accent);
+    }
+
+    .progress-dot.done {
+      background: var(--success);
+    }
+
+    .step {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-label {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .step-hint {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .audience-options {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .audience-btn {
+      padding: 0.6rem 1.2rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .audience-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .audience-btn.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .nav-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      padding: 0.7rem 1.5rem;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-next {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-next:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-next:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-back {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-back:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .btn-create {
+      background: var(--success);
+      color: #fff;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .btn-create:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-create:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #summary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    #summary .check {
+      color: var(--success);
+    }
+
+    #phase1-progress {
+      display: none;
+    }
+
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+    }
+
+    .step-row .icon {
+      width: 20px;
+      text-align: center;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="wizard">
+    <h1>Build Something New</h1>
+    <p class="subtitle">Create a new app from scratch with AI</p>
+
+    <div id="progress">
+      <div class="progress-dot active" data-step="1"></div>
+      <div class="progress-dot" data-step="2"></div>
+      <div class="progress-dot" data-step="3"></div>
+      <div class="progress-dot" data-step="4"></div>
+    </div>
+
+    <!-- Step 1: What are you building? -->
+    <div class="step active" data-step="1">
+      <div class="step-label">What are you building?</div>
+      <div class="step-hint">A few words is enough. Examples: "a todo app", "a dashboard for sales data", "a landing page"</div>
+      <input type="text" id="input-description" placeholder="Describe your app..." autofocus>
+      <div class="nav-row">
+        <span></span>
+        <button class="btn btn-next" id="btn-next-1" disabled>Next</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Who is it for? -->
+    <div class="step" data-step="2">
+      <div class="step-label">Who is it for?</div>
+      <div class="step-hint">This shapes how the app is set up — auth, permissions, and deployment</div>
+      <div class="audience-options">
+        <button class="audience-btn" data-audience="just_me">Just me</button>
+        <button class="audience-btn" data-audience="my_team">My team</button>
+        <button class="audience-btn" data-audience="public">Public users</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-back" id="btn-back-2">Back</button>
+        <button class="btn btn-next" id="btn-next-2" disabled>Next</button>
+      </div>
+    </div>
+
+    <!-- Step 3: What's the most important first feature? -->
+    <div class="step" data-step="3">
+      <div class="step-label">What's the most important first feature?</div>
+      <div class="step-hint">Just one thing — the feature you'd show someone first</div>
+      <input type="text" id="input-feature" placeholder="e.g., drag and drop reordering">
+      <div class="nav-row">
+        <button class="btn btn-back" id="btn-back-3">Back</button>
+        <button class="btn btn-next" id="btn-next-3" disabled>Next</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Project name -->
+    <div class="step" data-step="4">
+      <div class="step-label">Project name</div>
+      <div class="step-hint">Auto-generated from your description. Edit if you'd like.</div>
+      <input type="text" id="input-name" placeholder="my-app">
+      <div class="nav-row">
+        <button class="btn btn-back" id="btn-back-4">Back</button>
+        <span></span>
+      </div>
+      <div id="summary" style="margin-top: 1.5rem;"></div>
+      <button class="btn btn-create" id="btn-create" disabled>Create</button>
+    </div>
+
+    <!-- Phase 1 progress -->
+    <div id="phase1-progress">
+      <div class="step-label">Setting up your project...</div>
+      <div id="scaffold-steps"></div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      var state = {
+        step: 1,
+        description: '',
+        audience: '',
+        first_feature: '',
+        name: ''
+      };
+
+      var totalSteps = 4;
+
+      // DOM refs
+      var steps = document.querySelectorAll('.step');
+      var dots = document.querySelectorAll('.progress-dot');
+
+      function slugify(text) {
+        return text.toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 40);
+      }
+
+      function showStep(n) {
+        state.step = n;
+        steps.forEach(function(s) {
+          s.classList.toggle('active', parseInt(s.getAttribute('data-step')) === n);
+        });
+        dots.forEach(function(d) {
+          var ds = parseInt(d.getAttribute('data-step'));
+          d.classList.toggle('active', ds === n);
+          d.classList.toggle('done', ds < n);
+        });
+
+        // Auto-focus input on step change
+        var activeStep = document.querySelector('.step.active');
+        if (activeStep) {
+          var input = activeStep.querySelector('input, textarea');
+          if (input) input.focus();
+        }
+
+        if (n === 4) {
+          updateSummary();
+          updateCreateButton();
+        }
+      }
+
+      function updateSummary() {
+        var el = document.getElementById('summary');
+        el.innerHTML =
+          'Ready to create <strong>"' + escapeHTML(state.name) + '"</strong>:<br>' +
+          '<span class="check">&#10003;</span> React + TypeScript + Tailwind + shadcn<br>' +
+          '<span class="check">&#10003;</span> ' + escapeHTML(state.description) + '<br>' +
+          '<span class="check">&#10003;</span> First feature: ' + escapeHTML(state.first_feature) + '<br>' +
+          '<span class="check">&#10003;</span> Audience: ' + escapeHTML(state.audience.replace(/_/g, ' '));
+      }
+
+      function updateCreateButton() {
+        var btn = document.getElementById('btn-create');
+        btn.disabled = !state.name;
+      }
+
+      function escapeHTML(s) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(s));
+        return div.innerHTML;
+      }
+
+      // Step 1: description
+      var descInput = document.getElementById('input-description');
+      var nextBtn1 = document.getElementById('btn-next-1');
+      descInput.addEventListener('input', function() {
+        state.description = descInput.value.trim();
+        nextBtn1.disabled = !state.description;
+      });
+      nextBtn1.addEventListener('click', function() {
+        if (state.description) {
+          // Auto-generate project name
+          state.name = slugify(state.description);
+          document.getElementById('input-name').value = state.name;
+          showStep(2);
+        }
+      });
+
+      // Step 2: audience
+      var audienceBtns = document.querySelectorAll('.audience-btn');
+      var nextBtn2 = document.getElementById('btn-next-2');
+      audienceBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          audienceBtns.forEach(function(b) { b.classList.remove('selected'); });
+          btn.classList.add('selected');
+          state.audience = btn.getAttribute('data-audience');
+          nextBtn2.disabled = false;
+        });
+      });
+      nextBtn2.addEventListener('click', function() {
+        if (state.audience) showStep(3);
+      });
+      document.getElementById('btn-back-2').addEventListener('click', function() { showStep(1); });
+
+      // Step 3: first feature
+      var featureInput = document.getElementById('input-feature');
+      var nextBtn3 = document.getElementById('btn-next-3');
+      featureInput.addEventListener('input', function() {
+        state.first_feature = featureInput.value.trim();
+        nextBtn3.disabled = !state.first_feature;
+      });
+      nextBtn3.addEventListener('click', function() {
+        if (state.first_feature) showStep(4);
+      });
+      document.getElementById('btn-back-3').addEventListener('click', function() { showStep(2); });
+
+      // Step 4: project name
+      var nameInput = document.getElementById('input-name');
+      nameInput.addEventListener('input', function() {
+        state.name = slugify(nameInput.value.trim());
+        nameInput.value = state.name;
+        updateSummary();
+        updateCreateButton();
+      });
+      document.getElementById('btn-back-4').addEventListener('click', function() { showStep(3); });
+
+      // Create button
+      document.getElementById('btn-create').addEventListener('click', function() {
+        var btn = document.getElementById('btn-create');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        var payload = {
+          description: state.description,
+          audience: state.audience,
+          first_feature: state.first_feature,
+          name: state.name
+        };
+
+        fetch('/api/scaffold', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+          if (data.channel) {
+            showPhase1(data.channel);
+          }
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Create';
+          console.error('scaffold error:', err);
+        });
+      });
+
+      function showPhase1(channel) {
+        document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('phase1-progress').style.display = 'block';
+
+        // Connect to WebSocket for progress updates
+        var wsPort = 7891;
+        var ws = new WebSocket('ws://localhost:' + wsPort + '/ws');
+        ws.onmessage = function(evt) {
+          try {
+            var msg = JSON.parse(evt.data);
+            if (msg.channel === 'scaffold') {
+              updateScaffoldStep(msg);
+            }
+          } catch(e) {
+            // ignore parse errors
+          }
+        };
+      }
+
+      function updateScaffoldStep(msg) {
+        var container = document.getElementById('scaffold-steps');
+        var id = 'scaffold-step-' + (msg.step || 'unknown');
+        var row = document.getElementById(id);
+        if (!row) {
+          row = document.createElement('div');
+          row.id = id;
+          row.className = 'step-row';
+          container.appendChild(row);
+        }
+
+        var icon = msg.status === 'done' ? '<span class="check" style="color:var(--success)">&#10003;</span>' :
+                   msg.status === 'running' ? '<span class="spinner"></span>' :
+                   '<span style="color:var(--text-muted)">&#9675;</span>';
+
+        row.innerHTML = '<span class="icon">' + icon + '</span> ' + escapeHTML(msg.label || msg.step || '');
+      }
+
+      // Enter key advances steps
+      descInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !nextBtn1.disabled) nextBtn1.click();
+      });
+      featureInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !nextBtn3.disabled) nextBtn3.click();
+      });
+      nameInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          var createBtn = document.getElementById('btn-create');
+          if (!createBtn.disabled) createBtn.click();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
