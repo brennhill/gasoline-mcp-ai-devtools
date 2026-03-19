@@ -1,6 +1,6 @@
 ---
 name: regression-test
-description: Convert real failures into deterministic regression tests that fail before the fix and pass after.
+description: Use when user has fixed a bug and needs a test that proves it stays fixed, or when a failure needs to be captured as a reproducible test case.
 ---
 
 # Gasoline Regression Test

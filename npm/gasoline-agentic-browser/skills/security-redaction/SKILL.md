@@ -1,6 +1,6 @@
 ---
 name: security-redaction
-description: Audit redaction coverage to ensure secrets and tokens are never exposed in logs, diagnostics, errors, or debug output.
+description: Use when user asks to check for leaked secrets, exposed tokens, or sensitive data in logs, error output, diagnostics, or debug responses.
 ---
 
 # Gasoline Security Redaction

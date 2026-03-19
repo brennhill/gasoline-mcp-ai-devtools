@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Debug a broken website feature by collecting evidence across console errors, network requests, DOM state, and MCP command results.
+description: Use when user reports a bug, broken feature, console error, failed network request, or unexpected page behavior that needs investigation.
 ---
 
 # Gasoline Debug

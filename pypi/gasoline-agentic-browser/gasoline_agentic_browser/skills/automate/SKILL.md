@@ -1,6 +1,6 @@
 ---
 name: automate
-description: Automate browser workflows safely and deterministically using robust selectors, bounded retries, and command result verification.
+description: Use when user asks to automate browser actions, click buttons, fill forms, navigate pages, run a sequence of browser steps, or build a repeatable workflow.
 ---
 
 # Gasoline Automate

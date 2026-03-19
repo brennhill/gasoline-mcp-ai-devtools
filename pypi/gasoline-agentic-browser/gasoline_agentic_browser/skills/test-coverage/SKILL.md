@@ -1,6 +1,6 @@
 ---
 name: test-coverage
-description: Raise test coverage with targeted tests for untested branches and risk-heavy files without changing production behavior.
+description: Use when user asks to improve test coverage, find untested code paths, identify risky files without tests, or add missing test cases.
 ---
 
 # Gasoline Test Coverage

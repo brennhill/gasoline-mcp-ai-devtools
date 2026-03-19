@@ -1,6 +1,6 @@
 ---
 name: api-validation
-description: Validate API behavior against expected contracts using captured requests, responses, and schema checks.
+description: Use when user asks to check API responses, validate request/response contracts, compare API behavior against a spec, or detect schema drift.
 ---
 
 # Gasoline API Validation

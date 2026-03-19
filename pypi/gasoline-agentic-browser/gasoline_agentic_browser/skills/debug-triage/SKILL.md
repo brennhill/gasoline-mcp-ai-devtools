@@ -1,6 +1,6 @@
 ---
 name: debug-triage
-description: Triage broken behavior with evidence-first debugging across logs, network, DOM state, and command results.
+description: Use when user reports a broken page, unexpected behavior, or error and needs fast root-cause identification across multiple signal sources.
 ---
 
 # Gasoline Debug Triage

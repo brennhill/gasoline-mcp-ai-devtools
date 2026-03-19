@@ -1,6 +1,6 @@
 ---
 name: performance
-description: Analyze feature performance regressions with repeatable before/after measurements using Gasoline observe and analyze tools.
+description: Use when user reports slow page load, asks about Core Web Vitals, wants before/after performance comparison, or needs to profile a specific interaction.
 ---
 
 # Gasoline Performance

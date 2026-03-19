@@ -1,6 +1,6 @@
 ---
 name: ux-audit
-description: Audit UX clarity and accessibility using screenshots, a11y checks, and information hierarchy review.
+description: Use when user asks to review UX quality, check accessibility compliance, audit visual hierarchy, or evaluate information architecture on a page.
 ---
 
 # Gasoline UX Audit

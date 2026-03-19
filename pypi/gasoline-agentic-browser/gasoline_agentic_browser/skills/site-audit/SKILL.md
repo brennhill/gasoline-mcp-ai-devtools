@@ -1,6 +1,6 @@
 ---
 name: site-audit
-description: Perform a comprehensive logged-in site/product audit with full menu capture, page-by-page and feature-by-feature analysis, usability findings, and reproducibility notes.
+description: Use when user asks to audit a website, review all pages, check for broken links, capture full site state, or do a comprehensive product review.
 ---
 
 # Gasoline Site Audit

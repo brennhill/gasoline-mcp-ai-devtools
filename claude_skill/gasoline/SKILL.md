@@ -1,14 +1,12 @@
 ---
 name: gasoline
 description: >
-  Browser observation, debugging, automation, and testing via Gasoline daemon.
-  Use when user asks to debug browser errors, inspect network requests, take
-  screenshots, automate browser interactions, run accessibility audits, capture
-  performance metrics, generate tests from browser sessions, or audit a web
-  application. Trigger phrases: "check my browser", "debug this page",
-  "take a screenshot", "run site audit", "browser errors", "network requests",
-  "automate the browser", "record a test", "accessibility audit",
-  "performance check", "what's on the page".
+  Use when user asks to check browser state, debug page errors, inspect network
+  traffic, take screenshots, automate clicks or form fills, run accessibility or
+  security audits, measure performance, generate tests, or record browser sessions.
+  Trigger phrases: "check my browser", "debug this page", "take a screenshot",
+  "browser errors", "network requests", "automate the browser", "record a test",
+  "accessibility audit", "performance check", "what's on the page".
 license: AGPL-3.0
 compatibility: >
   Requires gasoline-agentic-devtools binary on PATH and Gasoline Chrome

@@ -1,6 +1,6 @@
 ---
 name: demo
-description: Build a clean, repeatable product demo script that uses Gasoline to show feature behavior and debug visibility in real time.
+description: Use when user asks to build a product demo, create a walkthrough, record a feature showcase, or produce a repeatable demo script.
 ---
 
 # Gasoline Demo

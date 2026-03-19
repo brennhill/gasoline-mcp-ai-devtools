@@ -1,6 +1,6 @@
 ---
 name: reliability
-description: Validate end-to-end reliability across LLM to MCP to server to extension, with focus on race conditions, reconnects, and state consistency.
+description: Use when user asks to stress-test the system, validate reconnection behavior, check for race conditions, or verify end-to-end data flow integrity.
 ---
 
 # Gasoline Reliability

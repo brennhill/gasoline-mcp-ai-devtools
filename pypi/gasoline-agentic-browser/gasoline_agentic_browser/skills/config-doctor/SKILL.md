@@ -1,6 +1,6 @@
 ---
 name: config-doctor
-description: Diagnose and fix Gasoline MCP configuration across Claude, Codex, and Gemini, including command paths and connection health.
+description: Use when MCP tools fail to connect, user reports "extension not connected", tool calls return errors, or user asks to check their Gasoline setup.
 ---
 
 # Gasoline Config Doctor

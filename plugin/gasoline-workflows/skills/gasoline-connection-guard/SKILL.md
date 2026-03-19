@@ -1,6 +1,6 @@
 ---
 name: gasoline-connection-guard
-description: Auto-diagnose and recover from Gasoline extension disconnection errors.
+description: Use when a tool call fails with "extension not connected", the daemon is unreachable, or browser telemetry stops arriving.
 auto-trigger:
   - on-error-pattern: "extension not connected"
   - on-error-pattern: "no tracked tab"

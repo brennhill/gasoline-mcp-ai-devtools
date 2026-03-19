@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: Run release gates and produce a clear go/no-go assessment with blockers, mitigations, and confidence level.
+description: Use when user asks if a release is ready to ship, needs a go/no-go decision, or wants to run quality gates before deploying.
 ---
 
 # Gasoline Release Readiness
