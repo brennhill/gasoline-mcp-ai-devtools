@@ -1,6 +1,6 @@
 ---
 title: "How to Use Annotations to Explain UI Bugs Clearly"
-description: "A beginner-friendly method for using visual annotations in Gasoline Agentic Devtools to describe UI problems precisely."
+description: "A beginner-friendly method for using visual annotations in Strum AI DevTools to describe UI problems precisely."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, annotations, ui, debugging]

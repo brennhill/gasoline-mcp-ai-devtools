@@ -1,6 +1,6 @@
 ---
 title: "How to Record Your First Product Demo with Gasoline"
-description: "Step-by-step beginner guide to recording a clean, repeatable product demo workflow with Gasoline Agentic Devtools."
+description: "Step-by-step beginner guide to recording a clean, repeatable product demo workflow with Strum AI DevTools."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, demos, recording]
@@ -11,7 +11,7 @@ normalized_tags: ['beginner', 'demos', 'recording', 'articles', 'record', 'first
 
 A great demo should be repeatable, not stressful.
 
-Here is a clean first setup using **Gasoline Agentic Devtools**.
+Here is a clean first setup using **Strum AI DevTools**.
 
 <!-- more -->
 

@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.0.0
 
-Gasoline v5.0.0 marks the initial public release of the Gasoline MCP protocol and extension. This release includes core browser observability features for AI coding assistants.
+Gasoline v5.0.0 marks the initial public release of the Strum protocol and extension. This release includes core browser observability features for AI coding assistants.
 
 ### Features
 

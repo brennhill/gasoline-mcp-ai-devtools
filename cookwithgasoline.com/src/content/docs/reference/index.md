@@ -1,6 +1,6 @@
 ---
 title: API and Tool Reference
-description: Readthedocs-style entry point for Gasoline MCP tool APIs, request shapes, and common usage patterns.
+description: Readthedocs-style entry point for Strum tool APIs, request shapes, and common usage patterns.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['reference']
@@ -45,8 +45,8 @@ These parameters appear repeatedly across Gasoline tools:
 
 Each docs, blog, and articles route has a markdown endpoint:
 
-- HTML: `https://cookwithgasoline.com/guides/debug-webapps/`
-- Markdown: `https://cookwithgasoline.com/guides/debug-webapps.md`
+- HTML: `https://usestrum.dev/guides/debug-webapps/`
+- Markdown: `https://usestrum.dev/guides/debug-webapps.md`
 
 Catalogs:
 

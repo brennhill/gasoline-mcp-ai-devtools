@@ -1,6 +1,6 @@
 ---
 title: "Run Accessibility Audits in CI and Export SARIF"
-description: "A beginner-friendly guide to automated accessibility checks and SARIF export in Continuous Integration using Gasoline Agentic Devtools."
+description: "A beginner-friendly guide to automated accessibility checks and SARIF export in Continuous Integration using Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [accessibility, ci, sarif, testing]
@@ -15,7 +15,7 @@ The **Web Content Accessibility Guidelines (WCAG)** are the international access
 
 **SARIF** means **Static Analysis Results Interchange Format**, a standard file format for tool findings. https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 
-This guide shows how to automate both using **Gasoline Agentic Devtools**.
+This guide shows how to automate both using **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ This guide shows how to automate both using **Gasoline Agentic Devtools**.
 
 You want to catch accessibility issues before users do.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Run an accessibility analysis
 
@@ -65,4 +65,4 @@ Accessibility is quality. Continuous checks help teams ship inclusive experience
 
 ## You’re Building Better Software for Everyone
 
-Teams that automate accessibility early move faster and cause less harm. **Gasoline Agentic Devtools** makes this practical for everyday workflows.
+Teams that automate accessibility early move faster and cause less harm. **Strum AI DevTools** makes this practical for everyday workflows.

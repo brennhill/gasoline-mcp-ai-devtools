@@ -1,6 +1,6 @@
 ---
 title: "How to Connect Gasoline to Cursor"
-description: "Beginner guide to connect Cursor with Gasoline Agentic Devtools and run your first browser-aware workflow."
+description: "Beginner guide to connect Cursor with Strum AI DevTools and run your first browser-aware workflow."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, cursor, mcp, setup]

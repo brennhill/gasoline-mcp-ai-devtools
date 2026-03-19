@@ -1,7 +1,7 @@
 import { getCollection } from 'astro:content'
 import { resolveDocSlug } from './contentSlugs'
 
-const siteBase = 'https://cookwithgasoline.com'
+const siteBase = 'https://usestrum.dev'
 
 interface Options {
   includeHtml?: boolean

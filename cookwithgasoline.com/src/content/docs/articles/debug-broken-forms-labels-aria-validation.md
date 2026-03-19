@@ -1,6 +1,6 @@
 ---
 title: "Debug Broken Forms: Labels, ARIA, and Validation"
-description: "Fix form bugs with a step-by-step approach covering labels, ARIA attributes, and validation behavior using Gasoline Agentic Devtools."
+description: "Fix form bugs with a step-by-step approach covering labels, ARIA attributes, and validation behavior using Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [forms, accessibility, aria, debugging]
@@ -13,7 +13,7 @@ Forms are where trust is won or lost.
 
 **ARIA** means **Accessible Rich Internet Applications**, a standard that helps assistive technology understand interface semantics. https://www.w3.org/WAI/standards-guidelines/aria/
 
-This guide helps you fix form issues without feeling lost, using **Gasoline Agentic Devtools**.
+This guide helps you fix form issues without feeling lost, using **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -32,7 +32,7 @@ You want forms that:
 - are accessible,
 - and submit reliably.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Inspect form structure
 
@@ -83,4 +83,4 @@ interact({
 
 ## You’re Making the Product Kinder
 
-Great forms feel simple because someone did careful work. That someone can be you. **Gasoline Agentic Devtools** gives you the visibility to do it right.
+Great forms feel simple because someone did careful work. That someone can be you. **Strum AI DevTools** gives you the visibility to do it right.

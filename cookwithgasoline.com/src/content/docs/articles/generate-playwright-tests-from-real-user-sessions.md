@@ -1,6 +1,6 @@
 ---
 title: "Generate Playwright Tests from Real User Sessions"
-description: "Learn how to convert real browser sessions into reusable Playwright tests with Gasoline Agentic Devtools."
+description: "Learn how to convert real browser sessions into reusable Playwright tests with Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [playwright, testing, automation, qa]
@@ -13,7 +13,7 @@ You already have the real user flow. Why write the same test from scratch?
 
 **Playwright** is a browser automation framework for testing web apps. https://playwright.dev/
 
-This guide shows how to turn live behavior into tests with **Gasoline Agentic Devtools**.
+This guide shows how to turn live behavior into tests with **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -33,7 +33,7 @@ to:
 
 “Now we have a repeatable test for it.”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Record the real flow
 
@@ -81,4 +81,4 @@ generate({what: "test_heal", action: "analyze", test_file: "./tests/checkout.spe
 
 ## You’re Building Durable Quality
 
-When every major bug becomes a test, your product gets stronger every week. **Gasoline Agentic Devtools** makes that transition much easier.
+When every major bug becomes a test, your product gets stronger every week. **Strum AI DevTools** makes that transition much easier.

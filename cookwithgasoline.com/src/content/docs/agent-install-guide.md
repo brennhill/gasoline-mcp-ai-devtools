@@ -10,7 +10,7 @@ normalized_tags: ['agent', 'install', 'guide']
 This guide is written for **LLM coding agents** (Claude Code, Codex, Gemini CLI, etc.) to follow when installing Gasoline for a user. If you're a human, see the [Quick Start](/getting-started/) instead.
 :::
 
-You are installing **Gasoline Agentic Browser** — an MCP server + Chrome extension that gives you real-time browser telemetry (errors, logs, network, DOM, screenshots, automation).
+You are installing **Strum AI DevTools** — an MCP server + Chrome extension that gives you real-time browser telemetry (errors, logs, network, DOM, screenshots, automation).
 
 ## Prerequisites
 
@@ -81,7 +81,7 @@ The MCP config was written in Step 1, but the AI tool needs to restart to pick i
 
 **Tell the user:**
 
-> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the Gasoline MCP server.
+> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the Strum server.
 
 For Claude Code specifically, no restart is needed if the installer used `claude mcp add-json` — it takes effect on the next conversation.
 

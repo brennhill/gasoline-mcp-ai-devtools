@@ -1,6 +1,6 @@
 ---
 title: "API Validation for Frontend Teams: A Friendly Workflow"
-description: "Learn a practical API validation routine for frontend teams using real browser traffic and Gasoline Agentic Devtools."
+description: "Learn a practical API validation routine for frontend teams using real browser traffic and Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [api, frontend, validation, quality]
@@ -11,7 +11,7 @@ normalized_tags: ['api', 'frontend', 'validation', 'quality', 'articles', 'teams
 
 Frontend teams often get blamed for bugs caused by backend contract changes.
 
-You can protect your team by validating API behavior continuously with **Gasoline Agentic Devtools**.
+You can protect your team by validating API behavior continuously with **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -28,7 +28,7 @@ You need a simple answer every sprint:
 
 “Are our key APIs still returning what the frontend expects?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Capture critical endpoint traffic
 
@@ -68,4 +68,4 @@ generate({what: "test_from_context", context: "regression", include_mocks: true}
 
 ## Why This Is Powerful for Frontend Teams
 
-You gain confidence, clearer bug ownership, and fewer surprise breakages. **Gasoline Agentic Devtools** makes API validation part of normal frontend work.
+You gain confidence, clearer bug ownership, and fewer surprise breakages. **Strum AI DevTools** makes API validation part of normal frontend work.

@@ -1,6 +1,6 @@
 ---
 title: "Annotation-Driven UX Reviews for Engineering Teams"
-description: "Run faster, clearer User Experience reviews with visual annotations and actionable follow-up workflows in Gasoline Agentic Devtools."
+description: "Run faster, clearer User Experience reviews with visual annotations and actionable follow-up workflows in Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [ux, annotations, collaboration, quality]
@@ -13,7 +13,7 @@ A lot of design feedback dies in chat threads.
 
 **User Experience (UX)** means how people feel when using your product. https://www.nngroup.com/articles/definition-user-experience/
 
-Annotation-driven reviews turn vague feedback into concrete, fixable items with **Gasoline Agentic Devtools**.
+Annotation-driven reviews turn vague feedback into concrete, fixable items with **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -33,7 +33,7 @@ with:
 
 “On this card, increase contrast and shorten helper text.”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Start annotation mode
 
@@ -73,4 +73,4 @@ Run this in a 30-minute weekly review with product, design, and engineering. Kee
 
 ## You’re Building Shared Product Language
 
-That is a big-league move. **Gasoline Agentic Devtools** makes UX review concrete, collaborative, and easy to track.
+That is a big-league move. **Strum AI DevTools** makes UX review concrete, collaborative, and easy to track.

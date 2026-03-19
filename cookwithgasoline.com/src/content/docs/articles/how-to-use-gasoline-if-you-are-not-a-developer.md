@@ -1,6 +1,6 @@
 ---
 title: "How to Use Gasoline if You Are Not a Developer"
-description: "A beginner guide for product, support, operations, and QA teammates to use Gasoline Agentic Devtools without writing code."
+description: "A beginner guide for product, support, operations, and QA teammates to use Strum AI DevTools without writing code."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, non-technical, product, support, qa]
@@ -9,7 +9,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'non-technical', 'product', 'support', 'qa', 'articles', 'use', 'gasoline', 'if', 'you', 'are', 'not', 'developer']
 ---
 
-You do not need to be a software engineer to get value from **Gasoline Agentic Devtools**.
+You do not need to be a software engineer to get value from **Strum AI DevTools**.
 
 If you can describe a problem clearly, you can use this tool well.
 

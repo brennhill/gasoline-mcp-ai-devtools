@@ -1,6 +1,6 @@
 ---
 title: "Security Audit for Browser Workflows (Without Security Jargon)"
-description: "A practical, beginner-friendly workflow for running browser security audits with Gasoline Agentic Devtools."
+description: "A practical, beginner-friendly workflow for running browser security audits with Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [security, audit, browser, risk]
@@ -11,7 +11,7 @@ normalized_tags: ['security', 'audit', 'browser', 'risk', 'articles', 'workflows
 
 Security reviews often feel intimidating. They do not have to.
 
-This guide gives you a clear, step-by-step browser security workflow using **Gasoline Agentic Devtools**.
+This guide gives you a clear, step-by-step browser security workflow using **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -25,7 +25,7 @@ This guide gives you a clear, step-by-step browser security workflow using **Gas
 
 You want to catch obvious security risks early, not after an incident.
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Run a focused security scan
 
@@ -66,4 +66,4 @@ configure({what: "audit_log", tool_name: "analyze", limit: 50})
 
 ## You’re Building Safer Defaults
 
-Security is not a one-time event. It is a repeatable process. **Gasoline Agentic Devtools** makes that process easier to run regularly.
+Security is not a one-time event. It is a repeatable process. **Strum AI DevTools** makes that process easier to run regularly.

@@ -1,6 +1,6 @@
 ---
-title: "How to Install Gasoline Agentic Devtools in 5 Minutes (Mac, Windows, Linux)"
-description: "A beginner-friendly install guide for Gasoline Agentic Devtools, including extension setup and first-run checks."
+title: "How to Install Strum AI DevTools in 5 Minutes (Mac, Windows, Linux)"
+description: "A beginner-friendly install guide for Strum AI DevTools, including extension setup and first-run checks."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, setup, installation]
@@ -9,7 +9,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'setup', 'installation', 'articles', 'install', 'gasoline', 'minutes']
 ---
 
-If this is your first time using **Gasoline Agentic Devtools**, this guide is the fastest way to get running.
+If this is your first time using **Strum AI DevTools**, this guide is the fastest way to get running.
 
 No jargon. Just the steps.
 

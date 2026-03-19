@@ -1,6 +1,6 @@
 ---
 title: "Debug WebSocket Issues in Real-Time Apps (Step by Step)"
-description: "A practical beginner guide to debugging real-time WebSocket problems with Gasoline Agentic Devtools."
+description: "A practical beginner guide to debugging real-time WebSocket problems with Strum AI DevTools."
 date: 2026-03-03
 authors: [brenn]
 tags: [websocket, debugging, realtime, how-to]
@@ -13,7 +13,7 @@ Real-time apps feel magical until they silently stop updating.
 
 A **WebSocket** is a persistent two-way connection between browser and server, often used for chat, live dashboards, and notifications. https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
 
-Let’s debug it in a calm, structured way with **Gasoline Agentic Devtools**.
+Let’s debug it in a calm, structured way with **Strum AI DevTools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ You want to know:
 
 “Why did live updates stop, lag, or break?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with Strum AI DevTools
 
 ### Step 1. Check active connections first
 
@@ -78,4 +78,4 @@ If a bad message lands right before an error, you have a strong lead.
 
 ## Small Win That Saves Hours
 
-Start every real-time bug with `websocket_status` and `websocket_events` before changing code. With **Gasoline Agentic Devtools**, you can see what is really happening instead of guessing.
+Start every real-time bug with `websocket_status` and `websocket_events` before changing code. With **Strum AI DevTools**, you can see what is really happening instead of guessing.

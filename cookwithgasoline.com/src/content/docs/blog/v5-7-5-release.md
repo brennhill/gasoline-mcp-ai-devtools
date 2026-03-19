@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.7.5
 
-This release makes Gasoline MCP feel instant. The new fast-start mode responds to MCP clients in ~130ms while the daemon boots in the background.
+This release makes Strum feel instant. The new fast-start mode responds to MCP clients in ~130ms while the daemon boots in the background.
 
 ### Fast-Start MCP Mode
 

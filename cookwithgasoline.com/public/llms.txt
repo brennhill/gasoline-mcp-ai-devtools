@@ -1,46 +1,46 @@
-# Gasoline MCP
+# Strum
 
-> Gasoline MCP is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, and Antigravity. Zero dependencies. Localhost only. Enterprise safe. Install: `npx gasoline-mcp@latest`
+> Strum is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, and Antigravity. Zero dependencies. Localhost only. Enterprise safe. Install: `npx gasoline-mcp@latest`
 
 ## Getting Started
-- [Quick Start](https://cookwithgasoline.com/getting-started/): Install and configure Gasoline in under 2 minutes
-- [Features](https://cookwithgasoline.com/features/): Everything Gasoline captures — logs, network, WebSocket, DOM, Web Vitals, test generation
+- [Quick Start](https://usestrum.dev/getting-started/): Install and configure Gasoline in under 2 minutes
+- [Features](https://usestrum.dev/features/): Everything Gasoline captures — logs, network, WebSocket, DOM, Web Vitals, test generation
 
 ## MCP Integration
-- [Overview](https://cookwithgasoline.com/mcp-integration/): Connect Gasoline to any MCP-compatible AI tool
-- [Claude Code](https://cookwithgasoline.com/mcp-integration/claude-code/): Configure for Claude Code
-- [Cursor](https://cookwithgasoline.com/mcp-integration/cursor/): Configure for Cursor IDE
-- [Windsurf](https://cookwithgasoline.com/mcp-integration/windsurf/): Configure for Windsurf (Codeium)
-- [Claude Desktop](https://cookwithgasoline.com/mcp-integration/claude-desktop/): Configure for Claude Desktop
-- [Zed](https://cookwithgasoline.com/mcp-integration/zed/): Configure for Zed editor
-- [Gemini CLI](https://cookwithgasoline.com/mcp-integration/gemini/): Configure for Gemini CLI
-- [OpenCode](https://cookwithgasoline.com/mcp-integration/opencode/): Configure for OpenCode
-- [Antigravity](https://cookwithgasoline.com/mcp-integration/antigravity/): Configure for Google Antigravity
+- [Overview](https://usestrum.dev/mcp-integration/): Connect Gasoline to any MCP-compatible AI tool
+- [Claude Code](https://usestrum.dev/mcp-integration/claude-code/): Configure for Claude Code
+- [Cursor](https://usestrum.dev/mcp-integration/cursor/): Configure for Cursor IDE
+- [Windsurf](https://usestrum.dev/mcp-integration/windsurf/): Configure for Windsurf (Codeium)
+- [Claude Desktop](https://usestrum.dev/mcp-integration/claude-desktop/): Configure for Claude Desktop
+- [Zed](https://usestrum.dev/mcp-integration/zed/): Configure for Zed editor
+- [Gemini CLI](https://usestrum.dev/mcp-integration/gemini/): Configure for Gemini CLI
+- [OpenCode](https://usestrum.dev/mcp-integration/opencode/): Configure for OpenCode
+- [Antigravity](https://usestrum.dev/mcp-integration/antigravity/): Configure for Google Antigravity
 
 ## Capabilities
-- [Test Generation](https://cookwithgasoline.com/generate-test/): Generate Playwright regression tests from real browser sessions
-- [WebSocket Monitoring](https://cookwithgasoline.com/websocket-monitoring/): Monitor WebSocket connections and messages
-- [Network Bodies](https://cookwithgasoline.com/network-bodies/): Capture HTTP request and response bodies
-- [DOM Queries](https://cookwithgasoline.com/dom-queries/): Query the live DOM with CSS selectors via MCP
+- [Test Generation](https://usestrum.dev/generate-test/): Generate Playwright regression tests from real browser sessions
+- [WebSocket Monitoring](https://usestrum.dev/websocket-monitoring/): Monitor WebSocket connections and messages
+- [Network Bodies](https://usestrum.dev/network-bodies/): Capture HTTP request and response bodies
+- [DOM Queries](https://usestrum.dev/dom-queries/): Query the live DOM with CSS selectors via MCP
 
 ## Reference
-- [Security](https://cookwithgasoline.com/security/): Enterprise security — credential redaction, localhost-only, zero dependencies
-- [Alternatives](https://cookwithgasoline.com/alternatives/): Compare Gasoline with Chrome DevTools MCP, BrowserTools MCP, Cursor MCP Extension
+- [Security](https://usestrum.dev/security/): Enterprise security — credential redaction, localhost-only, zero dependencies
+- [Alternatives](https://usestrum.dev/alternatives/): Compare Gasoline with Chrome DevTools MCP, BrowserTools MCP, Cursor MCP Extension
 
 ## Blog
-- [MCP Browser Debugging Tools Compared (2025)](https://cookwithgasoline.com/blog/mcp-browser-debugging-tools-compared/): Practical comparison of Gasoline MCP, Chrome DevTools MCP, BrowserTools MCP, and Cursor MCP Extension
-- [How to Debug Browser Errors with Claude Code Using MCP](https://cookwithgasoline.com/blog/debug-browser-errors-claude-code-mcp/): Give Claude Code real-time access to browser console logs, network errors, and exceptions
-- [How to Give Cursor Access to Browser Console Logs](https://cookwithgasoline.com/blog/give-cursor-access-to-browser-console-logs/): Connect Cursor IDE to your browser with Gasoline MCP
-- [How to Generate Playwright Tests from Real Browser Sessions](https://cookwithgasoline.com/blog/generate-playwright-tests-from-browser-sessions/): Record browser interactions and generate Playwright regression tests automatically
-- [Why document.body.innerHTML Ruins LLM Context Windows](https://cookwithgasoline.com/blog/why-innerhtml-ruins-llm-context-windows/): Why raw HTML wastes LLM tokens and how Gasoline MCP sends structured data instead
-- [Zero-Dependency MCP Setup: Browser Debugging Without Node.js](https://cookwithgasoline.com/blog/zero-dependency-mcp-browser-debugging/): Single Go binary with zero runtime dependencies for browser observability
-- [Gasoline MCP vs Chrome DevTools MCP](https://cookwithgasoline.com/blog/gasoline-mcp-vs-chrome-devtools-mcp/): Detailed comparison — architecture, features, security, and performance
-- [Gasoline MCP vs BrowserTools MCP](https://cookwithgasoline.com/blog/gasoline-mcp-vs-browsertools-mcp/): Comparison — architecture, features, dependencies, and privacy
-- [Gasoline MCP vs Cursor MCP Extension](https://cookwithgasoline.com/blog/gasoline-mcp-vs-cursor-mcp-extension/): Which should Cursor users choose?
-- [How to Monitor WebSocket Connections with AI Coding Assistants](https://cookwithgasoline.com/blog/monitor-websockets-with-ai-coding-assistants/): The only MCP browser tool that captures WebSocket connections and messages
-- [Technical Deep Dive: Why Cook With Gasoline MCP?](https://cookwithgasoline.com/blog/technical-deep-dive-why-cook-with-gasoline/): How Gasoline MCP solves LLM browser automation from accessibility trees to console vision
+- [MCP Browser Debugging Tools Compared (2025)](https://usestrum.dev/blog/mcp-browser-debugging-tools-compared/): Practical comparison of Strum, Chrome DevTools MCP, BrowserTools MCP, and Cursor MCP Extension
+- [How to Debug Browser Errors with Claude Code Using MCP](https://usestrum.dev/blog/debug-browser-errors-claude-code-mcp/): Give Claude Code real-time access to browser console logs, network errors, and exceptions
+- [How to Give Cursor Access to Browser Console Logs](https://usestrum.dev/blog/give-cursor-access-to-browser-console-logs/): Connect Cursor IDE to your browser with Strum
+- [How to Generate Playwright Tests from Real Browser Sessions](https://usestrum.dev/blog/generate-playwright-tests-from-browser-sessions/): Record browser interactions and generate Playwright regression tests automatically
+- [Why document.body.innerHTML Ruins LLM Context Windows](https://usestrum.dev/blog/why-innerhtml-ruins-llm-context-windows/): Why raw HTML wastes LLM tokens and how Strum sends structured data instead
+- [Zero-Dependency MCP Setup: Browser Debugging Without Node.js](https://usestrum.dev/blog/zero-dependency-mcp-browser-debugging/): Single Go binary with zero runtime dependencies for browser observability
+- [Strum vs Chrome DevTools MCP](https://usestrum.dev/blog/gasoline-mcp-vs-chrome-devtools-mcp/): Detailed comparison — architecture, features, security, and performance
+- [Strum vs BrowserTools MCP](https://usestrum.dev/blog/gasoline-mcp-vs-browsertools-mcp/): Comparison — architecture, features, dependencies, and privacy
+- [Strum vs Cursor MCP Extension](https://usestrum.dev/blog/gasoline-mcp-vs-cursor-mcp-extension/): Which should Cursor users choose?
+- [How to Monitor WebSocket Connections with AI Coding Assistants](https://usestrum.dev/blog/monitor-websockets-with-ai-coding-assistants/): The only MCP browser tool that captures WebSocket connections and messages
+- [Technical Deep Dive: Why Cook With Strum?](https://usestrum.dev/blog/technical-deep-dive-why-cook-with-gasoline/): How Strum solves LLM browser automation from accessibility trees to console vision
 
 ## Links
 - [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 - [npm](https://www.npmjs.com/package/gasoline-mcp)
-- [Blog](https://cookwithgasoline.com/blog/)
+- [Blog](https://usestrum.dev/blog/)

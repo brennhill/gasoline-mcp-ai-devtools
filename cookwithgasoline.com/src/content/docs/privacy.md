@@ -207,9 +207,9 @@ We'll notify users of any changes via:
 ## Contact
 
 **Questions about privacy?**
-- Email: [support@cookwithgasoline.com](mailto:support@cookwithgasoline.com)
+- Email: [support@usestrum.dev](mailto:support@usestrum.dev)
 - GitHub Issues: [github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
-- Documentation: [cookwithgasoline.com](https://cookwithgasoline.com)
+- Documentation: [usestrum.dev](https://usestrum.dev)
 
 ---
 

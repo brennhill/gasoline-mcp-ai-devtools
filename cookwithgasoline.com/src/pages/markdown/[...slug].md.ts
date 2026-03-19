@@ -24,7 +24,7 @@ function toYamlArray(values: string[]) {
 const slugToPath = (slug: string | undefined) => slug || 'index'
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'Gasoline MCP'
+  const title = entry.data?.title ?? 'Strum'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
   const verifiedVersion = entry.data?.last_verified_version ?? siteVersionLabel
@@ -32,7 +32,7 @@ function renderFrontmatter(entry: any) {
   const normalizedTags = Array.isArray(entry.data?.normalized_tags) ? entry.data.normalized_tags : []
   const relatedGuides = getRelatedGuides(resolvedSlug).map((guide) => guide.href)
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\nlast_verified_version: ${toYamlString(verifiedVersion)}\nlast_verified_date: ${toYamlString(verifiedDate)}\nnormalized_tags: ${toYamlArray(normalizedTags)}\nrelated_guides: ${toYamlArray(relatedGuides)}\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://usestrum.dev${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\nlast_verified_version: ${toYamlString(verifiedVersion)}\nlast_verified_date: ${toYamlString(verifiedDate)}\nnormalized_tags: ${toYamlArray(normalizedTags)}\nrelated_guides: ${toYamlArray(relatedGuides)}\n---`
 }
 
 export const GET: APIRoute = async ({ params }) => {
