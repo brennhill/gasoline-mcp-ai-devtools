@@ -1,12 +1,12 @@
 #!/bin/bash
-# install.sh — Install the Gasoline Claude Code skill.
+# install.sh — Install the Strum Claude Code skill.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_SRC="$SCRIPT_DIR/gasoline"
 
 if [ ! -d "$SKILL_SRC" ]; then
-  echo "Error: gasoline skill directory not found at $SKILL_SRC" >&2
+  echo "Error: strum skill directory not found at $SKILL_SRC" >&2
   exit 1
 fi
 
@@ -18,34 +18,34 @@ install_mcp_server() {
   fi
 
   echo ""
-  echo "Install the Gasoline MCP server (gasoline-agentic-browser)."
+  echo "Install the Strum MCP server (strum)."
   echo "  To match your Chrome extension version, check chrome://extensions"
-  echo "  and find the version number next to 'Gasoline Devtools'."
+  echo "  and find the version number next to 'Strum AI DevTools'."
   echo ""
   read -rp "Enter extension version to match (or press Enter for latest): " version
 
   if [ -z "$version" ]; then
-    echo "Installing latest gasoline-agentic-browser..."
-    npm install -g gasoline-agentic-browser
+    echo "Installing latest strum..."
+    npm install -g strum
     return
   fi
 
   # Validate version exists on npm
-  echo "Checking if gasoline-agentic-browser@${version} exists on npm..."
+  echo "Checking if strum@${version} exists on npm..."
   while true; do
-    if npm view "gasoline-agentic-browser@${version}" version &>/dev/null; then
-      npm install -g "gasoline-agentic-browser@${version}"
+    if npm view "strum@${version}" version &>/dev/null; then
+      npm install -g "strum@${version}"
       return
     else
       echo "ERROR: Version ${version} not found on npm."
       echo "  Available versions:"
-      npm view gasoline-agentic-browser versions --json 2>/dev/null \
+      npm view strum versions --json 2>/dev/null \
         | tr -d '[]",' | xargs -n1 | tail -5 | sed 's/^/    /'
       echo ""
       read -rp "Enter a different version (or press Enter for latest): " version
       if [ -z "$version" ]; then
-        echo "Installing latest gasoline-agentic-browser..."
-        npm install -g gasoline-agentic-browser
+        echo "Installing latest strum..."
+        npm install -g strum
         return
       fi
     fi
@@ -60,10 +60,10 @@ if git rev-parse --show-toplevel > /dev/null 2>&1; then
   GIT_ROOT="$(git rev-parse --show-toplevel)"
 fi
 
-GLOBAL_DIR="$HOME/.claude/skills/gasoline"
+GLOBAL_DIR="$HOME/.claude/skills/strum"
 PROJECT_DIR=""
 if $IN_GIT; then
-  PROJECT_DIR="$GIT_ROOT/.claude/skills/gasoline"
+  PROJECT_DIR="$GIT_ROOT/.claude/skills/strum"
 fi
 
 install_skill() {
@@ -85,15 +85,15 @@ install_skill() {
   fi
   mkdir -p "$dest"
   cp -r "$SKILL_SRC/"* "$dest/"
-  echo "Installed gasoline skill to $dest"
+  echo "Installed strum skill to $dest"
 }
 
 if $IN_GIT; then
   echo "You are inside a git project: $GIT_ROOT"
   echo ""
-  echo "Where do you want to install the Gasoline skill?"
-  echo "  1) Global  (~/.claude/skills/gasoline) — available in all projects"
-  echo "  2) Project (.claude/skills/gasoline)   — this project only"
+  echo "Where do you want to install the Strum skill?"
+  echo "  1) Global  (~/.claude/skills/strum) — available in all projects"
+  echo "  2) Project (.claude/skills/strum)   — this project only"
   echo ""
   read -rp "Choose [1/2]: " choice
 

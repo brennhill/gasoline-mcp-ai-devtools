@@ -1,5 +1,5 @@
 ---
-name: gasoline
+name: strum
 description: >
   Use when user asks to check browser state, debug page errors, inspect network
   traffic, take screenshots, automate clicks or form fills, run accessibility or
@@ -9,7 +9,7 @@ description: >
   "accessibility audit", "performance check", "what's on the page".
 license: AGPL-3.0
 compatibility: >
-  Requires gasoline-agentic-devtools binary on PATH and Gasoline Chrome
+  Requires gasoline-agentic-devtools binary on PATH and Strum Chrome
   extension connected. macOS, Linux, Windows.
 metadata:
   author: Strum AI
@@ -18,7 +18,7 @@ metadata:
   tags: [browser, debugging, automation, testing, observability]
 ---
 
-# Gasoline
+# Strum
 
 ## Critical: Daemon Setup
 
@@ -133,7 +133,7 @@ Choose the workflow that matches your task:
 
 Run: `bash scripts/ensure-daemon.sh`
 If fails: check `which gasoline` — binary must be on PATH.
-Install: `npm install -g gasoline-agentic-browser`
+Install: `npm install -g strum`
 
 ### Extension not connected
 
