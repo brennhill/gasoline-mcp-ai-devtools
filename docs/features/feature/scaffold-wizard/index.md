@@ -907,6 +907,132 @@ The scaffold wizard is discoverable from the extension popup's "no tab tracked" 
 
 **"Build Something New" behavior:** opens `localhost:7890/launch` in a new tab and closes the popup. The wizard takes over from there.
 
+## Anonymous Telemetry
+
+Product telemetry to understand adoption and usage without tracking individuals. No cookies, no PII, no consent banners. GDPR-compliant by design.
+
+### Principles
+
+1. **No PII.** No IP addresses stored, no user IDs, no email, no machine fingerprints.
+2. **No cookies.** Server-side event counting only.
+3. **Aggregate only.** Individual events are write-only counters, never queryable per-user.
+4. **Opt-out available.** `STRUM_TELEMETRY=off` env var disables all beacons. Documented in CLAUDE.md.
+5. **Transparent.** Every beacon call is visible in source code, never hidden.
+
+### Telemetry Endpoint
+
+A single endpoint hosted at `https://t.getstrum.dev/v1/event` (or self-hosted equivalent):
+
+```
+POST /v1/event
+Content-Type: application/json
+
+{
+  "event": "scaffold_complete",
+  "v": "0.8.1",
+  "os": "darwin-arm64",
+  "client": "claude-code",
+  "props": {
+    "audience": "just_me",
+    "deploy_platform": "vercel",
+    "scanner": "none",
+    "github": true
+  }
+}
+```
+
+**Response:** `204 No Content` (fire-and-forget, never blocks the caller)
+
+The endpoint is a minimal Go service (or Cloudflare Worker) that increments counters in a time-series store. ~50 lines of code. No database of individual events — just aggregate counters bucketed by day.
+
+### Events
+
+| Event | Fired When | Properties | Source |
+|-------|-----------|------------|--------|
+| `install_start` | Install script begins | `os`, `method` (npm/curl/brew) | `scripts/install.sh` |
+| `install_complete` | Install script succeeds | `os`, `v`, `clients_configured` (count) | `scripts/install.sh` |
+| `install_error` | Install script fails | `os`, `step` (which step failed) | `scripts/install.sh` |
+| `daemon_start` | Daemon process starts | `os`, `v`, `mode` (bridge/daemon) | `cmd/browser-agent/main.go` |
+| `extension_connect` | Extension first syncs | `v`, `browser` (chrome/brave/edge) | daemon `/sync` handler |
+| `wizard_start` | User opens `/launch` | `v` | wizard landing page JS |
+| `wizard_step` | User completes a wizard step | `step` (1-8), `skipped` (bool) | wizard JS |
+| `scaffold_start` | "Create" button clicked | `v`, `audience` | scaffold handler |
+| `scaffold_complete` | Phase 1 finishes | `v`, `duration_s`, `deploy_platform`, `scanner`, `github` | scaffold handler |
+| `compose_complete` | Phase 2 finishes | `v`, `duration_s`, `components_created` | compose handler |
+| `deploy_first` | First deploy from scaffolded project | `platform` | deploy script |
+| `tool_call` | MCP tool invoked | `tool` (observe/analyze/generate/configure/interact) | daemon tool handler |
+
+### What We DON'T Track
+
+- IP addresses (not logged, not stored)
+- User identity (no account, no login, no machine ID)
+- File contents, project names, descriptions, or any user-generated content
+- URLs being tracked/debugged
+- Error messages or stack traces from the user's app
+- Anything that could identify a specific person or project
+
+### Implementation
+
+**Install script beacon** (`scripts/install.sh`):
+```bash
+# Anonymous telemetry (disable: STRUM_TELEMETRY=off)
+if [ "$STRUM_TELEMETRY" != "off" ]; then
+  curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+    -H "Content-Type: application/json" \
+    -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\"}" \
+    > /dev/null 2>&1 &
+fi
+```
+
+Fire-and-forget: backgrounded, 2s timeout, stdout/stderr suppressed. Never blocks installation.
+
+**Daemon beacon** (Go, on startup):
+```go
+// Anonymous telemetry — disable with STRUM_TELEMETRY=off
+func beaconEvent(event string, props map[string]any) {
+    if os.Getenv("STRUM_TELEMETRY") == "off" {
+        return
+    }
+    go func() {
+        // fire-and-forget POST to t.getstrum.dev/v1/event
+        // 2s timeout, ignore errors
+    }()
+}
+```
+
+**Wizard beacon** (browser JS):
+```javascript
+// Anonymous telemetry — respects STRUM_TELEMETRY=off via daemon config
+function beacon(event, props = {}) {
+  if (window.__strum_telemetry_off) return
+  navigator.sendBeacon('https://t.getstrum.dev/v1/event',
+    JSON.stringify({ event, v: STRUM_VERSION, ...props }))
+}
+```
+
+`navigator.sendBeacon` is fire-and-forget, survives page navigation, and doesn't block the UI.
+
+### Analytics Dashboard
+
+**Website analytics:** Umami (self-hosted, already in use for cookwithgasoline.com). Migrate to getstrum.dev. No cookies, GDPR-compliant.
+
+**Product analytics:** Custom dashboard reading from the telemetry endpoint's counter store. Key views:
+
+- **Funnel:** install_start → install_complete → daemon_start → extension_connect → wizard_start → scaffold_complete → compose_complete → deploy_first
+- **Daily active daemons** (daemon_start count, deduplicated by day)
+- **Tool popularity** (tool_call breakdown by tool name)
+- **Wizard drop-off** (which step users abandon)
+- **Platform split** (os, deploy platform, scanner choices)
+
+### Telemetry Endpoint Hosting
+
+Options:
+- **Cloudflare Worker** — free tier handles millions of requests. Write counters to Workers KV or D1. Simplest.
+- **Self-hosted Go** — 50 lines, runs alongside existing infrastructure. Write to SQLite or ClickHouse.
+- **Umami custom events** — Umami supports custom events via API. Could unify website + product analytics in one dashboard.
+
+Recommend Cloudflare Worker for v1 — zero cost, global edge, no server to manage.
+
 ## Open Questions
 
 - **Error recovery**: if Phase 1 fails mid-way, clean up partial directory or leave for debugging?
@@ -949,3 +1075,7 @@ The scaffold wizard is discoverable from the extension popup's "no tab tracked" 
 - Goal-backward verification passes: Exists → Substantive → Wired → Functional
 - Session-start hook survives `/clear` — agent always knows project conventions
 - Context monitor fires warnings at 35% and 25% remaining
+- Telemetry beacons fire on install, daemon start, wizard steps, scaffold complete, and first deploy
+- All beacons are fire-and-forget (never block the user), respect `STRUM_TELEMETRY=off`
+- No PII in any telemetry event — no IPs, no user IDs, no project content
+- Funnel visibility: can measure install → scaffold → deploy conversion

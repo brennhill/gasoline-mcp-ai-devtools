@@ -1,5 +1,6 @@
-// Purpose: Provides opt-in file-based debug logging controlled by GASOLINE_MCP_DEBUG_FILE environment variable.
+// debug_log.go — File-based debug logging, enabled by default.
 // Why: Enables append-only diagnostic tracing without polluting stderr or stdout MCP transport.
+// Disable with STRUM_DEBUG=off. Override path with GASOLINE_MCP_DEBUG_FILE.
 
 package main
 
@@ -8,18 +9,35 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 var (
-	debugLogPath string
-	debugLogOnce sync.Once
+	debugLogPath    string
+	debugLogOnce    sync.Once
+	debugLogEnabled bool
 )
 
 func debugEnabled() bool {
 	debugLogOnce.Do(func() {
-		debugLogPath = os.Getenv("GASOLINE_MCP_DEBUG_FILE")
+		if os.Getenv("STRUM_DEBUG") == "off" {
+			debugLogEnabled = false
+			return
+		}
+		// Explicit path override takes priority
+		if override := os.Getenv("GASOLINE_MCP_DEBUG_FILE"); override != "" {
+			debugLogPath = override
+			debugLogEnabled = true
+			return
+		}
+		// Default: write to state dir
+		if path, err := statecfg.InRoot("logs", "bridge-debug.jsonl"); err == nil {
+			debugLogPath = path
+			debugLogEnabled = true
+		}
 	})
-	return debugLogPath != ""
+	return debugLogEnabled
 }
 
 func debugf(format string, args ...any) {
