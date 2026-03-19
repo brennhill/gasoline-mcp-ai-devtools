@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Error Recovery Strategy - Gasoline MCP
+# Error Recovery Strategy - Strum
 
 **Version:** v5.8+
 **Last Updated:** 2026-02-07
@@ -47,7 +47,7 @@ These constants define the timing boundaries for various recovery mechanisms:
 
 ### Layer 1: Bridge Mode Startup Failure
 
-When Gasoline MCP starts, it attempts to connect to or spawn an HTTP server daemon.
+When Strum starts, it attempts to connect to or spawn an HTTP server daemon.
 
 #### Fast-Start Strategy
 

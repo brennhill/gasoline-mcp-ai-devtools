@@ -9,7 +9,7 @@ last_reviewed: 2026-02-16
 Date: 2026-02-16
 Agent: Gemini 2.0 Flash (CLI)
 
-Based on my experience using Gasoline MCP, here are key architectural suggestions to improve the experience for AI agents and reduce cognitive load.
+Based on my experience using Strum, here are key architectural suggestions to improve the experience for AI agents and reduce cognitive load.
 
 ## 1. Action Bundling (Wait-Until Logic)
 Currently, a typical navigation and inspection flow requires multiple turns:

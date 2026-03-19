@@ -23,16 +23,16 @@ This is the inverse of "recording for replay." Instead of record-first, it's rep
 
 ## The Setup
 
-**Page:** `https://cookwithgasoline.com/demo/recipe-search`
+**Page:** `https://usestrum.dev/demo/recipe-search`
 
-**LLM:** Claude Code (with Gasoline Agentic Browser Devtool MCP enabled)
+**LLM:** Claude Code (with Strum AI DevTools enabled)
 
 ---
 
 ## The Natural Language Request
 
 ```
-"Using Gasoline, navigate to https://cookwithgasoline.com/demo/recipe-search
+"Using Gasoline, navigate to https://usestrum.dev/demo/recipe-search
 and search for 'carbonara'. Click on the first recipe result and take a screenshot
 showing the recipe details. Also tell me the cooking time and any errors that occurred
 during the interactions. Show me the network timeline and performance metrics."
@@ -45,7 +45,7 @@ during the interactions. Show me the network timeline and performance metrics."
 Claude Code interprets the natural language request and builds this Gasoline script:
 
 ```
-Navigate to: https://cookwithgasoline.com/demo/recipe-search
+Navigate to: https://usestrum.dev/demo/recipe-search
 [2s pause]
 Click: searchbox
 Type "carbonara" into: searchbox
@@ -113,7 +113,7 @@ The results flow back with full telemetry attached."
 Here's what I found:
 
 **Navigation & Interaction:**
-✓ Navigated to https://cookwithgasoline.com/demo/recipe-search
+✓ Navigated to https://usestrum.dev/demo/recipe-search
 ✓ Searched for "carbonara"
 ✓ Opened first recipe result
 

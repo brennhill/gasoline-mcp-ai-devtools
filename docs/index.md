@@ -34,7 +34,7 @@ npx gasoline-mcp
 
 Gasoline is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
-## Smart Teams Cook With Gasoline
+## Smart Teams Strum
 
 <img src="/assets/images/sparky-cook-with-gasoline-1.png" alt="Sparky cooking with gasoline" style="float: right; width: clamp(60px, 15vw, 120px); height: auto; margin: 0 0 1rem 1.5rem; border-radius: 8px;">
 

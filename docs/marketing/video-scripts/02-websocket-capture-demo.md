@@ -33,7 +33,7 @@ last_reviewed: 2026-02-16
 - Show "Full Lifecycle Capture" text
 
 **Voiceover:**
-"Gasoline MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant."
+"Strum captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant."
 
 ### [0:30-1:00] Demo: Real-Time Chat App
 
@@ -151,7 +151,7 @@ last_reviewed: 2026-02-16
 ### [3:00-3:15] Outro
 
 **Visual:**
-- Show cookwithgasoline.com
+- Show usestrum.dev
 - Show GitHub repo
 - Show Discord link
 - Show related videos
@@ -209,7 +209,7 @@ last_reviewed: 2026-02-16
 - Browser observability
 - Real-time app debugging
 - AI debugging tools
-- Gasoline MCP WebSocket
+- Strum WebSocket
 
 ### Related Videos
 - How Gasoline Captures WebSocket Messages (blog companion)
@@ -232,7 +232,7 @@ last_reviewed: 2026-02-16
 ```
 🔌 WebSocket Capture - See What Other Browser Tools Miss
 
-Chrome DevTools shows WebSocket messages, but that's where it stops. Gasoline MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant.
+Chrome DevTools shows WebSocket messages, but that's where it stops. Strum captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant.
 
 In this video, you'll see:
 ✅ Full WebSocket lifecycle capture
@@ -241,8 +241,8 @@ In this video, you'll see:
 ✅ AI-powered debugging
 ✅ Advanced filtering and search
 
-📦 Download: https://cookwithgasoline.com/downloads/
-📖 Docs: https://cookwithgasoline.com/features/#websocket-events
+📦 Download: https://usestrum.dev/downloads/
+📖 Docs: https://usestrum.dev/features/#websocket-events
 💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 💬 Discord: [LINK]
 
@@ -284,7 +284,7 @@ Timestamps:
 "Full lifecycle capture. Real-time tracking. AI-powered debugging. All in one tool."
 
 ### [0:45-0:60] CTA
-"Get Gasoline MCP at cookwithgasoline.com. Link in description."
+"Get Strum at usestrum.dev. Link in description."
 
 ---
 
@@ -297,7 +297,7 @@ Timestamps:
 [Quick screen capture showing WebSocket capture + AI debugging]
 
 ### [0:20-0:30] CTA
-"WebSocket capture with Gasoline MCP. Link in bio."
+"WebSocket capture with Strum. Link in bio."
 
 ---
 

@@ -47,7 +47,7 @@ Since you've already downloaded the extension files with the script above, you j
 3.  Click **Load unpacked**
 4.  Select the folder: `~/GasolineAgenticDevtoolExtension`
 
-Click the Gasoline Agentic Browser icon in your toolbar — it should show **Connected**.
+Click the Strum AI DevTools icon in your toolbar — it should show **Connected**.
 
 ## <i class="fas fa-plug"></i> 3. Verify Your AI Tool
 

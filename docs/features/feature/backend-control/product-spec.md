@@ -28,7 +28,7 @@ Currently, Gasoline excels at frontend and network-level debugging, but backend 
 This friction prevents AI from autonomously validating full-stack behavior end-to-end.
 
 ## Solution
-Backend Control establishes a bidirectional API between Gasoline MCP and backend services. Backend services expose:
+Backend Control establishes a bidirectional API between Strum and backend services. Backend services expose:
 1. **State Management** — Reset database, clear caches, reset feature flags to known states
 2. **Data Injection** — Create test users, products, payments, any domain objects
 3. **Failure Simulation** — Trigger circuit breakers, timeouts, rate limits, validation errors
@@ -51,7 +51,7 @@ All operations are:
 
 ## Acceptance Criteria
 - [ ] Backend services can expose a `/.gasoline/control` gRPC endpoint with state management APIs
-- [ ] Gasoline MCP can discover available control operations via introspection
+- [ ] Strum can discover available control operations via introspection
 - [ ] State mutations are audited with timestamp, user, correlation ID, and operation details
 - [ ] State snapshots can be created and restored for deterministic test retries
 - [ ] Read operations (inspect state) complete in <50ms, write operations in <200ms

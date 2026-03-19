@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Discord Server Setup Guide for Gasoline MCP
+# Discord Server Setup Guide for Strum
 
-This guide will help you set up a Discord community for Gasoline MCP users and contributors.
+This guide will help you set up a Discord community for Strum users and contributors.
 
 ---
 
@@ -29,7 +29,7 @@ A Discord server will provide:
 2. Click the "+" icon on the left sidebar
 3. Select "Create My Own"
 4. Choose "For me and my friends" or "For a club or community"
-5. Server name: `Gasoline MCP`
+5. Server name: `Strum`
 6. Upload server icon (use Gasoline logo)
 7. Click "Create"
 
@@ -37,7 +37,7 @@ A Discord server will provide:
 
 Go to Server Settings → Overview:
 
-- **Server Name:** Gasoline MCP
+- **Server Name:** Strum
 - **Server Icon:** Upload Gasoline logo
 - **Server Banner:** Upload banner image
 - **Server Region:** Choose closest to your audience
@@ -191,14 +191,14 @@ Consider a bot to sync with GitHub:
 ### 5.1 #welcome Channel
 
 ```
-👋 Welcome to Gasoline MCP!
+👋 Welcome to Strum!
 
-Gasoline MCP is a browser observability tool for AI coding agents. 
+Strum is a browser observability tool for AI coding agents. 
 It gives your AI assistant real-time visibility into browser activity.
 
 🚀 Get Started:
-• Documentation: https://cookwithgasoline.com
-• Quick Start: https://cookwithgasoline.com/getting-started/
+• Documentation: https://usestrum.dev
+• Quick Start: https://usestrum.dev/getting-started/
 • GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 ❓ Need Help?
@@ -224,7 +224,7 @@ It gives your AI assistant real-time visibility into browser activity.
 ```
 📢 **Announcements**
 
-This channel is for official Gasoline MCP updates, releases, and news.
+This channel is for official Strum updates, releases, and news.
 
 Enable the 📢 Announcements role to get notified of new announcements!
 ```
@@ -253,10 +253,10 @@ Report issues to moderators via DM or in #help.
 📚 **Resources**
 
 🔗 Official Links:
-• Website: https://cookwithgasoline.com
-• Documentation: https://cookwithgasoline.com/docs/
+• Website: https://usestrum.dev
+• Documentation: https://usestrum.dev/docs/
 • GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
-• Chrome Extension: https://cookwithgasoline.com/downloads/
+• Chrome Extension: https://usestrum.dev/downloads/
 
 📖 Documentation:
 • Getting Started Guide
@@ -281,8 +281,8 @@ Report issues to moderators via DM or in #help.
 ```
 ❓ **Frequently Asked Questions**
 
-Q: How do I install Gasoline MCP?
-A: See the Quick Start guide: https://cookwithgasoline.com/getting-started/
+Q: How do I install Strum?
+A: See the Quick Start guide: https://usestrum.dev/getting-started/
 
 Q: Which AI tools does Gasoline work with?
 A: Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue, and any MCP-compatible tool.
@@ -412,7 +412,7 @@ Create a permanent invite for website/social media:
 
 ### 10.1 Add to Website
 
-Add Discord link to cookwithgasoline.com:
+Add Discord link to usestrum.dev:
 
 ```html
 <a href="https://discord.gg/YOUR_INVITE_CODE" target="_blank">
@@ -433,7 +433,7 @@ Add to GitHub README.md:
 Announce on Twitter/X, LinkedIn, Reddit:
 
 ```
-🎉 We just launched the Gasoline MCP Discord community!
+🎉 We just launched the Strum Discord community!
 
 Join us for:
 • Real-time support

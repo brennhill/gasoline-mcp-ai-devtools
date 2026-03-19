@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 ## Scope
 
-Gasoline MCP is a local-first system that allows AI clients to inspect and automate browser behavior through a Go MCP server and Chrome extension.
+Strum is a local-first system that allows AI clients to inspect and automate browser behavior through a Go MCP server and Chrome extension.
 
 ## Major Components
 

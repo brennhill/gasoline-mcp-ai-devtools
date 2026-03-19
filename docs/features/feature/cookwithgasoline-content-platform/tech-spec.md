@@ -13,17 +13,17 @@ last_verified_date: 2026-03-05
 
 ## Primary Components
 
-- `cookwithgasoline.com/src/components/Landing.astro`
-- `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
-- `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
-- `cookwithgasoline.com/src/styles/custom.css`
-- `cookwithgasoline.com/src/content/docs/articles/*.md`
-- `cookwithgasoline.com/src/content/docs/reference/*.md`
-- `cookwithgasoline.com/src/pages/[...slug].md.ts`
-- `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
-- `cookwithgasoline.com/src/pages/llms.txt.ts`
-- `cookwithgasoline.com/src/pages/llms-full.txt.ts`
-- `cookwithgasoline.com/src/utils/siteVersion.ts`
+- `usestrum.dev/src/components/Landing.astro`
+- `usestrum.dev/src/components/WorkflowLibrary.astro`
+- `usestrum.dev/src/components/ArticlesLibrary.astro`
+- `usestrum.dev/src/styles/custom.css`
+- `usestrum.dev/src/content/docs/articles/*.md`
+- `usestrum.dev/src/content/docs/reference/*.md`
+- `usestrum.dev/src/pages/[...slug].md.ts`
+- `usestrum.dev/src/pages/markdown/[...slug].md.ts`
+- `usestrum.dev/src/pages/llms.txt.ts`
+- `usestrum.dev/src/pages/llms-full.txt.ts`
+- `usestrum.dev/src/utils/siteVersion.ts`
 
 ## Contracts and Validation
 

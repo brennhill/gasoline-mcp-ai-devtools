@@ -24,7 +24,7 @@ last_verified_date: 2026-03-05
 
 ## Important: Architecture Clarification
 
-**Phase 8 features are NOT Gasoline MCP tools.** They are:
+**Phase 8 features are NOT Strum tools.** They are:
 
 1. **Claude Code skills** — Workflow definitions that orchestrate existing Gasoline tools
 2. **CI integration scripts** — GitHub Actions / GitLab CI that spawn agents

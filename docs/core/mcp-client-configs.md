@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # MCP Client Configuration Locations
 
-Quick reference for updating Gasoline MCP configuration across all supported AI coding assistants.
+Quick reference for updating Strum configuration across all supported AI coding assistants.
 
 ## Configuration Files
 

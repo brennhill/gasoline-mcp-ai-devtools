@@ -18,7 +18,7 @@ The initial link health analyzer (v6.0.0) used the browser extension to check al
 
 ### Example: The GitHub Link Bug
 
-On https://cookwithgasoline.com/architecture/, there's a link to the C2 diagram:
+On https://usestrum.dev/architecture/, there's a link to the C2 diagram:
 
 ```
 https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md

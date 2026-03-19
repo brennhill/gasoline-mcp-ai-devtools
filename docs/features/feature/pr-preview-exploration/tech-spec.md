@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-PR Preview Exploration is an **agent orchestration pattern**, not a Gasoline MCP tool or mode. Gasoline provides the primitives (`observe`, `generate`, `configure`, `interact`), and the AI agent composes them into a multi-phase workflow that validates preview deployments against behavioral baselines.
+PR Preview Exploration is an **agent orchestration pattern**, not a Strum tool or mode. Gasoline provides the primitives (`observe`, `generate`, `configure`, `interact`), and the AI agent composes them into a multi-phase workflow that validates preview deployments against behavioral baselines.
 
 The feature adds no new MCP tools, no new modes, and requires zero changes to the Gasoline server or extension. It is entirely implemented as agent-side logic that uses existing capabilities in a specific sequence.
 

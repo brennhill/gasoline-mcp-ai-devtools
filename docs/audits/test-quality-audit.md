@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Test Quality Audit Report
 
-**Project:** Gasoline MCP
+**Project:** Strum
 **Date:** 2026-02-14
 **Auditor:** Senior QA Engineer (Automated)
 **Scope:** All test suites -- smoke tests, Go unit tests, regression tests

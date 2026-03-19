@@ -60,8 +60,8 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • Engineers who want AI to fix bugs autonomously
 
 📚 Documentation
-• Setup guide: cookwithgasoline.com/getting-started
-• Full docs: cookwithgasoline.com
+• Setup guide: usestrum.dev/getting-started
+• Full docs: usestrum.dev
 • GitHub: github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 🔧 Technical Requirements
@@ -152,7 +152,7 @@ English (United States)
 
 ## Privacy Policy URL
 ```
-https://cookwithgasoline.com/privacy/
+https://usestrum.dev/privacy/
 ```
 
 **Note:** Ensure privacy policy page exists and covers:
@@ -275,14 +275,14 @@ All compiled code matches source (TypeScript → JavaScript via tsc)
 
 ## Website
 ```
-https://cookwithgasoline.com
+https://usestrum.dev
 ```
 
 ---
 
 ## Support Email
 ```
-support@cookwithgasoline.com
+support@usestrum.dev
 ```
 (Or your preferred support email)
 
@@ -305,7 +305,7 @@ Free
 ## Submission Checklist
 
 Before submitting:
-- [ ] Privacy policy live at cookwithgasoline.com/privacy/
+- [ ] Privacy policy live at usestrum.dev/privacy/
 - [ ] Screenshots created (5 images, 1280x800)
 - [ ] Store icon verified (128x128)
 - [ ] Test installation from zip (unzip and load unpacked)
@@ -327,7 +327,7 @@ Before submitting:
 
 After approval:
 - [ ] Update GitHub release with Web Store link
-- [ ] Update cookwithgasoline.com with "Get on Chrome Web Store" button
+- [ ] Update usestrum.dev with "Get on Chrome Web Store" button
 - [ ] Announce on social media
 - [ ] Add Web Store badge to README.md
 

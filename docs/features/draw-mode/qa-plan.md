@@ -344,7 +344,7 @@ last_verified_date: 2026-03-05
 ### Test 3: MCP Round-Trip
 
 #### Steps:
-1. Start Gasoline MCP server
+1. Start Strum server
 2. Connect an MCP client (e.g., Claude Code)
 3. Call `interact({action: "draw_mode_start"})`
 4. Verify: extension activates draw mode on active tab

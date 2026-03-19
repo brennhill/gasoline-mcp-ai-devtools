@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Strum Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Control Command Router                        │  │
 │  │ - Parse operation requests                    │  │
@@ -70,11 +70,11 @@ last_verified_date: 2026-03-05
 ### Data Flow: Reset Database
 ```
 1. AI calls: interact({action: "backend_control", operation: "reset_database"})
-2. Gasoline MCP creates BEFORE snapshot: snap-20260131-101500
-3. Gasoline MCP sends HTTP POST /.gasoline/control/reset_database
+2. Strum creates BEFORE snapshot: snap-20260131-101500
+3. Strum sends HTTP POST /.gasoline/control/reset_database
 4. Backend service resets DB, returns {rows_deleted: 1250, duration_ms: 350}
-5. Gasoline MCP creates AFTER snapshot: snap-20260131-101503
-6. Gasoline MCP logs operation with correlation_id, timestamps, before/after hashes
+5. Strum creates AFTER snapshot: snap-20260131-101503
+6. Strum logs operation with correlation_id, timestamps, before/after hashes
 7. AI observes backend-logs and sees "DATABASE_RESET" event
 8. Next test runs on clean state
 ```

@@ -4,12 +4,12 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Video Script: Gasoline MCP - Quick Start Demo
+# Video Script: Strum - Quick Start Demo
 
-**Title:** Get Gasoline MCP Running in 2 Minutes  
+**Title:** Get Strum Running in 2 Minutes  
 **Duration:** 2:00-2:30  
 **Format:** Screen recording with voiceover  
-**Target:** Developers new to Gasoline MCP
+**Target:** Developers new to Strum
 
 ---
 
@@ -20,19 +20,19 @@ last_reviewed: 2026-02-16
 **Visual:** Gasoline logo animation + title screen
 
 **Voiceover:**
-"Gasoline MCP gives your AI coding agents real-time visibility into browser activity. Let's get it running in under two minutes."
+"Strum gives your AI coding agents real-time visibility into browser activity. Let's get it running in under two minutes."
 
 ### [0:10-0:30] Step 1: Install Extension
 
 **Visual:** 
-- Show cookwithgasoline.com/downloads page
+- Show usestrum.dev/downloads page
 - Download CRX file
 - Open chrome://extensions
 - Enable Developer mode
 - Drag and drop CRX
 
 **Voiceover:**
-"First, download the Chrome extension from cookwithgasoline.com/downloads. Open chrome://extensions, enable Developer mode, and drag the CRX file to install it."
+"First, download the Chrome extension from usestrum.dev/downloads. Open chrome://extensions, enable Developer mode, and drag the CRX file to install it."
 
 ### [0:30-0:50] Step 2: Start MCP Server
 
@@ -83,12 +83,12 @@ last_reviewed: 2026-02-16
 ### [1:50-2:00] Outro
 
 **Visual:** 
-- Show cookwithgasoline.com
+- Show usestrum.dev
 - Show GitHub repo
 - Show Discord link
 
 **Voiceover:**
-"That's it! Gasoline MCP is running and your AI assistant can now see browser telemetry. Check the links below for documentation, or join our Discord community. Happy debugging!"
+"That's it! Strum is running and your AI assistant can now see browser telemetry. Check the links below for documentation, or join our Discord community. Happy debugging!"
 
 ---
 
@@ -115,7 +115,7 @@ last_reviewed: 2026-02-16
 
 ### Visual Assets Needed
 - Gasoline logo (PNG/SVG)
-- cookwithgasoline.com screenshots
+- usestrum.dev screenshots
 - Chrome extension icon
 - AI tool logos (Claude, Cursor, Windsurf, Zed)
 - Discord logo
@@ -128,7 +128,7 @@ last_reviewed: 2026-02-16
 - Join Discord community
 
 ### SEO Keywords
-- Gasoline MCP
+- Strum
 - AI debugging tools
 - Browser observability
 - Claude Code tutorial
@@ -151,7 +151,7 @@ last_reviewed: 2026-02-16
 [Fast montage of: download extension → start server → configure → debug]
 
 ### [0:15-0:20] CTA
-"Get Gasoline MCP at cookwithgasoline.com. Link in description."
+"Get Strum at usestrum.dev. Link in description."
 
 ### [0:20-0:30] Outro
 "Subscribe for more AI devtools tutorials!"
@@ -167,7 +167,7 @@ last_reviewed: 2026-02-16
 [Quick screen capture showing Claude debugging via Gasoline]
 
 ### [0:10-0:15] CTA
-"Get Gasoline MCP. Link in bio."
+"Get Strum. Link in bio."
 
 ---
 
@@ -183,9 +183,9 @@ last_reviewed: 2026-02-16
 ## Description Template
 
 ```
-Get Gasoline MCP running in under 2 minutes! 🚀
+Get Strum running in under 2 minutes! 🚀
 
-Gasoline MCP gives your AI coding agents (Claude Code, Cursor, Windsurf, Zed) real-time visibility into browser activity—console logs, network errors, WebSocket events, and more.
+Strum gives your AI coding agents (Claude Code, Cursor, Windsurf, Zed) real-time visibility into browser activity—console logs, network errors, WebSocket events, and more.
 
 In this video, you'll learn:
 ✅ How to install the Chrome extension
@@ -193,8 +193,8 @@ In this video, you'll learn:
 ✅ How to configure your AI tool
 ✅ How to debug with AI assistance
 
-📦 Download: https://cookwithgasoline.com/downloads/
-📖 Docs: https://cookwithgasoline.com
+📦 Download: https://usestrum.dev/downloads/
+📖 Docs: https://usestrum.dev
 💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 💬 Discord: [LINK]
 

@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP - Marketing Plan
+# Strum - Marketing Plan
 
 **Version:** 1.0  
 **Date:** 2026-02-09  
@@ -14,7 +14,7 @@ last_reviewed: 2026-02-16
 
 ## Executive Summary
 
-Gasoline MCP is a browser observability tool for AI coding agents that enables autonomous debugging and real-time issue fixing. This marketing plan outlines strategies to increase visibility, drive adoption, and build a sustainable community around the project.
+Strum is a browser observability tool for AI coding agents that enables autonomous debugging and real-time issue fixing. This marketing plan outlines strategies to increase visibility, drive adoption, and build a sustainable community around the project.
 
 **Key Objectives:**
 - Increase GitHub stars from current baseline to 1,000+ within 6 months
@@ -71,7 +71,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ### Core Differentiators
 
-| Feature | Gasoline MCP | Competitors |
+| Feature | Strum | Competitors |
 |---------|-------------|-------------|
 | Debug Port Required | ❌ No (standard extension) | ✅ Yes (security risk) |
 | Runtime Dependencies | ❌ Zero (single Go binary) | ✅ Node.js, Python, etc. |
@@ -97,9 +97,9 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ### 1. Content Marketing
 
-#### Blog Posts (cookwithgasoline.com/blog)
+#### Blog Posts (usestrum.dev/blog)
 - **Weekly technical deep-dives:**
-  - "How Gasoline MCP Captures WebSocket Messages"
+  - "How Strum Captures WebSocket Messages"
   - "Auto-Generating Playwright Tests from Browser Sessions"
   - "Web Vitals Regression Detection Explained"
   - "Building MCP-Compatible Tools: Lessons Learned"
@@ -217,7 +217,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
   - "API schema inference from traffic"
 
 #### Technical SEO
-- Optimize docs.cookwithgasoline.com
+- Optimize docs.usestrum.dev
 - Create sitemap and robots.txt
 - Implement structured data (JSON-LD)
 - Improve Core Web Vitals
@@ -442,7 +442,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 ### User Testimonial Template
 ```
 "I was struggling with debugging AI-generated code for hours. 
-With Gasoline MCP, I can now see exactly what's happening in the 
+With Strum, I can now see exactly what's happening in the 
 browser and let Claude fix issues in real-time. Saved me 10+ hours 
 last week alone!"
 
@@ -460,7 +460,7 @@ last week alone!"
 ## Next Steps (Immediate Actions)
 
 1. **This Week:**
-   - [ ] Set up Google Analytics on cookwithgasoline.com
+   - [ ] Set up Google Analytics on usestrum.dev
    - [ ] Create social media content calendar
    - [ ] Write first 3 blog posts
    - [ ] Record first 2 videos
@@ -503,7 +503,7 @@ Learn more: [link to docs]
 ```
 The future of debugging isn't manual—it's collaborative.
 
-With tools like Gasoline MCP, AI coding agents can now see exactly 
+With tools like Strum, AI coding agents can now see exactly 
 what's happening in your browser. No more switching between windows, 
 no more copy-pasting error messages.
 
@@ -520,7 +520,7 @@ Title: I built a browser observability tool for AI coding agents—here's why
 
 Body:
 - The problem I was trying to solve
-- How Gasoline MCP works
+- How Strum works
 - Key features that make it different
 - How to get started
 
@@ -533,11 +533,11 @@ Looking for feedback from the community!
 ### Email Newsletter Template
 
 ```
-Subject: Gasoline MCP Update: [Feature/News]
+Subject: Strum Update: [Feature/News]
 
 Hi [Name],
 
-This week in Gasoline MCP:
+This week in Strum:
 
 🚀 New Feature: [Feature name]
 [Brief description + link to docs]
@@ -561,7 +561,7 @@ The Gasoline Team
 
 ## Conclusion
 
-This marketing plan provides a comprehensive roadmap for driving traffic and uptake for Gasoline MCP. By focusing on content creation, community building, strategic partnerships, and data-driven optimization, we can establish Gasoline as the leading browser observability tool for AI-assisted development.
+This marketing plan provides a comprehensive roadmap for driving traffic and uptake for Strum. By focusing on content creation, community building, strategic partnerships, and data-driven optimization, we can establish Gasoline as the leading browser observability tool for AI-assisted development.
 
 **Key Success Factors:**
 - Consistent, high-quality content

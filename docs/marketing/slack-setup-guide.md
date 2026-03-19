@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Slack Community Setup Guide for Gasoline MCP
+# Slack Community Setup Guide for Strum
 
-This guide will help you set up a Slack workspace for Gasoline MCP users and contributors.
+This guide will help you set up a Slack workspace for Strum users and contributors.
 
 ---
 
@@ -45,19 +45,19 @@ Since you've already created a Slack server, here's what to focus on:
 ### #welcome Channel Message
 
 ```
-👋 Welcome to Gasoline MCP!
+👋 Welcome to Strum!
 
-Gasoline MCP is a browser observability tool for AI coding agents. 
+Strum is a browser observability tool for AI coding agents. 
 It gives your AI assistant real-time visibility into browser activity.
 
 🚀 Get Started:
-• Documentation: https://cookwithgasoline.com
-• Quick Start: https://cookwithgasoline.com/getting-started/
+• Documentation: https://usestrum.dev
+• Quick Start: https://usestrum.dev/getting-started/
 • GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 ❓ Need Help?
 • Ask in #help
-• Check the docs: https://cookwithgasoline.com/docs/
+• Check the docs: https://usestrum.dev/docs/
 • Report bugs in #bugs
 
 💬 Join the Conversation:
@@ -80,7 +80,7 @@ Set channel topics for clarity:
 
 | Channel | Topic |
 |---------|--------|
-| `#general` | General discussion about Gasoline MCP |
+| `#general` | General discussion about Strum |
 | `#welcome` | New member introductions and getting started |
 | `#announcements` | Official updates, releases, news |
 | `#help` | Support and troubleshooting questions |
@@ -140,7 +140,7 @@ Set channel topics for clarity:
 
 ### Where to Share
 
-- cookwithgasoline.com (header/footer)
+- usestrum.dev (header/footer)
 - README.md
 - Twitter/X bio
 - LinkedIn profile
@@ -208,7 +208,7 @@ Track:
 1. **Set up #welcome channel** - Add welcome message
 2. **Set channel topics** - Add topics to all channels
 3. **Create invite link** - Make it easy to join
-4. **Add to website** - Put invite link on cookwithgasoline.com
+4. **Add to website** - Put invite link on usestrum.dev
 5. **Post on social media** - Announce Slack community
 
 ---

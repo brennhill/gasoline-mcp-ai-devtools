@@ -22,7 +22,7 @@ last_verified_date: 2026-03-05
 #### Setup:
 - Start backend service with /.gasoline/control handler
 - Pre-populate database with 1250 users, 500 orders
-- Gasoline MCP connected and discovered service
+- Strum connected and discovered service
 
 #### Steps:
 1. Call `interact({action: "backend_control", operation: "reset_database", tables: ["users", "orders"]})`
@@ -249,10 +249,10 @@ last_verified_date: 2026-03-05
 
 #### Setup:
 - Backend service with /.gasoline/control handler
-- Gasoline MCP just started
+- Strum just started
 
 #### Steps:
-1. Gasoline MCP starts, pings /.gasoline/control?discover=true
+1. Strum starts, pings /.gasoline/control?discover=true
 2. Backend returns available operations with schemas
 3. Call `observe({what: "backend_state", service: "api-server"})`
 4. Verify operations list includes reset_database, create_test_user, simulate_*, etc.
@@ -278,7 +278,7 @@ last_verified_date: 2026-03-05
 #### Setup:
 - Backend logging with correlation_id support
 - Frontend with session tracking
-- Gasoline MCP with correlation tracing
+- Strum with correlation tracing
 
 #### Steps:
 1. Generate correlation_id: `req-test-flow-10-001`

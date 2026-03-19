@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# CSP & Execute JS Strategies - Gasoline MCP
+# CSP & Execute JS Strategies - Strum
 
 **Version:** v5.8+
 **Last Updated:** 2026-02-07
@@ -713,7 +713,7 @@ export function executeJavaScript(script: string, timeoutMs = 5000) {
 > new Function('return 2+2')()
 // 4 (works)
 
-# In Gasoline MCP
+# In Strum
 execute_js({ script: "2+2", world: "MAIN" })
 // { success: true, result: 4 }
 ```
@@ -726,7 +726,7 @@ execute_js({ script: "2+2", world: "MAIN" })
 // VM:1 Uncaught SyntaxError: Unexpected token ')'
 # (This is the CSP block message)
 
-# In Gasoline MCP
+# In Strum
 execute_js({ script: "2+2", world: "auto" })
 // MAIN fails → falls back to ISOLATED
 // { success: true, result: 4 }

@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 ## Overview
 
-Marketing demos for Gasoline MCP, showcasing how AI + browser telemetry accelerates the product development lifecycle.
+Marketing demos for Strum, showcasing how AI + browser telemetry accelerates the product development lifecycle.
 
 ## Contents
 

@@ -43,7 +43,7 @@ This is exactly the kind of diagnostic work an AI agent excels at -- if it has v
 
 ## Solution
 
-Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Gasoline MCP tools, not a new MCP tool itself. The AI agent follows a structured diagnosis-and-repair loop:
+Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Strum tools, not a new MCP tool itself. The AI agent follows a structured diagnosis-and-repair loop:
 
 1. **Detect** -- The agent learns that an E2E test failed (from test runner output, CI notification, or developer instruction).
 2. **Re-run with capture** -- The agent re-runs the failing test with Gasoline capturing browser telemetry (console logs, network requests, DOM state, errors).
@@ -137,7 +137,7 @@ generate({format: "test", include_fixtures: true })
 
 ## Non-Goals
 
-- This feature does NOT modify the Gasoline MCP server or extension. It is a workflow pattern using existing tools.
+- This feature does NOT modify the Strum server or extension. It is a workflow pattern using existing tools.
 - This feature does NOT create a new MCP tool. The 5-tool maximum is strictly preserved.
 - This feature does NOT auto-commit fixes without human review. The agent proposes fixes; a human (or a CI approval gate) decides to merge.
 - This feature does NOT handle non-browser tests (unit tests, API tests, integration tests without a browser). It requires Gasoline's browser observation layer.

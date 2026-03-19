@@ -17,9 +17,9 @@ Write tutorials and articles that are:
 - Easy for search engines to understand
 - Easy for language models (LLMs) and agents to parse reliably
 
-This guide is the default writing standard for **Gasoline Agentic Devtools** content.
+This guide is the default writing standard for **Strum AI DevTools** content.
 
-Visual standards companion: [cookwithgasoline.com visual evidence guide](../../cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md)
+Visual standards companion: [usestrum.dev visual evidence guide](../../usestrum.dev/src/content/docs/guides/visual-evidence-standards.md)
 CI gates companion: [docs quality CI gates](./docs-quality-ci-gates.md)
 
 ## Audience and Reading Assumptions
@@ -143,7 +143,7 @@ Source: https://blog.cloudflare.com/markdown-for-agents/
 
 ## Brand language
 
-- Preferred product name: **Gasoline Agentic Devtools**
+- Preferred product name: **Strum AI DevTools**
 - Use “agentic” only when it clarifies capability, not as filler
 - Avoid buzzwords like “synergy,” “revolutionary,” and “game-changing”
 
@@ -162,7 +162,7 @@ Use this default order for tutorials/how-to articles:
 
 ## Writing Rules (Operational)
 
-- Title format: `How to <outcome> with Gasoline Agentic Devtools`
+- Title format: `How to <outcome> with Strum AI DevTools`
 - Intro length: 2 to 4 sentences
 - Paragraph length: max ~70 words when possible
 - Sentence target: usually 8 to 20 words

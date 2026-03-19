@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP -- Complete API Reference
+# Strum -- Complete API Reference
 
 > Generated from source code audit on 2026-02-14.
 > This document covers every API surface: MCP tools, HTTP endpoints, and extension-daemon communication.
@@ -1224,7 +1224,7 @@ All endpoints require `X-Gasoline-Client` header with value `gasoline-extension`
 
 ### gasoline://quickstart
 
-**Name**: Gasoline MCP Quickstart
+**Name**: Strum Quickstart
 
 **MIME Type**: text/markdown
 

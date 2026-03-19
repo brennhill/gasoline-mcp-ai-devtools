@@ -61,13 +61,13 @@ Output:
 📦 Extension ID: behrmkvjipzkr7hu6mwmbt5vpdgcdyvk
 ```
 
-### Step 2: Host on cookwithgasoline.com
+### Step 2: Host on usestrum.dev
 
-Upload the CRX to: `https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx`
+Upload the CRX to: `https://usestrum.dev/downloads/gasoline-extension-v5.8.2.crx`
 
 Typical directory structure:
 ```
-cookwithgasoline.com/
+usestrum.dev/
   downloads/
     gasoline-extension-v5.8.2.crx
     latest.crx → gasoline-extension-v5.8.2.crx (symlink for auto-update)
@@ -109,7 +109,7 @@ make extension-crx
 # 3. Run tests (optional but recommended)
 make test-js
 
-# 4. Upload CRX to cookwithgasoline.com
+# 4. Upload CRX to usestrum.dev
 # 5. Update version in VERSION file for next release
 # 6. Commit and push
 ```
@@ -125,7 +125,7 @@ For CI/CD automation, use the Sign Chrome Extension CRX File action:
     crxFilePath: 'build/extension.crx'
     privateKey: ${{ secrets.CHROME_CRX_PRIVATE_KEY }}
     updateXmlPath: 'build/update.xml'
-    updateXmlCodebaseUrl: 'https://cookwithgasoline.com/downloads/gasoline-extension.crx'
+    updateXmlCodebaseUrl: 'https://usestrum.dev/downloads/gasoline-extension.crx'
 ```
 
 **Setup:**
@@ -158,7 +158,7 @@ make compile-ts test-js
 # 3. Generate new CRX (automatically updates extension ID through manifest)
 make extension-crx
 
-# 4. Upload to cookwithgasoline.com/downloads/gasoline-extension-v[NEW_VERSION].crx
+# 4. Upload to usestrum.dev/downloads/gasoline-extension-v[NEW_VERSION].crx
 # 5. Update symlink: latest.crx → gasoline-extension-v[NEW_VERSION].crx
 ```
 
@@ -173,7 +173,7 @@ For fully automated updates, you can later implement:
 <?xml version='1.0' encoding='UTF-8'?>
 <gupdate xmlns='http://www.google.com/update2/response' protocol='3.0'>
   <app appid='behrmkvjipzkr7hu6mwmbt5vpdgcdyvk'>
-    <updatecheck codebase='https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx' version='5.8.2' />
+    <updatecheck codebase='https://usestrum.dev/downloads/gasoline-extension-v5.8.2.crx' version='5.8.2' />
   </app>
 </gupdate>
 ```
@@ -181,7 +181,7 @@ For fully automated updates, you can later implement:
 Add to manifest.json:
 ```json
 {
-  "update_url": "https://cookwithgasoline.com/update_manifest.xml"
+  "update_url": "https://usestrum.dev/update_manifest.xml"
 }
 ```
 

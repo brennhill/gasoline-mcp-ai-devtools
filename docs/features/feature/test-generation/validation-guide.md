@@ -25,7 +25,7 @@ Prove that the test generation implementation actually works by:
 cd ~/dev/gasoline-demos
 npm run demo
 
-# In another terminal, start Gasoline MCP server
+# In another terminal, start Strum server
 cd ~/dev/gasoline
 make dev
 ./dist/gasoline-mcp

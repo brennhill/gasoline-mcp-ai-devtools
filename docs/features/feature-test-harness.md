@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 Currently, Gasoline's smoke tests and integration tests rely heavily on external websites like `example.com`. While this proves the tool works on the open web, it introduces severe reliability issues: external sites change their DOM, experience downtime, or throttle requests, leading to flaky tests. Furthermore, we cannot reliably trigger edge cases like specific Web Vitals regressions, complex accessibility violations, or React-specific event traps on generic external sites.
 
-The goal is to build a deterministic, self-hosted test harness served from `tests/pages/` that contains a suite of deliberately vulnerable, noisy, and complex web pages. This will serve as the definitive proving ground for every single tool and capability in the Gasoline MCP suite.
+The goal is to build a deterministic, self-hosted test harness served from `tests/pages/` that contains a suite of deliberately vulnerable, noisy, and complex web pages. This will serve as the definitive proving ground for every single tool and capability in the Strum suite.
 
 External sites (like Binance, X/Twitter, or LinkedIn) should be the exception, reserved strictly for testing advanced anti-bot evasion or cross-origin restrictions in real-world scenarios.
 

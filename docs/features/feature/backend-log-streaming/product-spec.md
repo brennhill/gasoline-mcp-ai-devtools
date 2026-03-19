@@ -38,7 +38,7 @@ Backend Log Streaming establishes a persistent connection from a Gasoline-compat
 - As a platform engineer, I want to rate-limit backend log ingestion to prevent flooding so that the observation system remains performant
 
 ## Acceptance Criteria
-- [ ] Backend can establish persistent connection to Gasoline MCP server via gRPC or WebSocket
+- [ ] Backend can establish persistent connection to Strum server via gRPC or WebSocket
 - [ ] Backend sends structured log entries with timestamp, level, message, service name, request ID, span ID
 - [ ] Logs are deduplicated and buffered to handle burst traffic (max 10K logs/sec per service)
 - [ ] Logs expire from memory after 1 hour or when memory threshold is exceeded

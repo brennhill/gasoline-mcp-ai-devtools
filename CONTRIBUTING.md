@@ -1,4 +1,4 @@
-# Contributing to Gasoline
+# Contributing to Strum
 
 Thanks for your interest in contributing! We appreciate all kinds of contributions.
 
@@ -11,9 +11,9 @@ Found a bug? Have a feature idea? [Open an issue](https://github.com/brennhill/g
 - Your setup (OS, Chrome version, Node.js version)
 
 ### 2. **Share Feedback**
-- Use Gasoline and tell us what's working (or not)
+- Use Strum and tell us what's working (or not)
 - [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions) are great for ideas
-- [X/Twitter](https://x.com/gasolinedev) for quick feedback
+- [X/Twitter](https://x.com/strumdev) for quick feedback
 
 ### 3. **Improve Documentation**
 - Found a typo or unclear explanation? [Edit docs](docs/)
@@ -21,7 +21,7 @@ Found a bug? Have a feature idea? [Open an issue](https://github.com/brennhill/g
 - Fix broken links
 
 ### 4. **Star the Project**
-If Gasoline helps you, [star the repo](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/stargazers). It helps others discover it.
+If Strum helps you, [star the repo](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/stargazers). It helps others discover it.
 
 ## Code Contributions
 
@@ -58,9 +58,9 @@ make test
 
 ## Questions?
 
-- 📖 [Docs](https://cookwithgasoline.com)
-- 💬 [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions)
-- 🐛 [Issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
+- [Docs](https://usestrum.dev)
+- [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions)
+- [Issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
 
 ## Developer Certificate of Origin (DCO)
 
@@ -105,4 +105,4 @@ of the project or any contribution at any time.
 
 ---
 
-**We're grateful for every contribution.** Even small improvements make Gasoline better for AI developers everywhere.
+**We're grateful for every contribution.** Even small improvements make Strum better for AI developers everywhere.

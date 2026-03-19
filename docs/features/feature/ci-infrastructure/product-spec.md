@@ -174,7 +174,7 @@ Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the opera
 #### AI Integration
 - **Self-Healing Tests (#33):** Consumes snapshots for root-cause diagnosis
 - **Context Streaming (#5):** Real-time snapshot push notifications
-- **MCP Server:** Gasoline MCP server is extended with snapshot/mock/boundary commands
+- **MCP Server:** Strum server is extended with snapshot/mock/boundary commands
 
 ### Output & Reporting
 

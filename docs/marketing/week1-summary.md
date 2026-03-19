@@ -129,12 +129,12 @@ Step-by-step instructions for:
 - Add to website and README
 
 ### YouTube
-- Create channel: "Gasoline MCP"
+- Create channel: "Strum"
 - Upload videos with descriptions from scripts
 - Create thumbnails
 
 ### Website Updates
-- Add blog section to cookwithgasoline.com
+- Add blog section to usestrum.dev
 - Add Slack link to header/footer
 - Add GA4 tracking code to `<head>`
 - Add blog posts

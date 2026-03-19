@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP - Week 1 Social Media Content Calendar
+# Strum - Week 1 Social Media Content Calendar
 
 **Week Starting:** 2026-02-09  
 **Platform:** Twitter/X (@gasolinedev), LinkedIn, Reddit
@@ -19,11 +19,11 @@ last_reviewed: 2026-02-16
 ```
 🔥 Feature Spotlight: WebSocket Capture
 
-Gasoline MCP captures full WebSocket lifecycle events—connection, messages, errors. 
+Strum captures full WebSocket lifecycle events—connection, messages, errors. 
 Unlike other tools that miss this critical data, we give AI agents complete visibility 
 into real-time communication.
 
-See it in action: https://cookwithgasoline.com/features/#websocket-events
+See it in action: https://usestrum.dev/features/#websocket-events
 
 #GasolineMCP #AI #DevTools #WebSocket
 ```
@@ -32,7 +32,7 @@ See it in action: https://cookwithgasoline.com/features/#websocket-events
 ```
 The future of debugging isn't manual—it's collaborative.
 
-With Gasoline MCP, AI coding agents can now see exactly what's happening in your browser. 
+With Strum, AI coding agents can now see exactly what's happening in your browser. 
 No more switching between windows, no more copy-pasting error messages.
 
 Our WebSocket capture feature gives AI agents complete visibility into real-time communication—something most browser observability tools simply miss.
@@ -50,9 +50,9 @@ How are you using AI to streamline your debugging workflow?
 ```
 💡 Tip of the Day: Quick Install
 
-Get Gasoline MCP running in under 2 minutes:
+Get Strum running in under 2 minutes:
 
-1. Download extension: https://cookwithgasoline.com/downloads/
+1. Download extension: https://usestrum.dev/downloads/
 2. Run: npx gasoline-mcp@6.0.0
 3. Add to your MCP config
 
@@ -66,12 +66,12 @@ That's it! Your AI assistant can now see browser telemetry.
 Title: I built a browser observability tool for AI coding agents—here's why
 
 Body:
-I've been working on Gasoline MCP, a browser observability tool that gives AI coding agents like Claude Code and Cursor real-time visibility into browser activity.
+I've been working on Strum, a browser observability tool that gives AI coding agents like Claude Code and Cursor real-time visibility into browser activity.
 
 The problem I was trying to solve:
 When AI generates code that doesn't work, debugging is painful. You have to switch between your AI tool and browser dev tools, copy error messages, and manually explain what's happening.
 
-How Gasoline MCP works:
+How Strum works:
 - Chrome extension captures console logs, network errors, WebSocket events, and user actions
 - MCP server forwards this data to your AI assistant in real-time
 - Your AI can now "see" the browser and suggest fixes autonomously
@@ -100,11 +100,11 @@ Link: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 #### Twitter/X
 ```
-"Gasoline MCP saved me hours of debugging. My AI assistant can now see exactly what's happening in the browser and suggest fixes in real-time."
+"Strum saved me hours of debugging. My AI assistant can now see exactly what's happening in the browser and suggest fixes in real-time."
 
 — Early beta tester
 
-Try it yourself: https://cookwithgasoline.com
+Try it yourself: https://usestrum.dev
 
 #GasolineMCP #AI #DevTools #UserLove
 ```
@@ -117,7 +117,7 @@ One of our early beta testers reported saving 10+ hours per week debugging AI-ge
 
 When your AI assistant can see console logs, network errors, and WebSocket events, it doesn't just generate code—it understands the full context and can fix issues autonomously.
 
-Have you tried Gasoline MCP yet? Share your experience in the comments.
+Have you tried Strum yet? Share your experience in the comments.
 
 #AI #DeveloperTools #Productivity #OpenSource
 ```
@@ -130,7 +130,7 @@ Have you tried Gasoline MCP yet? Share your experience in the comments.
 ```
 🔧 Behind the Scenes: Why Go?
 
-Gasoline MCP's server is written in Go for a reason:
+Strum's server is written in Go for a reason:
 
 • Single binary distribution (no node_modules!)
 • Cross-platform support (macOS, Linux, Windows)
@@ -145,7 +145,7 @@ Zero runtime dependencies, maximum portability.
 
 #### Twitter/X (Thread)
 ```
-🧵 Why Gasoline MCP doesn't need Chrome's debug port:
+🧵 Why Strum doesn't need Chrome's debug port:
 
 Most browser automation tools require launching Chrome with --remote-debugging-port. This:
 
@@ -154,7 +154,7 @@ Most browser automation tools require launching Chrome with --remote-debugging-p
 ❌ Requires a separate browser instance
 ❌ Creates security vulnerabilities
 
-Gasoline MCP uses a standard Chrome extension instead:
+Strum uses a standard Chrome extension instead:
 
 ✅ Your browser stays secure
 ✅ Works with your normal Chrome profile
@@ -174,7 +174,7 @@ Security shouldn't be a tradeoff for productivity.
 ```
 👥 Community Spotlight: Join the conversation!
 
-We're building Gasoline MCP in the open. Want to:
+We're building Strum in the open. Want to:
 
 • Get help with setup?
 • Suggest new features?
@@ -190,7 +190,7 @@ Join our Discord: [LINK]
 ```
 Open source isn't just about code—it's about community.
 
-Gasoline MCP is being built in the open, and we want you to be part of it. Whether you're:
+Strum is being built in the open, and we want you to be part of it. Whether you're:
 
 - A developer using AI tools daily
 - Interested in contributing code
@@ -237,7 +237,7 @@ Some great resources for AI-assisted development:
 • Model Context Protocol (MCP) spec
 • Anthropic's Claude Code documentation
 • Cursor's AI-powered IDE features
-• Gasoline MCP browser observability guide
+• Strum browser observability guide
 
 What are your go-to resources for AI development?
 

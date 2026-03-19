@@ -10,7 +10,7 @@ canonical: true
 
 # Release Process
 
-Gasoline MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Strum uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 

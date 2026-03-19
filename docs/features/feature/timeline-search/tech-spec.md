@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Strum Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Timeline Query Engine                         │  │
 │  │ - Parse timeline queries (correlation_id, etc)│  │

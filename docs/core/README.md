@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Core Documentation
 
-This folder contains all cross-product and foundational documentation for Gasoline Agentic Browser Devtool MCP, including:
+This folder contains all cross-product and foundational documentation for Strum AI DevTools, including:
 - Core product specifications
 - Technical specifications that apply to the entire system
 - API specifications (OpenAPI/Swagger)

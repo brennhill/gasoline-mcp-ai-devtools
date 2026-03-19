@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# QA/UX Fix Plan — Gasoline MCP Tools
+# QA/UX Fix Plan — Strum Tools
 
 > **Status: COMPLETED** — All P0–P4 fixes implemented. Documentation updated.
 

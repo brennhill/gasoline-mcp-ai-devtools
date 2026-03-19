@@ -233,7 +233,7 @@ lsof -i -n -P | grep gasoline
 
 ## Privacy Policy Summary
 
-**For cookwithgasoline.com/privacy/ page:**
+**For usestrum.dev/privacy/ page:**
 
 ```markdown
 # Gasoline Privacy Policy
@@ -290,7 +290,7 @@ License: AGPL-3.0
 Community can audit our privacy claims.
 
 ## Contact
-Questions? support@cookwithgasoline.com
+Questions? support@usestrum.dev
 ```
 
 ---

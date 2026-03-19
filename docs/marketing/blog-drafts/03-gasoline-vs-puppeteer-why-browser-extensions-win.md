@@ -15,7 +15,7 @@ When it comes to browser observability and automation, there are two main approa
 1. **Puppeteer-style automation** - Launch Chrome with `--remote-debugging-port` and control it programmatically
 2. **Browser extension-based** - Install an extension that captures data from within the browser
 
-Gasoline MCP uses the extension approach. Here's why that's the better choice for AI-assisted development.
+Strum uses the extension approach. Here's why that's the better choice for AI-assisted development.
 
 ## The Fundamental Difference
 
@@ -80,7 +80,7 @@ Browser extensions:
 
 ### Real-World Security Implications
 
-Consider this scenario: You're working on a sensitive project and have Gasoline MCP running to help debug issues.
+Consider this scenario: You're working on a sensitive project and have Strum running to help debug issues.
 
 **With Puppeteer:**
 - Any malware on your machine can connect to the debug port
@@ -363,7 +363,7 @@ Puppeteer is an excellent tool for traditional automation and testing, but for t
 npx gasoline-mcp@6.0.0
 ```
 
-Download the extension: [cookwithgasoline.com/downloads](https://cookwithgasoline.com/downloads/)
+Download the extension: [usestrum.dev/downloads](https://usestrum.dev/downloads/)
 
 ## Related Posts
 

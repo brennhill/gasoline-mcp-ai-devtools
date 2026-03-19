@@ -1,6 +1,6 @@
 # MCP Installation Guide
 
-Gasoline MCP supports 9 AI coding tools. Use the one-liner installer or configure manually.
+Strum supports 9 AI coding tools. Use the one-liner installer or configure manually.
 
 ## Automatic Installation
 

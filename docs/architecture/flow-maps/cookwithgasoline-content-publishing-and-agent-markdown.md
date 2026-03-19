@@ -8,10 +8,10 @@ owners:
 feature_ids:
   - feature-cookwithgasoline-content-platform
 entrypoints:
-  - cookwithgasoline.com/src/content/docs/index.mdx
-  - cookwithgasoline.com/src/content/docs/downloads.md
-  - cookwithgasoline.com/src/pages/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
+  - usestrum.dev/src/content/docs/index.mdx
+  - usestrum.dev/src/content/docs/downloads.md
+  - usestrum.dev/src/pages/[...slug].md.ts
+  - usestrum.dev/src/pages/search-synonyms.json.ts
   - scripts/docs/check-docs-quality-gates.mjs
   - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
@@ -26,46 +26,46 @@ code_paths:
   - package.json
   - .vale.ini
   - .vale/styles/Gasoline/*.yml
-  - cookwithgasoline.com/astro.config.mjs
-  - cookwithgasoline.com/src/content.config.ts
-  - cookwithgasoline.com/public/images/integrations/*.svg
-  - cookwithgasoline.com/public/images/landing/*.svg
-  - cookwithgasoline.com/public/images/solutions-seo-signal.svg
-  - cookwithgasoline.com/src/content/docs/articles/*.md
-  - cookwithgasoline.com/src/content/docs/blog/*.md
-  - cookwithgasoline.com/src/content/docs/downloads.md
-  - cookwithgasoline.com/src/content/docs/guides/start-here-by-role.md
-  - cookwithgasoline.com/src/content/docs/guides/tracks/*.md
-  - cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md
-  - cookwithgasoline.com/src/content/docs/guides/seo-analysis.md
-  - cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md
-  - cookwithgasoline.com/src/content/docs/index.mdx
-  - cookwithgasoline.com/src/content/docs/reference/index.md
-  - cookwithgasoline.com/src/content/docs/reference/examples/*.md
-  - cookwithgasoline.com/src/content/docs/reference/observe.md
-  - cookwithgasoline.com/src/content/docs/reference/analyze.md
-  - cookwithgasoline.com/src/content/docs/reference/interact.md
-  - cookwithgasoline.com/src/content/docs/reference/configure.md
-  - cookwithgasoline.com/src/content/docs/reference/generate.md
-  - cookwithgasoline.com/src/components/Footer.astro
-  - cookwithgasoline.com/src/components/Head.astro
-  - cookwithgasoline.com/src/components/Landing.astro
-  - cookwithgasoline.com/src/components/ThemeProvider.astro
-  - cookwithgasoline.com/src/components/ThemeSelect.astro
-  - cookwithgasoline.com/src/components/WorkflowLibrary.astro
-  - cookwithgasoline.com/src/components/ArticlesLibrary.astro
-  - cookwithgasoline.com/src/styles/custom.css
-  - cookwithgasoline.com/src/data/relatedGuides.ts
-  - cookwithgasoline.com/src/data/searchSynonyms.ts
-  - cookwithgasoline.com/src/data/workflows.ts
-  - cookwithgasoline.com/src/pages/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/index.md.ts
-  - cookwithgasoline.com/src/pages/llms.txt.ts
-  - cookwithgasoline.com/src/pages/llms-full.txt.ts
-  - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
-  - cookwithgasoline.com/src/utils/markdownPaths.ts
-  - cookwithgasoline.com/src/utils/siteVersion.ts
+  - usestrum.dev/astro.config.mjs
+  - usestrum.dev/src/content.config.ts
+  - usestrum.dev/public/images/integrations/*.svg
+  - usestrum.dev/public/images/landing/*.svg
+  - usestrum.dev/public/images/solutions-seo-signal.svg
+  - usestrum.dev/src/content/docs/articles/*.md
+  - usestrum.dev/src/content/docs/blog/*.md
+  - usestrum.dev/src/content/docs/downloads.md
+  - usestrum.dev/src/content/docs/guides/start-here-by-role.md
+  - usestrum.dev/src/content/docs/guides/tracks/*.md
+  - usestrum.dev/src/content/docs/guides/visual-evidence-standards.md
+  - usestrum.dev/src/content/docs/guides/seo-analysis.md
+  - usestrum.dev/src/content/docs/guides/annotation-skill-terminal-workflow.md
+  - usestrum.dev/src/content/docs/index.mdx
+  - usestrum.dev/src/content/docs/reference/index.md
+  - usestrum.dev/src/content/docs/reference/examples/*.md
+  - usestrum.dev/src/content/docs/reference/observe.md
+  - usestrum.dev/src/content/docs/reference/analyze.md
+  - usestrum.dev/src/content/docs/reference/interact.md
+  - usestrum.dev/src/content/docs/reference/configure.md
+  - usestrum.dev/src/content/docs/reference/generate.md
+  - usestrum.dev/src/components/Footer.astro
+  - usestrum.dev/src/components/Head.astro
+  - usestrum.dev/src/components/Landing.astro
+  - usestrum.dev/src/components/ThemeProvider.astro
+  - usestrum.dev/src/components/ThemeSelect.astro
+  - usestrum.dev/src/components/WorkflowLibrary.astro
+  - usestrum.dev/src/components/ArticlesLibrary.astro
+  - usestrum.dev/src/styles/custom.css
+  - usestrum.dev/src/data/relatedGuides.ts
+  - usestrum.dev/src/data/searchSynonyms.ts
+  - usestrum.dev/src/data/workflows.ts
+  - usestrum.dev/src/pages/[...slug].md.ts
+  - usestrum.dev/src/pages/index.md.ts
+  - usestrum.dev/src/pages/llms.txt.ts
+  - usestrum.dev/src/pages/llms-full.txt.ts
+  - usestrum.dev/src/pages/markdown/[...slug].md.ts
+  - usestrum.dev/src/pages/search-synonyms.json.ts
+  - usestrum.dev/src/utils/markdownPaths.ts
+  - usestrum.dev/src/utils/siteVersion.ts
   - scripts/docs/check-docs-quality-gates.mjs
   - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
@@ -106,10 +106,10 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Entrypoints
 
-- Splash homepage in `cookwithgasoline.com/src/content/docs/index.mdx`
-- Downloads page content in `cookwithgasoline.com/src/content/docs/downloads.md`
-- Agent markdown mirror route in `cookwithgasoline.com/src/pages/[...slug].md.ts`
-- Synonym dictionary endpoint in `cookwithgasoline.com/src/pages/search-synonyms.json.ts`
+- Splash homepage in `usestrum.dev/src/content/docs/index.mdx`
+- Downloads page content in `usestrum.dev/src/content/docs/downloads.md`
+- Agent markdown mirror route in `usestrum.dev/src/pages/[...slug].md.ts`
+- Synonym dictionary endpoint in `usestrum.dev/src/pages/search-synonyms.json.ts`
 - Phase-based docs quality gate in `scripts/docs/check-docs-quality-gates.mjs`
 - Duplicate content-ID guard in `scripts/docs/check-site-content-ids.mjs`
 - Content contract gate in `scripts/docs/check-cookwithgasoline-content-contract.mjs`
@@ -122,8 +122,8 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Primary Flow
 
-1. Starlight loads docs/blog/articles entries from `cookwithgasoline.com/src/content/docs/*` through `docsLoader()`.
-2. Site navigation and information architecture are defined in `cookwithgasoline.com/astro.config.mjs`.
+1. Starlight loads docs/blog/articles entries from `usestrum.dev/src/content/docs/*` through `docsLoader()`.
+2. Site navigation and information architecture are defined in `usestrum.dev/astro.config.mjs`.
 3. Splash pages render reusable components for marketing and discovery (`Landing.astro`, `WorkflowLibrary.astro`, `ArticlesLibrary.astro`).
 4. Every docs/blog/articles slug is mirrored as `/<slug>.md` via `src/pages/[...slug].md.ts`.
 5. `<link rel="alternate" type="text/markdown">` in `Head.astro` points each HTML route to its markdown mirror.
@@ -163,29 +163,29 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Code Paths
 
-- `cookwithgasoline.com/astro.config.mjs`
-- `cookwithgasoline.com/public/images/integrations/*.svg`
-- `cookwithgasoline.com/public/images/landing/*.svg`
-- `cookwithgasoline.com/src/components/Head.astro`
-- `cookwithgasoline.com/src/components/Footer.astro`
-- `cookwithgasoline.com/src/components/Landing.astro`
-- `cookwithgasoline.com/src/components/ThemeProvider.astro`
-- `cookwithgasoline.com/src/components/ThemeSelect.astro`
-- `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
-- `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
-- `cookwithgasoline.com/src/styles/custom.css`
-- `cookwithgasoline.com/src/content/docs/index.mdx`
-- `cookwithgasoline.com/src/content/docs/downloads.md`
-- `cookwithgasoline.com/src/content/docs/guides/seo-analysis.md`
-- `cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md`
-- `cookwithgasoline.com/src/data/workflows.ts`
-- `cookwithgasoline.com/src/pages/[...slug].md.ts`
-- `cookwithgasoline.com/src/pages/index.md.ts`
-- `cookwithgasoline.com/src/pages/llms.txt.ts`
-- `cookwithgasoline.com/src/pages/llms-full.txt.ts`
-- `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
-- `cookwithgasoline.com/src/utils/markdownPaths.ts`
-- `cookwithgasoline.com/src/utils/siteVersion.ts`
+- `usestrum.dev/astro.config.mjs`
+- `usestrum.dev/public/images/integrations/*.svg`
+- `usestrum.dev/public/images/landing/*.svg`
+- `usestrum.dev/src/components/Head.astro`
+- `usestrum.dev/src/components/Footer.astro`
+- `usestrum.dev/src/components/Landing.astro`
+- `usestrum.dev/src/components/ThemeProvider.astro`
+- `usestrum.dev/src/components/ThemeSelect.astro`
+- `usestrum.dev/src/components/WorkflowLibrary.astro`
+- `usestrum.dev/src/components/ArticlesLibrary.astro`
+- `usestrum.dev/src/styles/custom.css`
+- `usestrum.dev/src/content/docs/index.mdx`
+- `usestrum.dev/src/content/docs/downloads.md`
+- `usestrum.dev/src/content/docs/guides/seo-analysis.md`
+- `usestrum.dev/src/content/docs/guides/annotation-skill-terminal-workflow.md`
+- `usestrum.dev/src/data/workflows.ts`
+- `usestrum.dev/src/pages/[...slug].md.ts`
+- `usestrum.dev/src/pages/index.md.ts`
+- `usestrum.dev/src/pages/llms.txt.ts`
+- `usestrum.dev/src/pages/llms-full.txt.ts`
+- `usestrum.dev/src/pages/markdown/[...slug].md.ts`
+- `usestrum.dev/src/utils/markdownPaths.ts`
+- `usestrum.dev/src/utils/siteVersion.ts`
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
 - `scripts/docs/check-content-style-contract.mjs`
 - `scripts/docs/check-downloads-page-contract.mjs`

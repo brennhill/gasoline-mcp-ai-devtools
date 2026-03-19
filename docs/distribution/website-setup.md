@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Setting Up CRX Distribution on cookwithgasoline.com
+# Setting Up CRX Distribution on usestrum.dev
 
 ## TL;DR
 
@@ -42,7 +42,7 @@ Then in Cloudflare Pages:
 ## Directory Structure
 
 ```
-cookwithgasoline.com/
+usestrum.dev/
 ├── downloads/
 │   ├── gasoline-extension-v5.8.2.crx     # Latest release
 │   ├── gasoline-extension-v5.8.1.crx     # Archive
@@ -171,14 +171,14 @@ CRX_FILE="dist/gasoline-extension-v${VERSION}.crx"
 make extension-crx
 
 # Upload to hosting
-scp "$CRX_FILE" user@cookwithgasoline.com:/var/www/downloads/
+scp "$CRX_FILE" user@usestrum.dev:/var/www/downloads/
 
 # Update symlink
-ssh user@cookwithgasoline.com \
+ssh user@usestrum.dev \
   "cd /var/www/downloads && ln -sf gasoline-extension-v${VERSION}.crx latest.crx"
 
 # Generate checksums
-ssh user@cookwithgasoline.com \
+ssh user@usestrum.dev \
   "cd /var/www/downloads && shasum -a 256 *.crx > checksums.txt"
 ```
 
@@ -190,10 +190,10 @@ make extension-crx
 
 # 2. Upload to your server
 scp dist/gasoline-extension-v5.8.2.crx \
-  you@cookwithgasoline.com:/path/to/downloads/
+  you@usestrum.dev:/path/to/downloads/
 
 # 3. SSH and update symlink
-ssh you@cookwithgasoline.com
+ssh you@usestrum.dev
 cd /path/to/downloads
 ln -sf gasoline-extension-v5.8.2.crx latest.crx
 shasum -a 256 *.crx > checksums.txt
@@ -207,7 +207,7 @@ shasum -a 256 *.crx > checksums.txt
 # /etc/nginx/sites-available/gasoline
 server {
     listen 443 ssl http2;
-    server_name cookwithgasoline.com;
+    server_name usestrum.dev;
 
     location /downloads/ {
         # Allow CRX download
@@ -238,7 +238,7 @@ server {
 ```apache
 # /etc/apache2/sites-available/gasoline.conf
 <VirtualHost *:443>
-    ServerName cookwithgasoline.com
+    ServerName usestrum.dev
     DocumentRoot /var/www
 
     <Directory /var/www/downloads>
@@ -279,7 +279,7 @@ Before going live:
 
 ```bash
 # 1. Download the CRX
-curl -o test.crx https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx
+curl -o test.crx https://usestrum.dev/downloads/gasoline-extension-v5.8.2.crx
 
 # 2. Verify MIME type
 file test.crx

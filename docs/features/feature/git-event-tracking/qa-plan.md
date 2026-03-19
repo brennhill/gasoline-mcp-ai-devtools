@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Hook Installation & Simple Commit
 #### Setup:
 - Test Git repository initialized
-- Gasoline MCP server running
+- Strum server running
 - Hooks not yet installed
 
 #### Steps:

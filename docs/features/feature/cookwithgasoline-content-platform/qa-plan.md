@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 4. `npm run docs:lint:vale`
 5. `npm run docs:lint:reference-schema-sync`
 6. `npm run docs:ci`
-7. `(cd cookwithgasoline.com && npm run build)`
+7. `(cd usestrum.dev && npm run build)`
 
 ## Manual Checks
 

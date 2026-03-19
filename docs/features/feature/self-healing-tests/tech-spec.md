@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Self-healing tests add two new modes to existing Gasoline MCP tools:
+Self-healing tests add two new modes to existing Strum tools:
 1. **test_diagnosis** (observe tool) — Correlates test failure against captured browser telemetry to produce structured diagnosis
 2. **test_fix** (generate tool) — Generates targeted fix proposal from diagnosis
 

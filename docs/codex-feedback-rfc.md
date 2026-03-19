@@ -9,7 +9,7 @@ last_reviewed: 2026-02-16
 Date: 2026-02-16  
 Agent: Codex (GPT-5)
 
-This RFC captures concrete tool improvements based on live end-to-end usage of Gasoline MCP (browse, interact, observe, analyze, generate, recording, async command polling).
+This RFC captures concrete tool improvements based on live end-to-end usage of Strum (browse, interact, observe, analyze, generate, recording, async command polling).
 
 ## Goals
 - Make agent workflows deterministic and easier to automate.

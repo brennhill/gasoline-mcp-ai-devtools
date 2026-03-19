@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Simple Event Emission & Query
 #### Setup:
-- Gasoline MCP server running
+- Strum server running
 - Simple backend service ready to emit events
 
 #### Steps:

@@ -31,7 +31,7 @@ The gap is clear: code review has no runtime signal. Preview deployments have ru
 
 ## Solution
 
-PR Preview Exploration is a **multi-step workflow that the AI agent orchestrates** using existing Gasoline MCP tools. It is not a new Gasoline tool. Gasoline provides the observation and interaction primitives; the agent composes them into an exploration workflow.
+PR Preview Exploration is a **multi-step workflow that the AI agent orchestrates** using existing Strum tools. It is not a new Gasoline tool. Gasoline provides the observation and interaction primitives; the agent composes them into an exploration workflow.
 
 The workflow proceeds in five phases:
 

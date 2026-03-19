@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Full Stack Lab Demo Script (LLM + Gasoline MCP)
+# Full Stack Lab Demo Script (LLM + Strum)
 
 ## Goal
 Show end-to-end Gasoline capabilities on a single demo surface:

@@ -18,7 +18,7 @@ graph TB
         Browser["🌐 Web Browser<br/><br/>Chrome or Brave<br/>Renders web application"]
     end
 
-    subgraph Gasoline["⚙️ Gasoline MCP System"]
+    subgraph Gasoline["⚙️ Strum System"]
         Core["Browser Observability Platform<br/><br/>• Captures console logs, network traffic, WebSocket events<br/>• Provides async browser control via MCP<br/>• Zero dependencies, localhost-only"]
     end
 

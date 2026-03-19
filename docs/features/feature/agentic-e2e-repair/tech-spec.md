@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Gasoline MCP tools to diagnose and fix broken end-to-end tests. It adds no new MCP tools or modes. The agent follows a structured diagnosis-and-repair loop using `observe`, `configure`, `generate`, and `interact` tools in a specific sequence.
+Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Strum tools to diagnose and fix broken end-to-end tests. It adds no new MCP tools or modes. The agent follows a structured diagnosis-and-repair loop using `observe`, `configure`, `generate`, and `interact` tools in a specific sequence.
 
 The workflow assumes an E2E test has failed and the agent has access to test runner output. The agent re-runs the failing test with Gasoline capturing browser telemetry, diagnoses the root cause category, generates a corrected test file, verifies the fix, and reports the change.
 

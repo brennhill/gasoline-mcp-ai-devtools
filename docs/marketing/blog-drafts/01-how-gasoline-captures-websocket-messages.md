@@ -1,18 +1,18 @@
 ---
-title: How Gasoline MCP Captures WebSocket Messages
+title: How Strum Captures WebSocket Messages
 date: 2026-02-10
 author: Brenn Hill
 tags: [WebSocket, MCP, AI, DevTools, Technical]
-description: A deep dive into how Gasoline MCP captures full WebSocket lifecycle events and makes them available to AI coding agents.
+description: A deep dive into how Strum captures full WebSocket lifecycle events and makes them available to AI coding agents.
 status: reference
 last_reviewed: 2026-02-16
 ---
 
-# How Gasoline MCP Captures WebSocket Messages
+# How Strum Captures WebSocket Messages
 
 WebSocket communication is the backbone of modern real-time applications—chat apps, live dashboards, collaborative tools, and more. But when something goes wrong, debugging WebSocket issues can be incredibly frustrating, especially when you're working with AI-generated code.
 
-In this post, I'll explain how Gasoline MCP captures the complete WebSocket lifecycle and makes it available to your AI coding assistant.
+In this post, I'll explain how Strum captures the complete WebSocket lifecycle and makes it available to your AI coding assistant.
 
 ## The Challenge: WebSocket Debugging is Hard
 
@@ -27,7 +27,7 @@ When you're debugging AI-generated code, these limitations compound. The AI can'
 
 ## Gasoline's Solution: Complete WebSocket Observability
 
-Gasoline MCP captures the entire WebSocket lifecycle through a Chrome extension:
+Strum captures the entire WebSocket lifecycle through a Chrome extension:
 
 ### Connection Events
 
@@ -182,7 +182,7 @@ When your AI assistant has access to WebSocket data, it can:
 ```
 User: "My chat app isn't receiving messages"
 
-AI (via Gasoline MCP):
+AI (via Strum):
 - Checks WebSocket connections
 - Sees connection was established
 - Finds error: "Message payload exceeds size limit"
@@ -194,7 +194,7 @@ AI (via Gasoline MCP):
 ```
 User: "The real-time dashboard updates are inconsistent"
 
-AI (via Gasoline MCP):
+AI (via Strum):
 - Examines WebSocket message sequence
 - Detects out-of-order messages
 - Correlates with console warnings
@@ -206,7 +206,7 @@ AI (via Gasoline MCP):
 ```
 User: "WebSocket performance is degrading over time"
 
-AI (via Gasoline MCP):
+AI (via Strum):
 - Measures message latency over time
 - Correlates with memory usage
 - Finds: "Message queue is growing—consider implementing backpressure"
@@ -214,7 +214,7 @@ AI (via Gasoline MCP):
 
 ## Real-World Example
 
-Here's how Gasoline MCP helped debug a WebSocket issue in a collaborative editing app:
+Here's how Strum helped debug a WebSocket issue in a collaborative editing app:
 
 **The Problem:** Users reported that changes weren't syncing properly.
 
@@ -268,7 +268,7 @@ Gasoline takes WebSocket security seriously:
 
 ## Getting Started
 
-To start capturing WebSocket messages with Gasoline MCP:
+To start capturing WebSocket messages with Strum:
 
 ```bash
 # Install the MCP server

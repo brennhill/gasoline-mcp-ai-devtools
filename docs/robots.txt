@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://cookwithgasoline.com/sitemap.xml
+Sitemap: https://usestrum.dev/sitemap.xml

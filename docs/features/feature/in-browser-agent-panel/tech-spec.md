@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This feature adds a browser-side chat/control panel that operates as a first-party client of Gasoline MCP. It does not replace the existing daemon or MCP tool contracts. Instead, it composes them with:
+This feature adds a browser-side chat/control panel that operates as a first-party client of Strum. It does not replace the existing daemon or MCP tool contracts. Instead, it composes them with:
 
 1. Context orchestration (event-triggered bundle assembly).
 2. Safety controls (approval gating for mutating actions).

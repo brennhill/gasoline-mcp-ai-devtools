@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-Users installing Gasoline MCP (via NPM or PyPI) need to:
+Users installing Strum (via NPM or PyPI) need to:
 1. Configure it across multiple AI assistant clients (Claude Code, Claude Desktop, VS Code, Cursor, Windsurf)
 2. Verify the configuration is correct before committing changes
 3. Diagnose connection/installation issues when things go wrong
@@ -154,7 +154,7 @@ User says "It's not working, can you check?"
 
 1. User runs:   gasoline-mcp --doctor
 2. Sees:
-                Gasoline MCP Diagnostic Report
+                Strum Diagnostic Report
 
                 ✅ Claude Code
                    Configured via CLI

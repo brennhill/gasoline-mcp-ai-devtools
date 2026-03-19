@@ -13,7 +13,7 @@ last_verified_date: 2026-03-05
 
 ## Objective
 
-Keep `cookwithgasoline.com` aligned with current product capabilities while preserving a high-conversion marketing layout and machine-readable docs output (`*.md`, `llms.txt`, `llms-full.txt`).
+Keep `usestrum.dev` aligned with current product capabilities while preserving a high-conversion marketing layout and machine-readable docs output (`*.md`, `llms.txt`, `llms-full.txt`).
 
 ## Scope
 

@@ -275,7 +275,7 @@ last_verified_date: 2026-03-05
 - [ ] Run `gasoline-mcp --doctor`
   - **Expected**:
     ```
-    Gasoline MCP Diagnostic Report
+    Strum Diagnostic Report
 
     ✅ Claude Code
        Configured via CLI

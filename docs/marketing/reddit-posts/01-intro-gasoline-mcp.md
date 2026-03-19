@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Reddit Post: Gasoline MCP Introduction
+# Reddit Post: Strum Introduction
 
 **Subreddit:** r/LocalLLaMA, r/ProgrammingTools, r/webdev, r/devtools
 
@@ -12,19 +12,19 @@ last_reviewed: 2026-02-16
 
 1. **I built a browser observability tool for AI coding agents—here's why**
 2. **Browser observability for AI: Give Claude/Cursor real-time browser visibility**
-3. **Debug AI-generated code in seconds, not minutes: Gasoline MCP**
+3. **Debug AI-generated code in seconds, not minutes: Strum**
 
 ---
 
 ## Body Content
 
 ```
-I've been working on Gasoline MCP, a browser observability tool that gives AI coding agents like Claude Code and Cursor real-time visibility into browser activity.
+I've been working on Strum, a browser observability tool that gives AI coding agents like Claude Code and Cursor real-time visibility into browser activity.
 
 The problem I was trying to solve:
 When AI generates code that doesn't work, debugging is painful. You have to switch between your AI tool and browser dev tools, copy error messages, and manually explain what's happening.
 
-How Gasoline MCP works:
+How Strum works:
 - Chrome extension captures console logs, network errors, WebSocket events, and user actions
 - MCP server forwards this data to your AI assistant in real-time
 - Your AI can now "see" the browser and suggest fixes autonomously
@@ -45,7 +45,7 @@ Then download the extension and add to your MCP config.
 Looking for feedback from the community! What would make this more useful for your AI development workflow?
 
 Link: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
-Docs: https://cookwithgasoline.com
+Docs: https://usestrum.dev
 ```
 
 ---
@@ -100,7 +100,7 @@ Docs: https://cookwithgasoline.com
 
 If the initial post gets traction, consider follow-ups:
 
-1. **"How Gasoline MCP captures WebSocket messages"** - Technical deep-dive
+1. **"How Strum captures WebSocket messages"** - Technical deep-dive
 2. **"Debugging AI-generated code: Before and After Gasoline"** - Real example
 3. **"Gasoline vs Puppeteer: Why extensions win"** - Comparison
 

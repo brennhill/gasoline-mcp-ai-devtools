@@ -61,4 +61,4 @@ Includes Phase 2 checks, plus:
 npm run docs:lint:site-content-ids
 ```
 
-Blocks duplicate content IDs/slugs in `cookwithgasoline.com/src/content/docs`.
+Blocks duplicate content IDs/slugs in `usestrum.dev/src/content/docs`.

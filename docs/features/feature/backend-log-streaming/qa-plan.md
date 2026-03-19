@@ -23,7 +23,7 @@ last_verified_date: 2026-03-05
 - ~100 logs per second
 
 #### Steps:
-1. Start Gasoline MCP server
+1. Start Strum server
 2. Connect backend service via gRPC
 3. Backend emits logs for 30 seconds
 4. Call `observe({what: 'backend-logs'})`

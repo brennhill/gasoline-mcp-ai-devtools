@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Analytics Setup Guide for Gasoline MCP
+# Analytics Setup Guide for Strum
 
-This guide will help you set up analytics tracking for cookwithgasoline.com to measure marketing effectiveness and user behavior.
+This guide will help you set up analytics tracking for usestrum.dev to measure marketing effectiveness and user behavior.
 
 ---
 
@@ -28,8 +28,8 @@ We'll set up the following analytics tools:
 
 1. Go to [analytics.google.com](https://analytics.google.com)
 2. Click "Start measuring" or "Admin" → "Create Account"
-3. Account name: `Gasoline MCP`
-4. Property name: `cookwithgasoline.com`
+3. Account name: `Strum`
+4. Property name: `usestrum.dev`
 5. Reporting time zone: Your timezone
 6. Currency: USD (or your preference)
 7. Click "Create"
@@ -55,7 +55,7 @@ Add the GA4 tracking code to your website's `<head>` section:
 </script>
 ```
 
-**For cookwithgasoline.com:**
+**For usestrum.dev:**
 
 If you're using a static site generator (Hugo, Jekyll, etc.), add this to your base template.
 
@@ -322,7 +322,7 @@ Consider:
 
 ## 8. Privacy Considerations
 
-Gasoline MCP is privacy-focused, so ensure analytics respect user privacy:
+Strum is privacy-focused, so ensure analytics respect user privacy:
 
 1. **Anonymize IP addresses** in GA4:
    ```javascript
@@ -349,7 +349,7 @@ Gasoline MCP is privacy-focused, so ensure analytics respect user privacy:
 Create a weekly report to track progress:
 
 ```
-Gasoline MCP Weekly Analytics Report
+Strum Weekly Analytics Report
 Week of: [DATE]
 
 Website Metrics:

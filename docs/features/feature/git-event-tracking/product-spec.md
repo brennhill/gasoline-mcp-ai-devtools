@@ -213,7 +213,7 @@ Gasoline provides a setup command:
 ```bash
 gasoline install-hooks <path-to-repo>
 # → Creates .git/hooks/post-commit, post-checkout, etc.
-# → Emits events to Gasoline MCP server
+# → Emits events to Strum server
 ```
 
 ## Frontend Extension Integration

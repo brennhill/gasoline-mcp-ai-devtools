@@ -23,7 +23,7 @@ This is recording for *engineers*, not just video.
 
 ## The Setup
 
-**Page:** `https://cookwithgasoline.com/demo/recipe-search`
+**Page:** `https://usestrum.dev/demo/recipe-search`
 
 This page demonstrates:
 - Form interactions (search input)
@@ -36,7 +36,7 @@ This page demonstrates:
 ## The Gasoline Script (Natural Language)
 
 ```
-Navigate to: https://cookwithgasoline.com/demo/recipe-search
+Navigate to: https://usestrum.dev/demo/recipe-search
 [3s pause]
 Click: searchbox
 Type "pasta" into: searchbox
@@ -100,7 +100,7 @@ This is what makes Gasoline powerful: recording becomes *data* for testing and d
 
 ```typescript
 test('recipe_search_workflow', async ({ page }) => {
-  await page.goto('https://cookwithgasoline.com/demo/recipe-search');
+  await page.goto('https://usestrum.dev/demo/recipe-search');
   await page.waitForSelector('[role=searchbox]');
 
   const searchbox = page.locator('[role=searchbox]');

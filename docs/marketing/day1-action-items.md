@@ -46,7 +46,7 @@ last_reviewed: 2026-02-16
 1. Add to your Jekyll blog section (`docs/_posts/`)
 2. Add front matter with today's date
 3. Review and edit as needed
-4. Publish to cookwithgasoline.com
+4. Publish to usestrum.dev
 5. Share on social media
 
 ### 3. Prepare Blog Assets (15 minutes)
@@ -89,7 +89,7 @@ Set up a `#welcome` or `#introductions` channel with:
 
 ### 2. Add Slack Invite to Website
 Add Slack invite link to:
-- cookwithgasoline.com header/footer
+- usestrum.dev header/footer
 - README.md
 - Social media bios
 

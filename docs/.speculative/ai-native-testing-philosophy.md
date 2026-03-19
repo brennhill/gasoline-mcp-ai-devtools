@@ -19,7 +19,7 @@ last-verified: 2026-01-31
 
 Traditional QA workflows were designed for a world where humans write code. AI-native development requires a fundamentally different approach: **semantic understanding over comprehensive testing**, **critical paths over test suites**, **impact analysis over regression detection**.
 
-Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at understanding and fixing web applications through observation, exploration, and intelligent iteration.
+Strum doesn't make LLMs write better tests. It makes LLMs better at understanding and fixing web applications through observation, exploration, and intelligent iteration.
 
 ---
 
@@ -164,7 +164,7 @@ Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at under
 - Try breaking things
 - Observe what happens
 
-**Gasoline MCP supports this:**
+**Strum supports this:**
 - `interact.explore` - Execute actions and capture results
 - `observe.capture` - Watch console, network, DOM
 - No need to pre-define test cases
@@ -179,7 +179,7 @@ Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at under
 - Notice subtle differences (timing, layout, user experience)
 - Evaluate "is this acceptable?" not just "does this pass?"
 
-**Gasoline MCP supports this:**
+**Strum supports this:**
 - `observe.compare` - Compare two states
 - `analyze.infer` - "What's different here?"
 
@@ -193,7 +193,7 @@ Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at under
 - State affects behavior (logged in vs logged out)
 - External services matter
 
-**Gasoline MCP supports this:**
+**Strum supports this:**
 - Captures full context (network, console, DOM)
 - Can replay recordings in different environments
 - `observe.compare` shows production vs dev differences
@@ -208,7 +208,7 @@ Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at under
 - Can't reproduce → try different environment
 - Solution causes new issue → iterate
 
-**Gasoline MCP supports this:**
+**Strum supports this:**
 - Fast iteration (no compile for JS/web)
 - Immediate feedback
 - `interact.replay` to try again
@@ -223,16 +223,16 @@ Gasoline MCP doesn't make LLMs write better tests. It makes LLMs better at under
 - Is the UX correct?
 - Are edge cases handled appropriately?
 
-**Gasoline MCP supports this:**
+**Strum supports this:**
 - Natural language constraints
 - Simple prompts, not complex rules
 - LLMs self-evaluate against constraints
 
 ---
 
-## The Gasoline MCP Advantage
+## The Strum Advantage
 
-Gasoline MCP doesn't force LLMs into traditional QA. Instead, it provides:
+Strum doesn't force LLMs into traditional QA. Instead, it provides:
 
 1. **Observation capabilities** - See what's happening in the browser
 2. **Action capabilities** - Try things, explore, experiment
@@ -580,7 +580,7 @@ After discussion with stakeholders, we realized this was incomplete. The followi
    "New user must enter valid email, password (8+ chars), and confirm password.
     Form should show inline errors for invalid input."
 
-2. LLM uses Gasoline MCP to explore:
+2. LLM uses Strum to explore:
    - interact.explore: Goto /signup
    - interact.explore: Try email = "invalid" → Observe: No inline error
    - interact.explore: Try password = "short" → Observe: Accepts 6 chars
@@ -617,7 +617,7 @@ Total time: 3 minutes, fully autonomous
 
 **Setup:**
 - User encounters error in production
-- User enables Gasoline MCP recorder
+- User enables Strum recorder
 - User reproduces error
 - User: "Fix this error - here's what happened"
 
