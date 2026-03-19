@@ -1,12 +1,12 @@
 [project]
-name = "gasoline-agentic-browser"
+name = "strum"
 version = "0.8.1"
-description = "Gasoline Agentic Browser is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP)."
+description = "Strum AI DevTools is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP)."
 readme = "README.md"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"
 authors = [
-    {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
+    {name = "Brennan Hill", email = "noreply@usestrum.dev"}
 ]
 keywords = [
     "mcp",
@@ -39,8 +39,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://cookwithgasoline.com"
-Documentation = "https://cookwithgasoline.com/getting-started/"
+Homepage = "https://usestrum.dev"
+Documentation = "https://usestrum.dev/getting-started/"
 Repository = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
 Issues = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
 

@@ -1,7 +1,7 @@
 {
-  "name": "gasoline-agentic-browser",
+  "name": "strum",
   "version": "0.8.1",
-  "description": "Gasoline Agentic Browser is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP).",
+  "description": "Strum AI DevTools is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP).",
   "license": "AGPL-3.0-only",
   "bin": {
     "gasoline-agentic-browser": "bin/gasoline-agentic-browser",
@@ -35,7 +35,7 @@
     "prompt-engineering",
     "agent-inspection"
   ],
-  "homepage": "https://cookwithgasoline.com",
+  "homepage": "https://usestrum.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"

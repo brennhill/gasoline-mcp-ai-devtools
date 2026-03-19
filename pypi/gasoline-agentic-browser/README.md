@@ -1,4 +1,4 @@
-# Gasoline Agentic Browser Devtool MCP
+# Strum AI DevTools
 
 Agentic Browser Devtools - rapid e2e web development.
 
@@ -7,7 +7,7 @@ Streams console logs, network errors, WebSocket events, and exceptions to Claude
 ## Installation
 
 ```bash
-pip install gasoline-agentic-browser
+pip install strum
 ```
 
 The correct platform-specific binary will be installed automatically.
@@ -86,7 +86,7 @@ Or load from source:
 
 ## Documentation
 
-- [Getting Started](https://cookwithgasoline.com/getting-started/)
+- [Getting Started](https://usestrum.dev/getting-started/)
 - [GitHub Repository](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 - [Issue Tracker](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
 
@@ -96,4 +96,4 @@ Or load from source:
 
 ## License
 
-AGPL-3.0 — Free for personal and internal company use. [Commercial licensing available](https://cookwithgasoline.com/privacy/) for proprietary integration.
+AGPL-3.0 — Free for personal and internal company use. [Commercial licensing available](https://usestrum.dev/privacy/) for proprietary integration.
