@@ -1,4 +1,4 @@
-# Gasoline - Ultimate Windows Installer (PowerShell)
+# Strum AI DevTools - Ultimate Windows Installer (PowerShell)
 # https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
@@ -88,7 +88,7 @@ function Stop-GasolineServerProcesses {
         return $true
     }
 
-    Write-Host "🛑 Stopping running Gasoline server: PID(s) $($targetPids -join ', ')"
+    Write-Host "Stopping running Strum server: PID(s) $($targetPids -join ', ')"
     foreach ($procId in $targetPids) {
         Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     }
@@ -144,13 +144,13 @@ function Replace-GasolineBinary {
 }
 
 Write-Host ""
-Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
-Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
-Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
-Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
-Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
+Write-Host '  ____  _                        ' -ForegroundColor DarkYellow
+Write-Host ' / ___|| |_ _ __ _   _ _ __ ___  ' -ForegroundColor DarkYellow
+Write-Host ' \___ \| __| ''__| | | | ''_ ` _ \ ' -ForegroundColor DarkYellow
+Write-Host '  ___) | |_| |  | |_| | | | | | |' -ForegroundColor DarkYellow
+Write-Host ' |____/ \__|_|   \__,_|_| |_| |_|' -ForegroundColor DarkYellow
 Write-Host ""
-Write-Host "🔥 Gasoline Installer" -ForegroundColor DarkYellow
+Write-Host "Strum AI DevTools Installer" -ForegroundColor DarkYellow
 Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
 if ($STRICT_CHECKSUM) {
     Write-Host "🔒 Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)" -ForegroundColor Yellow

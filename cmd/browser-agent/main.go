@@ -53,7 +53,7 @@ func main() {
 
 	server, err := NewServer(cfg.logFile, cfg.maxEntries)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error creating server: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[strum] Error creating server: %v\n", err)
 		os.Exit(1)
 	}
 	for _, warning := range startupWarnings {
@@ -66,9 +66,9 @@ func main() {
 // #lizard forgives
 func printHelp() {
 	fmt.Print(`
-Gasoline - Agentic Browser Devtools - rapid e2e web development
+Strum AI DevTools - Agentic Browser Devtools - rapid e2e web development
 
-Usage: gasoline [options]
+Usage: strum [options]
 
 Options:
   --port <number>        Port to listen on (default: 7890)
@@ -77,7 +77,7 @@ Options:
   --parallel             Opt-in parallel mode (isolated state dir, no takeover)
   --max-entries <number> Max log entries before rotation (default: 1000)
   --stop                 Stop the running server on the specified port
-  --force                Force kill ALL running gasoline daemons (used during install)
+  --force                Force kill ALL running strum daemons (used during install)
   --api-key <key>        Require API key for HTTP requests (optional)
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
@@ -89,35 +89,35 @@ Options:
   --version              Show version
   --help                 Show this help message
 
-Gasoline always runs in MCP mode: the HTTP server starts in the background
+Strum always runs in MCP mode: the HTTP server starts in the background
 (for the browser extension) and MCP protocol runs over stdio (for Claude Code, Cursor, etc.).
 The server persists until explicitly stopped with --stop or killed.
 
 Examples:
-  gasoline                              # Start server (daemon mode)
-  gasoline --stop                       # Stop server on default port
-  gasoline --stop --port 8080           # Stop server on specific port
-  gasoline --force                      # Force kill all daemons (for clean upgrade)
-  gasoline --api-key s3cret             # Start with API key auth
-  gasoline --connect --port 7890        # Connect to existing server
-  gasoline --check                      # Verify setup before running
-  gasoline --port 8080 --max-entries 500
+  strum                              # Start server (daemon mode)
+  strum --stop                       # Stop server on default port
+  strum --stop --port 8080           # Stop server on specific port
+  strum --force                      # Force kill all daemons (for clean upgrade)
+  strum --api-key s3cret             # Start with API key auth
+  strum --connect --port 7890        # Connect to existing server
+  strum --check                      # Verify setup before running
+  strum --port 8080 --max-entries 500
 
 CLI Mode (direct tool access):
-  gasoline observe errors --limit 50
-  gasoline analyze dom --selector "button"
-  gasoline observe logs --min-level warn
-  gasoline generate har --save-to out.har
-  gasoline configure health
-  gasoline interact click --selector "#btn"
+  strum observe errors --limit 50
+  strum analyze dom --selector "button"
+  strum observe logs --min-level warn
+  strum generate har --save-to out.har
+  strum configure health
+  strum interact click --selector "#btn"
 
   CLI flags: --port, --format (human|json|csv), --timeout (ms)
   Env vars: GASOLINE_PORT, GASOLINE_FORMAT, GASOLINE_STATE_DIR
 
 MCP Configuration:
-  gasoline-mcp --install     Auto-install to all detected AI clients
-  gasoline-mcp --config      Show configuration and detected clients
-  gasoline-mcp --doctor      Run diagnostics on installed configs
+  strum --install     Auto-install to all detected AI clients
+  strum --config      Show configuration and detected clients
+  strum --doctor      Run diagnostics on installed configs
 
   Supported clients: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code
 `)

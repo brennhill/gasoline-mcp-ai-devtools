@@ -1,9 +1,9 @@
 #!/bin/bash
-# Gasoline - The Ultimate One-liner Installer
+# Strum AI DevTools - The Ultimate One-liner Installer
 # https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
-# This script provides a zero-dependency, platform-aware installation flow for Gasoline.
+# This script provides a zero-dependency, platform-aware installation flow for Strum.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
@@ -46,14 +46,14 @@ trap cleanup EXIT
 
 echo -e "${ORANGE}${BOLD}"
 cat <<'EOF'
-   ____                 _ _
-  / ___| __ _ ___  ___ | (_)_ __   ___
- | |  _ / _` / __|/ _ \| | | '_ \ / _ \
- | |_| | (_| \__ \ (_) | | | | | |  __/
-  \____|\__,_|___/\___/|_|_|_| |_|\___|
+  ____  _
+ / ___|| |_ _ __ _   _ _ __ ___
+ \___ \| __| '__| | | | '_ ` _ \
+  ___) | |_| |  | |_| | | | | | |
+ |____/ \__|_|   \__,_|_| |_| |_|
 EOF
 echo -e "${NC}"
-echo -e "${ORANGE}${BOLD}Gasoline Installer${NC}"
+echo -e "${ORANGE}${BOLD}Strum AI DevTools Installer${NC}"
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
     echo -e "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)"
@@ -284,7 +284,7 @@ kill_stale_gasoline_processes() {
     fi
 
     if [ -n "$pids" ]; then
-        echo -e "  Stopping running Gasoline processes..."
+        echo -e "  Stopping running Strum processes..."
         for pid in $pids; do
             # Don't kill ourselves.
             if [ "$pid" != "$$" ]; then
@@ -604,7 +604,7 @@ PLIST
 
             cat > "$service_path" <<SERVICE
 [Unit]
-Description=Gasoline Agentic Devtools Daemon
+Description=Strum AI DevTools Daemon
 After=network.target
 
 [Service]
@@ -633,7 +633,7 @@ SERVICE
             cat > "$desktop_path" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Gasoline Daemon
+Name=Strum Daemon
 Exec=$CANONICAL_GASOLINE_BIN --daemon --port 7890
 Hidden=false
 NoDisplay=true
@@ -692,7 +692,7 @@ register_path
 
 echo ""
 if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
-    echo -e "${GREEN}${BOLD}Gasoline upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+    echo -e "${GREEN}${BOLD}Strum upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
 else
-    echo -e "${GREEN}${BOLD}Gasoline v$VERSION installed successfully.${NC}"
+    echo -e "${GREEN}${BOLD}Strum v$VERSION installed successfully.${NC}"
 fi
