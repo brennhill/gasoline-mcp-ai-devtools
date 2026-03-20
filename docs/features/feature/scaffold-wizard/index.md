@@ -38,11 +38,96 @@ Free text, one thing. Forces the user to prioritize before code exists. This bec
 **Step 4: Project name**
 Auto-generated from Step 1 (slugified). Editable, but most users won't touch it.
 
-#### Part 2: Set Up Your Safety Net (~30 seconds)
+#### Part 2: What Does Your App Need? (~30 seconds)
 
-After the creative questions, the wizard explains the infrastructure it's about to set up. This isn't a configuration screen — it's a brief explainer with one-click setup for each service. The user can skip any step, but the wizard tells them what they'd be missing.
+Based on the audience (Step 2), the wizard asks about backend needs. Each question auto-installs the best-of-breed tool. Every option is skippable with "not yet" — users can add these later.
 
-**Step 5: "Let's back up your code"**
+**Step 5: "Does your app need user accounts?"**
+Only shown for "My team" or "Public users" audiences. Skipped for "Just me."
+
+Two choices:
+- **"Yes"** → installs Supabase Auth
+- **"Not yet"** → skipped, but Supabase SDK is still installed (they'll want the database anyway)
+
+*"We'll set up login, signup, and session management. Users get a real account system from day one."*
+
+What gets installed:
+- `@supabase/supabase-js` + `@supabase/auth-ui-react`
+- `src/lib/supabase.ts` — client initialization with env var for project URL + anon key
+- `src/components/AuthGuard.tsx` — wraps protected routes
+- `src/components/LoginPage.tsx` — shadcn-styled login/signup form with email + social options
+- `.env.local.example` — with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` placeholders
+- Wizard offers "Create Supabase project" button → opens supabase.com/dashboard
+
+**Step 6: "Does your app need to store data?"**
+Only shown for "My team" or "Public users" audiences. For "Just me," local storage is the default (no question asked, but `src/lib/storage.ts` wrapper is generated).
+
+Two choices:
+- **"Yes"** → installs Supabase database (Postgres)
+- **"Not yet"** → skipped (Supabase SDK already installed from auth step; easy to add later)
+
+*"We'll connect a database so your data persists across devices and users."*
+
+What gets installed:
+- Supabase client (shared with auth — one SDK, one project, no duplication)
+- `src/lib/database.ts` — typed query helpers with row-level security
+- `src/types/database.ts` — type definitions (generated from Supabase schema if connected)
+- Example: if first feature is "todo list," generates `src/hooks/useTodos.ts` with CRUD operations
+
+**Step 7: "Will you need to accept payments?"**
+Only shown for "Public users" audience.
+
+Two choices:
+- **"Yes"** → installs Stripe
+- **"Not yet"** → skipped
+
+*"We'll wire up Stripe so you can charge for your product. Free until you start processing payments."*
+
+What gets installed:
+- `@stripe/stripe-js` + `@stripe/react-stripe-js`
+- `src/lib/stripe.ts` — Stripe initialization
+- `src/components/PricingTable.tsx` — shadcn-styled pricing component (placeholder)
+- `.env.local.example` updated with `VITE_STRIPE_PUBLISHABLE_KEY`
+
+#### Opinionated Backend Stack
+
+We choose for them based on audience. The goal is zero backend code — everything is a client-side SDK call to a managed service.
+
+| Need | "Just me" | "My team" / "Public" | Why this choice |
+|------|-----------|---------------------|-----------------|
+| **Auth** | None | Supabase Auth | Free tier generous (50K MAU). Auth + database in one service. Open source. |
+| **Database** | localStorage wrapper | Supabase (Postgres) | Same service as auth. One SDK. Row-level security. Realtime subscriptions. |
+| **Payments** | None | Stripe | Industry standard. Best docs. Free until revenue. |
+| **File storage** | None | Supabase Storage | Already connected. S3-compatible. |
+| **Email** | None | Supabase Edge Functions + Resend | Added via bootstrap skill when user asks, not scaffolded by default |
+
+**Why Supabase as the only BaaS:**
+- Auth + database + storage + realtime + edge functions = one account, one SDK, one dashboard
+- No migration path to worry about — everything is in one place from day one
+- Open source (can self-host later if needed)
+- Generous free tier (500MB database, 1GB storage, 50K MAU)
+- TypeScript SDK with full type generation from schema
+- Row-level security = auth-aware queries without writing backend code
+- Revenue share via Supabase partner program
+
+No alternatives offered. One BaaS, one path. Users who outgrow Supabase have graduated from Strum.
+
+#### Revenue Share: Backend Services
+
+| Service | Rev Share | Notes |
+|---------|-----------|-------|
+| **Supabase** | Yes — partner program | Auth + database + storage in one. $25/mo Pro plan conversion. |
+| **Stripe** | No direct referral | Every Stripe-enabled app = Stripe revenue = co-marketing goodwill |
+| **Resend** | Yes — referral program | Email sending, when user needs it later |
+
+At scale: Supabase alone is the highest-value conversion — most projects will need both auth and database ($25/mo Pro plan).
+
+#### Part 3: Set Up Your Safety Net (~30 seconds)
+
+After the backend questions, the wizard handles infrastructure. Same pattern — brief explainer, one-click setup, skippable.
+
+**Step 8: "Let's back up your code"**
+
 *"We'll save your project to GitHub so you never lose your work. It's free and takes 10 seconds."*
 
 - If `gh` is installed and authenticated: show green checkmark, "Connected as @username"
@@ -52,7 +137,7 @@ After the creative questions, the wizard explains the infrastructure it's about 
 
 On completion: creates private repo, pushes initial code. The wizard shows: *"Your code is backed up. Every change you make will be auto-saved."*
 
-**Step 6: "Where should we deploy?"**
+**Step 9: "Where should we deploy?"**
 *"Pick where your app goes live. All are free to start. One click to deploy anytime."*
 
 Three cards showing deploy platforms (whichever has the best rev share deal is marked "Recommended"):
@@ -62,7 +147,7 @@ Three cards showing deploy platforms (whichever has the best rev share deal is m
 
 Each card has a "Connect" button that runs the platform's auth flow. Skip option available.
 
-**Step 7: "Keep your code secure"**
+**Step 10: "Keep your code secure"**
 *"We'll scan for vulnerabilities before every deploy. Connect a scanner for continuous monitoring."*
 
 Cards for scanner partners (best rev share deal marked "Recommended"):
@@ -72,10 +157,10 @@ Cards for scanner partners (best rev share deal marked "Recommended"):
 
 Each has a "Connect" button. Skip option available.
 
-**Step 8: "Track errors in production"**
+**Step 11: "Track errors in production"**
 *"Your app catches errors automatically during development. Want to know about errors after you deploy?"*
 
-Only shown if a deploy platform was selected in Step 6. Cards:
+Only shown if a deploy platform was selected in Step 9. Cards:
 - Sentry — "Industry standard. See every error with full context."
 - BetterStack — "Errors + uptime + logs in one dashboard."
 
@@ -87,6 +172,7 @@ The wizard summarizes what's about to happen:
 ```
 Ready to create "todo-app":
   ✓ React + TypeScript + Tailwind + shadcn
+  ✓ Supabase (auth + database)
   ✓ Backed up to GitHub (private)
   ✓ Deploys to Vercel
   ✓ Security scans by Codacy
@@ -346,7 +432,20 @@ The agent works **outside-in**: layout shell first, then sections, then detail.
 
 Applied during Phase 1, before dev server start.
 
-#### Compiler & Linting
+#### Full Dev Toolchain (all auto-installed in Phase 1)
+
+Every tool below is installed, configured, and wired into git hooks. The user never sets any of this up.
+
+| Tool | Purpose | Auto-fix? | Config File |
+|------|---------|-----------|-------------|
+| **TypeScript** | Type safety | No (requires judgment) | `tsconfig.json` |
+| **ESLint** | Code quality + security | Yes (`--fix`) | `eslint.config.js` |
+| **Prettier** | Formatting | Yes (`--write`) | `.prettierrc` |
+| **knip** | Dead code removal | Yes (`--fix`) | `knip.config.ts` |
+| **Vitest** | Unit tests + coverage | No | `vitest.config.ts` |
+| **Husky** | Git hooks manager | — | `.husky/` |
+| **eslint-plugin-security** | Security patterns (eval, innerHTML) | Partial | (in eslint config) |
+| **eslint-plugin-react-hooks** | React rules of hooks | Yes | (in eslint config) |
 
 **tsconfig.json** — strict mode:
 - `strict: true`
@@ -357,9 +456,28 @@ Applied during Phase 1, before dev server start.
 
 **vite.config.ts** — matching path alias via `resolve.alias`
 
-**ESLint** — `@eslint/js` recommended + `typescript-eslint` strict + `eslint-plugin-react-hooks`
+**ESLint** (`eslint.config.js`, flat config):
+- `@eslint/js` recommended
+- `typescript-eslint` strict
+- `eslint-plugin-react-hooks` recommended
+- `eslint-plugin-security` recommended
+- Auto-fixable rules run on commit, remaining warnings block
 
-**Prettier** — single quotes, no semicolons, 2-space indent, trailing commas
+**Prettier** (`.prettierrc`):
+- Single quotes, no semicolons, 2-space indent, trailing commas
+- Runs as `prettier --write` on commit (auto-fixes, never blocks)
+
+**knip** (`knip.config.ts`):
+- Detects unused exports, files, and dependencies
+- Runs as `knip --fix` on commit (auto-removes, re-stages)
+- shadcn `components/ui/` ignored (may look unused before being composed)
+
+**Husky** (`.husky/`):
+- `pre-commit`: prettier → eslint --fix → knip --fix → re-stage → tsc → eslint --max-warnings 0 → component invariants
+- `pre-push`: vitest with 60% coverage floor
+- `pre-deploy` (custom): pnpm audit + security scan
+
+The key principle: **auto-fix everything that can be auto-fixed, block only on things requiring human judgment.** Users never see formatting diffs, dead export warnings, or simple lint issues — they're fixed silently on commit.
 
 #### Curated Component Library
 
@@ -437,6 +555,7 @@ Generated into the project so any AI agent immediately understands it.
 | **No barrel exports** | Import directly from component files. No `index.ts` re-exports. | "I'll add an index.ts for cleaner imports" |
 | **`@/` imports only** | Use `@/components/...`, never `../../../`. | "Relative path is fine for now" |
 | **One test per component** | Every new `.tsx` gets a `.test.tsx`. No exceptions. | "I'll add tests later" |
+| **No dead code** | If knip reports a dead export, remove it immediately. Don't leave unused code. | "I might need it later" |
 | **Responsive from birth** | Every component must not break at 375px width. | "I'll handle mobile later" |
 | **Accessible by default** | Form inputs need labels. Images need alt text. Interactive elements need focus states. | "Accessibility can come later" |
 
@@ -530,10 +649,33 @@ The scaffold ships with automated quality enforcement so the codebase stays clea
 Generated as `.husky/pre-commit` (or simple git hook):
 
 ```bash
-pnpm tsc --noEmit          # Type errors block commit
-pnpm eslint --max-warnings 0  # No warnings, no exceptions
-pnpm prettier --check .     # Formatting is non-negotiable
+pnpm prettier --write .     # Auto-fix formatting
+pnpm eslint --fix            # Auto-fix lint issues
+pnpm lint:dead               # Auto-remove dead exports/files/deps (knip --fix)
+git add -u                   # Re-stage auto-fixes
+pnpm tsc --noEmit            # Type errors block commit (no auto-fix — requires human judgment)
+pnpm eslint --max-warnings 0 # Remaining lint warnings block commit
 ```
+
+The hook auto-fixes what it can (formatting, simple lint issues, dead code), re-stages the fixes, then blocks on things that need human judgment (type errors, complex lint issues).
+
+**Dead code detection via knip** — `knip` (ISC license, open source) is installed as a dev dependency and configured in `knip.config.ts`:
+
+```typescript
+// knip.config.ts
+export default {
+  entry: ['src/main.tsx'],
+  project: ['src/**/*.{ts,tsx}'],
+  ignore: ['src/components/ui/**'],  // shadcn components may look unused before they're composed into features
+  ignoreDependencies: ['@tailwindcss/vite'],  // Vite plugin referenced in config, not imported
+}
+```
+
+`pnpm lint:dead` runs `knip --fix --include exports,files,dependencies` and **auto-removes** dead code on commit. No manual cleanup needed — the hook fixes it, re-stages the changes, and the commit goes through clean. This prevents the codebase from accumulating unused exports, orphaned files, or phantom dependencies over time.
+
+For reporting without auto-fix: `pnpm lint:dead:check` runs `knip --include exports,files,dependencies` (no `--fix`).
+
+Phase 1 installs it: `pnpm add -D knip` alongside the other dev dependencies.
 
 **Component invariant check** — a lightweight script (`scripts/check-components.sh`) that verifies:
 - Every `.tsx` in `src/components/` has a default export
@@ -636,7 +778,7 @@ Your app is running! Next steps:
 
 ```
 Edit code → auto-commit (every 5 saves or 5 minutes)
-         → pre-commit (types + lint + format + component invariants)
+         → pre-commit (types + lint + format + dead code + component invariants)
          → push (tests + 60% coverage floor)
          → pre-deploy (security scan: audit + ESLint security + .env leak check)
          → deploy (one command)
@@ -877,6 +1019,360 @@ Annotation mode is inherently educational — the user clicks a UI element and s
 - Component names in the source match what was shown during composition, creating continuity
 
 This turns every editing session into an implicit tutorial. The user learns React/Tailwind/TypeScript by doing, not by reading docs.
+
+## Terminal-First Architecture: Decorated Commands
+
+The terminal (xterm on port 7891) is the **single source of truth**. The user always has complete control. Everything flows through it — whether the user types directly or clicks a button in the Strum UI.
+
+### How It Works
+
+The Strum browser UI provides contextual action buttons. When clicked, they compose a **decorated prompt** — a well-crafted command with full project context — and inject it into the xterm PTY. The user sees it appear in the terminal as if they typed it. Claude Code receives and executes it.
+
+```
+┌─ Strum UI (browser) ────────────────────────────────┐
+│                                                      │
+│  Your app: todo-app    [2 errors]  [HMR: ok]        │
+│                                                      │
+│  Quick actions:                                      │
+│  [Add a page]  [Add a feature]  [Fix errors]        │
+│  [Deploy]  [Run tests]  [Security scan]             │
+│                                                      │
+├─ Terminal ──────────────────────────────────────────┤
+│  $ Add a new page called "contacts" to the app.     │  ← injected by button click
+│  Use the existing Layout component and shadcn        │
+│  form components. Store contact data in Supabase     │
+│  with RLS policies. Write a test.                    │
+│                                                      │
+│  Claude: I'll create the contacts page...            │  ← Claude Code executing
+│  Writing src/pages/ContactsPage.tsx...               │
+│  Writing src/hooks/useContacts.ts...                 │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+         ↕ same WebSocket, same PTY session
+```
+
+The user can:
+- Click buttons → decorated prompt injected into terminal
+- Type directly in terminal → works exactly the same (skills + hooks provide context)
+- Edit a decorated prompt before hitting enter → full control
+- Cancel mid-execution → Ctrl+C works as expected
+- Mix button clicks and typing freely
+
+### Prompt Decoration
+
+When the UI composes a command, it decorates it with project-aware context the user wouldn't think to include:
+
+**Raw user intent:** "add a contact form"
+
+**Decorated prompt (what gets injected into terminal):**
+```
+Add a contact form page to the app. Requirements:
+- Use the existing Layout component for page structure
+- Use shadcn form components (input, label, button, textarea)
+- Style with Tailwind theme tokens (bg-primary, text-foreground)
+- Store submissions in Supabase with RLS policies for the authenticated user
+- Add form validation with descriptive error messages
+- Include a success toast using shadcn toast component
+- Write a test for the form submission flow
+- Ensure the page works at 375px mobile viewport
+```
+
+The decoration pulls from:
+- **Code quality standards** — `.strum/code-quality-standards.md` is appended to every decorated prompt. Contains all file size limits, naming conventions, styling rules, testing requirements, and "what NOT to do" rules. This is the non-negotiable baseline.
+- **Project config** — stack, database, auth setup (from CLAUDE.md)
+- **Available components** — what shadcn components are installed
+- **Current page state** — what's on screen (from `observe(what='page')`)
+- **Active errors** — if there are console errors, mention them
+- **File size check** — if any file the AI will touch is over 300 lines, the decoration adds: "WARNING: {file} is {n} lines. Split it before adding more code."
+- **Bootstrap skill rules** — Tailwind-first, shadcn-first, test per component, etc.
+
+The code quality standards file (`code-quality-standards.md`) ships with every scaffold and is the source of truth for all quality rules. It covers: file size limits (300 LOC), one component per file, naming conventions, import rules (`@/` only, no barrels), Tailwind-only styling, theme tokens, shadcn-first, component patterns (no `any`, no `as`, destructured props), Supabase data patterns (RLS, hooks), error handling (boundaries + toast), testing (behavior-focused, no snapshots), accessibility (labels, alt text, focus), git discipline, and an explicit "what NOT to do" section.
+
+### Action Buttons
+
+The Strum UI shows contextual buttons based on project state:
+
+| Button | When Shown | Decorated Prompt Includes |
+|--------|-----------|--------------------------|
+| **Add a page** | Always | Layout component, routing, shadcn, Supabase, test, mobile check |
+| **Add a feature** | Always | Available components, database schema, auth context |
+| **Fix errors** | When `observe(errors)` > 0 | Actual error messages, affected components, stack traces |
+| **Deploy** | Deploy platform connected | Security scan first, then deploy command |
+| **Run tests** | Always | `pnpm test` with coverage report |
+| **Security scan** | Always | `pnpm audit` + Gasoline `analyze(what='security_audit')` |
+| **Improve this page** | Tab tracked | Screenshot of current page, accessibility audit results |
+| **Make it mobile-friendly** | Tab tracked | Current viewport screenshot + 375px screenshot comparison |
+
+### Skills and Hooks (Shipped with Gasoline Install)
+
+When Gasoline installs, it ships with skills and hooks that make this work even without the Strum UI — so users typing directly in Claude Code get the same quality:
+
+**Shipped skills** (in `claude_skill/gasoline/`):
+- Already have the 5-tool reference (observe, analyze, generate, configure, interact)
+- Workflow guides already teach best practices for debugging, automation, testing
+
+**Scaffolded project skills** (generated into `.claude/skills/strum-dev/`):
+- Bootstrap skill with anti-rationalization table
+- Project-specific conventions (stack, components, database, auth)
+- These survive `/clear` via the SessionStart hook
+
+**Scaffolded project hooks:**
+- **SessionStart** — injects bootstrap skill (project context always loaded)
+- **PostToolUse** — context monitor (warns before quality degrades)
+- **statusLine** — live dashboard (tracking URL, errors, HMR, context usage)
+
+The combination means: button clicks get decorated prompts → great results. Direct typing gets skill context + MCP tools → also great results. The terminal is always the interface. The UI just makes it easier to compose good prompts.
+
+### Why Terminal-First Matters
+
+- **Transparency** — the user sees exactly what's being sent to the AI. No magic, no hidden prompts.
+- **Control** — the user can edit, cancel, or override anything before it executes.
+- **Learning** — users see well-crafted prompts and learn how to write better ones themselves.
+- **Fallback** — if the UI breaks, the terminal still works. Skills and hooks don't depend on the UI.
+- **Universal** — works with any AI agent in the terminal (Claude Code, Codex, Gemini CLI), not just our UI.
+
+## Context Menu: Right-Click Actions on Strum Projects
+
+When the user is on a Strum project (localhost with `<meta name="strum-project">` tag), the extension dynamically adds context menu items. These only appear on Strum projects — not on any other site.
+
+### Detection
+
+During scaffold, the Vite plugin injects a meta tag into `index.html`:
+
+```html
+<meta name="strum-project" content="todo-app" data-stack="react,supabase,stripe">
+```
+
+The content script checks for this on every page load:
+
+```typescript
+const strumMeta = document.querySelector('meta[name="strum-project"]')
+if (strumMeta) {
+  chrome.runtime.sendMessage({ type: 'strum_project_detected',
+    name: strumMeta.content,
+    stack: strumMeta.dataset.stack
+  })
+}
+```
+
+The background script creates/removes context menu items based on this signal.
+
+### Context Menu Items
+
+When on a Strum project, right-click shows:
+
+```
+┌─────────────────────────────┐
+│  Strum                    → │
+│  ├── Add feature            │
+│  ├── Add page               │
+│  ├── Update this element    │
+│  ├── Fix errors             │
+│  ├── Improve this page      │
+│  └── Deploy                 │
+└─────────────────────────────┘
+```
+
+When NOT on a Strum project (or not on localhost), the "Strum" submenu doesn't appear at all.
+
+### Inline Chat Box
+
+When the user clicks a context menu item, a small chat box appears **at the click position** as a content script overlay:
+
+```
+┌─────────────────────────────────────────┐
+│  Add feature                        [×] │
+│  ┌───────────────────────────────────┐  │
+│  │ What feature do you want to add? │  │
+│  │                                   │  │
+│  │ a contact form with email         │  │
+│  │ validation                        │  │
+│  └───────────────────────────────────┘  │
+│                              [Send →]   │
+└─────────────────────────────────────────┘
+```
+
+Design:
+- Appears at right-click coordinates (anchored to where they clicked)
+- Floating overlay with shadow, dark theme matching extension popup
+- Auto-focused text input — user can type immediately
+- Enter key or "Send" button submits
+- Escape or [×] dismisses
+- Small, non-intrusive — roughly 350px wide
+
+### Click-to-Element Context
+
+For "Update this element" specifically, the element the user right-clicked on provides additional context:
+
+1. The content script captures the right-clicked element's:
+   - CSS selector path
+   - Component name (from React devtools data attributes or `data-component` if present)
+   - Current text content
+   - Current Tailwind classes
+   - Source file path (from source map or annotation mode mapping)
+
+2. This context is included in the decoration:
+
+**User right-clicks a header and selects "Update this element", types:** "make it bigger and add a subtitle"
+
+**Decorated prompt sent to terminal:**
+```
+Update the element at selector "h1.text-2xl" in src/components/Header.tsx.
+Currently: <h1 class="text-2xl font-bold text-foreground">Todo App</h1>
+User request: make it bigger and add a subtitle.
+Use Tailwind classes for sizing. Keep the theme tokens.
+```
+
+### Flow: Right-Click → Chat → Terminal → HMR
+
+```
+1. User right-clicks on their Strum app
+2. Selects "Add feature" from context menu
+3. Chat box appears at click position
+4. User types "dark mode toggle" and hits Enter
+5. Chat box closes
+6. Decorated prompt is composed:
+   "Add a dark mode toggle to the app. Use Tailwind's dark: variant.
+    Add a toggle button in the Header using shadcn Switch component.
+    Persist preference in localStorage. Apply dark class to html element.
+    Write a test for the toggle behavior."
+7. Prompt is injected into the xterm PTY on port 7891
+8. Claude Code executes in the terminal (user can watch or switch to browser)
+9. Files are written → Vite HMR fires → browser updates live
+10. User sees dark mode toggle appear on the page
+```
+
+### Context Menu Lifecycle
+
+```typescript
+// background script
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'strum_project_detected') {
+    chrome.contextMenus.create({
+      id: 'strum-menu',
+      title: 'Strum',
+      contexts: ['page', 'selection', 'link', 'image'],
+      documentUrlPatterns: ['http://localhost/*']
+    })
+    chrome.contextMenus.create({
+      id: 'strum-add-feature',
+      parentId: 'strum-menu',
+      title: 'Add feature',
+      contexts: ['page']
+    })
+    chrome.contextMenus.create({
+      id: 'strum-update-element',
+      parentId: 'strum-menu',
+      title: 'Update this element',
+      contexts: ['page', 'selection', 'image']
+    })
+    // ... other items
+  }
+
+  if (msg.type === 'strum_project_left') {
+    chrome.contextMenus.removeAll()
+  }
+})
+```
+
+Only active on `http://localhost/*` pages that have the `strum-project` meta tag. Completely invisible on all other sites.
+
+## Zero-Token Status Overlays
+
+The extension already has subtitle and toast infrastructure (content script overlays). We use these to narrate what Strum is doing — without any LLM calls. The daemon sends commands directly through the `/sync` command pipeline.
+
+### How It Works
+
+The daemon watches its own state and pushes display commands to the extension via the existing sync loop:
+
+```
+Daemon detects: file written to src/components/Header.tsx
+    ↓
+Daemon pushes sync command: { type: "subtitle", text: "Writing Header component..." }
+    ↓
+Extension receives on next /sync poll (1 second)
+    ↓
+Content script shows subtitle at bottom of viewport
+    ↓
+3 seconds later: auto-dismisses
+```
+
+No LLM involved. The daemon already knows what's happening (it's running the scaffold, proxying tool calls, watching file changes). It just maps events to human-readable messages.
+
+### Event-to-Subtitle Mapping
+
+Hardcoded in the daemon — a simple map from internal events to display text:
+
+| Daemon Event | Subtitle Text | Duration |
+|-------------|---------------|----------|
+| Scaffold step: create_project | "Creating your project..." | until next |
+| Scaffold step: install_deps | "Installing dependencies..." | until next |
+| Scaffold step: add_tailwind | "Setting up Tailwind CSS..." | until next |
+| Scaffold step: add_shadcn | "Adding UI components..." | until next |
+| Scaffold step: quality_baseline | "Configuring code quality tools..." | until next |
+| Scaffold step: git_init | "Initializing version control..." | until next |
+| Scaffold step: dev_server_start | "Starting dev server..." | until next |
+| Phase 2: file written | "Building {component name}..." | 3s |
+| Phase 2: screenshot taken | "Checking layout..." | 2s |
+| Phase 2: fix applied | "Fixing {issue}..." | 3s |
+| Phase 2: complete | "Your app is ready!" | 5s |
+| Deploy started | "Deploying to {platform}..." | until complete |
+| Deploy complete | "Live at {url}" | 5s |
+| Tests running | "Running tests..." | until complete |
+| Tests passed | "All tests passed" | 3s |
+| Tests failed | "{n} test(s) failed" | 5s |
+| Security scan | "Scanning for vulnerabilities..." | until complete |
+| Error detected | "Error in {file}" | 5s (toast, not subtitle) |
+
+### Toasts vs Subtitles
+
+- **Subtitles** — bottom of viewport, translucent, for ongoing status. "Building Header component..." Replaces the previous subtitle.
+- **Toasts** — top-right corner, shadcn-style, for discrete events. "All tests passed" or "Error in Header.tsx". Stack up to 3, auto-dismiss.
+
+### Implementation
+
+The daemon already has the sync command mechanism. Adding subtitles is a new command type:
+
+```go
+// In the scaffold engine or tool handler:
+func (s *Server) pushSubtitle(text string) {
+    s.capture.PushCommand(capture.Command{
+        Type:   "subtitle",
+        Params: map[string]any{"text": text, "duration_ms": 3000},
+    })
+}
+
+func (s *Server) pushToast(text string, level string) {
+    s.capture.PushCommand(capture.Command{
+        Type:   "toast",
+        Params: map[string]any{"text": text, "level": level},
+    })
+}
+```
+
+The extension already handles subtitle and toast commands from the sync response. No new extension code needed — just new command producers in the daemon.
+
+### File Watcher for AI Agent Actions
+
+During Phase 2 (AI composition) and during normal development with decorated commands, the daemon can watch for file changes in the project directory and show subtitles automatically:
+
+```go
+// Watch ~/strum-projects/todo-app/src/ for changes
+// On file write: push subtitle "Building {filename}..."
+// On test file write: push subtitle "Writing test for {component}..."
+// Debounce: 500ms (Vite HMR writes multiple files quickly)
+```
+
+This means even when the user is working with Claude Code directly in the terminal (no UI buttons), they still see narration in the browser. The daemon watches the filesystem, not the AI — zero tokens.
+
+### Why Zero-Token Matters
+
+- Subtitles during scaffold: the daemon knows every step (it's running them). No AI needed.
+- Subtitles during AI composition: the daemon watches file writes. No AI needed.
+- Subtitles during normal development: file watcher + event-to-text map. No AI needed.
+- Toasts for errors/tests: the daemon already captures these events. No AI needed.
+
+The user gets a narrated experience — "Building Header...", "Running tests...", "Deployed!" — without spending a single extra token. The AI is only used for the actual work (writing code), not for telling the user what it's doing.
 
 ## Entry Point: Extension Popup
 
