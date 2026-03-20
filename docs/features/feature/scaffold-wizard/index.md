@@ -574,43 +574,41 @@ The project name from the wizard becomes the subdomain with a `.strum` TLD. Mult
 pnpm add -g portless
 ```
 
-**One-time setup** (during first scaffold, requires sudo for `/etc/hosts`):
+**One-time setup** (during first scaffold, requires sudo for HTTPS certs + `/etc/hosts`):
 ```bash
-# Portless auto-syncs /etc/hosts when run with --tld and sudo
-sudo portless run --tld strum --name setup --port 1 --dry-run
+sudo portless proxy start --https --tld strum
 ```
 
-This adds `127.0.0.1 *.strum` to `/etc/hosts`. Done once, works for all future projects. The wizard explains why it needs sudo: *"We need permission to set up the .strum domain on your machine. This is a one-time setup."*
+This starts the portless proxy with HTTPS and the `.strum` TLD. Done once, persists across reboots. The wizard explains why it needs sudo: *"We need permission to set up HTTPS and the .strum domain on your machine. This is a one-time setup."*
 
 **Dev server starts via portless:**
 ```bash
-portless run --tld strum --name todo-app -- pnpm dev
+portless todo-app pnpm dev
 ```
 
-Portless assigns a random port to Vite via the `PORT` env var, then proxies `http://todo-app.strum` to it. The `package.json` `dev` script is wrapped:
+That's it. The user's app is at `https://todo-app.strum`. The `package.json` dev script is wrapped:
 ```json
 {
   "scripts": {
-    "dev": "portless run --tld strum --name todo-app -- vite",
+    "dev": "portless todo-app vite",
     "dev:raw": "vite"
   }
 }
 ```
 
-**Detection:** After `portless run` starts:
-- Parse stdout for portless's ready message with the `.strum` URL
-- Fallback: poll `http://todo-app.strum` for HTTP 200
-- Fallback 2: parse Vite stdout for `Local: http://localhost:XXXX`
+**Detection:** After `portless` starts:
+- Parse stdout for the `https://todo-app.strum` ready URL
+- Fallback: poll `https://todo-app.strum` for HTTP 200
 - Timeout after 30 seconds with error
 
 **Benefits:**
-- **Branded** — `todo-app.strum` is Strum's TLD, reinforces the product
-- **Human-readable** — memorable, looks like a real domain
-- **Multi-project** — `todo-app.strum` and `dashboard.strum` run simultaneously
-- **Stable** — subdomain doesn't change between restarts (port numbers do)
-- **No port numbers** — clean URL, no `:5173` to remember
+- **HTTPS** — real certs, no browser warnings, matches production
+- **Branded** — `todo-app.strum` reinforces the product
+- **Clean** — `https://todo-app.strum`, not `http://localhost:5173`
+- **Multi-project** — `todo-app.strum` and `dashboard.strum` simultaneously
+- **Stable** — URL doesn't change between restarts
 
-**Fallback:** If the user declines sudo or `/etc/hosts` can't be modified, fall back to `http://todo-app.localhost:1355` (`.localhost` resolves without `/etc/hosts` in all modern browsers).
+**Fallback:** If the user declines sudo, fall back to `http://todo-app.localhost:1355` (`.localhost` resolves without `/etc/hosts` in all modern browsers, no HTTPS).
 
 ### 8. Goal-Backward Verification
 
