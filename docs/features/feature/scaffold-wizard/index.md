@@ -574,19 +574,46 @@ The project name from the wizard becomes the subdomain with a `.strum` TLD. Mult
 pnpm add -g portless
 ```
 
-**One-time setup** (during first scaffold, requires sudo for HTTPS certs + `/etc/hosts`):
-```bash
-sudo portless proxy start --https --tld strum
+**One-time `.strum` domain setup** (during first scaffold):
+
+The wizard tries the premium path first, explains what it needs, and falls back gracefully:
+
+```
+Step: Set up your dev domain
+
+We'd like to give your app a clean URL: http://todo-app.strum
+
+This requires a one-time system change to route .strum
+domains to your machine. Your password is needed for this.
+
+  [Set up .strum domains]     [Skip, use default]
 ```
 
-This starts the portless proxy with HTTPS and the `.strum` TLD. Done once, persists across reboots. The wizard explains why it needs sudo: *"We need permission to set up HTTPS and the .strum domain on your machine. This is a one-time setup."*
-
-**Dev server starts via portless:**
+If they click "Set up":
 ```bash
+sudo portless proxy start --tld strum
+```
+→ All future projects get `http://project-name.strum`
+
+If they click "Skip" or sudo fails:
+→ Falls back to `http://todo-app.localhost:1355` (works everywhere, no permissions needed)
+
+The wizard stores which path succeeded in `~/.strum/config.json` so it never asks again.
+
+**Dev server starts via portless (both paths):**
+
+```bash
+# If .strum is set up:
 portless todo-app pnpm dev
+# → http://todo-app.strum
+
+# If .strum failed/skipped:
+portless todo-app pnpm dev
+# → http://todo-app.localhost:1355
 ```
 
-That's it. The user's app is at `https://todo-app.strum`. The `package.json` dev script is wrapped:
+Same command either way — portless handles the routing based on whether the proxy is running.
+
 ```json
 {
   "scripts": {
@@ -597,18 +624,17 @@ That's it. The user's app is at `https://todo-app.strum`. The `package.json` dev
 ```
 
 **Detection:** After `portless` starts:
-- Parse stdout for the `https://todo-app.strum` ready URL
-- Fallback: poll `https://todo-app.strum` for HTTP 200
+- Parse stdout for the ready URL (either `.strum` or `.localhost:1355`)
+- Fallback: poll both URLs
 - Timeout after 30 seconds with error
 
 **Benefits:**
-- **HTTPS** — real certs, no browser warnings, matches production
-- **Branded** — `todo-app.strum` reinforces the product
-- **Clean** — `https://todo-app.strum`, not `http://localhost:5173`
-- **Multi-project** — `todo-app.strum` and `dashboard.strum` simultaneously
+- **Best case:** `http://todo-app.strum` — clean, branded, no port numbers
+- **Fallback:** `http://todo-app.localhost:1355` — still named, still works, zero permissions
+- **Either way:** better than `localhost:5173`
+- **Multi-project** — multiple apps run simultaneously on different names
 - **Stable** — URL doesn't change between restarts
-
-**Fallback:** If the user declines sudo, fall back to `http://todo-app.localhost:1355` (`.localhost` resolves without `/etc/hosts` in all modern browsers, no HTTPS).
+- **One command** — `portless todo-app pnpm dev` works regardless of which path was set up
 
 ### 8. Goal-Backward Verification
 
