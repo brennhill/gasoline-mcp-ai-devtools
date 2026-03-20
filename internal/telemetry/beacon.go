@@ -9,6 +9,8 @@ import (
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // Version is set via ldflags at build time. Falls back to "dev" if unset.
@@ -56,9 +58,8 @@ func beacon(event string, props map[string]string) {
 
 	select {
 	case sem <- struct{}{}:
-		go func() {
+		util.SafeGo(func() {
 			defer func() { <-sem }()
-			defer func() { _ = recover() }() // never panic
 
 			client := &http.Client{Timeout: 2 * time.Second}
 			resp, err := client.Post(endpoint, "application/json", bytes.NewReader(data))
@@ -66,7 +67,7 @@ func beacon(event string, props map[string]string) {
 				return // best-effort
 			}
 			_ = resp.Body.Close()
-		}()
+		})
 	default:
 		// At capacity, drop this beacon silently
 	}
