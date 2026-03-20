@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // WriteAIContext generates AI context files based on the wizard configuration.
@@ -34,13 +35,24 @@ func WriteAIContext(projectDir string, cfg Config) error {
 }
 
 func generateClaudeMD(cfg Config) string {
-	return fmt.Sprintf(`# %s
+	// Use strings.NewReplacer instead of fmt.Sprintf to avoid format string
+	// injection from user-provided values.
+	r := strings.NewReplacer(
+		"{{NAME}}", cfg.Name,
+		"{{DESCRIPTION}}", cfg.Description,
+		"{{AUDIENCE}}", cfg.Audience,
+		"{{FIRST_FEATURE}}", cfg.FirstFeature,
+	)
+	return r.Replace(claudeMDTemplate)
+}
+
+const claudeMDTemplate = `# {{NAME}}
 
 ## Project
 
-- **Description:** %s
-- **Audience:** %s
-- **Current focus:** %s
+- **Description:** {{DESCRIPTION}}
+- **Audience:** {{AUDIENCE}}
+- **Current focus:** {{FIRST_FEATURE}}
 
 ## Stack
 
@@ -76,8 +88,7 @@ React 19 + Vite + TypeScript (strict) + Tailwind CSS v4 + shadcn/ui + Lucide ico
 7. **One test per component** — Every .tsx gets a .test.tsx
 8. **Responsive from birth** — Every component must work at 375px width
 9. **Accessible by default** — Labels on inputs, alt on images, focus states on interactive elements
-`, cfg.Name, cfg.Description, cfg.Audience, cfg.FirstFeature)
-}
+`
 
 func generateBootstrapSkill() string {
 	return `# Strum Dev Skill

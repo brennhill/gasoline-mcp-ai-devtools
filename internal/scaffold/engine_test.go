@@ -45,7 +45,6 @@ func TestStepDefinitions_ExpectedStepNames(t *testing.T) {
 		"add_shadcn",
 		"quality_baseline",
 		"git_init",
-		"start_dev_server",
 	}
 
 	for _, name := range expected {
@@ -219,6 +218,47 @@ func TestNewEngine_DefaultBaseDir(t *testing.T) {
 	expected := filepath.Join(home, "strum-projects", "test-app")
 	if eng.ProjectDir() != expected {
 		t.Errorf("ProjectDir: want %q, got %q", expected, eng.ProjectDir())
+	}
+}
+
+// ============================================
+// RunAll: directory existence check
+// ============================================
+
+func TestEngine_RunAll_RejectsExistingDirectory(t *testing.T) {
+	dir := t.TempDir()
+	cfg := Config{
+		Description:  "test app",
+		Audience:     "just_me",
+		FirstFeature: "testing",
+		Name:         "existing-app",
+		BaseDir:      dir,
+	}
+	eng, err := NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+
+	// Pre-create the project directory.
+	if err := os.MkdirAll(eng.ProjectDir(), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	steps := []Step{
+		{
+			Name:  "should_not_run",
+			Label: "Should Not Run",
+			Run: func(ctx context.Context, pd string) error {
+				t.Error("step should not have been executed")
+				return nil
+			},
+			Verify: func(pd string) error { return nil },
+		},
+	}
+
+	err = eng.RunAll(context.Background(), steps)
+	if err == nil {
+		t.Error("RunAll should fail when project directory already exists")
 	}
 }
 

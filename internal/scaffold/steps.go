@@ -5,6 +5,7 @@ package scaffold
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 )
@@ -61,6 +62,12 @@ func DefaultSteps() []Step {
 				if err := init.Run(); err != nil {
 					return fmt.Errorf("shadcn init: %w", err)
 				}
+				// Install lucide-react for icons.
+				lucide := exec.CommandContext(ctx, "pnpm", "add", "lucide-react")
+				lucide.Dir = projectDir
+				if err := lucide.Run(); err != nil {
+					return fmt.Errorf("lucide-react install: %w", err)
+				}
 				// Install core components.
 				components := []string{
 					"button", "card", "input", "label", "select", "checkbox",
@@ -74,7 +81,8 @@ func DefaultSteps() []Step {
 				return add.Run()
 			},
 			Verify: func(projectDir string) error {
-				return VerifyDirectoryExists(filepath.Join(projectDir, "src", "components", "ui"))
+				// Verify a specific component file exists, not just the directory.
+				return VerifyFileExists(filepath.Join(projectDir, "src", "components", "ui", "button.tsx"))
 			},
 		},
 		{
@@ -101,6 +109,18 @@ func DefaultSteps() []Step {
 			Name:  "git_init",
 			Label: "Initializing Git repository",
 			Run: func(ctx context.Context, projectDir string) error {
+				// Check if .git already exists (idempotency).
+				if _, err := os.Stat(filepath.Join(projectDir, ".git")); err == nil {
+					// Already initialized — skip git init, just stage and commit.
+					add := exec.CommandContext(ctx, "git", "add", "-A")
+					add.Dir = projectDir
+					if err := add.Run(); err != nil {
+						return err
+					}
+					commit := exec.CommandContext(ctx, "git", "commit", "-m", "scaffold: initial project", "--allow-empty")
+					commit.Dir = projectDir
+					return commit.Run()
+				}
 				init := exec.CommandContext(ctx, "git", "init")
 				init.Dir = projectDir
 				if err := init.Run(); err != nil {
@@ -119,19 +139,9 @@ func DefaultSteps() []Step {
 				return VerifyGitInitialized(projectDir)
 			},
 		},
-		{
-			Name:  "start_dev_server",
-			Label: "Starting dev server",
-			Run: func(ctx context.Context, projectDir string) error {
-				// Dev server is started asynchronously — handled by the engine caller.
-				// This step is a placeholder for the run; the real logic is in the caller.
-				return nil
-			},
-			Verify: func(projectDir string) error {
-				// Verification is done externally via dev server detection.
-				// For the step itself, just verify package.json has a dev script.
-				return VerifyFileExists(filepath.Join(projectDir, "package.json"))
-			},
-		},
+		// NOTE: start_dev_server is intentionally excluded from DefaultSteps.
+		// Dev server startup is handled externally by the caller using
+		// DevServerDetector after scaffolding completes. It requires a long-running
+		// background process that doesn't fit the step/verify model.
 	}
 }

@@ -29,16 +29,17 @@ func TestOrchestrator_RunsAllMockSteps(t *testing.T) {
 	}
 
 	projectDir := eng.ProjectDir()
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
-		t.Fatal(err)
-	}
 
 	// Create mock steps that create marker files.
+	// The first step creates the project directory (simulating create_project).
 	steps := []Step{
 		{
 			Name:  "step_1",
 			Label: "Step 1",
 			Run: func(ctx context.Context, pd string) error {
+				if err := os.MkdirAll(pd, 0755); err != nil {
+					return err
+				}
 				return os.WriteFile(filepath.Join(pd, "step1.marker"), []byte("done"), 0644)
 			},
 			Verify: func(pd string) error {
@@ -85,7 +86,7 @@ func TestOrchestrator_StopsOnError(t *testing.T) {
 		Description:  "test app",
 		Audience:     "just_me",
 		FirstFeature: "testing",
-		Name:         "test-app",
+		Name:         "stop-on-error-app",
 		BaseDir:      dir,
 	}
 
@@ -94,17 +95,16 @@ func TestOrchestrator_StopsOnError(t *testing.T) {
 		t.Fatalf("NewEngine: %v", err)
 	}
 
-	if err := os.MkdirAll(eng.ProjectDir(), 0755); err != nil {
-		t.Fatal(err)
-	}
-
 	step2Ran := false
 	steps := []Step{
 		{
 			Name:  "failing_step",
 			Label: "Failing Step",
 			Run: func(ctx context.Context, pd string) error {
-				return nil // runs, but verify will fail
+				// Create the dir so we get past the existence check,
+				// but verify will fail because the marker file won't exist.
+				os.MkdirAll(pd, 0755)
+				return nil
 			},
 			Verify: func(pd string) error {
 				return VerifyFileExists(filepath.Join(pd, "never-exists"))
@@ -137,17 +137,13 @@ func TestOrchestrator_ContextCancellation(t *testing.T) {
 		Description:  "test app",
 		Audience:     "just_me",
 		FirstFeature: "testing",
-		Name:         "test-app",
+		Name:         "ctx-cancel-app",
 		BaseDir:      dir,
 	}
 
 	eng, err := NewEngine(cfg)
 	if err != nil {
 		t.Fatalf("NewEngine: %v", err)
-	}
-
-	if err := os.MkdirAll(eng.ProjectDir(), 0755); err != nil {
-		t.Fatal(err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

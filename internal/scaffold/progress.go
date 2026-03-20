@@ -29,6 +29,10 @@ func NewBroadcaster() *Broadcaster {
 
 // Subscribe registers a new subscriber for the given channel name.
 // Returns a read-only channel that receives events for that channel.
+//
+// IMPORTANT: The caller MUST call Unsubscribe on disconnect (e.g., when the
+// WebSocket connection closes) to prevent subscriber leaks. If the provided
+// context is cancelled, the caller should treat that as a signal to unsubscribe.
 func (b *Broadcaster) Subscribe(channel string) <-chan StepEvent {
 	b.mu.Lock()
 	defer b.mu.Unlock()

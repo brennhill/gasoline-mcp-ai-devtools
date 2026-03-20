@@ -12,8 +12,9 @@ var scaffoldWizardHTML []byte
 
 // registerScaffoldRoutes adds scaffold wizard routes to the mux.
 func registerScaffoldRoutes(mux *http.ServeMux) {
+	sr := NewScaffoldRunner()
 	mux.HandleFunc("/launch", handleWizardLaunch)
-	mux.HandleFunc("/api/scaffold", handleScaffoldAPI)
+	mux.HandleFunc("/api/scaffold", sr.HandleScaffold)
 }
 
 // handleWizardLaunch serves the scaffold wizard landing page.

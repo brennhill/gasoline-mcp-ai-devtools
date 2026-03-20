@@ -151,6 +151,81 @@ func TestWriteQualityBaseline_CreatesIndexCSS(t *testing.T) {
 	}
 }
 
+func TestWriteQualityBaseline_CreatesEslintConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := WriteQualityBaseline(dir); err != nil {
+		t.Fatalf("WriteQualityBaseline: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "eslint.config.js"))
+	if err != nil {
+		t.Fatalf("read eslint.config.js: %v", err)
+	}
+
+	body := string(content)
+	checks := []string{
+		"@eslint/js",
+		"typescript-eslint",
+		"react-hooks",
+	}
+	for _, c := range checks {
+		if !strings.Contains(body, c) {
+			t.Errorf("eslint.config.js should reference %q", c)
+		}
+	}
+}
+
+func TestWriteQualityBaseline_CreatesTsconfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := WriteQualityBaseline(dir); err != nil {
+		t.Fatalf("WriteQualityBaseline: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "tsconfig.json"))
+	if err != nil {
+		t.Fatalf("read tsconfig.json: %v", err)
+	}
+
+	body := string(content)
+	checks := []string{
+		`"strict": true`,
+		`"noUncheckedIndexedAccess": true`,
+		`"noUnusedLocals": true`,
+		`"noUnusedParameters": true`,
+		`"@/*"`,
+	}
+	for _, c := range checks {
+		if !strings.Contains(body, c) {
+			t.Errorf("tsconfig.json should contain %q", c)
+		}
+	}
+}
+
+func TestWriteQualityBaseline_CreatesViteConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := WriteQualityBaseline(dir); err != nil {
+		t.Fatalf("WriteQualityBaseline: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "vite.config.ts"))
+	if err != nil {
+		t.Fatalf("read vite.config.ts: %v", err)
+	}
+
+	body := string(content)
+	checks := []string{
+		"resolve",
+		"alias",
+		"@",
+		"path.resolve",
+	}
+	for _, c := range checks {
+		if !strings.Contains(body, c) {
+			t.Errorf("vite.config.ts should contain %q", c)
+		}
+	}
+}
+
 func TestWriteQualityBaseline_AllFilesValid(t *testing.T) {
 	dir := t.TempDir()
 	// Create directories that WriteQualityBaseline expects.
@@ -166,6 +241,9 @@ func TestWriteQualityBaseline_AllFilesValid(t *testing.T) {
 
 	expectedFiles := []string{
 		".prettierrc",
+		"eslint.config.js",
+		"tsconfig.json",
+		"vite.config.ts",
 		"vitest.config.ts",
 		"scripts/check-components.sh",
 		"src/App.tsx",

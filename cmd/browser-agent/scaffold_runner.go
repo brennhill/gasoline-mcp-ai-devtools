@@ -6,7 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/scaffold"
@@ -15,6 +18,7 @@ import (
 // ScaffoldRunner manages scaffold job execution and progress broadcasting.
 type ScaffoldRunner struct {
 	broadcaster *scaffold.Broadcaster
+	inflight    sync.Map // in-flight project names → struct{}
 }
 
 // NewScaffoldRunner creates a new scaffold runner.
@@ -30,6 +34,9 @@ func (sr *ScaffoldRunner) HandleScaffold(w http.ResponseWriter, r *http.Request)
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
+
+	// Limit request body to 1 MB.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req scaffoldRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -48,6 +55,12 @@ func (sr *ScaffoldRunner) HandleScaffold(w http.ResponseWriter, r *http.Request)
 	}
 	if req.Audience != "" && !validAudiences[req.Audience] {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "audience must be one of: just_me, my_team, public"})
+		return
+	}
+
+	// Concurrency guard: reject if same project name is already scaffolding.
+	if _, loaded := sr.inflight.LoadOrStore(req.Name, struct{}{}); loaded {
+		jsonResponse(w, http.StatusConflict, map[string]string{"error": fmt.Sprintf("project %q is already being scaffolded", req.Name)})
 		return
 	}
 
@@ -73,6 +86,22 @@ func (sr *ScaffoldRunner) HandleScaffold(w http.ResponseWriter, r *http.Request)
 
 // runScaffold executes the scaffold steps in the background.
 func (sr *ScaffoldRunner) runScaffold(cfg scaffold.Config, channel string) {
+	// Always release the concurrency guard when done.
+	defer sr.inflight.Delete(cfg.Name)
+
+	// Panic recovery: broadcast error if a panic occurs.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("scaffold panic for %q: %v\n%s", cfg.Name, r, debug.Stack())
+			sr.broadcaster.Broadcast(channel, scaffold.StepEvent{
+				Step:   "scaffold",
+				Status: "error",
+				Label:  "Scaffold failed (internal error)",
+				Error:  fmt.Sprintf("panic: %v", r),
+			})
+		}
+	}()
+
 	eng, err := scaffold.NewEngine(cfg)
 	if err != nil {
 		sr.broadcaster.Broadcast(channel, scaffold.StepEvent{
@@ -89,7 +118,10 @@ func (sr *ScaffoldRunner) runScaffold(cfg scaffold.Config, channel string) {
 	})
 
 	steps := scaffold.DefaultSteps()
-	ctx := context.Background()
+
+	// Timeout: 5 minutes for the entire scaffold process.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
 	if err := eng.RunAll(ctx, steps); err != nil {
 		sr.broadcaster.Broadcast(channel, scaffold.StepEvent{

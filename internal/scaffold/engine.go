@@ -125,7 +125,11 @@ func (e *Engine) RunStep(ctx context.Context, step Step) error {
 }
 
 // RunAll executes all steps in sequence.
+// Returns an error if the project directory already exists.
 func (e *Engine) RunAll(ctx context.Context, steps []Step) error {
+	if _, err := os.Stat(e.projectDir); err == nil {
+		return fmt.Errorf("project directory already exists: %s", e.projectDir)
+	}
 	for _, step := range steps {
 		if err := e.RunStep(ctx, step); err != nil {
 			return err

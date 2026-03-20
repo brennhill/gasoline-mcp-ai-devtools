@@ -15,6 +15,9 @@ func WriteQualityBaseline(projectDir string) error {
 		mode    os.FileMode
 	}{
 		{".prettierrc", prettierConfig, 0644},
+		{"eslint.config.js", eslintConfig, 0644},
+		{"tsconfig.json", tsconfigOverrides, 0644},
+		{"vite.config.ts", viteConfig, 0644},
 		{"vitest.config.ts", vitestConfig, 0644},
 		{"scripts/check-components.sh", componentInvariantScript, 0755},
 		{"src/App.tsx", appShell, 0644},
@@ -144,6 +147,68 @@ describe('App', () => {
     const mod = await import('./App')
     expect(mod.default).toBeDefined()
   })
+})
+`
+
+const eslintConfig = `import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
+
+export default tseslint.config(
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+    },
+  },
+  {
+    ignores: ['dist/', 'node_modules/'],
+  },
+)
+`
+
+const tsconfigOverrides = `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}
+`
+
+const viteConfig = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 })
 `
 
