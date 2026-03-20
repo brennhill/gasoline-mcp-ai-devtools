@@ -561,12 +561,56 @@ Generated into the project so any AI agent immediately understands it.
 
 **`.mcp.json`** — pre-wires Gasoline as an MCP server so tools are available immediately.
 
-### 7. Dev Server Detection
+### 7. Dev Server with Pretty URLs (Portless)
 
-After `pnpm dev` starts:
-- Parse stdout for Vite's "Local: http://localhost:XXXX" message (regex: `Local:\s+http://localhost:(\d+)`)
-- Fallback: poll ports 5173-5180 for HTTP 200
+The scaffold uses **portless** (Apache-2.0, 1 dependency, 280KB) to give every project a named local URL instead of `localhost:5173`.
+
+**What the user sees:** `http://todo-app.strum` instead of `http://localhost:5173`
+
+The project name from the wizard becomes the subdomain with a `.strum` TLD. Multiple projects run simultaneously: `todo-app.strum`, `dashboard.strum`, `landing-page.strum`.
+
+**Phase 1 installs portless globally** (if not already installed):
+```bash
+pnpm add -g portless
+```
+
+**One-time setup** (during first scaffold, requires sudo for `/etc/hosts`):
+```bash
+# Portless auto-syncs /etc/hosts when run with --tld and sudo
+sudo portless run --tld strum --name setup --port 1 --dry-run
+```
+
+This adds `127.0.0.1 *.strum` to `/etc/hosts`. Done once, works for all future projects. The wizard explains why it needs sudo: *"We need permission to set up the .strum domain on your machine. This is a one-time setup."*
+
+**Dev server starts via portless:**
+```bash
+portless run --tld strum --name todo-app -- pnpm dev
+```
+
+Portless assigns a random port to Vite via the `PORT` env var, then proxies `http://todo-app.strum` to it. The `package.json` `dev` script is wrapped:
+```json
+{
+  "scripts": {
+    "dev": "portless run --tld strum --name todo-app -- vite",
+    "dev:raw": "vite"
+  }
+}
+```
+
+**Detection:** After `portless run` starts:
+- Parse stdout for portless's ready message with the `.strum` URL
+- Fallback: poll `http://todo-app.strum` for HTTP 200
+- Fallback 2: parse Vite stdout for `Local: http://localhost:XXXX`
 - Timeout after 30 seconds with error
+
+**Benefits:**
+- **Branded** — `todo-app.strum` is Strum's TLD, reinforces the product
+- **Human-readable** — memorable, looks like a real domain
+- **Multi-project** — `todo-app.strum` and `dashboard.strum` run simultaneously
+- **Stable** — subdomain doesn't change between restarts (port numbers do)
+- **No port numbers** — clean URL, no `:5173` to remember
+
+**Fallback:** If the user declines sudo or `/etc/hosts` can't be modified, fall back to `http://todo-app.localhost:1355` (`.localhost` resolves without `/etc/hosts` in all modern browsers).
 
 ### 8. Goal-Backward Verification
 
