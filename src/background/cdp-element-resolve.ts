@@ -11,7 +11,7 @@ import type { DOMActionParams, DOMResult } from './dom-types.js'
  * element by selector, get its bounding rect, and optionally focus it.
  * Must be fully self-contained — no closures over outer scope.
  */
-export function cdpResolveAndPrepare(
+function cdpResolveAndPrepare(
   selectorStr: string,
   actionType: string,
   scopeSelectorStr: string | null,

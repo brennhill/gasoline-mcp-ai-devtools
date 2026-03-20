@@ -14,14 +14,6 @@ export interface ActionMeta {
     /** True if the action requires the AI Web Pilot extension to be connected. */
     requiresPilot?: boolean;
 }
-/**
- * Canonical action metadata map.
- *
- * Every interact action recognized by the TS extension should have an entry.
- * The Go daemon in tools_interact_dispatch.go maintains a parallel
- * readOnlyInteractActions map — keep them in sync.
- */
-export declare const ACTION_METADATA: Record<string, ActionMeta>;
 /** Returns true if the action only reads page state (no DOM mutation, no side effects worth toasting). */
 export declare function isReadOnlyAction(action: string): boolean;
 /** Returns true if the action modifies the DOM and requires match-evidence validation. */

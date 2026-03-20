@@ -16,7 +16,7 @@ export function toDOMResult(value: unknown): DOMResult | null {
   return candidate
 }
 
-export function hasMatchedTargetEvidence(result: DOMResult): boolean {
+function hasMatchedTargetEvidence(result: DOMResult): boolean {
   const matched = result.matched
   if (!matched || typeof matched !== 'object' || Array.isArray(matched)) return false
   return (
@@ -94,7 +94,7 @@ export function mergeListInteractive(results: chrome.scripting.InjectionResult[]
   return merged
 }
 
-export function reconcileDOMLifecycle(
+function reconcileDOMLifecycle(
   action: string,
   selector: string,
   result: unknown

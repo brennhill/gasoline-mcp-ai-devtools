@@ -25,7 +25,3 @@ var (
 	sanitizeForSendKeys           = upload.SanitizeForSendKeys
 )
 
-// handleOSAutomationInternalMethod is the ToolHandler method wrapper for testing.
-func (h *ToolHandler) handleOSAutomationInternal(req OSAutomationInjectRequest) UploadStageResponse {
-	return handleOSAutomationInternal(req, h.uploadSecurity)
-}

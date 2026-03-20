@@ -74,8 +74,6 @@ export declare const SettingName: {
     readonly SERVER_URL: "set_server_url";
 };
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
-/** All valid setting names as a Set (for runtime validation) */
-export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
 export declare const RuntimeMessageName: {
     readonly SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher";
 };

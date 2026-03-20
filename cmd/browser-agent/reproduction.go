@@ -11,11 +11,6 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
 )
 
-// Type aliases — keep existing code compiling without changes.
-type ReproductionParams = reproduction.Params
-type ReproductionResult = reproduction.Result
-type ReproductionMeta = reproduction.Meta
-
 // Function aliases for callers in tools_generate.go and other cmd/browser-agent code.
 var (
 	filterLastN       = reproduction.FilterLastN

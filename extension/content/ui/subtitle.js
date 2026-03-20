@@ -33,7 +33,7 @@ function detachEscapeListener() {
 /**
  * Remove the subtitle element, clean up Escape listener.
  */
-export function clearSubtitle() {
+function clearSubtitle() {
     clearAutoTimer();
     fadeOutAndRemove('gasoline-subtitle', 200);
     detachEscapeListener();

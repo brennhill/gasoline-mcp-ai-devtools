@@ -61,7 +61,7 @@ async function getTerminalDevRoot() {
 // =============================================================================
 // SESSION PERSISTENCE — survives page refresh via chrome.storage.session
 // =============================================================================
-export function persistSession(ss) {
+function persistSession(ss) {
     try {
         void setSession(StorageKey.TERMINAL_SESSION, ss);
     }

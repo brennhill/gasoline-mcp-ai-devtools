@@ -51,7 +51,7 @@ export function getCurrentLogLevel() {
 export function isScreenshotOnError() {
     return state.screenshotOnError;
 }
-export function getCaptureOverrides() {
+function getCaptureOverrides() {
     return Object.freeze({ ...state.captureOverrides });
 }
 export function isAiControlled() {
@@ -161,7 +161,7 @@ export function applyCaptureOverrides(overrides) {
 /**
  * Reset pilot cache for testing
  */
-export function _resetPilotCacheForTesting(value) {
+function _resetPilotCacheForTesting(value) {
     state.aiWebPilotEnabledCache = value !== undefined ? value : false;
 }
 /**

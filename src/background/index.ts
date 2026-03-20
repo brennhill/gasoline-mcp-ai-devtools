@@ -56,7 +56,6 @@ import {
 import { getTrackedTabInfo } from './event-listeners.js'
 import { DebugCategory } from './debug.js'
 import { getRequestHeaders } from './server.js'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl
@@ -82,7 +81,7 @@ export { DebugCategory } from './debug.js'
 /**
  * Log a diagnostic message only when debug mode is enabled
  */
-export function diagnosticLog(message: string): void {
+function diagnosticLog(message: string): void {
   if (isDebugMode()) {
     console.log(message)
   }
@@ -201,15 +200,15 @@ const _batchers = createBatcherInstances(
   sharedServerCircuitBreaker
 )
 
-export const logBatcherWithCB = _batchers.logBatcherWithCB
+const logBatcherWithCB = _batchers.logBatcherWithCB
 export const logBatcher = _batchers.logBatcher
-export const wsBatcherWithCB = _batchers.wsBatcherWithCB
+const wsBatcherWithCB = _batchers.wsBatcherWithCB
 export const wsBatcher = _batchers.wsBatcher
-export const enhancedActionBatcherWithCB = _batchers.enhancedActionBatcherWithCB
+const enhancedActionBatcherWithCB = _batchers.enhancedActionBatcherWithCB
 export const enhancedActionBatcher = _batchers.enhancedActionBatcher
-export const networkBodyBatcherWithCB = _batchers.networkBodyBatcherWithCB
+const networkBodyBatcherWithCB = _batchers.networkBodyBatcherWithCB
 export const networkBodyBatcher = _batchers.networkBodyBatcher
-export const perfBatcherWithCB = _batchers.perfBatcherWithCB
+const perfBatcherWithCB = _batchers.perfBatcherWithCB
 export const perfBatcher = _batchers.perfBatcher
 
 // =============================================================================
@@ -461,5 +460,3 @@ export function resetSyncClientConnection(): void {
 export const handlePendingQuery = handlePendingQueryImpl
 export const handlePilotCommand = handlePilotCommandImpl
 
-// Export snapshot/state management for backward compatibility
-export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot }

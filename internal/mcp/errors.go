@@ -71,7 +71,7 @@ func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...fun
 		RecoveryPlaybook: recoveryPlaybook,
 	}
 	// Apply retryable defaults based on error code first, then user opts can override
-	for _, defaultOpt := range RetryDefaultsForCode(code) {
+	for _, defaultOpt := range retryDefaultsForCode(code) {
 		defaultOpt(&se)
 	}
 	for _, opt := range opts {
@@ -130,10 +130,10 @@ func WithRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
 	return func(se *StructuredError) { se.RecoveryToolCall = toolCall }
 }
 
-// RetryDefaultsForCode returns option functions that set retryable and retry_after_ms
+// retryDefaultsForCode returns option functions that set retryable and retry_after_ms
 // based on the error code. Retryable errors are transient conditions the LLM can
 // retry after a brief delay; non-retryable errors require the LLM to change its input.
-func RetryDefaultsForCode(code string) []func(*StructuredError) {
+func retryDefaultsForCode(code string) []func(*StructuredError) {
 	switch code {
 	case ErrExtTimeout:
 		return []func(*StructuredError){WithRetryable(true), WithRetryAfterMs(1000)}

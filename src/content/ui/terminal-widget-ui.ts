@@ -435,7 +435,7 @@ export function createWidget(token: string): HTMLDivElement {
 // Status dot
 // ---------------------------------------------------------------------------
 
-export function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited'): void {
+function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited'): void {
   const dot = state.widgetEl?.querySelector('.gasoline-terminal-status-dot') as HTMLElement | null
   if (!dot) return
   switch (dotState) {
@@ -546,7 +546,7 @@ function setupResize(handle: HTMLElement, widget: HTMLElement): void {
 // Redraw / Minimize / Notify
 // ---------------------------------------------------------------------------
 
-export function redrawTerminal(widget: HTMLElement, header: HTMLElement, minimizeButton: HTMLButtonElement): void {
+function redrawTerminal(widget: HTMLElement, header: HTMLElement, minimizeButton: HTMLButtonElement): void {
   if (state.minimized) {
     toggleMinimize(widget, minimizeButton, header)
   }

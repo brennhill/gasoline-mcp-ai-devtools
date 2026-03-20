@@ -68,7 +68,7 @@ export function isRecording(): boolean {
 }
 
 /** Returns current recording info for popup sync. */
-export function getRecordingInfo(): { active: boolean; name: string; startTime: number } {
+function getRecordingInfo(): { active: boolean; name: string; startTime: number } {
   return {
     active: recordingState.active,
     name: recordingState.name,

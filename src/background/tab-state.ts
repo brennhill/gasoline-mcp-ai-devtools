@@ -212,7 +212,7 @@ export function clearTrackedTab(): void {
 /**
  * Get all extension config settings.
  */
-export async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
+async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
   const result = (await getLocals([
     StorageKey.AI_WEB_PILOT_ENABLED,
     StorageKey.WEBSOCKET_CAPTURE_ENABLED,

@@ -46,7 +46,7 @@ func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides 
 	}
 
 	for _, origin := range overrides {
-		LogSecurityEvent(SecurityAuditEvent{
+		logSecurityEvent(SecurityAuditEvent{
 			Action:     "whitelist_override",
 			Origin:     origin,
 			Reason:     "CSP generation with session-only override",

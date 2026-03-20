@@ -1,5 +1,5 @@
-// Purpose: Connection-health payload types and startup error types for bridge connection flow.
-// Why: Keeps typed protocol parsing and error semantics separate from orchestration logic.
+// Purpose: Connection-health payload types for bridge connection flow.
+// Why: Keeps typed protocol parsing separate from orchestration logic.
 
 package main
 
@@ -7,15 +7,6 @@ import (
 	"encoding/json"
 	"strings"
 )
-
-type serverVersionMismatchError struct {
-	expected string
-	actual   string
-}
-
-type nonGasolineServiceError struct {
-	serviceName string
-}
 
 type healthMetadata struct {
 	Version     string `json:"version"`

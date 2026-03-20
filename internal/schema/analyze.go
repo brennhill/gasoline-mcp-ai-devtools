@@ -5,8 +5,8 @@ package schema
 
 import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
-// AnalyzeToolSchema returns the MCP tool definition for the analyze tool.
-func AnalyzeToolSchema() mcp.MCPTool {
+// analyzeToolSchema returns the MCP tool definition for the analyze tool.
+func analyzeToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "analyze",
 		Description: "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id, then poll with observe(what='command_result', correlation_id=...).\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.\n\nUse summary:true on supported modes for compact token-efficient responses.",

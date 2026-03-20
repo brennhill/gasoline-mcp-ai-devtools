@@ -4,12 +4,6 @@
  */
 /** Returns whether a recording is currently active. */
 export declare function isRecording(): boolean;
-/** Returns current recording info for popup sync. */
-export declare function getRecordingInfo(): {
-    active: boolean;
-    name: string;
-    startTime: number;
-};
 /**
  * Start recording a target tab (or the active tab when no target is provided).
  * @param name — Pre-generated filename from the Go server (e.g., "checkout-bug--2026-02-07-1423")

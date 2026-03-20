@@ -35,39 +35,6 @@ export interface DeferredPromise<T> {
  */
 export declare function createDeferredPromise<T>(): DeferredPromise<T>;
 /**
- * Custom error for timeout operations that optionally carries a fallback value
- */
-export declare class TimeoutError extends Error {
-    fallback?: unknown | undefined;
-    constructor(message: string, fallback?: unknown | undefined);
-}
-/**
- * Wrap a promise with a timeout fallback
- * Returns the result of the promise if it resolves before timeout,
- * otherwise returns the fallback value (or rejects if no fallback)
- *
- * Subsumes the former promiseWithTimeout (no fallback) and executeWithTimeout (callback variant).
- *
- * @template T The type of the promise value
- * @param promise The promise to wrap
- * @param timeoutMs Timeout in milliseconds
- * @param fallback Optional fallback value to return on timeout
- * @returns Promise that resolves to the result or fallback (or rejects on timeout if no fallback)
- *
- * @example
- * // With fallback value
- * const result = await withTimeout(fetch('/api'), 5000, { ok: false });
- *
- * @example
- * // Without fallback (rejects on timeout)
- * try {
- *   const result = await withTimeout(slowOperation(), 3000);
- * } catch (err) {
- *   // Handle timeout
- * }
- */
-export declare function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback?: T): Promise<T>;
-/**
  * Options for withTimeoutAndCleanup
  */
 export interface TimeoutCleanupOptions<T> {
@@ -117,24 +84,6 @@ export declare function withTimeoutAndCleanup<T>(promise: Promise<T>, timeoutMs:
  * await delay(1000); // Wait 1 second
  */
 export declare function delay(delayMs: number): Promise<void>;
-/**
- * Retry a promise-returning function with exponential backoff
- * Useful for flaky operations like network requests
- *
- * @template T The type of the result
- * @param fn Function that returns a promise
- * @param maxAttempts Maximum number of attempts
- * @param initialDelayMs Initial delay before first retry (doubles each attempt)
- * @returns Promise that resolves if any attempt succeeds, or rejects if all fail
- *
- * @example
- * const result = await retryWithBackoff(
- *   () => fetch('/api/data'),
- *   3,
- *   100
- * );
- */
-export declare function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts?: number, initialDelayMs?: number): Promise<T>;
 /**
  * Fetch a URL with an AbortController-based timeout.
  * Consolidates the recurring AbortController + setTimeout + clearTimeout pattern.

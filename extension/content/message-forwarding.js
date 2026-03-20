@@ -34,7 +34,7 @@ export function safeSendMessage(msg) {
 /**
  * Check if the extension context is still valid
  */
-export function isContextValid() {
+function isContextValid() {
     return contextValid;
 }
 //# sourceMappingURL=message-forwarding.js.map

@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// NormalizeCommandStatus maps extension-provided status text into canonical lifecycle states.
+// normalizeCommandStatus maps extension-provided status text into canonical lifecycle states.
 //
 // Failure semantics:
 // - Unknown/non-empty status values are coerced to "error" so protocol drift is visible.
 // - Empty/success-like statuses normalize to "complete" for backward compatibility.
-func NormalizeCommandStatus(status string) string {
+func normalizeCommandStatus(status string) string {
 	normalized := strings.ToLower(strings.TrimSpace(status))
 	switch normalized {
 	case "", "ok", "success", "succeeded", "done":
@@ -39,15 +39,15 @@ func NormalizeCommandStatus(status string) string {
 // Failure semantics:
 // - Ambiguous payloads (e.g. status=complete + err set) are treated as "error".
 func normalizeCommandOutcome(status string, err string) string {
-	normalizedStatus := NormalizeCommandStatus(status)
+	normalizedStatus := normalizeCommandStatus(status)
 	if strings.TrimSpace(err) != "" && (normalizedStatus == "complete" || normalizedStatus == "pending") {
 		return "error"
 	}
 	return normalizedStatus
 }
 
-// IsFailedCommandStatus returns true for terminal failure statuses.
-func IsFailedCommandStatus(status string) bool {
+// isFailedCommandStatus returns true for terminal failure statuses.
+func isFailedCommandStatus(status string) bool {
 	switch status {
 	case "error", "timeout", "expired", "cancelled":
 		return true
@@ -138,7 +138,7 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 			cmd.CompletedAt = eventAt
 		}
 
-		if IsFailedCommandStatus(normalizedStatus) {
+		if isFailedCommandStatus(normalizedStatus) {
 			qd.failedCommands = append(qd.failedCommands, cmd)
 			if len(qd.failedCommands) > 100 {
 				qd.failedCommands = qd.failedCommands[1:]

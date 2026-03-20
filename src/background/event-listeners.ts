@@ -35,9 +35,7 @@ export {
   loadDebugModeState,
   saveSetting,
   getTrackedTabInfo,
-  setTrackedTab,
   clearTrackedTab,
-  getAllConfigSettings,
   getActiveTab,
   sendTabToast
 } from './tab-state.js'
@@ -82,7 +80,7 @@ const ERROR_GROUP_CLEANUP_INTERVAL_MINUTES = 10
 // ALARM NAMES
 // =============================================================================
 
-export const ALARM_NAMES = {
+const ALARM_NAMES = {
   RECONNECT: 'reconnect',
   ERROR_GROUP_FLUSH: 'errorGroupFlush',
   MEMORY_CHECK: 'memoryCheck',

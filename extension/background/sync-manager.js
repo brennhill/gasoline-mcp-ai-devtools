@@ -162,7 +162,7 @@ export function startSyncClient(deps) {
 /**
  * Stop the sync client
  */
-export function stopSyncClient(debugLog) {
+function stopSyncClient(debugLog) {
     if (syncClient) {
         syncClient.stop();
         debugLog(DebugCategory.CONNECTION, 'Sync client stopped');

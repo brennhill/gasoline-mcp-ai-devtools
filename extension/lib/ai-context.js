@@ -13,9 +13,9 @@
  * so existing importers are unaffected.
  */
 // Re-export parsing layer
-export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize, resetParsingForTesting } from './ai-context-parsing.js';
+export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize, } from './ai-context-parsing.js';
 // Re-export enrichment layer
-export { detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, resetEnrichmentForTesting } from './ai-context-enrichment.js';
+export { detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, } from './ai-context-enrichment.js';
 import { resetParsingForTesting } from './ai-context-parsing.js';
 import { resetEnrichmentForTesting } from './ai-context-enrichment.js';
 /**
@@ -23,7 +23,7 @@ import { resetEnrichmentForTesting } from './ai-context-enrichment.js';
  * Clears source map cache and restores default settings.
  * Call this in beforeEach/afterEach test hooks to prevent test pollution.
  */
-export function resetForTesting() {
+function resetForTesting() {
     resetParsingForTesting();
     resetEnrichmentForTesting();
 }

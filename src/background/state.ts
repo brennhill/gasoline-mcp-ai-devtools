@@ -102,7 +102,7 @@ export function isScreenshotOnError(): boolean {
   return state.screenshotOnError
 }
 
-export function getCaptureOverrides(): Readonly<Record<string, string>> {
+function getCaptureOverrides(): Readonly<Record<string, string>> {
   return Object.freeze({ ...state.captureOverrides })
 }
 
@@ -237,7 +237,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
 /**
  * Reset pilot cache for testing
  */
-export function _resetPilotCacheForTesting(value?: boolean): void {
+function _resetPilotCacheForTesting(value?: boolean): void {
   state.aiWebPilotEnabledCache = value !== undefined ? value : false
 }
 

@@ -23,7 +23,7 @@ export function createDeferredPromise() {
 /**
  * Custom error for timeout operations that optionally carries a fallback value
  */
-export class TimeoutError extends Error {
+class TimeoutError extends Error {
     fallback;
     constructor(message, fallback) {
         super(message);
@@ -56,7 +56,7 @@ export class TimeoutError extends Error {
  *   // Handle timeout
  * }
  */
-export async function withTimeout(promise, timeoutMs, fallback) {
+async function withTimeout(promise, timeoutMs, fallback) {
     return Promise.race([
         promise,
         new Promise((_, reject) => {
@@ -163,7 +163,7 @@ export function delay(delayMs) {
  *   100
  * );
  */
-export async function retryWithBackoff(fn, maxAttempts = 3, initialDelayMs = 100) {
+async function retryWithBackoff(fn, maxAttempts = 3, initialDelayMs = 100) {
     let lastError;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {

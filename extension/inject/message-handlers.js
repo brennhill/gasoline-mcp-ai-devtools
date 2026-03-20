@@ -28,7 +28,7 @@ function postResponse(data) {
 /**
  * Handle link health check request from content script
  */
-export async function handleLinkHealthQuery(data) {
+async function handleLinkHealthQuery(data) {
     try {
         const params = data.params || {};
         const result = await checkLinkHealth(params);

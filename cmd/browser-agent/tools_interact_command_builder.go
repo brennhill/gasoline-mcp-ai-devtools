@@ -120,12 +120,6 @@ func (b *commandBuilder) tabID(id int) *commandBuilder {
 	return b
 }
 
-// timeout overrides the default enqueue timeout (queries.AsyncCommandTimeout).
-func (b *commandBuilder) timeout(d time.Duration) *commandBuilder {
-	b.qTimeout = d
-	return b
-}
-
 // guards adds guard checks that run before the command is enqueued.
 // Guards are run in order; the first blocking guard short-circuits.
 func (b *commandBuilder) guards(fns ...guardCheck) *commandBuilder {

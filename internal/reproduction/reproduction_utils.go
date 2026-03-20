@@ -19,8 +19,8 @@ func EscapeJS(s string) string {
 	return s
 }
 
-// RewriteURL replaces the origin of a URL with baseURL.
-func RewriteURL(originalURL, baseURL string) string {
+// rewriteURL replaces the origin of a URL with baseURL.
+func rewriteURL(originalURL, baseURL string) string {
 	parsed, err := url.Parse(originalURL)
 	if err != nil {
 		return originalURL

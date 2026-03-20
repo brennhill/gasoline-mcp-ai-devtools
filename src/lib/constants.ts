@@ -140,7 +140,7 @@ export const SettingName = {
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName]
 
 /** All valid setting names as a Set (for runtime validation) */
-export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
+const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
 
 // =============================================================================
 // RUNTIME MESSAGE NAMES — Shared one-off message names used across contexts.

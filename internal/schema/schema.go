@@ -8,9 +8,9 @@ import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 func AllTools() []mcp.MCPTool {
 	return []mcp.MCPTool{
 		ObserveToolSchema(),
-		AnalyzeToolSchema(),
-		GenerateToolSchema(),
-		ConfigureToolSchema(),
+		analyzeToolSchema(),
+		generateToolSchema(),
+		configureToolSchema(),
 		InteractToolSchema(),
 	}
 }

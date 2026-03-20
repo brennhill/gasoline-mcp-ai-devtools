@@ -4,7 +4,6 @@
  */
 
 export {
-  getStorageDiagnostics,
   wasServiceWorkerRestarted,
   markStateVersion
 } from '../lib/storage-utils.js'

@@ -105,7 +105,7 @@ export async function setSession(key: string, value: unknown): Promise<void> {
 /**
  * Remove an ephemeral value from session storage (async)
  */
-export async function removeSession(key: string): Promise<void> {
+async function removeSession(key: string): Promise<void> {
   const storage = getStorageWithSession()
   if (!storage || !storage.session) return
   await storage.session.remove([key])
@@ -159,7 +159,7 @@ export async function setSessionAccessLevel(
 /**
  * Get diagnostic info about storage availability
  */
-export function getStorageDiagnostics(): {
+function getStorageDiagnostics(): {
   sessionStorageAvailable: boolean
   localStorageAvailable: boolean
   browserVersion: string

@@ -13,8 +13,4 @@ export declare const MESSAGE_MAP: Record<string, string>;
  * Handles extension context invalidation gracefully
  */
 export declare function safeSendMessage(msg: BackgroundMessageFromContent): void;
-/**
- * Check if the extension context is still valid
- */
-export declare function isContextValid(): boolean;
 //# sourceMappingURL=message-forwarding.d.ts.map

@@ -118,7 +118,7 @@ export const SettingName = {
     SERVER_URL: 'set_server_url'
 };
 /** All valid setting names as a Set (for runtime validation) */
-export const VALID_SETTING_NAMES = new Set(Object.values(SettingName));
+const VALID_SETTING_NAMES = new Set(Object.values(SettingName));
 // =============================================================================
 // RUNTIME MESSAGE NAMES — Shared one-off message names used across contexts.
 // =============================================================================

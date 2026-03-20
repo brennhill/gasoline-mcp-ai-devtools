@@ -13,8 +13,8 @@ import { errorMessage } from '../lib/error-utils.js';
 /**
  * Valid setting names from content script — imported from canonical constants.
  */
-export const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
-export const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
+const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
+const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
 export function isValidSettingPayload(data) {
     if (!VALID_SETTINGS.has(data.setting)) {
         console.warn('[Gasoline] Invalid setting:', data.setting);

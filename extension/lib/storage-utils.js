@@ -98,7 +98,7 @@ export async function setSession(key, value) {
 /**
  * Remove an ephemeral value from session storage (async)
  */
-export async function removeSession(key) {
+async function removeSession(key) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
         return;
@@ -141,7 +141,7 @@ export async function setSessionAccessLevel(accessLevel) {
 /**
  * Get diagnostic info about storage availability
  */
-export function getStorageDiagnostics() {
+function getStorageDiagnostics() {
     return {
         sessionStorageAvailable: isSessionStorageAvailable(),
         localStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage?.local,

@@ -135,7 +135,7 @@ function flushQueuedWrites(): void {
 // PUBLIC API
 // =============================================================================
 
-export function hideTerminal(): void {
+function hideTerminal(): void {
   if (!state.widgetEl) return
   state.visible = false
   state.widgetEl.style.opacity = '0'
@@ -147,7 +147,7 @@ export function hideTerminal(): void {
 }
 
 /** Kill the PTY session on the daemon and tear down the widget completely. */
-export async function exitTerminalSession(): Promise<void> {
+async function exitTerminalSession(): Promise<void> {
   // Stop the PTY on the daemon (with timeout so the UI never hangs).
   if (state.sessionState) {
     try {
@@ -164,7 +164,7 @@ export async function exitTerminalSession(): Promise<void> {
   unmountTerminal()
 }
 
-export function showTerminal(): void {
+function showTerminal(): void {
   if (!state.widgetEl) return
   state.visible = true
   state.widgetEl.style.opacity = '1'
@@ -305,12 +305,10 @@ registerUICallbacks({
   scheduleQueuedWriteFlush
 })
 
-// Re-export for launcher integration
-export { saveTerminalConfig }
 export type { TerminalConfig }
 
 /** Reset all shared state — test-only. Needed because split sub-modules are cached by Node ESM. */
-export function _resetForTesting(): void {
+function _resetForTesting(): void {
   window.removeEventListener('message', handleIframeMessage)
   resetAllState()
 }

@@ -12,15 +12,6 @@ import (
 )
 
 // ============================================
-// Type Aliases (backward compatibility)
-// ============================================
-
-type StreamConfig = streaming.StreamConfig
-type StreamState = streaming.StreamState
-type MCPNotification = streaming.MCPNotification
-type NotificationParams = streaming.NotificationParams
-
-// ============================================
 // Constant Aliases
 // ============================================
 

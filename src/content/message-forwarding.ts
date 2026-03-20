@@ -45,6 +45,6 @@ export function safeSendMessage(msg: BackgroundMessageFromContent): void {
 /**
  * Check if the extension context is still valid
  */
-export function isContextValid(): boolean {
+function isContextValid(): boolean {
   return contextValid
 }

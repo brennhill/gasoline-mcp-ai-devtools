@@ -385,7 +385,7 @@ export function createWidget(token) {
 // ---------------------------------------------------------------------------
 // Status dot
 // ---------------------------------------------------------------------------
-export function updateStatusDot(dotState) {
+function updateStatusDot(dotState) {
     const dot = state.widgetEl?.querySelector('.gasoline-terminal-status-dot');
     if (!dot)
         return;
@@ -496,7 +496,7 @@ function setupResize(handle, widget) {
 // ---------------------------------------------------------------------------
 // Redraw / Minimize / Notify
 // ---------------------------------------------------------------------------
-export function redrawTerminal(widget, header, minimizeButton) {
+function redrawTerminal(widget, header, minimizeButton) {
     if (state.minimized) {
         toggleMinimize(widget, minimizeButton, header);
     }

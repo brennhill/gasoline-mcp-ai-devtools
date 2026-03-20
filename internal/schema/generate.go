@@ -19,8 +19,8 @@ func testFailureSchema() map[string]any {
 	}
 }
 
-// GenerateToolSchema returns the MCP tool definition for the generate tool.
-func GenerateToolSchema() mcp.MCPTool {
+// generateToolSchema returns the MCP tool definition for the generate tool.
+func generateToolSchema() mcp.MCPTool {
 	failureSchema := testFailureSchema()
 	return mcp.MCPTool{
 		Name:        "generate",

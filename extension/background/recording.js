@@ -42,7 +42,7 @@ export function isRecording() {
     return recordingState.active;
 }
 /** Returns current recording info for popup sync. */
-export function getRecordingInfo() {
+function getRecordingInfo() {
     return {
         active: recordingState.active,
         name: recordingState.name,

@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // asyncArgs wraps args JSON with background=true to avoid sync extension wait in tests.
@@ -153,34 +151,6 @@ func TestCommandBuilder_WithBuildParams(t *testing.T) {
 	}
 }
 
-// TestCommandBuilder_WithTimeout verifies custom timeout is forwarded.
-func TestCommandBuilder_WithTimeout(t *testing.T) {
-	t.Parallel()
-	env := newInteractTestEnv(t)
-	env.capture.SetPilotEnabled(true)
-
-	args := asyncArgs(`{}`)
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	h := env.handler.interactAction()
-
-	resp := h.newCommand("test_timeout").
-		correlationPrefix("test").
-		reason("test").
-		queryType("browser_action").
-		queryParams(args).
-		timeout(queries.AsyncCommandTimeout).
-		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
-		queuedMessage("Test queued").
-		execute(req, args)
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if result.IsError {
-		t.Fatalf("should not error, got: %s", result.Content[0].Text)
-	}
-}
 
 // TestCommandBuilder_WithRecordAction verifies AI action recording.
 func TestCommandBuilder_WithRecordAction(t *testing.T) {

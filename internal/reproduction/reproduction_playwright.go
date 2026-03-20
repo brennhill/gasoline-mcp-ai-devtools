@@ -94,7 +94,7 @@ func pwNavigateStep(action capture.EnhancedAction, opts Params) string {
 		return ""
 	}
 	if opts.BaseURL != "" {
-		toURL = RewriteURL(toURL, opts.BaseURL)
+		toURL = rewriteURL(toURL, opts.BaseURL)
 	}
 	return fmt.Sprintf("await page.goto('%s');", EscapeJS(toURL))
 }
@@ -105,7 +105,7 @@ func pwNewTabStep(action capture.EnhancedAction, opts Params) string {
 		return "// Open new tab"
 	}
 	if opts.BaseURL != "" {
-		targetURL = RewriteURL(targetURL, opts.BaseURL)
+		targetURL = rewriteURL(targetURL, opts.BaseURL)
 	}
 	return fmt.Sprintf("// Open new tab: %s", EscapeJS(targetURL))
 }

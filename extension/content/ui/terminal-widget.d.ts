@@ -5,18 +5,10 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { type TerminalConfig } from './terminal-widget-types.js';
-import { saveTerminalConfig } from './terminal-widget-session.js';
-export declare function hideTerminal(): void;
-/** Kill the PTY session on the daemon and tear down the widget completely. */
-export declare function exitTerminalSession(): Promise<void>;
-export declare function showTerminal(): void;
 export declare function isTerminalVisible(): boolean;
 export declare function toggleTerminal(): Promise<void>;
 /** Restore terminal on page load if it was previously open/minimized. */
 export declare function restoreTerminalIfNeeded(): Promise<void>;
 export declare function writeToTerminal(text: string): void;
-export { saveTerminalConfig };
 export type { TerminalConfig };
-/** Reset all shared state — test-only. Needed because split sub-modules are cached by Node ESM. */
-export declare function _resetForTesting(): void;
 //# sourceMappingURL=terminal-widget.d.ts.map

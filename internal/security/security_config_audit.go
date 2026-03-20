@@ -15,7 +15,7 @@ var (
 	securityAuditMu  sync.Mutex
 )
 
-func LogSecurityEvent(event SecurityAuditEvent) {
+func logSecurityEvent(event SecurityAuditEvent) {
 	securityAuditMu.Lock()
 	defer securityAuditMu.Unlock()
 

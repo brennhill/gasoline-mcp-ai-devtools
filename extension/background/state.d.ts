@@ -32,7 +32,6 @@ export declare function isDebugMode(): boolean;
 export declare function getConnectionStatus(): Readonly<MutableConnectionStatus>;
 export declare function getCurrentLogLevel(): string;
 export declare function isScreenshotOnError(): boolean;
-export declare function getCaptureOverrides(): Readonly<Record<string, string>>;
 export declare function isAiControlled(): boolean;
 export declare function isConnectionCheckRunning(): boolean;
 export declare function isAiWebPilotCacheInitialized(): boolean;
@@ -54,10 +53,6 @@ export declare function setAiWebPilotEnabledCache(enabled: boolean): void;
 export declare function setAiWebPilotCacheInitialized(initialized: boolean): void;
 export declare function setPilotInitCallback(callback: (() => void) | null): void;
 export declare function applyCaptureOverrides(overrides: Record<string, string>): void;
-/**
- * Reset pilot cache for testing
- */
-export declare function _resetPilotCacheForTesting(value?: boolean): void;
 /**
  * Check if AI Web Pilot is enabled
  */

@@ -3,10 +3,6 @@
  * Docs: docs/features/feature/subtitle/index.md
  */
 /**
- * Remove the subtitle element, clean up Escape listener.
- */
-export declare function clearSubtitle(): void;
-/**
  * Show or update a persistent subtitle bar at the bottom of the viewport.
  * Empty text clears the subtitle. Includes a hover close button and
  * Escape key listener for dismissal.

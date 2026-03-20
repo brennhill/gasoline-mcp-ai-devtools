@@ -33,7 +33,7 @@ export function sendRecordingGestureDecision(type: 'recording_gesture_granted' |
   })
 }
 
-export function showMicPermissionPrompt(saveInfoEl: HTMLElement, audioMode: string): void {
+function showMicPermissionPrompt(saveInfoEl: HTMLElement, audioMode: string): void {
   chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
     void setLocal(StorageKey.PENDING_MIC_RECORDING, { audioMode, returnTabId: activeTabs[0]?.id })
   })
@@ -51,7 +51,7 @@ export function showMicPermissionPrompt(saveInfoEl: HTMLElement, audioMode: stri
   }
 }
 
-export function sendRecordStart(
+function sendRecordStart(
   els: RecordingElements,
   state: RecordingState,
   audioMode: string,
@@ -78,7 +78,7 @@ export function sendRecordStart(
 }
 
 // #lizard forgives
-export function tryMicPermissionThenStart(
+function tryMicPermissionThenStart(
   els: RecordingElements,
   state: RecordingState,
   audioMode: string,

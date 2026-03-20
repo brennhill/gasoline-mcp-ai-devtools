@@ -71,7 +71,7 @@ async function getTerminalDevRoot(): Promise<string> {
 // SESSION PERSISTENCE — survives page refresh via chrome.storage.session
 // =============================================================================
 
-export function persistSession(ss: TerminalSessionState): void {
+function persistSession(ss: TerminalSessionState): void {
   try {
     void setSession(StorageKey.TERMINAL_SESSION, ss)
   } catch { /* extension context invalidated */ }

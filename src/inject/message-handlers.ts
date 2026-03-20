@@ -169,7 +169,7 @@ type PageMessageData =
 /**
  * Handle link health check request from content script
  */
-export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
+async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
   try {
     const params = data.params || {}
     const result = await checkLinkHealth(params)

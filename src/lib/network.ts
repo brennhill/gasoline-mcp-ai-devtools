@@ -403,7 +403,7 @@ export async function readResponseBodyWithTimeout(
  * Clears pending requests, resets counters, and restores default settings.
  * Call this in beforeEach/afterEach test hooks to prevent test pollution.
  */
-export function resetForTesting(): void {
+function resetForTesting(): void {
   configuredServerUrl = ''
   networkWaterfallEnabled = false
   pendingRequests.clear()

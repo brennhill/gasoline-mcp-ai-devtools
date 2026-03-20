@@ -157,5 +157,3 @@ export async function handleTrackPageClick(): Promise<void> {
   return handleTrackPageClickAPI(showInternalPageState, showCloakedState, showTrackingState, showIdleState)
 }
 
-// Re-export handleUrlClick for consumers
-export { handleUrlClick } from './tab-tracking-api.js'

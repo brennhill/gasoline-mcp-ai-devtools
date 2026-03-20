@@ -40,7 +40,7 @@ export function isInjectScriptLoaded(): boolean {
 }
 
 /** Check if inject bridge has acknowledged a readiness ping */
-export function isInjectBridgeReady(): boolean {
+function isInjectBridgeReady(): boolean {
   return bridgeReady
 }
 
@@ -93,7 +93,7 @@ async function syncStoredSettings(): Promise<void> {
  * Inject axe-core library into the page
  * Must be called from content script context (has chrome.runtime API access)
  */
-export function injectAxeCore(): void {
+function injectAxeCore(): void {
   if (document.getElementById('gasoline-axe-loader')) return
   const script = document.createElement('script')
   script.id = 'gasoline-axe-loader'
@@ -105,7 +105,7 @@ export function injectAxeCore(): void {
 /**
  * Inject the capture script into the page
  */
-export function injectScript(): Promise<boolean> {
+function injectScript(): Promise<boolean> {
   // Remove stale nonce-bearing script nodes so inject resolves the current nonce.
   document.querySelectorAll(`script[${NONCE_ATTR}]`).forEach((el) => {
     if (typeof el.remove === 'function') el.remove()
@@ -169,7 +169,7 @@ function beginInjection(force = false): Promise<boolean> {
  * Ensure inject script is present, deduplicating concurrent inject attempts.
  * Optionally force a fresh reinjection attempt.
  */
-export async function ensureInjectScriptReady(timeoutMs = 2000, force = false): Promise<boolean> {
+async function ensureInjectScriptReady(timeoutMs = 2000, force = false): Promise<boolean> {
   if (!force && injected) return true
   const injection = beginInjection(force)
   if (timeoutMs <= 0) return injection

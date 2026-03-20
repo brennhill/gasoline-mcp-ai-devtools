@@ -16,7 +16,3 @@ var (
 	executeFormSubmit           = upload.ExecuteFormSubmit
 )
 
-// handleFormSubmitInternalMethod is the ToolHandler method wrapper for testing.
-func (h *ToolHandler) handleFormSubmitInternal(req FormSubmitRequest) UploadStageResponse {
-	return handleFormSubmitInternal(req, h.uploadSecurity)
-}

@@ -27,7 +27,7 @@ const DEFAULT_CAPTURE_HEIGHT = 720;
  * Temporarily expands scrollable containers so CDP captures full content.
  * Stores original styles in data attributes for restoration.
  */
-export function screenshotExpandContainers() {
+function screenshotExpandContainers() {
     let count = 0;
     let contentHeightHint = Math.max(document.documentElement?.scrollHeight || 0, document.body?.scrollHeight || 0);
     function tryExpand(el) {
@@ -77,7 +77,7 @@ export function screenshotExpandContainers() {
     return { expanded: count, content_height_hint: Math.ceil(contentHeightHint) };
 }
 /** Self-contained: restore containers after full-page capture. */
-export function screenshotRestoreContainers() {
+function screenshotRestoreContainers() {
     function tryRestore(el) {
         const raw = el.getAttribute('data-gasoline-fpx');
         if (!raw)
@@ -105,7 +105,7 @@ export function screenshotRestoreContainers() {
     }
 }
 /** Derive bounded screenshot dimensions with fallback defaults and optional expanded-content hint. */
-export function computeFullPageCaptureDimensions(contentWidth, contentHeight, hintedHeight) {
+function computeFullPageCaptureDimensions(contentWidth, contentHeight, hintedHeight) {
     const safeWidth = Number.isFinite(contentWidth) && contentWidth > 0 ? Math.ceil(contentWidth) : DEFAULT_CAPTURE_WIDTH;
     const safeHeight = Number.isFinite(contentHeight) && contentHeight > 0 ? Math.ceil(contentHeight) : DEFAULT_CAPTURE_HEIGHT;
     const safeHint = Number.isFinite(hintedHeight) && hintedHeight > 0 ? Math.ceil(hintedHeight) : 0;

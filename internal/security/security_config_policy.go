@@ -82,7 +82,7 @@ func blockSecurityConfigMutation(action string, origin string, detail string) er
 	}
 	err := errors.New(reason + " - " + securityConfigEditInstruction())
 
-	LogSecurityEvent(SecurityAuditEvent{
+	logSecurityEvent(SecurityAuditEvent{
 		Timestamp:  time.Now(),
 		Action:     "security_config_mutation_blocked",
 		Origin:     origin,

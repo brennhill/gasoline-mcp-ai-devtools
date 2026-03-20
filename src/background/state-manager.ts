@@ -15,11 +15,9 @@
 export {
   createErrorSignature,
   processErrorGroup,
-  getErrorGroupsState,
   cleanupStaleErrorGroups,
   flushErrorGroups,
   type ProcessedLogEntry,
-  ERROR_GROUP_MAX_AGE_MS
 } from './error-groups.js'
 
 // Re-export cache and memory management
@@ -34,11 +32,7 @@ export {
   isNetworkBodyCaptureDisabled,
   setSourceMapEnabled,
   isSourceMapEnabled,
-  setSourceMapCacheEntry,
-  getSourceMapCacheEntry,
-  getSourceMapCacheSize,
   clearSourceMapCache,
-  SOURCE_MAP_CACHE_SIZE,
   MEMORY_SOFT_LIMIT,
   MEMORY_HARD_LIMIT,
   MEMORY_CHECK_INTERVAL_MS,
@@ -55,14 +49,6 @@ export {
   checkContextAnnotations,
   getContextWarning,
   resetContextWarning,
-  decodeVLQ,
-  parseMappings,
-  parseStackFrame,
-  extractSourceMapUrl,
-  parseSourceMapData,
-  findOriginalLocation,
-  fetchSourceMap,
-  resolveStackFrame,
   resolveStackTrace,
   getProcessingQueriesState,
   addProcessingQuery,

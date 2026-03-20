@@ -28,9 +28,9 @@ import { errorMessage } from '../lib/error-utils.js'
 /**
  * Valid setting names from content script — imported from canonical constants.
  */
-export const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS
+const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS
 
-export const VALID_STATE_ACTIONS = new Set<StateAction>(['capture', 'restore'])
+const VALID_STATE_ACTIONS = new Set<StateAction>(['capture', 'restore'])
 
 /**
  * Setting message from content script

@@ -11,7 +11,7 @@
  * @param version - Version string like "5.2.5"
  * @returns Object with major, minor, patch components, or null if invalid
  */
-export function parseVersion(version: string): {
+function parseVersion(version: string): {
   major: number
   minor: number
   patch: number
@@ -33,7 +33,7 @@ export function parseVersion(version: string): {
  * @param versionB - Second version string
  * @returns -1 if A < B, 0 if A == B, 1 if A > B, null if either is invalid
  */
-export function compareVersions(versionA: string, versionB: string): -1 | 0 | 1 | null {
+function compareVersions(versionA: string, versionB: string): -1 | 0 | 1 | null {
   const a = parseVersion(versionA)
   const b = parseVersion(versionB)
 

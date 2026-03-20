@@ -10,9 +10,9 @@ tool's name, description, and JSON Schema for its input parameters.
 
 Key functions:
   - ObserveToolSchema: returns the observe tool definition.
-  - AnalyzeToolSchema: returns the analyze tool definition.
-  - GenerateToolSchema: returns the generate tool definition.
-  - ConfigureToolSchema: returns the configure tool definition.
+  - analyzeToolSchema: returns the analyze tool definition.
+  - generateToolSchema: returns the generate tool definition.
+  - configureToolSchema: returns the configure tool definition.
   - InteractToolSchema: returns the interact tool definition.
 */
 package schema

@@ -62,10 +62,6 @@ export declare function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 
  */
 export declare function clearTrackedTab(): void;
 /**
- * Get all extension config settings.
- */
-export declare function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
-/**
  * Query for the currently active tab in the current window.
  * Returns null if no active tab or no tab id.
  */

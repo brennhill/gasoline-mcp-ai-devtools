@@ -25,7 +25,7 @@ const ERROR_GROUP_FLUSH_MS = 10000
 const MAX_TRACKED_ERRORS = 100
 
 /** Error group max age - cleanup after 1 hour */
-export const ERROR_GROUP_MAX_AGE_MS = 3600000
+const ERROR_GROUP_MAX_AGE_MS = 3600000
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -166,7 +166,7 @@ export function processErrorGroup(entry: LogEntry): ProcessErrorGroupResult {
 /**
  * Get current state of error groups (for testing)
  */
-export function getErrorGroupsState(): Map<string, InternalErrorGroup> {
+function getErrorGroupsState(): Map<string, InternalErrorGroup> {
   return errorGroups
 }
 

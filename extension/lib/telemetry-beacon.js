@@ -2,11 +2,30 @@
  * Purpose: Anonymous telemetry beacons for error visibility. Disable with STRUM_TELEMETRY storage key.
  */
 const TELEMETRY_ENDPOINT = 'https://t.getstrum.dev/v1/event';
+// Opt-out flag cached from chrome.storage.local for synchronous checks.
+let telemetryDisabled = false;
+// Check opt-out on load
+try {
+    chrome.storage.local.get('strum_telemetry_off', (result) => {
+        telemetryDisabled = result.strum_telemetry_off === true;
+    });
+    // Listen for runtime changes so opt-out takes effect immediately
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && 'strum_telemetry_off' in changes) {
+            telemetryDisabled = changes.strum_telemetry_off.newValue === true;
+        }
+    });
+}
+catch {
+    /* not in extension context */
+}
 /**
  * Fire an anonymous telemetry beacon. Fire-and-forget, never throws.
  * Uses navigator.sendBeacon when available, falls back to fetch.
  */
 export function beacon(event, props = {}) {
+    if (telemetryDisabled)
+        return;
     try {
         const manifest = typeof chrome !== 'undefined' && chrome.runtime ? chrome.runtime.getManifest() : null;
         const version = manifest?.version || 'unknown';

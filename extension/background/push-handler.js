@@ -18,7 +18,7 @@ const CAPABILITIES_CACHE_TTL_MS = 10_000; // 10s cache
  * Fetch push capabilities from the daemon.
  * Caches for 10s to avoid hammering the endpoint.
  */
-export async function fetchPushCapabilities() {
+async function fetchPushCapabilities() {
     const now = Date.now();
     if (cachedCapabilities && now - capabilitiesFetchedAt < CAPABILITIES_CACHE_TTL_MS) {
         return cachedCapabilities;
@@ -36,7 +36,7 @@ export async function fetchPushCapabilities() {
     }
 }
 /** Clear the capabilities cache (e.g., on reconnect). */
-export function clearPushCapabilitiesCache() {
+function clearPushCapabilitiesCache() {
     cachedCapabilities = null;
     capabilitiesFetchedAt = 0;
 }
@@ -140,7 +140,7 @@ export function installChatCommandListener(logFn) {
 /**
  * Push a screenshot to the daemon's push pipeline.
  */
-export async function pushScreenshot(screenshotDataUrl, note, pageUrl, tabId) {
+async function pushScreenshot(screenshotDataUrl, note, pageUrl, tabId) {
     try {
         const response = await fetchWithTimeout(`${getServerUrl()}/push/screenshot`, {
             method: 'POST',

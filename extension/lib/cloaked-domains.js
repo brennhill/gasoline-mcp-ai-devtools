@@ -49,7 +49,7 @@ export async function isDomainCloaked(hostname) {
 /**
  * Get the full list of cloaked domains (built-in + user-configured).
  */
-export async function getCloakedDomains() {
+async function getCloakedDomains() {
     const userDomains = (await getLocal(StorageKey.CLOAKED_DOMAINS));
     return [...BUILTIN_CLOAKED, ...(userDomains || [])];
 }

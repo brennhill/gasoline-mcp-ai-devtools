@@ -73,7 +73,7 @@ export interface ExecutionResult {
  * or when inject script is not loaded.
  * The func is injected natively by Chrome's extension system.
  */
-export async function executeViaScriptingAPI(
+async function executeViaScriptingAPI(
   tabId: number,
   script: string,
   timeoutMs: number,

@@ -35,10 +35,6 @@ export declare function getSession(key: string): Promise<unknown>;
  */
 export declare function setSession(key: string, value: unknown): Promise<void>;
 /**
- * Remove an ephemeral value from session storage (async)
- */
-export declare function removeSession(key: string): Promise<void>;
-/**
  * Remove multiple ephemeral values from session storage (async)
  */
 export declare function removeSessions(keys: string[]): Promise<void>;
@@ -58,14 +54,6 @@ export declare function onStorageChanged(listener: StorageChangeListener): () =>
  * Required for terminal state persistence in content scripts.
  */
 export declare function setSessionAccessLevel(accessLevel: 'TRUSTED_CONTEXTS' | 'TRUSTED_AND_UNTRUSTED_CONTEXTS'): Promise<void>;
-/**
- * Get diagnostic info about storage availability
- */
-export declare function getStorageDiagnostics(): {
-    sessionStorageAvailable: boolean;
-    localStorageAvailable: boolean;
-    browserVersion: string;
-};
 /**
  * Check if service worker was restarted (state version mismatch)
  * Returns true if state was lost/cleared

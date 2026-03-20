@@ -7,7 +7,6 @@ import { type TerminalConfig, type TerminalSessionState, type TerminalUIState } 
 export declare function getServerUrl(): Promise<string>;
 export declare function getTerminalConfig(): Promise<TerminalConfig>;
 export declare function saveTerminalConfig(config: TerminalConfig): void;
-export declare function persistSession(ss: TerminalSessionState): void;
 export declare function clearPersistedSession(): void;
 export declare function persistUIState(uiState: TerminalUIState): void;
 export declare function loadPersistedSession(): Promise<{

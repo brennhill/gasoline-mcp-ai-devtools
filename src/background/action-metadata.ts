@@ -25,7 +25,7 @@ export interface ActionMeta {
  * The Go daemon in tools_interact_dispatch.go maintains a parallel
  * readOnlyInteractActions map — keep them in sync.
  */
-export const ACTION_METADATA: Record<string, ActionMeta> = {
+const ACTION_METADATA: Record<string, ActionMeta> = {
   // --- Read-only actions (no DOM mutation, no jitter) ---
   list_interactive:          { readonly: true,  mutating: false },
   query:                     { readonly: true,  mutating: false },

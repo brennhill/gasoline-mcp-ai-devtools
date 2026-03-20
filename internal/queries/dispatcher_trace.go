@@ -55,7 +55,7 @@ func buildTraceTimeline(events []CommandTraceEvent) string {
 // Failure semantics:
 // - Unknown statuses yield empty stage and are intentionally ignored by appendTraceEventLocked.
 func traceStageFromStatus(status string) string {
-	switch NormalizeCommandStatus(status) {
+	switch normalizeCommandStatus(status) {
 	case "pending":
 		return traceStageStarted
 	case "complete":

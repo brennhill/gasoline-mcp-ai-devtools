@@ -4,8 +4,6 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 export declare function readableFallbackScript(): Record<string, unknown>;
-export declare function markdownFallbackScript(): Record<string, unknown>;
-export declare function pageSummaryFallbackScript(): Record<string, unknown>;
 export type FallbackScript = () => Record<string, unknown>;
 export declare const FALLBACK_SCRIPTS: Record<string, FallbackScript>;
 //# sourceMappingURL=content-fallback-scripts.d.ts.map

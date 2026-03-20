@@ -12,7 +12,7 @@ const ERROR_GROUP_FLUSH_MS = 10000;
 /** Maximum tracked error groups */
 const MAX_TRACKED_ERRORS = 100;
 /** Error group max age - cleanup after 1 hour */
-export const ERROR_GROUP_MAX_AGE_MS = 3600000;
+const ERROR_GROUP_MAX_AGE_MS = 3600000;
 // =============================================================================
 // STATE
 // =============================================================================
@@ -109,7 +109,7 @@ export function processErrorGroup(entry) {
 /**
  * Get current state of error groups (for testing)
  */
-export function getErrorGroupsState() {
+function getErrorGroupsState() {
     return errorGroups;
 }
 /**
