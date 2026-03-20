@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 )
@@ -50,14 +49,16 @@ func TestBeaconError_FireAndForget(t *testing.T) {
 }
 
 func TestBeaconError_FormatsJSON(t *testing.T) {
-	var mu sync.Mutex
-	var received map[string]any
+	received := make(chan map[string]any, 1)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Errorf("failed to decode JSON body: %v", err)
+		}
+		select {
+		case received <- body:
+		default:
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -68,23 +69,20 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 
 	BeaconError("test_error", map[string]string{"error_code": "conn_refused", "port": "7890"})
 
-	// Wait for async delivery.
-	time.Sleep(200 * time.Millisecond)
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	if received == nil {
-		t.Fatal("expected HTTP request, got none")
+	var body map[string]any
+	select {
+	case body = <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("beacon not received within timeout")
 	}
 
-	if received["event"] != "test_error" {
-		t.Errorf("event = %v, want test_error", received["event"])
+	if body["event"] != "test_error" {
+		t.Errorf("event = %v, want test_error", body["event"])
 	}
 
-	props, ok := received["props"].(map[string]any)
+	props, ok := body["props"].(map[string]any)
 	if !ok {
-		t.Fatalf("props is not a map: %T", received["props"])
+		t.Fatalf("props is not a map: %T", body["props"])
 	}
 	if props["error_code"] != "conn_refused" {
 		t.Errorf("props.error_code = %v, want conn_refused", props["error_code"])
@@ -95,13 +93,15 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 }
 
 func TestBeaconEvent_IncludesVersion(t *testing.T) {
-	var mu sync.Mutex
-	var received map[string]any
+	received := make(chan map[string]any, 1)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		_ = json.NewDecoder(r.Body).Decode(&received)
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -111,23 +111,21 @@ func TestBeaconEvent_IncludesVersion(t *testing.T) {
 
 	BeaconEvent("daemon_start", map[string]string{"mode": "bridge"})
 
-	time.Sleep(200 * time.Millisecond)
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	if received == nil {
-		t.Fatal("expected HTTP request, got none")
+	var body map[string]any
+	select {
+	case body = <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("beacon not received within timeout")
 	}
 
-	if _, ok := received["v"]; !ok {
+	if _, ok := body["v"]; !ok {
 		t.Error("missing 'v' (version) field in beacon payload")
 	}
-	if _, ok := received["os"]; !ok {
+	if _, ok := body["os"]; !ok {
 		t.Error("missing 'os' field in beacon payload")
 	}
-	if received["event"] != "daemon_start" {
-		t.Errorf("event = %v, want daemon_start", received["event"])
+	if body["event"] != "daemon_start" {
+		t.Errorf("event = %v, want daemon_start", body["event"])
 	}
 }
 
@@ -143,13 +141,15 @@ func TestBeaconError_IgnoresHTTPFailure(t *testing.T) {
 }
 
 func TestBeaconError_NilProps(t *testing.T) {
-	var mu sync.Mutex
-	var received map[string]any
+	received := make(chan map[string]any, 1)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		_ = json.NewDecoder(r.Body).Decode(&received)
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -158,15 +158,15 @@ func TestBeaconError_NilProps(t *testing.T) {
 	defer resetEndpoint()
 
 	BeaconError("nil_props_test", nil)
-	time.Sleep(200 * time.Millisecond)
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	if received == nil {
-		t.Fatal("expected HTTP request, got none")
+	var body map[string]any
+	select {
+	case body = <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("beacon not received within timeout")
 	}
-	if received["event"] != "nil_props_test" {
-		t.Errorf("event = %v, want nil_props_test", received["event"])
+
+	if body["event"] != "nil_props_test" {
+		t.Errorf("event = %v, want nil_props_test", body["event"])
 	}
 }

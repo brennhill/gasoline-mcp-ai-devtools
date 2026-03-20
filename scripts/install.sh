@@ -38,11 +38,11 @@ NC='\033[0m' # No Color (Reset)
 # Anonymous install error beacon (disable: STRUM_TELEMETRY=off).
 # Fire-and-forget, never blocks, never fails the install.
 beacon_error() {
-    local reason="${1:-unknown}"
+    local step="${1:-unknown}"
     if [ "${STRUM_TELEMETRY:-}" = "off" ]; then return; fi
     curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
         -H "Content-Type: application/json" \
-        -d "{\"event\":\"install_error\",\"v\":\"${VERSION:-unknown}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"reason\":\"${reason}\",\"method\":\"curl\"}}" \
+        -d "{\"event\":\"install_error\",\"v\":\"${VERSION:-unknown}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"step\":\"${step}\",\"method\":\"curl\"}}" \
         > /dev/null 2>&1 || true
 }
 

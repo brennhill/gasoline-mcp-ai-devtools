@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
@@ -28,6 +29,10 @@ func handlePanicRecovery(r any) {
 	panicTypeName := "unknown"
 	if panicType != nil {
 		panicTypeName = panicType.String()
+		// Strip package path, keep only the type name (e.g. "*foo.Bar" -> "Bar")
+		if idx := strings.LastIndex(panicTypeName, "."); idx >= 0 {
+			panicTypeName = panicTypeName[idx+1:]
+		}
 	}
 	telemetry.BeaconError("daemon_panic", map[string]string{"type": panicTypeName})
 

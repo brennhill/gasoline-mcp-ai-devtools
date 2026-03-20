@@ -315,7 +315,7 @@ export class SyncClient {
         const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.')
         const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.')
         if (serverMajorMinor !== extensionMajorMinor) {
-          beacon('extension_version_mismatch')
+          beacon('extension_version_mismatch', { ext: extensionMajorMinor, srv: serverMajorMinor })
           this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version)
         }
       }
@@ -404,9 +404,13 @@ export class SyncClient {
   private onFailure(): void {
     this.state.consecutiveFailures++
 
-    // Beacon after 10 consecutive failures (debounced — not every failure)
-    if (this.state.consecutiveFailures === 10) {
-      beacon('sync_connect_failed', { consecutive_failures: '10' })
+    // Beacon at logarithmic intervals (10, 100, 1000) — not every failure
+    if (
+      this.state.consecutiveFailures === 10 ||
+      this.state.consecutiveFailures === 100 ||
+      this.state.consecutiveFailures === 1000
+    ) {
+      beacon('sync_connect_failed', { failures: String(this.state.consecutiveFailures) })
     }
 
     // Require 2+ consecutive failures before marking disconnected

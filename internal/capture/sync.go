@@ -9,11 +9,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
+
+// extractBrowserName returns a generic browser name from a User-Agent string.
+// Only the browser family is returned — no version, OS, or device details.
+func extractBrowserName(ua string) string {
+	ua = strings.ToLower(ua)
+	switch {
+	case strings.Contains(ua, "brave"):
+		return "brave"
+	case strings.Contains(ua, "edg/"):
+		return "edge"
+	case strings.Contains(ua, "chrome"):
+		return "chrome"
+	case strings.Contains(ua, "firefox"):
+		return "firefox"
+	case strings.Contains(ua, "safari"):
+		return "safari"
+	default:
+		return "unknown"
+	}
+}
 
 // =============================================================================
 // Request/Response Types
@@ -155,11 +176,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	state := c.updateSyncConnectionState(req, clientID, now)
 
 	if !state.wasConnected || state.isReconnect {
-		browserHint := r.Header.Get("User-Agent")
-		if len(browserHint) > 64 {
-			browserHint = browserHint[:64]
-		}
-		telemetry.BeaconEvent("extension_connect", map[string]string{"browser": browserHint})
+		telemetry.BeaconEvent("extension_connect", map[string]string{"browser": extractBrowserName(r.Header.Get("User-Agent"))})
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_connected", map[string]any{
 				"ext_session_id":     state.extSessionID,

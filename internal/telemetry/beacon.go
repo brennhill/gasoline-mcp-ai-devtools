@@ -14,8 +14,14 @@ import (
 // Version is set via ldflags at build time. Falls back to "dev" if unset.
 var Version = "dev"
 
+// defaultEndpoint is the canonical telemetry ingest URL.
+const defaultEndpoint = "https://t.getstrum.dev/v1/event"
+
 // endpoint is the telemetry ingest URL. Overridable for tests.
-var endpoint = "https://t.getstrum.dev/v1/event"
+var endpoint = defaultEndpoint
+
+// sem caps the number of concurrent beacon goroutines to prevent runaway growth.
+var sem = make(chan struct{}, 50)
 
 // BeaconError fires an anonymous error event to the telemetry endpoint.
 // Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
@@ -48,16 +54,22 @@ func beacon(event string, props map[string]string) {
 		return // best-effort
 	}
 
-	go func() {
-		defer func() { _ = recover() }() // never panic
+	select {
+	case sem <- struct{}{}:
+		go func() {
+			defer func() { <-sem }()
+			defer func() { _ = recover() }() // never panic
 
-		client := &http.Client{Timeout: 2 * time.Second}
-		resp, err := client.Post(endpoint, "application/json", bytes.NewReader(data))
-		if err != nil {
-			return // best-effort
-		}
-		_ = resp.Body.Close()
-	}()
+			client := &http.Client{Timeout: 2 * time.Second}
+			resp, err := client.Post(endpoint, "application/json", bytes.NewReader(data))
+			if err != nil {
+				return // best-effort
+			}
+			_ = resp.Body.Close()
+		}()
+	default:
+		// At capacity, drop this beacon silently
+	}
 }
 
 // overrideEndpoint sets a custom endpoint for testing.
@@ -67,5 +79,5 @@ func overrideEndpoint(url string) {
 
 // resetEndpoint restores the default endpoint after testing.
 func resetEndpoint() {
-	endpoint = "https://t.getstrum.dev/v1/event"
+	endpoint = defaultEndpoint
 }
