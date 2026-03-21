@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Claude Code
-description: "Configure Gasoline as an MCP server for Claude Code. Give Claude real-time access to browser console logs, network errors, and DOM state."
+title:.gasoline + Claude Code
+description: "Configure.gasoline as an MCP server for Claude Code. Give Claude real-time access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'claude', 'code']
 ---
 
-Gasoline is an open-source MCP server that gives Claude Code real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Claude Code real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Project-Level Config (Recommended)
 
@@ -23,7 +23,7 @@ Create `.mcp.json` in your project root:
 }
 ```
 
-Gasoline only fires up when you're in this project.
+STRUM only fires up when you're in this project.
 
 ## Global Config
 

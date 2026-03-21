@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.2.5 Released"
+title: .gasoline v5.2.5 Released"
 description: "Stability and reliability improvements"
 date: 2026-01-12T23:52:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.2.5
 
-Gasoline v5.2.5 focuses on stability and fixes edge cases discovered in production use.
+STRUM v5.2.5 focuses on stability and fixes edge cases discovered in production use.
 
 ### Improvements
 

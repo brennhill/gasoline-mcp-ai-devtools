@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.7.4 Released"
+title: .gasoline v5.7.4 Released"
 description: "Stability and MCP reliability improvements"
 date: 2026-02-07T22:56:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.7.4
 
-Gasoline v5.7.4 improves stability and MCP protocol reliability based on production feedback.
+STRUM v5.7.4 improves stability and MCP protocol reliability based on production feedback.
 
 ### Improvements
 

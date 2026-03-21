@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Zed
-description: "Configure Gasoline as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
+title:.gasoline + Zed
+description: "Configure.gasoline as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'zed']
 ---
 
-Gasoline is an open-source MCP server that gives Zed's AI assistant access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Zed's AI assistant access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Auto-Install
 
@@ -48,7 +48,7 @@ If using npx:
 
 ## Usage
 
-After restarting Zed, the AI assistant taps into Gasoline's full MCP toolset.
+After restarting Zed, the AI assistant taps into.gasoline's full MCP toolset.
 
 ## Troubleshooting
 

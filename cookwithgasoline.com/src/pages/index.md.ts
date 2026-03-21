@@ -16,7 +16,7 @@ function toYamlString(value: unknown) {
 }
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'Gasoline MCP'
+  const title = entry.data?.title ?? 'STRUM MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com/\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
 }

@@ -146,13 +146,13 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
             body: JSON.stringify(statusMessage)
         });
         if (!response.ok) {
-            console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
+            console.error(`[STRUM] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
         }
     }
     catch (err) {
-        console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) });
+        console.error('[STRUM] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) });
         if (diagnosticLogFn) {
-            diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err));
+            diagnosticLogFn('[STRUM] Status ping error: ' + errorMessage(err));
         }
     }
 }

@@ -172,7 +172,7 @@ generate({what:"sarif",
 
 ## csp — Content Security Policy Generation
 
-Generates a Content Security Policy header from observed network traffic. Gasoline sees which origins your page loads resources from and produces a CSP that allows exactly those origins.
+Generates a Content Security Policy header from observed network traffic..gasoline sees which origins your page loads resources from and produces a CSP that allows exactly those origins.
 
 ```js
 generate({what:"csp"})

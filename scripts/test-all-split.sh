@@ -80,7 +80,7 @@ load_phase_summary() {
 print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════════════════╗"
-    echo "║                      GASOLINE UAT TEST SUITE (SPLIT)                           ║"
+    echo "║                        STRUM UAT TEST SUITE (SPLIT)                            ║"
     echo "║                                                                                ║"
     echo "║ Phase 1: ORIGINAL TESTS (54 tests, 20 categories) — Known Stable              ║"
     echo "║ Phase 2: NEW TESTS (98 tests, 14 categories) — Newly Built                    ║"

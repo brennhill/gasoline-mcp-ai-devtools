@@ -1,6 +1,6 @@
 ---
-title: "How to Connect Gasoline to Cursor"
-description: "Beginner guide to connect Cursor with Gasoline Agentic Devtools and run your first browser-aware workflow."
+title: "How to Connect.gasoline to Cursor"
+description: "Beginner guide to connect Cursor with.gasoline Agentic Devtools and run your first browser-aware workflow."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, cursor, mcp, setup]
@@ -9,7 +9,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'cursor', 'mcp', 'setup', 'articles', 'connect', 'gasoline']
 ---
 
-Cursor is excellent for writing code. Gasoline makes Cursor workflows browser-aware.
+Cursor is excellent for writing code..gasoline makes Cursor workflows browser-aware.
 
 Here is the fastest setup path.
 
@@ -20,13 +20,13 @@ Here is the fastest setup path.
 - **MCP (Model Context Protocol):** Connects Cursor to external tools. https://modelcontextprotocol.io/specification/
 - **Regression:** A bug that returns after being fixed.
 
-## Step 1: Confirm Gasoline command is available
+## Step 1: Confirm.gasoline command is available
 
 ```bash
 npx -y gasoline-mcp --help
 ```
 
-## Step 2: Add Gasoline as an MCP server in Cursor
+## Step 2: Add.gasoline as an MCP server in Cursor
 
 Use this config block:
 

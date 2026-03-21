@@ -6,11 +6,11 @@ export default defineConfig({
   site: 'https://cookwithgasoline.com',
   integrations: [
     starlight({
-      title: 'Gasoline Agentic Devtools',
+      title: 'STRUM Agentic Devtools',
       description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
-        src: './src/assets/logo.png',
-        alt: 'Gasoline Agentic Devtools'
+        src: './src/assets/logo.svg',
+        alt: 'STRUM Agentic Devtools'
       },
       favicon: '/images/logo.png',
       social: [

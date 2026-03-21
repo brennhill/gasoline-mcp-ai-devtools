@@ -16,7 +16,7 @@ for platform in "${PLATFORMS[@]}"; do
     
     # Create __init__.py
     cat > "${pkg_dir}/${pkg_python_name}/__init__.py" <<EOF
-"""Platform-specific Gasoline binary for ${platform}."""
+"""Platform-specific STRUM binary for ${platform}."""
 
 __version__ = "${VERSION}"
 EOF
@@ -26,7 +26,7 @@ EOF
 [project]
 name = "${pkg_name}"
 version = "${VERSION}"
-description = "Gasoline Agentic Browser binary for ${platform}"
+description = "STRUM Agentic Browser binary for ${platform}"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"
 authors = [
@@ -50,7 +50,7 @@ EOF
     cat > "${pkg_dir}/README.md" <<EOF
 # ${pkg_name}
 
-Platform-specific binary package for Gasoline Agentic Browser (${platform}).
+Platform-specific binary package for STRUM Agentic Browser (${platform}).
 
 This package is automatically installed as a dependency when you run:
 
@@ -60,7 +60,7 @@ pip install gasoline-agentic-browser
 
 You do not need to install this package directly.
 
-For more information, see the main [gasoline-agentic-browser](https://pypi.org/project/gasoline-agentic-browser/) package.
+For more information, see the main [strum-agentic-browser](https://pypi.org/project/gasoline-agentic-browser/) package.
 EOF
     
     # Create MANIFEST.in to include binary

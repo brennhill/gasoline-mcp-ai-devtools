@@ -17,7 +17,7 @@
   </defs>
 
   <!-- Title -->
-  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">Gasoline Replay: Session Capture Architecture</text>
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">STRUM Replay: Session Capture Architecture</text>
 
   <!-- Browser Section -->
   <rect class="section-header" x="20" y="60" width="240" height="300" rx="6"/>
@@ -37,7 +37,7 @@
 
   <!-- Server Section -->
   <rect class="section-dark" x="310" y="60" width="650" height="300" rx="6"/>
-  <text class="text-light" x="330" y="80" style="font-size: 13px; font-weight: bold;">⚙️  Gasoline Replay Server (Go)</text>
+  <text class="text-light" x="330" y="80" style="font-size: 13px; font-weight: bold;">⚙️  STRUM Replay Server (Go)</text>
 
   <!-- Session Assembler -->
   <rect class="section-light" x="330" y="100" width="140" height="90" rx="4"/>

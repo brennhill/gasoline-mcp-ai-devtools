@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh — Install the Gasoline Claude Code skill.
+# install.sh — Install the STRUM Claude Code skill.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -18,9 +18,9 @@ install_mcp_server() {
   fi
 
   echo ""
-  echo "Install the Gasoline MCP server (gasoline-agentic-browser)."
+  echo "Install the STRUM MCP server (gasoline-agentic-browser)."
   echo "  To match your Chrome extension version, check chrome://extensions"
-  echo "  and find the version number next to 'Gasoline Devtools'."
+  echo "  and find the version number next to 'STRUM Devtools'."
   echo ""
   read -rp "Enter extension version to match (or press Enter for latest): " version
 
@@ -85,13 +85,13 @@ install_skill() {
   fi
   mkdir -p "$dest"
   cp -r "$SKILL_SRC/"* "$dest/"
-  echo "Installed gasoline skill to $dest"
+  echo "Installed STRUM skill to $dest"
 }
 
 if $IN_GIT; then
   echo "You are inside a git project: $GIT_ROOT"
   echo ""
-  echo "Where do you want to install the Gasoline skill?"
+  echo "Where do you want to install the STRUM skill?"
   echo "  1) Global  (~/.claude/skills/gasoline) — available in all projects"
   echo "  2) Project (.claude/skills/gasoline)   — this project only"
   echo ""

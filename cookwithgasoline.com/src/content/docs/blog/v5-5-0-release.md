@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.5.0: Rock-Solid MCP Protocol Compliance"
+title: .gasoline v5.5.0: Rock-Solid MCP Protocol Compliance"
 description: "v5.5.0 delivers 100% MCP protocol compliance with critical fixes for stdio transport, notification handling, and response framing. Claude Desktop and Cursor now connect flawlessly."
 date: 2026-02-04T21:09:00Z
 authors:
@@ -13,11 +13,11 @@ last_verified_date: 2026-03-06
 normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v5', 'release']
 ---
 
-Gasoline v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
+STRUM v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
 
 ## The Problem: Intermittent Connection Failures
 
-Users reported sporadic errors when connecting to Gasoline via Claude Desktop:
+Users reported sporadic errors when connecting to.gasoline via Claude Desktop:
 
 ```
 [error] Unexpected end of JSON input

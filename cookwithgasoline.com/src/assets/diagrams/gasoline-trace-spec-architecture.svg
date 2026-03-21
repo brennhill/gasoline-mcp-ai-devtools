@@ -18,13 +18,13 @@
   </defs>
 
   <!-- Title -->
-  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">Gasoline Trace: Distributed Tracing with W3C Standard</text>
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">STRUM Trace: Distributed Tracing with W3C Standard</text>
 
   <!-- Browser Section -->
   <rect class="section-header" x="20" y="60" width="200" height="150" rx="6"/>
   <text class="section-title" x="35" y="80">🌐 Browser</text>
   <rect class="section-light" x="35" y="100" width="170" height="100" rx="4"/>
-  <text class="text-light text-bold" x="50" y="120">Gasoline Extension</text>
+  <text class="text-light text-bold" x="50" y="120">STRUM Extension</text>
   <text class="text-light text-sm" x="50" y="135">▪ User interaction</text>
   <text class="text-light text-sm" x="50" y="148">▪ W3C Trace Context</text>
   <text class="text-light text-sm" x="50" y="161">▪ Browser spans</text>
@@ -37,15 +37,15 @@
 
   <rect class="section-light" x="285" y="105" width="150" height="50" rx="4"/>
   <text class="text-light text-sm" x="300" y="120">API Gateway</text>
-  <text class="text-light text-sm" x="300" y="134">+ Gasoline Trace SDK</text>
+  <text class="text-light text-sm" x="300" y="134">+ STRUM Trace SDK</text>
 
   <rect class="section-light" x="285" y="165" width="150" height="50" rx="4"/>
   <text class="text-light text-sm" x="300" y="180">Auth Service</text>
-  <text class="text-light text-sm" x="300" y="194">+ Gasoline Trace SDK</text>
+  <text class="text-light text-sm" x="300" y="194">+ STRUM Trace SDK</text>
 
   <rect class="section-light" x="285" y="225" width="150" height="50" rx="4"/>
   <text class="text-light text-sm" x="300" y="240">Order Service</text>
-  <text class="text-light text-sm" x="300" y="254">+ Gasoline Trace SDK</text>
+  <text class="text-light text-sm" x="300" y="254">+ STRUM Trace SDK</text>
 
   <rect class="section-light" x="285" y="285" width="150" height="50" rx="4"/>
   <text class="text-light text-sm" x="300" y="300">PostgreSQL</text>
@@ -57,7 +57,7 @@
 
   <!-- Go Server Section -->
   <rect class="section-dark" x="520" y="60" width="460" height="350" rx="6"/>
-  <text class="text-light" x="540" y="80" style="font-size: 12px; font-weight: bold;">⚙️  Gasoline Server (Go)</text>
+  <text class="text-light" x="540" y="80" style="font-size: 12px; font-weight: bold;">⚙️  STRUM Server (Go)</text>
 
   <!-- Port 7890 -->
   <rect class="section-light" x="540" y="105" width="200" height="60" rx="4"/>
@@ -110,7 +110,7 @@
   <text style="fill: #F97316; font-weight: bold; font-size: 13px;" x="40" y="450">W3C Trace Context Standard:</text>
 
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="470">✓ Browser generates trace-id and passes traceparent header to services</text>
-  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="485">✓ Each service auto-instruments with Gasoline SDK (or OTEL SDK + OTLP exporter)</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="485">✓ Each service auto-instruments with STRUM SDK (or OTEL SDK + OTLP exporter)</text>
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="500">✓ OTLP receiver assembles spans into complete distributed trace tree</text>
   <text style="fill: #FFFFFF; font-size: 11px; font-family: system-xml;" x="40" y="515">✓ Critical path analysis identifies bottleneck services (which service = slowest, on critical path)</text>
 </svg>

@@ -1,6 +1,6 @@
 ---
 title: "Visual Regression Testing with Annotation Sessions"
-description: "Use visual annotations to build clear, repeatable visual regression checks with Gasoline Agentic Devtools."
+description: "Use visual annotations to build clear, repeatable visual regression checks with.gasoline Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [visual-regression, annotations, ui, testing]
@@ -11,7 +11,7 @@ normalized_tags: ['visual-regression', 'annotations', 'ui', 'testing', 'articles
 
 Visual bugs are often obvious to humans and hard to describe to automation.
 
-Annotation sessions solve this by letting people mark what changed, then turning that into repeatable checks with **Gasoline Agentic Devtools**.
+Annotation sessions solve this by letting people mark what changed, then turning that into repeatable checks with *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ You want your team to say:
 
 “This button shift will never surprise us in production again.”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with.gasoline Agentic Devtools
 
 ### Step 1. Capture visual feedback with draw mode
 
@@ -68,4 +68,4 @@ Product, design, and engineering can all contribute without writing code first. 
 
 ## You’re Blending Human Taste with Automation
 
-That is cutting-edge quality practice. **Gasoline Agentic Devtools** helps your team move from “I think it looks off” to “we now test this every release.”
+That is cutting-edge quality practice. *.gasoline Agentic Devtools** helps your team move from “I think it looks off” to “we now test this every release.”

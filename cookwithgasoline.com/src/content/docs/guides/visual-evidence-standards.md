@@ -1,6 +1,6 @@
 ---
 title: Visual Evidence Standards
-description: Naming, alt text, and capture standards for screenshots and diagrams in Gasoline docs.
+description: Naming, alt text, and capture standards for screenshots and diagrams in.gasoline docs.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'visual', 'evidence', 'standards']
@@ -31,7 +31,7 @@ Template:
 Examples:
 
 - `Screenshot showing failed checkout request with 422 schema mismatch for cart update.`
-- `Diagram showing triage flow from observe to analyze to generate in Gasoline Agentic Devtools.`
+- `Diagram showing triage flow from observe to analyze to generate in.gasoline Agentic Devtools.`
 
 ## Required Visual Set per How-To
 

@@ -1,6 +1,6 @@
 ---
 title: Privacy Policy
-description: Gasoline Privacy Policy - 100% localhost, zero data collection
+description:.gasoline Privacy Policy - 100% localhost, zero data collection
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['privacy']
@@ -12,13 +12,13 @@ normalized_tags: ['privacy']
 
 ## TL;DR
 
-**Gasoline never sends your data anywhere.** Everything stays on your machine. No cloud, no external servers, no telemetry.
+*.gasoline never sends your data anywhere.** Everything stays on your machine. No cloud, no external servers, no telemetry.
 
 ---
 
 ## What We Collect
 
-When you use Gasoline, the browser extension captures telemetry from **the single tab you explicitly track:**
+When you use.gasoline, the browser extension captures telemetry from **the single tab you explicitly track:**
 
 - Console logs (console.log, console.error, etc.)
 - Network requests and responses
@@ -39,7 +39,7 @@ When you use Gasoline, the browser extension captures telemetry from **the singl
 http://localhost:7890
 ```
 
-The MCP server runs **on YOUR machine**. We (Gasoline developers) cannot access this data.
+The MCP server runs **on YOUR machine**. We .gasoline developers) cannot access this data.
 
 **How to verify:**
 - Check browser DevTools Network tab - you'll only see localhost:7890 requests
@@ -50,7 +50,7 @@ The MCP server runs **on YOUR machine**. We (Gasoline developers) cannot access 
 
 ## What We Automatically Redact
 
-Before sending to your localhost server, Gasoline automatically redacts:
+Before sending to your localhost server,.gasoline automatically redacts:
 
 - **Passwords** → `[redacted]`
 - **API keys, tokens, secrets** → `[redacted]`
@@ -152,7 +152,7 @@ Before sending to your localhost server, Gasoline automatically redacts:
 **What we do:** Inject into the ONE tab you explicitly track
 **What we DON'T do:** Inject into untracked tabs, modify page behavior, track browsing
 
-**Why `<all_urls>`?** Gasoline is a developer tool. You need to debug any web application (localhost, staging, production, any domain). Restricting to specific domains would make it useless.
+**Why `<all_urls>`?**.gasoline is a developer tool. You need to debug any web application (localhost, staging, production, any domain). Restricting to specific domains would make it useless.
 
 ---
 
@@ -187,7 +187,7 @@ Before sending to your localhost server, Gasoline automatically redacts:
 - ❌ Subject to their data retention policies
 - ❌ Vendor lock-in
 
-**Gasoline:**
+*.gasoline:**
 - ✅ All data stays on your infrastructure
 - ✅ You control storage and retention
 - ✅ No vendor lock-in
@@ -216,7 +216,7 @@ We'll notify users of any changes via:
 ## Trust But Verify
 
 **Don't take our word for it:**
-1. Open browser DevTools Network tab while using Gasoline
+1. Open browser DevTools Network tab while using.gasoline
 2. Filter by domain - you'll only see localhost:7890
 3. Run `lsof -i | grep gasoline` in terminal - only localhost
 4. Read the source code on GitHub
@@ -226,4 +226,4 @@ We'll notify users of any changes via:
 
 ---
 
-*This privacy policy covers the Gasoline browser extension and MCP server. For questions or concerns, please contact us.*
+*This privacy policy covers the.gasoline browser extension and MCP server. For questions or concerns, please contact us.*

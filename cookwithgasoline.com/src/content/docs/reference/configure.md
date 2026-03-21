@@ -6,7 +6,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['reference', 'configure']
 ---
 
-The `configure` tool manages your Gasoline session — filter noise, store data, manage recordings, compare error states, diff sessions, control streaming, and view audit logs.
+The `configure` tool manages your.gasoline session — filter noise, store data, manage recordings, compare error states, diff sessions, control streaming, and view audit logs.
 
 Need one runnable call + response shape + failure fix for every mode? See [Configure Executable Examples](/reference/examples/configure-examples/).
 
@@ -237,7 +237,7 @@ configure({what:"telemetry", telemetry_mode: "off"})
 
 ## streaming — Real-Time Event Streaming
 
-Enable or disable real-time event notifications. When enabled, Gasoline proactively notifies the AI about errors, performance regressions, and security issues as they happen.
+Enable or disable real-time event notifications. When enabled,.gasoline proactively notifies the AI about errors, performance regressions, and security issues as they happen.
 
 ```js
 configure({what:"streaming", streaming_action: "enable",
@@ -260,7 +260,7 @@ configure({what:"streaming", streaming_action: "status"})
 
 ## health — Server Health
 
-Check the Gasoline server's status, uptime, buffer usage, and connected clients.
+Check the.gasoline server's status, uptime, buffer usage, and connected clients.
 
 ```js
 configure({what:"health"})
@@ -366,7 +366,7 @@ configure({what: "describe_capabilities", tool: "observe", mode: "errors"})
 
 ## restart — Force Restart Daemon
 
-Force-restart the Gasoline daemon when it becomes unresponsive. Works even when the daemon is completely hung.
+Force-restart the.gasoline daemon when it becomes unresponsive. Works even when the daemon is completely hung.
 
 ```js
 configure({what: "restart"})

@@ -1,6 +1,6 @@
 ---
-title: "How to Install Gasoline Agentic Devtools in 5 Minutes (Mac, Windows, Linux)"
-description: "A beginner-friendly install guide for Gasoline Agentic Devtools, including extension setup and first-run checks."
+title: "How to Install.gasoline Agentic Devtools in 5 Minutes (Mac, Windows, Linux)"
+description: "A beginner-friendly install guide for.gasoline Agentic Devtools, including extension setup and first-run checks."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, setup, installation]
@@ -9,7 +9,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'setup', 'installation', 'articles', 'install', 'gasoline', 'minutes']
 ---
 
-If this is your first time using **Gasoline Agentic Devtools**, this guide is the fastest way to get running.
+If this is your first time using *.gasoline Agentic Devtools**, this guide is the fastest way to get running.
 
 No jargon. Just the steps.
 
@@ -22,7 +22,7 @@ No jargon. Just the steps.
 
 ## What You Will Have at the End
 
-- Gasoline installed
+-.gasoline installed
 - Chrome extension loaded
 - Your first successful health check
 
@@ -47,7 +47,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 1. Open `chrome://extensions/`
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
-4. Select `~/GasolineAgenticDevtoolExtension`
+4. Select `~.gasolineAgenticDevtoolExtension`
 
 ## Step 3: Verify installation
 

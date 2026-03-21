@@ -1,6 +1,6 @@
 ---
-title: "How to Record Your First Product Demo with Gasoline"
-description: "Step-by-step beginner guide to recording a clean, repeatable product demo workflow with Gasoline Agentic Devtools."
+title: "How to Record Your First Product Demo with.gasoline"
+description: "Step-by-step beginner guide to recording a clean, repeatable product demo workflow with.gasoline Agentic Devtools."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, demos, recording]
@@ -11,7 +11,7 @@ normalized_tags: ['beginner', 'demos', 'recording', 'articles', 'record', 'first
 
 A great demo should be repeatable, not stressful.
 
-Here is a clean first setup using **Gasoline Agentic Devtools**.
+Here is a clean first setup using *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -25,7 +25,7 @@ Pick one simple story, for example:
 
 ## Step 2: Start recording
 
-Use Gasoline recording controls to begin a session.
+Use.gasoline recording controls to begin a session.
 
 ## Step 3: Follow a script, not improvisation
 

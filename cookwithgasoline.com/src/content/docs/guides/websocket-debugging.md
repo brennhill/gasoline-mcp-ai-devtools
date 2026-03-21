@@ -1,12 +1,12 @@
 ---
 title: "WebSocket Debugging"
-description: "Debug WebSocket connections with Gasoline. Monitor connection lifecycle, inspect messages by direction and connection, track message rates, and diagnose real-time application issues."
+description: "Debug WebSocket connections with.gasoline. Monitor connection lifecycle, inspect messages by direction and connection, track message rates, and diagnose real-time application issues."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'websocket', 'debugging']
 ---
 
-Gasoline gives your AI full visibility into WebSocket traffic — connection lifecycle, message payloads, per-connection rates, and schema detection. This is critical for debugging real-time applications: chat systems, live dashboards, collaborative editors, trading platforms, and notification streams.
+STRUM gives your AI full visibility into WebSocket traffic — connection lifecycle, message payloads, per-connection rates, and schema detection. This is critical for debugging real-time applications: chat systems, live dashboards, collaborative editors, trading platforms, and notification streams.
 
 ## See Active Connections
 
@@ -153,7 +153,7 @@ Look for a pattern: `open` → `close` → `open` → `close`. The close events 
 observe({what: "websocket_status"})
 ```
 
-Check the message rate. If the server is sending 100+ messages/second, Gasoline's adaptive sampling may be active. Check if the missing messages are being filtered.
+Check the message rate. If the server is sending 100+ messages/second,.gasoline's adaptive sampling may be active. Check if the missing messages are being filtered.
 
 Then look at the actual message stream:
 

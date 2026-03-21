@@ -1,14 +1,14 @@
 ---
 title: Automate Browser Tasks and Notify People
-description: Use Gasoline to automate repetitive browser workflows — fill forms, scrape results, send emails — and notify your team when it's done.
+description: Use.gasoline to automate repetitive browser workflows — fill forms, scrape results, send emails — and notify your team when it's done.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'automate', 'notify']
 ---
 
-## Beyond Debugging: Gasoline as Your Browser Autopilot
+## Beyond Debugging:.gasoline as Your Browser Autopilot
 
-Gasoline isn't just for debugging. The `interact` tool gives your AI full browser control — click, type, navigate, read page content. Combine that with your AI's ability to reason about what it sees, and you get a general-purpose browser automation agent.
+STRUM isn't just for debugging. The `interact` tool gives your AI full browser control — click, type, navigate, read page content. Combine that with your AI's ability to reason about what it sees, and you get a general-purpose browser automation agent.
 
 The real power? Chain the automation with a notification step. Run a report, extract the results, and send them to someone — all from a single natural language instruction.
 
@@ -76,7 +76,7 @@ Done. Your team gets the email. You didn't open a browser.
 
 ## Why This Works (and Why It's Safe)
 
-**You're already logged in.** Gasoline uses your real browser with your real sessions. If you're logged into Gmail, the AI can compose an email. No API keys, no OAuth tokens, no service accounts.
+**You're already logged in.**.gasoline uses your real browser with your real sessions. If you're logged into Gmail, the AI can compose an email. No API keys, no OAuth tokens, no service accounts.
 
 **AI Web Pilot is opt-in.** The `interact` tool only works when you've explicitly enabled AI Web Pilot in the extension popup. It's off by default.
 
@@ -98,7 +98,7 @@ The same pattern — navigate, interact, extract, notify — works for dozens of
 **Fill out timesheets:**
 ```text
 "Go to our timesheet app, fill in 8 hours for each weekday this week
-under project 'Gasoline', and submit."
+under project .gasoline', and submit."
 ```
 
 **Monitor a competitor's pricing page:**
@@ -149,7 +149,7 @@ observe({what: "errors"})
 interact({action: "save_state", snapshot_name: "before-send"})
 ```
 
-**Handle Gmail's quirks.** Gmail uses augmented `aria-label` values that include keyboard shortcuts (e.g., `"Send ‪(⌘Enter)‬"`). Gasoline's `aria-label=` selector handles this automatically with starts-with matching — `aria-label=Send` matches the full label.
+**Handle Gmail's quirks.** Gmail uses augmented `aria-label` values that include keyboard shortcuts (e.g., `"Send ‪(⌘Enter)‬"`)..gasoline's `aria-label=` selector handles this automatically with starts-with matching — `aria-label=Send` matches the full label.
 
 ## The Pattern
 
@@ -161,4 +161,4 @@ Every browser automation task follows the same structure:
 4. **Navigate** to the notification channel (email, Slack, etc.)
 5. **Interact** to compose and send the notification
 
-No new tools. No new APIs. No new credentials. Just your browser, your AI, and Gasoline connecting them.
+No new tools. No new APIs. No new credentials. Just your browser, your AI, and.gasoline connecting them.

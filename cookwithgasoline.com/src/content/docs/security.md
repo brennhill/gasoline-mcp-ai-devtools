@@ -1,12 +1,12 @@
 ---
 title: Security
-description: "Gasoline's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
+description: .gasoline's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['security']
 ---
 
-Gasoline is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).
+STRUM is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).
 
 ## Automatic Credential Stripping
 
@@ -207,7 +207,7 @@ shasum -a 256 bin/gasoline-*
 
 ## Enterprise Deployment
 
-For teams evaluating Gasoline:
+For teams evaluating.gasoline:
 
 - **Data governance:** No data egress — all debugging data stays on the developer's machine, never transmitted externally
 - **Audit trail:** Open source, reproducible builds, no telemetry to verify absence of

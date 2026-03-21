@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.3.0 Released"
+title: .gasoline v5.3.0 Released"
 description: "WebSocket inspection and improved performance"
 date: 2026-01-13T19:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.3.0
 
-Gasoline v5.3.0 adds comprehensive WebSocket inspection and significant performance improvements.
+STRUM v5.3.0 adds comprehensive WebSocket inspection and significant performance improvements.
 
 ### Features
 

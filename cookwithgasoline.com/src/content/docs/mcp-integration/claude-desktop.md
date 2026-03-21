@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Claude Desktop
-description: "Configure Gasoline as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
+title:.gasoline + Claude Desktop
+description: "Configure.gasoline as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'claude', 'desktop']
 ---
 
-Gasoline is an open-source MCP server that gives Claude Desktop real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Claude Desktop real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Configuration
 

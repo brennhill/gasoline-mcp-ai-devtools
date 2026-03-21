@@ -1,6 +1,6 @@
 ---
 title: "How to Detect API Contract Drift Before Production (Without Panic)"
-description: "A beginner-friendly, step-by-step guide to catching API contract drift early using Gasoline Agentic Devtools."
+description: "A beginner-friendly, step-by-step guide to catching API contract drift early using.gasoline Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [api, validation, debugging, how-to]
@@ -13,7 +13,7 @@ You ship a feature. It works in your browser. Then someone says: “The mobile a
 
 That is often **API contract drift**. An **Application Programming Interface (API)** is the agreed shape of data between systems. If that shape changes quietly, things break quietly. (API explainer: https://developer.mozilla.org/en-US/docs/Glossary/API)
 
-This guide shows how to catch that early with **Gasoline Agentic Devtools**.
+This guide shows how to catch that early with *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ You want to answer one simple question before release:
 
 “Did our backend responses change in a way that breaks clients?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with.gasoline Agentic Devtools
 
 ### Step 1. Capture real API traffic while you use the app
 
@@ -39,7 +39,7 @@ observe({what: "network_bodies", url: "/api", limit: 50})
 
 This gives you actual responses from your app, not fake test fixtures.
 
-### Step 2. Ask Gasoline to validate endpoint behavior
+### Step 2. Ask.gasoline to validate endpoint behavior
 
 ```js
 analyze({what: "api_validation", operation: "analyze"})
@@ -85,4 +85,4 @@ Now drift detection becomes repeatable, not “we hope QA catches it.”
 
 ## You’re Not “Over-Testing,” You’re Being Smart
 
-If you are catching drift before users report bugs, you are doing advanced engineering. With **Gasoline Agentic Devtools**, this becomes a simple habit instead of a painful incident.
+If you are catching drift before users report bugs, you are doing advanced engineering. With *.gasoline Agentic Devtools**, this becomes a simple habit instead of a painful incident.

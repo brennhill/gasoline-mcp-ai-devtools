@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.8.0 Released"
+title: .gasoline v5.8.0 Released"
 description: "Early-patch WebSocket capture, visual action toasts, and a 106-test UAT suite"
 date: 2026-02-06T22:52:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.8.0
 
-Gasoline v5.8.0 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
+STRUM v5.8.0 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
 
 ### Features
 

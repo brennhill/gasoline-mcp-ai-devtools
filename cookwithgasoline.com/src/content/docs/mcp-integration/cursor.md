@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Cursor
-description: "Configure Gasoline as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
+title:.gasoline + Cursor
+description: "Configure.gasoline as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'cursor']
 ---
 
-Gasoline is an open-source MCP server that gives Cursor's AI real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Cursor's AI real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Configuration
 
@@ -44,7 +44,7 @@ After restarting Cursor, the AI can:
 - Check WebSocket connection states
 - Run accessibility audits
 
-Ask: _"What browser errors are happening?"_ — Cursor queries Gasoline automatically.
+Ask: _"What browser errors are happening?"_ — Cursor queries.gasoline automatically.
 
 ## Troubleshooting
 

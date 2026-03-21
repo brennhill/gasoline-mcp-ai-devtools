@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Gemini CLI
-description: "Configure Gasoline as an MCP server for Gemini CLI. Give Gemini access to browser console logs, network errors, and DOM state."
+title:.gasoline + Gemini CLI
+description: "Configure.gasoline as an MCP server for Gemini CLI. Give Gemini access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'gemini']
 ---
 
-Gasoline is an open-source MCP server that gives Gemini CLI access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Gemini CLI access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Auto-Install
 
@@ -44,7 +44,7 @@ If using npx:
 
 ## Usage
 
-After configuring, Gemini CLI can access Gasoline's full MCP toolset.
+After configuring, Gemini CLI can access.gasoline's full MCP toolset.
 
 ## Troubleshooting
 

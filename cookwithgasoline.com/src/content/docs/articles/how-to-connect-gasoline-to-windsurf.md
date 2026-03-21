@@ -1,6 +1,6 @@
 ---
-title: "How to Connect Gasoline to Windsurf"
-description: "Simple beginner setup for connecting Windsurf to Gasoline Agentic Devtools through MCP."
+title: "How to Connect.gasoline to Windsurf"
+description: "Simple beginner setup for connecting Windsurf to.gasoline Agentic Devtools through MCP."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, windsurf, mcp, setup]
@@ -18,13 +18,13 @@ If you use Windsurf and want real browser evidence during development, this guid
 - **MCP (Model Context Protocol):** A tool integration standard for AI assistants. https://modelcontextprotocol.io/specification/
 - **Runtime evidence:** What actually happened in the browser (errors, requests, page state).
 
-## Step 1: Check Gasoline availability
+## Step 1: Check.gasoline availability
 
 ```bash
 npx -y gasoline-mcp --help
 ```
 
-## Step 2: Add Gasoline to your Windsurf MCP servers
+## Step 2: Add.gasoline to your Windsurf MCP servers
 
 ```json
 {
@@ -58,6 +58,6 @@ This gives your team a reproducible script instead of vague notes.
 
 ## Image and Diagram Callouts
 
-> [Image Idea] Windsurf MCP config with Gasoline server entry.
+> [Image Idea] Windsurf MCP config with.gasoline server entry.
 
-> [Diagram Idea] Windsurf request -> Gasoline tools -> bug artifact output.
+> [Diagram Idea] Windsurf request ->.gasoline tools -> bug artifact output.

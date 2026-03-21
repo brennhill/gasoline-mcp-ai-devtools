@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v3.0.0 Released"
+title: .gasoline v3.0.0 Released"
 description: "MCP stdio server - proper bidirectional protocol implementation"
 date: 2025-12-19T01:23:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v3']
 
 ## What's New in v3.0.0
 
-Gasoline v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
+STRUM v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
 
 ### Major Changes
 

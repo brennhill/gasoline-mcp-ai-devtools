@@ -13,7 +13,7 @@ normalized_tags: ['ci', 'debugging', 'testing', 'regression', 'articles', 'repro
 
 **Continuous Integration (CI)** means automated checks run on a shared server for every code change. CI overview: https://en.wikipedia.org/wiki/Continuous_integration
 
-This guide shows how to make CI-only browser bugs reproducible with **Gasoline Agentic Devtools**.
+This guide shows how to make CI-only browser bugs reproducible with *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ You want one deterministic answer:
 
 “What exact browser sequence fails in CI, and how do we replay it locally?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with.gasoline Agentic Devtools
 
 ### Step 1. Capture the failing flow
 
@@ -79,4 +79,4 @@ That is exactly what flaky bug hunting needs.
 
 ## Final Nudge
 
-If you can reproduce the issue, you can fix the issue. **Gasoline Agentic Devtools** helps you turn “mystery CI failure” into a clear, teachable workflow.
+If you can reproduce the issue, you can fix the issue. *.gasoline Agentic Devtools** helps you turn “mystery CI failure” into a clear, teachable workflow.

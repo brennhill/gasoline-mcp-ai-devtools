@@ -1,12 +1,12 @@
 ---
-title: Gasoline + OpenCode
-description: "Configure Gasoline as an MCP server for OpenCode. Give OpenCode access to browser console logs, network errors, and DOM state."
+title:.gasoline + OpenCode
+description: "Configure.gasoline as an MCP server for OpenCode. Give OpenCode access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'opencode']
 ---
 
-Gasoline is an open-source MCP server that gives OpenCode access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives OpenCode access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Auto-Install
 
@@ -34,7 +34,7 @@ Add to `~/.config/opencode/opencode.json`:
 
 ## Usage
 
-After configuring, OpenCode can access Gasoline's full MCP toolset.
+After configuring, OpenCode can access.gasoline's full MCP toolset.
 
 ## Troubleshooting
 

@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.7.5 Released"
+title: .gasoline v5.7.5 Released"
 description: "Fast-start MCP mode, port diagnostics, and improved error messages for better developer experience"
 date: 2026-02-06
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.7.5
 
-This release makes Gasoline MCP feel instant. The new fast-start mode responds to MCP clients in ~130ms while the daemon boots in the background.
+This release makes.gasoline MCP feel instant. The new fast-start mode responds to MCP clients in ~130ms while the daemon boots in the background.
 
 ### Fast-Start MCP Mode
 

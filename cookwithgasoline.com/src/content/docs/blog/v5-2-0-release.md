@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.2.0 Released"
+title: .gasoline v5.2.0 Released"
 description: "Improved error handling and network inspection"
 date: 2026-01-10T20:15:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.2.0
 
-Gasoline v5.2.0 improves error handling, network inspection, and adds better filtering options for high-volume environments.
+STRUM v5.2.0 improves error handling, network inspection, and adds better filtering options for high-volume environments.
 
 ### Features
 

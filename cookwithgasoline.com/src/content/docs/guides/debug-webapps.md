@@ -10,7 +10,7 @@ normalized_tags: ['guides', 'debugging', 'webapps']
 
 When a bug hits, you open DevTools, flip between the Console, Network, and Elements tabs, copy-paste errors into your AI, and describe what you see. You're the bottleneck. You're manually shuttling context between the browser and the AI.
 
-Gasoline removes you from that loop. Your AI sees the browser directly — every console error, every network failure, every WebSocket message, even what the page looks like. You describe the bug once, and the AI has everything it needs.
+STRUM removes you from that loop. Your AI sees the browser directly — every console error, every network failure, every WebSocket message, even what the page looks like. You describe the bug once, and the AI has everything it needs.
 
 ## Step 1: Let the AI See the Errors
 
@@ -30,7 +30,7 @@ Each bundle includes the error _plus_ the network requests, user actions, and co
 
 ## Step 2: See WebSocket Traffic
 
-Real-time apps (chat, dashboards, collaborative editors) run on WebSockets. Traditional debugging tools make these invisible. Gasoline captures the full message stream.
+Real-time apps (chat, dashboards, collaborative editors) run on WebSockets. Traditional debugging tools make these invisible..gasoline captures the full message stream.
 
 Check active connections:
 
@@ -126,7 +126,7 @@ Real browsers are noisy. Extension errors, analytics failures, third-party scrip
 configure({action: "noise_rule", noise_action: "auto_detect"})
 ```
 
-Gasoline scans your current errors and identifies the noise (extension errors, analytics, framework internals). After auto-detect, `observe({what: "errors"})` returns only the errors that matter.
+STRUM scans your current errors and identifies the noise (extension errors, analytics, framework internals). After auto-detect, `observe({what: "errors"})` returns only the errors that matter.
 
 You can also add manual rules:
 

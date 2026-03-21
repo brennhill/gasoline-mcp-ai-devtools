@@ -5,15 +5,15 @@
 ### Package Structure:
 ```
 pypi/
-├── gasoline-agentic-browser/              # Main package
+├── strum-agentic-browser/              # Main package
 │   ├── pyproject.toml
 │   ├── setup.py
-│   ├── gasoline_agentic_browser/
+│   ├── strum_agentic_browser/
 │   │   ├── __init__.py
 │   │   ├── __main__.py        # Entry point
 │   │   └── platform.py        # Platform detection
 │   └── README.md
-├── gasoline-agentic-browser-darwin-arm64/  # Platform-specific packages
+├── strum-agentic-browser-darwin-arm64/  # Platform-specific packages
 ├── gasoline-agentic-browser-darwin-x64/
 ├── gasoline-agentic-browser-linux-arm64/
 ├── gasoline-agentic-browser-linux-x64/
@@ -22,24 +22,24 @@ pypi/
 ```
 
 ### How it Works:
-1. **Main package** (`gasoline-agentic-browser`):
+1. **Main package** (`strum-agentic-browser`):
    - No binary, just Python wrapper
    - Detects platform at runtime
    - Imports platform-specific package
-   - Entry point: `gasoline-agentic-browser` command
+   - Entry point: `strum-agentic-browser` command
 
-2. **Platform packages** (e.g., `gasoline-agentic-browser-darwin-arm64`):
+2. **Platform packages** (e.g., `strum-agentic-browser-darwin-arm64`):
    - Contains the Go binary for that platform
    - Listed as extras in main package
 
 3. **Installation**:
    ```bash
-   pip install gasoline-agentic-browser
+   pip install strum-agentic-browser
    # Automatically installs correct platform-specific package
    ```
 
 ### Benefits:
-- Users just run `pip install gasoline-agentic-browser`
+- Users just run `pip install strum-agentic-browser`
 - Same UX as NPM version
 - Automatic platform detection
 - Smaller downloads (only installs one platform)
@@ -48,22 +48,22 @@ pypi/
 ### pyproject.toml Example:
 ```toml
 [project]
-name = "gasoline-agentic-browser"
+name = "strum-agentic-browser"
 version = "5.1.0"
 description = "Agentic Browser Devtools - rapid e2e web development"
 requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
-darwin-arm64 = ["gasoline-agentic-browser-darwin-arm64==5.1.0"]
-darwin-x64 = ["gasoline-agentic-browser-darwin-x64==5.1.0"]
-linux-arm64 = ["gasoline-agentic-browser-linux-arm64==5.1.0"]
-linux-x64 = ["gasoline-agentic-browser-linux-x64==5.1.0"]
-win32-x64 = ["gasoline-agentic-browser-win32-x64==5.1.0"]
+darwin-arm64 = ["strum-agentic-browser-darwin-arm64==5.1.0"]
+darwin-x64 = ["strum-agentic-browser-darwin-x64==5.1.0"]
+linux-arm64 = ["strum-agentic-browser-linux-arm64==5.1.0"]
+linux-x64 = ["strum-agentic-browser-linux-x64==5.1.0"]
+win32-x64 = ["strum-agentic-browser-win32-x64==5.1.0"]
 
 [project.scripts]
-gasoline-agentic-browser = "gasoline_agentic_browser.__main__:main"
-
+strum-agentic-browser = "strum_agentic_browser.__main__:main"
+```
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"

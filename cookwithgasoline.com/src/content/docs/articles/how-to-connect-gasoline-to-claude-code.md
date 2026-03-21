@@ -1,6 +1,6 @@
 ---
-title: "How to Connect Gasoline to Claude Code"
-description: "A step-by-step beginner guide to connect Claude Code with Gasoline Agentic Devtools using MCP."
+title: "How to Connect.gasoline to Claude Code"
+description: "A step-by-step beginner guide to connect Claude Code with.gasoline Agentic Devtools using MCP."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, claude-code, mcp, setup]
@@ -20,7 +20,7 @@ This is the setup.
 - **MCP (Model Context Protocol):** Standard for connecting AI assistants to tools. https://modelcontextprotocol.io/specification/
 - **JSON (JavaScript Object Notation):** Text format used for tool config.
 
-## Step 1: Confirm Gasoline is installed
+## Step 1: Confirm.gasoline is installed
 
 ```bash
 npx -y gasoline-mcp --help
@@ -28,7 +28,7 @@ npx -y gasoline-mcp --help
 
 If this command works, you are ready to connect.
 
-## Step 2: Add Gasoline in Claude Code MCP config
+## Step 2: Add.gasoline in Claude Code MCP config
 
 Add this server entry:
 
@@ -66,4 +66,4 @@ Now Claude Code can help with bug triage using runtime evidence.
 
 > [Image Idea] Claude Code MCP config panel with the `gasoline` block highlighted.
 
-> [Diagram Idea] Claude Code prompt -> Gasoline observe/analyze -> fix suggestion loop.
+> [Diagram Idea] Claude Code prompt ->.gasoline observe/analyze -> fix suggestion loop.

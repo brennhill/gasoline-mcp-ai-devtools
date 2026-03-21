@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v1.0.0 Released"
+title: .gasoline v1.0.0 Released"
 description: "Initial proof of concept - Go server with Chrome extension communication"
 date: 2025-12-11T22:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v1']
 
 ## What's New in v1.0.0
 
-Gasoline v1.0.0 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
+STRUM v1.0.0 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
 
 ### Features
 

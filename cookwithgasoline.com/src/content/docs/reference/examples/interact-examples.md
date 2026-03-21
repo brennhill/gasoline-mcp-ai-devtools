@@ -2505,7 +2505,7 @@ Fix: Use a valid interact action value, e.g. `clipboard_read`.
   "tool": "interact",
   "arguments": {
     "what": "clipboard_write",
-    "text": "Copied by Gasoline"
+    "text": "Copied by.gasoline"
   }
 }
 ```
@@ -2531,7 +2531,7 @@ Fix: Use a valid interact action value, e.g. `clipboard_read`.
   "tool": "interact",
   "arguments": {
     "what": "not_a_real_mode",
-    "text": "Copied by Gasoline"
+    "text": "Copied by.gasoline"
   }
 }
 ```

@@ -16,11 +16,11 @@
   </defs>
 
   <!-- Title -->
-  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">Gasoline Logs: Server-Browser Log Correlation</text>
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">STRUM Logs: Server-Browser Log Correlation</text>
 
   <!-- Main server box -->
   <rect class="section-dark" x="20" y="60" width="960" height="380" rx="6"/>
-  <text class="text-light" x="40" y="80" style="font-size: 13px; font-weight: bold;">⚙️  Gasoline Server (Go) — Log Capture & Correlation</text>
+  <text class="text-light" x="40" y="80" style="font-size: 13px; font-weight: bold;">⚙️  STRUM Server (Go) — Log Capture & Correlation</text>
 
   <!-- Capture Engines section -->
   <rect class="section-light" x="40" y="100" width="920" height="90" rx="4"/>

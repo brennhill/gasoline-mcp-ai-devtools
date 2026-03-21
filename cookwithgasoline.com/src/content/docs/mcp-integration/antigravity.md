@@ -1,12 +1,12 @@
 ---
-title: Gasoline + Antigravity
-description: "Configure Gasoline as an MCP server for Google Antigravity. Give Antigravity's AI agent access to browser console logs, network errors, and DOM state."
+title:.gasoline + Antigravity
+description: "Configure.gasoline as an MCP server for Google Antigravity. Give Antigravity's AI agent access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'antigravity']
 ---
 
-Gasoline is an open-source MCP server that gives Antigravity's AI agent access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+STRUM is an open-source MCP server that gives Antigravity's AI agent access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Auto-Install
 
@@ -46,7 +46,7 @@ If using npx:
 
 ## Usage
 
-After configuring, open an Agent session in Antigravity. The AI agent can access Gasoline's full MCP toolset.
+After configuring, open an Agent session in Antigravity. The AI agent can access.gasoline's full MCP toolset.
 
 ## Troubleshooting
 

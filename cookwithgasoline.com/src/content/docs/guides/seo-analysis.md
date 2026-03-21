@@ -1,6 +1,6 @@
 ---
 title: SEO Analysis Workflow
-description: Run practical SEO checks with Gasoline by comparing rendered metadata, crawl behavior, and on-page quality signals across your site and competitors.
+description: Run practical SEO checks with.gasoline by comparing rendered metadata, crawl behavior, and on-page quality signals across your site and competitors.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'seo', 'analysis']
@@ -10,7 +10,7 @@ normalized_tags: ['guides', 'seo', 'analysis']
 
 This workflow is for teams that want quick, evidence-based SEO checks from real rendered pages.
 
-## What You Can Validate with Gasoline
+## What You Can Validate with.gasoline
 
 - Page titles and descriptions from rendered DOM
 - Heading structure consistency (`h1`, `h2`, `h3`)
@@ -29,7 +29,7 @@ This workflow is for teams that want quick, evidence-based SEO checks from real 
 
 ## Why This Works
 
-Gasoline checks the page after scripts, styles, and client rendering have loaded. That gives you a more realistic view than static HTML alone.
+STRUM checks the page after scripts, styles, and client rendering have loaded. That gives you a more realistic view than static HTML alone.
 
 ## Next Steps
 

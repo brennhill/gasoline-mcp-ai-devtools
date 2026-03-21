@@ -57,14 +57,14 @@ trap cleanup EXIT
 
 echo -e "${ORANGE}${BOLD}"
 cat <<'EOF'
-   ____                 _ _
-  / ___| __ _ ___  ___ | (_)_ __   ___
- | |  _ / _` / __|/ _ \| | | '_ \ / _ \
- | |_| | (_| \__ \ (_) | | | | | |  __/
-  \____|\__,_|___/\___/|_|_|_| |_|\___|
+  ____ _____ ____  _   _ __  __ 
+ / ___|_   _|  _ \| | | |  \/  |
+ \___ \ | | | |_) | | | | |\/| |
+  ___) || | |  _ <| |_| | |  | |
+ |____/ |_| |_| \_\\___/|_|  |_|
 EOF
 echo -e "${NC}"
-echo -e "${ORANGE}${BOLD}Gasoline Installer${NC}"
+echo -e "${ORANGE}${BOLD}STRUM Installer${NC}"
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
     echo -e "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)"

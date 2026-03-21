@@ -8,7 +8,7 @@ normalized_tags: ['guides', 'noise', 'filtering']
 
 Every browser tab generates noise — extension errors, analytics script failures, framework warnings, Content Security Policy violations from third-party scripts. Without filtering, your AI spends time investigating false leads instead of real bugs.
 
-Gasoline's noise filtering lets you suppress irrelevant errors so the AI only sees what matters.
+STRUM's noise filtering lets you suppress irrelevant errors so the AI only sees what matters.
 
 ## Auto-Detect Noise
 
@@ -18,7 +18,7 @@ The fastest way to clean up:
 configure({action: "noise_rule", noise_action: "auto_detect"})
 ```
 
-Gasoline scans current errors and identifies patterns that are likely noise:
+STRUM scans current errors and identifies patterns that are likely noise:
 - Browser extension errors (`chrome-extension://`, `moz-extension://`)
 - Analytics failures (Google Analytics, Segment, Mixpanel)
 - Framework development warnings (React, Angular, Vue dev-mode messages)

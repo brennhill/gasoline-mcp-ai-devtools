@@ -1,6 +1,6 @@
 ---
 title: Downloads
-description: Download Gasoline extension and tools for your platform
+description: Download.gasoline extension and tools for your platform
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['downloads']
@@ -27,18 +27,18 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 **What this does:**
 - Downloads the platform binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
+- Extracts the Chrome extension to `~.gasolineAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 After running the installer, load the extension in Chrome:
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top right)
 3. Click **Load unpacked**
-4. Select **`~/GasolineAgenticDevtoolExtension`**
+4. Select **`~.gasolineAgenticDevtoolExtension`**
 
 ### Chrome Extension
 
-The extension captures browser telemetry and sends it to the local Gasoline server.
+The extension captures browser telemetry and sends it to the local.gasoline server.
 
 #### What's New in 0.8.x
 
@@ -91,7 +91,7 @@ make build
 To verify the extension installed correctly:
 
 1. Open any webpage
-2. Click the **Gasoline icon** (<img src="/images/logo.png" alt="Gasoline" style="display: inline; width: 20px; height: 20px; vertical-align: middle; margin: 0; padding: 0;" />) in your toolbar
+2. Click the *.gasoline icon** (<img src="/images/logo.png" alt=.gasoline" style="display: inline; width: 20px; height: 20px; vertical-align: middle; margin: 0; padding: 0;" />) in your toolbar
 3. You should see the popup with recording and tracking options
 4. Check the extension's popup shows "Connected" status
 
@@ -108,7 +108,7 @@ To verify the binary:
 - Check that Developer mode is enabled
 
 **Recording not working?**
-- Click the Gasoline icon and approve the recording request
+- Click the.gasoline icon and approve the recording request
 - Ensure the tab you want to record is the tracked tab
 - Check your Chrome permissions for microphone access (if recording audio)
 

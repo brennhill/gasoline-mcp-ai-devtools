@@ -421,7 +421,7 @@ This is the best way to discover what's clickable on an unfamiliar page. The AI 
 
 ### execute_js
 
-Run arbitrary JavaScript in the page context. See [How Gasoline Executes Page Scripts](/execute-scripts/) for the full deep dive.
+Run arbitrary JavaScript in the page context. See [How.gasoline Executes Page Scripts](/execute-scripts/) for the full deep dive.
 
 ```js
 interact({what: "execute_js", script: "document.title"})
@@ -455,7 +455,7 @@ interact({what: "highlight", selector: "text=Submit", duration_ms: 3000})
 | `selector` | string | — | Element to highlight |
 | `duration_ms` | number | 5000 | How long to show the highlight |
 
-<!-- Screenshot: Element highlighted with Gasoline's visual overlay -->
+<!-- Screenshot: Element highlighted with.gasoline's visual overlay -->
 
 ### subtitle
 

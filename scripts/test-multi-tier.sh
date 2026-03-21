@@ -12,7 +12,7 @@ TEST_DIR="$SCRIPT_DIR/tests"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════════════════════╗"
-echo "║          GASOLINE UAT 6-TIER PARALLEL TEST SUITE — ALL START NOW              ║"
+echo "║            STRUM UAT 6-TIER PARALLEL TEST SUITE — ALL START NOW               ║"
 echo "║                                                                                ║"
 echo "║ Tier 0 (30s):  Health Check                          ▶ STARTS NOW             ║"
 echo "║ Tier 1 (1min): Core Protocol + Basic Tools           ▶ STARTS NOW             ║"

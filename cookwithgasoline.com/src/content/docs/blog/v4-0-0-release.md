@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v4.0.0 Released"
+title: .gasoline v4.0.0 Released"
 description: "Refinement phase - polishing the core, adding developer experience features"
 date: 2025-12-22T21:15:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v4']
 
 ## What's New in v4.0.0
 
-Gasoline v4.0.0 is the refinement phase. The core architecture from v3 works well—this version focuses on making it robust and adding missing developer-focused features.
+STRUM v4.0.0 is the refinement phase. The core architecture from v3 works well—this version focuses on making it robust and adding missing developer-focused features.
 
 ### Major Features
 

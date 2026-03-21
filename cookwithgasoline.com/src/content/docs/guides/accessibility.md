@@ -1,12 +1,12 @@
 ---
 title: "Accessibility Testing"
-description: "Run WCAG accessibility audits with Gasoline's built-in axe-core engine. Scope audits, filter by WCAG tags, export SARIF reports for CI/CD, and track remediation progress."
+description: "Run WCAG accessibility audits with.gasoline's built-in axe-core engine. Scope audits, filter by WCAG tags, export SARIF reports for CI/CD, and track remediation progress."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'accessibility']
 ---
 
-Gasoline includes a full accessibility auditing engine powered by [axe-core](https://github.com/dequelabs/axe-core). Your AI assistant can audit pages for WCAG violations, explain what's wrong and why it matters, scope audits to specific components, and export results in SARIF format for CI/CD integration.
+STRUM includes a full accessibility auditing engine powered by [axe-core](https://github.com/dequelabs/axe-core). Your AI assistant can audit pages for WCAG violations, explain what's wrong and why it matters, scope audits to specific components, and export results in SARIF format for CI/CD integration.
 
 ## Quick Start
 

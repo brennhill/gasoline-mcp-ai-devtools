@@ -1,6 +1,6 @@
 ---
 title: Technical Architecture
-description: How Gasoline MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
+description: How.gasoline MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['architecture']
@@ -8,7 +8,7 @@ normalized_tags: ['architecture']
 
 ## The Big Picture
 
-Gasoline has three components: a Chrome extension that captures browser telemetry, a Go server that stores and serves it, and the MCP protocol that connects everything to your AI tool.
+STRUM has three components: a Chrome extension that captures browser telemetry, a Go server that stores and serves it, and the MCP protocol that connects everything to your AI tool.
 
 ![Architecture Diagram](../../assets/diagrams/architecture-main.svg)
 
@@ -94,11 +94,11 @@ This is critical for long-running sessions where the AI periodically checks for 
 
 A unique challenge: multiple AI tools need to share the same browser telemetry. Claude Code and Cursor might both be connected simultaneously.
 
-Gasoline solves this with the **stdio bridge pattern**:
+STRUM solves this with the **stdio bridge pattern**:
 
 ```text
 Claude Code → npx gasoline-mcp (stdio) ──┐
-Cursor      → npx gasoline-mcp (stdio) ──┼──► Gasoline Server (HTTP :7890)
+Cursor      → npx gasoline-mcp (stdio) ──┼──►.gasoline Server (HTTP :7890)
 Zed         → npx gasoline-mcp (stdio) ──┘           ↕
                                               Browser Extension
 ```
@@ -137,7 +137,7 @@ Every MCP client connection follows a 6-step lifecycle:
 
 ## Security Boundaries
 
-Gasoline enforces strict security at every layer:
+STRUM enforces strict security at every layer:
 
 - **Localhost only.** The Go server binds to `127.0.0.1`. It never accepts remote connections. There is no configuration option to change this.
 - **No debug port.** No `--remote-debugging-port`. Chrome's security sandbox stays intact.
@@ -164,7 +164,7 @@ This means:
 
 ## The Five Tools
 
-Everything Gasoline does is exposed through exactly five MCP tools:
+Everything.gasoline does is exposed through exactly five MCP tools:
 
 | Tool | Purpose | Modes |
 |---|---|---|

@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.0.0 Released"
+title: .gasoline v5.0.0 Released"
 description: "Initial public release with core observability features"
 date: 2026-01-04T00:03:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.0.0
 
-Gasoline v5.0.0 marks the initial public release of the Gasoline MCP protocol and extension. This release includes core browser observability features for AI coding assistants.
+STRUM v5.0.0 marks the initial public release of the.gasoline MCP protocol and extension. This release includes core browser observability features for AI coding assistants.
 
 ### Features
 

@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v2.0.0 Released"
+title: .gasoline v2.0.0 Released"
 description: "First MCP implementation - proof of concept, not production-ready"
 date: 2025-12-14T23:47:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v2']
 
 ## What's New in v2.0.0
 
-Gasoline v2.0.0 adds MCP protocol support. The implementation is naive and has significant limitations, but it works as a proof of concept.
+STRUM v2.0.0 adds MCP protocol support. The implementation is naive and has significant limitations, but it works as a proof of concept.
 
 ### Features
 

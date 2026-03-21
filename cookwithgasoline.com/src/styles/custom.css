@@ -39,7 +39,7 @@
   --sl-color-gray-4: #63717f;
   --sl-color-gray-5: #8d98a5;
   --sl-color-gray-6: #b8c0cb;
-  --sl-color-black: #111111;
+  --sl-color-black: #302d2a;
   --sl-color-bg: var(--g-bg);
   --sl-color-bg-nav: #fffefa;
   --sl-color-bg-sidebar: #fbfaf5;
@@ -165,8 +165,7 @@ site-search kbd {
   height: var(--g-hero-flame-badge);
   transform: translateX(-50%);
   transform-origin: 50% 100%;
-  background: url('/images/flame-flicker/icon-flicker-3-normal.svg') 50% 98% / 100% 100% no-repeat;
-  animation: gmodern-flame-frame 1.2s steps(1, end) infinite;
+  background: url('/images/logo-animated.svg') 50% 50% / 100% 100% no-repeat;
 }
 
 .hero h1 {
@@ -252,41 +251,6 @@ site-search kbd {
 
 .sl-link-button .icon {
   transform: translateY(-1px);
-}
-
-@keyframes gmodern-flame-frame {
-  0%,
-  100% {
-    background-image: url('/images/flame-flicker/icon-flicker-1-tiny.svg');
-  }
-
-  12.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-2-small.svg');
-  }
-
-  25% {
-    background-image: url('/images/flame-flicker/icon-flicker-3-normal.svg');
-  }
-
-  37.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-4-medium.svg');
-  }
-
-  50% {
-    background-image: url('/images/flame-flicker/icon-flicker-5-large.svg');
-  }
-
-  62.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-6-medium.svg');
-  }
-
-  75% {
-    background-image: url('/images/flame-flicker/icon-flicker-7-smallmed.svg');
-  }
-
-  87.5% {
-    background-image: url('/images/flame-flicker/icon-flicker-8-small.svg');
-  }
 }
 
 .gmodern-page {

@@ -24,7 +24,7 @@ function toYamlArray(values: string[]) {
 const slugToPath = (slug: string | undefined) => slug || 'index'
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'Gasoline MCP'
+  const title = entry.data?.title ?? 'STRUM MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
   const verifiedVersion = entry.data?.last_verified_version ?? siteVersionLabel

@@ -1,6 +1,6 @@
 ---
-title: How Gasoline Executes Page Scripts
-description: A deep dive into how Gasoline runs JavaScript in the browser — three execution worlds, CSP auto-fallback, and why it works on sites that block eval().
+title: How.gasoline Executes Page Scripts
+description: A deep dive into how.gasoline runs JavaScript in the browser — three execution worlds, CSP auto-fallback, and why it works on sites that block eval().
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['execute', 'scripts']
@@ -14,11 +14,11 @@ Modern web applications use **Content Security Policy (CSP)** to restrict what s
 
 This means a naive approach (inject a script tag, run some code) fails silently on millions of production websites.
 
-Gasoline solves this with a **three-world execution model** that automatically detects CSP restrictions and falls back to the right approach.
+STRUM solves this with a **three-world execution model** that automatically detects CSP restrictions and falls back to the right approach.
 
 ## The Three Worlds
 
-When you call `interact({action: "execute_js", script: "document.title"})`, Gasoline chooses one of three execution worlds:
+When you call `interact({action: "execute_js", script: "document.title"})`,.gasoline chooses one of three execution worlds:
 
 ### World 1: Main (Page Context)
 
@@ -88,7 +88,7 @@ This is the **default** and the one you should almost always use.
 
 ![CSP Auto-Fallback Flowchart](../../assets/diagrams/execute-scripts-csp-fallback.svg)
 
-The auto mode means you don't need to know whether a site uses CSP. Gasoline figures it out and picks the right path.
+The auto mode means you don't need to know whether a site uses CSP..gasoline figures it out and picks the right path.
 
 ## The Gmail Problem (and How It's Solved)
 
@@ -98,14 +98,14 @@ Gmail is one of the most CSP-restrictive sites on the internet. It uses:
 - **Trusted Types** that block all dynamic code creation
 - CSP headers that prevent inline scripts
 
-A typical browser automation tool fails on Gmail entirely. Gasoline's auto fallback handles it transparently:
+A typical browser automation tool fails on Gmail entirely..gasoline's auto fallback handles it transparently:
 
 1. **First attempt:** inject.js tries `new Function(script)` — Gmail's CSP blocks it
 2. **Detection:** The error is caught and identified as a CSP violation
 3. **Fallback:** `chrome.scripting.executeScript` injects the code natively — Chrome bypasses its own CSP for extension APIs
 4. **Result:** The script executes, the result returns, the caller never knew there was a problem
 
-This is why Gasoline can automate Gmail (compose emails, read inboxes, click buttons) while tools that depend on `--remote-debugging-port` and CDP's `Runtime.evaluate` struggle with CSP-heavy sites.
+This is why.gasoline can automate Gmail (compose emails, read inboxes, click buttons) while tools that depend on `--remote-debugging-port` and CDP's `Runtime.evaluate` struggle with CSP-heavy sites.
 
 ## Timeouts and Error Handling
 
@@ -117,7 +117,7 @@ interact({action: "execute_js", script: "longRunningOperation()", timeout_ms: 10
 
 Default: 5 seconds. Maximum: configurable per call.
 
-If the script hangs (infinite loop, blocking network call), Gasoline:
+If the script hangs (infinite loop, blocking network call),.gasoline:
 
 1. Kills the execution after the timeout
 2. Returns a clear error: "Script execution timed out after 10000ms"

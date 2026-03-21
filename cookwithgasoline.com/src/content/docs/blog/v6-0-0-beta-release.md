@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v6.0.0 Released"
+title: .gasoline v6.0.0 Released"
 description: "AI agents can now check all links on your page, automate your browser with complete visibility, and identify performance bottlenecks in real time."
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v6', 'beta']
 
 ## What's New in v6.0.0
 
-Gasoline v6.0.0 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
+STRUM v6.0.0 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
 
 ### Features
 

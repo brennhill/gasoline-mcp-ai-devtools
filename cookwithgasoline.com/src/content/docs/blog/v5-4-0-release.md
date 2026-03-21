@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.4.0 Released"
+title: .gasoline v5.4.0 Released"
 description: "Redesigned interaction model and improved AI agent integration"
 date: 2026-01-17T22:18:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.4.0
 
-Gasoline v5.4.0 redesigns the interaction model for better AI agent integration and reliability.
+STRUM v5.4.0 redesigns the interaction model for better AI agent integration and reliability.
 
 ### Features
 

@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.1.0: Single-Tab Tracking Isolation"
+title: .gasoline v5.1.0: Single-Tab Tracking Isolation"
 description: "v5.1.0 fixes a critical privacy vulnerability where all browser tabs were captured regardless of tracking state. Plus network schema improvements and PyPI distribution."
 date: 2026-01-28T20:25:00Z
 authors:
@@ -13,7 +13,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['--releases', 'releases', 'security', 'privacy', 'blog', 'v5', 'release']
 ---
 
-Gasoline v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
+STRUM v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
 
 ## The Problem: All Tabs Were Captured
 
@@ -36,7 +36,7 @@ The button has been renamed from "Track This Page" to **"Track This Tab"** to re
 
 When no tab is tracked, the MCP server now prepends a warning to all `observe()` responses:
 
-> WARNING: No tab is being tracked. Data capture is disabled. Ask the user to click 'Track This Tab' in the Gasoline extension popup.
+> WARNING: No tab is being tracked. Data capture is disabled. Ask the user to click 'Track This Tab' in the.gasoline extension popup.
 
 This prevents the AI assistant from silently operating on stale or missing data.
 
@@ -53,7 +53,7 @@ These changes help LLMs interpret network data without guessing units.
 
 ## PyPI Distribution
 
-Gasoline is now available on PyPI alongside NPM:
+STRUM is now available on PyPI alongside NPM:
 
 ```bash
 pip install gasoline-mcp

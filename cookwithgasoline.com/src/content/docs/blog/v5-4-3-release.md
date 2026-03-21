@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.4.3 Released"
+title: .gasoline v5.4.3 Released"
 description: "Bug fixes and stability improvements"
 date: 2026-01-18
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.4.3
 
-Gasoline v5.4.3 includes additional bug fixes and stability improvements following v5.4.1.
+STRUM v5.4.3 includes additional bug fixes and stability improvements following v5.4.1.
 
 ### Fixes
 

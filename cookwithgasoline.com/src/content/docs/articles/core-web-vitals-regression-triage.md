@@ -1,6 +1,6 @@
 ---
 title: "Core Web Vitals Regression Triage for Busy Teams"
-description: "A practical, plain-language guide to finding and fixing Core Web Vitals regressions with Gasoline Agentic Devtools."
+description: "A practical, plain-language guide to finding and fixing Core Web Vitals regressions with.gasoline Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [performance, web-vitals, triage, debugging]
@@ -13,7 +13,7 @@ When pages feel slower after a release, users notice before dashboards do.
 
 **Core Web Vitals** are user-centered performance metrics from Google, including Largest Contentful Paint, Interaction to Next Paint, and Cumulative Layout Shift. https://web.dev/articles/vitals
 
-Let’s triage regressions quickly with **Gasoline Agentic Devtools**.
+Let’s triage regressions quickly with *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ You need to answer:
 
 “What changed, where did it regress, and what fix gives fastest impact?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with.gasoline Agentic Devtools
 
 ### Step 1. Capture current vitals
 
@@ -72,4 +72,4 @@ configure({what: "log_diff", original_id: "rec-perf-before", replay_id: "rec-per
 
 ## You’re Doing Performance Like a Pro
 
-Performance triage is not about perfection in one day. It is about high-impact steps in the right order. **Gasoline Agentic Devtools** helps you do exactly that.
+Performance triage is not about perfection in one day. It is about high-impact steps in the right order. *.gasoline Agentic Devtools** helps you do exactly that.

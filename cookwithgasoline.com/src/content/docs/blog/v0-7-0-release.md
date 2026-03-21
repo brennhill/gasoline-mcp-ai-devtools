@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v0.7.0 Released"
+title: .gasoline v0.7.0 Released"
 description: "Major release: complete browser observability platform for AI coding agents with zero-dependency Go daemon, Chrome MV3 extension, and 5 MCP tools."
 date: 2026-02-15
 authors: [brennhill]

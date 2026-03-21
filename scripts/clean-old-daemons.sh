@@ -1,11 +1,11 @@
 #!/bin/bash
-# Clean up old gasoline daemons before upgrading
+# Clean up old STRUM daemons before upgrading
 # Usage: ./scripts/clean-old-daemons.sh
-# Or: gasoline --force
+# Or: strum --force
 
 set -euo pipefail
 
-echo "🧹 Gasoline Daemon Cleanup"
+echo "🧹 STRUM Daemon Cleanup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -40,16 +40,16 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS: use lsof and pkill
   echo "Platform: macOS"
   echo ""
-  echo "Searching for gasoline processes..."
+  echo "Searching for STRUM processes..."
 
-  # Get all gasoline processes
+  # Get all STRUM processes
   PIDS=$(lsof -c gasoline -a -d cwd 2>/dev/null | tail -n +2 | awk '{print $2}' | sort -u || true)
 
   if [ -z "$PIDS" ]; then
-    echo "  No gasoline processes found"
+    echo "  No STRUM processes found"
   else
     for pid in $PIDS; do
-      kill_process "$pid" "gasoline"
+      kill_process "$pid" "STRUM"
     done
   fi
 
@@ -60,15 +60,15 @@ elif [[ "$OSTYPE" == "linux"* ]]; then
   # Linux: use pgrep/pkill
   echo "Platform: Linux"
   echo ""
-  echo "Searching for gasoline processes..."
+  echo "Searching for STRUM processes..."
 
   PIDS=$(pgrep -f "gasoline.*--daemon" || true)
 
   if [ -z "$PIDS" ]; then
-    echo "  No gasoline processes found"
+    echo "  No STRUM processes found"
   else
     for pid in $PIDS; do
-      kill_process "$pid" "gasoline"
+      kill_process "$pid" "STRUM"
     done
   fi
 
@@ -76,7 +76,7 @@ elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
   # Windows
   echo "Platform: Windows"
   echo ""
-  echo "Searching for gasoline processes..."
+  echo "Searching for STRUM processes..."
 
   taskkill /F /IM gasoline.exe 2>/dev/null || echo "  No gasoline.exe processes found"
   ((KILLED++))
@@ -97,11 +97,11 @@ done
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ "$KILLED" -gt 0 ]; then
-  echo "✓ Killed $KILLED gasoline process(es)"
-else
-  echo "✓ No running gasoline processes found"
-fi
-echo ""
-echo "Safe to install or upgrade gasoline now:"
-echo "  npm install -g gasoline-mcp@latest"
+  echo "✓ Killed $KILLED STRUM process(es)"
+  else
+  echo "✓ No running STRUM processes found"
+  fi
+
+  echo "Safe to install or upgrade STRUM now:"
+  echo "  npm install -g gasoline-mcp@latest"
 echo ""

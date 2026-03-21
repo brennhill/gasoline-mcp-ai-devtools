@@ -1,12 +1,12 @@
 ---
 title: "Performance Measurement & Refinement"
-description: "Use Gasoline to measure Web Vitals, profile page loads, compare before/after performance, detect regressions, analyze resource loading, and generate PR performance summaries."
+description: "Use.gasoline to measure Web Vitals, profile page loads, compare before/after performance, detect regressions, analyze resource loading, and generate PR performance summaries."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'performance']
 ---
 
-Gasoline captures Core Web Vitals, navigation timing, resource loading, and long tasks from every page your AI visits. Use this data to measure performance, identify bottlenecks, and verify optimizations — all without leaving your AI workflow.
+STRUM captures Core Web Vitals, navigation timing, resource loading, and long tasks from every page your AI visits. Use this data to measure performance, identify bottlenecks, and verify optimizations — all without leaving your AI workflow.
 
 ## Web Vitals
 
@@ -85,7 +85,7 @@ High total blocking time directly impacts INP. If your page has 500ms of blockin
 
 ### User Timing
 
-If your application uses `performance.mark()` and `performance.measure()`, Gasoline captures those too:
+If your application uses `performance.mark()` and `performance.measure()`,.gasoline captures those too:
 
 ```js
 // Your application code
@@ -112,7 +112,7 @@ interact({action: "refresh"})
 interact({action: "navigate", url: "https://myapp.com/dashboard"})
 ```
 
-Gasoline automatically:
+STRUM automatically:
 1. Stashes a **before** performance snapshot
 2. Executes the navigation or refresh
 3. Captures an **after** performance snapshot
@@ -187,7 +187,7 @@ Use this to identify:
 - **Waterfall bottlenecks** — sequential chains where one resource depends on another
 - **Redundant requests** — same resource loaded multiple times
 
-The waterfall data refreshes on demand — if it's more than 1 second stale, Gasoline requests fresh data from the extension.
+The waterfall data refreshes on demand — if it's more than 1 second stale,.gasoline requests fresh data from the extension.
 
 ---
 
@@ -237,7 +237,7 @@ Configure thresholds in a `.gasoline.json` file at your project root:
 }
 ```
 
-When a performance snapshot exceeds a budget, Gasoline reports the violation:
+When a performance snapshot exceeds a budget,.gasoline reports the violation:
 
 ```json
 {
@@ -346,7 +346,7 @@ Produces a before/after comparison table suitable for pull request descriptions 
 
 ## What Gets Captured Automatically
 
-Gasoline collects performance data passively through browser Performance APIs:
+STRUM collects performance data passively through browser Performance APIs:
 
 | API | What It Captures | How |
 |-----|-----------------|-----|

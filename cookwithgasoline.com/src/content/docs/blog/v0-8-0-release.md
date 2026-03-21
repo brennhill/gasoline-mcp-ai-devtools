@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v0.8.1 Released"
+title: .gasoline v0.8.1 Released"
 description: "Sync-era protocol cleanup, recording approval UX hardening, installer reliability upgrades, and broader test coverage."
 date: 2026-03-06
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v0']
 
 ## What's New in v0.8.1
 
-Gasoline v0.8.1 focuses on reliability and consistency across the daemon, extension, and test harness.
+STRUM v0.8.1 focuses on reliability and consistency across the daemon, extension, and test harness.
 
 ### Highlights
 

@@ -1,5 +1,5 @@
 ---
-title: "Gasoline v5.6.0 Released"
+title: .gasoline v5.6.0 Released"
 description: "Server reliability, persistence guarantees, and architecture tests"
 date: 2026-02-06
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.6.0
 
-Gasoline v5.6.0 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
+STRUM v5.6.0 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
 
 ### Features
 

@@ -144,13 +144,13 @@ function Replace-GasolineBinary {
 }
 
 Write-Host ""
-Write-Host '   ____                 _ _            ' -ForegroundColor DarkYellow
-Write-Host '  / ___| __ _ ___  ___ | (_)_ __   ___ ' -ForegroundColor DarkYellow
-Write-Host " | |  _ / _` / __|/ _ \| | | '_ \ / _ \\" -ForegroundColor DarkYellow
-Write-Host ' | |_| | (_| \__ \ (_) | | | | | |  __/' -ForegroundColor DarkYellow
-Write-Host '  \____|\__,_|___/\___/|_|_|_| |_|\___|' -ForegroundColor DarkYellow
+Write-Host '  ____ _____ ____  _   _ __  __ ' -ForegroundColor DarkYellow
+Write-Host ' / ___|_   _|  _ \| | | |  \/  |' -ForegroundColor DarkYellow
+Write-Host ' \___ \ | | | |_) | | | | |\/| |' -ForegroundColor DarkYellow
+Write-Host '  ___) || | |  _ <| |_| | |  | |' -ForegroundColor DarkYellow
+Write-Host ' |____/ |_| |_| \_\\___/|_|  |_|' -ForegroundColor DarkYellow
 Write-Host ""
-Write-Host "🔥 Gasoline Installer" -ForegroundColor DarkYellow
+Write-Host "🎸 STRUM Installer" -ForegroundColor DarkYellow
 Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
 if ($STRICT_CHECKSUM) {
     Write-Host "🔒 Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)" -ForegroundColor Yellow

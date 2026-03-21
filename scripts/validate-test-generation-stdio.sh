@@ -2,7 +2,7 @@
 # Automated Test Generation Validation Script (stdio version)
 # Prerequisites:
 #   - Demo site running on http://localhost:3000
-#   - Chrome with Gasoline extension open and connected
+#   - Chrome with STRUM extension open and connected
 #   - Run this script, it will start the MCP server and send commands
 
 set -euo pipefail
@@ -14,16 +14,16 @@ mkdir -p "$RESULTS_DIR"
 MCP_BIN="$SCRIPT_DIR/../dist/gasoline"
 
 if [ ! -f "$MCP_BIN" ]; then
-    echo "Error: Gasoline binary not found at $MCP_BIN"
+    echo "Error: STRUM binary not found at $MCP_BIN"
     echo "Run 'make dev' first"
     exit 1
 fi
 
-echo "=== Gasoline Test Generation Validation ==="
+echo "=== STRUM Test Generation Validation ==="
 echo ""
 echo "Prerequisites:"
 echo "  ✓ Demo site running on http://localhost:3000"
-echo "  ✓ Chrome with Gasoline extension connected"
+echo "  ✓ Chrome with STRUM extension connected"
 echo ""
 echo "This script will:"
 echo "  1. Use interact to navigate and trigger bugs"
@@ -49,7 +49,7 @@ cat > "$COMMANDS_FILE" << 'EOF'
 EOF
 
 echo ""
-echo "Sending commands to Gasoline MCP server..."
+echo "Sending commands to STRUM MCP server..."
 echo ""
 
 # Function to send a single command and save output

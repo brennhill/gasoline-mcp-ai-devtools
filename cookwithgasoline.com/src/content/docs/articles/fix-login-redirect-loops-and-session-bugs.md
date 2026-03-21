@@ -1,6 +1,6 @@
 ---
 title: "Fix Login Redirect Loops and Session Bugs Without Guesswork"
-description: "A plain-language guide to troubleshooting login loops, cookie issues, and session state bugs using Gasoline Agentic Devtools."
+description: "A plain-language guide to troubleshooting login loops, cookie issues, and session state bugs using.gasoline Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [authentication, debugging, cookies, sessions]
@@ -13,7 +13,7 @@ If your app keeps bouncing users between “Sign in” and “Dashboard,” you 
 
 A **session** is how your app remembers that a user is logged in. Sessions are often backed by **cookies** (small browser data tokens). Cookie basics: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
 
-Here is a beginner-safe way to debug this with **Gasoline Agentic Devtools**.
+Here is a beginner-safe way to debug this with *.gasoline Agentic Devtools**.
 
 <!-- more -->
 
@@ -30,7 +30,7 @@ You want to answer:
 
 “Why does login not stick after successful sign-in?”
 
-## Step-by-Step with Gasoline Agentic Devtools
+## Step-by-Step with.gasoline Agentic Devtools
 
 ### Step 1. Record the redirect path
 
@@ -83,4 +83,4 @@ configure({what: "log_diff", original_id: "rec-before", replay_id: "rec-after"})
 
 ## You’re Doing Advanced Debugging Now
 
-Session bugs feel random. They are not random. With **Gasoline Agentic Devtools**, you can see the chain, storage state, and network truth in one place.
+Session bugs feel random. They are not random. With *.gasoline Agentic Devtools**, you can see the chain, storage state, and network truth in one place.

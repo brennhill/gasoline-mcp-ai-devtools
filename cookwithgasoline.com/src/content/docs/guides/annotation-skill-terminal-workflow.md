@@ -27,7 +27,7 @@ Use draw mode to mark real UI problems directly on the page.
 
 ## Step 2: Route Work with Skills
 
-Use Gasoline skill playbooks to avoid guessing.
+Use.gasoline skill playbooks to avoid guessing.
 
 - `debug-triage` for broken behavior
 - `ux-audit` for clarity and accessibility issues
