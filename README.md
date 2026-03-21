@@ -5,7 +5,7 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Agentic Browser Devtools - rapid e2e web development" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.svg" alt="Gasoline - Agentic Browser Devtools - rapid e2e web development" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
