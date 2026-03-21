@@ -1,203 +1,197 @@
 ---
-title: Privacy Policy
-description:.gasoline Privacy Policy - 100% localhost, zero data collection
-last_verified_version: 0.8.0
-last_verified_date: 2026-03-06
+title: Privacy & Data Collection
+description: Strum Privacy Policy — what we collect, what we don't, and how to opt out
+last_verified_version: 0.9.0
+last_verified_date: 2026-03-21
 normalized_tags: ['privacy']
 ---
 
-# Privacy Policy
+# Privacy & Data Collection
 
-**Last updated:** February 2, 2026
+**Last updated:** March 21, 2026
 
 ## TL;DR
 
-*.gasoline never sends your data anywhere.** Everything stays on your machine. No cloud, no external servers, no telemetry.
+**Your browser data stays on your machine.** Console logs, network requests, screenshots, and everything Strum captures from your browser never leaves localhost.
+
+**We collect anonymous usage metrics** — which tools you use and how often — to improve Strum. No personal information, no URLs, no code. You can opt out with one environment variable.
 
 ---
 
-## What We Collect
+## Two Separate Things
 
-When you use.gasoline, the browser extension captures telemetry from **the single tab you explicitly track:**
+Strum handles two types of data very differently:
 
-- Console logs (console.log, console.error, etc.)
+### 1. Browser Telemetry (YOUR data — stays local)
+
+Everything Strum captures from your browser stays on your machine:
+
+- Console logs, errors, exceptions
 - Network requests and responses
-- JavaScript errors and exceptions
-- WebSocket events and messages
+- WebSocket events
 - User interactions (clicks, form submissions)
+- Screenshots (when requested)
+- DOM snapshots
 - Performance metrics
-- DOM snapshots (when requested by AI)
-- Screenshots (only if explicitly enabled in settings)
+
+**Where it goes:** `http://localhost:7890` only. The Strum server runs on YOUR machine. We cannot access this data.
+
+**Verification:** Check browser DevTools Network tab — you'll only see `localhost:7890` requests.
+
+### 2. Anonymous Product Metrics (OUR data — sent to us)
+
+We collect anonymous usage counters to understand how Strum is used:
+
+| What we collect | Example | Why |
+|----------------|---------|-----|
+| Random install ID | `f7a2c1e9b4d8` | Correlate usage over time without identifying you |
+| Tool usage counts | `observe:errors: 12` | Know which features matter |
+| OS and version | `darwin-arm64`, `0.8.1` | Know what to support |
+| Install/scaffold outcomes | `install_complete`, `scaffold_complete` | Measure onboarding success |
+| Error categories | `bridge_connection_error` | Fix common failure patterns |
+
+**What we DON'T collect:**
+
+| Never collected | Why not |
+|----------------|---------|
+| IP addresses | Not stored, not logged — our endpoint discards them |
+| Your name, email, or identity | No accounts, no sign-up |
+| URLs you're debugging | Not included in any beacon |
+| Your code or file paths | Not included in any beacon |
+| Error messages from your app | Could contain PII — only error *categories* sent |
+| Screenshots or page content | Never leaves localhost |
+| Project names or descriptions | Could identify you — excluded |
+| Machine fingerprints | Install ID is pure random, not derived from hardware |
 
 ---
 
-## Where It Goes
+## The Install ID
 
-**100% localhost only.** All data is sent exclusively to:
+When Strum first starts, it generates a random 12-character hex string (e.g., `f7a2c1e9b4d8`) and saves it at `~/.strum/install_id`. This is:
 
-```
-http://localhost:7890
-```
-
-The MCP server runs **on YOUR machine**. We .gasoline developers) cannot access this data.
-
-**How to verify:**
-- Check browser DevTools Network tab - you'll only see localhost:7890 requests
-- Check extension manifest: `"host_permissions": ["http://localhost/*"]`
-- Run `lsof -i -n -P | grep gasoline` - you'll only see localhost:7890
+- **Randomly generated** — `crypto/rand`, not derived from your machine, username, or IP
+- **Not reversible** — cannot be traced back to you
+- **Used for** — "this install uses observe:errors a lot" not "this person does X"
 
 ---
 
-## What We Automatically Redact
+## Usage Summary Beacon
 
-Before sending to your localhost server,.gasoline automatically redacts:
+Every 10 minutes (if there was activity), Strum sends one aggregated event:
+
+```json
+{
+  "event": "usage_summary",
+  "v": "0.8.1",
+  "os": "darwin-arm64",
+  "iid": "f7a2c1e9b4d8",
+  "props": {
+    "window_m": "10",
+    "observe:errors": "12",
+    "interact:click": "24",
+    "analyze:accessibility": "1"
+  }
+}
+```
+
+That's it. Tool names and counts. No URLs, no selectors, no content. If Strum is idle, no beacon is sent.
+
+---
+
+## How to Opt Out
+
+Set one environment variable:
+
+```bash
+export STRUM_TELEMETRY=off
+```
+
+All beacons stop immediately. Strum works exactly the same — no features are degraded or locked.
+
+Add it to your shell profile (`~/.zshrc`, `~/.bashrc`) to make it permanent.
+
+---
+
+## What We Automatically Redact (Browser Data)
+
+Before browser telemetry reaches the localhost server, Strum redacts:
 
 - **Passwords** → `[redacted]`
 - **API keys, tokens, secrets** → `[redacted]`
 - **Credit card numbers, SSNs** → `[redacted]`
 - **Authorization headers, cookies** → `[redacted]`
 
-**Implementation:**
-- Input field detection (type="password", autocomplete="cc-number", etc.)
-- Header filtering (Authorization, Cookie, X-API-Key, X-Auth-Token, etc.)
-- Automatic replacement before transmission
-
-**Verification:**
-- Source code: [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/serialize.js) (lines 107-134)
-- Header filters: [extension/lib/constants.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/constants.js) (lines 10-17)
-
----
-
-## What We Never Do
-
-❌ **Send data to external servers** - All communication is localhost-only
-❌ **Upload to cloud** - No cloud service, no SaaS
-❌ **Share with third parties** - No third-party integrations
-❌ **Track you across websites** - Only tracks the ONE tab you select
-❌ **Collect analytics or telemetry** - No usage tracking
-❌ **Require account creation** - No sign-up, no authentication
-❌ **Store data remotely** - Everything stays on your machine
+This is defense-in-depth — the data never leaves your machine anyway, but we redact it before it even reaches the local server.
 
 ---
 
 ## Your Control
 
-**You decide:**
-- ✅ **Which tab to track** - Explicit "Track This Tab" button (not automatic)
-- ✅ **Whether to enable AI Web Pilot** - Default: OFF, requires toggle
-- ✅ **Whether to save logs to disk** - Default: OFF (in-memory only)
-- ✅ **What features to enable** - Screenshot on error, network waterfall, etc.
-- ✅ **When to stop** - Click "Stop Tracking" or uninstall extension
+**Browser data (local):**
+- You choose which tab to track (not automatic)
+- You choose whether to enable AI Web Pilot (default: off)
+- You choose whether to save logs to disk (default: in-memory only)
+- Stop anytime — click "Stop Tracking" or uninstall
 
-**Storage options:**
-- **In-memory only** (default) - Data cleared when server restarts
-- **Local disk** (optional) - Use `--log-file ~/my-logs.jsonl` flag
-- **Your own infrastructure** (future) - S3, Postgres, etc. under your control
-
----
-
-## Data Retention
-
-**Browser extension:**
-- Ring buffers (cleared on browser close)
-- Settings persist in chrome.storage.local until you uninstall
-
-**MCP server:**
-- In-memory ring buffers (cleared on server restart)
-- Optional log file (if you use `--log-file` flag, you control retention)
-
-**We don't retain anything** - You control all storage and retention.
-
----
-
-## Open Source
-
-**Full transparency:**
-- Source code: [github.com/brennhill/gasoline-agentic-browser-devtools-mcp](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-- License: AGPL-3.0
-- All code is readable (no obfuscation)
-- Community can audit our privacy claims
-
-**What you can inspect:**
-- [extension/manifest.json](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/manifest.json) - Permissions requested
-- [extension/background/server.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/background/server.js) - Where data is sent
-- [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/extension/lib/serialize.js) - Sensitive data redaction
+**Product metrics (remote):**
+- Opt out anytime with `STRUM_TELEMETRY=off`
+- Delete your install ID: `rm ~/.strum/install_id`
+- We cannot correlate your install ID to your identity
 
 ---
 
 ## Permissions Explained
 
 ### `tabs` Permission
-**Why:** Track a specific browser tab and send telemetry to it
-**What we do:** Query tracked tab info, send messages to it
-**What we DON'T do:** Track all tabs automatically, read untracked tabs
+**Why:** Track a specific browser tab
+**What we DON'T do:** Track all tabs, read untracked tabs
 
 ### `storage` Permission
-**Why:** Remember your settings across browser restarts
-**What we store:** Tracked tab ID, AI Pilot toggle state, log level, server URL
-**What we DON'T store:** Captured telemetry (that goes to localhost), passwords, personal data
-
-### `alarms` Permission
-**Why:** Background timers for polling localhost server
-**What we do:** Poll localhost:7890 every 1-2 seconds
-**What we DON'T do:** Contact external servers, track time-based behavior
+**Why:** Remember your settings across restarts
+**What we store:** Tracked tab ID, toggle states, server URL
 
 ### `host_permissions` (localhost only)
-**Why:** Send captured telemetry to your local MCP server
-**What we do:** POST to localhost:7890 endpoints
-**What we DON'T do:** Access any external websites, send data remotely
+**Why:** Send captured telemetry to your local Strum server
+**What we DON'T do:** Access external websites, send data remotely
 
 ### Content Scripts (`<all_urls>`)
-**Why:** Capture telemetry from any web application being debugged
+**Why:** Capture telemetry from any web app you're debugging
 **What we do:** Inject into the ONE tab you explicitly track
-**What we DON'T do:** Inject into untracked tabs, modify page behavior, track browsing
-
-**Why `<all_urls>`?**.gasoline is a developer tool. You need to debug any web application (localhost, staging, production, any domain). Restricting to specific domains would make it useless.
+**Why `<all_urls>`?** Strum is a developer tool — you need to debug apps on any domain.
 
 ---
 
 ## Compliance
 
 ### GDPR (EU)
-✅ **Compliant** - No personal data leaves your device
-- **Data processor:** You (data stays on your machine)
-- **Data controller:** You (you decide what to capture)
-- **Right to deletion:** Uninstall extension or restart server
-- **Right to access:** All data available via localhost API
+- **Browser data:** Compliant — never leaves your device
+- **Product metrics:** Compliant — no personal data collected. Random install ID is not PII (not linkable to a natural person). No IP addresses stored.
+- **Right to deletion:** `rm ~/.strum/install_id` + `STRUM_TELEMETRY=off`
+- **Right to access:** All local data available via localhost API
 
 ### CCPA (California)
-✅ **Compliant** - Not applicable
 - No sale of personal information
-- No external data collection
-
-### SOC 2 / Enterprise
-✅ **Compliant:**
-- Customer-controlled storage
-- No third-party processors
-- Audit trail (correlation IDs)
-- Open source (auditable)
+- No personal data collected in product metrics
 
 ---
 
-## Competitive Difference
+## Open Source
 
-**Unlike SaaS observability tools** (Sentry, LogRocket, DataDog):
-- ❌ They send data to their cloud
-- ❌ You lose control of sensitive information
-- ❌ Subject to their data retention policies
-- ❌ Vendor lock-in
+Everything is auditable:
 
-*.gasoline:**
-- ✅ All data stays on your infrastructure
-- ✅ You control storage and retention
-- ✅ No vendor lock-in
-- ✅ Open source (no secrets)
+- **Telemetry beacon code:** [internal/telemetry/beacon.go](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/internal/telemetry/beacon.go)
+- **Install ID generator:** [internal/telemetry/install_id.go](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/internal/telemetry/install_id.go)
+- **Telemetry endpoint:** [github.com/brennhill/strum-analytics](https://github.com/brennhill/strum-analytics) (the Cloudflare Worker that receives beacons)
+- **Extension manifest:** [extension/manifest.json](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/extension/manifest.json)
+- **Redaction logic:** [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/extension/lib/serialize.js)
+
+**Don't take our word for it.** Read the source. The telemetry code is ~80 lines of Go. Every beacon call site is searchable with `grep -rn 'BeaconEvent\|BeaconError'`.
 
 ---
 
 ## Changes to This Policy
 
-We'll notify users of any changes via:
+We'll notify users via:
 - GitHub release notes
 - Extension update notes
 - This page (check "Last updated" date)
@@ -207,23 +201,5 @@ We'll notify users of any changes via:
 ## Contact
 
 **Questions about privacy?**
-- Email: [support@cookwithgasoline.com](mailto:support@cookwithgasoline.com)
 - GitHub Issues: [github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
-- Documentation: [cookwithgasoline.com](https://cookwithgasoline.com)
-
----
-
-## Trust But Verify
-
-**Don't take our word for it:**
-1. Open browser DevTools Network tab while using.gasoline
-2. Filter by domain - you'll only see localhost:7890
-3. Run `lsof -i | grep gasoline` in terminal - only localhost
-4. Read the source code on GitHub
-5. Ask your security team to audit (it's all open source)
-
-**We're transparent because we have nothing to hide.**
-
----
-
-*This privacy policy covers the.gasoline browser extension and MCP server. For questions or concerns, please contact us.*
+- Email: [privacy@usestrum.dev](mailto:privacy@usestrum.dev)
