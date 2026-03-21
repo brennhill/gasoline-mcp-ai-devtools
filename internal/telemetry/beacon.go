@@ -22,8 +22,13 @@ const defaultEndpoint = "https://t.getstrum.dev/v1/event"
 // endpoint is the telemetry ingest URL. Overridable for tests.
 var endpoint = defaultEndpoint
 
+// maxConcurrentBeacons caps in-flight beacon goroutines. Chosen to allow burst
+// traffic (startup + first tool calls) without unbounded goroutine growth.
+// A dropped beacon is harmless — telemetry is best-effort.
+const maxConcurrentBeacons = 50
+
 // sem caps the number of concurrent beacon goroutines to prevent runaway growth.
-var sem = make(chan struct{}, 50)
+var sem = make(chan struct{}, maxConcurrentBeacons)
 
 // BeaconError fires an anonymous error event to the telemetry endpoint.
 // Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
@@ -46,6 +51,7 @@ func beacon(event string, props map[string]string) {
 		"event": event,
 		"v":     Version,
 		"os":    runtime.GOOS + "-" + runtime.GOARCH,
+		"iid":   GetInstallID(),
 	}
 	if props != nil {
 		payload["props"] = props

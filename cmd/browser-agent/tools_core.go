@@ -19,6 +19,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // Note: Response helpers, error codes, and validation functions have been moved to:
@@ -128,6 +129,10 @@ type ToolHandler struct {
 	// issueCommandRunner overrides the exec runner for issue submission.
 	// When nil, issuereport.ExecRunner{} is used. Set in tests to inject a fake.
 	issueCommandRunner issuereport.CommandRunner
+
+	// usageCounter tracks tool:action call counts for periodic usage beacons.
+	// When nil, usage counting is disabled (backwards compatible).
+	usageCounter *telemetry.UsageCounter
 }
 
 // maybeWaitForCommand, formatCommandResult, and related async infrastructure
@@ -178,6 +183,15 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 
 	h.recordAuditToolCall(req, name, args, resp, start)
 
+	// Increment usage counter for periodic beacon aggregation.
+	if h.usageCounter != nil {
+		what := extractWhatParam(args)
+		if what == "" {
+			what = "unknown"
+		}
+		h.usageCounter.Increment(name + ":" + what)
+	}
+
 	return resp, true
 }
 
@@ -191,6 +205,21 @@ func (h *ToolHandler) ensureToolModules() {
 	h.toolModulesOnce.Do(func() {
 		h.toolModules = h.buildToolModuleRegistry()
 	})
+}
+
+// extractWhatParam extracts the "what" string from raw JSON args.
+// Returns empty string if missing or unparseable.
+func extractWhatParam(args json.RawMessage) string {
+	if len(args) == 0 {
+		return ""
+	}
+	var parsed struct {
+		What string `json:"what"`
+	}
+	if json.Unmarshal(args, &parsed) != nil {
+		return ""
+	}
+	return parsed.What
 }
 
 func (h *ToolHandler) ensureToolSchemas() {

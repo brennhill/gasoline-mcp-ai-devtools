@@ -1,4 +1,5 @@
 // beacon_test.go — Tests for anonymous telemetry beacons.
+// Tests in this package must NOT use t.Parallel() due to shared package-level state.
 
 package telemetry
 
@@ -6,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -90,6 +92,15 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 	if props["port"] != "7890" {
 		t.Errorf("props.port = %v, want 7890", props["port"])
 	}
+
+	// Verify install ID is present and is 12-char hex.
+	iid, ok := body["iid"].(string)
+	if !ok {
+		t.Fatalf("missing or non-string 'iid' field in beacon payload")
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(iid) {
+		t.Errorf("iid = %q, want 12-char hex string", iid)
+	}
 }
 
 func TestBeaconEvent_IncludesVersion(t *testing.T) {
@@ -138,6 +149,68 @@ func TestBeaconError_IgnoresHTTPFailure(t *testing.T) {
 	BeaconError("unreachable", map[string]string{"key": "val"})
 	time.Sleep(100 * time.Millisecond)
 	// If we got here without panic, the test passes.
+}
+
+func TestBeacon_SemaphoreBackpressure(t *testing.T) {
+	// Point at a real server so beacons would succeed if they ran.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	// Fill all semaphore slots with blocking goroutines.
+	blockers := make(chan struct{})
+	for i := 0; i < maxConcurrentBeacons; i++ {
+		sem <- struct{}{}
+	}
+
+	// Fire a 51st beacon — should be silently dropped (no panic, no block).
+	done := make(chan struct{})
+	go func() {
+		BeaconEvent("overflow_test", map[string]string{"seq": "51"})
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Good — beacon was dropped without blocking.
+	case <-time.After(2 * time.Second):
+		t.Fatal("BeaconEvent blocked when semaphore was full — should drop silently")
+	}
+
+	// Release all slots and verify cleanup.
+	close(blockers)
+	for i := 0; i < maxConcurrentBeacons; i++ {
+		<-sem
+	}
+
+	// Verify beacon works again after draining.
+	received := make(chan struct{}, 1)
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case received <- struct{}{}:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv2.Close()
+	overrideEndpoint(srv2.URL)
+
+	resetInstallIDState()
+	dir := t.TempDir()
+	overrideStrumDir(dir)
+	defer resetStrumDir()
+
+	BeaconEvent("post_drain", nil)
+	select {
+	case <-received:
+		// Good — beacon fired after slots were freed.
+	case <-time.After(2 * time.Second):
+		t.Fatal("beacon did not fire after semaphore slots were freed")
+	}
 }
 
 func TestBeaconError_NilProps(t *testing.T) {

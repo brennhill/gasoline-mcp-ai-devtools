@@ -1,0 +1,146 @@
+// usage_counter_test.go — Tests for aggregated tool usage counters.
+
+package telemetry
+
+import (
+	"sync"
+	"testing"
+)
+
+func TestUsageCounter_Increment(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:errors")
+	c.Increment("observe:errors")
+	c.Increment("observe:errors")
+
+	counts := c.SwapAndReset()
+	if counts["observe:errors"] != 3 {
+		t.Fatalf("count = %d, want 3", counts["observe:errors"])
+	}
+}
+
+func TestUsageCounter_SwapAndReset(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:errors")
+	c.Increment("interact:click")
+
+	old := c.SwapAndReset()
+	if old["observe:errors"] != 1 {
+		t.Fatalf("old[observe:errors] = %d, want 1", old["observe:errors"])
+	}
+	if old["interact:click"] != 1 {
+		t.Fatalf("old[interact:click] = %d, want 1", old["interact:click"])
+	}
+
+	// After swap, new map should be empty.
+	fresh := c.SwapAndReset()
+	if len(fresh) != 0 {
+		t.Fatalf("fresh map has %d entries, want 0", len(fresh))
+	}
+}
+
+func TestUsageCounter_ConcurrentIncrement(t *testing.T) {
+	c := NewUsageCounter()
+	const goroutines = 100
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			c.Increment("concurrent:key")
+		}()
+	}
+	wg.Wait()
+
+	counts := c.SwapAndReset()
+	if counts["concurrent:key"] != goroutines {
+		t.Fatalf("count = %d, want %d", counts["concurrent:key"], goroutines)
+	}
+}
+
+func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
+	c := NewUsageCounter()
+	const incrementors = 100
+	const incrementsEach = 50
+
+	var wg sync.WaitGroup
+	var swapResults []map[string]int
+	var swapMu sync.Mutex
+
+	// Start incrementor goroutines.
+	wg.Add(incrementors)
+	for i := 0; i < incrementors; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < incrementsEach; j++ {
+				c.Increment("key")
+			}
+		}()
+	}
+
+	// Start a swapper goroutine that runs concurrently with incrementors.
+	stopSwapper := make(chan struct{})
+	swapperDone := make(chan struct{})
+	go func() {
+		defer close(swapperDone)
+		for {
+			select {
+			case <-stopSwapper:
+				return
+			default:
+				snapshot := c.SwapAndReset()
+				if len(snapshot) > 0 {
+					swapMu.Lock()
+					swapResults = append(swapResults, snapshot)
+					swapMu.Unlock()
+				}
+			}
+		}
+	}()
+
+	// Wait for all incrementors to finish.
+	wg.Wait()
+
+	// Signal the swapper to stop.
+	close(stopSwapper)
+	<-swapperDone
+
+	// Collect the final snapshot.
+	finalSnapshot := c.SwapAndReset()
+	if len(finalSnapshot) > 0 {
+		swapResults = append(swapResults, finalSnapshot)
+	}
+
+	// Sum all counts across all swap results.
+	total := 0
+	for _, snapshot := range swapResults {
+		total += snapshot["key"]
+	}
+
+	expected := incrementors * incrementsEach
+	if total != expected {
+		t.Fatalf("total count = %d, want %d (counts were lost)", total, expected)
+	}
+}
+
+func TestUsageCounter_MultipleKeys(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:errors")
+	c.Increment("observe:errors")
+	c.Increment("interact:click")
+	c.Increment("analyze:performance")
+	c.Increment("analyze:performance")
+	c.Increment("analyze:performance")
+
+	counts := c.SwapAndReset()
+	if counts["observe:errors"] != 2 {
+		t.Fatalf("observe:errors = %d, want 2", counts["observe:errors"])
+	}
+	if counts["interact:click"] != 1 {
+		t.Fatalf("interact:click = %d, want 1", counts["interact:click"])
+	}
+	if counts["analyze:performance"] != 3 {
+		t.Fatalf("analyze:performance = %d, want 3", counts["analyze:performance"])
+	}
+}
