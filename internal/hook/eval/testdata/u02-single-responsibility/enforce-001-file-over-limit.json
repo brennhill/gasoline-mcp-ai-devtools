@@ -4,7 +4,7 @@
   "project_root": "REPO_ROOT",
   "input": {
     "tool_name": "Edit",
-    "tool_input": {"file_path": "cmd/dev-console/tools_analyze_annotations_test.go", "new_string": "// additional test"}
+    "tool_input": {"file_path": "cmd/browser-agent/tools_analyze_annotations_test.go", "new_string": "// additional test"}
   },
   "expect": {
     "has_output": true,

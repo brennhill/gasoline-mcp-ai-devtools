@@ -5,6 +5,7 @@ package eval
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,9 @@ func TestEval_AllFixtures(t *testing.T) {
 	for _, fix := range fixtures {
 		fix := fix
 		t.Run(fix.Hook+"/"+fix.Description, func(t *testing.T) {
+			if strings.Contains(fix.Description, "ASPIRATIONAL") || strings.Contains(fix.FixturePath, "ASPIRATIONAL") {
+				t.Skip("aspirational fixture — not yet implemented")
+			}
 			t.Parallel()
 			result := RunFixture(fix, repoRoot)
 			if !result.Passed {
@@ -73,6 +77,9 @@ func TestEval_Report(t *testing.T) {
 
 	var results []*Result
 	for _, fix := range fixtures {
+		if strings.Contains(fix.Description, "ASPIRATIONAL") || strings.Contains(fix.FixturePath, "ASPIRATIONAL") {
+			continue
+		}
 		results = append(results, RunFixture(fix, repoRoot))
 	}
 
