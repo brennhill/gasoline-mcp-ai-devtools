@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // serverInstructions is sent once per session in the initialize response.
@@ -89,4 +90,13 @@ func NewMCPHandler(server *Server, version string) *MCPHandler {
 // - Intended for one-time startup wiring; runtime swapping is unsupported.
 func (h *MCPHandler) SetToolHandler(th ToolHandlerInterface) {
 	h.toolHandler = th
+}
+
+// GetUsageCounter returns the usage counter from the underlying ToolHandler, if available.
+// Returns nil if the tool handler is not a ToolHandler or has no counter.
+func (h *MCPHandler) GetUsageCounter() *telemetry.UsageCounter {
+	if th, ok := h.toolHandler.(*ToolHandler); ok {
+		return th.usageCounter
+	}
+	return nil
 }

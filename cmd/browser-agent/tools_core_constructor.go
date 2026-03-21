@@ -19,6 +19,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
 )
 
 // defaultColdStartTimeout is how long requireExtension waits for the extension
@@ -53,6 +54,9 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 		playbackSessions: newPlaybackSessionsMap(),
 		networkRecording: &networkRecordingState{},
 	}
+
+	// Initialize usage counter for periodic telemetry beacons.
+	handler.usageCounter = telemetry.NewUsageCounter()
 
 	// Initialize health metrics.
 	handler.healthMetrics = NewHealthMetrics()
