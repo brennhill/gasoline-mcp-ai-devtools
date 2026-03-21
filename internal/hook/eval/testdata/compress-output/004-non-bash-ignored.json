@@ -1,0 +1,13 @@
+{
+  "description": "Non-Bash tool should not trigger compression",
+  "hook": "compress-output",
+  "input": {
+    "tool_name": "Read",
+    "tool_input": {"file_path": "/some/file.go"},
+    "tool_response": "package main\nfunc main() {}\n"
+  },
+  "expect": {
+    "has_output": false,
+    "max_latency_ms": 50
+  }
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tracking"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
@@ -67,6 +68,9 @@ type Server struct {
 	// or via the extension options page. Used as default CWD for terminal sessions.
 	activeCodebaseMu sync.RWMutex
 	activeCodebase   string
+
+	// Token savings tracker for output compression hooks.
+	tokenTracker *tracking.TokenTracker
 }
 
 // NewServer creates a new server instance.
@@ -84,6 +88,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		annotationStore: NewAnnotationStore(10 * time.Minute),
 		pushInbox:       push.NewPushInbox(50),
 		ptyManager:      pty.NewManager(),
+		tokenTracker:    tracking.NewTokenTracker(),
 	}
 
 	// Initialize push router with capability sync callback

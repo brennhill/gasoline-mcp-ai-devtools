@@ -1,0 +1,14 @@
+{
+  "description": "ASPIRATIONAL U7 Enforce: eval() usage in TypeScript — should flag as implicit and dangerous",
+  "hook": "quality-gate",
+  "project_root": "REPO_ROOT",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "src/content/window-message-listener.ts", "new_string": "const result = eval(userInput);"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["U7", "eval", "explicit"],
+    "max_latency_ms": 5000
+  }
+}

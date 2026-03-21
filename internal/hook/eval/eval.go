@@ -1,0 +1,348 @@
+// eval.go — Eval runner library for gasoline-hooks.
+// Loads JSON test fixtures, runs hooks, and validates output against expectations.
+
+package eval
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
+)
+
+// Fixture represents a single eval test case loaded from a JSON file.
+type Fixture struct {
+	Description  string        `json:"description"`
+	Hook         string        `json:"hook"`
+	ProjectRoot  string        `json:"project_root"`
+	SessionState *SessionState `json:"session_state,omitempty"`
+	Input        FixtureInput  `json:"input"`
+	Expect       Expectation   `json:"expect"`
+
+	// Set by the loader, not from JSON.
+	FixturePath string `json:"-"`
+}
+
+// FixtureInput holds the hook input fields for a fixture.
+type FixtureInput struct {
+	ToolName     string          `json:"tool_name"`
+	ToolInput    json.RawMessage `json:"tool_input"`
+	ToolResponse json.RawMessage `json:"tool_response,omitempty"`
+}
+
+// SessionState describes pre-existing session state for a fixture.
+type SessionState struct {
+	Touches []hook.TouchEntry `json:"touches"`
+}
+
+// Expectation defines what to validate about the hook output.
+type Expectation struct {
+	HasOutput   bool     `json:"has_output"`
+	Contains    []string `json:"contains,omitempty"`
+	NotContains []string `json:"not_contains,omitempty"`
+	MaxTokens   int      `json:"max_tokens,omitempty"`
+	MaxLatencyMs int    `json:"max_latency_ms,omitempty"`
+}
+
+// Result holds the outcome of running a single fixture.
+type Result struct {
+	Fixture    *Fixture
+	Output     string
+	LatencyMs  int64
+	Passed     bool
+	Failures   []string
+}
+
+// fixtureDirs are the subdirectories of testdata/ that contain eval fixtures.
+// Hook infrastructure dirs test specific hook behaviors.
+// Principle dirs (u01-u10) test the 10 universal principles across
+// the discover → suggest → enforce → migrate cycle.
+var fixtureDirs = []string{
+	// Hook infrastructure
+	"quality-gate",
+	"compress-output",
+	"session-track",
+	"blast-radius",
+	"decision-guard",
+	// Universal principles
+	"u01-errors-not-ignored",
+	"u02-single-responsibility",
+	"u03-separation-of-concerns",
+	"u04-no-magic-globals",
+	"u05-immutability",
+	"u06-fail-fast",
+	"u07-explicit-over-implicit",
+	"u08-no-raw-resource-access",
+	"u09-testing-structure",
+	"u10-dead-code-deleted",
+}
+
+// LoadFixtures loads all JSON fixture files from the hook subdirectories.
+func LoadFixtures(dir string) ([]*Fixture, error) {
+	var fixtures []*Fixture
+
+	for _, hookDir := range fixtureDirs {
+		hookPath := filepath.Join(dir, hookDir)
+		entries, err := os.ReadDir(hookPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read dir %s: %w", hookPath, err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+				continue
+			}
+			path := filepath.Join(hookPath, e.Name())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("read fixture %s: %w", path, err)
+			}
+			var fix Fixture
+			if err := json.Unmarshal(data, &fix); err != nil {
+				return nil, fmt.Errorf("parse fixture %s: %w", path, err)
+			}
+			fix.FixturePath = path
+			fixtures = append(fixtures, &fix)
+		}
+	}
+	return fixtures, nil
+}
+
+// RunFixture executes a single fixture and validates the result.
+// repoRoot is the absolute path to the repository root (used when project_root is "REPO_ROOT").
+func RunFixture(fix *Fixture, repoRoot string) *Result {
+	result := &Result{Fixture: fix}
+
+	// Resolve project root.
+	projectRoot := ""
+	if fix.ProjectRoot == "REPO_ROOT" {
+		projectRoot = repoRoot
+	} else if fix.ProjectRoot != "" {
+		projectRoot = fix.ProjectRoot
+	}
+
+	// Resolve relative file_path in tool_input to absolute using projectRoot.
+	toolInput := fix.Input.ToolInput
+	if projectRoot != "" {
+		toolInput = resolveToolInputPaths(toolInput, projectRoot)
+	}
+
+	// Build hook input.
+	input := hook.Input{
+		ToolName:     fix.Input.ToolName,
+		ToolInput:    toolInput,
+		ToolResponse: fix.Input.ToolResponse,
+	}
+
+	// Setup session state if needed.
+	sessionDir := ""
+	if fix.SessionState != nil {
+		dir, err := os.MkdirTemp("", "eval-session-*")
+		if err == nil {
+			sessionDir = dir
+			defer os.RemoveAll(dir)
+			for _, touch := range fix.SessionState.Touches {
+				_ = hook.AppendTouch(dir, touch)
+			}
+		}
+	}
+
+	// Run the hook and measure latency.
+	start := time.Now()
+	output := runHook(fix.Hook, input, projectRoot, sessionDir)
+	elapsed := time.Since(start)
+
+	result.Output = output
+	result.LatencyMs = elapsed.Milliseconds()
+
+	// Validate.
+	result.Failures = validate(fix.Expect, output, elapsed)
+	result.Passed = len(result.Failures) == 0
+
+	return result
+}
+
+// runHook dispatches to the correct hook function.
+func runHook(hookName string, input hook.Input, projectRoot, sessionDir string) string {
+	switch hookName {
+	case "quality-gate":
+		r := hook.RunQualityGate(input)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "compress-output":
+		r := hook.CompressOutput(input)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "session-track":
+		if sessionDir == "" {
+			dir, err := os.MkdirTemp("", "eval-session-*")
+			if err != nil {
+				return ""
+			}
+			sessionDir = dir
+			defer os.RemoveAll(dir)
+		}
+		r := hook.RunSessionTrack(input, sessionDir)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "blast-radius":
+		r := hook.RunBlastRadius(input, projectRoot, sessionDir)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	case "decision-guard":
+		r := hook.RunDecisionGuard(input, projectRoot)
+		if r == nil {
+			return ""
+		}
+		return r.FormatContext()
+
+	default:
+		return ""
+	}
+}
+
+// validate checks expectations against actual output.
+func validate(expect Expectation, output string, elapsed time.Duration) []string {
+	var failures []string
+
+	if expect.HasOutput && output == "" {
+		failures = append(failures, "expected output but got empty")
+	}
+	if !expect.HasOutput && output != "" {
+		failures = append(failures, fmt.Sprintf("expected no output but got: %s", truncate(output, 200)))
+	}
+
+	for _, s := range expect.Contains {
+		if !strings.Contains(output, s) {
+			failures = append(failures, fmt.Sprintf("output missing %q", s))
+		}
+	}
+
+	for _, s := range expect.NotContains {
+		if strings.Contains(output, s) {
+			failures = append(failures, fmt.Sprintf("output should not contain %q", s))
+		}
+	}
+
+	if expect.MaxTokens > 0 {
+		tokens := len(output) / 4
+		if tokens > expect.MaxTokens {
+			failures = append(failures, fmt.Sprintf("output ~%d tokens exceeds budget %d", tokens, expect.MaxTokens))
+		}
+	}
+
+	if expect.MaxLatencyMs > 0 && elapsed.Milliseconds() > int64(expect.MaxLatencyMs) {
+		failures = append(failures, fmt.Sprintf("latency %dms exceeds budget %dms", elapsed.Milliseconds(), expect.MaxLatencyMs))
+	}
+
+	return failures
+}
+
+// resolveToolInputPaths resolves relative file_path values in tool_input JSON
+// to absolute paths by joining with the project root.
+func resolveToolInputPaths(raw json.RawMessage, projectRoot string) json.RawMessage {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil {
+		return raw
+	}
+	fpRaw, ok := fields["file_path"]
+	if !ok {
+		return raw
+	}
+	var fp string
+	if json.Unmarshal(fpRaw, &fp) != nil {
+		return raw
+	}
+	if fp == "" || filepath.IsAbs(fp) {
+		return raw
+	}
+	abs := filepath.Join(projectRoot, fp)
+	absJSON, _ := json.Marshal(abs)
+	fields["file_path"] = absJSON
+	out, _ := json.Marshal(fields)
+	return out
+}
+
+func truncate(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "..."
+	}
+	return s
+}
+
+// Report holds aggregate eval results.
+type Report struct {
+	Total   int            `json:"total"`
+	Passed  int            `json:"passed"`
+	Failed  int            `json:"failed"`
+	ByHook  map[string]*HookReport `json:"by_hook"`
+}
+
+// HookReport holds per-hook aggregate results.
+type HookReport struct {
+	Total     int     `json:"total"`
+	Passed    int     `json:"passed"`
+	AvgLatMs  float64 `json:"avg_latency_ms"`
+	MaxLatMs  int64   `json:"max_latency_ms"`
+}
+
+// Aggregate builds a report from a list of results.
+func Aggregate(results []*Result) *Report {
+	report := &Report{
+		ByHook: make(map[string]*HookReport),
+	}
+
+	for _, r := range results {
+		report.Total++
+		if r.Passed {
+			report.Passed++
+		} else {
+			report.Failed++
+		}
+
+		hr, ok := report.ByHook[r.Fixture.Hook]
+		if !ok {
+			hr = &HookReport{}
+			report.ByHook[r.Fixture.Hook] = hr
+		}
+		hr.Total++
+		if r.Passed {
+			hr.Passed++
+		}
+		hr.AvgLatMs = (hr.AvgLatMs*float64(hr.Total-1) + float64(r.LatencyMs)) / float64(hr.Total)
+		if r.LatencyMs > hr.MaxLatMs {
+			hr.MaxLatMs = r.LatencyMs
+		}
+	}
+
+	return report
+}
+
+// FormatReport produces a human-readable eval summary.
+func FormatReport(report *Report) string {
+	var b strings.Builder
+	for hookName, hr := range report.ByHook {
+		fmt.Fprintf(&b, "  %-20s %d/%d passed (avg %.0fms, max %dms)\n",
+			hookName+":", hr.Passed, hr.Total, hr.AvgLatMs, hr.MaxLatMs)
+	}
+	fmt.Fprintf(&b, "\nAll evals: %d/%d passed.\n", report.Passed, report.Total)
+	return b.String()
+}

@@ -67,6 +67,7 @@ Features with active code implementations referencing their feature docs.
 | observe | `feature/observe/` | product-spec.md, qa-plan.md, tech-spec.md | Core observe tool for browser telemetry retrieval |
 | pagination | `feature/pagination/` | product-spec.md, qa-plan.md, tech-spec.md | Cursor-based pagination for large result sets |
 | performance-audit | `feature/performance-audit/` | product-spec.md, qa-plan.md, tech-spec.md | Performance auditing and Web Vitals analysis |
+| quality-gates | `feature/quality-gates/` | flow-map.md | Automated code quality gates via configure(what="setup_quality_gates") |
 | persistent-memory | `feature/persistent-memory/` | product-spec.md, qa-plan.md, tech-spec.md | Persistent key-value store across sessions |
 | playback-engine | `feature/playback-engine/` | product-spec.md | Recording playback and replay engine |
 | project-isolation | `feature/project-isolation/` | product-spec.md, qa-plan.md, tech-spec.md | Per-project data isolation |

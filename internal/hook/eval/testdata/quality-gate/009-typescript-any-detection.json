@@ -1,0 +1,14 @@
+{
+  "description": "ASPIRATIONAL: Edit introduces 'any' type in TypeScript — quality gate should flag the specific violation in the edit",
+  "hook": "quality-gate",
+  "project_root": "REPO_ROOT",
+  "input": {
+    "tool_name": "Edit",
+    "tool_input": {"file_path": "src/content/window-message-listener.ts", "new_string": "function processEvent(data: any) {\n  return data.value;\n}"}
+  },
+  "expect": {
+    "has_output": true,
+    "contains": ["data: any", "violation"],
+    "max_latency_ms": 5000
+  }
+}
