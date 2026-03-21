@@ -1376,6 +1376,7 @@ The daemon maintains an in-memory counter map of `tool:action` pairs. Every 10 m
   "event": "usage_summary",
   "v": "0.8.1",
   "os": "darwin-arm64",
+  "iid": "f7a2c1e9b4d8",
   "props": {
     "window_m": "10",
     "observe:errors": "12",
@@ -1551,11 +1552,30 @@ Product telemetry to understand adoption and usage without tracking individuals.
 
 ### Principles
 
-1. **No PII.** No IP addresses stored, no user IDs, no email, no machine fingerprints.
+1. **No PII.** No IP addresses stored, no email, no machine fingerprints, no names, no URLs.
 2. **No cookies.** Server-side event counting only.
-3. **Aggregate only.** Individual events are write-only counters, never queryable per-user.
+3. **Random install ID only.** A random hex string (`iid`) generated once at install time, stored at `~/.strum/install_id`. Not derived from hardware, username, or any machine property. Cannot be reversed to identify a person. Allows tracking usage patterns per install over time without knowing who the install belongs to.
 4. **Opt-out available.** `STRUM_TELEMETRY=off` env var disables all beacons. Documented in CLAUDE.md.
 5. **Transparent.** Every beacon call is visible in source code, never hidden.
+
+### Install ID Generation
+
+Generated once during first daemon startup. Never changes. Pure random, not derived from anything:
+
+```go
+// On first startup, if ~/.strum/install_id doesn't exist:
+func generateInstallID() string {
+    b := make([]byte, 6) // 12 hex chars
+    rand.Read(b)
+    id := hex.EncodeToString(b)
+    os.WriteFile(filepath.Join(strumDir, "install_id"), []byte(id), 0600)
+    return id
+}
+```
+
+The `iid` field is included in every beacon event (not just usage_summary) so all events from the same install can be correlated:
+- "This install scaffolded 3 projects, uses observe:errors most, upgraded from 0.8.1 to 0.9.0"
+- NOT: "This person at this IP with this email did X"
 
 ### Telemetry Endpoint
 
