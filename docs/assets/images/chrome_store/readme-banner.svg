@@ -1,21 +1,12 @@
 <svg width="1280" height="280" viewBox="0 0 1280 280" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <rect width="1280" height="280" rx="12" fill="#1a1817"/>
+  <rect width="1280" height="280" rx="12" fill="#fcfaf2"/>
 
   <defs>
     <radialGradient id="glow" cx="15%" cy="50%" r="25%">
-      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.1"/>
-      <stop offset="100%" style="stop-color:#1a1817;stop-opacity:0"/>
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.05"/>
+      <stop offset="100%" style="stop-color:#fcfaf2;stop-opacity:0"/>
     </radialGradient>
-    <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" style="stop-color:#f97316"/>
-      <stop offset="50%" style="stop-color:#fb923c"/>
-      <stop offset="100%" style="stop-color:#fbbf24"/>
-    </linearGradient>
-    <linearGradient id="innerFlame" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" style="stop-color:#fbbf24"/>
-      <stop offset="100%" style="stop-color:#fef3c7"/>
-    </linearGradient>
   </defs>
 
   <!-- Glow -->
@@ -42,29 +33,29 @@
   </g>
 
   <!-- Title -->
-  <text x="360" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#ffffff">STRUM</text>
+  <text x="360" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#302d2a">STRUM</text>
 
   <!-- Tagline -->
-  <text x="360" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#8b949e">Agentic Browser Devtools - rapid e2e web development</text>
+  <text x="360" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#6e7681">Agentic Browser Devtools - rapid e2e web development</text>
 
   <!-- Flow pills -->
   <g transform="translate(360, 200)">
-    <rect x="0" y="0" width="100" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-    <text x="50" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Browser</text>
+    <rect x="0" y="0" width="100" height="34" rx="17" fill="#efede4" stroke="#dcdad2" stroke-width="1"/>
+    <text x="50" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#302d2a" text-anchor="middle">Browser</text>
 
-    <path d="M114 17 L126 17 M121 12 L127 17 L121 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M114 17 L126 17 M121 12 L127 17 L121 22" stroke="#dcdad2" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <rect x="144" y="0" width="110" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-    <text x="199" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Extension</text>
+    <rect x="144" y="0" width="110" height="34" rx="17" fill="#efede4" stroke="#dcdad2" stroke-width="1"/>
+    <text x="199" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#302d2a" text-anchor="middle">Extension</text>
 
-    <path d="M268 17 L280 17 M275 12 L281 17 L275 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M268 17 L280 17 M275 12 L281 17 L275 22" stroke="#dcdad2" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <rect x="298" y="0" width="120" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-    <text x="358" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Local Server</text>
+    <rect x="298" y="0" width="120" height="34" rx="17" fill="#efede4" stroke="#dcdad2" stroke-width="1"/>
+    <text x="358" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#302d2a" text-anchor="middle">Local Server</text>
 
-    <path d="M432 17 L444 17 M439 12 L445 17 L439 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M432 17 L444 17 M439 12 L445 17 L439 22" stroke="#dcdad2" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <rect x="462" y="0" width="100" height="34" rx="17" fill="#2d1a0e" stroke="#f97316" stroke-width="1"/>
-    <text x="512" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#fb923c" text-anchor="middle">AI</text>
+    <rect x="462" y="0" width="100" height="34" rx="17" fill="#fef3c7" stroke="#f97316" stroke-width="1"/>
+    <text x="512" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#b45309" text-anchor="middle">AI</text>
   </g>
 </svg>
