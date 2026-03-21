@@ -201,5 +201,5 @@ We'll notify users via:
 ## Contact
 
 **Questions about privacy?**
-- GitHub Issues: [github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
+- GitHub Issues: [github.com/brennhill/strum/issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
 - Email: [privacy@usestrum.dev](mailto:privacy@usestrum.dev)
