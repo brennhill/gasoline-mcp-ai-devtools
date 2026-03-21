@@ -1,11 +1,11 @@
 <svg width="1280" height="280" viewBox="0 0 1280 280" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <rect width="1280" height="280" rx="12" fill="#141b24"/>
+  <rect width="1280" height="280" rx="12" fill="#1a1817"/>
 
   <defs>
     <radialGradient id="glow" cx="15%" cy="50%" r="25%">
       <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.1"/>
-      <stop offset="100%" style="stop-color:#141b24;stop-opacity:0"/>
+      <stop offset="100%" style="stop-color:#1a1817;stop-opacity:0"/>
     </radialGradient>
     <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
       <stop offset="0%" style="stop-color:#f97316"/>
