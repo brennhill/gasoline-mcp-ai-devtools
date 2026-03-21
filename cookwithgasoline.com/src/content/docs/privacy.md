@@ -179,11 +179,11 @@ This is defense-in-depth — the data never leaves your machine anyway, but we r
 
 Everything is auditable:
 
-- **Telemetry beacon code:** [internal/telemetry/beacon.go](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/internal/telemetry/beacon.go)
-- **Install ID generator:** [internal/telemetry/install_id.go](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/internal/telemetry/install_id.go)
+- **Telemetry beacon code:** [internal/telemetry/beacon.go](https://github.com/brennhill/Strum-AI-Devtools/blob/UNSTABLE/internal/telemetry/beacon.go)
+- **Install ID generator:** [internal/telemetry/install_id.go](https://github.com/brennhill/Strum-AI-Devtools/blob/UNSTABLE/internal/telemetry/install_id.go)
 - **Telemetry endpoint:** [github.com/brennhill/strum-analytics](https://github.com/brennhill/strum-analytics) (the Cloudflare Worker that receives beacons)
-- **Extension manifest:** [extension/manifest.json](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/extension/manifest.json)
-- **Redaction logic:** [extension/lib/serialize.js](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/UNSTABLE/extension/lib/serialize.js)
+- **Extension manifest:** [extension/manifest.json](https://github.com/brennhill/Strum-AI-Devtools/blob/UNSTABLE/extension/manifest.json)
+- **Redaction logic:** [extension/lib/serialize.js](https://github.com/brennhill/Strum-AI-Devtools/blob/UNSTABLE/extension/lib/serialize.js)
 
 **Don't take our word for it.** Read the source. The telemetry code is ~80 lines of Go. Every beacon call site is searchable with `grep -rn 'BeaconEvent\|BeaconError'`.
 
@@ -201,5 +201,5 @@ We'll notify users via:
 ## Contact
 
 **Questions about privacy?**
-- GitHub Issues: [github.com/brennhill/strum/issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
+- GitHub Issues: [github.com/brennhill/Strum-AI-Devtools/issues](https://github.com/brennhill/Strum-AI-Devtools/issues)
 - Email: [privacy@usestrum.dev](mailto:privacy@usestrum.dev)
