@@ -5,18 +5,18 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.svg" alt="Gasoline - Agentic Browser Devtools - rapid e2e web development" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.svg" alt="STRUM - Agentic Browser Devtools - rapid e2e web development" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
+[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/Strum-AI-Devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/gasoline-agentic-browser-devtools-mcp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Snyk Status](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp/badge.svg)](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/pulls)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/Strum-AI-Devtools)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/Strum-AI-Devtools)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/Strum-AI-Devtools)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/Strum-AI-Devtools/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Snyk Status](https://snyk.io/test/github/brennhill/Strum-AI-Devtools/badge.svg)](https://snyk.io/test/github/brennhill/Strum-AI-Devtools)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/Strum-AI-Devtools/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 [![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://cookwithgasoline.com)
 
@@ -35,16 +35,16 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.12** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.8.1** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.ps1 | iex
 ```
 
 </div>
@@ -53,21 +53,21 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 
 ## Quick Start
 
-**Fire up Gasoline Agentic Browser Devtool MCP (Binary + Extension + Auto-Config) in one command:**
+**Fire up STRUM (Binary + Extension + Auto-Config) in one command:**
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
 1.  **Downloads** the latest stable binary for your platform.
-2.  **Installs** the browser extension files to `~/.gasoline/extension`.
+2.  **Installs** the browser extension files to `~/.strum/extension`.
 3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
@@ -77,19 +77,19 @@ This script automatically:
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked**
-4. Select the folder: `~/.gasoline/extension` (or wherever the script printed)
+4. Select the folder: `~/.strum/extension` (or wherever the script printed)
 
 ### Step 2: Restart Your AI Tool
 
-Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now start automatically when needed.
+Restart Claude Code, Cursor, Windsurf, or Zed. The STRUM server will now start automatically when needed.
 
 **[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
 ---
 
-## Why You Cook With Gasoline Agentic Browser Devtool MCP
+## Why You Cook With STRUM
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline Agentic Browser Devtool MCP uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. STRUM uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
@@ -116,7 +116,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 - **Test generation** — Playwright tests from context, self-healing selectors, failure classification
 - **Reproduction scripts** — Playwright scripts from recorded user actions
 - **Noise filtering** — Auto-detect and dismiss irrelevant errors
-- **Developer API** — `window.__gasoline.annotate()` for custom context
+- **Developer API** — `window.__strum.annotate()` for custom context
 
 **[Full feature list →](https://cookwithgasoline.com/features/)**
 
@@ -164,8 +164,8 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 *Pouring fuel on the AI development fire*
 
-If you find Gasoline Agentic Browser Devtool MCP useful, please consider giving it a star!
+If you find STRUM useful, please consider giving it a star!
 
-[![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline-agentic-browser-devtools-mcp.svg?style=social)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
+[![Star on GitHub](https://img.shields.io/github/stars/brennhill/Strum-AI-Devtools.svg?style=social)](https://github.com/brennhill/Strum-AI-Devtools)
 
 </div>

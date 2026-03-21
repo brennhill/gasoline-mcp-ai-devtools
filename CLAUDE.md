@@ -1,4 +1,4 @@
-# Gasoline MCP — Core Rules
+# STRUM MCP — Core Rules
 
 Browser extension + MCP server for real-time browser telemetry.
 **Stack:** Go (zero deps) | Chrome Extension (MV3) | MCP (JSON-RPC 2.0)
@@ -49,7 +49,7 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 
 - **NEVER modify tests during UAT** — run tests as-is, report results
 - If tests have issues, note them and propose changes AFTER UAT completes
-- UAT validates the npm-installed version (`gasoline-mcp` from PATH)
+- UAT validates the npm-installed version (`strum-mcp` from PATH)
 - Extension must be connected for data flow tests to pass
 
 ## Code Standards
@@ -127,7 +127,7 @@ No code-only refactor is considered complete until this documentation contract i
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **gasoline** (16927 symbols, 20322 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **strum** (16927 symbols, 20322 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -143,7 +143,7 @@ This project is indexed by GitNexus as **gasoline** (16927 symbols, 20322 relati
 
 1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
 2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ gitnexus://repo/gasoline/process/{processName}` — trace the full execution flow step by step
+3. `READ gitnexus://repo/strum/process/{processName}` — trace the full execution flow step by step
 4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "stable"})` — see what your branch changed
 
 ## When Refactoring
@@ -182,10 +182,10 @@ This project is indexed by GitNexus as **gasoline** (16927 symbols, 20322 relati
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/gasoline/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/gasoline/clusters` | All functional areas |
-| `gitnexus://repo/gasoline/processes` | All execution flows |
-| `gitnexus://repo/gasoline/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/strum/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/strum/clusters` | All functional areas |
+| `gitnexus://repo/strum/processes` | All execution flows |
+| `gitnexus://repo/strum/process/{name}` | Step-by-step execution trace |
 
 ## Self-Check Before Finishing
 

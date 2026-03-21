@@ -1,28 +1,28 @@
 #!/bin/bash
-# Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+# STRUM - The Ultimate One-liner Installer
+# https://github.com/brennhill/Strum-AI-Devtools
 #
 # PURPOSE:
-# This script provides a zero-dependency, platform-aware installation flow for Gasoline.
+# This script provides a zero-dependency, platform-aware installation flow for STRUM.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.sh | bash
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
-INSTALL_DIR="$HOME/.gasoline"
+REPO="brennhill/Strum-AI-Devtools"
+INSTALL_DIR="$HOME/.strum"
 BIN_DIR="$INSTALL_DIR/bin"
-EXT_DIR="${GASOLINE_EXTENSION_DIR:-$HOME/GasolineAgenticDevtoolExtension}"
+EXT_DIR="${STRUM_EXTENSION_DIR:-$HOME/StrumExtension}"
 STAGE_EXT_DIR="$INSTALL_DIR/.extension-stage-$$"
 BACKUP_EXT_DIR="$INSTALL_DIR/.extension-backup-$$"
 # The VERSION file on the STABLE branch is the source of truth for the latest release.
 VERSION_URL="https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
-STRICT_CHECKSUM="${GASOLINE_INSTALL_STRICT:-0}"
+STRICT_CHECKSUM="${STRUM_INSTALL_STRICT:-0}"
 # Minimum plausible binary size (5 MB). Catches truncated downloads and HTML error pages.
 MIN_BINARY_BYTES=5000000
 
@@ -67,7 +67,7 @@ echo -e "${NC}"
 echo -e "${ORANGE}${BOLD}STRUM Installer${NC}"
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
-    echo -e "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)"
+    echo -e "Strict checksum mode enabled (STRUM_INSTALL_STRICT=1)"
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -278,24 +278,24 @@ sync_binary_compat_aliases() {
 # Stale process cleanup (pre-install)
 # ─────────────────────────────────────────────────────────────
 
-kill_stale_gasoline_processes() {
-    # Kill any running gasoline daemons before replacing the binary.
+kill_stale_strum_processes() {
+    # Kill any running strum or legacy gasoline daemons before replacing the binary.
     # This avoids "text file busy" on Linux and ensures a clean upgrade.
     local killed=0
     local pids=""
 
     if command -v pgrep >/dev/null 2>&1; then
-        pids=$(pgrep -f 'gasoline-agentic-devtools|gasoline-agentic-browser|gasoline.*--daemon' 2>/dev/null || true)
+        pids=$(pgrep -f 'strum-ai-devtools|strum-ai-browser|strum.*--daemon|gasoline-agentic-devtools|gasoline-agentic-browser|gasoline.*--daemon' 2>/dev/null || true)
     elif command -v pkill >/dev/null 2>&1; then
         # pgrep not available but pkill is — just send TERM directly.
-        pkill -f 'gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
+        pkill -f 'strum-ai-devtools|strum-ai-browser|gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
         sleep 0.5
-        pkill -9 -f 'gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
+        pkill -9 -f 'strum-ai-devtools|strum-ai-browser|gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
         return 0
     fi
 
     if [ -n "$pids" ]; then
-        echo -e "  Stopping running Gasoline processes..."
+        echo -e "  Stopping running STRUM processes..."
         for pid in $pids; do
             # Don't kill ourselves.
             if [ "$pid" != "$$" ]; then
@@ -360,14 +360,18 @@ fi
 # 3. Detect install vs upgrade
 # ─────────────────────────────────────────────────────────────
 
-CANONICAL_GASOLINE_BIN="$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT"
-LEGACY_GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
-LEGACY_GASOLINE_BROWSER_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
+CANONICAL_STRUM_BIN="$BIN_DIR/strum-ai-devtools$BINARY_EXT"
+LEGACY_STRUM_BIN="$BIN_DIR/strum$BINARY_EXT"
+LEGACY_GASOLINE_BIN="$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT"
 IS_UPGRADE=0
 PREVIOUS_VERSION=""
 
-if [ -x "$CANONICAL_GASOLINE_BIN" ]; then
-    PREVIOUS_VERSION=$("$CANONICAL_GASOLINE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+if [ -x "$CANONICAL_STRUM_BIN" ]; then
+    PREVIOUS_VERSION=$("$CANONICAL_STRUM_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    IS_UPGRADE=1
+elif [ -x "$LEGACY_GASOLINE_BIN" ]; then
+    # Detect migration from old gasoline installation.
+    PREVIOUS_VERSION=$("$LEGACY_GASOLINE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
     IS_UPGRADE=1
 fi
 
@@ -398,18 +402,18 @@ echo -e "Install root: $INSTALL_DIR"
 # 5. Stop stale processes before binary replacement
 # ─────────────────────────────────────────────────────────────
 
-kill_stale_gasoline_processes
+kill_stale_strum_processes
 
 # ─────────────────────────────────────────────────────────────
 # 6. Binary Installation
 # ─────────────────────────────────────────────────────────────
 
-BINARY_NAME="gasoline-agentic-devtools-$PLATFORM-$E_ARCH$BINARY_EXT"
+BINARY_NAME="strum-ai-devtools-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 
 echo -e "Downloading binary..."
-if ! curl_retry "$TEMP_ROOT/gasoline_dl" "$BINARY_URL"; then
+if ! curl_retry "$TEMP_ROOT/strum_dl" "$BINARY_URL"; then
     echo -e "${RED}Download failed after 3 attempts.${NC}"
     echo -e "URL: $BINARY_URL"
     echo -e "Check your network connection, proxy settings, or try again later."
@@ -418,7 +422,7 @@ if ! curl_retry "$TEMP_ROOT/gasoline_dl" "$BINARY_URL"; then
 fi
 
 # Validate binary size — catch truncated downloads and HTML error pages.
-DOWNLOADED_SIZE=$(wc -c < "$TEMP_ROOT/gasoline_dl" | tr -d ' ')
+DOWNLOADED_SIZE=$(wc -c < "$TEMP_ROOT/strum_dl" | tr -d ' ')
 if [ "$DOWNLOADED_SIZE" -lt "$MIN_BINARY_BYTES" ]; then
     echo -e "${RED}Downloaded file is too small (${DOWNLOADED_SIZE} bytes, expected >${MIN_BINARY_BYTES}).${NC}"
     echo -e "The download may have been truncated or intercepted by a proxy."
@@ -442,9 +446,9 @@ if curl -fsSL --max-time 15 "$CHECKSUM_URL" -o "$TEMP_ROOT/checksums.txt" 2>/dev
         fi
         echo -e "${YELLOW}  checksums.txt did not contain $BINARY_NAME; continuing without checksum verification.${NC}"
     elif command -v shasum >/dev/null 2>&1; then
-        ACTUAL_HASH=$(shasum -a 256 "$TEMP_ROOT/gasoline_dl" | awk '{print $1}')
+        ACTUAL_HASH=$(shasum -a 256 "$TEMP_ROOT/strum_dl" | awk '{print $1}')
     elif command -v sha256sum >/dev/null 2>&1; then
-        ACTUAL_HASH=$(sha256sum "$TEMP_ROOT/gasoline_dl" | awk '{print $1}')
+        ACTUAL_HASH=$(sha256sum "$TEMP_ROOT/strum_dl" | awk '{print $1}')
     else
         if [ "$STRICT_CHECKSUM" = "1" ]; then
             echo -e "${RED}Strict checksum mode: no SHA-256 tool found (need shasum or sha256sum).${NC}"
@@ -478,11 +482,11 @@ if [ "$STRICT_CHECKSUM" = "1" ] && [ "$CHECKSUM_VERIFIED" -ne 1 ]; then
 fi
 
 # Move the verified binary to its final path and set executable permissions.
-mv "$TEMP_ROOT/gasoline_dl" "$CANONICAL_GASOLINE_BIN"
-chmod 755 "$CANONICAL_GASOLINE_BIN"
+mv "$TEMP_ROOT/strum_dl" "$CANONICAL_STRUM_BIN"
+chmod 755 "$CANONICAL_STRUM_BIN"
 
 # Quick smoke test — verify the binary actually runs.
-if ! "$CANONICAL_GASOLINE_BIN" --version >/dev/null 2>&1; then
+if ! "$CANONICAL_STRUM_BIN" --version >/dev/null 2>&1; then
     echo -e "${RED}Binary smoke test failed — the downloaded binary cannot execute.${NC}"
     echo -e "This may indicate an architecture mismatch or a corrupted download."
     echo -e "Platform: $PLATFORM-$E_ARCH, Binary: $BINARY_NAME"
@@ -490,7 +494,7 @@ if ! "$CANONICAL_GASOLINE_BIN" --version >/dev/null 2>&1; then
     exit 1
 fi
 
-if sync_binary_compat_aliases "$CANONICAL_GASOLINE_BIN" "$LEGACY_GASOLINE_BIN" "$LEGACY_GASOLINE_BROWSER_BIN"; then
+if sync_binary_compat_aliases "$CANONICAL_STRUM_BIN" "$LEGACY_STRUM_BIN" "$LEGACY_GASOLINE_BIN"; then
     echo -e "${GREEN}Binary installed with command aliases.${NC}"
 else
     echo -e "${YELLOW}  Core binary installed, but one or more compatibility aliases could not be created.${NC}"
@@ -501,7 +505,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 
 echo -e "Refreshing browser extension..."
-EXT_ZIP_NAME="gasoline-extension-v$VERSION.zip"
+EXT_ZIP_NAME="strum-extension-v$VERSION.zip"
 EXT_ZIP_URL="https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 TEMP_ZIP="$TEMP_ROOT/extension.zip"
 
@@ -540,11 +544,11 @@ fi
 # ─────────────────────────────────────────────────────────────
 
 echo -e "Finalizing configuration..."
-if ! "$CANONICAL_GASOLINE_BIN" --install; then
+if ! "$CANONICAL_STRUM_BIN" --install; then
     echo -e "${YELLOW}Native configuration returned an error.${NC}"
     echo -e "The binary and extension were installed successfully."
     echo -e "You may need to manually configure your MCP clients."
-    echo -e "Run: $CANONICAL_GASOLINE_BIN --install"
+    echo -e "Run: $CANONICAL_STRUM_BIN --install"
     # Don't exit 1 here — the core install succeeded, only config auto-detection had issues.
 fi
 
@@ -574,7 +578,7 @@ fi
 register_autostart() {
     if [ "$PLATFORM" = "darwin" ]; then
         local plist_dir="$HOME/Library/LaunchAgents"
-        local plist_path="$plist_dir/com.gasoline.daemon.plist"
+        local plist_path="$plist_dir/com.strum.daemon.plist"
         mkdir -p "$plist_dir"
 
         cat > "$plist_path" <<PLIST
@@ -583,10 +587,10 @@ register_autostart() {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.gasoline.daemon</string>
+    <string>com.strum.daemon</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$CANONICAL_GASOLINE_BIN</string>
+        <string>$CANONICAL_STRUM_BIN</string>
         <string>--daemon</string>
         <string>--port</string>
         <string>7890</string>
@@ -602,7 +606,7 @@ register_autostart() {
 PLIST
 
         # Unload previous registration (if any), then register fresh.
-        launchctl bootout "gui/$(id -u)/com.gasoline.daemon" 2>/dev/null || true
+        launchctl bootout "gui/$(id -u)/com.strum.daemon" 2>/dev/null || true
         if launchctl bootstrap "gui/$(id -u)" "$plist_path" 2>/dev/null || \
            launchctl load "$plist_path" 2>/dev/null; then
             echo -e "${GREEN}Registered to start on login (LaunchAgent).${NC}"
@@ -614,17 +618,17 @@ PLIST
     elif [ "$PLATFORM" = "linux" ]; then
         if command -v systemctl >/dev/null 2>&1 && systemctl --user status >/dev/null 2>&1; then
             local service_dir="$HOME/.config/systemd/user"
-            local service_path="$service_dir/gasoline.service"
+            local service_path="$service_dir/strum.service"
             mkdir -p "$service_dir"
 
             cat > "$service_path" <<SERVICE
 [Unit]
-Description=Gasoline Agentic Devtools Daemon
+Description=STRUM Agentic Devtools Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$CANONICAL_GASOLINE_BIN --daemon --port 7890
+ExecStart=$CANONICAL_STRUM_BIN --daemon --port 7890
 Restart=on-failure
 RestartSec=5
 
@@ -633,23 +637,23 @@ WantedBy=default.target
 SERVICE
 
             systemctl --user daemon-reload 2>/dev/null || true
-            if systemctl --user enable gasoline.service 2>/dev/null; then
+            if systemctl --user enable strum.service 2>/dev/null; then
                 echo -e "${GREEN}Registered to start on login (systemd user service).${NC}"
             else
                 echo -e "${YELLOW}  Could not enable systemd service.${NC}"
-                echo -e "  To start on login manually: systemctl --user enable gasoline.service"
+                echo -e "  To start on login manually: systemctl --user enable strum.service"
             fi
         else
             # Fallback: XDG autostart for non-systemd desktops.
             local autostart_dir="$HOME/.config/autostart"
-            local desktop_path="$autostart_dir/gasoline.desktop"
+            local desktop_path="$autostart_dir/strum.desktop"
             mkdir -p "$autostart_dir"
 
             cat > "$desktop_path" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Gasoline Daemon
-Exec=$CANONICAL_GASOLINE_BIN --daemon --port 7890
+Name=STRUM Daemon
+Exec=$CANONICAL_STRUM_BIN --daemon --port 7890
 Hidden=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
@@ -688,9 +692,9 @@ register_path() {
 
     local path_line=""
     if [ "$shell_name" = "fish" ]; then
-        path_line="fish_add_path $BIN_DIR # gasoline"
+        path_line="fish_add_path $BIN_DIR # strum"
     else
-        path_line="export PATH=\"$BIN_DIR:\$PATH\" # gasoline"
+        path_line="export PATH=\"$BIN_DIR:\$PATH\" # strum"
     fi
 
     echo "" >> "$rc_file"
@@ -718,7 +722,7 @@ fi
 
 echo ""
 if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
-    echo -e "${GREEN}${BOLD}Gasoline upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+    echo -e "${GREEN}${BOLD}STRUM upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
 else
-    echo -e "${GREEN}${BOLD}Gasoline v$VERSION installed successfully.${NC}"
+    echo -e "${GREEN}${BOLD}STRUM v$VERSION installed successfully.${NC}"
 fi

@@ -8,20 +8,20 @@ There is no difference in functionality between the MCP and the skill — both e
 
 ## Installation
 
-1. Install the STRUM Chrome Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/gasoline/ghgoccajngbgapjmhofojkkagjgffmpj), or [load the unpacked extension](#loading-the-unpacked-extension) for development.
+1. Install the STRUM Chrome Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/strum/ghgoccajngbgapjmhofojkkagjgffmpj), or [load the unpacked extension](#loading-the-unpacked-extension) for development.
 2. Run the install script:
    ```bash
    bash claude_skill/install.sh
    ```
    The script will:
    - Ask where to install the skill files:
-     - **Globally** (`~/.claude/skills/gasoline/`) — available in all Claude Code sessions
-     - **Project-only** (`.claude/skills/gasoline/`) — available only in the current project
-   - Install the MCP server binary (`gasoline-agentic-browser`) via npm. To avoid version mismatches,
+     - **Globally** (`~/.claude/skills/strum/`) — available in all Claude Code sessions
+     - **Project-only** (`.claude/skills/strum/`) — available only in the current project
+   - Install the MCP server binary (`strum-agentic-browser`) via npm. To avoid version mismatches,
      the script asks for your extension version (check `chrome://extensions` → STRUM Devtools).
      Press Enter to install the latest version instead.
 
-   > **Note:** Unlike the standard MCP setup (`npx gasoline-mcp` in `.mcp.json`), this installs
+   > **Note:** Unlike the standard MCP setup (`npx strum-mcp` in `.mcp.json`), this installs
    > the binary globally. The skill calls it directly via HTTP, not as an MCP server.
 
 ## Usage
