@@ -1367,6 +1367,80 @@ Content script shows subtitle at bottom of viewport
 
 No LLM involved. The daemon already knows what's happening (it's running the scaffold, proxying tool calls, watching file changes). It just maps events to human-readable messages.
 
+### Aggregated Usage Beacon (every 10 minutes)
+
+The daemon maintains an in-memory counter map of `tool:action` pairs. Every 10 minutes (if there was activity since the last beacon), it fires a single aggregated event:
+
+```json
+{
+  "event": "usage_summary",
+  "v": "0.8.1",
+  "os": "darwin-arm64",
+  "props": {
+    "window_m": "10",
+    "observe:errors": "12",
+    "observe:screenshot": "3",
+    "observe:logs": "8",
+    "interact:click": "24",
+    "interact:navigate": "5",
+    "interact:type": "11",
+    "analyze:accessibility": "1",
+    "generate:test": "2",
+    "configure:health": "4"
+  }
+}
+```
+
+**What's in it:** tool name + `what` parameter, count of calls in the last 10 minutes. Nothing else — no URLs, no selectors, no user content, no error messages.
+
+**What's NOT in it:** anything from the arguments beyond `what`. No `selector`, no `url`, no `script`, no `text`, no `save_to`. Just the action name and how many times it was called.
+
+**Implementation:**
+
+```go
+// In the tool call handler, after dispatching:
+usageCounters.Increment(toolName + ":" + whatParam)
+
+// Background goroutine, every 10 minutes:
+func usageBeaconLoop() {
+    ticker := time.NewTicker(10 * time.Minute)
+    for range ticker.C {
+        snapshot := usageCounters.SwapAndReset()
+        if len(snapshot) == 0 {
+            continue // no activity, skip beacon
+        }
+        props := make(map[string]string)
+        props["window_m"] = "10"
+        for key, count := range snapshot {
+            props[key] = strconv.Itoa(count)
+        }
+        telemetry.BeaconEvent("usage_summary", props)
+    }
+}
+```
+
+`SwapAndReset` atomically swaps the counter map with a fresh one and returns the old counts. Lock-free with `sync.Map` or a simple mutex — the hot path (Increment) is one map write.
+
+**Dashboard queries:**
+
+```sql
+-- Most popular tool actions (last 7 days)
+-- props are in blob4 as JSON, extract and sum
+SELECT index1, count() as beacons
+FROM strum_events
+WHERE index1 = 'usage_summary' AND timestamp > now() - interval '7 day'
+GROUP BY index1
+
+-- Feature adoption over time
+-- Parse blob4 JSON for specific tool:action keys
+```
+
+**Why this design:**
+- **One beacon per 10 minutes** instead of one per tool call — 100x fewer requests to the endpoint
+- **Aggregated** — individual actions can't be correlated to a timeline or user session
+- **No activity = no beacon** — idle daemons send nothing
+- **Respects `STRUM_TELEMETRY=off`** — same opt-out as everything else
+
 ### Event-to-Subtitle Mapping
 
 Hardcoded in the daemon — a simple map from internal events to display text:
