@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -89,6 +90,15 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 	}
 	if props["port"] != "7890" {
 		t.Errorf("props.port = %v, want 7890", props["port"])
+	}
+
+	// Verify install ID is present and is 12-char hex.
+	iid, ok := body["iid"].(string)
+	if !ok {
+		t.Fatalf("missing or non-string 'iid' field in beacon payload")
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(iid) {
+		t.Errorf("iid = %q, want 12-char hex string", iid)
 	}
 }
 

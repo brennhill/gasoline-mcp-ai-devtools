@@ -46,6 +46,7 @@ func beacon(event string, props map[string]string) {
 		"event": event,
 		"v":     Version,
 		"os":    runtime.GOOS + "-" + runtime.GOARCH,
+		"iid":   GetInstallID(),
 	}
 	if props != nil {
 		payload["props"] = props
