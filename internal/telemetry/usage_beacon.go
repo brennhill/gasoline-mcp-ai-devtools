@@ -21,6 +21,10 @@ func StartUsageBeaconLoop(ctx context.Context, counter *UsageCounter) {
 	})
 }
 
+// onTick is a test hook called after each tick iteration completes.
+// When nil (production), no notification is sent.
+var onTick func()
+
 // startUsageBeaconLoopWithInterval runs the beacon loop with a configurable interval.
 // Blocks until ctx is cancelled. Used directly in tests with short intervals.
 func startUsageBeaconLoopWithInterval(ctx context.Context, counter *UsageCounter, interval time.Duration) {
@@ -34,14 +38,20 @@ func startUsageBeaconLoopWithInterval(ctx context.Context, counter *UsageCounter
 		case <-ticker.C:
 			snapshot := counter.SwapAndReset()
 			if len(snapshot) == 0 {
+				if onTick != nil {
+					onTick()
+				}
 				continue // no activity, skip beacon
 			}
 			props := make(map[string]string)
-			props["window_m"] = "10"
+			props["window_m"] = strconv.Itoa(int(interval.Minutes()))
 			for key, count := range snapshot {
 				props[key] = strconv.Itoa(count)
 			}
 			BeaconEvent("usage_summary", props)
+			if onTick != nil {
+				onTick()
+			}
 		}
 	}
 }

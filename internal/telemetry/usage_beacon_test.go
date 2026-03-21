@@ -60,8 +60,8 @@ func TestUsageBeaconLoop_FiresOnActivity(t *testing.T) {
 	if !ok {
 		t.Fatalf("props is not a map: %T", body["props"])
 	}
-	if props["window_m"] != "10" {
-		t.Errorf("window_m = %v, want 10", props["window_m"])
+	if props["window_m"] != "0" {
+		t.Errorf("window_m = %v, want 0 (sub-minute test interval)", props["window_m"])
 	}
 	if props["observe:errors"] != "2" {
 		t.Errorf("observe:errors = %v, want 2", props["observe:errors"])
@@ -86,15 +86,33 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
+	// Use onTick hook to wait for a known number of tick cycles.
+	tickCh := make(chan struct{}, 10)
+	onTick = func() {
+		select {
+		case tickCh <- struct{}{}:
+		default:
+		}
+	}
+	defer func() { onTick = nil }()
+
 	counter := NewUsageCounter()
 	// Don't increment — should skip.
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	go startUsageBeaconLoopWithInterval(ctx, counter, 30*time.Millisecond)
+	go startUsageBeaconLoopWithInterval(ctx, counter, 10*time.Millisecond)
 
-	// Wait for a few tick cycles.
-	time.Sleep(150 * time.Millisecond)
+	// Wait for 3 tick cycles to complete.
+	for i := 0; i < 3; i++ {
+		select {
+		case <-tickCh:
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for tick")
+		}
+	}
+
 	cancel()
 
 	mu.Lock()
@@ -103,6 +121,62 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 
 	if count != 0 {
 		t.Fatalf("beacon fired %d times, want 0 (no activity)", count)
+	}
+}
+
+func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
+	t.Setenv("STRUM_TELEMETRY", "off")
+
+	var mu sync.Mutex
+	callCount := 0
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	// Use onTick hook to wait for a known number of tick cycles.
+	tickCh := make(chan struct{}, 10)
+	onTick = func() {
+		select {
+		case tickCh <- struct{}{}:
+		default:
+		}
+	}
+	defer func() { onTick = nil }()
+
+	counter := NewUsageCounter()
+	counter.Increment("observe:errors")
+	counter.Increment("interact:click")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startUsageBeaconLoopWithInterval(ctx, counter, 10*time.Millisecond)
+
+	// Wait for 3 tick cycles to complete.
+	for i := 0; i < 3; i++ {
+		select {
+		case <-tickCh:
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for tick")
+		}
+	}
+
+	cancel()
+
+	mu.Lock()
+	count := callCount
+	mu.Unlock()
+
+	if count != 0 {
+		t.Fatalf("beacon fired %d times with STRUM_TELEMETRY=off, want 0", count)
 	}
 }
 
