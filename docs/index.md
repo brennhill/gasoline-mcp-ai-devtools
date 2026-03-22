@@ -11,7 +11,7 @@ last_reviewed: 2026-02-16
   <div class="hero-content">
     <h1>Browser Observability for AI Coding Agents</h1>
     <p>Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.</p>
-    <p><em style="color: #fb923c;">Pouring fuel on the AI development fire</em></p>
+    <p><em style="color: #fb923c;">Fueling rapid development with AI.</em></p>
     <p><a href="/getting-started/" class="btn">Get Started</a></p>
   </div>
   <img src="/assets/images/sparky-working-laptop-web.webp" alt="Sparky coding" class="hero-sparky">

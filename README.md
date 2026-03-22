@@ -160,7 +160,7 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 **[cookwithgasoline.com](https://cookwithgasoline.com)**
 
-*Pouring fuel on the AI development fire*
+*Fueling rapid development with AI.*
 
 If you find Gasoline Agentic Browser Devtool MCP useful, please consider giving it a star!
 
