@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * @fileoverview terminal-widget.test.js — Regression coverage for terminal header controls.
+ * @fileoverview sidepanel-terminal.test.js — Regression coverage for the terminal side panel host.
  */
 
 import { beforeEach, describe, mock, test } from 'node:test'
@@ -8,13 +8,14 @@ import assert from 'node:assert'
 import { StorageKey } from '../../extension/lib/constants.js'
 
 let importCounter = 0
-let currentModule = null
 let localStorageData = {}
 let sessionStorageData = {}
-let fetchCalls = []
 let fetchHandler = null
 let roots = []
 let windowListeners = {}
+let runtimeMessageListeners = []
+let storageChangeListener = null
+let activeTabId = 1
 
 function makeResponse(status, body) {
   return {
@@ -67,6 +68,7 @@ function createElement(tag) {
     textContent: '',
     title: '',
     type: '',
+    src: '',
     style: {},
     children: [],
     parentElement: null,
@@ -78,6 +80,13 @@ function createElement(tag) {
       child.parentElement = el
       el.children.push(child)
       return child
+    }),
+    replaceChildren: mock.fn((...children) => {
+      el.children = []
+      for (const child of children) {
+        child.parentElement = el
+        el.children.push(child)
+      }
     }),
     remove: mock.fn(() => {
       if (!el.parentElement) return
@@ -127,11 +136,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function emitStorageChange(areaName, key, oldValue, newValue) {
+  if (!storageChangeListener) return
+  storageChangeListener({ [key]: { oldValue, newValue } }, areaName)
+}
+
 function setupEnvironment() {
   roots = []
-  fetchCalls = []
   fetchHandler = null
   windowListeners = {}
+  runtimeMessageListeners = []
+  storageChangeListener = null
+  activeTabId = 1
 
   const body = createElement('body')
   const head = createElement('head')
@@ -142,6 +158,7 @@ function setupEnvironment() {
     body,
     head,
     documentElement,
+    readyState: 'complete',
     createElement: mock.fn((tag) => createElement(tag)),
     getElementById: mock.fn((id) => getElementById(id)),
     addEventListener: mock.fn(),
@@ -178,14 +195,40 @@ function setupEnvironment() {
 
   globalThis.fetch = mock.fn(async (url, options = {}) => {
     const call = { url: String(url), options }
-    fetchCalls.push(call)
     if (!fetchHandler) throw new Error('fetchHandler is not configured')
     return fetchHandler(call)
   })
 
   globalThis.chrome = {
     runtime: {
-      lastError: null
+      id: 'test-extension-id',
+      lastError: null,
+      sendMessage: mock.fn((message, callback) => {
+        if (message?.type === 'terminal_panel_write') {
+          callback?.({ success: true })
+          return Promise.resolve({ success: true })
+        }
+        if (message?.type === 'open_terminal_panel') {
+          callback?.({ success: true })
+          return Promise.resolve({ success: true })
+        }
+        callback?.({})
+        return Promise.resolve({})
+      }),
+      onMessage: {
+        addListener: mock.fn((listener) => {
+          runtimeMessageListeners.push(listener)
+        }),
+        removeListener: mock.fn((listener) => {
+          runtimeMessageListeners = runtimeMessageListeners.filter((item) => item !== listener)
+        })
+      }
+    },
+    sidePanel: {
+      close: mock.fn(() => Promise.resolve())
+    },
+    tabs: {
+      query: mock.fn((_queryInfo) => Promise.resolve([{ id: activeTabId }]))
     },
     storage: {
       local: {
@@ -213,13 +256,29 @@ function setupEnvironment() {
           callback(result)
         }),
         set: mock.fn((payload, callback) => {
+          const prev = { ...sessionStorageData }
           sessionStorageData = { ...sessionStorageData, ...(payload || {}) }
+          for (const [key, value] of Object.entries(payload || {})) {
+            emitStorageChange('session', key, prev[key], value)
+          }
           callback?.()
         }),
         remove: mock.fn((keys, callback) => {
           const keyList = Array.isArray(keys) ? keys : [keys]
-          for (const key of keyList) delete sessionStorageData[key]
+          const prev = { ...sessionStorageData }
+          for (const key of keyList) {
+            delete sessionStorageData[key]
+            emitStorageChange('session', key, prev[key], undefined)
+          }
           callback?.()
+        })
+      },
+      onChanged: {
+        addListener: mock.fn((listener) => {
+          storageChangeListener = listener
+        }),
+        removeListener: mock.fn((listener) => {
+          if (storageChangeListener === listener) storageChangeListener = null
         })
       }
     }
@@ -231,50 +290,41 @@ function findButton(root, predicate) {
   return walkTree(root, (node) => node.tagName === 'BUTTON' && predicate(node))
 }
 
-describe('terminal widget header controls', () => {
+describe('terminal side panel host', () => {
   beforeEach(() => {
-    // Reset shared state from previous test (sub-modules are cached by Node ESM)
-    if (currentModule?._resetForTesting) currentModule._resetForTesting()
-    currentModule = null
     mock.reset()
     localStorageData = { [StorageKey.SERVER_URL]: 'http://localhost:7890' }
     sessionStorageData = {}
     setupEnvironment()
   })
 
-  test('restoring minimized session preserves power button icon and tooltip', async () => {
-    sessionStorageData = {
-      [StorageKey.TERMINAL_SESSION]: { sessionId: 'session-1', token: 'token-1' },
-      [StorageKey.TERMINAL_UI_STATE]: 'minimized'
-    }
-
+  test('boots a panel with terminal iframe and persists open state', async () => {
     fetchHandler = ({ url }) => {
-      if (url.includes('/terminal/validate?token=')) {
-        return Promise.resolve(makeResponse(200, { valid: true }))
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(200, {
+          session_id: 'session-1',
+          token: 'token-1',
+          pid: 999
+        }))
       }
       throw new Error(`Unexpected fetch call: ${url}`)
     }
 
-    const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
-    currentModule = module
-    await module.restoreTerminalIfNeeded()
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
 
     const header = getElementById('gasoline-terminal-header')
+    const iframe = getElementById('gasoline-terminal-iframe')
     assert.ok(header, 'terminal header should be mounted')
+    assert.ok(iframe, 'terminal iframe should be mounted')
+    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open')
 
-    const powerButton = findButton(header, (node) => node.title === 'disconnect terminal & and end session')
-    const minimizeButton = findButton(header, (node) => node.title === 'Restore terminal')
-
-    assert.ok(powerButton, 'power button should exist')
-    assert.strictEqual(powerButton.textContent, '\u23FB', 'power icon should remain visible')
-    assert.strictEqual(powerButton.title, 'disconnect terminal & and end session')
-
+    const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
     assert.ok(minimizeButton, 'minimize button should exist')
-    assert.strictEqual(minimizeButton.textContent, '\u25A1', 'minimize button should become restore icon when minimized')
-    assert.strictEqual(minimizeButton.title, 'Restore terminal')
+    assert.strictEqual(minimizeButton.textContent, '\u2581')
   })
 
-  test('power button click ends current session and next toggle starts a fresh CLI session', async () => {
+  test('disconnect button ends the current session and closes the side panel', async () => {
     let startCount = 0
     const stopBodies = []
 
@@ -297,28 +347,72 @@ describe('terminal widget header controls', () => {
       throw new Error(`Unexpected fetch call: ${url}`)
     }
 
-    const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
-    currentModule = module
-
-    await module.toggleTerminal()
-    assert.strictEqual(startCount, 1, 'first toggle should start one CLI session')
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
 
     const header = getElementById('gasoline-terminal-header')
-    const powerButton = findButton(header, (node) => node.title === 'disconnect terminal & and end session')
-    assert.ok(powerButton, 'power button should be present after opening terminal')
-    assert.strictEqual(powerButton.title, 'disconnect terminal & and end session')
+    const powerButton = findButton(header, (node) => node.title === 'Disconnect terminal & end session')
+    assert.ok(powerButton, 'power button should be present')
+    assert.strictEqual(startCount, 1)
 
     powerButton.dispatch('click')
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await sleep(0)
 
-    assert.strictEqual(stopBodies.length, 1, 'power click should stop the active session')
-    assert.deepStrictEqual(stopBodies[0], { id: 'session-1' }, 'stop call should target current session id')
-
-    await module.toggleTerminal()
-    assert.strictEqual(startCount, 2, 'reopening after exit should start a brand-new CLI session')
+    assert.strictEqual(stopBodies.length, 1, 'disconnect should stop the current session')
+    assert.deepStrictEqual(stopBodies[0], { id: 'session-1' })
+    assert.strictEqual(startCount, 1, 'disconnect should not boot a fresh session')
+    assert.strictEqual(chrome.sidePanel.close.mock.calls.length, 1, 'disconnect should close the side panel')
+    assert.strictEqual(chrome.sidePanel.close.mock.calls[0].arguments[0].tabId, 1)
+    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_SESSION], undefined, 'disconnect should clear persisted session')
+    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], undefined, 'disconnect should clear persisted UI state')
+    assert.strictEqual(getElementById('gasoline-terminal-widget'), null, 'disconnect should unmount the side panel shell')
   })
 
-  test('redraw button resets geometry and reloads iframe without restarting the session', async () => {
+  test('minimize button hides the side panel and keeps the current session alive', async () => {
+    let startCount = 0
+    const stopBodies = []
+
+    fetchHandler = ({ url, options }) => {
+      if (url.endsWith('/terminal/start')) {
+        startCount += 1
+        return Promise.resolve(makeResponse(200, {
+          session_id: `session-${startCount}`,
+          token: `token-${startCount}`,
+          pid: 999
+        }))
+      }
+      if (url.endsWith('/terminal/stop')) {
+        stopBodies.push(JSON.parse(String(options.body || '{}')))
+        return Promise.resolve(makeResponse(200, { ok: true }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const header = getElementById('gasoline-terminal-header')
+    const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
+    assert.ok(minimizeButton, 'minimize button should be present')
+    assert.strictEqual(startCount, 1)
+
+    minimizeButton.dispatch('click')
+    await sleep(0)
+
+    assert.strictEqual(stopBodies.length, 0, 'minimize should not stop the current session')
+    assert.strictEqual(startCount, 1, 'minimize should not boot a fresh session')
+    assert.strictEqual(chrome.sidePanel.close.mock.calls.length, 1, 'minimize should close the side panel')
+    assert.strictEqual(chrome.sidePanel.close.mock.calls[0].arguments[0].tabId, 1)
+    assert.deepStrictEqual(
+      sessionStorageData[StorageKey.TERMINAL_SESSION],
+      { sessionId: 'session-1', token: 'token-1' },
+      'minimize should keep the persisted session'
+    )
+    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'minimized', 'minimize should persist hidden-session state')
+    assert.strictEqual(getElementById('gasoline-terminal-widget'), null, 'minimize should unmount the side panel shell')
+  })
+
+  test('redraw button reloads iframe without starting a new session', async () => {
     let startCount = 0
 
     fetchHandler = ({ url }) => {
@@ -336,43 +430,23 @@ describe('terminal widget header controls', () => {
       throw new Error(`Unexpected fetch call: ${url}`)
     }
 
-    const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
-    currentModule = module
-    await module.toggleTerminal()
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const widget = getElementById('gasoline-terminal-widget')
     const header = getElementById('gasoline-terminal-header')
     const iframe = getElementById('gasoline-terminal-iframe')
     const redrawButton = findButton(header, (node) => node.title === 'Redraw terminal graphics')
-    const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
-
-    assert.ok(widget, 'terminal widget should exist')
-    assert.ok(header, 'terminal header should exist')
     assert.ok(iframe, 'terminal iframe should exist')
     assert.ok(redrawButton, 'redraw button should exist')
-    assert.ok(minimizeButton, 'minimize button should exist')
 
-    widget.style.width = '92vw'
-    widget.style.height = '74vh'
-    widget.style.minHeight = '360px'
-    widget.style.transform = 'translateY(20px) scale(0.98)'
-    widget.style.pointerEvents = 'none'
     const priorSrc = iframe.src
-
     redrawButton.dispatch('click')
 
-    assert.strictEqual(widget.style.width, '50vw')
-    assert.strictEqual(widget.style.height, '40vh')
-    assert.strictEqual(widget.style.minHeight, '250px')
-    assert.strictEqual(widget.style.transform, 'translateY(0) scale(1)')
-    assert.strictEqual(widget.style.pointerEvents, 'auto')
-    assert.strictEqual(iframe.src, priorSrc, 'redraw should reload same iframe URL for the active token')
-    assert.strictEqual(minimizeButton.title, 'Minimize terminal')
-    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open')
-    assert.strictEqual(startCount, 1, 'redraw should not start a new terminal session')
+    assert.strictEqual(iframe.src, priorSrc, 'redraw should keep the same token URL')
+    assert.strictEqual(startCount, 1, 'redraw should not start a new session')
   })
 
-  test('writeToTerminal waits while user is typing and flushes after focus clears', async () => {
+  test('write guard waits while user is typing and flushes after blur', async () => {
     fetchHandler = ({ url }) => {
       if (url.endsWith('/terminal/start')) {
         return Promise.resolve(makeResponse(200, {
@@ -384,9 +458,8 @@ describe('terminal widget header controls', () => {
       throw new Error(`Unexpected fetch call: ${url}`)
     }
 
-    const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
-    currentModule = module
-    await module.toggleTerminal()
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
 
     const iframe = getElementById('gasoline-terminal-iframe')
     assert.ok(iframe, 'terminal iframe should exist')
@@ -395,8 +468,6 @@ describe('terminal widget header controls', () => {
       origin: 'http://localhost:7891',
       data: { source: 'gasoline-terminal', event: 'connected' }
     })
-    const statusDot = getElementById('gasoline-terminal-widget')?.querySelector('.gasoline-terminal-status-dot')
-    assert.strictEqual(statusDot?.style?.background, '#9ece6a', 'connected message should update terminal status dot')
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
       data: { source: 'gasoline-terminal', event: 'focus', data: { focused: true } }
@@ -407,12 +478,11 @@ describe('terminal widget header controls', () => {
     })
 
     const callStart = iframe.contentWindow.postMessage.mock.calls.length
-    module.writeToTerminal('queued command')
+    module._terminalPanelForTests.writeToTerminal('queued command')
 
     await sleep(80)
     const whileTypingPayloads = getPostMessagePayloads(iframe, callStart)
-    const whileTypingWrites = whileTypingPayloads.filter((payload) => payload?.command === 'write')
-    assert.strictEqual(whileTypingWrites.length, 0, 'terminal write should stay queued while user is actively typing')
+    assert.strictEqual(whileTypingPayloads.filter((payload) => payload?.command === 'write').length, 0)
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
@@ -426,13 +496,9 @@ describe('terminal widget header controls', () => {
       .map((payload) => payload.text)
 
     assert.deepStrictEqual(flushedWrites, ['queued command', '\r'])
-    assert.ok(
-      flushedPayloads.some((payload) => payload?.command === 'focus'),
-      'focus should return to xterm after queued write submission'
-    )
   })
 
-  test('terminal submit re-guards if user retakes focus before auto-enter', async () => {
+  test('terminal submit re-guards if focus returns before auto-enter', async () => {
     fetchHandler = ({ url }) => {
       if (url.endsWith('/terminal/start')) {
         return Promise.resolve(makeResponse(200, {
@@ -444,9 +510,8 @@ describe('terminal widget header controls', () => {
       throw new Error(`Unexpected fetch call: ${url}`)
     }
 
-    const module = await import(`../../extension/content/ui/terminal-widget.js?v=${++importCounter}`)
-    currentModule = module
-    await module.toggleTerminal()
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
 
     const iframe = getElementById('gasoline-terminal-iframe')
     assert.ok(iframe, 'terminal iframe should exist')
@@ -455,15 +520,13 @@ describe('terminal widget header controls', () => {
       origin: 'http://localhost:7891',
       data: { source: 'gasoline-terminal', event: 'connected' }
     })
-    const statusDot = getElementById('gasoline-terminal-widget')?.querySelector('.gasoline-terminal-status-dot')
-    assert.strictEqual(statusDot?.style?.background, '#9ece6a', 'connected message should update terminal status dot')
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
       data: { source: 'gasoline-terminal', event: 'focus', data: { focused: false } }
     })
 
     const callStart = iframe.contentWindow.postMessage.mock.calls.length
-    module.writeToTerminal('submit guard command')
+    module._terminalPanelForTests.writeToTerminal('submit guard command')
 
     await sleep(80)
     dispatchWindowEvent('message', {
@@ -480,7 +543,7 @@ describe('terminal widget header controls', () => {
     const blockedWrites = blockedPayloads
       .filter((payload) => payload?.command === 'write')
       .map((payload) => payload.text)
-    assert.deepStrictEqual(blockedWrites, ['submit guard command'], 'auto-enter should pause after focus returns')
+    assert.deepStrictEqual(blockedWrites, ['submit guard command'])
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
@@ -493,5 +556,58 @@ describe('terminal widget header controls', () => {
       .filter((payload) => payload?.command === 'write')
       .map((payload) => payload.text)
     assert.deepStrictEqual(releasedWrites, ['submit guard command', '\r'])
+  })
+
+  test('reopening a minimized session restores the full panel without starting a new session', async () => {
+    sessionStorageData[StorageKey.TERMINAL_SESSION] = { sessionId: 'session-min', token: 'token-min' }
+    sessionStorageData[StorageKey.TERMINAL_UI_STATE] = 'minimized'
+
+    fetchHandler = ({ url }) => {
+      if (url.includes('/terminal/validate?token=')) {
+        return Promise.resolve(makeResponse(200, { valid: true }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const header = getElementById('gasoline-terminal-header')
+    const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
+    const terminalBody = header?.parentElement?.children?.[1] || null
+
+    assert.ok(minimizeButton, 'minimize button should be present after restore')
+    assert.ok(terminalBody, 'terminal body should exist after restore')
+    assert.strictEqual(terminalBody.style.display, 'block', 'reopened minimized session should restore the full panel')
+    assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open', 'reopen should promote minimized session back to open')
+  })
+
+  test('panel mounts only the terminal shell so xterm can use the full panel height', async () => {
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(200, {
+          session_id: 'session-full-height',
+          token: 'token-full-height',
+          pid: 999
+        }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const root = getElementById('gasoline-terminal-widget')
+    const header = getElementById('gasoline-terminal-header')
+    const iframe = getElementById('gasoline-terminal-iframe')
+    const terminalShell = header?.parentElement || null
+    const newProjectButton = findButton(root, (node) => node.textContent === 'New Project')
+
+    assert.ok(root, 'panel root should exist')
+    assert.ok(header, 'terminal header should exist')
+    assert.ok(iframe, 'terminal iframe should exist')
+    assert.ok(terminalShell, 'terminal shell should wrap the header and iframe')
+    assert.strictEqual(newProjectButton, null, 'placeholder palette action should not be rendered')
+    assert.strictEqual(root.children.length, 1, 'terminal shell should be the only top-level panel child')
   })
 })

@@ -27,6 +27,7 @@ import { setupActionRecordingUI } from './popup/action-recording.js'
 import { initFeatureToggles } from './popup/feature-toggles.js'
 import { initTrackPageButton } from './popup/tab-tracking.js'
 import { initAiWebPilotToggle } from './popup/ai-web-pilot.js'
+import { initPopupLogoMotion } from './popup/logo-motion.js'
 import {
   initWebSocketModeSelector,
   handleWebSocketModeChange,
@@ -171,6 +172,7 @@ export function initPopup(): void {
   // Initialize all UI synchronously — no awaits, no blocking.
   // Each init reads chrome.storage via callback and updates DOM when ready.
   // None depend on each other, so they all fire in parallel.
+  initPopupLogoMotion()
   setupRecordingUI()
   setupActionRecordingUI()
   initFeatureToggles()

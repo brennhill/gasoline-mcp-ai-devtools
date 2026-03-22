@@ -121,6 +121,8 @@ export declare const StorageKey: {
     readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
     readonly TERMINAL_SESSION: "gasoline_terminal_session";
     readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
+    readonly TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id";
+    readonly TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id";
     readonly CLOAKED_DOMAINS: "gasoline_cloaked_domains";
 };
 //# sourceMappingURL=constants.d.ts.map

@@ -182,6 +182,8 @@ export const StorageKey = {
     POPUP_LAST_STATUS: 'gasoline_popup_last_status',
     TERMINAL_SESSION: 'gasoline_terminal_session',
     TERMINAL_UI_STATE: 'gasoline_terminal_ui_state',
+    TERMINAL_WORKSPACE_GROUP_ID: 'gasoline_terminal_workspace_group_id',
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: 'gasoline_terminal_workspace_main_tab_id',
     CLOAKED_DOMAINS: 'gasoline_cloaked_domains'
 };
 //# sourceMappingURL=constants.js.map

@@ -1,22 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- 1. Background (Charcoal) -->
-  <circle cx="64" cy="64" r="62" fill="#111111" />
-  
-  <clipPath id="circle-clip">
+  <style>
+    :root {
+      --energy-speed: 2s;
+      --energy-displacement: 4px;
+    }
+
+    @keyframes harmonic-osc {
+      0%, 100% { transform: translateX(0); filter: brightness(1); }
+      50% { transform: translateX(var(--energy-displacement)); filter: brightness(1.12); }
+    }
+
+    .strum-path {
+      animation: harmonic-osc var(--energy-speed) infinite ease-in-out;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+  </style>
+
+  <circle cx="64" cy="64" r="62" fill="#302d2a" />
+
+  <clipPath id="circle-clip-idle">
     <circle cx="64" cy="64" r="62" />
   </clipPath>
-  
-  <!-- 2. Strings (Middle) -->
-  <g clip-path="url(#circle-clip)">
-    <g transform="translate(64, 64) rotate(-32) translate(-64, -64)">
-      <path d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" />
-      <path d="M54 -25 L61 -25 Q 64 64 69 153 L56 153 Q 52 64 54 -25 Z" fill="#d97706" />
-      <path d="M70 -25 L77 -25 Q 81 64 87 153 L74 153 Q 69 64 70 -25 Z" fill="#f59e0b" />
-      <path d="M86 -25 L93 -25 Q 98 64 105 153 L92 153 Q 86 64 86 -25 Z" fill="#fbbf24" />
-      <path d="M102 -25 L109 -25 Q 115 64 123 153 L110 153 Q 103 64 102 -25 Z" fill="#fcd34d" />
+
+  <g clip-path="url(#circle-clip-idle)">
+    <g transform="translate(64 64) rotate(-32) translate(-64 -64)">
+      <path class="strum-path" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.01s" />
+      <path class="strum-path" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.02s" />
+      <path class="strum-path" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.03s" />
+      <path class="strum-path" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.04s" />
+      <path class="strum-path" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.05s" />
     </g>
   </g>
 
-  <!-- 3. Top Ring -->
-  <circle cx="64" cy="64" r="62" fill="none" stroke="#222" stroke-width="3" />
+  <circle cx="64" cy="64" r="62" fill="none" stroke="#222" stroke-width="3.2" />
 </svg>

@@ -8,12 +8,14 @@ import assert from 'node:assert'
 
 let elementsById
 let storageData
-let storageChangeListener
+let storageChangeListeners
 let runtimeSendMessage
 let runtimeOnMessageListeners
 let setTrackedHoverLauncherEnabled
 let sharedStorageKey
 let sharedReshowMessageType
+let terminalUiStateKey
+let sessionStorageData
 let importCounter = 0
 
 function registerElement(el) {
@@ -48,6 +50,9 @@ function createMockElement(tag) {
     }),
     addEventListener: mock.fn((type, handler) => {
       listeners[type] = handler
+    }),
+    setAttribute: mock.fn((name, value) => {
+      el[name] = value
     }),
     dispatch(type) {
       const handler = listeners[type]
@@ -116,14 +121,25 @@ function dispatchRuntimeMessage(message) {
   }
 }
 
+function emitStorageChange(areaName, key, oldValue, newValue) {
+  for (const listener of storageChangeListeners) {
+    listener({ [key]: { oldValue, newValue } }, areaName)
+  }
+}
+
 function resetGlobals() {
   elementsById = {}
   storageData = { gasoline_recording: { active: false } }
-  storageChangeListener = null
+  sessionStorageData = {}
+  storageChangeListeners = []
   runtimeOnMessageListeners = []
 
   runtimeSendMessage = mock.fn((message, callback) => {
-    if (message?.type === 'captureScreenshot') {
+    if (message?.type === 'capture_screenshot') {
+      callback?.({ success: true })
+      return Promise.resolve({ success: true })
+    }
+    if (message?.type === 'open_terminal_panel') {
       callback?.({ success: true })
       return Promise.resolve({ success: true })
     }
@@ -175,12 +191,42 @@ function resetGlobals() {
           return Promise.resolve()
         })
       },
+      session: {
+        get: mock.fn((keys, callback) => {
+          const keyList = Array.isArray(keys) ? keys : [keys]
+          const result = {}
+          for (const key of keyList) {
+            result[key] = sessionStorageData[key]
+          }
+          callback?.(result)
+          return Promise.resolve(result)
+        }),
+        set: mock.fn((value, callback) => {
+          const prev = { ...sessionStorageData }
+          sessionStorageData = { ...sessionStorageData, ...(value || {}) }
+          for (const [key, nextValue] of Object.entries(value || {})) {
+            emitStorageChange('session', key, prev[key], nextValue)
+          }
+          callback?.()
+          return Promise.resolve()
+        }),
+        remove: mock.fn((keys, callback) => {
+          const keyList = Array.isArray(keys) ? keys : [keys]
+          const prev = { ...sessionStorageData }
+          for (const key of keyList) {
+            delete sessionStorageData[key]
+            emitStorageChange('session', key, prev[key], undefined)
+          }
+          callback?.()
+          return Promise.resolve()
+        })
+      },
       onChanged: {
         addListener: mock.fn((listener) => {
-          storageChangeListener = listener
+          storageChangeListeners.push(listener)
         }),
         removeListener: mock.fn((listener) => {
-          if (storageChangeListener === listener) storageChangeListener = null
+          storageChangeListeners = storageChangeListeners.filter((item) => item !== listener)
         })
       }
     }
@@ -189,6 +235,7 @@ function resetGlobals() {
   globalThis.document = {
     getElementById: mock.fn((id) => elementsById[id] || null),
     createElement: mock.fn((tag) => createMockElement(tag)),
+    createElementNS: mock.fn((_ns, tag) => createMockElement(tag)),
     readyState: 'complete',
     body: {
       appendChild: mock.fn((el) => {
@@ -208,6 +255,11 @@ function resetGlobals() {
     addEventListener: mock.fn(),
     removeEventListener: mock.fn()
   }
+
+  globalThis.location = {
+    href: 'https://example.com/',
+    hostname: 'example.com'
+  }
 }
 
 describe('tracked hover launcher', () => {
@@ -216,23 +268,53 @@ describe('tracked hover launcher', () => {
     resetGlobals()
     const constants = await import(`../../extension/lib/constants.js?v=${++importCounter}`)
     sharedStorageKey = constants.StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN
+    terminalUiStateKey = constants.StorageKey.TERMINAL_UI_STATE
     sharedReshowMessageType = constants.RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
+    const bridgeModule = await import('../../extension/content/ui/terminal-panel-bridge.js')
+    bridgeModule._terminalPanelBridgeForTests?.reset?.()
     ;({ setTrackedHoverLauncherEnabled } = await import(
       `../../extension/content/ui/tracked-hover-launcher.js?v=${++importCounter}`
     ))
-    setTrackedHoverLauncherEnabled(false)
+    await setTrackedHoverLauncherEnabled(false)
   })
 
-  test('mounts only when tracked is enabled', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('mounts only when tracked is enabled', async () => {
+    await setTrackedHoverLauncherEnabled(true)
 
     assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher root should be mounted')
     assert.ok(elementsById['gasoline-tracked-hover-toggle'], 'launcher toggle should exist')
     assert.ok(elementsById['gasoline-tracked-hover-panel'], 'launcher panel should exist')
   })
 
-  test('screenshot action sends captureScreenshot runtime message', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('hover island logo vibrates on hover and stops on leave', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+
+    const toggle = elementsById['gasoline-tracked-hover-toggle']
+    assert.ok(toggle, 'expected hover island toggle')
+    const logo = toggle.children[0]
+    assert.ok(logo, 'expected logo image inside hover island toggle')
+
+    toggle.dispatch('mouseenter')
+    assert.ok(String(logo.src || '').includes('icons/logo-animated.svg'))
+
+    toggle.dispatch('mouseleave')
+    assert.ok(String(logo.src || '').includes('icons/icon.svg'))
+  })
+
+  test('untracked localhost pages do not mount the launcher', async () => {
+    globalThis.location = {
+      href: 'http://localhost:3000/',
+      hostname: 'localhost'
+    }
+
+    await setTrackedHoverLauncherEnabled(false)
+
+    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+    assert.strictEqual(elementsById['gasoline-tracked-hover-toggle'], undefined)
+  })
+
+  test('screenshot action sends captureScreenshot runtime message', async () => {
+    await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
     const screenshotButton = findElementByTitlePrefix(root, 'Screenshot')
@@ -241,11 +323,11 @@ describe('tracked hover launcher', () => {
     screenshotButton.dispatch('click')
 
     const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
-    assert.ok(sentTypes.includes('captureScreenshot'))
+    assert.ok(sentTypes.includes('capture_screenshot'))
   })
 
-  test('stop recording button sends screen_recording_stop and is hidden by default', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('stop recording button sends screen_recording_stop and is hidden by default', async () => {
+    await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
     const stopButton = findElementByTitle(root, 'Stop recording')
@@ -258,8 +340,8 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('screen_recording_stop'))
   })
 
-  test('settings menu exposes docs and github links', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('settings menu exposes docs and github links', async () => {
+    await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
@@ -275,15 +357,15 @@ describe('tracked hover launcher', () => {
     assert.strictEqual(repoLink.href, 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp')
   })
 
-  test('hide action removes launcher until popup show message arrives', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('hide action removes launcher until popup show message arrives', async () => {
+    await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton)
     settingsButton.dispatch('click')
 
-    const hideButton = findElementWithChildText(root, 'Hide Gasoline Devtool')
+    const hideButton = findElementWithChildText(root, 'Hide STRUM Devtool')
     assert.ok(hideButton, 'expected hide button')
     hideButton.dispatch('click')
 
@@ -295,27 +377,54 @@ describe('tracked hover launcher', () => {
     assert.strictEqual(storageData[sharedStorageKey], undefined, 'reshow should clear persisted hidden state')
   })
 
+  test('terminal action opens the side panel', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+
+    const root = elementsById['gasoline-tracked-hover-launcher']
+    const terminalButton = findElementByTitlePrefix(root, 'Terminal')
+    assert.ok(terminalButton, 'expected terminal button')
+
+    terminalButton.dispatch('click')
+
+    const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
+    assert.ok(sentTypes.includes('open_terminal_panel'))
+  })
+
+  test('launcher returns when terminal session is minimized and hides only while panel is open', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should start mounted')
+
+    await chrome.storage.session.set({ [terminalUiStateKey]: 'open' })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined, 'launcher should hide while the side panel is open')
+
+    await chrome.storage.session.set({ [terminalUiStateKey]: 'minimized' })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should return when the side panel is minimized')
+  })
+
   test('persisted hidden state suppresses launcher after module reload until popup signal', async () => {
     storageData[sharedStorageKey] = true
     ;({ setTrackedHoverLauncherEnabled } = await import(
       `../../extension/content/ui/tracked-hover-launcher.js?v=${++importCounter}`
     ))
 
-    setTrackedHoverLauncherEnabled(true)
+    await setTrackedHoverLauncherEnabled(true)
     assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
 
     dispatchRuntimeMessage({ type: sharedReshowMessageType })
     assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
   })
 
-  test('unmount removes launcher and storage listener', () => {
-    setTrackedHoverLauncherEnabled(true)
+  test('unmount removes launcher and storage listener', async () => {
+    await setTrackedHoverLauncherEnabled(true)
     assert.ok(elementsById['gasoline-tracked-hover-launcher'])
-    assert.ok(storageChangeListener, 'storage listener should be installed while mounted')
+    const mountedListenerCount = storageChangeListeners.length
+    assert.ok(mountedListenerCount > 0, 'storage listener should be installed while mounted')
 
-    setTrackedHoverLauncherEnabled(false)
+    await setTrackedHoverLauncherEnabled(false)
 
     assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
-    assert.strictEqual(storageChangeListener, null, 'storage listener should be removed on unmount')
+    assert.ok(storageChangeListeners.length < mountedListenerCount, 'launcher-specific storage listeners should be removed on unmount')
   })
 })

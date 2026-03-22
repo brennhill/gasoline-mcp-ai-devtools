@@ -4,41 +4,55 @@ feature_id: feature-terminal
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-22
 code_paths:
   - cmd/browser-agent/terminal_handlers.go
   - cmd/browser-agent/terminal_server.go
   - cmd/browser-agent/terminal_assets/terminal.html
-  - extension/content/ui/terminal-widget.js
-  - src/content/ui/terminal-widget.ts
+  - extension/sidepanel.html
+  - extension/sidepanel.js
+  - src/content/ui/terminal-panel-bridge.ts
+  - src/content/ui/terminal-widget-session.ts
+  - src/content/ui/terminal-widget-types.ts
   - src/content/ui/tracked-hover-launcher.ts
+  - src/background/message-handlers.ts
+  - src/types/runtime-messages.ts
+  - src/sidepanel.ts
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
   - cmd/browser-agent/terminal_handlers_test.go
-  - tests/extension/terminal-widget.test.js
+  - tests/extension/sidepanel-terminal.test.js
+  - tests/extension/tracked-hover-launcher.test.js
+  - tests/extension/message-handlers.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-22
 ---
 
 # Terminal
 
 ## TL;DR
 - Status: shipped
-- In-browser terminal widget that embeds a PTY-backed shell via iframe
+- Side-panel terminal host that embeds a PTY-backed shell via iframe
 - Availability: macOS + Linux only (Windows currently reports terminal unavailable / `terminal_port: 0`)
 - Runs on a **dedicated HTTP server** at `main_port + 1` (e.g., 7891) for isolation
 - Singleton session shared across all tabs via `chrome.storage.session`
-- Three UI states: **open**, **minimized**, **closed** — all persisted across page refreshes
-- Header redraw control (`↻`) resets widget geometry and reloads iframe graphics without killing the PTY session
+- One STRUM work context maps to one Chrome tab group; the panel opens on a workspace tab, not whichever tab sent the request
+- Three UI states: **open**, **minimized**, **closed** - all persisted across page refreshes
+- Hover launcher keeps the page overlay for quick actions, but the terminal button now opens the side panel on the active workspace tab and hides the launcher only while the panel is open
+- Background must call `chrome.sidePanel.open()` in the original click gesture path; tab-specific `setOptions()` cannot be awaited first or Chrome may refuse to open the panel
+- Header redraw control (`↻`) reloads iframe graphics without killing the PTY session
+- Header power control (`⏻`) closes the side panel and ends the PTY session
+- Header minimize control hides the side panel while preserving the current PTY session
+- The current side panel rollout is terminal-only; xterm fills the available panel height
 - Annotation auto-send now uses a typing-aware write queue: if the user is active in terminal, writes wait until ~1.5s idle
 - Queued submit is reconnect-safe: if WS drops before Enter, submit waits until connection is back
 - WebSocket frame writes are serialized per-connection to prevent concurrent writer frame interleaving
 - Scrollback buffer capped at 256 KB for memory safety
 - PTY session tests share a bounded `readUntilContains` helper to keep echo/size assertions consistent
-- Canonical flow map: [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
+- Canonical flow maps: [terminal-side-panel-host.md](../../../architecture/flow-maps/terminal-side-panel-host.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
 - Feature flow-map pointer: [flow-map.md](./flow-map.md)
 
 ---
@@ -88,46 +102,55 @@ If the terminal server dies at runtime:
 
 ---
 
-## UI Widget State Machine
+## Workspace Model
 
-The widget has three visual states, tracked by the `TerminalUIState` type:
+STRUM now treats the terminal side panel as belonging to one browser work context:
+
+- **One work context = one Chrome tab group**
+- **One main tab** anchors that workspace group
+- **Any tab inside the workspace group** can host the visible side panel
+- **Tabs outside the workspace group** must redirect panel open to a workspace tab
+
+The initial rollout keeps the broader extension tracking contract on `TRACKED_TAB_ID`, but terminal workspace resolution upgrades the tracked tab into a named Chrome tab group when needed and persists workspace ownership separately from ordinary tracked-tab UI state.
+
+## UI Panel State Machine
+
+The terminal panel has three visual states, tracked by the `TerminalUIState` type:
 
 ```
-              toggleTerminal()                hideTerminal()
-    ┌─────────────────────────┐      ┌───────────────────────────┐
-    │                         ▼      │                           ▼
- CLOSED ──toggleTerminal()──► OPEN ──┤──toggleMinimize()──► MINIMIZED
-    ▲                                │                           │
-    │         exitTerminalSession()  │   toggleMinimize()        │
-    └────────────────────────────────┘◄──────────────────────────┘
-    ▲                                                            │
-    └─────────exitTerminalSession()──────────────────────────────┘
+                 open_terminal_panel
+    ┌───────────────────────────────────────┐
+    │                                       ▼
+ CLOSED ──browser side panel opened──────► OPEN ──minimizePanel()──► MINIMIZED
+    ▲                                       │                           │
+    │          browser side panel closed    │                           │
+    └───────────────────────────────────────┘                           │
+    ▲                                                                   │
+    └──────────────exitTerminalSession()─────────────────────────────────┘
 ```
 
 ### State Descriptions
 
 | State | Visual | PTY Session | Persisted As |
 |-------|--------|-------------|-------------|
-| **Closed** | Widget hidden (opacity 0, no pointer events) | Stays alive — can reconnect | `'closed'` |
-| **Open** | Full widget visible (iframe + header) | Active, WebSocket connected | `'open'` |
-| **Minimized** | Only 32px header bar visible, iframe hidden | Active, WebSocket connected | `'minimized'` |
+| **Closed** | Side panel closed, hover launcher visible again | Stopped | `'closed'` or cleared |
+| **Open** | Full side panel visible (terminal header + terminal iframe) | Active, WebSocket connected | `'open'` |
+| **Minimized** | Side panel hidden, hover launcher visible again | Active, WebSocket reconnectable | `'minimized'` |
 
 ### State Transitions
 
 | Action | Trigger | From → To |
 |--------|---------|-----------|
-| `toggleTerminal()` | Launcher button click | Closed → Open (starts session if needed) |
-| `toggleTerminal()` | Launcher button click | Open → Closed |
-| `hideTerminal()` | Close (✕) button | Open/Minimized → Closed |
-| `toggleMinimize()` | Minimize (▁) button | Open → Minimized |
-| `toggleMinimize()` | Header click or restore (□) button | Minimized → Open |
-| `exitTerminalSession()` | Exit (⏻) button | Any → Closed (kills PTY) |
-| `restoreTerminalIfNeeded()` | Page load | Restores previous state from persistence |
+| `openTerminalPanel()` | Launcher button click or popup action | Closed/Minimized → Open (starts session if needed) |
+| `browser side panel closed` | Browser UI | Open → Minimized or Closed depending on persisted intent |
+| `minimizePanel()` | Minimize (▁) button | Open → Minimized |
+| `exitTerminalSession()` | Power (⏻) button | Open/Minimized → Closed (kills PTY) |
+| `side panel page load` | Browser reopens panel | Restores previous state from persistence |
 
 ### Key Distinction: Close vs Exit
 
-- **Close** (`hideTerminal`) — Hides the widget but the PTY session stays alive on the daemon. The user can reopen and reconnect. Used by the ✕ button.
-- **Exit** (`exitTerminalSession`) — Kills the PTY process on the daemon (`POST /terminal/stop`), clears persisted session, and unmounts the widget completely. Used by the ⏻ button.
+- **Minimize** - The browser side panel is closed but the PTY session stays alive on the daemon and the launcher becomes visible again.
+- **Exit** (`exitTerminalSession`) - Kills the PTY process on the daemon (`POST /terminal/stop`), clears persisted session, closes the side panel, and resets the panel host completely.
 
 ---
 
@@ -161,14 +184,15 @@ Extension                          Terminal Server (port+1)
    │◄────────── live PTY I/O ──────────────►│
 ```
 
-### Session Persistence Across Page Refresh
+### Session Persistence Across Page Refresh and Panel Reopen
 
-1. On every state change, the widget writes `{token, sessionId}` and `uiState` to `chrome.storage.session`.
-2. On page load, `restoreTerminalIfNeeded()` reads the persisted state.
-3. If a session exists and `uiState !== 'closed'`:
+1. On every state change, the side panel writes `{token, sessionId}` and `uiState` to `chrome.storage.session`.
+2. On panel load, the side panel host reads the persisted state.
+3. If a session exists:
    - Validates the token against the daemon (`GET /terminal/validate?token=...`).
-   - If valid: mounts the widget in the persisted UI state (open or minimized).
+   - If valid: mounts the panel in the persisted UI state (open or minimized).
    - If invalid (daemon restarted, process died): clears stale state and starts a fresh session.
+4. The hover launcher observes `TERMINAL_UI_STATE` and hides only while the panel is open.
 
 ### Session Conflict (409)
 
@@ -231,7 +255,7 @@ The `terminal.html` WebSocket has built-in auto-reconnect with exponential backo
 
 ### Connection Status Dot
 
-The iframe sends `postMessage` events to the parent widget:
+The iframe sends `postMessage` events to the parent panel host:
 - `connected` → green dot
 - `disconnected` → orange dot
 - `exited` → red dot
@@ -253,24 +277,14 @@ function getTerminalServerUrl(baseUrl: string): string {
 
 `TERMINAL_PORT_OFFSET = 1` is defined in `src/lib/constants.ts`.
 
-### CSP Reachability Check
-
-The tracked-tab hover launcher proactively checks if the terminal server is reachable before enabling the terminal button. On non-localhost pages, CSP may block `fetch()` to `localhost`:
-
-```typescript
-async function checkTerminalReachable(): Promise<boolean>
-```
-
-If the fetch fails (CSP block or server not running), the terminal button is dimmed with `opacity: 0.35` and a tooltip explaining the issue. This replaces the previous static `isLocalPage` regex check.
-
 ### PostMessage Bridge
 
-The content script communicates with the terminal iframe via `postMessage`:
+The side panel host communicates with the terminal iframe via `postMessage`:
 
 | Direction | Message | Purpose |
 |-----------|---------|---------|
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'focus'}` | Focus the xterm.js instance |
-| Parent → Iframe | `{target: 'gasoline-terminal', command: 'resize'}` | Refit terminal after widget resize |
+| Parent → Iframe | `{target: 'gasoline-terminal', command: 'resize'}` | Refit terminal after panel resize |
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'redraw'}` | Soft redraw xterm canvas without iframe/session reload |
 | Parent → Iframe | `{target: 'gasoline-terminal', command: 'write', text: '...'}` | Write text to PTY stdin |
 | Iframe → Parent | `{source: 'gasoline-terminal', event: 'connected'}` | WebSocket connected |
@@ -283,12 +297,12 @@ Origin validation: parent only accepts messages from the terminal server origin.
 
 ### Queued Write Guard
 
-When `writeToTerminal()` is called (for example from annotation auto-send), the widget now queues writes and applies a focus guard:
+When `writeToTerminal()` is called (for example from annotation auto-send), the panel host queues writes and applies a focus guard:
 
 1. If terminal is connected and user is idle, write is sent immediately.
 2. If terminal has focus and recent typing (< 1.5s), write is deferred.
 3. A warning toast is shown (`waiting for user to stop typing`) at a throttled interval.
-4. After idle clears, widget soft-redraws terminal, writes text, then sends `\r`.
+4. After idle clears, the panel host soft-redraws terminal, writes text, then sends `\r`.
 5. If WebSocket disconnects before submit, queued Enter waits until reconnect, then continues.
 6. Focus is returned to xterm after submit.
 
@@ -316,7 +330,7 @@ If the user re-focuses and types again during the auto-submit window, Enter is d
 
 ### Sandbox Detection
 
-If the daemon was spawned by an MCP client's stdio transport, macOS sandbox restrictions may prevent `posix_spawn`/`fork`. The `handleTerminalStart` handler detects this and returns HTTP 503 with a `sandbox_restricted` error, which the widget displays as an actionable overlay with the command to restart the daemon with full permissions.
+If the daemon was spawned by an MCP client's stdio transport, macOS sandbox restrictions may prevent `posix_spawn`/`fork`. The `handleTerminalStart` handler detects this and returns HTTP 503 with a `sandbox_restricted` error, which the side panel displays as an actionable inline error with the command to restart the daemon with full permissions.
 
 ---
 
@@ -343,8 +357,12 @@ Note: `/config/active-codebase` is on the **main** daemon server (not terminal s
 | `cmd/browser-agent/terminal_server.go` | Dedicated server setup: `setupTerminalMux()`, `startTerminalServer()` |
 | `cmd/browser-agent/terminal_handlers.go` | All HTTP handlers: page, WS, start, stop, validate, config |
 | `cmd/browser-agent/terminal_assets/terminal.html` | xterm.js terminal page with WS reconnect and postMessage bridge |
-| `src/content/ui/terminal-widget.ts` | Widget UI: state machine, session persistence, iframe lifecycle |
-| `src/content/ui/tracked-hover-launcher.ts` | Terminal button in hover launcher + CSP reachability check |
+| `extension/sidepanel.html` | Side panel shell that loads the terminal host |
+| `src/sidepanel.ts` | Side panel UI: terminal shell, terminal iframe, write guard, session restore |
+| `src/content/ui/terminal-panel-bridge.ts` | Content-script bridge for opening the panel and forwarding writes |
+| `src/content/ui/terminal-widget-session.ts` | Shared terminal session persistence and lifecycle helpers |
+| `src/content/ui/terminal-widget-types.ts` | Shared terminal state, timing, and DOM ids |
+| `src/content/ui/tracked-hover-launcher.ts` | Hover launcher terminal button + launcher hide/show coordination |
 | `src/lib/constants.ts` | `TERMINAL_PORT_OFFSET`, storage keys |
 | `internal/pty/manager.go` | Session manager: create, get, destroy, token auth |
 | `internal/pty/session.go` | PTY session: spawn, I/O, resize, scrollback, close |

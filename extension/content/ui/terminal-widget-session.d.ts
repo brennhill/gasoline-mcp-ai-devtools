@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { type TerminalConfig, type TerminalSessionState, type TerminalUIState } from './terminal-widget-types.js';
+export type TerminalSandboxErrorHandler = (message: string, instruction: string, command: string) => void;
 export declare function getServerUrl(): Promise<string>;
 export declare function getTerminalConfig(): Promise<TerminalConfig>;
 export declare function saveTerminalConfig(config: TerminalConfig): void;
@@ -15,5 +16,5 @@ export declare function loadPersistedSession(): Promise<{
 }>;
 /** Validate that a persisted token is still alive on the daemon. */
 export declare function validateSession(token: string): Promise<boolean>;
-export declare function startSession(config: TerminalConfig): Promise<TerminalSessionState | null>;
+export declare function startSession(config: TerminalConfig, onSandboxError?: TerminalSandboxErrorHandler): Promise<TerminalSessionState | null>;
 //# sourceMappingURL=terminal-widget-session.d.ts.map

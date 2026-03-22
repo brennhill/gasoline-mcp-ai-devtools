@@ -7,6 +7,32 @@ import { pushChatMessage } from './push-handler.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js';
+import { resolveTerminalWorkspaceTarget } from './tab-state.js';
+async function openTerminalSidePanel(tabId) {
+    if (typeof chrome === 'undefined' || !chrome.sidePanel?.open) {
+        return { success: false, error: 'side panel unavailable' };
+    }
+    try {
+        const workspace = await resolveTerminalWorkspaceTarget(tabId);
+        if (!workspace) {
+            return { success: false, error: 'missing workspace tab' };
+        }
+        const path = `sidepanel.html?tabId=${encodeURIComponent(workspace.hostTabId)}&tabGroupId=${encodeURIComponent(workspace.tabGroupId)}&mainTabId=${encodeURIComponent(workspace.mainTabId)}`;
+        const setOptionsPromise = chrome.sidePanel.setOptions
+            ? chrome.sidePanel
+                .setOptions({ tabId: workspace.hostTabId, path, enabled: true })
+                .catch(() => undefined)
+            : null;
+        // sidePanel.open must stay in the original user-gesture path. Awaiting
+        // another async API first can cause Chrome to reject the open request.
+        await chrome.sidePanel.open({ tabId: workspace.hostTabId });
+        void setOptionsPromise;
+        return { success: true };
+    }
+    catch (error) {
+        return { success: false, error: errorMessage(error) };
+    }
+}
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -125,6 +151,11 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'get_ai_web_pilot_enabled':
             sendResponse({ enabled: deps.getAiWebPilotEnabled() });
             return false;
+        case 'open_terminal_panel':
+            openTerminalSidePanel(sender.tab?.id)
+                .then((result) => sendResponse(result))
+                .catch((error) => sendResponse({ success: false, error: errorMessage(error) }));
+            return true;
         case 'get_tracking_state':
             handleGetTrackingState(sendResponse, deps, sender.tab?.id);
             return true;

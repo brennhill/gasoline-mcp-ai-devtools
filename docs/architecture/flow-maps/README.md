@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-21
 owners:
   - Brenn
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-21
 ---
 
 # Flow Maps
@@ -73,5 +73,6 @@ Each flow map should include:
 - [Push Alert Notification Emission](./push-alert-notification-emission.md)
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
+- [Terminal Side Panel Host and Launcher Coordination](./terminal-side-panel-host.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](./shared-extraction-and-contract-normalization.md)
