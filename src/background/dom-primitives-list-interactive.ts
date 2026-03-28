@@ -472,6 +472,76 @@ export function domPrimitiveListInteractive(
     if (rawEntries.length >= 100) break
   }
 
+  // Second pass: find cursor:pointer elements not caught by selector scan.
+  // Catches framework-bound click handlers (React onClick, Vue @click, etc.)
+  // that render as plain divs/spans with no semantic interactive attributes.
+  if (rawEntries.length < 100) {
+    const cursorPointerTags = new Set(['div', 'span', 'li', 'td', 'p', 'img', 'svg', 'label', 'figure', 'section', 'article'])
+    const candidates = scopeRoot.querySelectorAll('*')
+    let checked = 0
+    const maxCheck = 500 // Budget: don't scan more than 500 elements for cursor style
+    for (const el of candidates) {
+      if (rawEntries.length >= 100) break
+      if (checked >= maxCheck) break
+      if (seen.has(el)) continue
+      const tag = el.tagName.toLowerCase()
+      if (!cursorPointerTags.has(tag)) continue
+      checked++
+
+      const htmlEl = el as HTMLElement
+      if (!htmlEl.offsetParent && htmlEl !== document.body) continue
+
+      let cursor: string
+      try { cursor = getComputedStyle(htmlEl).cursor } catch { continue }
+      if (cursor !== 'pointer') continue
+
+      // Confirmed: cursor:pointer on a non-interactive element
+      seen.add(el)
+      const rect = htmlEl.getBoundingClientRect()
+      const visible = rect.width > 0 && rect.height > 0
+      if (visibleOnly && !visible) continue
+      if (!intersectsScopeRect(el)) continue
+
+      const bbox = extractBoundingBox(el)
+      const shadowSel = buildShadowSelector(el)
+      const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, '*')
+
+      const label =
+        el.getAttribute('aria-label') ||
+        el.getAttribute('title') ||
+        (htmlEl.textContent || '').trim().slice(0, 60) ||
+        tag
+
+      if (textContains && !label.toLowerCase().includes(textContains)) continue
+      const ariaRole = el.getAttribute('role') || ''
+      if (roleFilter && ariaRole.toLowerCase() !== roleFilter) continue
+
+      if (excludeNav) {
+        const lm = findNearestLandmark(el)
+        if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner')) continue
+      }
+
+      const landmark = findNearestLandmark(el)
+      rawEntries.push({
+        el,
+        htmlEl,
+        baseSelector,
+        finalSelector: baseSelector,
+        tag,
+        inputType: undefined,
+        elementType: 'clickable',
+        label,
+        role: ariaRole || undefined,
+        placeholder: undefined,
+        bbox,
+        visible,
+        inOverlay: isInsideOverlay(el),
+        landmarkTag: landmark?.tag,
+        landmarkRole: landmark?.role
+      })
+    }
+  }
+
   // Disambiguate selectors in DOM order BEFORE dedup and spatial sort.
   // The resolver (resolveByTextAll, querySelectorAllDeep) returns elements in DOM order,
   // so :nth-match(N) numbering must match DOM order, not spatial order (#360).
