@@ -6,20 +6,20 @@ package main
 func mcpResources() []MCPResource {
 	return []MCPResource{
 		{
-			URI:         "gasoline://capabilities",
-			Name:        "Gasoline Capability Index",
+			URI:         "kaboom://capabilities",
+			Name:        "Kaboom Capability Index",
 			Description: "Compact capability index with task-to-playbook routing hints",
 			MimeType:    "text/markdown",
 		},
 		{
-			URI:         "gasoline://guide",
-			Name:        "Gasoline Usage Guide",
-			Description: "How to use Gasoline MCP tools for browser debugging",
+			URI:         "kaboom://guide",
+			Name:        "Kaboom Usage Guide",
+			Description: "How to use Kaboom MCP tools for browser debugging",
 			MimeType:    "text/markdown",
 		},
 		{
-			URI:         "gasoline://quickstart",
-			Name:        "Gasoline MCP Quickstart",
+			URI:         "kaboom://quickstart",
+			Name:        "Kaboom MCP Quickstart",
 			Description: "Short, canonical MCP call examples and workflows",
 			MimeType:    "text/markdown",
 		},
@@ -29,14 +29,14 @@ func mcpResources() []MCPResource {
 func mcpResourceTemplates() []any {
 	return []any{
 		map[string]any{
-			"uriTemplate": "gasoline://playbook/{capability}/{level}",
-			"name":        "Gasoline Capability Playbook",
+			"uriTemplate": "kaboom://playbook/{capability}/{level}",
+			"name":        "Kaboom Capability Playbook",
 			"description": "On-demand, token-efficient playbooks. Start with quick; use full for deep workflows.",
 			"mimeType":    "text/markdown",
 		},
 		map[string]any{
-			"uriTemplate": "gasoline://demo/{name}",
-			"name":        "Gasoline Demo Script",
+			"uriTemplate": "kaboom://demo/{name}",
+			"name":        "Kaboom Demo Script",
 			"description": "Demo scripts for websockets, annotations, recording, and dependency vetting",
 			"mimeType":    "text/markdown",
 		},

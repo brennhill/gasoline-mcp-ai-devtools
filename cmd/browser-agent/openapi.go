@@ -20,6 +20,6 @@ func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(openapiJSON); err != nil {
-		stderrf("[gasoline] failed to write /openapi.json response: %v\n", err)
+		stderrf("[kaboom] failed to write /openapi.json response: %v\n", err)
 	}
 }
