@@ -1,11 +1,11 @@
 /**
- * Purpose: Exposes the window.__gasoline developer API for programmatic access to capture capabilities, context annotations, and event buffers.
+ * Purpose: Exposes the window.__kaboom developer API for programmatic access to capture capabilities, context annotations, and event buffers.
  * Docs: docs/features/feature/custom-event-api/index.md
  */
 
 /**
- * @fileoverview Gasoline API - Exposes window.__gasoline interface for developers
- * to interact with Gasoline capture capabilities.
+ * @fileoverview Kaboom API - Exposes window.__kaboom interface for developers
+ * to interact with Kaboom capture capabilities.
  */
 
 declare const __GASOLINE_VERSION__: string
@@ -39,9 +39,9 @@ import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled
 import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context.js'
 
 /**
- * GasolineAPI interface exposed on window.__gasoline
+ * KaboomAPI interface exposed on window.__kaboom
  */
-export interface GasolineAPI {
+export interface KaboomAPI {
   annotate(key: string, value: unknown): void
   removeAnnotation(key: string): void
   clearAnnotations(): void
@@ -66,10 +66,10 @@ export interface GasolineAPI {
   version: string
 }
 
-// Extend Window interface for __gasoline
+// Extend Window interface for __kaboom
 declare global {
   interface Window {
-    __gasoline?: GasolineAPI
+    __kaboom?: KaboomAPI
   }
 }
 
@@ -106,19 +106,19 @@ function setNativeValue(element: Element, value: string | boolean): boolean {
 }
 
 /**
- * Install the window.__gasoline API for developers to interact with Gasoline
+ * Install the window.__kaboom API for developers to interact with Kaboom
  */
 // #lizard forgives
-export function installGasolineAPI(): void {
+export function installKaboomAPI(): void {
   if (typeof window === 'undefined') return
 
-  window.__gasoline = {
+  window.__kaboom = {
     /**
      * Add a context annotation that will be included with errors
      * @param key - Annotation key (e.g., 'checkout-flow', 'user')
      * @param value - Annotation value
      * @example
-     * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
+     * window.__kaboom.annotate('checkout-flow', { step: 'payment', items: 3 })
      */
     annotate(key: string, value: unknown): boolean {
       return setContextAnnotation(key, value)
@@ -303,13 +303,13 @@ export function installGasolineAPI(): void {
      *
      * @example
      * // Text input
-     * window.__gasoline.setInputValue('input[name="email"]', 'test@example.com')
+     * window.__kaboom.setInputValue('input[name="email"]', 'test@example.com')
      *
      * // Checkbox
-     * window.__gasoline.setInputValue('input[type="checkbox"]', true)
+     * window.__kaboom.setInputValue('input[type="checkbox"]', true)
      *
      * // Select dropdown
-     * window.__gasoline.setInputValue('select[name="country"]', 'US')
+     * window.__kaboom.setInputValue('select[name="country"]', 'US')
      */
     setInputValue(selector: string, value: string | boolean): boolean {
       const element = document.querySelector(selector)
@@ -336,17 +336,17 @@ export function installGasolineAPI(): void {
     },
 
     /**
-     * Version of the Gasoline API
+     * Version of the Kaboom API
      */
     version: __GASOLINE_VERSION__
   }
 }
 
 /**
- * Uninstall the window.__gasoline API
+ * Uninstall the window.__kaboom API
  */
-export function uninstallGasolineAPI(): void {
-  if (typeof window !== 'undefined' && window.__gasoline) {
-    delete window.__gasoline
+export function uninstallKaboomAPI(): void {
+  if (typeof window !== 'undefined' && window.__kaboom) {
+    delete window.__kaboom
   }
 }

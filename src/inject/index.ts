@@ -135,7 +135,7 @@ export {
 export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js'
 
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api.js'
+export { installKaboomAPI, uninstallKaboomAPI, type KaboomAPI } from './api.js'
 
 // Export observer module
 export {
@@ -169,7 +169,7 @@ export {
   type HighlightResult
 } from './state.js'
 
-import { installGasolineAPI } from './api.js'
+import { installKaboomAPI } from './api.js'
 import { installPhase1 } from './observers.js'
 import { installMessageListener } from './message-handlers.js'
 import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state.js'
@@ -189,8 +189,8 @@ if (
   // Install message listener with state functions
   installMessageListener(captureState, restoreState)
 
-  // Install Gasoline API
-  installGasolineAPI()
+  // Install Kaboom API
+  installKaboomAPI()
 
   // Send performance snapshot after page load + 2s settling time
   window.addEventListener('load', () => {

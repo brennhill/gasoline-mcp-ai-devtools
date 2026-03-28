@@ -1,5 +1,5 @@
 /**
- * @fileoverview Global Type Declarations for Gasoline Extension
+ * @fileoverview Global Type Declarations for Kaboom Extension
  *
  * Ambient type declarations for global objects, browser APIs, and third-party libraries.
  * These types augment the global namespace without requiring explicit imports.
@@ -16,13 +16,13 @@ import type {
 } from './messages.js'
 
 // =============================================================================
-// GASOLINE DEVELOPER API (window.__gasoline)
+// KABOOM DEVELOPER API (window.__kaboom)
 // =============================================================================
 
 /**
- * Gasoline Developer API exposed on window for programmatic control
+ * Kaboom Developer API exposed on window for programmatic control
  */
-interface GasolineAPI {
+interface KaboomAPI {
   /** API version string */
   readonly version: string
 
@@ -175,8 +175,8 @@ declare global {
   }
 
   interface Window {
-    /** Gasoline developer API */
-    __gasoline?: GasolineAPI
+    /** Kaboom developer API */
+    __kaboom?: KaboomAPI
 
     /** WebSocket class (for monkey-patching) */
     WebSocket: typeof WebSocket

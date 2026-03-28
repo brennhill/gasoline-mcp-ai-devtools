@@ -2577,16 +2577,16 @@ function setNativeValue(element, value) {
   }
   return false;
 }
-function installGasolineAPI() {
+function installKaboomAPI() {
   if (typeof window === "undefined")
     return;
-  window.__gasoline = {
+  window.__kaboom = {
     /**
      * Add a context annotation that will be included with errors
      * @param key - Annotation key (e.g., 'checkout-flow', 'user')
      * @param value - Annotation value
      * @example
-     * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
+     * window.__kaboom.annotate('checkout-flow', { step: 'payment', items: 3 })
      */
     annotate(key, value) {
       return setContextAnnotation(key, value);
@@ -2742,13 +2742,13 @@ function installGasolineAPI() {
      *
      * @example
      * // Text input
-     * window.__gasoline.setInputValue('input[name="email"]', 'test@example.com')
+     * window.__kaboom.setInputValue('input[name="email"]', 'test@example.com')
      *
      * // Checkbox
-     * window.__gasoline.setInputValue('input[type="checkbox"]', true)
+     * window.__kaboom.setInputValue('input[type="checkbox"]', true)
      *
      * // Select dropdown
-     * window.__gasoline.setInputValue('select[name="country"]', 'US')
+     * window.__kaboom.setInputValue('select[name="country"]', 'US')
      */
     setInputValue(selector, value) {
       const element = document.querySelector(selector);
@@ -2771,14 +2771,14 @@ function installGasolineAPI() {
       }
     },
     /**
-     * Version of the Gasoline API
+     * Version of the Kaboom API
      */
     version: "0.8.1"
   };
 }
-function uninstallGasolineAPI() {
-  if (typeof window !== "undefined" && window.__gasoline) {
-    delete window.__gasoline;
+function uninstallKaboomAPI() {
+  if (typeof window !== "undefined" && window.__kaboom) {
+    delete window.__kaboom;
   }
 }
 
@@ -4408,7 +4408,7 @@ if (typeof window !== "undefined") {
 if (typeof window !== "undefined" && typeof document !== "undefined" && typeof globalThis.process === "undefined") {
   installPhase1();
   installMessageListener(captureState, restoreState);
-  installGasolineAPI();
+  installKaboomAPI();
   window.addEventListener("load", () => {
     setTimeout(() => {
       sendPerformanceSnapshot();
@@ -4480,7 +4480,7 @@ export {
   installConsoleCapture,
   installExceptionCapture,
   installFetchCapture,
-  installGasolineAPI,
+  installKaboomAPI,
   installMessageListener,
   installNavigationCapture,
   installPerfObservers,
@@ -4538,7 +4538,7 @@ export {
   uninstallConsoleCapture,
   uninstallExceptionCapture,
   uninstallFetchCapture,
-  uninstallGasolineAPI,
+  uninstallKaboomAPI,
   uninstallNavigationCapture,
   uninstallPerfObservers,
   uninstallPerformanceCapture,

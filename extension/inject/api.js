@@ -1,5 +1,5 @@
 /**
- * Purpose: Exposes the window.__gasoline developer API for programmatic access to capture capabilities, context annotations, and event buffers.
+ * Purpose: Exposes the window.__kaboom developer API for programmatic access to capture capabilities, context annotations, and event buffers.
  * Docs: docs/features/feature/custom-event-api/index.md
  */
 import { setContextAnnotation, removeContextAnnotation, clearContextAnnotations, getContextAnnotations } from '../lib/context.js';
@@ -37,19 +37,19 @@ function setNativeValue(element, value) {
     return false;
 }
 /**
- * Install the window.__gasoline API for developers to interact with Gasoline
+ * Install the window.__kaboom API for developers to interact with Kaboom
  */
 // #lizard forgives
-export function installGasolineAPI() {
+export function installKaboomAPI() {
     if (typeof window === 'undefined')
         return;
-    window.__gasoline = {
+    window.__kaboom = {
         /**
          * Add a context annotation that will be included with errors
          * @param key - Annotation key (e.g., 'checkout-flow', 'user')
          * @param value - Annotation value
          * @example
-         * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
+         * window.__kaboom.annotate('checkout-flow', { step: 'payment', items: 3 })
          */
         annotate(key, value) {
             return setContextAnnotation(key, value);
@@ -208,13 +208,13 @@ export function installGasolineAPI() {
          *
          * @example
          * // Text input
-         * window.__gasoline.setInputValue('input[name="email"]', 'test@example.com')
+         * window.__kaboom.setInputValue('input[name="email"]', 'test@example.com')
          *
          * // Checkbox
-         * window.__gasoline.setInputValue('input[type="checkbox"]', true)
+         * window.__kaboom.setInputValue('input[type="checkbox"]', true)
          *
          * // Select dropdown
-         * window.__gasoline.setInputValue('select[name="country"]', 'US')
+         * window.__kaboom.setInputValue('select[name="country"]', 'US')
          */
         setInputValue(selector, value) {
             const element = document.querySelector(selector);
@@ -239,17 +239,17 @@ export function installGasolineAPI() {
             }
         },
         /**
-         * Version of the Gasoline API
+         * Version of the Kaboom API
          */
         version: __GASOLINE_VERSION__
     };
 }
 /**
- * Uninstall the window.__gasoline API
+ * Uninstall the window.__kaboom API
  */
-export function uninstallGasolineAPI() {
-    if (typeof window !== 'undefined' && window.__gasoline) {
-        delete window.__gasoline;
+export function uninstallKaboomAPI() {
+    if (typeof window !== 'undefined' && window.__kaboom) {
+        delete window.__kaboom;
     }
 }
 //# sourceMappingURL=api.js.map

@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
  * @fileoverview inject-context-api-actions.test.js — Tests for context annotations,
- * the window.__gasoline API, and user action replay in inject.js.
+ * the window.__kaboom API, and user action replay in inject.js.
  */
 
 import { test, describe, beforeEach, afterEach } from 'node:test'
@@ -154,7 +154,7 @@ describe('Context Annotations', () => {
   })
 })
 
-describe('Gasoline API', () => {
+describe('Kaboom API', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
@@ -164,84 +164,85 @@ describe('Gasoline API', () => {
     globalThis.window = originalWindow
   })
 
-  test('should install window.__gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI } = await import('../../extension/inject.js')
+  test('should install window.__kaboom API', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI } = await import('../../extension/inject.js')
 
-    installGasolineAPI()
+    installKaboomAPI()
 
-    assert.ok(globalThis.window.__gasoline)
-    assert.ok(typeof globalThis.window.__gasoline.annotate === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.removeAnnotation === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.clearAnnotations === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.getContext === 'function')
-    assert.ok(globalThis.window.__gasoline.version)
+    assert.ok(globalThis.window.__kaboom)
+    assert.ok(typeof globalThis.window.__kaboom.annotate === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.removeAnnotation === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.clearAnnotations === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.getContext === 'function')
+    assert.ok(globalThis.window.__kaboom.version)
+    assert.strictEqual(globalThis.window.__gasoline, undefined)
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
   })
 
-  test('should uninstall window.__gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI } = await import('../../extension/inject.js')
+  test('should uninstall window.__kaboom API', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI } = await import('../../extension/inject.js')
 
-    installGasolineAPI()
-    assert.ok(globalThis.window.__gasoline)
+    installKaboomAPI()
+    assert.ok(globalThis.window.__kaboom)
 
-    uninstallGasolineAPI()
-    assert.ok(!globalThis.window.__gasoline)
+    uninstallKaboomAPI()
+    assert.ok(!globalThis.window.__kaboom)
   })
 
-  test('__gasoline.annotate should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, clearContextAnnotations } =
+  test('__kaboom.annotate should work', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI, clearContextAnnotations } =
       await import('../../extension/inject.js')
 
     clearContextAnnotations()
-    installGasolineAPI()
+    installKaboomAPI()
 
-    const result = globalThis.window.__gasoline.annotate('test', { value: 123 })
+    const result = globalThis.window.__kaboom.annotate('test', { value: 123 })
     assert.strictEqual(result, true)
 
-    const context = globalThis.window.__gasoline.getContext()
+    const context = globalThis.window.__kaboom.getContext()
     assert.strictEqual(context.test.value, 123)
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
     clearContextAnnotations()
   })
 
-  test('__gasoline.getActions should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, recordAction, clearActionBuffer } =
+  test('__kaboom.getActions should work', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI, recordAction, clearActionBuffer } =
       await import('../../extension/inject.js')
 
     clearActionBuffer()
-    installGasolineAPI()
+    installKaboomAPI()
 
     recordAction({ type: 'click', target: 'button#test' })
 
-    const actions = globalThis.window.__gasoline.getActions()
+    const actions = globalThis.window.__kaboom.getActions()
     assert.strictEqual(actions.length, 1)
     assert.strictEqual(actions[0].type, 'click')
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
     clearActionBuffer()
   })
 
-  test('__gasoline.clearActions should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, recordAction, getActionBuffer } =
+  test('__kaboom.clearActions should work', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI, recordAction, getActionBuffer } =
       await import('../../extension/inject.js')
 
-    installGasolineAPI()
+    installKaboomAPI()
 
     recordAction({ type: 'click', target: 'button' })
     assert.ok(getActionBuffer().length > 0)
 
-    globalThis.window.__gasoline.clearActions()
+    globalThis.window.__kaboom.clearActions()
     assert.strictEqual(getActionBuffer().length, 0)
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
   })
 
-  test('__gasoline.setActionCapture should work', async () => {
+  test('__kaboom.setActionCapture should work', async () => {
     const {
-      installGasolineAPI,
-      uninstallGasolineAPI,
+      installKaboomAPI,
+      uninstallKaboomAPI,
       recordAction,
       getActionBuffer,
       clearActionBuffer,
@@ -250,16 +251,16 @@ describe('Gasoline API', () => {
 
     clearActionBuffer()
     setActionCaptureEnabled(true)
-    installGasolineAPI()
+    installKaboomAPI()
 
-    globalThis.window.__gasoline.setActionCapture(false)
+    globalThis.window.__kaboom.setActionCapture(false)
     recordAction({ type: 'click', target: 'button' })
 
     assert.strictEqual(getActionBuffer().length, 0)
 
-    globalThis.window.__gasoline.setActionCapture(true)
+    globalThis.window.__kaboom.setActionCapture(true)
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
   })
 })
 
