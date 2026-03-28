@@ -233,7 +233,8 @@
             "summarized_logs",
             "page_inventory",
             "transients",
-            "inbox"
+            "inbox",
+            "site_menus"
           ],
           "type": "string"
         },
