@@ -6,18 +6,18 @@ export default defineConfig({
   site: 'https://gokaboom.dev',
   integrations: [
     starlight({
-      title: 'Kaboom',
+      title: 'KaBOOM',
       description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
         src: './src/assets/logo.svg',
-        alt: 'Kaboom'
+        alt: 'KaBOOM'
       },
       favicon: '/images/logo.png',
       social: [
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp'
+          href: 'https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP'
         }
       ],
       customCss: ['./src/styles/custom.css'],

@@ -1,5 +1,5 @@
 ---
-// Footer.astro — Custom Kaboom footer with Sparky mascot
+// Footer.astro — Custom KaBOOM footer with Sparky mascot
 // Overrides Starlight's default Footer component
 import Default from '@astrojs/starlight/components/Footer.astro';
 import { siteReleaseChannel, siteVersionLabel } from '../utils/siteVersion';
@@ -19,7 +19,7 @@ const relatedGuides = getRelatedGuides(Astro.locals.starlightRoute?.entry?.slug 
   <div class="gasoline-footer-content">
     <img src="/images/sparky-relaxed-hammock-1-web.webp" alt="Sparky relaxing" class="gasoline-footer-sparky" />
     <div class="gasoline-footer-copy">
-      <p>Kaboom &copy; 2025-2026 and crafted with care by <a href="https://www.linkedin.com/in/brennhill/" target="_blank" rel="noopener">Brenn Hill</a>. <em>Fueling rapid development with AI.</em></p>
+      <p>KaBOOM &copy; 2025-2026 and crafted with care by <a href="https://www.linkedin.com/in/brennhill/" target="_blank" rel="noopener">Brenn Hill</a>. <em>Fueling rapid development with AI.</em></p>
       <p class="gasoline-footer-version">Docs version: <strong>{siteVersionLabel}</strong> ({siteReleaseChannel})</p>
       {
         verifiedVersion && verifiedDate && (

@@ -22,7 +22,7 @@ function toYamlArray(values: string[]) {
 }
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'Kaboom MCP'
+  const title = entry.data?.title ?? 'KaBOOM MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
   const canonicalPath = resolvedSlug === '' ? '/' : `/${resolvedSlug}/`

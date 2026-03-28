@@ -64,12 +64,12 @@
         tagline.textContent = variant.subtitle;
 
         // Update page title and meta tags for SEO
-        document.title = `Kaboom MCP: ${variant.title}`;
+        document.title = `KaBOOM MCP: ${variant.title}`;
         const ogTitle = document.querySelector('meta[property="og:title"]');
         const twitterTitle = document.querySelector('meta[name="twitter:title"]');
 
-        if (ogTitle) ogTitle.setAttribute('content', `Kaboom MCP: ${variant.title}`);
-        if (twitterTitle) twitterTitle.setAttribute('content', `Kaboom MCP: ${variant.title}`);
+        if (ogTitle) ogTitle.setAttribute('content', `KaBOOM MCP: ${variant.title}`);
+        if (twitterTitle) twitterTitle.setAttribute('content', `KaBOOM MCP: ${variant.title}`);
 
         // Fade in
         h1.classList.remove('rotating');

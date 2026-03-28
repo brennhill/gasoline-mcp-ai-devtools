@@ -17,27 +17,27 @@ function read(relativePath) {
 }
 
 describe('gokaboom domain contracts', () => {
-  test('site metadata generators emit gokaboom.dev and Kaboom branding', () => {
+  test('site metadata generators emit gokaboom.dev and KaBOOM branding', () => {
     const astroConfig = read('gokaboom.dev/astro.config.mjs')
     const indexMarkdown = read('gokaboom.dev/src/pages/index.md.ts')
     const slugMarkdown = read('gokaboom.dev/src/pages/[...slug].md.ts')
     const nestedMarkdown = read('gokaboom.dev/src/pages/markdown/[...slug].md.ts')
 
     assert.match(astroConfig, /site:\s*'https:\/\/gokaboom\.dev'/)
-    assert.match(astroConfig, /title:\s*'Kaboom'/)
-    assert.match(astroConfig, /alt:\s*'Kaboom'/)
+    assert.match(astroConfig, /title:\s*'KaBOOM'/)
+    assert.match(astroConfig, /alt:\s*'KaBOOM'/)
     assert.doesNotMatch(astroConfig, /cookwithgasoline\.com|STRUM Agentic Devtools/)
 
     assert.match(indexMarkdown, /canonical: https:\/\/gokaboom\.dev\//)
-    assert.match(indexMarkdown, /'Kaboom MCP'/)
+    assert.match(indexMarkdown, /'KaBOOM MCP'/)
     assert.doesNotMatch(indexMarkdown, /cookwithgasoline\.com|STRUM MCP/)
 
     assert.match(slugMarkdown, /canonical: https:\/\/gokaboom\.dev\$\{canonicalPath\}/)
-    assert.match(slugMarkdown, /'Kaboom MCP'/)
+    assert.match(slugMarkdown, /'KaBOOM MCP'/)
     assert.doesNotMatch(slugMarkdown, /cookwithgasoline\.com|STRUM MCP/)
 
     assert.match(nestedMarkdown, /canonical: https:\/\/gokaboom\.dev/)
-    assert.match(nestedMarkdown, /'Kaboom MCP'/)
+    assert.match(nestedMarkdown, /'KaBOOM MCP'/)
     assert.doesNotMatch(nestedMarkdown, /cookwithgasoline\.com|STRUM MCP/)
   })
 
@@ -57,11 +57,11 @@ describe('gokaboom domain contracts', () => {
     assert.doesNotMatch(scriptSource, /cookwithgasoline\.com/)
   })
 
-  test('public seo metadata uses Kaboom and gokaboom.dev', () => {
+  test('public seo metadata uses KaBOOM and gokaboom.dev', () => {
     const seoMeta = read('gokaboom.dev/public/seo-meta.html')
     const robots = read('gokaboom.dev/public/robots.txt')
 
-    assert.match(seoMeta, /Kaboom/)
+    assert.match(seoMeta, /KaBOOM/)
     assert.match(seoMeta, /https:\/\/gokaboom\.dev\//)
     assert.doesNotMatch(seoMeta, /STRUM|Strum|Gasoline|cookwithgasoline|getstrum/)
 

@@ -16,7 +16,7 @@ function toYamlString(value: unknown) {
 }
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'Kaboom MCP'
+  const title = entry.data?.title ?? 'KaBOOM MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://gokaboom.dev/\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\n---`
 }

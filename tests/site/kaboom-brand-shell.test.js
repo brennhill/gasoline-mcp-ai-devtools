@@ -39,10 +39,10 @@ describe('kaboom site brand shell', () => {
     assert.match(packageJson, /https:\/\/gokaboom\.dev/)
   })
 
-  test('homepage entry copy uses Kaboom install branding', () => {
+  test('homepage entry copy uses KaBOOM install branding', () => {
     const indexMdx = readSite('src/content/docs/index.mdx')
-    assert.match(indexMdx, /title:\s*"Kaboom"/)
-    assert.match(indexMdx, /text:\s*Install Kaboom/)
+    assert.match(indexMdx, /title:\s*"KaBOOM"/)
+    assert.match(indexMdx, /text:\s*Install KaBOOM/)
   })
 
   test('head defaults to gokaboom.dev for markdown and shell metadata', () => {
@@ -54,15 +54,15 @@ describe('kaboom site brand shell', () => {
   test('footer and landing shell remove legacy branding', () => {
     const footer = readSite('src/components/Footer.astro')
     const landing = readSite('src/components/Landing.astro')
-    assert.match(footer, /Kaboom/)
+    assert.match(footer, /KaBOOM/)
     assert.doesNotMatch(footer, /STRUM Agentic Devtools|Gasoline/)
-    assert.match(landing, /Kaboom/)
+    assert.match(landing, /KaBOOM/)
     assert.doesNotMatch(landing, /STRUM Agentic Devtools|STRUM mascot|Install STRUM/)
   })
 
-  test('rotating hero publishes Kaboom page-title branding', () => {
+  test('rotating hero publishes KaBOOM page-title branding', () => {
     const rotatingHero = readSite('src/components/RotatingHero.astro')
-    assert.match(rotatingHero, /Kaboom MCP:/)
+    assert.match(rotatingHero, /KaBOOM MCP:/)
     assert.doesNotMatch(rotatingHero, /STRUM MCP:/)
   })
 
