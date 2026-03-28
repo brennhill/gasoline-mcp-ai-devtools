@@ -159,8 +159,8 @@ async function createTerminalWorkspaceGroup(tabId) {
         const groupId = await chrome.tabs.group({ tabIds: [tabId] });
         const color = chrome.tabGroups.Color?.ORANGE;
         const update = color
-            ? { title: 'STRUM', color, collapsed: false }
-            : { title: 'STRUM', collapsed: false };
+            ? { title: 'Kaboom', color, collapsed: false }
+            : { title: 'Kaboom', collapsed: false };
         await chrome.tabGroups.update(groupId, update);
         return groupId;
     }

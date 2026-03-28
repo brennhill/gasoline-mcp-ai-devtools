@@ -85,8 +85,8 @@ Three coordinated UX improvements, all scoped entirely to the Chrome extension (
 |---|-------------|----------|
 | C1 | When the tracked tab is closed, the extension must notify the user that tracking has stopped, rather than silently clearing state. | must |
 | C2 | The notification must be a Chrome notification (via `chrome.notifications` API) that appears even when the popup is not open. Console-only logging is insufficient. | must |
-| C3 | The notification message must state that the tracked tab was closed, include the URL or title of the closed tab for context, and suggest opening the Gasoline popup to track a new tab. | must |
-| C4 | The notification should auto-dismiss after 8 seconds. Clicking the notification should open the Gasoline popup (if possible via `chrome.action.openPopup()`) or focus the extension icon. | should |
+| C3 | The notification message must state that the tracked tab was closed, include the URL or title of the closed tab for context, and suggest opening the Kaboom popup to track a new tab. | must |
+| C4 | The notification should auto-dismiss after 8 seconds. Clicking the notification should open the Kaboom popup (if possible via `chrome.action.openPopup()`) or focus the extension icon. | should |
 | C5 | If `chrome.action.openPopup()` is not available (it requires Chrome 99+ and the `action` permission), clicking the notification should bring the browser to the foreground so the user can manually click the extension icon. | should |
 | C6 | The notification must not appear if the user explicitly clicked "Stop Tracking" before closing the tab. It should only trigger on unexpected tab closure (tracked tab removed while tracking was active). | must |
 | C7 | If the user closes multiple tabs rapidly (including the tracked tab), only one notification should be shown. Duplicate notifications must be suppressed. | should |

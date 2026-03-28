@@ -248,7 +248,7 @@ describe('message routing', () => {
     await new Promise((resolve) => setTimeout(resolve, 10))
   })
 
-  test('open_terminal_panel creates a STRUM workspace group around the tracked tab and opens there', async () => {
+  test('open_terminal_panel creates a Kaboom workspace group around the tracked tab and opens there', async () => {
     chrome.storage.local.get = mock.fn((keys, callback) => {
       const keyList = Array.isArray(keys) ? keys : [keys]
       const result = {}
@@ -297,7 +297,7 @@ describe('message routing', () => {
     assert.strictEqual(chrome.tabGroups.update.mock.calls.length, 1, 'workspace group should be named and styled')
     assert.strictEqual(chrome.tabGroups.update.mock.calls[0].arguments[0], 77)
     assert.deepStrictEqual(chrome.tabGroups.update.mock.calls[0].arguments[1], {
-      title: 'STRUM',
+      title: 'Kaboom',
       color: 'orange',
       collapsed: false
     })
@@ -311,14 +311,14 @@ describe('message routing', () => {
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
   })
 
-  test('open_terminal_panel keeps the current tab when it already belongs to the STRUM workspace group', async () => {
+  test('open_terminal_panel keeps the current tab when it already belongs to the Kaboom workspace group', async () => {
     chrome.storage.local.get = mock.fn((keys, callback) => {
       const keyList = Array.isArray(keys) ? keys : [keys]
       const result = {}
       for (const key of keyList) {
         if (key === 'trackedTabId') result[key] = 42
-        else if (key === 'gasoline_terminal_workspace_group_id') result[key] = 77
-        else if (key === 'gasoline_terminal_workspace_main_tab_id') result[key] = 42
+        else if (key === 'kaboom_terminal_workspace_group_id') result[key] = 77
+        else if (key === 'kaboom_terminal_workspace_main_tab_id') result[key] = 42
         else result[key] = undefined
       }
       callback?.(result)

@@ -4,9 +4,10 @@ feature_id: feature-flow-recording
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 code_paths:
   - src/background/recording.ts
+  - src/background/recording-capture.ts
   - src/background/recording-listeners.ts
   - src/background/keyboard-shortcuts.ts
   - src/background/context-menus.ts
@@ -48,6 +49,7 @@ last_verified_date: 2026-03-05
 
 - Core recording lifecycle and listener wiring:
   - `src/background/recording.ts`
+  - `src/background/recording-capture.ts`
   - `src/background/recording-listeners.ts`
   - `src/background/keyboard-shortcuts.ts`
   - `src/background/context-menus.ts`
