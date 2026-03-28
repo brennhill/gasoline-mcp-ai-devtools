@@ -476,9 +476,26 @@ function createLauncherUi() {
         stopButton.style.color = '#fff';
     });
     stopButtonEl = stopButton;
+    let qaScanDebounce = 0;
+    const findProblemsButton = createActionButton('\u2691', 'Find Problems — QA scan this page', () => {
+        const now = Date.now();
+        if (now - qaScanDebounce < 500)
+            return;
+        qaScanDebounce = now;
+        panelPinned = false;
+        setPanelOpen(false);
+        try {
+            chrome.runtime.sendMessage({ type: 'qa_scan_requested', page_url: location.href }, () => { void chrome.runtime.lastError; });
+        }
+        catch {
+            // Extension context invalidated
+        }
+    });
+    findProblemsButton.style.fontSize = '20px';
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(findProblemsButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement('span');
     dotSep.textContent = '\u22EE';

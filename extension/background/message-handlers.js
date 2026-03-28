@@ -212,6 +212,9 @@ function handleMessage(message, sender, sendResponse, deps) {
             // Fire-and-forget: content script sends draw mode results
             handleDrawModeCompletedAsync(message, sender, deps);
             return false;
+        case 'qa_scan_requested':
+            handleQaScanRequestedAsync(message, sendResponse, deps);
+            return true;
         default:
             // screen_recording_start/stop, offscreen_*, mic_granted_close_tab, reveal_file
             // are handled by recording-listeners.ts — return false so they can handle it.
@@ -494,5 +497,60 @@ export async function deleteStateSnapshot(name) {
     delete snapshots[name];
     await setLocal(SNAPSHOT_KEY, snapshots);
     return { success: true, deleted: name };
+}
+// =============================================================================
+// QA SCAN INTENT HANDLER
+// =============================================================================
+// Single-line prompt: PTY interprets \n as Enter, so multi-line text would execute as separate commands.
+const QA_SCAN_PROMPT = 'The user clicked "Find Problems". Please run the QA skill or start with: analyze(what:"page_issues", summary:true)';
+const QA_SCAN_FETCH_TIMEOUT_MS = 3000;
+async function handleQaScanRequestedAsync(message, sendResponse, deps) {
+    const { getTerminalServerUrl } = await import('../content/ui/terminal-widget-types.js');
+    const termUrl = getTerminalServerUrl(deps.getServerUrl());
+    // Try PTY injection first — works whether the side panel is open or closed.
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), QA_SCAN_FETCH_TIMEOUT_MS);
+        const resp = await fetch(`${termUrl}/terminal/inject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: QA_SCAN_PROMPT }),
+            signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+            const result = (await resp.json());
+            if (result.injected) {
+                sendResponse({ success: true, method: 'terminal_inject' });
+                return;
+            }
+        }
+    }
+    catch {
+        // Terminal server unreachable or no active session — fall through to intent.
+    }
+    // Fallback: store intent on the daemon for the AI to pick up via tool response.
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), QA_SCAN_FETCH_TIMEOUT_MS);
+        const resp = await fetch(`${termUrl}/intent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                page_url: message.page_url || '',
+                action: 'qa_scan'
+            }),
+            signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+            sendResponse({ success: true, method: 'intent_stored' });
+            return;
+        }
+    }
+    catch {
+        // Intent endpoint also unreachable.
+    }
+    sendResponse({ success: false, error: 'No terminal session and intent store unreachable' });
 }
 //# sourceMappingURL=message-handlers.js.map

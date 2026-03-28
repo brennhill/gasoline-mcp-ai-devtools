@@ -245,6 +245,7 @@ export type BackgroundMessage =
   | RecordingGestureDeniedMessage
   | OpenPopupForRecordingMessage
   | OpenTerminalPanelMessage
+  | QaScanRequestedMessage
 
 /**
  * Draw mode: content script requests screenshot capture
@@ -317,6 +318,15 @@ interface OpenPopupForRecordingMessage {
  */
 interface OpenTerminalPanelMessage {
   readonly type: 'open_terminal_panel'
+}
+
+/**
+ * User clicked "Find Problems" in the hover widget.
+ * Background handler tries PTY injection, falls back to intent store.
+ */
+export interface QaScanRequestedMessage {
+  readonly type: 'qa_scan_requested'
+  readonly page_url?: string
 }
 
 /**

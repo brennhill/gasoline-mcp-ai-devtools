@@ -115,6 +115,25 @@ func (m *terminalRelayMap) remove(id string) {
 	}
 }
 
+// writeToFirst writes data to the first active relay's PTY input.
+// Assumes a single active terminal session (the typical case). If multiple
+// sessions exist, the target is non-deterministic due to Go map iteration.
+// Returns true if a relay was found and the write succeeded.
+func (m *terminalRelayMap) writeToFirst(data []byte) bool {
+	m.mu.Lock()
+	var relay *terminalRelay
+	for _, r := range m.relays {
+		relay = r
+		break
+	}
+	m.mu.Unlock()
+	if relay == nil {
+		return false
+	}
+	relay.writeBuf.Write(data)
+	return true
+}
+
 func (m *terminalRelayMap) closeAll() {
 	m.mu.Lock() // lint:manual-unlock — unlock before Close to avoid holding lock during I/O
 	toClose := make([]*terminalRelay, 0, len(m.relays))

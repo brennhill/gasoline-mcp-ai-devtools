@@ -23,7 +23,25 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 	resp = h.maybeAddVersionWarning(resp)
 	resp = maybeAddUpdateAvailableWarning(resp)
 	resp = maybeAddUpgradeWarning(resp)
+	resp = h.maybeAddPendingIntents(resp)
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
+}
+
+// maybeAddPendingIntents prepends a strong nudge when the user has requested a QA scan
+// via the hover widget but no terminal session was available to inject the prompt.
+// Nudges up to intentMaxNudges times before discarding, so the intent survives
+// if the AI doesn't act on it immediately.
+func (h *MCPHandler) maybeAddPendingIntents(resp JSONRPCResponse) JSONRPCResponse {
+	if h.server == nil || h.server.intentStore == nil || resp.Result == nil {
+		return resp
+	}
+	if !h.server.intentStore.NudgeAndClean() {
+		return resp
+	}
+	warning := "ACTION REQUIRED: The user clicked 'Find Problems' in the browser. " +
+		"Run analyze(what:\"page_issues\") to scan for issues, or invoke the 'qa' skill " +
+		"for a full app walkthrough.\n\n"
+	return prependWarningToResponse(resp, warning)
 }
 
 // prependWarningToResponse prepends a warning string to the first text block of an MCP response.
