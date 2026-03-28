@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: kaboom-agentic-browser-win32-x64
+Version: 0.8.1
+Summary: Kaboom Agentic Browser binary for win32-x64
+Author-email: Brennan Hill <noreply@gokaboom.dev>
+License: AGPL-3.0-only
+Project-URL: Homepage, https://gokaboom.dev
+Project-URL: Repository, https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
+Requires-Python: >=3.8

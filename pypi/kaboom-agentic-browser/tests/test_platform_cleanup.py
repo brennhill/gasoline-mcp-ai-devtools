@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 
@@ -13,11 +14,53 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from gasoline_agentic_browser import platform  # pylint: disable=wrong-import-position
+from kaboom_agentic_browser import platform  # pylint: disable=wrong-import-position
+
+PYPI_ROOT = Path(ROOT).parent
+PLATFORM_PACKAGES = [
+    ("darwin-arm64", "kaboom_agentic_browser_darwin_arm64"),
+    ("darwin-x64", "kaboom_agentic_browser_darwin_x64"),
+    ("linux-arm64", "kaboom_agentic_browser_linux_arm64"),
+    ("linux-x64", "kaboom_agentic_browser_linux_x64"),
+    ("win32-x64", "kaboom_agentic_browser_win32_x64"),
+]
+
+
+class PlatformMetadataTests(unittest.TestCase):
+    def test_platform_packages_use_kaboom_identity(self):
+        for platform_key, module_name in PLATFORM_PACKAGES:
+            package_root = PYPI_ROOT / f"kaboom-agentic-browser-{platform_key}"
+            self.assertTrue(package_root.exists(), f"missing package root: {package_root}")
+
+            pyproject = (package_root / "pyproject.toml").read_text(encoding="utf-8")
+            readme = (package_root / "README.md").read_text(encoding="utf-8")
+            manifest = (package_root / "MANIFEST.in").read_text(encoding="utf-8")
+            init_py = (package_root / module_name / "__init__.py").read_text(encoding="utf-8")
+            pkg_info = next(package_root.glob("*.egg-info/PKG-INFO")).read_text(encoding="utf-8")
+            sources = next(package_root.glob("*.egg-info/SOURCES.txt")).read_text(encoding="utf-8")
+            top_level = next(package_root.glob("*.egg-info/top_level.txt")).read_text(encoding="utf-8")
+
+            self.assertIn(f'name = "kaboom-agentic-browser-{platform_key}"', pyproject)
+            self.assertIn(f'packages = ["{module_name}"]', pyproject)
+            self.assertIn("Kaboom Agentic Browser binary", pyproject)
+            self.assertIn("https://gokaboom.dev", pyproject)
+            self.assertIn("Kaboom", readme)
+            self.assertIn(f"include {module_name}/kaboom", manifest)
+            self.assertIn("Platform-specific Kaboom binary", init_py)
+            self.assertIn(f"Name: kaboom-agentic-browser-{platform_key}", pkg_info)
+            self.assertIn("Project-URL: Homepage, https://gokaboom.dev", pkg_info)
+            self.assertIn(module_name, sources)
+            self.assertEqual(module_name, top_level.strip())
+
+            for text in (pyproject, readme, manifest, init_py, pkg_info, sources, top_level):
+                self.assertNotIn("gasoline", text.lower())
+                self.assertNotIn("cookwithgasoline", text.lower())
+                self.assertNotIn("strum", text.lower())
+                self.assertNotIn("getstrum", text.lower())
 
 
 class PlatformCleanupTests(unittest.TestCase):
-    @patch("gasoline_agentic_browser.platform.subprocess.run")
+    @patch("kaboom_agentic_browser.platform.subprocess.run")
     def test_cleanup_removes_modern_and_legacy_pid_files(self, mock_run):
         with tempfile.TemporaryDirectory() as home:
             modern_pid = os.path.join(home, ".gasoline", "run", "gasoline-7890.pid")
@@ -39,7 +82,7 @@ class PlatformCleanupTests(unittest.TestCase):
             self.assertFalse(os.path.exists(random_pid), f"expected pid removed: {random_pid}")
             self.assertFalse(os.path.exists(legacy_pid), f"expected pid removed: {legacy_pid}")
 
-    @patch("gasoline_agentic_browser.platform.subprocess.run")
+    @patch("kaboom_agentic_browser.platform.subprocess.run")
     def test_cleanup_unix_targets_legacy_and_current_names(self, mock_run):
         mock_run.return_value.stdout = ""
 
@@ -52,7 +95,7 @@ class PlatformCleanupTests(unittest.TestCase):
         self.assertIn(["pgrep", "-af", "browser-agent"], commands)
         self.assertIn(["pgrep", "-af", "gasoline"], commands)
 
-    @patch("gasoline_agentic_browser.platform.subprocess.run")
+    @patch("kaboom_agentic_browser.platform.subprocess.run")
     def test_cleanup_unix_attempts_port_kills_for_all_known_ports(self, mock_run):
         mock_run.return_value.stdout = ""
 
@@ -68,7 +111,7 @@ class PlatformCleanupTests(unittest.TestCase):
             "expected lsof lookup on every known gasoline port",
         )
 
-    @patch("gasoline_agentic_browser.platform.subprocess.run")
+    @patch("kaboom_agentic_browser.platform.subprocess.run")
     def test_cleanup_windows_prefers_home_env_when_expanduser_differs(self, mock_run):
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as other_home:
             modern_pid = os.path.join(home, ".gasoline", "run", "gasoline-7890.pid")
@@ -78,13 +121,13 @@ class PlatformCleanupTests(unittest.TestCase):
 
             with patch.object(platform.sys, "platform", "win32"), \
                  patch.dict(os.environ, {"HOME": home, "USERPROFILE": other_home}, clear=False), \
-                 patch("gasoline_agentic_browser.platform.os.path.expanduser", return_value=other_home):
+                 patch("kaboom_agentic_browser.platform.os.path.expanduser", return_value=other_home):
                 mock_run.return_value.stdout = ""
                 platform.cleanup_old_processes()
 
             self.assertFalse(os.path.exists(modern_pid), f"expected pid removed: {modern_pid}")
 
-    @patch("gasoline_agentic_browser.platform.subprocess.run")
+    @patch("kaboom_agentic_browser.platform.subprocess.run")
     def test_cleanup_windows_falls_back_to_userprofile_when_home_missing(self, mock_run):
         with tempfile.TemporaryDirectory() as userprofile, tempfile.TemporaryDirectory() as expanded_home:
             modern_pid = os.path.join(userprofile, ".gasoline", "run", "gasoline-7890.pid")
@@ -98,7 +141,7 @@ class PlatformCleanupTests(unittest.TestCase):
             env = {"HOME": "", "USERPROFILE": userprofile}
             with patch.object(platform.sys, "platform", "win32"), \
                  patch.dict(os.environ, env, clear=False), \
-                 patch("gasoline_agentic_browser.platform.os.path.expanduser", return_value=expanded_home):
+                 patch("kaboom_agentic_browser.platform.os.path.expanduser", return_value=expanded_home):
                 mock_run.return_value.stdout = ""
                 platform.cleanup_old_processes()
 
