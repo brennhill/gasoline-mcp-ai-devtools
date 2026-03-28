@@ -1,6 +1,6 @@
 ---
 title: Technical Architecture
-description: How.gasoline MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
+description: How Kaboom MCP works under the hood — the extension, the Go server, the data flow, and the design decisions that make it fast, secure, and zero-dependency.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['architecture']
@@ -8,7 +8,7 @@ normalized_tags: ['architecture']
 
 ## The Big Picture
 
-STRUM has three components: a Chrome extension that captures browser telemetry, a Go server that stores and serves it, and the MCP protocol that connects everything to your AI tool.
+Kaboom has three components: a Chrome extension that captures browser telemetry, a Go server that stores and serves it, and the MCP protocol that connects everything to your AI tool.
 
 ![Architecture Diagram](../../assets/diagrams/architecture-main.svg)
 
@@ -94,12 +94,12 @@ This is critical for long-running sessions where the AI periodically checks for 
 
 A unique challenge: multiple AI tools need to share the same browser telemetry. Claude Code and Cursor might both be connected simultaneously.
 
-STRUM solves this with the **stdio bridge pattern**:
+Kaboom solves this with the **stdio bridge pattern**:
 
 ```text
-Claude Code → npx gasoline-mcp (stdio) ──┐
-Cursor      → npx gasoline-mcp (stdio) ──┼──►.gasoline Server (HTTP :7890)
-Zed         → npx gasoline-mcp (stdio) ──┘           ↕
+Claude Code → npx kaboom-mcp (stdio) ───┐
+Cursor      → npx kaboom-mcp (stdio) ───┼──► Kaboom Server (HTTP :7890)
+Zed         → npx kaboom-mcp (stdio) ───┘          ↕
                                               Browser Extension
 ```
 
@@ -122,7 +122,7 @@ Every MCP client connection follows a 6-step lifecycle:
 3. **Connect** — If server exists, connect as a bridge client
 4. **Retry** — If connection fails, retry up to 3 times with exponential backoff (1-3s)
 5. **Recover** — If still failing, kill the unresponsive server and spawn a fresh one
-6. **Debug** — If recovery fails, write debug log to `/tmp/gasoline-debug-*.log` and exit
+6. **Debug** — If recovery fails, write debug log to `/tmp/kaboom-debug-*.log` and exit
 
 ### Performance Targets
 
@@ -137,7 +137,7 @@ Every MCP client connection follows a 6-step lifecycle:
 
 ## Security Boundaries
 
-STRUM enforces strict security at every layer:
+Kaboom enforces strict security at every layer:
 
 - **Localhost only.** The Go server binds to `127.0.0.1`. It never accepts remote connections. There is no configuration option to change this.
 - **No debug port.** No `--remote-debugging-port`. Chrome's security sandbox stays intact.
@@ -164,7 +164,7 @@ This means:
 
 ## The Five Tools
 
-Everything.gasoline does is exposed through exactly five MCP tools:
+Everything Kaboom does is exposed through exactly five MCP tools:
 
 | Tool | Purpose | Modes |
 |---|---|---|
@@ -182,14 +182,14 @@ For a detailed understanding of how all the pieces fit together, check out our c
 
 ### System Architecture (C4 Model)
 
-- **[C2: Container Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
-- **[C3: Component Architecture](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
+- **[C2: Container Architecture](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c2-containers.md)** — The 5 main system components and how they communicate (AI Agent, Wrapper, Go Server, Extension, Browser)
+- **[C3: Component Architecture](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/c3-components.md)** — Go package structure showing all 40+ packages organized in 5 layers (Foundation, Domain, Tools, HTTP Server, Utilities)
 
 ### Request-Response Flows
 
-- **[Request-Response Cycle](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
-- **[Extension Message Protocol](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
+- **[Request-Response Cycle](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/request-response-cycle.md)** — Complete MCP command flow showing how AI requests become browser actions and how results are returned (immediate, query+polling, one-way, and error scenarios)
+- **[Extension Message Protocol](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/extension-message-protocol.md)** — All 6 HTTP message types between extension and server with complete JSON schemas, state machines, and reliability patterns
 
 ### Data Flow
 
-- **[Data Capture Pipeline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy
+- **[Data Capture Pipeline](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/docs/architecture/diagrams/data-capture-pipeline.md)** — How telemetry flows from page observers → extension batchers → server ring buffers, with detailed specifications for all 7 event types (console, network, actions, WebSocket, performance, errors) and memory management strategy
