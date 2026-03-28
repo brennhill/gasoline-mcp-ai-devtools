@@ -88,6 +88,8 @@
     POPUP_LAST_STATUS: "gasoline_popup_last_status",
     TERMINAL_SESSION: "gasoline_terminal_session",
     TERMINAL_UI_STATE: "gasoline_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id",
     CLOAKED_DOMAINS: "gasoline_cloaked_domains"
   };
 
@@ -1255,6 +1257,22 @@
     });
   }
 
+  // extension/popup/logo-motion.js
+  function initPopupLogoMotion() {
+    const logo = document.querySelector(".logo");
+    if (!logo)
+      return;
+    const idleSrc = chrome.runtime.getURL("icons/icon.svg");
+    const hoverSrc = chrome.runtime.getURL("icons/logo-animated.svg");
+    logo.src = idleSrc;
+    logo.addEventListener("mouseenter", () => {
+      logo.src = hoverSrc;
+    });
+    logo.addEventListener("mouseleave", () => {
+      logo.src = idleSrc;
+    });
+  }
+
   // extension/popup/settings.js
   function handleWebSocketModeChange(mode) {
     void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
@@ -1418,6 +1436,7 @@
         error: "Extension error \u2014 try reloading the extension"
       });
     }
+    initPopupLogoMotion();
     setupRecordingUI();
     setupActionRecordingUI();
     initFeatureToggles();

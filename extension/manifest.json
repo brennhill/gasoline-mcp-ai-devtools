@@ -20,6 +20,9 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -41,7 +44,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger", "cookies", "contextMenus"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger", "cookies", "contextMenus", "sidePanel"],
   "host_permissions": ["<all_urls>"],
   "options_ui": {
     "page": "options.html",

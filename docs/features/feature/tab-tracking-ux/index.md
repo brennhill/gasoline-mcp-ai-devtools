@@ -4,21 +4,25 @@ feature_id: feature-tab-tracking-ux
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-22
 code_paths:
   - src/lib/constants.ts
   - src/types/runtime-messages.ts
   - src/content.ts
   - src/content/tab-tracking.ts
+  - src/content/ui/terminal-panel-bridge.ts
   - src/content/ui/tracked-hover-launcher.ts
   - src/popup.ts
+  - src/popup/logo-motion.ts
   - src/background/message-handlers.ts
   - src/background/recording-listeners.ts
 test_paths:
   - tests/extension/tracked-hover-launcher.test.js
+  - tests/extension/logo-motion.test.js
   - tests/extension/content.test.js
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+  - tests/extension/sidepanel-terminal.test.js
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-22
 ---
 
 # Tab Tracking Ux
@@ -29,6 +33,9 @@ last_verified_date: 2026-03-05
 - Tool: null
 - Mode/Action: null
 - Location: `docs/features/feature/tab-tracking-ux`
+- The hover launcher is shown on tracked workspace tabs and hides only while the STRUM side panel is open.
+- Terminal workspace ownership now targets one Chrome tab group, even though broader tracking flows still use `TRACKED_TAB_ID` during the rollout.
+- The hover island logo now idles with slow string motion from the shared `icon.svg`, then swaps to the stronger `logo-animated.svg` strum only on hover.
 
 ## Specs
 

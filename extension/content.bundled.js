@@ -24,8 +24,6 @@
   }
 
   // extension/lib/constants.js
-  var DEFAULT_SERVER_URL = "http://localhost:7890";
-  var TERMINAL_PORT_OFFSET = 1;
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
@@ -89,6 +87,8 @@
     POPUP_LAST_STATUS: "gasoline_popup_last_status",
     TERMINAL_SESSION: "gasoline_terminal_session",
     TERMINAL_UI_STATE: "gasoline_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id",
     CLOAKED_DOMAINS: "gasoline_cloaked_domains"
   };
 
@@ -125,18 +125,6 @@
       return void 0;
     const result = await storage.session.get([key]);
     return result[key];
-  }
-  async function setSession(key, value) {
-    const storage = getStorageWithSession();
-    if (!storage || !storage.session)
-      return;
-    await storage.session.set({ [key]: value });
-  }
-  async function removeSessions(keys) {
-    const storage = getStorageWithSession();
-    if (!storage || !storage.session)
-      return;
-    await storage.session.remove(keys);
   }
   function onStorageChanged(listener) {
     if (typeof chrome === "undefined" || !chrome.storage)
@@ -1036,7 +1024,7 @@
     });
   }
   async function handleStateCommand(params) {
-    const { action, name, state: state2, include_url } = params || {};
+    const { action, name, state, include_url } = params || {};
     const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
@@ -1053,7 +1041,7 @@
       messageId,
       action,
       name,
-      state: state2,
+      state,
       include_url
     });
     return withTimeoutAndCleanup(deferred.promise, 5e3, {
@@ -1288,13 +1276,13 @@
       return text;
     return text.slice(0, maxLen - 1) + "\u2026";
   }
-  function showActionToast(text, detail, state2 = "trying", durationMs = 3e3) {
+  function showActionToast(text, detail, state = "trying", durationMs = 3e3) {
     const existing = document.getElementById("gasoline-action-toast");
     if (existing)
       existing.remove();
     injectToastAnimationStyles();
-    const theme = TOAST_THEMES[state2] ?? TOAST_THEMES.trying;
-    const isAudioPrompt = state2 === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
+    const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
+    const isAudioPrompt = state === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
     const arrowChar = "\u2191";
     const toast = document.createElement("div");
     toast.id = "gasoline-action-toast";
@@ -1960,11 +1948,11 @@
       }
     });
   }
-  function updateFavicon(state2) {
-    if (!state2.isTracked) {
+  function updateFavicon(state) {
+    if (!state.isTracked) {
       restoreOriginalFavicon();
       stopFlicker();
-    } else if (state2.aiPilotEnabled) {
+    } else if (state.aiPilotEnabled) {
       replaceFaviconWithFlame(true);
       startFlicker();
     } else {
@@ -2038,936 +2026,76 @@
     }
   }
 
-  // extension/content/ui/terminal-widget-types.js
-  var WIDGET_ID2 = "gasoline-terminal-widget";
-  var IFRAME_ID = "gasoline-terminal-iframe";
-  var HEADER_ID = "gasoline-terminal-header";
-  var DISCONNECT_TERMINAL_BUTTON_ID = "gasoline-terminal-disconnect-button";
-  var REDRAW_TERMINAL_BUTTON_ID = "gasoline-terminal-redraw-button";
-  var MINIMIZE_TERMINAL_BUTTON_ID = "gasoline-terminal-minimize-button";
-  var CLOSE_TERMINAL_BUTTON_ID = "gasoline-terminal-close-button";
-  var DEFAULT_WIDGET_WIDTH = "50vw";
-  var DEFAULT_WIDGET_HEIGHT = "40vh";
-  var MIN_WIDGET_WIDTH = "400px";
-  var MIN_WIDGET_HEIGHT = "250px";
-  var MAX_WIDGET_WIDTH = "100vw";
-  var MAX_WIDGET_HEIGHT = "80vh";
-  var MINIMIZED_WIDGET_HEIGHT = "32px";
-  var TERMINAL_WRITE_SUBMIT_DELAY_MS = 600;
-  var TERMINAL_TYPING_IDLE_MS = 1500;
-  var TERMINAL_GUARD_POLL_MS = 200;
-  var TERMINAL_GUARD_TOAST_INTERVAL_MS = 3e3;
-  var state = {
-    widgetEl: null,
-    iframeEl: null,
-    resizeHandleEl: null,
-    sessionState: null,
-    visible: false,
-    minimized: false,
-    savedHeight: "",
-    serverUrl: DEFAULT_SERVER_URL,
-    terminalFocused: false,
-    lastTypingAt: 0,
-    queuedWrites: [],
-    queuedWriteFlushTimer: null,
-    queuedSubmitTimer: null,
-    queuedWriteInFlight: false,
-    lastGuardToastAt: 0,
-    terminalConnected: false
-  };
-  function getTerminalServerUrl(baseUrl) {
-    const url = new URL(baseUrl);
-    url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
-    return url.origin;
+  // extension/content/ui/terminal-panel-bridge.js
+  var panelVisible = false;
+  var bridgeInitialized = false;
+  var storageListenerInstalled = false;
+  var visibilityListeners = /* @__PURE__ */ new Set();
+  function notifyVisibilityListeners(visible) {
+    for (const listener of visibilityListeners) {
+      listener(visible);
+    }
   }
-
-  // extension/content/ui/terminal-widget-ui.js
-  var _hideTerminalCb = null;
-  var _exitTerminalSessionCb = null;
-  var _resetWriteGuardStateCb = null;
-  var _scheduleQueuedWriteFlushCb = null;
-  function registerUICallbacks(cbs) {
-    _hideTerminalCb = cbs.hideTerminal;
-    _exitTerminalSessionCb = cbs.exitTerminalSession;
-    _resetWriteGuardStateCb = cbs.resetWriteGuardState;
-    _scheduleQueuedWriteFlushCb = cbs.scheduleQueuedWriteFlush;
+  function setPanelVisible(nextVisible) {
+    if (panelVisible === nextVisible)
+      return;
+    panelVisible = nextVisible;
+    notifyVisibilityListeners(panelVisible);
   }
-  function showSandboxError(message, instruction, command) {
-    const existing = document.getElementById(WIDGET_ID2);
-    if (existing)
-      existing.remove();
-    const overlay = document.createElement("div");
-    overlay.id = WIDGET_ID2;
-    Object.assign(overlay.style, {
-      position: "fixed",
-      bottom: "16px",
-      right: "16px",
-      width: "420px",
-      maxWidth: "calc(100vw - 32px)",
-      zIndex: "2147483644",
-      background: "#1a1b26",
-      border: "1px solid #f7768e",
-      borderRadius: "12px",
-      padding: "20px",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: "#a9b1d6"
-    });
-    const title = document.createElement("div");
-    title.textContent = "Terminal Unavailable";
-    Object.assign(title.style, {
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#f7768e",
-      marginBottom: "8px"
-    });
-    const msg = document.createElement("div");
-    msg.textContent = message;
-    Object.assign(msg.style, {
-      fontSize: "12px",
-      color: "#787c99",
-      marginBottom: "12px",
-      lineHeight: "1.4"
-    });
-    const inst = document.createElement("div");
-    inst.textContent = instruction;
-    Object.assign(inst.style, {
-      fontSize: "12px",
-      color: "#a9b1d6",
-      marginBottom: "8px"
-    });
-    const cmdBox = document.createElement("div");
-    Object.assign(cmdBox.style, {
-      background: "#16161e",
-      border: "1px solid #292e42",
-      borderRadius: "6px",
-      padding: "10px 12px",
-      fontFamily: '"SF Mono", "Fira Code", Menlo, Monaco, monospace',
-      fontSize: "12px",
-      color: "#9ece6a",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      marginBottom: "12px"
-    });
-    const cmdText = document.createElement("span");
-    cmdText.textContent = command;
-    cmdText.style.flex = "1";
-    const copyIcon = document.createElement("span");
-    copyIcon.textContent = "Copy";
-    Object.assign(copyIcon.style, {
-      fontSize: "11px",
-      color: "#565f89",
-      flexShrink: "0"
-    });
-    cmdBox.appendChild(cmdText);
-    cmdBox.appendChild(copyIcon);
-    cmdBox.addEventListener("click", () => {
-      void navigator.clipboard.writeText(command).then(() => {
-        copyIcon.textContent = "Copied!";
-        copyIcon.style.color = "#9ece6a";
-        setTimeout(() => {
-          copyIcon.textContent = "Copy";
-          copyIcon.style.color = "#565f89";
-        }, 2e3);
-      }).catch(() => {
-        copyIcon.textContent = "Select & copy manually";
-        copyIcon.style.color = "#f7768e";
-      });
-    });
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "Dismiss";
-    closeBtn.type = "button";
-    Object.assign(closeBtn.style, {
-      background: "#292e42",
-      border: "none",
-      borderRadius: "6px",
-      padding: "6px 16px",
-      color: "#a9b1d6",
-      fontSize: "12px",
-      cursor: "pointer",
-      width: "100%"
-    });
-    closeBtn.addEventListener("click", () => {
-      overlay.remove();
-      state.widgetEl = null;
-      state.visible = false;
-    });
-    overlay.appendChild(title);
-    overlay.appendChild(msg);
-    overlay.appendChild(inst);
-    overlay.appendChild(cmdBox);
-    overlay.appendChild(closeBtn);
-    state.widgetEl = overlay;
-    state.visible = true;
-    const target = document.body || document.documentElement;
-    if (target)
-      target.appendChild(overlay);
+  async function syncPanelVisibilityFromStorage() {
+    try {
+      const value = await getSession(StorageKey.TERMINAL_UI_STATE);
+      const uiState = value;
+      setPanelVisible(uiState === "open");
+    } catch {
+    }
   }
-  function createWidget(token) {
-    state.terminalConnected = false;
-    const widget = document.createElement("div");
-    widget.id = WIDGET_ID2;
-    Object.assign(widget.style, {
-      position: "fixed",
-      bottom: "0",
-      right: "0",
-      width: DEFAULT_WIDGET_WIDTH,
-      height: DEFAULT_WIDGET_HEIGHT,
-      minWidth: MIN_WIDGET_WIDTH,
-      minHeight: MIN_WIDGET_HEIGHT,
-      maxWidth: MAX_WIDGET_WIDTH,
-      maxHeight: MAX_WIDGET_HEIGHT,
-      zIndex: "2147483644",
-      display: "flex",
-      flexDirection: "column",
-      borderRadius: "12px 0 0 0",
-      overflow: "hidden",
-      boxShadow: "0 -4px 24px rgba(0, 0, 0, 0.3)",
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      transition: "opacity 200ms ease, transform 200ms ease",
-      transformOrigin: "bottom right"
-    });
-    const resizeHandle = document.createElement("div");
-    Object.assign(resizeHandle.style, {
-      position: "absolute",
-      top: "0",
-      left: "0",
-      width: "12px",
-      height: "12px",
-      cursor: "nw-resize",
-      zIndex: "10"
-    });
-    setupResize(resizeHandle, widget);
-    state.resizeHandleEl = resizeHandle;
-    widget.appendChild(resizeHandle);
-    const header = document.createElement("div");
-    header.id = HEADER_ID;
-    Object.assign(header.style, {
-      height: "32px",
-      background: "#16161e",
-      display: "flex",
-      alignItems: "center",
-      padding: "0 8px 0 12px",
-      gap: "8px",
-      borderBottom: "1px solid #292e42",
-      cursor: "default",
-      flexShrink: "0"
-    });
-    const statusDot = document.createElement("span");
-    statusDot.className = "gasoline-terminal-status-dot";
-    Object.assign(statusDot.style, {
-      width: "8px",
-      height: "8px",
-      borderRadius: "50%",
-      background: "#565f89",
-      flexShrink: "0",
-      transition: "background 200ms ease"
-    });
-    const titleSpan = document.createElement("span");
-    titleSpan.textContent = "Gasoline Terminal";
-    Object.assign(titleSpan.style, {
-      color: "#787c99",
-      fontSize: "12px",
-      fontWeight: "600",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      userSelect: "none"
-    });
-    const minimizeTerminalButton = document.createElement("button");
-    minimizeTerminalButton.id = MINIMIZE_TERMINAL_BUTTON_ID;
-    minimizeTerminalButton.textContent = "\u2581";
-    minimizeTerminalButton.title = "Minimize terminal";
-    minimizeTerminalButton.type = "button";
-    Object.assign(minimizeTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    minimizeTerminalButton.addEventListener("mouseenter", () => {
-      minimizeTerminalButton.style.background = "#292e42";
-      minimizeTerminalButton.style.color = "#a9b1d6";
-    });
-    minimizeTerminalButton.addEventListener("mouseleave", () => {
-      minimizeTerminalButton.style.background = "transparent";
-      minimizeTerminalButton.style.color = "#565f89";
-    });
-    minimizeTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleMinimize(widget, minimizeTerminalButton, header);
-    });
-    const disconnectTerminalButton = document.createElement("button");
-    disconnectTerminalButton.id = DISCONNECT_TERMINAL_BUTTON_ID;
-    disconnectTerminalButton.textContent = "\u23FB";
-    disconnectTerminalButton.title = "disconnect terminal & and end session";
-    disconnectTerminalButton.type = "button";
-    Object.assign(disconnectTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#f7768e",
-      fontSize: "12px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0",
-      opacity: "0.7",
-      transition: "opacity 150ms ease, background 150ms ease, box-shadow 150ms ease"
-    });
-    disconnectTerminalButton.addEventListener("mouseenter", () => {
-      disconnectTerminalButton.style.background = "#3b1219";
-      disconnectTerminalButton.style.opacity = "1";
-      disconnectTerminalButton.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
-    });
-    disconnectTerminalButton.addEventListener("mouseleave", () => {
-      disconnectTerminalButton.style.background = "transparent";
-      disconnectTerminalButton.style.opacity = "0.7";
-      disconnectTerminalButton.style.boxShadow = "none";
-    });
-    disconnectTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_exitTerminalSessionCb)
-        void _exitTerminalSessionCb();
-    });
-    const spacer = document.createElement("div");
-    spacer.style.flex = "1";
-    const redrawTerminalButton = document.createElement("button");
-    redrawTerminalButton.id = REDRAW_TERMINAL_BUTTON_ID;
-    redrawTerminalButton.textContent = "\u21BB";
-    redrawTerminalButton.title = "Redraw terminal graphics";
-    redrawTerminalButton.type = "button";
-    Object.assign(redrawTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    redrawTerminalButton.addEventListener("mouseenter", () => {
-      redrawTerminalButton.style.background = "#292e42";
-      redrawTerminalButton.style.color = "#a9b1d6";
-    });
-    redrawTerminalButton.addEventListener("mouseleave", () => {
-      redrawTerminalButton.style.background = "transparent";
-      redrawTerminalButton.style.color = "#565f89";
-    });
-    redrawTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      redrawTerminal(widget, header, minimizeTerminalButton);
-    });
-    const closeTerminalButton = document.createElement("button");
-    closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID;
-    closeTerminalButton.textContent = "\u2715";
-    closeTerminalButton.title = "Close terminal";
-    closeTerminalButton.type = "button";
-    Object.assign(closeTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    closeTerminalButton.addEventListener("mouseenter", () => {
-      closeTerminalButton.style.background = "#292e42";
-      closeTerminalButton.style.color = "#a9b1d6";
-    });
-    closeTerminalButton.addEventListener("mouseleave", () => {
-      closeTerminalButton.style.background = "transparent";
-      closeTerminalButton.style.color = "#565f89";
-    });
-    closeTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_hideTerminalCb)
-        _hideTerminalCb();
-    });
-    header.addEventListener("click", () => {
-      if (!state.minimized)
+  function installStorageListener() {
+    if (storageListenerInstalled)
+      return;
+    storageListenerInstalled = true;
+    onStorageChanged((changes, areaName) => {
+      if (areaName !== "session")
         return;
-      toggleMinimize(widget, minimizeTerminalButton, header);
+      const change = changes[StorageKey.TERMINAL_UI_STATE];
+      if (!change)
+        return;
+      const nextValue = change.newValue;
+      setPanelVisible(nextValue === "open");
     });
-    header.appendChild(statusDot);
-    header.appendChild(titleSpan);
-    header.appendChild(disconnectTerminalButton);
-    header.appendChild(spacer);
-    header.appendChild(redrawTerminalButton);
-    header.appendChild(minimizeTerminalButton);
-    header.appendChild(closeTerminalButton);
-    const iframe = document.createElement("iframe");
-    iframe.id = IFRAME_ID;
-    iframe.src = `${getTerminalServerUrl(state.serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
-    Object.assign(iframe.style, {
-      flex: "1",
-      width: "100%",
-      border: "none",
-      background: "#1a1b26"
-    });
-    iframe.setAttribute("allow", "clipboard-write");
-    widget.appendChild(header);
-    widget.appendChild(iframe);
-    state.iframeEl = iframe;
-    window.addEventListener("message", handleIframeMessage);
-    return widget;
   }
-  function updateStatusDot(dotState) {
-    const dot = state.widgetEl?.querySelector(".gasoline-terminal-status-dot");
-    if (!dot)
+  async function initTerminalPanelBridge() {
+    if (bridgeInitialized)
       return;
-    switch (dotState) {
-      case "connected":
-        dot.style.background = "#9ece6a";
-        break;
-      case "disconnected":
-        dot.style.background = "#e0af68";
-        break;
-      case "exited":
-        dot.style.background = "#f7768e";
-        break;
-    }
-  }
-  function handleIframeMessage(event) {
-    if (!event.data || event.data.source !== "gasoline-terminal")
-      return;
-    try {
-      const termOrigin = getTerminalServerUrl(state.serverUrl);
-      if (event.origin !== termOrigin)
-        return;
-    } catch {
-      return;
-    }
-    switch (event.data.event) {
-      case "connected":
-        updateStatusDot("connected");
-        state.terminalConnected = true;
-        if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
-          if (_scheduleQueuedWriteFlushCb)
-            _scheduleQueuedWriteFlushCb(0);
-        }
-        break;
-      case "disconnected":
-        updateStatusDot("disconnected");
-        state.terminalConnected = false;
-        state.terminalFocused = false;
-        break;
-      case "exited":
-        updateStatusDot("exited");
-        state.terminalConnected = false;
-        state.terminalFocused = false;
-        if (_resetWriteGuardStateCb)
-          _resetWriteGuardStateCb();
-        break;
-      case "focus":
-        state.terminalFocused = Boolean(event.data.data?.focused);
-        if (state.terminalFocused) {
-          state.lastTypingAt = Date.now();
-        } else if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
-          if (_scheduleQueuedWriteFlushCb)
-            _scheduleQueuedWriteFlushCb(0);
-        }
-        break;
-      case "typing": {
-        const rawAt = event.data.data?.at;
-        const parsedAt = typeof rawAt === "number" && Number.isFinite(rawAt) ? rawAt : Date.now();
-        state.terminalFocused = true;
-        state.lastTypingAt = parsedAt;
-        break;
-      }
-    }
-  }
-  function setupResize(handle, widget) {
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-    function onMouseDown(e) {
-      e.preventDefault();
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = widget.offsetWidth;
-      startHeight = widget.offsetHeight;
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-      if (state.iframeEl)
-        state.iframeEl.style.pointerEvents = "none";
-    }
-    function onMouseMove(e) {
-      const newWidth = startWidth - (e.clientX - startX);
-      const newHeight = startHeight - (e.clientY - startY);
-      widget.style.width = Math.max(400, Math.min(window.innerWidth, newWidth)) + "px";
-      widget.style.height = Math.max(250, Math.min(window.innerHeight * 0.8, newHeight)) + "px";
-    }
-    function onMouseUp() {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-      if (state.iframeEl)
-        state.iframeEl.style.pointerEvents = "auto";
-      notifyIframe("resize");
-    }
-    handle.addEventListener("mousedown", onMouseDown);
-  }
-  function redrawTerminal(widget, header, minimizeButton) {
-    if (state.minimized) {
-      toggleMinimize(widget, minimizeButton, header);
-    }
-    state.savedHeight = DEFAULT_WIDGET_HEIGHT;
-    widget.style.bottom = "0";
-    widget.style.right = "0";
-    widget.style.width = DEFAULT_WIDGET_WIDTH;
-    widget.style.height = DEFAULT_WIDGET_HEIGHT;
-    widget.style.minWidth = MIN_WIDGET_WIDTH;
-    widget.style.minHeight = MIN_WIDGET_HEIGHT;
-    widget.style.maxWidth = MAX_WIDGET_WIDTH;
-    widget.style.maxHeight = MAX_WIDGET_HEIGHT;
-    widget.style.opacity = "1";
-    widget.style.transform = "translateY(0) scale(1)";
-    widget.style.pointerEvents = "auto";
-    if (state.iframeEl) {
-      state.iframeEl.style.display = "block";
-      updateStatusDot("disconnected");
-      state.iframeEl.src = state.iframeEl.src;
-    }
-    if (state.resizeHandleEl)
-      state.resizeHandleEl.style.display = "block";
-    minimizeButton.textContent = "\u2581";
-    minimizeButton.title = "Minimize terminal";
-    header.style.cursor = "default";
-    header.style.borderBottom = "1px solid #292e42";
-    state.visible = true;
-    requestAnimationFrame(() => {
-      notifyIframe("resize");
-      notifyIframe("focus");
-    });
-    persistUIState("open");
-  }
-  function toggleMinimize(widget, btn, header) {
-    if (state.minimized) {
-      state.minimized = false;
-      widget.style.height = state.savedHeight || DEFAULT_WIDGET_HEIGHT;
-      widget.style.minHeight = MIN_WIDGET_HEIGHT;
-      if (state.iframeEl)
-        state.iframeEl.style.display = "block";
-      if (state.resizeHandleEl)
-        state.resizeHandleEl.style.display = "block";
-      btn.textContent = "\u2581";
-      btn.title = "Minimize terminal";
-      header.style.cursor = "default";
-      header.style.borderBottom = "1px solid #292e42";
-      notifyIframe("resize");
-      persistUIState("open");
-    } else {
-      state.minimized = true;
-      state.savedHeight = widget.style.height || DEFAULT_WIDGET_HEIGHT;
-      widget.style.height = MINIMIZED_WIDGET_HEIGHT;
-      widget.style.minHeight = MINIMIZED_WIDGET_HEIGHT;
-      if (state.iframeEl)
-        state.iframeEl.style.display = "none";
-      if (state.resizeHandleEl)
-        state.resizeHandleEl.style.display = "none";
-      btn.textContent = "\u25A1";
-      btn.title = "Restore terminal";
-      header.style.cursor = "pointer";
-      header.style.borderBottom = "none";
-      persistUIState("minimized");
-    }
-  }
-  function notifyIframe(command, data) {
-    if (!state.iframeEl?.contentWindow)
-      return;
-    let origin = "*";
-    try {
-      origin = getTerminalServerUrl(state.serverUrl);
-    } catch {
-    }
-    state.iframeEl.contentWindow.postMessage({
-      target: "gasoline-terminal",
-      command,
-      ...data
-    }, origin);
-  }
-
-  // extension/content/ui/terminal-widget-session.js
-  async function getServerUrl() {
-    try {
-      const value = await getLocal(StorageKey.SERVER_URL);
-      const url = value || DEFAULT_SERVER_URL;
-      state.serverUrl = url;
-      return url;
-    } catch {
-      return DEFAULT_SERVER_URL;
-    }
-  }
-  async function getTerminalConfig() {
-    try {
-      const value = await getLocal(StorageKey.TERMINAL_CONFIG);
-      const config = value || {};
-      return config;
-    } catch {
-      return {};
-    }
-  }
-  async function getTerminalAICommand() {
-    try {
-      const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND);
-      const cmd = value || "claude";
-      return cmd;
-    } catch {
-      return "claude";
-    }
-  }
-  async function getTerminalDevRoot() {
-    try {
-      const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT);
-      return value || "";
-    } catch {
-      return "";
-    }
-  }
-  function persistSession(ss) {
-    try {
-      void setSession(StorageKey.TERMINAL_SESSION, ss);
-    } catch {
-    }
-  }
-  function clearPersistedSession() {
-    try {
-      void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE]);
-    } catch {
-    }
-  }
-  function persistUIState(uiState) {
-    try {
-      void setSession(StorageKey.TERMINAL_UI_STATE, uiState);
-    } catch {
-    }
-  }
-  async function loadPersistedSession() {
-    try {
-      const sessionValue = await getSession(StorageKey.TERMINAL_SESSION);
-      const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE);
-      const session = sessionValue;
-      const uiState = uiValue || "closed";
-      return { session: session || null, uiState };
-    } catch {
-      return { session: null, uiState: "closed" };
-    }
-  }
-  async function validateSession(token) {
-    try {
-      const base = await getServerUrl();
-      const termUrl = getTerminalServerUrl(base);
-      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
-      if (!resp.ok)
-        return false;
-      const data = await resp.json();
-      return data.valid === true;
-    } catch {
-      return false;
-    }
-  }
-  async function startSession(config) {
-    const base = await getServerUrl();
-    const termUrl = getTerminalServerUrl(base);
-    const aiCommand = await getTerminalAICommand();
-    const devRoot = await getTerminalDevRoot();
-    try {
-      const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
-      const resp = await fetch(`${termUrl}/terminal/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cmd: config.cmd || "",
-          args: config.args || [],
-          dir: config.dir || devRoot || "",
-          init_command: initCommand
-        })
-      });
-      if (!resp.ok) {
-        const body = await resp.json();
-        if (resp.status === 503 && body.error === "sandbox_restricted") {
-          showSandboxError(body.message ?? "", body.instruction ?? "", body.command ?? "");
-          return null;
-        }
-        if (resp.status === 409 && body.token) {
-          const ss2 = { sessionId: body.session_id ?? "default", token: body.token };
-          persistSession(ss2);
-          return ss2;
-        }
-        console.warn("[Gasoline] Terminal session rejected (HTTP " + resp.status + "): " + (body.error ?? "unknown") + ". Check the daemon logs for details.");
-        return null;
-      }
-      const data = await resp.json();
-      const ss = { sessionId: data.session_id, token: data.token };
-      persistSession(ss);
-      return ss;
-    } catch (err) {
-      console.warn("[Gasoline] Terminal session start failed: " + (err instanceof Error ? err.message : String(err)) + ". Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser");
-      return null;
-    }
-  }
-
-  // extension/content/ui/terminal-widget.js
-  function resetWriteGuardState() {
-    state.queuedWrites = [];
-    state.terminalFocused = false;
-    state.lastTypingAt = 0;
-    state.queuedWriteInFlight = false;
-    state.lastGuardToastAt = 0;
-    if (state.queuedWriteFlushTimer !== null) {
-      clearTimeout(state.queuedWriteFlushTimer);
-      state.queuedWriteFlushTimer = null;
-    }
-    if (state.queuedSubmitTimer !== null) {
-      clearTimeout(state.queuedSubmitTimer);
-      state.queuedSubmitTimer = null;
-    }
-  }
-  function shouldDeferQueuedWrite(nowMs = Date.now()) {
-    if (!state.terminalFocused)
-      return false;
-    return nowMs - state.lastTypingAt < TERMINAL_TYPING_IDLE_MS;
-  }
-  function maybeShowQueuedWriteToast(nowMs = Date.now()) {
-    if (nowMs - state.lastGuardToastAt < TERMINAL_GUARD_TOAST_INTERVAL_MS)
-      return;
-    state.lastGuardToastAt = nowMs;
-    showActionToast("waiting for user to stop typing", "Queued terminal action", "warning", 1800);
-  }
-  function scheduleQueuedWriteFlush(delayMs = 0) {
-    if (state.queuedWriteFlushTimer !== null)
-      clearTimeout(state.queuedWriteFlushTimer);
-    state.queuedWriteFlushTimer = setTimeout(() => {
-      state.queuedWriteFlushTimer = null;
-      flushQueuedWrites();
-    }, delayMs);
-  }
-  function scheduleQueuedSubmit(delayMs) {
-    if (state.queuedSubmitTimer !== null)
-      clearTimeout(state.queuedSubmitTimer);
-    state.queuedSubmitTimer = setTimeout(() => {
-      state.queuedSubmitTimer = null;
-      if (!state.visible || !state.iframeEl) {
-        resetWriteGuardState();
-        return;
-      }
-      if (!state.terminalConnected) {
-        scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
-        return;
-      }
-      if (shouldDeferQueuedWrite()) {
-        maybeShowQueuedWriteToast();
-        scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
-        return;
-      }
-      notifyIframe("write", { text: "\r" });
-      notifyIframe("focus");
-      state.queuedWriteInFlight = false;
-      if (state.queuedWrites.length > 0) {
-        scheduleQueuedWriteFlush(0);
-      }
-    }, delayMs);
-  }
-  function flushQueuedWrites() {
-    if (!state.visible || !state.iframeEl) {
-      resetWriteGuardState();
-      return;
-    }
-    if (!state.terminalConnected) {
-      scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
-      return;
-    }
-    if (state.queuedWriteInFlight)
-      return;
-    if (state.queuedWrites.length === 0) {
-      state.lastGuardToastAt = 0;
-      return;
-    }
-    if (shouldDeferQueuedWrite()) {
-      maybeShowQueuedWriteToast();
-      scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
-      return;
-    }
-    const nextWrite = state.queuedWrites.shift();
-    if (!nextWrite)
-      return;
-    state.lastGuardToastAt = 0;
-    state.queuedWriteInFlight = true;
-    notifyIframe("redraw");
-    notifyIframe("write", { text: nextWrite });
-    scheduleQueuedSubmit(TERMINAL_WRITE_SUBMIT_DELAY_MS);
-  }
-  function hideTerminal() {
-    if (!state.widgetEl)
-      return;
-    state.visible = false;
-    state.widgetEl.style.opacity = "0";
-    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
-    state.widgetEl.style.pointerEvents = "none";
-    resetWriteGuardState();
-    persistUIState("closed");
-  }
-  async function exitTerminalSession() {
-    if (state.sessionState) {
-      try {
-        const termUrl = getTerminalServerUrl(state.serverUrl);
-        await fetch(`${termUrl}/terminal/stop`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: state.sessionState.sessionId }),
-          signal: AbortSignal.timeout(3e3)
-        });
-      } catch {
-      }
-    }
-    clearPersistedSession();
-    unmountTerminal();
-  }
-  function showTerminal() {
-    if (!state.widgetEl)
-      return;
-    state.visible = true;
-    state.widgetEl.style.opacity = "1";
-    state.widgetEl.style.transform = "translateY(0) scale(1)";
-    state.widgetEl.style.pointerEvents = "auto";
-    notifyIframe("focus");
-    persistUIState(state.minimized ? "minimized" : "open");
+    bridgeInitialized = true;
+    installStorageListener();
+    await syncPanelVisibilityFromStorage();
   }
   function isTerminalVisible() {
-    return state.visible;
+    return panelVisible;
   }
-  async function toggleTerminal() {
-    if (state.visible && state.widgetEl) {
-      hideTerminal();
-      return;
-    }
-    if (state.widgetEl && state.sessionState) {
-      showTerminal();
-      return;
-    }
-    await getServerUrl();
-    const persisted = await loadPersistedSession();
-    if (persisted.session) {
-      const alive = await validateSession(persisted.session.token);
-      if (alive) {
-        state.sessionState = persisted.session;
-        mountWidget(persisted.session.token, persisted.uiState === "minimized");
-        return;
-      }
-      clearPersistedSession();
-    }
-    const config = await getTerminalConfig();
-    const ss = await startSession(config);
-    if (!ss)
-      return;
-    state.sessionState = ss;
-    mountWidget(ss.token, false);
+  function onTerminalPanelVisibilityChanged(listener) {
+    visibilityListeners.add(listener);
+    return () => {
+      visibilityListeners.delete(listener);
+    };
   }
-  async function restoreTerminalIfNeeded() {
-    const persisted = await loadPersistedSession();
-    if (!persisted.session || persisted.uiState === "closed")
-      return;
-    await getServerUrl();
-    const alive = await validateSession(persisted.session.token);
-    if (!alive) {
-      clearPersistedSession();
-      const config = await getTerminalConfig();
-      const ss = await startSession(config);
-      if (!ss)
-        return;
-      state.sessionState = ss;
-      mountWidget(ss.token, persisted.uiState === "minimized");
-      return;
+  async function openTerminalPanel() {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+      return result?.success === true;
+    } catch {
+      return false;
     }
-    state.sessionState = persisted.session;
-    mountWidget(persisted.session.token, persisted.uiState === "minimized");
   }
-  var MAX_QUEUED_WRITES = 200;
   function writeToTerminal(text) {
-    if (!state.visible || !state.iframeEl)
+    if (!panelVisible)
       return;
-    const trimmed = text.replace(/[\r\n\s]+$/, "");
-    if (!trimmed)
-      return;
-    state.queuedWrites.push(trimmed);
-    if (state.queuedWrites.length > MAX_QUEUED_WRITES) {
-      state.queuedWrites = state.queuedWrites.slice(-MAX_QUEUED_WRITES);
+    try {
+      chrome.runtime.sendMessage({ type: "terminal_panel_write", text });
+    } catch {
     }
-    scheduleQueuedWriteFlush(0);
   }
-  function mountWidget(token, startMinimized) {
-    if (state.widgetEl) {
-      state.widgetEl.remove();
-      state.widgetEl = null;
-    }
-    state.widgetEl = createWidget(token);
-    const target = document.body || document.documentElement;
-    if (!target)
-      return;
-    target.appendChild(state.widgetEl);
-    state.widgetEl.style.opacity = "0";
-    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
-    requestAnimationFrame(() => {
-      showTerminal();
-      if (startMinimized) {
-        const header = state.widgetEl?.querySelector("#" + HEADER_ID);
-        const minimizeTerminalButton = header?.querySelector("#" + MINIMIZE_TERMINAL_BUTTON_ID);
-        if (state.widgetEl && header && minimizeTerminalButton) {
-          toggleMinimize(state.widgetEl, minimizeTerminalButton, header);
-        }
-      }
-    });
-  }
-  function unmountTerminal() {
-    window.removeEventListener("message", handleIframeMessage);
-    resetWriteGuardState();
-    state.terminalConnected = false;
-    if (state.widgetEl) {
-      state.widgetEl.remove();
-      state.widgetEl = null;
-    }
-    state.iframeEl = null;
-    state.resizeHandleEl = null;
-    state.sessionState = null;
-    state.visible = false;
-    state.minimized = false;
-    state.savedHeight = "";
-  }
-  registerUICallbacks({
-    hideTerminal,
-    exitTerminalSession,
-    resetWriteGuardState,
-    scheduleQueuedWriteFlush
-  });
 
   // extension/content/ui/tracked-hover-launcher.js
   var ROOT_ID = "gasoline-tracked-hover-launcher";
@@ -2989,24 +2117,7 @@
   var recordingStorageUnsubscribe = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
-  async function checkTerminalReachable() {
-    try {
-      let baseUrl = DEFAULT_SERVER_URL;
-      try {
-        const value = await getLocal(StorageKey.SERVER_URL);
-        baseUrl = value || DEFAULT_SERVER_URL;
-      } catch {
-      }
-      const url = new URL(baseUrl);
-      url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
-      const resp = await fetch(`${url.origin}/terminal/config`, {
-        signal: AbortSignal.timeout(2e3)
-      });
-      return resp.ok;
-    } catch {
-      return false;
-    }
-  }
+  var terminalVisibilityUnsubscribe = null;
   function clearHideTimer() {
     if (!hideTimer)
       return;
@@ -3119,8 +2230,15 @@
       return false;
     });
   }
+  function installTerminalVisibilitySync() {
+    if (terminalVisibilityUnsubscribe)
+      return;
+    terminalVisibilityUnsubscribe = onTerminalPanelVisibilityChanged(() => {
+      applyVisibilityFromState();
+    });
+  }
   function applyVisibilityFromState() {
-    if (trackedEnabled && !hiddenUntilPopupOpen) {
+    if (trackedEnabled && !hiddenUntilPopupOpen && !isTerminalVisible()) {
       mountLauncher();
       return;
     }
@@ -3361,22 +2479,7 @@
     });
     return link;
   }
-  function injectPulseKeyframes() {
-    if (document.getElementById("gasoline-pulse-keyframes"))
-      return;
-    const style = document.createElement("style");
-    style.id = "gasoline-pulse-keyframes";
-    style.textContent = `
-    @keyframes gasoline-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
-      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
-    }
-  `;
-    (document.head || document.documentElement).appendChild(style);
-  }
   function createLauncherUi() {
-    injectPulseKeyframes();
     const root = document.createElement("div");
     root.id = ROOT_ID;
     Object.assign(root.style, {
@@ -3423,23 +2526,12 @@
     });
     screenshotButton.style.fontSize = "26px";
     screenshotButton.style.paddingBottom = "5px";
-    let terminalReachable = true;
-    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open an interactive CLI session", () => {
-      if (!terminalReachable)
-        return;
+    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open the side panel terminal", () => {
       panelPinned = false;
       setPanelOpen(false);
-      void toggleTerminal();
+      void openTerminalPanel();
     });
     terminalButton.style.fontSize = "21px";
-    void checkTerminalReachable().then((reachable) => {
-      terminalReachable = reachable;
-      if (!reachable) {
-        terminalButton.style.opacity = "0.35";
-        terminalButton.style.cursor = "not-allowed";
-        terminalButton.title = "Terminal \u2014 unavailable (CSP blocks connections to the daemon, or terminal server not running)";
-      }
-    });
     const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);
@@ -3461,9 +2553,26 @@
       stopButton.style.color = "#fff";
     });
     stopButtonEl = stopButton;
+    let qaScanDebounce = 0;
+    const findProblemsButton = createActionButton("\u2691", "Find Problems \u2014 QA scan this page", () => {
+      const now = Date.now();
+      if (now - qaScanDebounce < 500)
+        return;
+      qaScanDebounce = now;
+      panelPinned = false;
+      setPanelOpen(false);
+      try {
+        chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: location.href }, () => {
+          void chrome.runtime.lastError;
+        });
+      } catch {
+      }
+    });
+    findProblemsButton.style.fontSize = "20px";
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(findProblemsButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement("span");
     dotSep.textContent = "\u22EE";
@@ -3501,7 +2610,7 @@
     });
     const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", "https://cookwithgasoline.com/docs");
     const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp");
-    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide Gasoline Devtool");
+    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide STRUM Devtool");
     hideButton.addEventListener("click", () => {
       hideLauncherUntilPopupReopen();
     });
@@ -3511,10 +2620,10 @@
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
-    toggle.title = "Gasoline quick actions";
+    toggle.title = "STRUM quick actions";
     const toggleIcon = document.createElement("img");
     toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
-    toggleIcon.alt = "Gasoline";
+    toggleIcon.alt = "STRUM";
     Object.assign(toggleIcon.style, {
       width: "36px",
       height: "36px",
@@ -3535,16 +2644,17 @@
       padding: "0",
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
       transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease",
-      overflow: "hidden",
-      animation: "gasoline-pulse 2.5s ease-in-out infinite"
+      overflow: "hidden"
     });
     toggle.addEventListener("mouseenter", () => {
       toggle.style.transform = "translateY(-1px)";
       toggle.style.boxShadow = "0 10px 26px rgba(15, 23, 42, 0.28)";
+      toggleIcon.src = chrome.runtime.getURL("icons/logo-animated.svg");
     });
     toggle.addEventListener("mouseleave", () => {
       toggle.style.transform = "translateY(0)";
       toggle.style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.25)";
+      toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
     });
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
@@ -3583,6 +2693,8 @@
   function mountLauncher() {
     if (hiddenUntilPopupOpen)
       return;
+    if (isTerminalVisible())
+      return;
     if (rootEl || document.getElementById(ROOT_ID))
       return;
     rootEl = createLauncherUi();
@@ -3592,11 +2704,6 @@
     target.appendChild(rootEl);
     installRecordingStorageSync();
     installAnnotationListener();
-    if (document.readyState === "complete") {
-      void restoreTerminalIfNeeded();
-    } else {
-      window.addEventListener("load", () => void restoreTerminalIfNeeded(), { once: true });
-    }
   }
   function unmountLauncher() {
     clearHideTimer();
@@ -3617,6 +2724,8 @@
   async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
+    await initTerminalPanelBridge();
+    installTerminalVisibilitySync();
     await syncHiddenStateFromStorage();
     applyVisibilityFromState();
   }

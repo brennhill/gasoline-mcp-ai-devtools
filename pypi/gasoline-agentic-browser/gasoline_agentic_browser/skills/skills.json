@@ -70,6 +70,11 @@
       "id": "config-doctor",
       "version": 1,
       "description": "Diagnose and repair Gasoline Agentic Browser configuration issues."
+    },
+    {
+      "id": "qa",
+      "version": 1,
+      "description": "QA test a web app: walk pages, find bugs and regressions, produce a prioritized issue report with console/network/visual evidence."
     }
   ]
 }

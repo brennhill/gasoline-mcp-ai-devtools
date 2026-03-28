@@ -28,6 +28,7 @@ import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
+import { resolveTerminalWorkspaceTarget } from './tab-state.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -92,6 +93,34 @@ type MessageResponse = unknown
 
 /** Send response callback type */
 type SendResponse = (response?: MessageResponse) => void
+
+async function openTerminalSidePanel(tabId: number | undefined): Promise<{ success: boolean; error?: string }> {
+  if (typeof chrome === 'undefined' || !chrome.sidePanel?.open) {
+    return { success: false, error: 'side panel unavailable' }
+  }
+  try {
+    const workspace = await resolveTerminalWorkspaceTarget(tabId)
+    if (!workspace) {
+      return { success: false, error: 'missing workspace tab' }
+    }
+    const path = `sidepanel.html?tabId=${encodeURIComponent(workspace.hostTabId)}&tabGroupId=${encodeURIComponent(
+      workspace.tabGroupId
+    )}&mainTabId=${encodeURIComponent(workspace.mainTabId)}`
+    const setOptionsPromise = chrome.sidePanel.setOptions
+      ? chrome.sidePanel
+          .setOptions({ tabId: workspace.hostTabId, path, enabled: true })
+          .catch(() => undefined)
+      : null
+
+    // sidePanel.open must stay in the original user-gesture path. Awaiting
+    // another async API first can cause Chrome to reject the open request.
+    await chrome.sidePanel.open({ tabId: workspace.hostTabId })
+    void setOptionsPromise
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: errorMessage(error) }
+  }
+}
 
 // =============================================================================
 // MESSAGE HANDLER
@@ -235,6 +264,12 @@ function handleMessage(
       sendResponse({ enabled: deps.getAiWebPilotEnabled() })
       return false
 
+    case 'open_terminal_panel':
+      openTerminalSidePanel(sender.tab?.id)
+        .then((result) => sendResponse(result))
+        .catch((error) => sendResponse({ success: false, error: errorMessage(error) }))
+      return true
+
     case 'get_tracking_state':
       handleGetTrackingState(sendResponse, deps, sender.tab?.id)
       return true
@@ -302,6 +337,10 @@ function handleMessage(
       // Fire-and-forget: content script sends draw mode results
       handleDrawModeCompletedAsync(message, sender, deps)
       return false
+
+    case 'qa_scan_requested':
+      handleQaScanRequestedAsync(message as { type: 'qa_scan_requested'; page_url?: string }, sendResponse, deps)
+      return true
 
     default:
       // screen_recording_start/stop, offscreen_*, mic_granted_close_tab, reveal_file
@@ -640,4 +679,68 @@ export async function deleteStateSnapshot(name: string): Promise<{ success: bool
   delete snapshots[name]
   await setLocal(SNAPSHOT_KEY, snapshots)
   return { success: true, deleted: name }
+}
+
+// =============================================================================
+// QA SCAN INTENT HANDLER
+// =============================================================================
+
+// Single-line prompt: PTY interprets \n as Enter, so multi-line text would execute as separate commands.
+const QA_SCAN_PROMPT = 'The user clicked "Find Problems". Please run the QA skill or start with: analyze(what:"page_issues", summary:true)'
+
+const QA_SCAN_FETCH_TIMEOUT_MS = 3000
+
+async function handleQaScanRequestedAsync(
+  message: { type: 'qa_scan_requested'; page_url?: string },
+  sendResponse: (response: Record<string, unknown>) => void,
+  deps: MessageHandlerDependencies
+): Promise<void> {
+  const { getTerminalServerUrl } = await import('../content/ui/terminal-widget-types.js')
+  const termUrl = getTerminalServerUrl(deps.getServerUrl())
+
+  // Try PTY injection first — works whether the side panel is open or closed.
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), QA_SCAN_FETCH_TIMEOUT_MS)
+    const resp = await fetch(`${termUrl}/terminal/inject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: QA_SCAN_PROMPT }),
+      signal: controller.signal
+    })
+    clearTimeout(timer)
+    if (resp.ok) {
+      const result = (await resp.json()) as { injected?: boolean }
+      if (result.injected) {
+        sendResponse({ success: true, method: 'terminal_inject' })
+        return
+      }
+    }
+  } catch {
+    // Terminal server unreachable or no active session — fall through to intent.
+  }
+
+  // Fallback: store intent on the daemon for the AI to pick up via tool response.
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), QA_SCAN_FETCH_TIMEOUT_MS)
+    const resp = await fetch(`${termUrl}/intent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        page_url: message.page_url || '',
+        action: 'qa_scan'
+      }),
+      signal: controller.signal
+    })
+    clearTimeout(timer)
+    if (resp.ok) {
+      sendResponse({ success: true, method: 'intent_stored' })
+      return
+    }
+  } catch {
+    // Intent endpoint also unreachable.
+  }
+
+  sendResponse({ success: false, error: 'No terminal session and intent store unreachable' })
 }

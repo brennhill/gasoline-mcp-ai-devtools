@@ -3,9 +3,9 @@
  * Why: Reduces popup churn by exposing common capture actions directly on tracked pages.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
-import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js';
+import { RuntimeMessageName, StorageKey } from '../../lib/constants.js';
 import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
-import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
+import { initTerminalPanelBridge, isTerminalVisible, onTerminalPanelVisibilityChanged, openTerminalPanel, writeToTerminal } from './terminal-panel-bridge.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
 const TOGGLE_ID = 'gasoline-tracked-hover-toggle';
@@ -25,30 +25,7 @@ let recordingStorageListener = null;
 let recordingStorageUnsubscribe = null;
 let runtimeListenerInstalled = false;
 let annotationListenerInstalled = false;
-/**
- * Check if the terminal server is reachable from this page.
- * CSP on non-localhost pages may block connections to localhost.
- * Returns true if reachable, false if blocked by CSP or unreachable.
- */
-async function checkTerminalReachable() {
-    try {
-        let baseUrl = DEFAULT_SERVER_URL;
-        try {
-            const value = await getLocal(StorageKey.SERVER_URL);
-            baseUrl = value || DEFAULT_SERVER_URL;
-        }
-        catch { /* use default */ }
-        const url = new URL(baseUrl);
-        url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET);
-        const resp = await fetch(`${url.origin}/terminal/config`, {
-            signal: AbortSignal.timeout(2000)
-        });
-        return resp.ok;
-    }
-    catch {
-        return false;
-    }
-}
+let terminalVisibilityUnsubscribe = null;
 function clearHideTimer() {
     if (!hideTimer)
         return;
@@ -169,8 +146,15 @@ function installRuntimeListener() {
         return false;
     });
 }
+function installTerminalVisibilitySync() {
+    if (terminalVisibilityUnsubscribe)
+        return;
+    terminalVisibilityUnsubscribe = onTerminalPanelVisibilityChanged(() => {
+        applyVisibilityFromState();
+    });
+}
 function applyVisibilityFromState() {
-    if (trackedEnabled && !hiddenUntilPopupOpen) {
+    if (trackedEnabled && !hiddenUntilPopupOpen && !isTerminalVisible()) {
         mountLauncher();
         return;
     }
@@ -418,22 +402,7 @@ function createSettingsMenuLink(iconSvg, label, href) {
     });
     return link;
 }
-function injectPulseKeyframes() {
-    if (document.getElementById('gasoline-pulse-keyframes'))
-        return;
-    const style = document.createElement('style');
-    style.id = 'gasoline-pulse-keyframes';
-    style.textContent = `
-    @keyframes gasoline-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
-      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
-    }
-  `;
-    (document.head || document.documentElement).appendChild(style);
-}
 function createLauncherUi() {
-    injectPulseKeyframes();
     const root = document.createElement('div');
     root.id = ROOT_ID;
     Object.assign(root.style, {
@@ -480,24 +449,12 @@ function createLauncherUi() {
     });
     screenshotButton.style.fontSize = '26px';
     screenshotButton.style.paddingBottom = '5px';
-    let terminalReachable = true; // Assume reachable until proven otherwise
-    const terminalButton = createActionButton('_\u276F', 'Terminal — open an interactive CLI session', () => {
-        if (!terminalReachable)
-            return;
+    const terminalButton = createActionButton('_\u276F', 'Terminal — open the side panel terminal', () => {
         panelPinned = false;
         setPanelOpen(false);
-        void toggleTerminal();
+        void openTerminalPanel();
     });
     terminalButton.style.fontSize = '21px';
-    // Proactively check if the terminal server is reachable (CSP may block localhost on external pages).
-    void checkTerminalReachable().then((reachable) => {
-        terminalReachable = reachable;
-        if (!reachable) {
-            terminalButton.style.opacity = '0.35';
-            terminalButton.style.cursor = 'not-allowed';
-            terminalButton.title = 'Terminal — unavailable (CSP blocks connections to the daemon, or terminal server not running)';
-        }
-    });
     const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
         panelPinned = true;
         setSettingsMenuOpen(!settingsMenuOpen);
@@ -519,9 +476,26 @@ function createLauncherUi() {
         stopButton.style.color = '#fff';
     });
     stopButtonEl = stopButton;
+    let qaScanDebounce = 0;
+    const findProblemsButton = createActionButton('\u2691', 'Find Problems — QA scan this page', () => {
+        const now = Date.now();
+        if (now - qaScanDebounce < 500)
+            return;
+        qaScanDebounce = now;
+        panelPinned = false;
+        setPanelOpen(false);
+        try {
+            chrome.runtime.sendMessage({ type: 'qa_scan_requested', page_url: location.href }, () => { void chrome.runtime.lastError; });
+        }
+        catch {
+            // Extension context invalidated
+        }
+    });
+    findProblemsButton.style.fontSize = '20px';
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(findProblemsButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement('span');
     dotSep.textContent = '\u22EE';
@@ -559,7 +533,7 @@ function createLauncherUi() {
     });
     const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', 'https://cookwithgasoline.com/docs');
     const repoLink = createSettingsMenuLink(ICON_GITHUB, 'GitHub Repository', 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp');
-    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Gasoline Devtool');
+    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide STRUM Devtool');
     hideButton.addEventListener('click', () => {
         hideLauncherUntilPopupReopen();
     });
@@ -569,10 +543,10 @@ function createLauncherUi() {
     const toggle = document.createElement('button');
     toggle.id = TOGGLE_ID;
     toggle.type = 'button';
-    toggle.title = 'Gasoline quick actions';
+    toggle.title = 'STRUM quick actions';
     const toggleIcon = document.createElement('img');
     toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
-    toggleIcon.alt = 'Gasoline';
+    toggleIcon.alt = 'STRUM';
     Object.assign(toggleIcon.style, {
         width: '36px',
         height: '36px',
@@ -593,16 +567,17 @@ function createLauncherUi() {
         padding: '0',
         boxShadow: '0 8px 24px rgba(15, 23, 42, 0.25)',
         transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease',
-        overflow: 'hidden',
-        animation: 'gasoline-pulse 2.5s ease-in-out infinite'
+        overflow: 'hidden'
     });
     toggle.addEventListener('mouseenter', () => {
         toggle.style.transform = 'translateY(-1px)';
         toggle.style.boxShadow = '0 10px 26px rgba(15, 23, 42, 0.28)';
+        toggleIcon.src = chrome.runtime.getURL('icons/logo-animated.svg');
     });
     toggle.addEventListener('mouseleave', () => {
         toggle.style.transform = 'translateY(0)';
         toggle.style.boxShadow = '0 8px 24px rgba(15, 23, 42, 0.25)';
+        toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
     });
     toggle.addEventListener('click', (event) => {
         event.preventDefault();
@@ -641,6 +616,8 @@ function createLauncherUi() {
 function mountLauncher() {
     if (hiddenUntilPopupOpen)
         return;
+    if (isTerminalVisible())
+        return;
     if (rootEl || document.getElementById(ROOT_ID))
         return;
     rootEl = createLauncherUi();
@@ -650,13 +627,6 @@ function mountLauncher() {
     target.appendChild(rootEl);
     installRecordingStorageSync();
     installAnnotationListener();
-    // Restore terminal after page finishes loading so the iframe doesn't stall the page.
-    if (document.readyState === 'complete') {
-        void restoreTerminalIfNeeded();
-    }
-    else {
-        window.addEventListener('load', () => void restoreTerminalIfNeeded(), { once: true });
-    }
 }
 function unmountLauncher() {
     clearHideTimer();
@@ -673,12 +643,19 @@ function unmountLauncher() {
     }
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
-    // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
-    // The PTY session survives launcher hide/show so users don't lose work.
+}
+function syncTerminalPanelVisibility() {
+    if (isTerminalVisible()) {
+        unmountLauncher();
+        return;
+    }
+    applyVisibilityFromState();
 }
 export async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
+    await initTerminalPanelBridge();
+    installTerminalVisibilitySync();
     await syncHiddenStateFromStorage();
     applyVisibilityFromState();
 }

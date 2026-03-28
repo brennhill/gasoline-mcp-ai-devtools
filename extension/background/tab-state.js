@@ -113,6 +113,61 @@ export function saveSetting(key, value) {
     setLocal(key, value);
 }
 const TRACKED_TAB_STORAGE_KEYS = [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE];
+const TERMINAL_WORKSPACE_STORAGE_KEYS = [
+    StorageKey.TERMINAL_WORKSPACE_GROUP_ID,
+    StorageKey.TERMINAL_WORKSPACE_MAIN_TAB_ID,
+    StorageKey.TRACKED_TAB_ID
+];
+function getUngroupedTabGroupId() {
+    return chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
+}
+function isGroupedTab(groupId) {
+    return typeof groupId === 'number' && Number.isFinite(groupId) && groupId !== getUngroupedTabGroupId();
+}
+async function safeGetTab(tabId) {
+    if (typeof tabId !== 'number')
+        return null;
+    try {
+        return await chrome.tabs.get(tabId);
+    }
+    catch {
+        return null;
+    }
+}
+async function focusTab(tab) {
+    if (!tab.id)
+        return;
+    try {
+        await chrome.tabs.update(tab.id, { active: true });
+    }
+    catch {
+        // Best effort.
+    }
+    if (typeof tab.windowId !== 'number' || !chrome.windows?.update)
+        return;
+    try {
+        await chrome.windows.update(tab.windowId, { focused: true });
+    }
+    catch {
+        // Best effort.
+    }
+}
+async function createTerminalWorkspaceGroup(tabId) {
+    if (!chrome.tabs.group || !chrome.tabGroups?.update)
+        return null;
+    try {
+        const groupId = await chrome.tabs.group({ tabIds: [tabId] });
+        const color = chrome.tabGroups.Color?.ORANGE;
+        const update = color
+            ? { title: 'STRUM', color, collapsed: false }
+            : { title: 'STRUM', collapsed: false };
+        await chrome.tabGroups.update(groupId, update);
+        return groupId;
+    }
+    catch {
+        return null;
+    }
+}
 /**
  * Get tracked tab information, including Chrome tab status.
  */
@@ -159,6 +214,50 @@ export async function setTrackedTab(tab) {
  */
 export function clearTrackedTab() {
     removeLocals(TRACKED_TAB_STORAGE_KEYS);
+}
+export async function resolveTerminalWorkspaceTarget(requestTabId) {
+    const result = (await getLocals(TERMINAL_WORKSPACE_STORAGE_KEYS));
+    const trackedTabId = typeof result.trackedTabId === 'number' ? result.trackedTabId : null;
+    const storedMainTabId = typeof result.gasoline_terminal_workspace_main_tab_id === 'number'
+        ? result.gasoline_terminal_workspace_main_tab_id
+        : null;
+    const preferredMainTabId = trackedTabId ?? storedMainTabId ?? requestTabId ?? null;
+    const requestTab = await safeGetTab(requestTabId);
+    let mainTab = await safeGetTab(preferredMainTabId);
+    if (!mainTab && requestTab) {
+        mainTab = requestTab;
+    }
+    if (!mainTab)
+        return null;
+    const mainTabId = mainTab?.id;
+    if (typeof mainTabId !== 'number')
+        return null;
+    let tabGroupId = isGroupedTab(mainTab.groupId) ? mainTab.groupId : null;
+    if (tabGroupId === null) {
+        tabGroupId = await createTerminalWorkspaceGroup(mainTabId);
+        if (tabGroupId === null) {
+            tabGroupId = mainTab.groupId ?? getUngroupedTabGroupId();
+        }
+        else {
+            mainTab = (await safeGetTab(mainTabId)) ?? mainTab;
+        }
+    }
+    let hostTabId = mainTabId;
+    if (requestTab?.id && requestTab.groupId === tabGroupId) {
+        hostTabId = requestTab.id;
+    }
+    else {
+        await focusTab(mainTab);
+    }
+    await setLocals({
+        [StorageKey.TERMINAL_WORKSPACE_GROUP_ID]: tabGroupId,
+        [StorageKey.TERMINAL_WORKSPACE_MAIN_TAB_ID]: mainTabId
+    });
+    return {
+        hostTabId,
+        mainTabId,
+        tabGroupId
+    };
 }
 /**
  * Get all extension config settings.

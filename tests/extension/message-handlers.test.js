@@ -221,6 +221,146 @@ describe('message routing', () => {
     assert.strictEqual(deps.addToPerfBatcher.mock.calls.length, 1)
   })
 
+  test('open_terminal_panel opens the side panel before awaiting setOptions', async () => {
+    let resolveSetOptions
+    const open = mock.fn(() => Promise.resolve())
+    const setOptions = mock.fn(() => new Promise((resolve) => {
+      resolveSetOptions = resolve
+    }))
+
+    chrome.sidePanel = {
+      open,
+      setOptions
+    }
+
+    const { handler } = getInstalledHandler()
+    const sendResponse = mock.fn()
+
+    const result = handler({ type: 'open_terminal_panel' }, contentScriptSender, sendResponse)
+
+    assert.strictEqual(result, true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.strictEqual(setOptions.mock.calls.length, 1)
+    assert.strictEqual(open.mock.calls.length, 1, 'sidePanel.open should fire before setOptions resolves')
+    assert.strictEqual(open.mock.calls[0].arguments[0].tabId, 1)
+
+    resolveSetOptions()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  })
+
+  test('open_terminal_panel creates a STRUM workspace group around the tracked tab and opens there', async () => {
+    chrome.storage.local.get = mock.fn((keys, callback) => {
+      const keyList = Array.isArray(keys) ? keys : [keys]
+      const result = {}
+      for (const key of keyList) {
+        if (key === 'trackedTabId') result[key] = 42
+        else result[key] = undefined
+      }
+      callback?.(result)
+      return Promise.resolve(result)
+    })
+
+    chrome.storage.local.set = mock.fn((_data, callback) => {
+      callback?.()
+      return Promise.resolve()
+    })
+
+    chrome.tabs.get = mock.fn((tabId) => {
+      if (tabId === 42) {
+        return Promise.resolve({ id: 42, url: 'https://tracked.example/', groupId: -1, windowId: 7, active: false })
+      }
+      return Promise.resolve({ id: 1, url: 'https://other.example/', groupId: -1, windowId: 1, active: true })
+    })
+    chrome.tabs.group = mock.fn(() => Promise.resolve(77))
+    chrome.tabs.update = mock.fn(() => Promise.resolve())
+    chrome.windows = { update: mock.fn(() => Promise.resolve()) }
+    chrome.tabGroups = {
+      TAB_GROUP_ID_NONE: -1,
+      Color: { ORANGE: 'orange' },
+      update: mock.fn(() => Promise.resolve())
+    }
+
+    const open = mock.fn(() => Promise.resolve())
+    const setOptions = mock.fn(() => Promise.resolve())
+    chrome.sidePanel = { open, setOptions }
+
+    const { handler } = getInstalledHandler()
+    const sendResponse = mock.fn()
+
+    const result = handler({ type: 'open_terminal_panel' }, contentScriptSender, sendResponse)
+
+    assert.strictEqual(result, true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.strictEqual(chrome.tabs.group.mock.calls.length, 1, 'tracked tab should be upgraded into a Chrome tab group')
+    assert.deepStrictEqual(chrome.tabs.group.mock.calls[0].arguments[0], { tabIds: [42] })
+    assert.strictEqual(chrome.tabGroups.update.mock.calls.length, 1, 'workspace group should be named and styled')
+    assert.strictEqual(chrome.tabGroups.update.mock.calls[0].arguments[0], 77)
+    assert.deepStrictEqual(chrome.tabGroups.update.mock.calls[0].arguments[1], {
+      title: 'STRUM',
+      color: 'orange',
+      collapsed: false
+    })
+    assert.strictEqual(chrome.tabs.update.mock.calls.length, 1, 'tracked workspace tab should become active before open')
+    assert.deepStrictEqual(chrome.tabs.update.mock.calls[0].arguments, [42, { active: true }])
+    assert.strictEqual(open.mock.calls.length, 1)
+    assert.strictEqual(open.mock.calls[0].arguments[0].tabId, 42)
+    assert.strictEqual(setOptions.mock.calls.length, 1)
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('sidepanel.html?tabId=42'))
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('tabGroupId=77'))
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
+  })
+
+  test('open_terminal_panel keeps the current tab when it already belongs to the STRUM workspace group', async () => {
+    chrome.storage.local.get = mock.fn((keys, callback) => {
+      const keyList = Array.isArray(keys) ? keys : [keys]
+      const result = {}
+      for (const key of keyList) {
+        if (key === 'trackedTabId') result[key] = 42
+        else if (key === 'gasoline_terminal_workspace_group_id') result[key] = 77
+        else if (key === 'gasoline_terminal_workspace_main_tab_id') result[key] = 42
+        else result[key] = undefined
+      }
+      callback?.(result)
+      return Promise.resolve(result)
+    })
+
+    chrome.tabs.get = mock.fn((tabId) => {
+      if (tabId === 42) {
+        return Promise.resolve({ id: 42, url: 'https://tracked.example/', groupId: 77, windowId: 7, active: false })
+      }
+      return Promise.resolve({ id: 1, url: 'https://secondary.example/', groupId: 77, windowId: 7, active: true })
+    })
+    chrome.tabs.group = mock.fn(() => Promise.resolve(77))
+    chrome.tabs.update = mock.fn(() => Promise.resolve())
+    chrome.windows = { update: mock.fn(() => Promise.resolve()) }
+    chrome.tabGroups = {
+      TAB_GROUP_ID_NONE: -1,
+      Color: { ORANGE: 'orange' },
+      update: mock.fn(() => Promise.resolve())
+    }
+
+    const open = mock.fn(() => Promise.resolve())
+    const setOptions = mock.fn(() => Promise.resolve())
+    chrome.sidePanel = { open, setOptions }
+
+    const { handler } = getInstalledHandler()
+    const sendResponse = mock.fn()
+
+    const result = handler({ type: 'open_terminal_panel' }, contentScriptSender, sendResponse)
+
+    assert.strictEqual(result, true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.strictEqual(chrome.tabs.group.mock.calls.length, 0, 'existing workspace group should be reused')
+    assert.strictEqual(chrome.tabs.update.mock.calls.length, 0, 'active workspace tab should stay active')
+    assert.strictEqual(open.mock.calls.length, 1)
+    assert.strictEqual(open.mock.calls[0].arguments[0].tabId, 1)
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('tabId=1'))
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('tabGroupId=77'))
+    assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
+  })
+
   test('setDebugMode updates and persists', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()
@@ -255,22 +395,28 @@ describe('message routing', () => {
 describe('state snapshots', () => {
   beforeEach(() => {
     // Reset storage mock to return empty snapshots
-    chrome.storage.local.get = mock.fn((keys, callback) => {
-      callback({ gasoline_state_snapshots: {} })
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = { gasoline_state_snapshots: {} }
+      callback?.(result)
+      return Promise.resolve(result)
     })
-    chrome.storage.local.set = mock.fn((data, callback) => {
-      if (callback) callback()
+    chrome.storage.local.set = mock.fn((_data, callback) => {
+      callback?.()
+      return Promise.resolve()
     })
   })
 
   test('save and load roundtrip', async () => {
     const stored = {}
-    chrome.storage.local.get = mock.fn((keys, callback) => {
-      callback({ gasoline_state_snapshots: stored })
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = { gasoline_state_snapshots: stored }
+      callback?.(result)
+      return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
       Object.assign(stored, data.gasoline_state_snapshots)
-      callback()
+      callback?.()
+      return Promise.resolve()
     })
 
     const state = { url: 'https://example.com', timestamp: '2024-01-01T00:00:00Z' }
@@ -278,8 +424,10 @@ describe('state snapshots', () => {
     assert.strictEqual(result.success, true)
     assert.strictEqual(result.snapshot_name, 'test-snap')
 
-    chrome.storage.local.get = mock.fn((keys, callback) => {
-      callback({ gasoline_state_snapshots: stored })
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = { gasoline_state_snapshots: stored }
+      callback?.(result)
+      return Promise.resolve(result)
     })
 
     const loaded = await loadStateSnapshot('test-snap')
@@ -293,13 +441,15 @@ describe('state snapshots', () => {
   })
 
   test('list returns array of snapshot metadata', async () => {
-    chrome.storage.local.get = mock.fn((keys, callback) => {
-      callback({
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = {
         gasoline_state_snapshots: {
           snap1: { name: 'snap1', url: 'https://a.com', timestamp: '2024-01-01T00:00:00Z', size_bytes: 100 },
           snap2: { name: 'snap2', url: 'https://b.com', timestamp: '2024-01-02T00:00:00Z', size_bytes: 200 }
         }
-      })
+      }
+      callback?.(result)
+      return Promise.resolve(result)
     })
 
     const list = await listStateSnapshots()
@@ -312,12 +462,15 @@ describe('state snapshots', () => {
     const stored = {
       snap1: { name: 'snap1', url: 'https://a.com' }
     }
-    chrome.storage.local.get = mock.fn((keys, callback) => {
-      callback({ gasoline_state_snapshots: { ...stored } })
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = { gasoline_state_snapshots: { ...stored } }
+      callback?.(result)
+      return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
       Object.assign(stored, data.gasoline_state_snapshots)
-      callback()
+      callback?.()
+      return Promise.resolve()
     })
 
     const result = await deleteStateSnapshot('snap1')

@@ -16,7 +16,7 @@ func analyzeToolSchema() mcp.MCPTool {
 				"what": map[string]any{
 					"type":        "string",
 					"description": "Analysis mode to run against the page",
-					"enum":        []string{"dom", "performance", "accessibility", "error_clusters", "navigation_patterns", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
+					"enum":        []string{"dom", "performance", "accessibility", "error_clusters", "navigation_patterns", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates", "page_issues"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -152,12 +152,16 @@ func analyzeToolSchema() mcp.MCPTool {
 				},
 				"summary": map[string]any{
 					"type":        "boolean",
-					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit)",
+					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit, page_issues)",
 				},
 				"categories": map[string]any{
 					"type":        "array",
-					"description": "Audit categories to include (audit). Valid: performance, accessibility, security, best_practices",
+					"description": "Categories to include (audit: performance, accessibility, security, best_practices; page_issues: console_errors, network_failures, accessibility, security)",
 					"items":       map[string]any{"type": "string"},
+				},
+				"limit": map[string]any{
+					"type":        "number",
+					"description": "Max issues per section (page_issues, default 50)",
 				},
 			},
 			"required": []string{"what"},

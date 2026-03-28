@@ -49,6 +49,11 @@ export interface TrackedTabInfo {
     tabStatus: 'loading' | 'complete' | null;
     trackedTabActive: boolean | null;
 }
+export interface TerminalWorkspaceTarget {
+    hostTabId: number;
+    mainTabId: number;
+    tabGroupId: number;
+}
 /**
  * Get tracked tab information, including Chrome tab status.
  */
@@ -61,6 +66,7 @@ export declare function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 
  * Clear tracked tab state
  */
 export declare function clearTrackedTab(): void;
+export declare function resolveTerminalWorkspaceTarget(requestTabId?: number): Promise<TerminalWorkspaceTarget | null>;
 /**
  * Query for the currently active tab in the current window.
  * Returns null if no active tab or no tab id.

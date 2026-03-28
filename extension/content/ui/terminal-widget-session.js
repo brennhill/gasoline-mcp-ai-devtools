@@ -6,7 +6,6 @@
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js';
 import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js';
 import { state, getTerminalServerUrl } from './terminal-widget-types.js';
-import { showSandboxError } from './terminal-widget-ui.js';
 // =============================================================================
 // CONFIG HELPERS — read/write chrome.storage.local
 // =============================================================================
@@ -109,7 +108,7 @@ export async function validateSession(token) {
         return false;
     }
 }
-export async function startSession(config) {
+export async function startSession(config, onSandboxError) {
     const base = await getServerUrl();
     const termUrl = getTerminalServerUrl(base);
     const aiCommand = await getTerminalAICommand();
@@ -131,7 +130,15 @@ export async function startSession(config) {
             const body = await resp.json();
             // Sandbox restriction — show actionable instructions to the user.
             if (resp.status === 503 && body.error === 'sandbox_restricted') {
-                showSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '');
+                if (onSandboxError) {
+                    onSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '');
+                }
+                else {
+                    console.warn('[Gasoline] Terminal sandbox restriction: ' +
+                        (body.message ?? 'no message') +
+                        '. ' +
+                        (body.instruction ?? 'No instruction provided.'));
+                }
                 return null;
             }
             // Session already exists — reconnect using the returned token.

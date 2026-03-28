@@ -13,7 +13,8 @@ import {
   type TerminalSessionState,
   type TerminalUIState
 } from './terminal-widget-types.js'
-import { showSandboxError } from './terminal-widget-ui.js'
+
+export type TerminalSandboxErrorHandler = (message: string, instruction: string, command: string) => void
 
 // =============================================================================
 // CONFIG HELPERS — read/write chrome.storage.local
@@ -122,7 +123,10 @@ export async function validateSession(token: string): Promise<boolean> {
   }
 }
 
-export async function startSession(config: TerminalConfig): Promise<TerminalSessionState | null> {
+export async function startSession(
+  config: TerminalConfig,
+  onSandboxError?: TerminalSandboxErrorHandler
+): Promise<TerminalSessionState | null> {
   const base = await getServerUrl()
   const termUrl = getTerminalServerUrl(base)
   const aiCommand = await getTerminalAICommand()
@@ -147,7 +151,16 @@ export async function startSession(config: TerminalConfig): Promise<TerminalSess
       }
       // Sandbox restriction — show actionable instructions to the user.
       if (resp.status === 503 && body.error === 'sandbox_restricted') {
-        showSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
+        if (onSandboxError) {
+          onSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
+        } else {
+          console.warn(
+            '[Gasoline] Terminal sandbox restriction: ' +
+              (body.message ?? 'no message') +
+              '. ' +
+              (body.instruction ?? 'No instruction provided.')
+          )
+        }
         return null
       }
       // Session already exists — reconnect using the returned token.
