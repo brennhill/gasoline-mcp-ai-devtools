@@ -8,15 +8,15 @@
 <img src="docs/assets/images/chrome_store/readme-banner.svg" alt="Kaboom — Browser debugging, inspection, and verification for AI coding assistants via MCP" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/releases)
+[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/kaboom-agentic-browser-devtools-mcp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Snyk Status](https://snyk.io/test/github/brennhill/kaboom-agentic-browser-devtools-mcp/badge.svg)](https://snyk.io/test/github/brennhill/kaboom-agentic-browser-devtools-mcp)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/pulls)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/Kaboom-Browser-AI-Devtools-MCP/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Snyk Status](https://snyk.io/test/github/brennhill/Kaboom-Browser-AI-Devtools-MCP/badge.svg)](https://snyk.io/test/github/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gokaboomdev-000000.svg?logo=x&logoColor=white)](https://x.com/gokaboomdev)
 [![Fueling rapid development with AI](https://img.shields.io/badge/fueling%20rapid%20development%20with-AI-FF6B6B.svg)](https://gokaboom.dev)
 
@@ -39,12 +39,12 @@ Current version: **v0.8.1** — Link health analyzer, browser automation, record
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 </div>
@@ -57,12 +57,12 @@ irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
@@ -166,6 +166,6 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 If you find Kaboom useful, please consider giving it a star.
 
-[![Star on GitHub](https://img.shields.io/github/stars/brennhill/kaboom-agentic-browser-devtools-mcp.svg?style=social)](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
+[![Star on GitHub](https://img.shields.io/github/stars/brennhill/Kaboom-Browser-AI-Devtools-MCP.svg?style=social)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
 
 </div>

@@ -16,12 +16,12 @@ One command downloads the binary, stages the Chrome extension, and auto-configur
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 **What this does:**
@@ -64,8 +64,8 @@ The extension captures browser telemetry and sends it to the local Kaboom server
 ### From Source
 
 ```bash
-git clone https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp.git
-cd kaboom-agentic-browser-devtools-mcp
+git clone https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP.git
+cd Kaboom-Browser-AI-Devtools-MCP
 make build
 ./dist/kaboom-agentic-browser-darwin-arm64  # or your platform binary
 ```
@@ -119,10 +119,10 @@ To verify the binary:
 ## Support
 
 - [Documentation](/getting-started)
-- [Report Issues](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues)
-- [GitHub Discussions](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/discussions)
+- [Report Issues](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues)
+- [GitHub Discussions](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/discussions)
 - [Security Policy](/security)
 
 ## Release Notes
 
-See [GitHub Releases](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/releases) for complete version history.
+See [GitHub Releases](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases) for complete version history.

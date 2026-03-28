@@ -14,12 +14,12 @@ One command downloads the binary, stages the extension, and auto-configures all 
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 This automatically:
@@ -92,8 +92,8 @@ npm install -g kaboom-agentic-browser && kaboom-agentic-browser --install
 
 **From source** (for development):
 ```bash
-git clone https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp.git
-cd kaboom-agentic-browser-devtools-mcp
+git clone https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP.git
+cd Kaboom-Browser-AI-Devtools-MCP
 go run ./cmd/browser-agent
 ```
 Requires [Go 1.24+](https://go.dev/).
