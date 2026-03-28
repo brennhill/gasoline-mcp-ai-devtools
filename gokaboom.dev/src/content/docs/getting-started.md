@@ -1,12 +1,12 @@
 ---
 title: Fire It Up
-description: Install and configure.gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command.
+description: Install and configure Kaboom in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['getting', 'started']
 ---
 
-STRUM is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.
+Kaboom is an open-source browser extension plus MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.
 
 ## 1. Install Everything
 
@@ -14,18 +14,18 @@ One command downloads the binary, stages the extension, and auto-configures all 
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 ```
 
 This automatically:
-- Downloads the latest stable binary to `~/.gasoline/bin/`
+- Downloads the latest stable binary to `~/.kaboom/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~.gasolineAgenticDevtoolExtension/`
+- Extracts the Chrome extension to `~/KaboomAgenticDevtoolExtension/`
 - Auto-configures all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Claude Desktop, VS Code)
 
 ## 2. Load the Chrome Extension
@@ -35,15 +35,15 @@ This is the one step that requires human interaction — Chrome doesn't allow pr
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right toggle)
 3. Click **Load unpacked**
-4. Select the folder: **`~.gasolineAgenticDevtoolExtension`**
+4. Select the folder: **`~/KaboomAgenticDevtoolExtension`**
 
-You'll see the.gasoline icon in your toolbar. It will show "Not Connected" until you complete step 3.
+You'll see the Kaboom icon in your toolbar. It will show "Not Connected" until you complete step 3.
 
 :::tip[Skip the UI clicks]
 If you're willing to restart Chrome, you can pre-load the extension via CLI flag:
 ```bash
 # macOS
-open -a "Google Chrome" --args --load-extension="$HOME.gasolineAgenticDevtoolExtension"
+open -a "Google Chrome" --args --load-extension="$HOME/KaboomAgenticDevtoolExtension"
 ```
 This only applies to that Chrome session. For persistent installation, use the Load Unpacked flow above.
 :::
@@ -55,7 +55,7 @@ This only applies to that Chrome session. For persistent installation, use the L
 Open your web app in Chrome. Trigger a test error:
 
 ```javascript
-console.error(.gasoline test — is the fire lit?")
+console.error("kaboom test: is the fire lit?")
 ```
 
 Ask your AI: _"What browser errors do you see?"_
@@ -64,10 +64,10 @@ The extension icon should now show **Connected** (green indicator).
 
 You can also verify with the built-in doctor command:
 ```bash
-~/.gasoline/bin/gasoline-agentic-devtools --doctor
+~/.kaboom/bin/kaboom-agentic-browser --doctor
 ```
 
-## What tools does.gasoline give my AI?
+## What tools does Kaboom give my AI?
 
 Your AI now has 5 tools covering the full debugging lifecycle:
 
@@ -87,13 +87,13 @@ See [MCP Integration](/mcp-integration/) for full tool documentation.
 
 **npm** (if you prefer Node.js):
 ```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-devtools --install
+npm install -g kaboom-agentic-browser && kaboom-agentic-browser --install
 ```
 
 **From source** (for development):
 ```bash
-git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
-cd gasoline-agentic-browser-devtools-mcp
+git clone https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp.git
+cd kaboom-agentic-browser-devtools-mcp
 go run ./cmd/browser-agent
 ```
 Requires [Go 1.24+](https://go.dev/).
@@ -101,4 +101,4 @@ Requires [Go 1.24+](https://go.dev/).
 ## Next Steps
 
 - [MCP Integration](/mcp-integration/) — setup for your specific tool
-- [All capabilities](/features/) — everything.gasoline captures
+- [All capabilities](/features/) — everything Kaboom captures

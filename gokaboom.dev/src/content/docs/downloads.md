@@ -1,6 +1,6 @@
 ---
 title: Downloads
-description: Download.gasoline extension and tools for your platform
+description: Download the Kaboom extension and tools for your platform
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['downloads']
@@ -16,35 +16,35 @@ One command downloads the binary, stages the Chrome extension, and auto-configur
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 ```
 
 **What this does:**
-- Downloads the platform binary to `~/.gasoline/bin/`
+- Downloads the platform binary to `~/.kaboom/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~.gasolineAgenticDevtoolExtension/`
+- Extracts the Chrome extension to `~/KaboomAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 After running the installer, load the extension in Chrome:
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top right)
 3. Click **Load unpacked**
-4. Select **`~.gasolineAgenticDevtoolExtension`**
+4. Select **`~/KaboomAgenticDevtoolExtension`**
 
 ### Chrome Extension
 
-The extension captures browser telemetry and sends it to the local.gasoline server.
+The extension captures browser telemetry and sends it to the local Kaboom server.
 
 #### What's New in 0.8.x
 
 - **Annotation System Upgrade** — Draw mode now pairs with review/export flows (`annotations`, `annotation_report`, `annotation_issues`) for multi-page feedback sessions.
 - **Tracked Hover Island** — A floating quick-action island on tracked tabs for one-click annotate, screenshot, terminal, and recording controls.
-- **Built-In Terminal from the Page** — Open the integrated terminal directly from the hover island and run live commands without leaving the browser.
+- **Side-Panel Terminal** — Open the dedicated side panel terminal from the hover island and run live commands without page-embedded xterm.
 - **Recording Approval UX** — Clear pending/approved recording state in the popup, with explicit approve/deny flow and improved recording status feedback.
 - **Context Menu Consistency** — Dynamic start/stop labels for recording, annotations, and control states so extension actions always match runtime state.
 - **Protocol & Reliability Hardening** — Sync-path cleanup and stronger daemon/extension consistency for fewer tool-mode and state drift issues.
@@ -64,19 +64,19 @@ The extension captures browser telemetry and sends it to the local.gasoline serv
 ### From Source
 
 ```bash
-git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
-cd gasoline-agentic-browser-devtools-mcp
+git clone https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp.git
+cd kaboom-agentic-browser-devtools-mcp
 make build
-./dist/gasoline-agentic-browser-darwin-arm64  # or your platform binary
+./dist/kaboom-agentic-browser-darwin-arm64  # or your platform binary
 ```
 
 **Available Binaries:**
 
-- `gasoline-agentic-browser-darwin-arm64` (macOS Apple Silicon)
-- `gasoline-agentic-browser-darwin-x64` (macOS Intel)
-- `gasoline-agentic-browser-linux-arm64` (Linux ARM64)
-- `gasoline-agentic-browser-linux-x64` (Linux x86-64)
-- `gasoline-agentic-browser-win32-x64.exe` (Windows x86-64)
+- `kaboom-agentic-browser-darwin-arm64` (macOS Apple Silicon)
+- `kaboom-agentic-browser-darwin-x64` (macOS Intel)
+- `kaboom-agentic-browser-linux-arm64` (Linux ARM64)
+- `kaboom-agentic-browser-linux-x64` (Linux x86-64)
+- `kaboom-agentic-browser-win32-x64.exe` (Windows x86-64)
 
 ## System Requirements
 
@@ -91,13 +91,13 @@ make build
 To verify the extension installed correctly:
 
 1. Open any webpage
-2. Click the *.gasoline icon** (<img src="/images/logo.png" alt=.gasoline" style="display: inline; width: 20px; height: 20px; vertical-align: middle; margin: 0; padding: 0;" />) in your toolbar
+2. Click the **Kaboom icon** (<img src="/images/logo.png" alt="Kaboom" style="display: inline; width: 20px; height: 20px; vertical-align: middle; margin: 0; padding: 0;" />) in your toolbar
 3. You should see the popup with recording and tracking options
 4. Check the extension's popup shows "Connected" status
 
 To verify the binary:
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --doctor
+~/.kaboom/bin/kaboom-agentic-browser --doctor
 ```
 
 ## Troubleshooting
@@ -108,7 +108,7 @@ To verify the binary:
 - Check that Developer mode is enabled
 
 **Recording not working?**
-- Click the.gasoline icon and approve the recording request
+- Click the Kaboom icon and approve the recording request
 - Ensure the tab you want to record is the tracked tab
 - Check your Chrome permissions for microphone access (if recording audio)
 
@@ -119,10 +119,10 @@ To verify the binary:
 ## Support
 
 - [Documentation](/getting-started)
-- [Report Issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
-- [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions)
+- [Report Issues](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues)
+- [GitHub Discussions](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/discussions)
 - [Security Policy](/security)
 
 ## Release Notes
 
-See [GitHub Releases](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases) for complete version history.
+See [GitHub Releases](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/releases) for complete version history.

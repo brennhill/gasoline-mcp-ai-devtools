@@ -56,4 +56,21 @@ describe('gokaboom domain contracts', () => {
     assert.match(scriptSource, /gokaboom\.dev/)
     assert.doesNotMatch(scriptSource, /cookwithgasoline\.com/)
   })
+
+  test('site install docs batch 1 uses Kaboom naming and gokaboom.dev contracts', () => {
+    const files = [
+      'gokaboom.dev/src/content/docs/agent-install-guide.md',
+      'gokaboom.dev/src/content/docs/downloads.md',
+      'gokaboom.dev/src/content/docs/getting-started.md'
+    ]
+
+    for (const file of files) {
+      const source = read(file)
+      assert.match(source, /Kaboom|kaboom-agentic-browser|gokaboom\.dev/)
+      assert.doesNotMatch(
+        source,
+        /STRUM|Gasoline|cookwithgasoline|getstrum|gasoline-agentic-browser|~\/\.gasoline|GasolineAgenticDevtoolExtension/
+      )
+    }
+  })
 })

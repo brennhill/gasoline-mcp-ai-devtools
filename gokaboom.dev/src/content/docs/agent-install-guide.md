@@ -1,16 +1,16 @@
 ---
 title: "Agent-Assisted Installation"
-description: "Step-by-step instructions for LLM coding agents to install.gasoline with minimal human intervention."
+description: "Step-by-step instructions for LLM coding agents to install Kaboom with minimal human intervention."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['agent', 'install', 'guide']
 ---
 
 :::note[Audience]
-This guide is written for **LLM coding agents** (Claude Code, Codex, Gemini CLI, etc.) to follow when installing.gasoline for a user. If you're a human, see the [Quick Start](/getting-started/) instead.
+This guide is written for **LLM coding agents** (Claude Code, Codex, Gemini CLI, etc.) to follow when installing Kaboom for a user. If you're a human, see the [Quick Start](/getting-started/) instead.
 :::
 
-You are installing *.gasoline Agentic Browser** — an MCP server + Chrome extension that gives you real-time browser telemetry (errors, logs, network, DOM, screenshots, automation).
+You are installing **Kaboom Agentic Browser** — an MCP server plus Chrome extension that gives you real-time browser telemetry (errors, logs, network, DOM, screenshots, automation).
 
 ## Prerequisites
 
@@ -24,30 +24,30 @@ Run the one-liner. This downloads the binary, stages the extension, and configur
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/kaboom-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 ```
 
 **What this does (no further action needed):**
-- Downloads the platform binary to `~/.gasoline/bin/`
+- Downloads the platform binary to `~/.kaboom/bin/`
 - Verifies SHA-256 checksum
-- Extracts the Chrome extension to `~.gasolineAgenticDevtoolExtension/`
+- Extracts the Chrome extension to `~/KaboomAgenticDevtoolExtension/`
 - Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 **If the install script is unavailable**, fall back to npm:
 ```bash
-npm install -g gasoline-agentic-browser && gasoline-agentic-browser --install
+npm install -g kaboom-agentic-browser && kaboom-agentic-browser --install
 ```
 
 ### Verify the install succeeded
 
 Check the exit code was 0 and the binary exists:
 ```bash
-~/.gasoline/bin/gasoline-agentic-browser --version
+~/.kaboom/bin/kaboom-agentic-browser --version
 ```
 
 ## Step 2: Ask the user to load the Chrome extension
@@ -56,13 +56,13 @@ This is the **one step that requires human interaction**. Chrome does not allow 
 
 **Tell the user:**
 
-> To finish setup, load the.gasoline browser extension:
+> To finish setup, load the Kaboom browser extension:
 > 1. Open **chrome://extensions** in Chrome
 > 2. Enable **Developer mode** (toggle in the top-right corner)
 > 3. Click **Load unpacked**
-> 4. Select the folder: **~.gasolineAgenticDevtoolExtension**
+> 4. Select the folder: **~/KaboomAgenticDevtoolExtension**
 >
-> The.gasoline icon should appear in your toolbar. Click it — it should show "Connected".
+> The Kaboom icon should appear in your toolbar. Click it and confirm it shows "Connected".
 
 **Why this can't be automated:** `chrome://extensions` is a privileged Chrome-internal page. No external process, MCP tool, or browser automation framework can toggle Developer Mode or trigger "Load unpacked." This is a Chrome security boundary.
 
@@ -70,7 +70,7 @@ This is the **one step that requires human interaction**. Chrome does not allow 
 If the user is willing to restart Chrome, the extension can be loaded via CLI flag without any UI clicks:
 ```bash
 # macOS — launches Chrome with the extension pre-loaded
-open -a "Google Chrome" --args --load-extension="$HOME.gasolineAgenticDevtoolExtension"
+open -a "Google Chrome" --args --load-extension="$HOME/KaboomAgenticDevtoolExtension"
 ```
 This only applies to that Chrome session. For persistent installation, the manual Load Unpacked flow is required.
 :::
@@ -81,7 +81,7 @@ The MCP config was written in Step 1, but the AI tool needs to restart to pick i
 
 **Tell the user:**
 
-> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the.gasoline MCP server.
+> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the Kaboom MCP server.
 
 For Claude Code specifically, no restart is needed if the installer used `claude mcp add-json` — it takes effect on the next conversation.
 
@@ -90,15 +90,15 @@ For Claude Code specifically, no restart is needed if the installer used `claude
 Once the user confirms the extension is loaded and the AI tool is restarted, run the doctor command:
 
 ```bash
-gasoline-agentic-browser --doctor
+kaboom-agentic-browser --doctor
 ```
 
 Expected output shows:
 - Binary: OK with version number
-- Port 7890: available (or in use by.gasoline)
+- Port 7890: available (or in use by Kaboom)
 - At least one client: status "ok"
 
-Then verify the MCP connection is live by calling a.gasoline tool:
+Then verify the MCP connection is live by calling a Kaboom tool:
 
 ```
 Use the observe tool with what: "page" to check if the extension is connected.
@@ -110,11 +110,11 @@ If the extension is connected, you'll get back page info (URL, title). If not, y
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `--doctor` shows "binary not found" | PATH not updated | Run `export PATH="$HOME/.gasoline/bin:$PATH"` and add to shell profile |
-| Port 7890 in use | Stale daemon | Run `gasoline-agentic-browser --kill` then retry |
+| `--doctor` shows "binary not found" | PATH not updated | Run `export PATH="$HOME/.kaboom/bin:$PATH"` and add to your shell profile |
+| Port 7890 in use | Stale daemon | Run `kaboom-agentic-browser --kill` then retry |
 | Extension shows "Disconnected" | Daemon not running | The MCP client starts the daemon automatically — make sure the AI tool is running |
 | `observe` returns no data | No tab open | User needs to have at least one Chrome tab open |
-| Extension not visible in toolbar | Not pinned | User should click the puzzle-piece icon in Chrome toolbar and pin.gasoline |
+| Extension not visible in toolbar | Not pinned | User should click the puzzle-piece icon in Chrome toolbar and pin Kaboom |
 
 ## Summary
 
