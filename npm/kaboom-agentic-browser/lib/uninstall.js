@@ -18,9 +18,17 @@ const {
   readConfigFile,
   writeConfigFile,
 } = require('./config');
+const { cleanupInstalledSkills } = require('./skills');
+
+const LEGACY_UNINSTALL_SERVER_NAMES = [
+  ...LEGACY_MCP_SERVER_NAMES,
+  'strum-browser-devtools',
+  'strum-agentic-browser',
+  'strum',
+];
 
 function knownServerNames() {
-  return [MCP_SERVER_NAME, ...LEGACY_MCP_SERVER_NAMES.filter((name) => name !== MCP_SERVER_NAME)];
+  return [MCP_SERVER_NAME, ...LEGACY_UNINSTALL_SERVER_NAMES.filter((name) => name !== MCP_SERVER_NAME)];
 }
 
 /**
@@ -220,7 +228,13 @@ function executeUninstall(options = {}) {
     }
   }
 
-  result.success = result.removed.length > 0;
+  result.skillCleanup = cleanupInstalledSkills({
+    dryRun,
+    verbose,
+    agents: options.skillAgents,
+    scope: options.skillScope,
+  });
+  result.success = result.removed.length > 0 || result.skillCleanup.removed > 0;
   return result;
 }
 

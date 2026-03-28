@@ -433,7 +433,39 @@ function skillFilePath(agent, rootDir, skillId) {
   return path.join(rootDir, `${skillId}.md`);
 }
 
-function removeLegacySkillVariants(agent, rootDir, skillId) {
+function removeManagedSkillFile(agent, rootDir, skillId, options = {}) {
+  const { dryRun = false } = options;
+  const managedPath = skillFilePath(agent, rootDir, skillId);
+  const result = { removed: 0, skipped_user_owned: 0, errors: 0 };
+  if (!fs.existsSync(managedPath)) return result;
+
+  try {
+    const existing = fs.readFileSync(managedPath, 'utf8');
+    if (!isManagedSkillContent(existing)) {
+      result.skipped_user_owned += 1;
+      return result;
+    }
+    if (!dryRun) {
+      fs.unlinkSync(managedPath);
+      if (agent === 'codex') {
+        const managedDir = path.dirname(managedPath);
+        try {
+          fs.rmdirSync(managedDir);
+        } catch (err) {
+          // Ignore non-empty or missing directory errors.
+        }
+      }
+    }
+    result.removed += 1;
+    return result;
+  } catch (err) {
+    result.errors += 1;
+    return result;
+  }
+}
+
+function removeLegacySkillVariants(agent, rootDir, skillId, options = {}) {
+  const { dryRun = false } = options;
   let removed = 0;
 
   for (const prefix of LEGACY_PREFIXES) {
@@ -444,9 +476,11 @@ function removeLegacySkillVariants(agent, rootDir, skillId) {
     try {
       const existing = fs.readFileSync(legacyPath, 'utf8');
       if (!isManagedSkillContent(existing)) continue;
-      fs.unlinkSync(legacyPath);
+      if (!dryRun) {
+        fs.unlinkSync(legacyPath);
+      }
       removed += 1;
-      if (agent === 'codex') {
+      if (!dryRun && agent === 'codex') {
         const legacyDir = path.dirname(legacyPath);
         try {
           fs.rmdirSync(legacyDir);
@@ -460,6 +494,40 @@ function removeLegacySkillVariants(agent, rootDir, skillId) {
   }
 
   return removed;
+}
+
+function cleanupInstalledSkills(options = {}) {
+  const verbose = Boolean(options.verbose);
+  const dryRun = Boolean(options.dryRun);
+  const bundledSkills = loadSkillsFromLocalDir(BUNDLED_SKILLS_DIR, {
+    skillsManifestPath: 'skills.json',
+    skillsPath: '',
+  });
+  const agents = options.agents || parseAgents();
+  const scope = options.scope || parseScope();
+  const summary = {
+    removed: 0,
+    skipped_user_owned: 0,
+    errors: 0,
+  };
+
+  for (const agent of agents) {
+    const roots = getAgentRoots(agent, scope);
+    for (const rootDir of roots) {
+      for (const skill of bundledSkills) {
+        const current = removeManagedSkillFile(agent, rootDir, skill.id, { dryRun });
+        summary.removed += current.removed;
+        summary.skipped_user_owned += current.skipped_user_owned;
+        summary.errors += current.errors;
+        summary.removed += removeLegacySkillVariants(agent, rootDir, skill.id, { dryRun });
+        if (verbose && current.removed > 0) {
+          console.log(`[kaboom-mcp] skills removed: ${agent}:${skill.id} -> ${rootDir}`);
+        }
+      }
+    }
+  }
+
+  return { agents, scope, ...summary };
 }
 
 // #lizard forgives
@@ -556,6 +624,7 @@ async function installBundledSkills(options = {}) {
 }
 
 module.exports = {
+  cleanupInstalledSkills,
   installBundledSkills,
   parseAgents,
   parseScope,

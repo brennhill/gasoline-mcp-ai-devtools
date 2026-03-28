@@ -21,13 +21,16 @@ test('npm wrapper no longer exposes gasoline launcher aliases', () => {
 
 // --- uninstallFromClient: file-type ---
 
-test('uninstallFromClient removes gasoline from file-type config', () => {
+test('uninstallFromClient removes kaboom, gasoline, and strum managed entries from file-type config', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
     mcpServers: {
+      'gasoline-browser-devtools': { command: 'kaboom-agentic-browser', args: [] },
       gasoline: { command: 'gasoline-mcp', args: [] },
+      'strum-browser-devtools': { command: 'strum-agentic-browser', args: [] },
+      strum: { command: 'strum-agentic-browser', args: [] },
       other: { command: 'other-cmd', args: [] },
     },
   }));
@@ -46,6 +49,8 @@ test('uninstallFromClient removes gasoline from file-type config', () => {
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   assert.equal(written.mcpServers['gasoline-browser-devtools'], undefined);
   assert.equal(written.mcpServers.gasoline, undefined);
+  assert.equal(written.mcpServers['strum-browser-devtools'], undefined);
+  assert.equal(written.mcpServers.strum, undefined);
   assert.ok(written.mcpServers.other, 'should preserve other servers');
 
   fs.rmSync(tmp, { recursive: true });
@@ -181,4 +186,50 @@ test('executeUninstall removes from detected file-type clients', () => {
   assert.equal(result.removed.length, 1);
 
   fs.rmSync(tmp, { recursive: true });
+});
+
+test('executeUninstall removes kaboom, gasoline, and strum managed skill files', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+  const claudeRoot = path.join(tmp, 'claude-skills');
+  fs.mkdirSync(claudeRoot, { recursive: true });
+  fs.writeFileSync(
+    path.join(claudeRoot, 'debug.md'),
+    '<!-- kaboom-managed-skill id:debug version:2 -->\ncurrent kaboom skill\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(claudeRoot, 'gasoline-debug.md'),
+    '<!-- gasoline-managed-skill id:debug version:1 -->\nold gasoline skill\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(claudeRoot, 'strum-debug.md'),
+    '<!-- strum-managed-skill id:debug version:1 -->\nold strum skill\n',
+    'utf8'
+  );
+
+  const originalClaudeDir = process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+  try {
+    process.env.GASOLINE_CLAUDE_SKILLS_DIR = claudeRoot;
+    const result = executeUninstall({
+      dryRun: false,
+      _clientOverrides: [],
+      skillAgents: ['claude'],
+      skillScope: 'global',
+    });
+
+    assert.equal(result.success, true);
+    assert.ok(result.skillCleanup);
+    assert.equal(result.skillCleanup.removed, 3);
+    assert.equal(fs.existsSync(path.join(claudeRoot, 'debug.md')), false);
+    assert.equal(fs.existsSync(path.join(claudeRoot, 'gasoline-debug.md')), false);
+    assert.equal(fs.existsSync(path.join(claudeRoot, 'strum-debug.md')), false);
+  } finally {
+    if (originalClaudeDir === undefined) {
+      delete process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+    } else {
+      process.env.GASOLINE_CLAUDE_SKILLS_DIR = originalClaudeDir;
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });

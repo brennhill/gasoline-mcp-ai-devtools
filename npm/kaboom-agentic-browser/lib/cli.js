@@ -108,6 +108,27 @@ async function installCommand(options) {
   }
 }
 
+async function updateCommand(options) {
+  try {
+    const cleanupResult = uninstall.executeUninstall({
+      dryRun: options.dryRun,
+      verbose: options.verbose,
+    });
+
+    if (options.dryRun || cleanupResult.removed.length > 0 || cleanupResult.skillCleanup?.removed > 0) {
+      console.log(output.uninstallResult(cleanupResult));
+      if (options.dryRun) {
+        console.log('');
+      }
+    }
+
+    await installCommand(options);
+  } catch (err) {
+    console.error(err.format ? err.format() : `Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
 function doctorCommand(verbose) {
   try {
     const report = doctor.runDiagnostics(verbose);
@@ -140,6 +161,7 @@ function showHelp() {
   console.log('Commands:');
   console.log('  --config, -c          Show MCP configuration and detected clients');
   console.log('  --install, -i [tool]  Auto-install to detected clients, or a specific tool');
+  console.log('  --update [tool]       Clean reinstall Kaboom for detected clients or one specific tool');
   console.log('  --doctor              Run diagnostics on installed configs');
   console.log('  --uninstall           Remove Kaboom from all clients');
   console.log('  --help, -h            Show this help message\n');
@@ -176,6 +198,7 @@ function showHelp() {
   console.log('  kaboom-agentic-browser --install --dry-run      # Preview without changes');
   console.log('  kaboom-agentic-browser --install --env DEBUG=1  # Install with env vars');
   console.log('  kaboom-agentic-browser --install --skills-repo brennhill/kaboom-skills');
+  console.log('  kaboom-agentic-browser --update                 # Clean reinstall Kaboom');
   console.log('  kaboom-agentic-browser --config                 # Show config and detected clients');
   console.log('  kaboom-agentic-browser --doctor                 # Check config health');
   console.log('  kaboom-agentic-browser --uninstall              # Remove from all clients\n');
@@ -203,6 +226,32 @@ function parseSkillInstallOptions(args) {
   };
 }
 
+function parseInstallLikeCommandOptions(args, primaryFlag, secondaryFlag) {
+  const commandIdx = args.indexOf(primaryFlag) !== -1 ? args.indexOf(primaryFlag) : args.indexOf(secondaryFlag);
+  let targetTool = null;
+  const nextArg = args[commandIdx + 1];
+  if (nextArg && !nextArg.startsWith('--')) {
+    targetTool = nextArg;
+  }
+
+  const envVars = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--env' && i + 1 < args.length) {
+      const parsed = config.parseEnvVar(args[i + 1]);
+      envVars[parsed.key] = parsed.value;
+    }
+  }
+
+  const skillOptions = parseSkillInstallOptions(args);
+  return {
+    dryRun: args.includes('--dry-run'),
+    envVars,
+    verbose: args.includes('--verbose'),
+    targetTool,
+    ...skillOptions,
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const verbose = args.includes('--verbose');
@@ -216,46 +265,23 @@ async function main() {
 
   // Install command
   if (args.includes('--install') || args.includes('-i')) {
-    const installIdx = args.indexOf('--install') !== -1
-      ? args.indexOf('--install')
-      : args.indexOf('-i');
-
-    // Check for targeted tool name (positional arg after --install)
-    let targetTool = null;
-    const nextArg = args[installIdx + 1];
-    if (nextArg && !nextArg.startsWith('--')) {
-      targetTool = nextArg;
-    }
-
-    const envVars = {};
-    for (let i = 0; i < args.length; i++) {
-      if (args[i] === '--env' && i + 1 < args.length) {
-        try {
-          const parsed = config.parseEnvVar(args[i + 1]);
-          envVars[parsed.key] = parsed.value;
-        } catch (err) {
-          console.error(output.error(err.message, err.recovery));
-          process.exit(1);
-        }
-      }
-    }
-
-    let skillOptions = {};
     try {
-      skillOptions = parseSkillInstallOptions(args);
+      await installCommand(parseInstallLikeCommandOptions(args, '--install', '-i'));
     } catch (err) {
       console.error(output.error(err.message, 'Run kaboom-agentic-browser --help for usage.'));
       process.exit(1);
     }
+    return;
+  }
 
-    const options = {
-      dryRun,
-      envVars,
-      verbose,
-      targetTool,
-      ...skillOptions,
-    };
-    await installCommand(options);
+  // Update command
+  if (args.includes('--update')) {
+    try {
+      await updateCommand(parseInstallLikeCommandOptions(args, '--update', '--update'));
+    } catch (err) {
+      console.error(output.error(err.message, 'Run kaboom-agentic-browser --help for usage.'));
+      process.exit(1);
+    }
     return;
   }
 
