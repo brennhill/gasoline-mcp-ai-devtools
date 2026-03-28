@@ -66,6 +66,13 @@ describe('popup logo motion', () => {
 })
 
 describe('logo asset contracts', () => {
+  test('manifest uses Kaboom branding for the extension shell', () => {
+    const manifestJson = fs.readFileSync(path.join(REPO_ROOT, 'extension/manifest.json'), 'utf8')
+    const manifest = JSON.parse(manifestJson)
+    assert.equal(manifest.name, 'Kaboom Devtools')
+    assert.equal(manifest.action.default_title, 'Kaboom: Agentic Browser Devtools')
+  })
+
   test('popup html uses icon.svg as the idle asset', () => {
     const popupHtml = fs.readFileSync(path.join(REPO_ROOT, 'extension/popup.html'), 'utf8')
     assert.match(popupHtml, /src="icons\/icon\.svg"/)
