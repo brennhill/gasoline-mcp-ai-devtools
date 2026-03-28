@@ -1,29 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <style>
-    @keyframes harmonic {
-      0%, 100% { transform: translateX(0); filter: brightness(1); }
-      50% { transform: translateX(20px); filter: brightness(1.4); }
+    :root {
+      --energy-speed: 0.22s;
+      --energy-displacement: 22px;
+      --ghost-opacity: 0.5;
     }
-    .strum { animation: harmonic 2s infinite ease-in-out; }
+
+    @keyframes harmonic-osc {
+      0%, 100% { transform: translateX(0); filter: brightness(1); }
+      50% { transform: translateX(var(--energy-displacement)); filter: brightness(1.4); }
+    }
+
+    .strum-path {
+      animation: harmonic-osc var(--energy-speed) infinite ease-in-out;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .ghost-1 {
+      opacity: calc(var(--ghost-opacity) * 0.6);
+    }
+
+    .ghost-2 {
+      opacity: calc(var(--ghost-opacity) * 0.3);
+    }
   </style>
-  <!-- 1. Background (Charcoal) -->
-  <circle cx="250" cy="250" r="240" fill="#302d2a" />
-  
-  <clipPath id="cp">
-    <circle cx="250" cy="250" r="240" />
+
+  <circle cx="64" cy="64" r="62" fill="#302d2a" />
+
+  <clipPath id="circle-clip-hover">
+    <circle cx="64" cy="64" r="62" />
   </clipPath>
-  
-  <!-- 2. Strings (Middle) -->
-  <g clip-path="url(#cp)">
-    <g transform="translate(250, 250) rotate(-32) translate(-250, -250)">
-      <path class="strum" d="M150 -100 L178 -100 Q 185 250 202 600 L150 600 Q 140 250 150 -100 Z" fill="#b45309" style="animation-delay: 0s;" />
-      <path class="strum" d="M212 -100 L240 -100 Q 252 250 272 600 L220 600 Q 205 250 212 -100 Z" fill="#d97706" style="animation-delay: -0.1s;" />
-      <path class="strum" d="M274 -100 L302 -100 Q 318 250 342 600 L290 600 Q 272 250 274 -100 Z" fill="#f59e0b" style="animation-delay: -0.2s;" />
-      <path class="strum" d="M336 -100 L364 -100 Q 385 250 412 600 L360 600 Q 338 250 336 -100 Z" fill="#fbbf24" style="animation-delay: -0.3s;" />
-      <path class="strum" d="M398 -100 L426 -100 Q 452 250 482 600 L430 600 Q 405 250 398 -100 Z" fill="#fcd34d" style="animation-delay: -0.4s;" />
+
+  <g clip-path="url(#circle-clip-hover)">
+    <g transform="translate(64 64) rotate(-32) translate(-64 -64)">
+      <path class="strum-path ghost-2" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.05s" />
+      <path class="strum-path ghost-1" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.03s" />
+      <path class="strum-path" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.01s" />
+
+      <path class="strum-path ghost-2" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.10s" />
+      <path class="strum-path ghost-1" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.06s" />
+      <path class="strum-path" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.02s" />
+
+      <path class="strum-path ghost-2" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.15s" />
+      <path class="strum-path ghost-1" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.09s" />
+      <path class="strum-path" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.03s" />
+
+      <path class="strum-path ghost-2" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.20s" />
+      <path class="strum-path ghost-1" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.12s" />
+      <path class="strum-path" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.04s" />
+
+      <path class="strum-path ghost-2" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.25s" />
+      <path class="strum-path ghost-1" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.15s" />
+      <path class="strum-path" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.05s" />
     </g>
   </g>
 
-  <!-- 3. Top Ring -->
-  <circle cx="250" cy="250" r="240" fill="none" stroke="#222" stroke-width="12" />
+  <circle cx="64" cy="64" r="62" fill="none" stroke="#222" stroke-width="3.2" />
 </svg>
