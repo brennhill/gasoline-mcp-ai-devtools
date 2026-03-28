@@ -22,6 +22,13 @@ const {
   resolveManagedBinaryPath,
 } = require('./config');
 
+const LEGACY_INSTALL_SERVER_NAMES = [
+  ...LEGACY_MCP_SERVER_NAMES,
+  'strum-browser-devtools',
+  'strum-agentic-browser',
+  'strum',
+];
+
 /**
  * Generate default MCP config for gasoline
  * @returns {Object} Default gasoline MCP config
@@ -151,7 +158,7 @@ function installViaFile(def, options) {
 
   // Merge gasoline entry under the correct key
   if (!configData[configKey]) configData[configKey] = {};
-  for (const legacyName of LEGACY_MCP_SERVER_NAMES) {
+  for (const legacyName of LEGACY_INSTALL_SERVER_NAMES) {
     if (legacyName !== MCP_SERVER_NAME) {
       delete configData[configKey][legacyName];
     }

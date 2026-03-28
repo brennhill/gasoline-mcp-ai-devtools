@@ -1,9 +1,9 @@
 /**
- * Purpose: Install and manage bundled Gasoline skills for supported agent targets.
+ * Purpose: Install and manage bundled Kaboom skills for supported agent targets.
  * Why: Ensures consistent managed skill availability from npm installs and wrapper --install flows.
  * Docs: docs/features/feature/enhanced-cli-config/index.md
  *
- * Skill installer for Gasoline MCP.
+ * Skill installer for Kaboom MCP.
  * Supports local bundled skills and optional GitHub subrepo sources.
  * Targets Claude, Codex, and Gemini skill directory layouts.
  */
@@ -13,10 +13,12 @@ const https = require('https');
 const os = require('os');
 const path = require('path');
 
-const MANAGED_MARKER = '<!-- gasoline-managed-skill';
+const MANAGED_MARKER = '<!-- kaboom-managed-skill';
+const LEGACY_MANAGED_MARKERS = ['<!-- gasoline-managed-skill', '<!-- strum-managed-skill'];
+const MANAGED_MARKERS = [MANAGED_MARKER, ...LEGACY_MANAGED_MARKERS];
 const BUNDLED_SKILLS_DIR = path.join(__dirname, '..', 'skills');
 const DEFAULT_AGENTS = ['claude', 'codex', 'gemini'];
-const LEGACY_PREFIX = 'gasoline-';
+const LEGACY_PREFIXES = ['gasoline-', 'strum-'];
 
 function parseBoolEnv(name) {
   const value = process.env[name];
@@ -233,7 +235,7 @@ function parseGitHubRepo(repoSpec) {
 function fetchText(url, timeoutMs = 8000, redirects = 0) {
   return new Promise((resolve, reject) => {
     const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-    const headers = { 'User-Agent': 'gasoline-mcp-skills' };
+    const headers = { 'User-Agent': 'kaboom-mcp-skills' };
     if (token) {
       headers.Authorization = `token ${token}`;
     }
@@ -390,6 +392,10 @@ function buildManagedContent(skillId, version, body) {
   return `${MANAGED_MARKER} id:${skillId} version:${version} -->\n${body}`;
 }
 
+function isManagedSkillContent(content) {
+  return MANAGED_MARKERS.some((marker) => content.includes(marker));
+}
+
 function safeWriteManagedFile(filePath, content) {
   const result = { status: 'unchanged', path: filePath, error: null };
   try {
@@ -401,7 +407,7 @@ function safeWriteManagedFile(filePath, content) {
         result.status = 'unchanged';
         return result;
       }
-      if (!existing.includes(MANAGED_MARKER)) {
+      if (!isManagedSkillContent(existing)) {
         result.status = 'skipped_user_owned';
         return result;
       }
@@ -427,27 +433,33 @@ function skillFilePath(agent, rootDir, skillId) {
   return path.join(rootDir, `${skillId}.md`);
 }
 
-function removeLegacySkill(agent, rootDir, skillId) {
-  const legacyId = `${LEGACY_PREFIX}${skillId}`;
-  const legacyPath = skillFilePath(agent, rootDir, legacyId);
-  if (!fs.existsSync(legacyPath)) return false;
+function removeLegacySkillVariants(agent, rootDir, skillId) {
+  let removed = 0;
 
-  try {
-    const existing = fs.readFileSync(legacyPath, 'utf8');
-    if (!existing.includes(MANAGED_MARKER)) return false;
-    fs.unlinkSync(legacyPath);
-    if (agent === 'codex') {
-      const legacyDir = path.dirname(legacyPath);
-      try {
-        fs.rmdirSync(legacyDir);
-      } catch (err) {
-        // Ignore non-empty or missing directory errors.
+  for (const prefix of LEGACY_PREFIXES) {
+    const legacyId = `${prefix}${skillId}`;
+    const legacyPath = skillFilePath(agent, rootDir, legacyId);
+    if (!fs.existsSync(legacyPath)) continue;
+
+    try {
+      const existing = fs.readFileSync(legacyPath, 'utf8');
+      if (!isManagedSkillContent(existing)) continue;
+      fs.unlinkSync(legacyPath);
+      removed += 1;
+      if (agent === 'codex') {
+        const legacyDir = path.dirname(legacyPath);
+        try {
+          fs.rmdirSync(legacyDir);
+        } catch (err) {
+          // Ignore non-empty or missing directory errors.
+        }
       }
+    } catch (err) {
+      // Ignore unreadable legacy artifacts and continue cleanup.
     }
-    return true;
-  } catch (err) {
-    return false;
   }
+
+  return removed;
 }
 
 // #lizard forgives
@@ -524,12 +536,10 @@ async function installBundledSkills(options = {}) {
         if (verbose && writeResult.status !== 'unchanged') {
           const suffix = writeResult.error ? ` (${writeResult.error})` : '';
           console.log(
-            `[gasoline-mcp] skills ${writeResult.status}: ${agent}:${skill.id} -> ${filePath}${suffix}`
+            `[kaboom-mcp] skills ${writeResult.status}: ${agent}:${skill.id} -> ${filePath}${suffix}`
           );
         }
-        if (removeLegacySkill(agent, rootDir, skill.id)) {
-          summary.legacy_removed += 1;
-        }
+        summary.legacy_removed += removeLegacySkillVariants(agent, rootDir, skill.id);
       }
     }
   }

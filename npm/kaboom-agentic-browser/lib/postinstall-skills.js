@@ -4,7 +4,7 @@
  * Why: Makes fresh npm installs immediately usable in supported agent environments.
  * Docs: docs/features/feature/enhanced-cli-config/index.md
  *
- * Postinstall hook for bundled Gasoline skills.
+ * Postinstall hook for bundled Kaboom skills.
  * Never fails package installation.
  */
 
@@ -24,22 +24,22 @@ async function run() {
 
     if (result.skipped) {
       if (verbose) {
-        console.log(`[gasoline-mcp] skill install skipped: ${result.reason}`);
+        console.log(`[kaboom-mcp] skill install skipped: ${result.reason}`);
       }
       return;
     }
 
     const s = result.summary;
     console.log(
-      `[gasoline-mcp] skills installed (${result.agents.join(', ')} / ${result.scope}): ` +
+      `[kaboom-mcp] skills installed (${result.agents.join(', ')} / ${result.scope}): ` +
         `source=${result.source} created=${s.created} updated=${s.updated} unchanged=${s.unchanged} ` +
         `skipped=${s.skipped_user_owned} legacy_removed=${s.legacy_removed} errors=${s.errors}`
     );
     for (const warning of result.warnings || []) {
-      console.warn(`[gasoline-mcp] warning: ${warning}`);
+      console.warn(`[kaboom-mcp] warning: ${warning}`);
     }
   } catch (err) {
-    console.warn(`[gasoline-mcp] warning: skill postinstall failed: ${err.message}`);
+    console.warn(`[kaboom-mcp] warning: skill postinstall failed: ${err.message}`);
   }
 }
 

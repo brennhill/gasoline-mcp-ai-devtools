@@ -24,3 +24,12 @@ test('platform npm packages use kaboom names and descriptions', () => {
     assert.doesNotMatch(packageJson.description, /Gasoline/)
   }
 })
+
+test('npm skill installer cleanup targets kaboom-managed output and strum legacy artifacts', () => {
+  const skillsSource = fs.readFileSync(path.join(REPO_ROOT, 'npm/kaboom-agentic-browser/lib/skills.js'), 'utf8')
+  const postinstallSource = fs.readFileSync(path.join(REPO_ROOT, 'npm/kaboom-agentic-browser/lib/postinstall-skills.js'), 'utf8')
+
+  assert.match(skillsSource, /kaboom-managed-skill/)
+  assert.match(skillsSource, /strum-/)
+  assert.match(postinstallSource, /\[kaboom-mcp\]/)
+})

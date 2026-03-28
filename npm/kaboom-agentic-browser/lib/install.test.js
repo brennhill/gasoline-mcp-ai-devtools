@@ -13,6 +13,7 @@ const {
   installToClient,
   executeInstall,
 } = require('./install');
+const { installBundledSkills } = require('./skills');
 
 test('npm wrapper metadata uses kaboom package and launcher names', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
@@ -121,6 +122,42 @@ test('installToClient merges into existing file-type config', () => {
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   assert.ok(written.mcpServers['gasoline-browser-devtools']);
   assert.ok(written.mcpServers.other, 'should preserve existing server');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('installToClient removes gasoline and strum MCP entries before writing kaboom config', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const cfgPath = path.join(tmp, 'mcp.json');
+
+  fs.writeFileSync(cfgPath, JSON.stringify({
+    mcpServers: {
+      other: { command: 'other-cmd', args: [] },
+      gasoline: { command: 'gasoline-mcp', args: [] },
+      'gasoline-agentic-browser': { command: 'gasoline-agentic-browser', args: [] },
+      'strum-browser-devtools': { command: 'strum-agentic-browser', args: [] },
+      strum: { command: 'strum-agentic-browser', args: [] },
+    },
+  }));
+
+  const def = {
+    id: 'test-cursor',
+    name: 'Test Cursor',
+    type: 'file',
+    configPath: { all: cfgPath },
+    detectDir: { all: tmp },
+  };
+
+  const result = installToClient(def, { dryRun: false, envVars: {}, binaryCommand: '/tmp/kaboom-bin' });
+  assert.equal(result.success, true);
+
+  const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  assert.ok(written.mcpServers['gasoline-browser-devtools']);
+  assert.equal(written.mcpServers.gasoline, undefined);
+  assert.equal(written.mcpServers['gasoline-agentic-browser'], undefined);
+  assert.equal(written.mcpServers['strum-browser-devtools'], undefined);
+  assert.equal(written.mcpServers.strum, undefined);
+  assert.ok(written.mcpServers.other, 'should preserve non-managed servers');
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -390,4 +427,55 @@ test('executeInstall dry-run reports all detected clients without writing', () =
   assert.equal(fs.existsSync(path.join(cursorDir, 'mcp.json')), false);
 
   fs.rmSync(tmp, { recursive: true });
+});
+
+test('installBundledSkills removes managed gasoline and strum legacy skill files before writing kaboom skill', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-skills-'));
+  const skillsDir = path.join(tmp, 'bundled');
+  const claudeRoot = path.join(tmp, 'claude-skills');
+
+  fs.mkdirSync(path.join(skillsDir, 'debug'), { recursive: true });
+  fs.writeFileSync(
+    path.join(skillsDir, 'skills.json'),
+    JSON.stringify({ skills: [{ id: 'debug', version: 2 }] }),
+    'utf8'
+  );
+  fs.writeFileSync(path.join(skillsDir, 'debug', 'SKILL.md'), '# Debug\nKaboom skill body\n', 'utf8');
+
+  fs.mkdirSync(claudeRoot, { recursive: true });
+  fs.writeFileSync(
+    path.join(claudeRoot, 'gasoline-debug.md'),
+    '<!-- gasoline-managed-skill id:debug version:1 -->\nold gasoline body\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(claudeRoot, 'strum-debug.md'),
+    '<!-- strum-managed-skill id:debug version:1 -->\nold strum body\n',
+    'utf8'
+  );
+
+  const originalClaudeDir = process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+  try {
+    process.env.GASOLINE_CLAUDE_SKILLS_DIR = claudeRoot;
+    const result = await installBundledSkills({
+      agents: ['claude'],
+      scope: 'global',
+      skillsDir,
+    });
+
+    assert.equal(result.skipped, false);
+    assert.ok(result.summary.legacy_removed >= 2);
+    assert.equal(fs.existsSync(path.join(claudeRoot, 'gasoline-debug.md')), false);
+    assert.equal(fs.existsSync(path.join(claudeRoot, 'strum-debug.md')), false);
+
+    const installedSkill = fs.readFileSync(path.join(claudeRoot, 'debug.md'), 'utf8');
+    assert.match(installedSkill, /Kaboom skill body/);
+  } finally {
+    if (originalClaudeDir === undefined) {
+      delete process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+    } else {
+      process.env.GASOLINE_CLAUDE_SKILLS_DIR = originalClaudeDir;
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
