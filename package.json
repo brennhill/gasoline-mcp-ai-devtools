@@ -14,7 +14,7 @@
     "docs:lint:integrity": "python3 scripts/lint-documentation.py docs/features docs/architecture",
     "docs:check": "node scripts/docs/check-feature-bundles.js",
     "docs:check:strict": "DOCS_STRICT_FRONTMATTER=1 node scripts/docs/check-feature-bundles.js",
-    "docs:lint:content-contract": "node scripts/docs/check-cookwithgasoline-content-contract.mjs",
+    "docs:lint:content-contract": "node scripts/docs/check-gokaboom-content-contract.mjs",
     "docs:lint:style-contract": "node scripts/docs/check-content-style-contract.mjs",
     "docs:lint:vale": "node scripts/docs/run-vale-on-changed.mjs",
     "docs:lint:downloads-contract": "node scripts/docs/check-downloads-page-contract.mjs",

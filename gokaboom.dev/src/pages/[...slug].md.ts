@@ -22,7 +22,7 @@ function toYamlArray(values: string[]) {
 }
 
 function renderFrontmatter(entry: any) {
-  const title = entry.data?.title ?? 'STRUM MCP'
+  const title = entry.data?.title ?? 'Kaboom MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
   const resolvedSlug = resolveDocSlug(entry)
   const canonicalPath = resolvedSlug === '' ? '/' : `/${resolvedSlug}/`
@@ -31,7 +31,7 @@ function renderFrontmatter(entry: any) {
   const normalizedTags = Array.isArray(entry.data?.normalized_tags) ? entry.data.normalized_tags : []
   const relatedGuides = getRelatedGuides(resolvedSlug).map((guide) => guide.href)
 
-  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${canonicalPath}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\nlast_verified_version: ${toYamlString(verifiedVersion)}\nlast_verified_date: ${toYamlString(verifiedDate)}\nnormalized_tags: ${toYamlArray(normalizedTags)}\nrelated_guides: ${toYamlArray(relatedGuides)}\n---`
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://gokaboom.dev${canonicalPath}\ndocs_version: ${toYamlString(siteVersionLabel)}\ndocs_channel: ${toYamlString(siteReleaseChannel)}\nlast_verified_version: ${toYamlString(verifiedVersion)}\nlast_verified_date: ${toYamlString(verifiedDate)}\nnormalized_tags: ${toYamlArray(normalizedTags)}\nrelated_guides: ${toYamlArray(relatedGuides)}\n---`
 }
 
 function findEntryBySlugPath(docs: any[], slugPath: string) {

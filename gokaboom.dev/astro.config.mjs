@@ -3,14 +3,14 @@ import starlight from '@astrojs/starlight'
 import starlightBlog from 'starlight-blog'
 
 export default defineConfig({
-  site: 'https://cookwithgasoline.com',
+  site: 'https://gokaboom.dev',
   integrations: [
     starlight({
-      title: 'STRUM Agentic Devtools',
+      title: 'Kaboom',
       description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
         src: './src/assets/logo.svg',
-        alt: 'STRUM Agentic Devtools'
+        alt: 'Kaboom'
       },
       favicon: '/images/logo.png',
       social: [
