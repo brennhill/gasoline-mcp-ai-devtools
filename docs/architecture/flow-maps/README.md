@@ -37,6 +37,7 @@ Each flow map should include:
 
 ## Current Maps
 
+- [Auto-Fix QA Flow](./auto-fix-qa-flow.md)
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
 - [File Upload Smoke Harness](./file-upload-smoke-harness.md)
 - [Analyze Structured Extraction](./analyze-structured-extraction.md)
