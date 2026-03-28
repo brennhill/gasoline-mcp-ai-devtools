@@ -1,5 +1,5 @@
 {
-  "name": "strum-ai-devtools",
+  "name": "kaboom-agentic-browser-devtools-mcp",
   "version": "0.8.1",
   "private": true,
   "type": "module",
@@ -61,10 +61,10 @@
   "homepage": "https://gokaboom.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/brennhill/Strum-AI-Devtools"
+    "url": "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp"
   },
   "bugs": {
-    "url": "https://github.com/brennhill/Strum-AI-Devtools/issues"
+    "url": "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues"
   },
   "engines": {
     "node": ">=20.0.0"
