@@ -9,6 +9,16 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { uninstallFromClient, executeUninstall } = require('./uninstall');
 
+test('npm wrapper no longer exposes gasoline launcher aliases', () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const hooksLauncher = fs.readFileSync(path.join(__dirname, '..', 'bin', 'kaboom-hooks'), 'utf8');
+
+  assert.equal(packageJson.bin['gasoline-agentic-browser'], undefined);
+  assert.equal(packageJson.bin['gasoline-hooks'], undefined);
+  assert.match(hooksLauncher, /kaboom-hooks binary not found/);
+  assert.match(hooksLauncher, /npm install -g kaboom-agentic-browser@latest/);
+});
+
 // --- uninstallFromClient: file-type ---
 
 test('uninstallFromClient removes gasoline from file-type config', () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// bin/gasoline-hooks — Cross-platform launcher for the gasoline-hooks binary.
+// bin/kaboom-hooks — Cross-platform launcher for the kaboom-hooks binary.
 // Finds the Go hooks binary from platform-specific npm packages and spawns it.
 
 const { execFileSync, execSync } = require('child_process')
@@ -20,7 +20,7 @@ function detectPlatform() {
   const effectiveArch = (platform === 'win32') ? 'x64' : arch
   const platformKey = `${platform}-${effectiveArch}`
   const binaryName = `gasoline-hooks${ext}`
-  const pkgName = `@brennhill/gasoline-agentic-browser-${platformKey}`
+  const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`
 
   return { platformKey, binaryName, pkgName, ext }
 }
@@ -62,7 +62,7 @@ if (!info) {
 
 const binary = findHooksBinary(info)
 if (!binary) {
-  console.error(`gasoline-hooks binary not found for ${info.platformKey}. Try reinstalling: npm install -g gasoline-agentic-browser@latest`)
+  console.error(`kaboom-hooks binary not found for ${info.platformKey}. Try reinstalling: npm install -g kaboom-agentic-browser@latest`)
   process.exit(1)
 }
 

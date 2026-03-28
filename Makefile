@@ -167,7 +167,7 @@ validate-semver:
 
 # Validate optionalDependencies match package version
 validate-deps-versions:
-	@node npm/gasoline-agentic-browser/lib/validate-versions.js
+	@node npm/kaboom-agentic-browser/lib/validate-versions.js
 
 build: $(PLATFORMS)
 
@@ -211,8 +211,8 @@ npm-binaries: build compile-ts
 	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline-hooks
 	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline-hooks.exe
 	@echo "=== Copying extension to main NPM package ==="
-	@mkdir -p npm/gasoline-agentic-browser/extension
-	@cp -r extension/* npm/gasoline-agentic-browser/extension/
+	@mkdir -p npm/kaboom-agentic-browser/extension
+	@cp -r extension/* npm/kaboom-agentic-browser/extension/
 	@echo "=== Verifying embedded versions ==="
 	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
 	EXPECTED=$$(cat VERSION); \
@@ -433,7 +433,7 @@ quality-gate: check-file-length lint lint-hardening lint-dead lint-circular lint
 test-upgrade-guards:
 	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
 	node --test scripts/install-upgrade-regression.contract.test.mjs
-	node --test npm/gasoline-agentic-browser/lib/kill-daemon.test.js
+	node --test npm/kaboom-agentic-browser/lib/kill-daemon.test.js
 	python3 -m unittest discover -s pypi/gasoline-agentic-browser/tests -p 'test_*.py'
 	node scripts/install-upgrade-regression.mjs
 
@@ -447,13 +447,13 @@ sync-version:
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
 			extension/manifest.json extension/package.json server/package.json \
-			npm/gasoline-agentic-browser/package.json npm/darwin-x64/package.json \
+			npm/kaboom-agentic-browser/package.json npm/darwin-x64/package.json \
 			npm/darwin-arm64/package.json npm/linux-x64/package.json \
 			npm/linux-arm64/package.json npm/win32-x64/package.json \
 			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
-		npm/gasoline-agentic-browser/package.json
+		npm/kaboom-agentic-browser/package.json
 	@# PyPI version fields in pyproject.toml
 	@perl -pi -e 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' \
 		pypi/gasoline-agentic-browser/pyproject.toml \
@@ -485,7 +485,7 @@ sync-version:
 		$(CMD_DIR)/main.go cmd/hooks/main.go
 	@# Shell wrapper version
 	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
-		npm/gasoline-agentic-browser/bin/gasoline-agentic-browser
+		npm/kaboom-agentic-browser/bin/kaboom-agentic-browser
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md

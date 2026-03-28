@@ -1,0 +1,46 @@
+{
+  "name": "kaboom-agentic-browser",
+  "version": "0.8.1",
+  "description": "Kaboom Agentic Browser is an AI debugger, inspector, and verification toolkit for local-first browser development workflows.",
+  "license": "AGPL-3.0-only",
+  "bin": {
+    "kaboom-agentic-browser": "bin/kaboom-agentic-browser",
+    "kaboom-hooks": "bin/kaboom-hooks"
+  },
+  "scripts": {
+    "preinstall": "node lib/kill-daemon.js",
+    "postinstall": "node lib/postinstall-skills.js",
+    "preuninstall": "node lib/kill-daemon.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "skills",
+    "extension"
+  ],
+  "optionalDependencies": {
+    "@brennhill/kaboom-agentic-browser-darwin-arm64": "0.8.1",
+    "@brennhill/kaboom-agentic-browser-darwin-x64": "0.8.1",
+    "@brennhill/kaboom-agentic-browser-linux-arm64": "0.8.1",
+    "@brennhill/kaboom-agentic-browser-linux-x64": "0.8.1",
+    "@brennhill/kaboom-agentic-browser-win32-x64": "0.8.1"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "ai-debugging",
+    "ai-observability",
+    "llm-ops",
+    "devtools",
+    "prompt-engineering",
+    "agent-inspection"
+  ],
+  "homepage": "https://gokaboom.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues"
+  }
+}

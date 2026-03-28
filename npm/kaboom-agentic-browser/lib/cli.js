@@ -1,7 +1,7 @@
-// Purpose: Route gasoline-agentic-browser wrapper commands to install/config/doctor/uninstall flows.
+// Purpose: Route kaboom-agentic-browser wrapper commands to install/config/doctor/uninstall flows.
 // Why: Keeps CLI behavior consistent across client setup paths and avoids shell-script drift.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
-// cli.js — CLI command handler for gasoline-agentic-browser management commands.
+// cli.js — CLI command handler for kaboom-agentic-browser management commands.
 // Invoked by the shell wrapper when --install, --config, --doctor, etc. are passed.
 
 const os = require('os');
@@ -28,7 +28,7 @@ function writeMcpError(message) {
 
 function showConfigCommand() {
   const mcp = install.generateDefaultConfig();
-  console.log('📋 Gasoline Agentic Browser Configuration\n');
+  console.log('📋 Kaboom Agentic Browser Configuration\n');
   console.log('Add this to your AI assistant settings:\n');
   console.log(JSON.stringify(mcp, null, 2));
   console.log('\n📍 Supported Clients:\n');
@@ -51,7 +51,7 @@ function showConfigCommand() {
     console.log('');
   }
 
-  console.log('Run: gasoline-agentic-browser --install   (auto-installs to all detected clients)');
+  console.log('Run: kaboom-agentic-browser --install   (auto-installs to all detected clients)');
   process.exit(0);
 }
 
@@ -85,7 +85,7 @@ async function installCommand(options) {
             console.warn(`⚠️  ${warning}`);
           }
         }
-        console.log('✨ Gasoline Agentic Browser is ready to use!');
+        console.log('✨ Kaboom Agentic Browser is ready to use!');
       }
       process.exit(0);
     } else {
@@ -135,13 +135,13 @@ function uninstallCommand(dryRun, verbose) {
 }
 
 function showHelp() {
-  console.log('Gasoline Agentic Browser Server\n');
-  console.log('Usage: gasoline-agentic-browser [command] [options]\n');
+  console.log('Kaboom Agentic Browser Server\n');
+  console.log('Usage: kaboom-agentic-browser [command] [options]\n');
   console.log('Commands:');
   console.log('  --config, -c          Show MCP configuration and detected clients');
   console.log('  --install, -i [tool]  Auto-install to detected clients, or a specific tool');
   console.log('  --doctor              Run diagnostics on installed configs');
-  console.log('  --uninstall           Remove Gasoline from all clients');
+  console.log('  --uninstall           Remove Kaboom from all clients');
   console.log('  --help, -h            Show this help message\n');
   console.log('Supported clients:');
   console.log('  Claude Code           via claude CLI (mcp add-json)');
@@ -170,15 +170,15 @@ function showHelp() {
   console.log('  --dry-run             Preview changes without writing');
   console.log('  --verbose             Show detailed operation logs\n');
   console.log('Examples:');
-  console.log('  gasoline-agentic-browser --install                # Install to all detected clients');
-  console.log('  gasoline-agentic-browser --install gemini          # Install to Gemini CLI only');
-  console.log('  gasoline-agentic-browser --install opencode        # Install to OpenCode only');
-  console.log('  gasoline-agentic-browser --install --dry-run      # Preview without changes');
-  console.log('  gasoline-agentic-browser --install --env DEBUG=1  # Install with env vars');
-  console.log('  gasoline-agentic-browser --install --skills-repo brennhill/gasoline-skills');
-  console.log('  gasoline-agentic-browser --config                 # Show config and detected clients');
-  console.log('  gasoline-agentic-browser --doctor                 # Check config health');
-  console.log('  gasoline-agentic-browser --uninstall              # Remove from all clients\n');
+  console.log('  kaboom-agentic-browser --install                # Install to all detected clients');
+  console.log('  kaboom-agentic-browser --install gemini          # Install to Gemini CLI only');
+  console.log('  kaboom-agentic-browser --install opencode        # Install to OpenCode only');
+  console.log('  kaboom-agentic-browser --install --dry-run      # Preview without changes');
+  console.log('  kaboom-agentic-browser --install --env DEBUG=1  # Install with env vars');
+  console.log('  kaboom-agentic-browser --install --skills-repo brennhill/kaboom-skills');
+  console.log('  kaboom-agentic-browser --config                 # Show config and detected clients');
+  console.log('  kaboom-agentic-browser --doctor                 # Check config health');
+  console.log('  kaboom-agentic-browser --uninstall              # Remove from all clients\n');
   process.exit(0);
 }
 
@@ -244,7 +244,7 @@ async function main() {
     try {
       skillOptions = parseSkillInstallOptions(args);
     } catch (err) {
-      console.error(output.error(err.message, 'Run gasoline-agentic-browser --help for usage.'));
+      console.error(output.error(err.message, 'Run kaboom-agentic-browser --help for usage.'));
       process.exit(1);
     }
 
@@ -280,12 +280,12 @@ async function main() {
   // Version (print and exit)
   if (args.includes('--version') || args.includes('-v')) {
     const pkg = require('../package.json');
-    console.log(`gasoline-agentic-browser v${pkg.version}`);
+    console.log(`kaboom-agentic-browser v${pkg.version}`);
     process.exit(0);
   }
 
   // If we get here with no recognized flags, show help
-  console.error('Unknown command. Run gasoline-agentic-browser --help for usage.');
+  console.error('Unknown command. Run kaboom-agentic-browser --help for usage.');
   process.exit(1);
 }
 

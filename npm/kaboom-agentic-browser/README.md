@@ -1,6 +1,6 @@
-# gasoline-mcp
+# kaboom-mcp
 
-**Agentic Browser Devtools - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
+**Kaboom Agentic Browser - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
 
 ## Setup (2 Steps)
 

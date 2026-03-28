@@ -14,6 +14,28 @@ const {
   executeInstall,
 } = require('./install');
 
+test('npm wrapper metadata uses kaboom package and launcher names', () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  assert.equal(packageJson.name, 'kaboom-agentic-browser');
+  assert.equal(packageJson.bin['kaboom-agentic-browser'], 'bin/kaboom-agentic-browser');
+  assert.equal(packageJson.bin['kaboom-hooks'], 'bin/kaboom-hooks');
+  assert.equal(packageJson.homepage, 'https://gokaboom.dev');
+  assert.ok(packageJson.description.includes('Kaboom'));
+  assert.ok(packageJson.optionalDependencies['@brennhill/kaboom-agentic-browser-darwin-arm64']);
+});
+
+test('npm wrapper readme and launcher copy use kaboom branding', () => {
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  const launcher = fs.readFileSync(path.join(__dirname, '..', 'bin', 'kaboom-agentic-browser'), 'utf8');
+  const cli = fs.readFileSync(path.join(__dirname, 'cli.js'), 'utf8');
+
+  assert.match(readme, /^# kaboom-mcp$/m);
+  assert.match(launcher, /Kaboom Agentic Browser server/);
+  assert.match(launcher, /npm install -g kaboom-agentic-browser@latest/);
+  assert.match(cli, /Kaboom Agentic Browser/);
+  assert.match(cli, /kaboom-agentic-browser --install/);
+});
+
 // --- generateDefaultConfig ---
 
 test('generateDefaultConfig returns valid MCP config', () => {

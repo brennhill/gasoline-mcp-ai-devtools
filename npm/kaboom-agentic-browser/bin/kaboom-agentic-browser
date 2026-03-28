@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// bin/gasoline-agentic-browser — Cross-platform launcher for the Gasoline Agentic Browser server.
+// bin/kaboom-agentic-browser — Cross-platform launcher for the Kaboom Agentic Browser server.
 // MCP mode (default): finds the Go binary and spawns it.
 // CLI commands (--install, --config, etc.): delegates to lib/cli.js.
 
@@ -8,7 +8,7 @@ const { execFileSync } = require('child_process')
 const path = require('path')
 const fs = require('fs')
 
-const GASOLINE_VERSION = require('../package.json').version
+const KABOOM_VERSION = require('../package.json').version
 const SCRIPT_DIR = __dirname
 const LIB_DIR = path.join(SCRIPT_DIR, '..', 'lib')
 
@@ -30,7 +30,7 @@ function detectPlatform() {
   const effectiveArch = (platform === 'win32') ? 'x64' : arch
   const platformKey = `${platform}-${effectiveArch}`
   const binaryName = `gasoline${ext}`
-  const pkgName = `@brennhill/gasoline-agentic-browser-${platformKey}`
+  const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`
 
   return { platform, arch: effectiveArch, platformKey, binaryName, pkgName, ext }
 }
@@ -60,7 +60,7 @@ function findBinary(info) {
     if (globalBin && fs.existsSync(globalBin)) {
       const verOut = execFileSync(globalBin, ['--version'], { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
       const verMatch = verOut.match(/(\d+\.\d+\.\d+)/)
-      if (verMatch && verMatch[1] === GASOLINE_VERSION) return globalBin
+      if (verMatch && verMatch[1] === KABOOM_VERSION) return globalBin
     }
   } catch {
     // Not found in PATH or version mismatch — continue
@@ -101,7 +101,7 @@ if (isCliCommand(args)) {
   // MCP server mode — find and exec the Go binary
   const binary = findBinary(info)
   if (!binary) {
-    const msg = `Gasoline binary not found for ${info.platformKey}. Expected package: ${info.pkgName}. Try reinstalling: npm install -g gasoline-agentic-browser@latest`
+    const msg = `Kaboom binary not found for ${info.platformKey}. Expected package: ${info.pkgName}. Try reinstalling: npm install -g kaboom-agentic-browser@latest`
     mcpError(msg)
     process.exit(1)
   }

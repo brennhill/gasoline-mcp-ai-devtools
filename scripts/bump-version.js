@@ -107,7 +107,7 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
 const CRITICAL_FILES = [
   'VERSION',
   'cmd/browser-agent/main.go',
-  'npm/gasoline-agentic-browser/package.json',
+  'npm/kaboom-agentic-browser/package.json',
   'extension/inject.bundled.js',
   'server/package.json',
   'cmd/browser-agent/openapi.json',
@@ -355,7 +355,7 @@ async function main() {
   log('cyan', '=>', '')
   log('cyan', 'Validating package.json dependencies...')
 
-  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/gasoline-agentic-browser/package.json')))
+  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/kaboom-agentic-browser/package.json')))
   const optionalDeps = mainPackageJson.optionalDependencies || {}
 
   let depsMatch = true
