@@ -361,11 +361,13 @@ describe('tracked hover launcher', () => {
     await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
+    const toggle = elementsById['gasoline-tracked-hover-toggle']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton)
+    assert.strictEqual(toggle?.title, 'Kaboom quick actions')
     settingsButton.dispatch('click')
 
-    const hideButton = findElementWithChildText(root, 'Hide STRUM Devtool')
+    const hideButton = findElementWithChildText(root, 'Hide Kaboom Devtool')
     assert.ok(hideButton, 'expected hide button')
     hideButton.dispatch('click')
 

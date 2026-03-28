@@ -563,7 +563,7 @@ function createLauncherUi(): HTMLDivElement {
     'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp'
   )
 
-  const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide STRUM Devtool')
+  const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Kaboom Devtool')
   hideButton.addEventListener('click', () => {
     hideLauncherUntilPopupReopen()
   })
@@ -575,11 +575,11 @@ function createLauncherUi(): HTMLDivElement {
   const toggle = document.createElement('button')
   toggle.id = TOGGLE_ID
   toggle.type = 'button'
-  toggle.title = 'STRUM quick actions'
+  toggle.title = 'Kaboom quick actions'
 
   const toggleIcon = document.createElement('img')
   toggleIcon.src = chrome.runtime.getURL('icons/icon.svg')
-  toggleIcon.alt = 'STRUM'
+  toggleIcon.alt = 'Kaboom'
   Object.assign(toggleIcon.style, {
     width: '36px',
     height: '36px',

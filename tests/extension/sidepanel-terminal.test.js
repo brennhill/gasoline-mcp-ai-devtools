@@ -602,12 +602,38 @@ describe('terminal side panel host', () => {
     const iframe = getElementById('gasoline-terminal-iframe')
     const terminalShell = header?.parentElement || null
     const newProjectButton = findButton(root, (node) => node.textContent === 'New Project')
+    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
 
     assert.ok(root, 'panel root should exist')
     assert.ok(header, 'terminal header should exist')
     assert.ok(iframe, 'terminal iframe should exist')
     assert.ok(terminalShell, 'terminal shell should wrap the header and iframe')
+    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
     assert.strictEqual(newProjectButton, null, 'placeholder palette action should not be rendered')
     assert.strictEqual(root.children.length, 1, 'terminal shell should be the only top-level panel child')
+  })
+
+  test('daemon-unavailable fallback uses Kaboom copy', async () => {
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(500, { error: 'daemon_unavailable' }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const header = getElementById('gasoline-terminal-header')
+    const terminalBody = header?.parentElement?.children?.[1] || null
+    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
+    const fallbackNode = walkTree(terminalBody, (child) =>
+      child.textContent === 'Terminal unavailable. Start the Kaboom daemon and reopen the panel.'
+    )
+
+    assert.ok(header, 'terminal header should exist')
+    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
+    assert.ok(terminalBody, 'terminal body should exist')
+    assert.ok(fallbackNode, 'fallback should mention the Kaboom daemon')
   })
 })
