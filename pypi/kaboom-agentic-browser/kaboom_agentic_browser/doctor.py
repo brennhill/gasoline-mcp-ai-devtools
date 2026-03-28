@@ -98,26 +98,26 @@ def _diagnose_file_client(definition, verbose):
     if not os.path.exists(cfg_path):
         tool["status"] = "error"
         tool["issues"].append("Config file not found")
-        tool["suggestions"].append("Run: gasoline-agentic-browser --install")
+        tool["suggestions"].append("Run: kaboom-agentic-browser --install")
         return tool
 
     read_result = config.read_config_file(cfg_path)
     if not read_result["valid"]:
         tool["issues"].append("Invalid JSON")
-        tool["suggestions"].append("Fix the JSON syntax or run: gasoline-agentic-browser --install")
+        tool["suggestions"].append("Fix the JSON syntax or run: kaboom-agentic-browser --install")
         return tool
 
     mcp_servers = read_result["data"].get("mcpServers", {})
     matched_name = next((name for name in _known_server_names() if mcp_servers.get(name)), None)
     if not matched_name:
         tool["issues"].append(f"{config.MCP_SERVER_NAME} entry missing from mcpServers")
-        tool["suggestions"].append("Run: gasoline-agentic-browser --install")
+        tool["suggestions"].append("Run: kaboom-agentic-browser --install")
         return tool
     if matched_name != config.MCP_SERVER_NAME:
         tool["issues"].append(
             f"Legacy MCP server name detected ({matched_name}); migrate to {config.MCP_SERVER_NAME}"
         )
-        tool["suggestions"].append("Run: gasoline-agentic-browser --install")
+        tool["suggestions"].append("Run: kaboom-agentic-browser --install")
 
     tool["status"] = "ok"
     return tool
@@ -168,7 +168,7 @@ def _diagnose_cli_client(definition, verbose):
     if not found:
         tool["status"] = "error"
         tool["issues"].append(f"{config.MCP_SERVER_NAME} not configured")
-        tool["suggestions"].append("Run: gasoline-agentic-browser --install")
+        tool["suggestions"].append("Run: kaboom-agentic-browser --install")
     else:
         tool["status"] = "ok"
 

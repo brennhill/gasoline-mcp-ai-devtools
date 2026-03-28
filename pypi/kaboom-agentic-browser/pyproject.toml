@@ -1,0 +1,58 @@
+[project]
+name = "kaboom-agentic-browser"
+version = "0.8.1"
+description = "Kaboom Agentic Browser is an AI debugger, inspector, and verification toolkit for local-first browser development workflows."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "AGPL-3.0-only"
+authors = [
+    {name = "Brennan Hill", email = "noreply@gokaboom.dev"}
+]
+keywords = [
+    "mcp",
+    "mcp-server",
+    "ai-debugging",
+    "ai-observability",
+    "llm-ops",
+    "devtools",
+    "prompt-engineering",
+    "agent-inspection"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "kaboom-agentic-browser-darwin-arm64==0.8.1; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "kaboom-agentic-browser-darwin-x64==0.8.1; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-linux-arm64==0.8.1; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "kaboom-agentic-browser-linux-x64==0.8.1; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-win32-x64==0.8.1; sys_platform == 'win32'",
+]
+
+[project.urls]
+Homepage = "https://gokaboom.dev"
+Documentation = "https://gokaboom.dev/getting-started/"
+Repository = "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp"
+Issues = "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues"
+
+[project.scripts]
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["kaboom_agentic_browser"]
+
+[tool.setuptools.package-data]
+kaboom_agentic_browser = ["skills/skills.json", "skills/*/SKILL.md"]

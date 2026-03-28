@@ -9,13 +9,31 @@ import os
 import tempfile
 import shutil
 import unittest
-from gasoline_agentic_browser.install import (
+import sys
+from pathlib import Path
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PACKAGE_ROOT))
+
+from kaboom_agentic_browser.install import (
     generate_default_config,
     build_mcp_entry,
     install_to_client,
     execute_install,
 )
-from gasoline_agentic_browser.config import MCP_SERVER_NAME
+from kaboom_agentic_browser.config import MCP_SERVER_NAME
+
+
+class TestPackageIdentity(unittest.TestCase):
+    def test_metadata_uses_kaboom_identity(self):
+        pyproject = (PACKAGE_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        readme = (PACKAGE_ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn('name = "kaboom-agentic-browser"', pyproject)
+        self.assertIn("kaboom-agentic-browser-darwin-arm64", pyproject)
+        self.assertIn('Homepage = "https://gokaboom.dev"', pyproject)
+        self.assertIn("pip install kaboom-agentic-browser", readme)
+        self.assertTrue((PACKAGE_ROOT / "kaboom_agentic_browser" / "__main__.py").exists())
 
 
 class TestGenerateDefaultConfig(unittest.TestCase):

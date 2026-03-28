@@ -1,4 +1,4 @@
-# Gasoline Agentic Browser Devtool MCP
+# Kaboom Agentic Browser MCP
 
 Agentic Browser Devtools - rapid e2e web development.
 
@@ -7,7 +7,7 @@ Streams console logs, network errors, WebSocket events, and exceptions to Claude
 ## Installation
 
 ```bash
-pip install gasoline-agentic-browser
+pip install kaboom-agentic-browser
 ```
 
 The correct platform-specific binary will be installed automatically.
@@ -23,7 +23,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "gasoline-browser-devtools": {
       "type": "stdio",
-      "command": "gasoline-agentic-browser"
+      "command": "kaboom-agentic-browser"
     }
   }
 }
@@ -38,7 +38,7 @@ Add to your `.mcp.json`:
   "mcpServers": {
     "gasoline-browser-devtools": {
       "type": "stdio",
-      "command": "gasoline-agentic-browser"
+      "command": "kaboom-agentic-browser"
     }
   }
 }
@@ -47,13 +47,13 @@ Add to your `.mcp.json`:
 ### Standalone
 
 ```bash
-gasoline-agentic-browser
+kaboom-agentic-browser
 ```
 
 ### Install MCP config + bundled skills
 
 ```bash
-gasoline-agentic-browser --install
+kaboom-agentic-browser --install
 ```
 
 This installs MCP config for detected clients and managed bundled skills (`debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, `site-audit`) into your agent skill directories.
@@ -67,7 +67,7 @@ Install the Chrome extension to capture browser telemetry:
 [Chrome Web Store Link](https://chrome.google.com/webstore) (coming soon)
 
 Or load from source:
-1. Download the extension from [GitHub Releases](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
+1. Download the extension from [GitHub Releases](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/releases)
 2. Go to `chrome://extensions`
 3. Enable "Developer mode"
 4. Click "Load unpacked" and select the `extension/` folder
@@ -86,9 +86,9 @@ Or load from source:
 
 ## Documentation
 
-- [Getting Started](https://cookwithgasoline.com/getting-started/)
-- [GitHub Repository](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-- [Issue Tracker](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
+- [Getting Started](https://gokaboom.dev/getting-started/)
+- [GitHub Repository](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
+- [Issue Tracker](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues)
 
 ## Privacy
 
@@ -96,4 +96,4 @@ Or load from source:
 
 ## License
 
-AGPL-3.0 — Free for personal and internal company use. [Commercial licensing available](https://cookwithgasoline.com/privacy/) for proprietary integration.
+AGPL-3.0 — Free for personal and internal company use. [Commercial licensing available](https://gokaboom.dev/privacy/) for proprietary integration.

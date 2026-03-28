@@ -9,8 +9,28 @@ import os
 import tempfile
 import shutil
 import unittest
-from gasoline_agentic_browser.uninstall import uninstall_from_client, execute_uninstall
-from gasoline_agentic_browser.config import MCP_SERVER_NAME
+import sys
+from pathlib import Path
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PACKAGE_ROOT))
+
+from kaboom_agentic_browser.uninstall import uninstall_from_client, execute_uninstall
+from kaboom_agentic_browser.config import MCP_SERVER_NAME
+
+
+class TestPackageCommandText(unittest.TestCase):
+    def test_entrypoint_and_doctor_use_kaboom_commands(self):
+        main_source = (PACKAGE_ROOT / "kaboom_agentic_browser" / "__main__.py").read_text(
+            encoding="utf-8"
+        )
+        doctor_source = (PACKAGE_ROOT / "kaboom_agentic_browser" / "doctor.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("kaboom-agentic-browser", main_source)
+        self.assertIn("Kaboom Agentic Browser", main_source)
+        self.assertIn("Run: kaboom-agentic-browser --install", doctor_source)
 
 
 class TestUninstallFromClient(unittest.TestCase):
