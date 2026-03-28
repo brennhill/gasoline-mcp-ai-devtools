@@ -38,6 +38,7 @@ var analyzeHandlers = map[string]ModeHandler{
 	"navigation":         method((*ToolHandler).toolAnalyzeNavigation),
 	"page_structure":     method((*ToolHandler).toolAnalyzePageStructure),
 	"audit":              method((*ToolHandler).toolAnalyzeAudit),
+	"page_issues":        method((*ToolHandler).toolAnalyzePageIssues),
 	"feature_gates": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.interactAction().handleContentExtraction(req, args, "feature_gates", "feature_gates")
 	},

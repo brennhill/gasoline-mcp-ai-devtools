@@ -107,4 +107,8 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 		Hint:     "Detect feature flags, A/B tests, and experiment gates in page JavaScript",
 		Optional: []string{"tab_id"},
 	},
+	"page_issues": {
+		Hint:     "One-call sweep: aggregates console errors, network failures, a11y violations, and security findings into a unified prioritized report. summary=true returns counts + top issues",
+		Optional: []string{"categories", "limit", "summary"},
+	},
 }
