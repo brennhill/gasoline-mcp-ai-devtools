@@ -1,52 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <style>
-    :root {
-      --energy-speed: 0.22s;
-      --energy-displacement: 22px;
-      --ghost-opacity: 0.5;
-    }
-
-    @keyframes harmonic-osc {
-      0%, 100% { transform: translateX(0); filter: brightness(1); }
-      50% { transform: translateX(var(--energy-displacement)); filter: brightness(1.4); }
-    }
-
-    .strum-path {
-      animation: harmonic-osc var(--energy-speed) infinite ease-in-out;
-      transform-box: fill-box;
-      transform-origin: center;
-    }
-
-    .ghost-1 {
-      opacity: calc(var(--ghost-opacity) * 0.6);
-    }
-
-    .ghost-2 {
-      opacity: calc(var(--ghost-opacity) * 0.3);
-    }
-  </style>
-  <circle cx="64" cy="64" r="62" fill="#302d2a" />
-  <clipPath id="circle-clip-hover">
-    <circle cx="64" cy="64" r="62" />
-  </clipPath>
-  <g clip-path="url(#circle-clip-hover)">
-    <g transform="translate(64 64) rotate(-32) translate(-64 -64)">
-      <path class="strum-path ghost-2" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.05s" />
-      <path class="strum-path ghost-1" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.03s" />
-      <path class="strum-path" d="M38 -25 L45 -25 Q 47 64 51 153 L38 153 Q 35 64 38 -25 Z" fill="#b45309" style="animation-delay: -0.01s" />
-      <path class="strum-path ghost-2" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.10s" />
-      <path class="strum-path ghost-1" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.06s" />
-      <path class="strum-path" d="M54 -25 L61 -25 Q 63 64 67 153 L54 153 Q 51 64 54 -25 Z" fill="#d97706" style="animation-delay: -0.02s" />
-      <path class="strum-path ghost-2" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.15s" />
-      <path class="strum-path ghost-1" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.09s" />
-      <path class="strum-path" d="M70 -25 L77 -25 Q 79 64 83 153 L70 153 Q 67 64 70 -25 Z" fill="#f59e0b" style="animation-delay: -0.03s" />
-      <path class="strum-path ghost-2" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.20s" />
-      <path class="strum-path ghost-1" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.12s" />
-      <path class="strum-path" d="M86 -25 L93 -25 Q 95 64 99 153 L86 153 Q 83 64 86 -25 Z" fill="#fbbf24" style="animation-delay: -0.04s" />
-      <path class="strum-path ghost-2" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.25s" />
-      <path class="strum-path ghost-1" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.15s" />
-      <path class="strum-path" d="M102 -25 L109 -25 Q 111 64 115 153 L102 153 Q 99 64 102 -25 Z" fill="#fcd34d" style="animation-delay: -0.05s" />
-    </g>
-  </g>
-  <circle cx="64" cy="64" r="62" fill="none" stroke="#222" stroke-width="3.2" />
+  <defs>
+    <linearGradient id="flame-static" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="innerFlame-static" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fef3c7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="62" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.6"/>
+  <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#flame-static)"/>
+  <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#innerFlame-static)"/>
 </svg>

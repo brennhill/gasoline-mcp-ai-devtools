@@ -1262,15 +1262,7 @@
     const logo = document.querySelector(".logo");
     if (!logo)
       return;
-    const idleSrc = chrome.runtime.getURL("icons/icon.svg");
-    const hoverSrc = chrome.runtime.getURL("icons/logo-animated.svg");
-    logo.src = idleSrc;
-    logo.addEventListener("mouseenter", () => {
-      logo.src = hoverSrc;
-    });
-    logo.addEventListener("mouseleave", () => {
-      logo.src = idleSrc;
-    });
+    logo.src = chrome.runtime.getURL("icons/icon.svg");
   }
 
   // extension/popup/settings.js

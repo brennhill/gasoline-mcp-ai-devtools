@@ -286,7 +286,7 @@ describe('tracked hover launcher', () => {
     assert.ok(elementsById['gasoline-tracked-hover-panel'], 'launcher panel should exist')
   })
 
-  test('hover island logo vibrates on hover and stops on leave', async () => {
+  test('hover island keeps the flame icon on hover', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
     const toggle = elementsById['gasoline-tracked-hover-toggle']
@@ -295,7 +295,7 @@ describe('tracked hover launcher', () => {
     assert.ok(logo, 'expected logo image inside hover island toggle')
 
     toggle.dispatch('mouseenter')
-    assert.ok(String(logo.src || '').includes('icons/logo-animated.svg'))
+    assert.ok(String(logo.src || '').includes('icons/icon.svg'))
 
     toggle.dispatch('mouseleave')
     assert.ok(String(logo.src || '').includes('icons/icon.svg'))

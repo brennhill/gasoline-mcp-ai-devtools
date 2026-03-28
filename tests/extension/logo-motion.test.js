@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * @fileoverview logo-motion.test.js — Tests idle and hover STRUM logo motion contracts.
+ * @fileoverview logo-motion.test.js — Tests popup logo asset contracts.
  */
 
 import { beforeEach, describe, mock, test } from 'node:test'
@@ -45,23 +45,14 @@ describe('popup logo motion', () => {
     resetPopupLogoDom()
   })
 
-  test('uses icon.svg at rest and logo-animated.svg on hover', async () => {
+  test('keeps icon.svg in the popup without hover swapping', async () => {
     const { initPopupLogoMotion } = await import(`../../extension/popup/logo-motion.js?v=${++importCounter}`)
 
     initPopupLogoMotion()
 
     assert.ok(String(logoEl.src).includes('icons/icon.svg'), 'popup logo should start on idle icon.svg')
-    assert.equal(typeof logoListeners.mouseenter, 'function', 'mouseenter handler should be installed')
-    assert.equal(typeof logoListeners.mouseleave, 'function', 'mouseleave handler should be installed')
-
-    logoListeners.mouseenter()
-    assert.ok(
-      String(logoEl.src).includes('icons/logo-animated.svg'),
-      'popup logo should switch to stronger hover animation'
-    )
-
-    logoListeners.mouseleave()
-    assert.ok(String(logoEl.src).includes('icons/icon.svg'), 'popup logo should return to idle icon.svg')
+    assert.equal(logoListeners.mouseenter, undefined, 'popup logo should not install hover swap handlers')
+    assert.equal(logoListeners.mouseleave, undefined, 'popup logo should not install hover swap handlers')
   })
 })
 
@@ -78,19 +69,18 @@ describe('logo asset contracts', () => {
     assert.match(popupHtml, /src="icons\/icon\.svg"/)
   })
 
-  test('icon.svg includes the slow idle strum animation', () => {
+  test('icon.svg restores the original flame mark', () => {
     const iconSvg = fs.readFileSync(path.join(REPO_ROOT, 'extension/icons/icon.svg'), 'utf8')
-    assert.match(iconSvg, /--energy-speed:\s*2s/)
-    assert.match(iconSvg, /--energy-displacement:\s*4px/)
-    assert.match(iconSvg, /class="strum-path/)
-    assert.match(iconSvg, /@keyframes harmonic-osc/)
+    assert.match(iconSvg, /linearGradient id="flame"/)
+    assert.match(iconSvg, /linearGradient id="innerFlame"/)
+    assert.match(iconSvg, /Outer flame/)
+    assert.doesNotMatch(iconSvg, /strum-path|harmonic-osc|energy-speed/)
   })
 
-  test('logo-animated.svg includes the stronger hover strum treatment', () => {
+  test('logo-animated.svg also uses the flame mark instead of the string logo', () => {
     const animatedSvg = fs.readFileSync(path.join(REPO_ROOT, 'extension/icons/logo-animated.svg'), 'utf8')
-    assert.match(animatedSvg, /--energy-speed:\s*0\.22s/)
-    assert.match(animatedSvg, /--energy-displacement:\s*22px/)
-    assert.match(animatedSvg, /ghost-1/)
-    assert.match(animatedSvg, /ghost-2/)
+    assert.match(animatedSvg, /linearGradient id="flame"/)
+    assert.match(animatedSvg, /linearGradient id="innerFlame"/)
+    assert.doesNotMatch(animatedSvg, /strum-path|ghost-1|harmonic-osc|energy-speed/)
   })
 })

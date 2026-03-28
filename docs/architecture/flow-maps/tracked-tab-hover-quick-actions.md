@@ -47,13 +47,13 @@ Related feature docs:
 1. `initTabTracking` computes whether the current content script tab matches `trackedTabId`.
 2. `src/content.ts` callback mounts the launcher when tracked and unmounts when untracked.
 3. Hovering the launcher expands the action pill; clicking the gear expands a settings menu with fluid transform+opacity transitions.
-4. The hover island logo uses the shared `icons/icon.svg` idle animation by default and swaps to `icons/logo-animated.svg` only while hovered.
+4. The hover island logo uses the shared Kaboom flame mark from `icons/icon.svg`; hover only adjusts button elevation and does not swap the asset.
 5. `Draw` action dynamically loads `content/draw-mode.js` and calls `activateDrawMode('user')`.
 6. `Rec` or `Stop` action sends `record_start` or `record_stop` to background recording listeners.
 7. `Shot` action sends `captureScreenshot` to background message handlers.
 8. Terminal action sends `open_terminal_panel`; the background worker resolves the workspace host tab and opens the panel there.
 9. `Hide Kaboom Devtool` sets `StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN=true` and unmounts the launcher.
-10. On next popup open, `initPopup` sends `GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER` to active tab and rehydrates popup logo hover behavior through `src/popup/logo-motion.ts`.
+10. On next popup open, `initPopup` sends `kaboom_show_tracked_hover_launcher` to the active tab and rehydrates popup logo state through `src/popup/logo-motion.ts`.
 11. Content script clears persisted hidden state and remounts launcher if tracking is still enabled and the side panel is not open.
 12. Record button state stays aligned with `chrome.storage.local[gasoline_recording]` via initial read plus `chrome.storage.onChanged`.
 
@@ -100,4 +100,4 @@ Related feature docs:
 - Do not bypass storage-based recording state sync with ad hoc local toggles.
 - Preserve non-blocking UI behavior for action failures; avoid throwing in content-script interaction handlers.
 - Keep reshow trigger explicit from popup-open flow; do not auto-clear hidden state on page navigation alone.
-- Keep slow idle motion in `icons/icon.svg` and reserve `icons/logo-animated.svg` for stronger hover-only strumming.
+- Keep the flame mark shared across popup, hover launcher, and side-loadable icon assets; do not reintroduce hover-time asset swaps.

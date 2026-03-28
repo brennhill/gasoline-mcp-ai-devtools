@@ -35,7 +35,7 @@ last_verified_date: 2026-03-28
 - Location: `docs/features/feature/tab-tracking-ux`
 - The hover launcher is shown on tracked workspace tabs and hides only while the Kaboom side panel is open.
 - Terminal workspace ownership now targets one Chrome tab group, even though broader tracking flows still use `TRACKED_TAB_ID` during the rollout.
-- The hover island logo now idles with slow string motion from the shared `icon.svg`, then swaps to the stronger `logo-animated.svg` strum only on hover.
+- The hover island now uses the restored Kaboom flame icon consistently; hover elevates the button chrome but does not swap the asset.
 
 ## Specs
 

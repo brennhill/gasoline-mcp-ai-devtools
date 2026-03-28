@@ -2632,12 +2632,10 @@
     toggle.addEventListener("mouseenter", () => {
       toggle.style.transform = "translateY(-1px)";
       toggle.style.boxShadow = "0 10px 26px rgba(15, 23, 42, 0.28)";
-      toggleIcon.src = chrome.runtime.getURL("icons/logo-animated.svg");
     });
     toggle.addEventListener("mouseleave", () => {
       toggle.style.transform = "translateY(0)";
       toggle.style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.25)";
-      toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
     });
     toggle.addEventListener("click", (event) => {
       event.preventDefault();

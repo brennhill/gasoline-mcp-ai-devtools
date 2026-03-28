@@ -66,13 +66,15 @@ describe('kaboom site brand shell', () => {
     assert.doesNotMatch(rotatingHero, /STRUM MCP:/)
   })
 
-  test('site flame logo assets use the restored idle and strum variants', () => {
+  test('site flame logo assets use the restored flame mark', () => {
     const idleLogo = readSite('src/assets/logo.svg')
     const animatedLogo = readSite('src/assets/logo-animated.svg')
     const publicAnimatedLogo = readSite('public/images/logo-animated.svg')
 
-    assert.match(idleLogo, /--energy-speed/)
-    assert.match(animatedLogo, /ghost-1/)
-    assert.match(publicAnimatedLogo, /ghost-1/)
+    for (const logo of [idleLogo, animatedLogo, publicAnimatedLogo]) {
+      assert.match(logo, /linearGradient id="flame/)
+      assert.match(logo, /linearGradient id="innerFlame/)
+      assert.doesNotMatch(logo, /strum-path|ghost-1|harmonic-osc|energy-speed/)
+    }
   })
 })

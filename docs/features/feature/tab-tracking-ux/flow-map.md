@@ -15,4 +15,4 @@ Canonical flow map:
 - [Tracked Tab Hover Quick Actions](../../../architecture/flow-maps/tracked-tab-hover-quick-actions.md)
 - The tracked hover launcher now uses `src/content/ui/terminal-panel-bridge.ts` to open the terminal side panel and observe panel visibility.
 - The launcher hides only while the workspace side panel is open and reappears for both minimized and fully closed panel states.
-- The hover island logo now uses the shared idle-motion `icon.svg` by default and only swaps to `logo-animated.svg` for the stronger hover strum.
+- The hover island now keeps the restored Kaboom flame icon on hover and only changes button elevation, not the asset itself.
