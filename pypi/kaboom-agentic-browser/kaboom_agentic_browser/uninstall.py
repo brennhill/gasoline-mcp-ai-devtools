@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 from . import config
+from . import skills
 
 
 def _known_server_names():
@@ -201,5 +202,9 @@ def execute_uninstall(options=None):
             if verbose:
                 print(f"[DEBUG] Error uninstalling from {definition['name']}: {err}")
 
-    result["success"] = len(result["removed"]) > 0
+    result["skillCleanup"] = skills.cleanup_installed_skills(
+        dry_run=dry_run,
+        verbose=verbose,
+    )["summary"]
+    result["success"] = len(result["removed"]) > 0 or result["skillCleanup"]["removed"] > 0
     return result

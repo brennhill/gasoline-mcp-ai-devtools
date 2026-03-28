@@ -12,7 +12,13 @@ import shutil
 import sys
 
 MCP_SERVER_NAME = "gasoline-browser-devtools"
-LEGACY_MCP_SERVER_NAMES = ("gasoline-agentic-browser", "gasoline")
+LEGACY_MCP_SERVER_NAMES = (
+    "gasoline-agentic-browser",
+    "gasoline",
+    "strum-browser-devtools",
+    "strum-agentic-browser",
+    "strum",
+)
 
 
 class GasolineError(Exception):

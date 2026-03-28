@@ -33,15 +33,15 @@ def get_platform():
 
 
 def get_binary_path():
-    """Get the path to the platform-specific Gasoline binary."""
+    """Get the path to the platform-specific Kaboom binary."""
     platform_name = get_platform()
-    package_name = f"gasoline_agentic_browser_{platform_name.replace('-', '_')}"
+    package_name = f"kaboom_agentic_browser_{platform_name.replace('-', '_')}"
 
     try:
         import importlib.util  # pylint: disable=import-outside-toplevel
         spec = importlib.util.find_spec(package_name)
         if spec and spec.origin:
-            binary_name = "gasoline.exe" if sys.platform == "win32" else "gasoline"
+            binary_name = "kaboom.exe" if sys.platform == "win32" else "kaboom"
             binary_path = os.path.join(os.path.dirname(spec.origin), binary_name)
 
             if os.path.exists(binary_path):
@@ -52,22 +52,23 @@ def get_binary_path():
     # If we get here, the platform-specific package isn't installed
     raise RuntimeError(
         f"Platform-specific binary not found for {platform_name}.\n"
-        f"Try reinstalling: pip install --force-reinstall gasoline-agentic-browser\n"
-        f"Or install the binary directly: pip install gasoline-agentic-browser-{platform_name}"
+        f"Try reinstalling: pip install --force-reinstall kaboom-agentic-browser\n"
+        f"Or install the binary directly: pip install kaboom-agentic-browser-{platform_name}"
     )
 
 
 def show_help():
     """Show help message."""
-    print("""Gasoline Agentic Browser
+    print("""Kaboom Agentic Browser
 
-Usage: gasoline-agentic-browser [command] [options]
+Usage: kaboom-agentic-browser [command] [options]
 
 Commands:
   --config, -c          Show MCP configuration and detected clients
   --install, -i         Auto-install to all detected AI clients
+  --update              Clean reinstall Kaboom for detected AI clients
   --doctor              Run diagnostics on installed configs
-  --uninstall           Remove Gasoline from all clients
+  --uninstall           Remove Kaboom from all clients
   --help, -h            Show this help message
 
 Supported clients:
@@ -87,12 +88,13 @@ Options (with --uninstall):
   --verbose             Show detailed operation logs
 
 Examples:
-  gasoline-agentic-browser --install                # Install to all detected clients
-  gasoline-agentic-browser --install --dry-run      # Preview without changes
-  gasoline-agentic-browser --install --env DEBUG=1  # Install with env vars
-  gasoline-agentic-browser --config                 # Show config and detected clients
-  gasoline-agentic-browser --doctor                 # Check config health
-  gasoline-agentic-browser --uninstall              # Remove from all clients
+  kaboom-agentic-browser --install                # Install to all detected clients
+  kaboom-agentic-browser --update                 # Clean reinstall Kaboom
+  kaboom-agentic-browser --install --dry-run      # Preview without changes
+  kaboom-agentic-browser --install --env DEBUG=1  # Install with env vars
+  kaboom-agentic-browser --config                 # Show config and detected clients
+  kaboom-agentic-browser --doctor                 # Check config health
+  kaboom-agentic-browser --uninstall              # Remove from all clients
 """)
     sys.exit(0)
 
@@ -106,11 +108,11 @@ def show_config():
     try:
         binary_path = get_binary_path()
     except RuntimeError:
-        binary_path = "gasoline-agentic-browser"
+        binary_path = "kaboom-agentic-browser"
 
     mcp = install.generate_default_config(binary_path=binary_path)
 
-    print("📋 Gasoline Agentic Browser Configuration\n")
+    print("📋 Kaboom Agentic Browser Configuration\n")
     print("Add this to your AI assistant settings:\n")
     print(json.dumps(mcp, indent=2))
     print("\n📍 Supported Clients:\n")
@@ -130,7 +132,7 @@ def show_config():
                 print(f"⚪ {definition['name']} (not available on this platform)")
         print("")
 
-    print("Run: gasoline-agentic-browser --install   (auto-installs to all detected clients)")
+    print("Run: kaboom-agentic-browser --install   (auto-installs to all detected clients)")
     sys.exit(0)
 
 
@@ -158,7 +160,7 @@ def _print_install_success(result, dry_run):
         print("ℹ️  Dry run: No files will be written\n")
     print(output.install_result(result))
     if not dry_run:
-        print("✨ Gasoline Agentic Browser is ready to use!")
+        print("✨ Kaboom Agentic Browser is ready to use!")
     sys.exit(0)
 
 
@@ -181,7 +183,7 @@ def run_install(args):
     try:
         binary_path = get_binary_path()
     except RuntimeError:
-        binary_path = "gasoline-agentic-browser"
+        binary_path = "kaboom-agentic-browser"
 
     options = {
         "dryRun": "--dry-run" in args,
@@ -210,7 +212,7 @@ def run_install(args):
                             f"errors={summary['errors']}"
                         )
                     elif options["verbose"]:
-                        print(f"[gasoline-agentic-browser] skill install skipped: {skill_install['reason']}")
+                        print(f"[kaboom-agentic-browser] skill install skipped: {skill_install['reason']}")
 
                     for warning in skill_install.get("warnings", []):
                         print(f"⚠️  {warning}")
@@ -271,25 +273,47 @@ def run_uninstall(args):
         sys.exit(1)
 
 
+def run_update(args):
+    """Run clean reinstall update command."""
+    from . import output, uninstall  # pylint: disable=import-outside-toplevel
+
+    dry_run = "--dry-run" in args
+    verbose = "--verbose" in args
+
+    result = uninstall.execute_uninstall({
+        "dryRun": dry_run,
+        "verbose": verbose,
+    })
+    print(output.uninstall_result(result))
+    if dry_run:
+        print("")
+    run_install(args)
+
+
 def _cleanup_windows():
-    """Kill gasoline processes on Windows. Returns list of killed PIDs."""
+    """Kill Kaboom, STRUM, and Gasoline processes on Windows. Returns list of killed PIDs."""
     import re  # pylint: disable=import-outside-toplevel
 
     killed = []
-    result = subprocess.run(
-        ["tasklist", "/FI", "IMAGENAME eq gasoline*", "/FO", "CSV"],
-        capture_output=True, text=True, check=False,
-    )
-    if not result.stdout:
-        return killed
-
-    for line in result.stdout.split('\n')[1:]:
-        match = re.match(r'"gasoline[^"]*","(\d+)"', line)
-        if not match:
+    for image_pattern, regex in (
+        ("kaboom*", r'"kaboom[^"]*","(\d+)"'),
+        ("strum*", r'"strum[^"]*","(\d+)"'),
+        ("gasoline*", r'"gasoline[^"]*","(\d+)"'),
+    ):
+        result = subprocess.run(
+            ["tasklist", "/FI", f"IMAGENAME eq {image_pattern}", "/FO", "CSV"],
+            capture_output=True, text=True, check=False,
+        )
+        if not result.stdout:
             continue
-        pid = match.group(1)
-        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
-        killed.append(pid)
+
+        for line in result.stdout.split('\n')[1:]:
+            match = re.match(regex, line)
+            if not match:
+                continue
+            pid = match.group(1)
+            subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
+            killed.append(pid)
     return killed
 
 
@@ -308,7 +332,7 @@ def _kill_pids_on_port(port):
 
 
 def _cleanup_unix():
-    """Kill gasoline processes on Unix. Returns list of killed PIDs."""
+    """Kill Kaboom, STRUM, and Gasoline processes on Unix. Returns list of killed PIDs."""
     killed = []
     self_pid = os.getpid()
     parent_pid = os.getppid()
@@ -316,7 +340,17 @@ def _cleanup_unix():
     def _should_skip(cmdline):
         return "python" in cmdline or "node" in cmdline or "npm" in cmdline
 
-    for pattern in ["gasoline-agentic-browser", "gasoline-mcp", "browser-agent", "gasoline"]:
+    for pattern in [
+        "kaboom-agentic-browser",
+        "kaboom-mcp",
+        "kaboom",
+        "strum-agentic-browser",
+        "strum",
+        "gasoline-agentic-browser",
+        "gasoline-mcp",
+        "browser-agent",
+        "gasoline",
+    ]:
         result = subprocess.run(
             ["pgrep", "-af", pattern],
             capture_output=True,
@@ -378,24 +412,26 @@ def _candidate_home_dirs():
 
 
 def _pid_roots():
-    """Return all roots that may contain gasoline pid files."""
+    """Return all roots that may contain Kaboom, STRUM, and Gasoline pid files."""
     roots = []
     seen = set()
 
     for home in _candidate_home_dirs():
-        run_root = os.path.join(home, ".gasoline", "run")
-        key = _normalize_path_for_set(run_root)
-        if key not in seen:
-            seen.add(key)
-            roots.append(run_root)
+        for tool_dir in (".kaboom", ".strum", ".gasoline"):
+            run_root = os.path.join(home, tool_dir, "run")
+            key = _normalize_path_for_set(run_root)
+            if key not in seen:
+                seen.add(key)
+                roots.append(run_root)
 
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
     if xdg_state_home:
-        xdg_root = os.path.join(xdg_state_home, "gasoline", "run")
-        key = _normalize_path_for_set(xdg_root)
-        if key not in seen:
-            seen.add(key)
-            roots.append(xdg_root)
+        for tool_dir in ("kaboom", "strum", "gasoline"):
+            xdg_root = os.path.join(xdg_state_home, tool_dir, "run")
+            key = _normalize_path_for_set(xdg_root)
+            if key not in seen:
+                seen.add(key)
+                roots.append(xdg_root)
 
     return roots
 
@@ -435,15 +471,19 @@ def _cleanup_pid_files():
     roots = _pid_roots()
 
     # Glob-based: scan directories for any PID files matching our prefixes
-    _remove_matching_pid_files(roots, ("gasoline-", "browser-agent-"))
-    _remove_matching_pid_files(homes, (".gasoline-", ".browser-agent-"))
+    _remove_matching_pid_files(roots, ("kaboom-", "strum-", "gasoline-", "browser-agent-"))
+    _remove_matching_pid_files(homes, (".kaboom-", ".strum-", ".gasoline-", ".browser-agent-"))
 
     # Targeted: remove by known port (catches files even if dir listing failed)
     for port in KNOWN_PORTS:
         for root in roots:
+            _best_effort_remove(os.path.join(root, f"kaboom-{port}.pid"))
+            _best_effort_remove(os.path.join(root, f"strum-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"browser-agent-{port}.pid"))
         for home in homes:
+            _best_effort_remove(os.path.join(home, f".kaboom-{port}.pid"))
+            _best_effort_remove(os.path.join(home, f".strum-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".browser-agent-{port}.pid"))
 
@@ -457,7 +497,7 @@ def _cleanup_pid_files():
 
 
 def cleanup_old_processes():
-    """Kill all running gasoline processes to ensure clean upgrade."""
+    """Kill all running Kaboom, STRUM, and Gasoline processes to ensure clean upgrade."""
     try:
         if sys.platform == "win32":
             killed = _cleanup_windows()
@@ -483,7 +523,7 @@ def verify_version(binary_path, expected_version):
         if result.stdout:
             version = result.stdout.strip()
             if expected_version in version:
-                print(f"✓ Verified gasoline version: {version}")
+                print(f"✓ Verified kaboom version: {version}")
                 return True
             print(f"Warning: Expected version {expected_version}, got: {version}")
     except (OSError, subprocess.SubprocessError) as e:
@@ -498,6 +538,7 @@ def _dispatch_cli_command(args):
         "-c": show_config,
         "--install": lambda: run_install(args),
         "-i": lambda: run_install(args),
+        "--update": lambda: run_update(args),
         "--doctor": lambda: run_doctor(args),
         "--uninstall": lambda: run_uninstall(args),
         "--help": show_help,
@@ -511,7 +552,7 @@ def _dispatch_cli_command(args):
 
 
 def _run_binary(args):
-    """Execute the gasoline binary, passing through all arguments."""
+    """Execute the Kaboom binary, passing through all arguments."""
     cleanup_old_processes()
     binary = get_binary_path()
 
@@ -524,12 +565,12 @@ def _run_binary(args):
     except KeyboardInterrupt:
         sys.exit(130)
     except (OSError, subprocess.SubprocessError) as e:
-        print(f"Error running Gasoline: {e}", file=sys.stderr)
+        print(f"Error running Kaboom: {e}", file=sys.stderr)
         sys.exit(1)
 
 
 def run():
-    """Run the Gasoline Agentic Browser CLI or binary."""
+    """Run the Kaboom Agentic Browser CLI or binary."""
     args = sys.argv[1:]
     if not _dispatch_cli_command(args):
         _run_binary(args)

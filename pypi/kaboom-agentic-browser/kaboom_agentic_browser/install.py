@@ -10,8 +10,8 @@ import subprocess
 from . import config
 
 
-def generate_default_config(binary_path="gasoline-agentic-browser"):
-    """Generate default MCP config for gasoline."""
+def generate_default_config(binary_path="kaboom-agentic-browser"):
+    """Generate default MCP config for Kaboom."""
     return {
         "mcpServers": {
             config.MCP_SERVER_NAME: {
@@ -22,7 +22,7 @@ def generate_default_config(binary_path="gasoline-agentic-browser"):
     }
 
 
-def build_mcp_entry(env_vars=None, binary_path="gasoline-agentic-browser"):
+def build_mcp_entry(env_vars=None, binary_path="kaboom-agentic-browser"):
     """Build the MCP entry JSON string for CLI-based install."""
     entry = {"command": binary_path, "args": []}
     if env_vars:
@@ -34,7 +34,7 @@ def _install_via_cli(definition, options):
     """Install to a CLI-type client (e.g. Claude Code)."""
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
-    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
+    binary_path = options.get("binaryPath", "kaboom-agentic-browser")
     entry_json = build_mcp_entry(env_vars, binary_path=binary_path)
     cmd = definition["detectCommand"]
     args = list(definition["installArgs"])
@@ -85,7 +85,7 @@ def _install_via_file(definition, options):
     """Install to a file-type client (config file write)."""
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
-    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
+    binary_path = options.get("binaryPath", "kaboom-agentic-browser")
     cfg_path = config.get_client_config_path(definition)
 
     if not cfg_path:
@@ -141,7 +141,7 @@ def execute_install(options=None):
     dry_run = options.get("dryRun", False)
     env_vars = options.get("envVars", {})
     verbose = options.get("verbose", False)
-    binary_path = options.get("binaryPath", "gasoline-agentic-browser")
+    binary_path = options.get("binaryPath", "kaboom-agentic-browser")
 
     clients = (
         options["_clientOverrides"]
