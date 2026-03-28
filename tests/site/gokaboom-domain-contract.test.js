@@ -91,4 +91,22 @@ describe('gokaboom domain contracts', () => {
       )
     }
   })
+
+  test('site docs batch 3 removes legacy brand copy', () => {
+    const files = [
+      'gokaboom.dev/src/content/docs/features.md',
+      'gokaboom.dev/src/content/docs/privacy.md',
+      'gokaboom.dev/src/content/docs/security.md',
+      'gokaboom.dev/src/content/docs/troubleshooting.md'
+    ]
+
+    for (const file of files) {
+      const source = read(file)
+      assert.match(source, /Kaboom|kaboom-agentic-browser|gokaboom\.dev|kaboom-mcp/)
+      assert.doesNotMatch(
+        source,
+        /STRUM|Strum|Gasoline|cookwithgasoline|getstrum|gasoline-agentic-browser|gasoline-agentic-devtools|\.gasoline|~\/\.gasoline|~\/\.strum|STRUM_TELEMETRY|usestrum/
+      )
+    }
+  })
 })

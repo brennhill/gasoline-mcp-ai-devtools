@@ -1,12 +1,12 @@
 ---
 title: Security
-description: .gasoline's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
+description: "Kaboom's enterprise security features: automatic credential redaction, localhost-only binding, memory-safe buffers, rate limiting, zero dependencies, and minimal permissions."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['security']
 ---
 
-STRUM is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).
+Kaboom is designed for teams that can't afford data leaks. Every design decision prioritizes keeping your browser data on your hardware — no exceptions, no opt-outs, no "trust us" promises. Zero dependencies. Localhost only. Open source (AGPL-3.0).
 
 ## Automatic Credential Stripping
 
@@ -164,7 +164,7 @@ Host permissions use `<all_urls>` to enable capture and automation on any site t
 
 ## Log File Security
 
-- **Default location:** `~/.gasoline/logs/gasoline.jsonl`
+- **Default location:** `~/.kaboom/logs/kaboom.jsonl`
 - **File permissions:** `0600` (owner read/write only — no group or world access)
 - **Append-only:** Server only appends, never seeks or rewrites in-place
 - **Automatic rotation:** Oldest entries dropped when `--max-entries` exceeded (default 1000)
@@ -196,9 +196,9 @@ The entire codebase is open under **AGPL-3.0**:
 
 ```bash
 # Verify the binary yourself
-git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
-cd gasoline-agentic-browser-devtools-mcp && make build
-shasum -a 256 bin/gasoline-*
+git clone https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP.git
+cd Kaboom-Browser-AI-Devtools-MCP && make build
+shasum -a 256 bin/kaboom-*
 ```
 
 ## Data Flow Diagram
@@ -207,10 +207,10 @@ shasum -a 256 bin/gasoline-*
 
 ## Enterprise Deployment
 
-For teams evaluating.gasoline:
+For teams evaluating Kaboom:
 
 - **Data governance:** No data egress — all debugging data stays on the developer's machine, never transmitted externally
 - **Audit trail:** Open source, reproducible builds, no telemetry to verify absence of
 - **IT approval:** Single binary, no runtime deps, no outbound network, minimal permissions
-- **Onboarding:** `npx gasoline-mcp` — no accounts, no API keys, no license management
+- **Onboarding:** `npx kaboom-mcp` — no accounts, no API keys, no license management
 - **Offboarding:** Delete the binary and log file. No cloud state to clean up

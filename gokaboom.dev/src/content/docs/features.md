@@ -1,12 +1,12 @@
 ---
-title: What.gasoline Captures
-description: .gasoline captures console logs, network errors, exceptions, WebSocket events, network bodies, user actions, Web Vitals, and generates Playwright tests, PR summaries, and accessibility reports."
+title: What Kaboom Captures
+description: "Kaboom captures console logs, network errors, exceptions, WebSocket events, network bodies, user actions, Web Vitals, and generates Playwright tests, PR summaries, and accessibility reports."
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 normalized_tags: ['features']
 ---
 
-STRUM is an open-source MCP server that passively observes your browser, analyzes performance, and generates code — everything an AI coding assistant needs to diagnose and fix issues autonomously. Zero dependencies. Localhost only.
+Kaboom is an open-source MCP server that passively observes your browser, analyzes performance, and generates code — everything an AI coding assistant needs to diagnose and fix issues autonomously. Zero dependencies. Localhost only.
 
 ## Console Logs
 
@@ -88,7 +88,7 @@ Errors enriched with framework-aware context:
 
 - Component ancestry (React, Vue, Svelte)
 - Relevant app state snapshots
-- Custom annotations via `window.__gasoline.annotate()`
+- Custom annotations via `window.__kaboom.annotate()`
 
 ## Web Vitals
 
@@ -119,7 +119,7 @@ Auto-discovers your API structure from captured network traffic:
 
 - Groups requests by endpoint pattern (normalizes dynamic segments)
 - Infers request/response shapes from observed payloads
-- Exports as OpenAPI stub or compact gasoline format
+- Exports as OpenAPI stub or compact Kaboom format
 - Configurable minimum observation count before including an endpoint
 
 ## Session Checkpoints
