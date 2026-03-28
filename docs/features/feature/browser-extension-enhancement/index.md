@@ -9,12 +9,14 @@ code_paths:
   - src/popup.ts
   - src/popup/logo-motion.ts
   - src/options.ts
+  - src/background/version-check.ts
   - src/lib/daemon-http.ts
   - extension/popup.html
   - extension/popup.css
   - extension/options.html
 test_paths:
   - tests/extension/logo-motion.test.js
+  - tests/extension/version-check-branding.test.js
   - tests/extension/sync-client.test.js
 last_verified_version: 0.8.1
 last_verified_date: 2026-03-28
@@ -48,4 +50,5 @@ last_verified_date: 2026-03-28
 - `src/popup.ts` initializes popup-side UI wiring, including the shared Kaboom flame icon state.
 - `src/popup/logo-motion.ts` pins popup logo rendering to the shared flame asset without hover-only swaps.
 - `src/options.ts` uses shared daemon request/header helpers for health checks and active-codebase config sync.
+- `src/background/version-check.ts` keeps the update badge/title and release download target aligned with Kaboom branding and the canonical Kaboom repo slug.
 - `src/lib/daemon-http.ts` defines the canonical extension-client header and JSON request init contract.
