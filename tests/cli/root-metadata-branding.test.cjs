@@ -52,3 +52,18 @@ test('root contributor and agent docs publish only Kaboom naming', () => {
   assert.match(codex, /`kaboom-mcp` from PATH/)
   assert.match(codex, /gitnexus:\/\/repo\/kaboom\//)
 })
+
+test('extension shell pages publish only Kaboom branding', () => {
+  const files = [
+    'extension/sidepanel.html',
+    'extension/options.html',
+    'extension/mic-permission.html',
+    'extension/offscreen.html'
+  ]
+
+  for (const file of files) {
+    const source = read(file)
+    assert.match(source, /Kaboom/)
+    assert.doesNotMatch(source, /STRUM|Gasoline|Strum|getstrum|cookwithgasoline/)
+  }
+})

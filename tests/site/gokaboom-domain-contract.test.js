@@ -57,6 +57,18 @@ describe('gokaboom domain contracts', () => {
     assert.doesNotMatch(scriptSource, /cookwithgasoline\.com/)
   })
 
+  test('public seo metadata uses Kaboom and gokaboom.dev', () => {
+    const seoMeta = read('gokaboom.dev/public/seo-meta.html')
+    const robots = read('gokaboom.dev/public/robots.txt')
+
+    assert.match(seoMeta, /Kaboom/)
+    assert.match(seoMeta, /https:\/\/gokaboom\.dev\//)
+    assert.doesNotMatch(seoMeta, /STRUM|Strum|Gasoline|cookwithgasoline|getstrum/)
+
+    assert.match(robots, /Kaboom/)
+    assert.doesNotMatch(robots, /STRUM|Strum|Gasoline|cookwithgasoline|getstrum/)
+  })
+
   test('site install docs batch 1 uses Kaboom naming and gokaboom.dev contracts', () => {
     const files = [
       'gokaboom.dev/src/content/docs/agent-install-guide.md',
