@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-# Gasoline npm publish script
+# Kaboom npm publish script
 # Usage: ./publish.sh [--dry-run]
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -34,12 +34,12 @@ chmod +x npm/linux-arm64/bin/gasoline
 chmod +x npm/linux-x64/bin/gasoline
 
 # Ensure the main bin script is executable
-chmod +x npm/gasoline-mcp/bin/gasoline-mcp
+chmod +x npm/kaboom-agentic-browser/bin/kaboom-agentic-browser
 
 echo ""
 echo "Copying extension to main npm package..."
-mkdir -p npm/gasoline-mcp/extension
-cp -r "$ROOT_DIR/extension/"* npm/gasoline-mcp/extension/
+mkdir -p npm/kaboom-agentic-browser/extension
+cp -r "$ROOT_DIR/extension/"* npm/kaboom-agentic-browser/extension/
 
 echo ""
 echo "Publishing platform packages..."
@@ -53,7 +53,7 @@ PACKAGES=(
 )
 
 for pkg in "${PACKAGES[@]}"; do
-  echo "  Publishing @brennhill/gasoline-${pkg}..."
+  echo "  Publishing @brennhill/kaboom-agentic-browser-${pkg}..."
   cd "$SCRIPT_DIR/$pkg"
   if [ -n "$DRY_RUN" ]; then
     npm publish --access public "$DRY_RUN"
@@ -63,8 +63,8 @@ for pkg in "${PACKAGES[@]}"; do
 done
 
 echo ""
-echo "Publishing main package (gasoline-mcp)..."
-cd "$SCRIPT_DIR/gasoline-mcp"
+echo "Publishing main package (kaboom-agentic-browser)..."
+cd "$SCRIPT_DIR/kaboom-agentic-browser"
 if [ -n "$DRY_RUN" ]; then
   npm publish --access public "$DRY_RUN"
 else
@@ -75,4 +75,4 @@ echo ""
 echo "Done! All packages published."
 echo ""
 echo "Users can now run with:"
-echo "  npx gasoline-mcp"
+echo "  npx kaboom-agentic-browser"
