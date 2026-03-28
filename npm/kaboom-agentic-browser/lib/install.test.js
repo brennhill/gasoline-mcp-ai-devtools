@@ -42,13 +42,13 @@ test('npm wrapper readme and launcher copy use kaboom branding', () => {
 test('generateDefaultConfig returns valid MCP config', () => {
   const cfg = generateDefaultConfig();
   assert.ok(cfg.mcpServers);
-  assert.ok(cfg.mcpServers['gasoline-browser-devtools']);
-  assert.ok(cfg.mcpServers['gasoline-browser-devtools'].command.length > 0);
+  assert.ok(cfg.mcpServers['kaboom-browser-devtools']);
+  assert.ok(cfg.mcpServers['kaboom-browser-devtools'].command.length > 0);
 });
 
 test('generateDefaultConfig honors binaryCommand override', () => {
-  const cfg = generateDefaultConfig({ binaryCommand: '/tmp/gasoline-bin' });
-  assert.equal(cfg.mcpServers['gasoline-browser-devtools'].command, '/tmp/gasoline-bin');
+  const cfg = generateDefaultConfig({ binaryCommand: '/tmp/kaboom-bin' });
+  assert.equal(cfg.mcpServers['kaboom-browser-devtools'].command, '/tmp/kaboom-bin');
 });
 
 // --- buildMcpEntry ---
@@ -67,9 +67,9 @@ test('buildMcpEntry includes env vars when provided', () => {
 });
 
 test('buildMcpEntry honors binaryCommand override', () => {
-  const entry = buildMcpEntry({}, { binaryCommand: '/tmp/gasoline-bin' });
+  const entry = buildMcpEntry({}, { binaryCommand: '/tmp/kaboom-bin' });
   const parsed = JSON.parse(entry);
-  assert.equal(parsed.command, '/tmp/gasoline-bin');
+  assert.equal(parsed.command, '/tmp/kaboom-bin');
 });
 
 // --- installToClient: file-type ---
@@ -86,14 +86,14 @@ test('installToClient creates new config for file-type client', () => {
     detectDir: { all: tmp },
   };
 
-  const result = installToClient(def, { dryRun: false, envVars: {}, binaryCommand: '/tmp/gasoline-bin' });
+  const result = installToClient(def, { dryRun: false, envVars: {}, binaryCommand: '/tmp/kaboom-bin' });
   assert.equal(result.success, true);
   assert.equal(result.method, 'file');
   assert.equal(result.isNew, true);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcpServers['gasoline-browser-devtools']);
-  assert.equal(written.mcpServers['gasoline-browser-devtools'].command, '/tmp/gasoline-bin');
+  assert.ok(written.mcpServers['kaboom-browser-devtools']);
+  assert.equal(written.mcpServers['kaboom-browser-devtools'].command, '/tmp/kaboom-bin');
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -120,7 +120,7 @@ test('installToClient merges into existing file-type config', () => {
   assert.equal(result.isNew, false);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcpServers['gasoline-browser-devtools']);
+  assert.ok(written.mcpServers['kaboom-browser-devtools']);
   assert.ok(written.mcpServers.other, 'should preserve existing server');
 
   fs.rmSync(tmp, { recursive: true });
@@ -152,7 +152,7 @@ test('installToClient removes gasoline and strum MCP entries before writing kabo
   assert.equal(result.success, true);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcpServers['gasoline-browser-devtools']);
+  assert.ok(written.mcpServers['kaboom-browser-devtools']);
   assert.equal(written.mcpServers.gasoline, undefined);
   assert.equal(written.mcpServers['gasoline-agentic-browser'], undefined);
   assert.equal(written.mcpServers['strum-browser-devtools'], undefined);
@@ -195,7 +195,7 @@ test('installToClient adds env vars to file-type config', () => {
 
   installToClient(def, { dryRun: false, envVars: { DEBUG: '1' } });
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.equal(written.mcpServers['gasoline-browser-devtools'].env.DEBUG, '1');
+  assert.equal(written.mcpServers['kaboom-browser-devtools'].env.DEBUG, '1');
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -208,7 +208,7 @@ test('installToClient handles CLI type with dry-run', () => {
     name: 'Claude Code',
     type: 'cli',
     detectCommand: 'claude',
-    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline-browser-devtools'],
+    installArgs: ['mcp', 'add-json', '--scope', 'user', 'kaboom-browser-devtools'],
   };
 
   const result = installToClient(def, { dryRun: true, envVars: {} });
@@ -285,7 +285,7 @@ test('executeInstall with targetTool installs to specific client', () => {
   assert.equal(result.installed[0].name, 'Test Gemini');
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, '.gemini', 'settings.json'), 'utf8'));
-  assert.ok(written.mcpServers['gasoline-browser-devtools']);
+  assert.ok(written.mcpServers['kaboom-browser-devtools']);
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -307,7 +307,7 @@ test('executeInstall with invalid targetTool returns error', () => {
 
 test('installToClient creates OpenCode-format config with mcp key', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
-  const binaryCommand = '/tmp/gasoline-bin';
+  const binaryCommand = '/tmp/kaboom-bin';
 
   const def = {
     id: 'test-opencode',
@@ -329,10 +329,10 @@ test('installToClient creates OpenCode-format config with mcp key', () => {
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, 'opencode.json'), 'utf8'));
   assert.ok(written.mcp, 'should have mcp key');
-  assert.ok(written.mcp['gasoline-browser-devtools'], 'should have gasoline under mcp');
-  assert.equal(written.mcp['gasoline-browser-devtools'].type, 'local');
-  assert.deepEqual(written.mcp['gasoline-browser-devtools'].command, [binaryCommand]);
-  assert.equal(written.mcp['gasoline-browser-devtools'].enabled, true);
+  assert.ok(written.mcp['kaboom-browser-devtools'], 'should have kaboom under mcp');
+  assert.equal(written.mcp['kaboom-browser-devtools'].type, 'local');
+  assert.deepEqual(written.mcp['kaboom-browser-devtools'].command, [binaryCommand]);
+  assert.equal(written.mcp['kaboom-browser-devtools'].enabled, true);
   assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
 
   fs.rmSync(tmp, { recursive: true });
@@ -341,7 +341,7 @@ test('installToClient creates OpenCode-format config with mcp key', () => {
 test('installToClient merges OpenCode config preserving existing entries', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
   const cfgPath = path.join(tmp, 'opencode.json');
-  const binaryCommand = '/tmp/gasoline-bin';
+  const binaryCommand = '/tmp/kaboom-bin';
 
   // Pre-existing OpenCode config with another server
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -363,7 +363,7 @@ test('installToClient merges OpenCode config preserving existing entries', () =>
   assert.equal(result.success, true);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcp['gasoline-browser-devtools'], 'should have gasoline');
+  assert.ok(written.mcp['kaboom-browser-devtools'], 'should have kaboom');
   assert.ok(written.mcp.other, 'should preserve existing server');
   assert.equal(written.theme, 'dark', 'should preserve non-mcp keys');
 
@@ -374,7 +374,7 @@ test('installToClient merges OpenCode config preserving existing entries', () =>
 
 test('installToClient creates Zed-format config with context_servers key', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
-  const binaryCommand = '/tmp/gasoline-bin';
+  const binaryCommand = '/tmp/kaboom-bin';
 
   const def = {
     id: 'test-zed',
@@ -395,9 +395,9 @@ test('installToClient creates Zed-format config with context_servers key', () =>
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, 'settings.json'), 'utf8'));
   assert.ok(written.context_servers, 'should have context_servers key');
-  assert.ok(written.context_servers['gasoline-browser-devtools']);
-  assert.equal(written.context_servers['gasoline-browser-devtools'].source, 'custom');
-  assert.equal(written.context_servers['gasoline-browser-devtools'].command, binaryCommand);
+  assert.ok(written.context_servers['kaboom-browser-devtools']);
+  assert.equal(written.context_servers['kaboom-browser-devtools'].source, 'custom');
+  assert.equal(written.context_servers['kaboom-browser-devtools'].command, binaryCommand);
   assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
 
   fs.rmSync(tmp, { recursive: true });

@@ -15,6 +15,8 @@ test('npm wrapper no longer exposes gasoline launcher aliases', () => {
 
   assert.equal(packageJson.bin['gasoline-agentic-browser'], undefined);
   assert.equal(packageJson.bin['gasoline-hooks'], undefined);
+  assert.equal(packageJson.bin['kaboom-agentic-browser'], 'bin/kaboom-agentic-browser');
+  assert.equal(packageJson.bin['kaboom-hooks'], 'bin/kaboom-hooks');
   assert.match(hooksLauncher, /kaboom-hooks binary not found/);
   assert.match(hooksLauncher, /npm install -g kaboom-agentic-browser@latest/);
 });
@@ -27,7 +29,7 @@ test('uninstallFromClient removes kaboom, gasoline, and strum managed entries fr
 
   fs.writeFileSync(cfgPath, JSON.stringify({
     mcpServers: {
-      'gasoline-browser-devtools': { command: 'kaboom-agentic-browser', args: [] },
+      'kaboom-browser-devtools': { command: 'kaboom-agentic-browser', args: [] },
       gasoline: { command: 'gasoline-mcp', args: [] },
       'strum-browser-devtools': { command: 'strum-agentic-browser', args: [] },
       strum: { command: 'strum-agentic-browser', args: [] },
@@ -47,7 +49,7 @@ test('uninstallFromClient removes kaboom, gasoline, and strum managed entries fr
   assert.equal(result.status, 'removed');
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.equal(written.mcpServers['gasoline-browser-devtools'], undefined);
+  assert.equal(written.mcpServers['kaboom-browser-devtools'], undefined);
   assert.equal(written.mcpServers.gasoline, undefined);
   assert.equal(written.mcpServers['strum-browser-devtools'], undefined);
   assert.equal(written.mcpServers.strum, undefined);
@@ -148,7 +150,7 @@ test('uninstallFromClient handles CLI type with dry-run', () => {
     name: 'Claude Code',
     type: 'cli',
     detectCommand: 'claude',
-    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline-browser-devtools'],
+    removeArgs: ['mcp', 'remove', '--scope', 'user', 'kaboom-browser-devtools'],
   };
 
   const result = uninstallFromClient(def, { dryRun: true });

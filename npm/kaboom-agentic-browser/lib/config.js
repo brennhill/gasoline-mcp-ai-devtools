@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Config file utilities for Gasoline MCP CLI
+ * Config file utilities for the Kaboom MCP CLI
  * Handles reading, writing, validating, and merging MCP configurations
  */
 
@@ -19,16 +19,16 @@ const {
 } = require('./errors');
 
 const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
-const MCP_SERVER_NAME = 'gasoline-browser-devtools';
-const LEGACY_MCP_SERVER_NAMES = ['gasoline-agentic-browser', 'gasoline'];
+const MCP_SERVER_NAME = 'kaboom-browser-devtools';
+const LEGACY_MCP_SERVER_NAMES = ['gasoline-browser-devtools', 'gasoline-agentic-browser', 'gasoline'];
 
 /**
- * Resolve the managed gasoline binary path from the installed npm package layout.
+ * Resolve the managed Kaboom binary path from the installed npm package layout.
  * Falls back to command name when an absolute binary path cannot be discovered.
  * @returns {string} Absolute binary path when discoverable, else command name
  */
 function resolveManagedBinaryPath() {
-  const envOverride = process.env.GASOLINE_BINARY_PATH;
+  const envOverride = process.env.KABOOM_BINARY_PATH;
   if (envOverride && fs.existsSync(envOverride)) {
     return path.resolve(envOverride);
   }
@@ -38,14 +38,14 @@ function resolveManagedBinaryPath() {
   const platform = platformMap[process.platform];
   const arch = archMap[process.arch];
   if (!platform || !arch) {
-    return 'gasoline-agentic-browser';
+    return 'kaboom-agentic-browser';
   }
 
   const effectiveArch = platform === 'win32' ? 'x64' : arch;
   const ext = platform === 'win32' ? '.exe' : '';
   const platformKey = `${platform}-${effectiveArch}`;
-  const binaryName = `gasoline${ext}`;
-  const pkgName = `@brennhill/gasoline-agentic-browser-${platformKey}`;
+  const binaryName = `kaboom-agentic-browser${ext}`;
+  const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`;
   const packageRoot = path.resolve(__dirname, '..');
 
   const localDistCandidate = path.resolve(packageRoot, 'dist', `gasoline-${platformKey}${ext}`);
@@ -65,7 +65,7 @@ function resolveManagedBinaryPath() {
     }
   }
 
-  return 'gasoline-agentic-browser';
+  return 'kaboom-agentic-browser';
 }
 
 /**
@@ -137,7 +137,7 @@ const CLIENT_DEFINITIONS = [
     configPath: { all: '~/.config/opencode/opencode.json' },
     detectDir: { all: '~/.config/opencode' },
     configKey: 'mcp',
-    buildEntry: (envVars, binaryCommand = 'gasoline-agentic-browser') => {
+    buildEntry: (envVars, binaryCommand = 'kaboom-agentic-browser') => {
       const entry = { type: 'local', command: [binaryCommand], enabled: true };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;
@@ -165,7 +165,7 @@ const CLIENT_DEFINITIONS = [
     configPath: { all: '~/.config/zed/settings.json' },
     detectDir: { all: '~/.config/zed' },
     configKey: 'context_servers',
-    buildEntry: (envVars, binaryCommand = 'gasoline-agentic-browser') => {
+    buildEntry: (envVars, binaryCommand = 'kaboom-agentic-browser') => {
       const entry = { source: 'custom', command: binaryCommand, args: [] };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;

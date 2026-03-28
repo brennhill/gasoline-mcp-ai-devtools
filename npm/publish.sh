@@ -20,21 +20,38 @@ make build
 echo ""
 echo "Copying binaries to npm packages..."
 
+mkdir -p \
+  npm/darwin-arm64/bin \
+  npm/darwin-x64/bin \
+  npm/linux-arm64/bin \
+  npm/linux-x64/bin \
+  npm/win32-x64/bin
+
 # Copy binaries to platform packages
-cp dist/gasoline-darwin-arm64    npm/darwin-arm64/bin/gasoline
-cp dist/gasoline-darwin-x64      npm/darwin-x64/bin/gasoline
-cp dist/gasoline-linux-arm64     npm/linux-arm64/bin/gasoline
-cp dist/gasoline-linux-x64       npm/linux-x64/bin/gasoline
-cp dist/gasoline-win32-x64.exe   npm/win32-x64/bin/gasoline.exe
+cp dist/gasoline-darwin-arm64         npm/darwin-arm64/bin/kaboom-agentic-browser
+cp dist/gasoline-darwin-x64           npm/darwin-x64/bin/kaboom-agentic-browser
+cp dist/gasoline-linux-arm64          npm/linux-arm64/bin/kaboom-agentic-browser
+cp dist/gasoline-linux-x64            npm/linux-x64/bin/kaboom-agentic-browser
+cp dist/gasoline-win32-x64.exe        npm/win32-x64/bin/kaboom-agentic-browser.exe
+cp dist/gasoline-hooks-darwin-arm64   npm/darwin-arm64/bin/kaboom-hooks
+cp dist/gasoline-hooks-darwin-x64     npm/darwin-x64/bin/kaboom-hooks
+cp dist/gasoline-hooks-linux-arm64    npm/linux-arm64/bin/kaboom-hooks
+cp dist/gasoline-hooks-linux-x64      npm/linux-x64/bin/kaboom-hooks
+cp dist/gasoline-hooks-win32-x64.exe  npm/win32-x64/bin/kaboom-hooks.exe
 
 # Ensure binaries are executable
-chmod +x npm/darwin-arm64/bin/gasoline
-chmod +x npm/darwin-x64/bin/gasoline
-chmod +x npm/linux-arm64/bin/gasoline
-chmod +x npm/linux-x64/bin/gasoline
+chmod +x npm/darwin-arm64/bin/kaboom-agentic-browser
+chmod +x npm/darwin-x64/bin/kaboom-agentic-browser
+chmod +x npm/linux-arm64/bin/kaboom-agentic-browser
+chmod +x npm/linux-x64/bin/kaboom-agentic-browser
+chmod +x npm/darwin-arm64/bin/kaboom-hooks
+chmod +x npm/darwin-x64/bin/kaboom-hooks
+chmod +x npm/linux-arm64/bin/kaboom-hooks
+chmod +x npm/linux-x64/bin/kaboom-hooks
 
 # Ensure the main bin script is executable
 chmod +x npm/kaboom-agentic-browser/bin/kaboom-agentic-browser
+chmod +x npm/kaboom-agentic-browser/bin/kaboom-hooks
 
 echo ""
 echo "Copying extension to main npm package..."

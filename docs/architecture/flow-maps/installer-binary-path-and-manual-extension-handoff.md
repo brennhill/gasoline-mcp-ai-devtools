@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: installer-binary-path-and-manual-extension-handoff
 status: active
-last_reviewed: 2026-03-06
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
@@ -10,8 +10,8 @@ entrypoints:
   - scripts/install.ps1
   - scripts/build-crx.js
   - cmd/browser-agent/native_install.go:runNativeInstall
-  - npm/gasoline-agentic-browser/lib/install.js:executeInstall
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py:run_install
+  - npm/kaboom-agentic-browser/lib/install.js:executeInstall
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py:run_install
 code_paths:
   - Makefile
   - scripts/build-crx.js
@@ -19,15 +19,18 @@ code_paths:
   - scripts/install.ps1
   - server/scripts/install.js
   - cmd/browser-agent/native_install.go
-  - npm/gasoline-agentic-browser/lib/config.js
-  - npm/gasoline-agentic-browser/lib/install.js
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
+  - npm/kaboom-agentic-browser/lib/config.js
+  - npm/kaboom-agentic-browser/lib/install.js
+  - npm/kaboom-agentic-browser/lib/uninstall.js
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
   - cmd/browser-agent/native_install_test.go
-  - npm/gasoline-agentic-browser/lib/install.test.js
-  - pypi/gasoline-agentic-browser/tests/test_install.py
+  - npm/kaboom-agentic-browser/lib/config.test.js
+  - npm/kaboom-agentic-browser/lib/install.test.js
+  - npm/kaboom-agentic-browser/lib/uninstall.test.js
+  - pypi/kaboom-agentic-browser/tests/test_install.py
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
@@ -83,7 +86,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 
 ## State and Contracts
 
-1. MCP server key remains `gasoline-browser-devtools`.
+1. npm wrapper installs register MCP server key `kaboom-browser-devtools` and remove managed `gasoline-*` and `strum-*` entries during install/update/uninstall.
 2. File-based clients must receive deterministic command entries (`command` + `args`).
 3. Release extension artifacts must include the full extension tree so MV3 module imports resolve at runtime.
 4. Installer output must never imply that browser extension installation is fully automatic.
@@ -99,22 +102,27 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `scripts/install.ps1`
 - `server/scripts/install.js`
 - `cmd/browser-agent/native_install.go`
-- `npm/gasoline-agentic-browser/lib/config.js`
-- `npm/gasoline-agentic-browser/lib/install.js`
-- `pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py`
-- `pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py`
+- `npm/kaboom-agentic-browser/lib/config.js`
+- `npm/kaboom-agentic-browser/lib/install.js`
+- `npm/kaboom-agentic-browser/lib/uninstall.js`
+- `pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py`
+- `pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py`
 - `docs/mcp-install-guide.md`
 
 ## Test Paths
 
 - `cmd/browser-agent/native_install_test.go`
-- `npm/gasoline-agentic-browser/lib/install.test.js`
-- `pypi/gasoline-agentic-browser/tests/test_install.py`
+- `npm/kaboom-agentic-browser/lib/config.test.js`
+- `npm/kaboom-agentic-browser/lib/install.test.js`
+- `npm/kaboom-agentic-browser/lib/uninstall.test.js`
+- `pypi/kaboom-agentic-browser/tests/test_install.py`
 - `tests/extension/release-extension-zip.test.js`
 - `tests/extension/release-extension-crx-fallback.test.js`
 - `tests/extension/manifest-startup-integrity.test.js`
 - `tests/extension/install-script-extension-source.test.js`
 - `tests/cli/server-install-hardening.test.cjs`
+- `tests/cli/install.test.cjs`
+- `tests/cli/uninstall.test.cjs`
 
 ## Edit Guardrails
 

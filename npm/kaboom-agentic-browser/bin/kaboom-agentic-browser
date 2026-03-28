@@ -29,7 +29,7 @@ function detectPlatform() {
   // Windows x64 binary runs on arm64 via emulation
   const effectiveArch = (platform === 'win32') ? 'x64' : arch
   const platformKey = `${platform}-${effectiveArch}`
-  const binaryName = `gasoline${ext}`
+  const binaryName = `kaboom-agentic-browser${ext}`
   const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`
 
   return { platform, arch: effectiveArch, platformKey, binaryName, pkgName, ext }
@@ -55,7 +55,7 @@ function findBinary(info) {
   // 3. Global PATH — check version matches
   try {
     const { execSync } = require('child_process')
-    const which = process.platform === 'win32' ? 'where gasoline' : 'command -v gasoline'
+    const which = process.platform === 'win32' ? 'where kaboom-agentic-browser' : 'command -v kaboom-agentic-browser'
     const globalBin = execSync(which, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0]
     if (globalBin && fs.existsSync(globalBin)) {
       const verOut = execFileSync(globalBin, ['--version'], { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
@@ -72,7 +72,7 @@ function findBinary(info) {
 // --- CLI flag detection ---
 
 function isCliCommand(args) {
-  const cliFlags = new Set(['--config', '-c', '--install', '-i', '--doctor', '--uninstall', '--help', '-h', '--version', '-v'])
+  const cliFlags = new Set(['--config', '-c', '--install', '-i', '--update', '--doctor', '--uninstall', '--help', '-h', '--version', '-v'])
   return args.some(arg => cliFlags.has(arg))
 }
 

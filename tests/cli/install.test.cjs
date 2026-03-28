@@ -19,10 +19,19 @@ function readJson(relativePath) {
 test('platform npm packages use kaboom names and descriptions', () => {
   for (const [folder, packageName] of PLATFORM_PACKAGES) {
     const packageJson = readJson(`npm/${folder}/package.json`)
+    const suffix = folder === 'win32-x64' ? '.exe' : ''
     assert.equal(packageJson.name, packageName)
     assert.match(packageJson.description, /Kaboom/)
     assert.doesNotMatch(packageJson.description, /Gasoline/)
+    assert.deepEqual(packageJson.files, [`bin/kaboom-agentic-browser${suffix}`, `bin/kaboom-hooks${suffix}`])
   }
+})
+
+test('kaboom npm wrapper metadata points at the final repo slug', () => {
+  const packageJson = readJson('npm/kaboom-agentic-browser/package.json')
+
+  assert.equal(packageJson.repository.url, 'https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP')
+  assert.equal(packageJson.bugs.url, 'https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues')
 })
 
 test('npm skill installer cleanup targets kaboom-managed output and strum legacy artifacts', () => {

@@ -10,7 +10,7 @@
     "x64"
   ],
   "files": [
-    "bin/gasoline.exe",
-    "bin/gasoline-hooks.exe"
+    "bin/kaboom-agentic-browser.exe",
+    "bin/kaboom-hooks.exe"
   ]
 }

@@ -4,7 +4,7 @@ feature_id: feature-enhanced-cli-config
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-06
+last_reviewed: 2026-03-28
 code_paths:
   - Makefile
   - scripts/build-crx.js
@@ -12,24 +12,28 @@ code_paths:
   - scripts/install.sh
   - scripts/install.ps1
   - server/scripts/install.js
-  - npm/gasoline-agentic-browser/lib/config.js
-  - npm/gasoline-agentic-browser/lib/install.js
-  - npm/gasoline-agentic-browser/lib/cli.js
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
+  - npm/kaboom-agentic-browser/lib/config.js
+  - npm/kaboom-agentic-browser/lib/install.js
+  - npm/kaboom-agentic-browser/lib/uninstall.js
+  - npm/kaboom-agentic-browser/lib/cli.js
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
   - cmd/browser-agent/native_install_test.go
-  - npm/gasoline-agentic-browser/lib/install.test.js
-  - pypi/gasoline-agentic-browser/tests/test_install.py
-  - pypi/gasoline-mcp/tests/test_install.py
-  - pypi/gasoline-mcp/tests/test_skills.py
+  - npm/kaboom-agentic-browser/lib/config.test.js
+  - npm/kaboom-agentic-browser/lib/install.test.js
+  - npm/kaboom-agentic-browser/lib/uninstall.test.js
+  - pypi/kaboom-agentic-browser/tests/test_install.py
+  - pypi/kaboom-agentic-browser/tests/test_skills.py
   - tests/extension/install-script-extension-source.test.js
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
   - tests/cli/server-install-hardening.test.cjs
   - tests/cli/cli-integration.test.cjs
+  - tests/cli/install.test.cjs
+  - tests/cli/uninstall.test.cjs
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 ---
@@ -58,4 +62,5 @@ last_verified_date: 2026-03-06
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- npm wrapper installs now register `kaboom-browser-devtools` and remove legacy `gasoline-*` and `strum-*` MCP entries during install/update/uninstall.
+- Platform npm packages now ship `kaboom-agentic-browser` and `kaboom-hooks` binaries while preserving legacy cleanup for customer machines.

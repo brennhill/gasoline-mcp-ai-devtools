@@ -19,7 +19,7 @@ function detectPlatform() {
   const ext = process.platform === 'win32' ? '.exe' : ''
   const effectiveArch = (platform === 'win32') ? 'x64' : arch
   const platformKey = `${platform}-${effectiveArch}`
-  const binaryName = `gasoline-hooks${ext}`
+  const binaryName = `kaboom-hooks${ext}`
   const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`
 
   return { platformKey, binaryName, pkgName, ext }
@@ -44,7 +44,7 @@ function findHooksBinary(info) {
 
   // 3. Global PATH
   try {
-    const which = process.platform === 'win32' ? 'where gasoline-hooks' : 'command -v gasoline-hooks'
+    const which = process.platform === 'win32' ? 'where kaboom-hooks' : 'command -v kaboom-hooks'
     const globalBin = execSync(which, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0]
     if (globalBin && fs.existsSync(globalBin)) return globalBin
   } catch {

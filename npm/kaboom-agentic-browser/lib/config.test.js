@@ -224,7 +224,7 @@ test('opencode uses correct config path and configKey', () => {
 test('opencode buildEntry produces correct format', () => {
   const oc = CLIENT_DEFINITIONS.find(c => c.id === 'opencode');
   const entry = oc.buildEntry({});
-  assert.deepEqual(entry, { type: 'local', command: ['gasoline-agentic-browser'], enabled: true });
+  assert.deepEqual(entry, { type: 'local', command: ['kaboom-agentic-browser'], enabled: true });
 });
 
 test('opencode buildEntry includes env vars', () => {
@@ -232,7 +232,7 @@ test('opencode buildEntry includes env vars', () => {
   const entry = oc.buildEntry({ DEBUG: '1' });
   assert.equal(entry.env.DEBUG, '1');
   assert.equal(entry.type, 'local');
-  assert.deepEqual(entry.command, ['gasoline-agentic-browser']);
+  assert.deepEqual(entry.command, ['kaboom-agentic-browser']);
 });
 
 // --- Antigravity client ---
@@ -255,7 +255,7 @@ test('zed uses correct config path and configKey', () => {
 test('zed buildEntry produces correct format', () => {
   const zed = CLIENT_DEFINITIONS.find(c => c.id === 'zed');
   const entry = zed.buildEntry({});
-  assert.deepEqual(entry, { source: 'custom', command: 'gasoline-agentic-browser', args: [] });
+  assert.deepEqual(entry, { source: 'custom', command: 'kaboom-agentic-browser', args: [] });
 });
 
 // --- getClientByAlias ---
