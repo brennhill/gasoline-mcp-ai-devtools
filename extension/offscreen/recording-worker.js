@@ -269,7 +269,7 @@ function handleStopRecording(truncated = false) {
             const response = await fetch(`${serverUrl}/recordings/save`, {
                 method: 'POST',
                 headers: buildDaemonHeaders({
-                    clientName: 'gasoline-extension-offscreen',
+                    clientName: 'kaboom-extension-offscreen',
                     contentType: null
                 }),
                 body: formData

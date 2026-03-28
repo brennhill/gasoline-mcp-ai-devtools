@@ -110,12 +110,12 @@ export async function loadOptions() {
     // Set terminal AI command
     const aiCmdInput = document.getElementById('terminal-ai-command');
     if (aiCmdInput) {
-        aiCmdInput.value = result.gasoline_terminal_ai_command || 'claude';
+        aiCmdInput.value = result.kaboom_terminal_ai_command || 'claude';
     }
     // Set terminal dev root
     const devRootInput = document.getElementById('terminal-dev-root');
     if (devRootInput) {
-        devRootInput.value = result.gasoline_terminal_dev_root || '';
+        devRootInput.value = result.kaboom_terminal_dev_root || '';
     }
 }
 /**
@@ -288,7 +288,7 @@ export async function handleExportDebugLog() {
                 const blob = new Blob([response.log], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const filename = `gasoline-debug-${timestamp}.json`;
+                const filename = `kaboom-debug-${timestamp}.json`;
                 // Trigger download
                 const a = document.createElement('a');
                 a.href = url;

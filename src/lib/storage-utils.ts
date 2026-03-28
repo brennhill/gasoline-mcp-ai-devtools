@@ -174,7 +174,7 @@ function getStorageDiagnostics(): {
 /**
  * State version key for recovery detection
  */
-const STATE_VERSION_KEY = 'gasoline_state_version'
+const STATE_VERSION_KEY = 'kaboom_state_version'
 const CURRENT_STATE_VERSION = '1.0.0'
 
 /**

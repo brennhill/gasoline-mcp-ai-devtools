@@ -218,8 +218,8 @@ export function clearTrackedTab() {
 export async function resolveTerminalWorkspaceTarget(requestTabId) {
     const result = (await getLocals(TERMINAL_WORKSPACE_STORAGE_KEYS));
     const trackedTabId = typeof result.trackedTabId === 'number' ? result.trackedTabId : null;
-    const storedMainTabId = typeof result.gasoline_terminal_workspace_main_tab_id === 'number'
-        ? result.gasoline_terminal_workspace_main_tab_id
+    const storedMainTabId = typeof result.kaboom_terminal_workspace_main_tab_id === 'number'
+        ? result.kaboom_terminal_workspace_main_tab_id
         : null;
     const preferredMainTabId = trackedTabId ?? storedMainTabId ?? requestTabId ?? null;
     const requestTab = await safeGetTab(requestTabId);

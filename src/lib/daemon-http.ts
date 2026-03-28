@@ -19,7 +19,7 @@ export interface PostDaemonJSONOptions extends DaemonJSONRequestOptions {
   timeoutMs?: number
 }
 
-const DEFAULT_CLIENT_NAME = 'gasoline-extension'
+const DEFAULT_CLIENT_NAME = 'kaboom-extension'
 
 /**
  * Build standard daemon request headers with a shared extension client identifier.
@@ -37,14 +37,14 @@ export function buildDaemonHeaders(options: DaemonHeaderOptions = {}): Record<st
     : ''
 
   const headers: Record<string, string> = {
-    'X-Gasoline-Client': normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+    'X-Kaboom-Client': normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
   }
 
   if (contentType !== null) {
     headers['Content-Type'] = contentType
   }
   if (normalizedVersion) {
-    headers['X-Gasoline-Extension-Version'] = normalizedVersion
+    headers['X-Kaboom-Extension-Version'] = normalizedVersion
   }
 
   return {

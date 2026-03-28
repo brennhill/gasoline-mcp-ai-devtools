@@ -39,8 +39,8 @@ describe('getRequestHeaders', () => {
   test('returns standard headers with version', () => {
     const headers = getRequestHeaders()
     assert.strictEqual(headers['Content-Type'], 'application/json')
-    assert.ok(headers['X-Gasoline-Client'].startsWith('gasoline-extension/'))
-    assert.strictEqual(headers['X-Gasoline-Extension-Version'], MANIFEST_VERSION)
+    assert.ok(headers['X-Kaboom-Client'].startsWith('kaboom-extension/'))
+    assert.strictEqual(headers['X-Kaboom-Extension-Version'], MANIFEST_VERSION)
   })
 
   test('merges additional headers without overwriting', () => {

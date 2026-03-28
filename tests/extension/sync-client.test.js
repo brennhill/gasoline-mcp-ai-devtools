@@ -480,8 +480,8 @@ describe('SyncClient — Request building', () => {
 
     const opts = mockFetch.mock.calls[0].arguments[1]
     assert.strictEqual(opts.headers['Content-Type'], 'application/json')
-    assert.strictEqual(opts.headers['X-Gasoline-Client'], 'gasoline-extension/6.0.3')
-    assert.strictEqual(opts.headers['X-Gasoline-Extension-Version'], '6.0.3')
+    assert.strictEqual(opts.headers['X-Kaboom-Client'], 'kaboom-extension/6.0.3')
+    assert.strictEqual(opts.headers['X-Kaboom-Extension-Version'], '6.0.3')
   })
 
   test('should POST to /sync endpoint', async () => {

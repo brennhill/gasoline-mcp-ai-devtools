@@ -10,18 +10,18 @@
   }
 
   // extension/lib/daemon-http.js
-  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  var DEFAULT_CLIENT_NAME = "kaboom-extension";
   function buildDaemonHeaders(options = {}) {
     const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
     const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
     const headers = {
-      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+      "X-Kaboom-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
     };
     if (contentType !== null) {
       headers["Content-Type"] = contentType;
     }
     if (normalizedVersion) {
-      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+      headers["X-Kaboom-Extension-Version"] = normalizedVersion;
     }
     return {
       ...headers,
@@ -263,7 +263,7 @@
         const response = await fetch(`${serverUrl}/recordings/save`, {
           method: "POST",
           headers: buildDaemonHeaders({
-            clientName: "gasoline-extension-offscreen",
+            clientName: "kaboom-extension-offscreen",
             contentType: null
           }),
           body: formData
