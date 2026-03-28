@@ -169,7 +169,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
                 .sendMessage(returnTabId, {
                   type: 'gasoline_action_toast',
                   text: 'Mic permission granted',
-                  detail: 'Open Gasoline and click Record',
+                  detail: 'Open Kaboom and click Record',
                   state: 'success' as const,
                   duration_ms: scaleTimeout(8000)
                 })

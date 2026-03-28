@@ -17,6 +17,8 @@ code_paths:
   - src/lib/daemon-http.ts
 test_paths:
   - tests/extension/recording.test.js
+  - tests/extension/recording-listeners-target-tab.test.js
+  - tests/extension/recording-capture-branding.test.js
   - tests/extension/recording-shortcut-command.test.js
   - tests/extension/tracked-hover-launcher.test.js
 last_verified_version: 0.7.12
@@ -56,5 +58,7 @@ last_verified_date: 2026-03-05
   - `src/background/recording-utils.ts`
 - Core tests:
   - `tests/extension/recording.test.js`
+  - `tests/extension/recording-listeners-target-tab.test.js`
+  - `tests/extension/recording-capture-branding.test.js`
   - `tests/extension/recording-shortcut-command.test.js`
   - `tests/extension/tracked-hover-launcher.test.js`
