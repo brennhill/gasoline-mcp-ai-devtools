@@ -4,7 +4,7 @@ feature_id: feature-terminal
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-22
+last_reviewed: 2026-03-28
 code_paths:
   - cmd/browser-agent/terminal_handlers.go
   - cmd/browser-agent/terminal_server.go
@@ -28,7 +28,7 @@ test_paths:
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-22
+last_verified_date: 2026-03-28
 ---
 
 # Terminal
@@ -39,7 +39,7 @@ last_verified_date: 2026-03-22
 - Availability: macOS + Linux only (Windows currently reports terminal unavailable / `terminal_port: 0`)
 - Runs on a **dedicated HTTP server** at `main_port + 1` (e.g., 7891) for isolation
 - Singleton session shared across all tabs via `chrome.storage.session`
-- One STRUM work context maps to one Chrome tab group; the panel opens on a workspace tab, not whichever tab sent the request
+- One Kaboom work context maps to one Chrome tab group; the panel opens on a workspace tab, not whichever tab sent the request
 - Three UI states: **open**, **minimized**, **closed** - all persisted across page refreshes
 - Hover launcher keeps the page overlay for quick actions, but the terminal button now opens the side panel on the active workspace tab and hides the launcher only while the panel is open
 - Background must call `chrome.sidePanel.open()` in the original click gesture path; tab-specific `setOptions()` cannot be awaited first or Chrome may refuse to open the panel
@@ -104,7 +104,7 @@ If the terminal server dies at runtime:
 
 ## Workspace Model
 
-STRUM now treats the terminal side panel as belonging to one browser work context:
+Kaboom now treats the terminal side panel as belonging to one browser work context:
 
 - **One work context = one Chrome tab group**
 - **One main tab** anchors that workspace group

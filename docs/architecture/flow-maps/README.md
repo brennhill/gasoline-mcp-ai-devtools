@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-21
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-21
+last_verified_date: 2026-03-28
 ---
 
 # Flow Maps
@@ -59,7 +59,7 @@ Each flow map should include:
 - [Test Generation Dispatch](./test-generation-dispatch.md)
 - [Issue Reporting Submission](./issue-reporting-submission.md)
 - [Annotation Detail Enrichment](./annotation-detail-enrichment.md)
-- [Cookwithgasoline Content Publishing and Agent Markdown](./cookwithgasoline-content-publishing-and-agent-markdown.md)
+- [Gokaboom Content Publishing and Agent Markdown](./gokaboom-content-publishing-and-agent-markdown.md)
 - [Binary Watcher Upgrade Detection](./binary-watcher-upgrade-detection.md)
 - [Feature Doc Frontmatter and Freshness Gates](./feature-doc-frontmatter-freshness-gates.md)
 - [LLM Fast Verify Gate](./llm-fast-verify-gate.md)

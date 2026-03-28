@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: tracked-tab-hover-quick-actions
 status: active
-last_reviewed: 2026-03-22
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
@@ -23,14 +23,14 @@ test_paths:
   - tests/extension/logo-motion.test.js
   - tests/extension/popup-status.test.js
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-22
+last_verified_date: 2026-03-28
 ---
 
 # Tracked Tab Hover Quick Actions
 
 ## Scope
 
-Inject a floating quick-action launcher on tracked workspace tabs so users can start annotation draw mode, start or stop recording, take screenshots, and open the STRUM terminal side panel without reopening the popup. The launcher also exposes a settings gear with docs/repo links and a hide control.
+Inject a floating quick-action launcher on tracked workspace tabs so users can start annotation draw mode, start or stop recording, take screenshots, and open the Kaboom terminal side panel without reopening the popup. The launcher also exposes a settings gear with docs/repo links and a hide control.
 
 Related feature docs:
 
@@ -52,7 +52,7 @@ Related feature docs:
 6. `Rec` or `Stop` action sends `record_start` or `record_stop` to background recording listeners.
 7. `Shot` action sends `captureScreenshot` to background message handlers.
 8. Terminal action sends `open_terminal_panel`; the background worker resolves the workspace host tab and opens the panel there.
-9. `Hide Gasoline Devtool` sets `StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN=true` and unmounts the launcher.
+9. `Hide Kaboom Devtool` sets `StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN=true` and unmounts the launcher.
 10. On next popup open, `initPopup` sends `GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER` to active tab and rehydrates popup logo hover behavior through `src/popup/logo-motion.ts`.
 11. Content script clears persisted hidden state and remounts launcher if tracking is still enabled and the side panel is not open.
 12. Record button state stays aligned with `chrome.storage.local[gasoline_recording]` via initial read plus `chrome.storage.onChanged`.

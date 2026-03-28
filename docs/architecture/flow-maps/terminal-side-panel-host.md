@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map
 status: active
-last_reviewed: 2026-03-22
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-22
+last_verified_date: 2026-03-28
 ---
 
 # Terminal Side Panel Host and Launcher Coordination
@@ -31,9 +31,9 @@ The terminal server isolation flow remains a separate concern and is still docum
 
 1. The user clicks the terminal button in the tracked hover launcher.
 2. The content script sends `open_terminal_panel` to the background worker.
-3. The background worker resolves the STRUM work context:
+3. The background worker resolves the Kaboom work context:
    - if a workspace tab group already exists, it uses that group
-   - if the tracked tab is ungrouped, it creates a named STRUM tab group around it
+   - if the tracked tab is ungrouped, it creates a named Kaboom tab group around it
    - if the request came from outside the workspace group, it activates the main workspace tab and opens there
 4. The background worker calls `chrome.sidePanel.open()` immediately in that same user-gesture path for the resolved workspace host tab; any `setOptions()` work is best-effort and must not block the open call.
 5. The side panel page boots, validates or restores the singleton terminal session, and renders the terminal shell at full panel height.
@@ -82,7 +82,7 @@ The terminal server isolation flow remains a separate concern and is still docum
 
 - Do not reintroduce page-mounted xterm rendering for the terminal.
 - Keep launcher visibility controlled by `TERMINAL_UI_STATE`.
-- Keep panel open routing workspace-aware; do not reopen the panel on unrelated tabs outside the active STRUM workspace.
+- Keep panel open routing workspace-aware; do not reopen the panel on unrelated tabs outside the active Kaboom workspace.
 - Keep the terminal session singleton and local-first.
 - If an action-builder surface is added later, keep it separate from the terminal core instead of reintroducing mixed responsibilities into the terminal host.
 - Preserve the direct user-gesture side-panel open path from launcher click through background handler.

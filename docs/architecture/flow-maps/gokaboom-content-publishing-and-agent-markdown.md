@@ -1,20 +1,20 @@
 ---
 doc_type: flow_map
-flow_id: cookwithgasoline-content-publishing-and-agent-markdown
+flow_id: gokaboom-content-publishing-and-agent-markdown
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 feature_ids:
-  - feature-cookwithgasoline-content-platform
+  - feature-gokaboom-content-platform
 entrypoints:
-  - cookwithgasoline.com/src/content/docs/index.mdx
-  - cookwithgasoline.com/src/content/docs/downloads.md
-  - cookwithgasoline.com/src/pages/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
+  - gokaboom.dev/src/content/docs/index.mdx
+  - gokaboom.dev/src/content/docs/downloads.md
+  - gokaboom.dev/src/pages/[...slug].md.ts
+  - gokaboom.dev/src/pages/search-synonyms.json.ts
   - scripts/docs/check-docs-quality-gates.mjs
   - scripts/docs/check-site-content-ids.mjs
-  - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-gokaboom-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
@@ -25,50 +25,50 @@ entrypoints:
 code_paths:
   - package.json
   - .vale.ini
-  - .vale/styles/Gasoline/*.yml
-  - cookwithgasoline.com/astro.config.mjs
-  - cookwithgasoline.com/src/content.config.ts
-  - cookwithgasoline.com/public/images/integrations/*.svg
-  - cookwithgasoline.com/public/images/landing/*.svg
-  - cookwithgasoline.com/public/images/solutions-seo-signal.svg
-  - cookwithgasoline.com/src/content/docs/articles/*.md
-  - cookwithgasoline.com/src/content/docs/blog/*.md
-  - cookwithgasoline.com/src/content/docs/downloads.md
-  - cookwithgasoline.com/src/content/docs/guides/start-here-by-role.md
-  - cookwithgasoline.com/src/content/docs/guides/tracks/*.md
-  - cookwithgasoline.com/src/content/docs/guides/visual-evidence-standards.md
-  - cookwithgasoline.com/src/content/docs/guides/seo-analysis.md
-  - cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md
-  - cookwithgasoline.com/src/content/docs/index.mdx
-  - cookwithgasoline.com/src/content/docs/reference/index.md
-  - cookwithgasoline.com/src/content/docs/reference/examples/*.md
-  - cookwithgasoline.com/src/content/docs/reference/observe.md
-  - cookwithgasoline.com/src/content/docs/reference/analyze.md
-  - cookwithgasoline.com/src/content/docs/reference/interact.md
-  - cookwithgasoline.com/src/content/docs/reference/configure.md
-  - cookwithgasoline.com/src/content/docs/reference/generate.md
-  - cookwithgasoline.com/src/components/Footer.astro
-  - cookwithgasoline.com/src/components/Head.astro
-  - cookwithgasoline.com/src/components/Landing.astro
-  - cookwithgasoline.com/src/components/ThemeProvider.astro
-  - cookwithgasoline.com/src/components/ThemeSelect.astro
-  - cookwithgasoline.com/src/components/WorkflowLibrary.astro
-  - cookwithgasoline.com/src/components/ArticlesLibrary.astro
-  - cookwithgasoline.com/src/styles/custom.css
-  - cookwithgasoline.com/src/data/relatedGuides.ts
-  - cookwithgasoline.com/src/data/searchSynonyms.ts
-  - cookwithgasoline.com/src/data/workflows.ts
-  - cookwithgasoline.com/src/pages/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/index.md.ts
-  - cookwithgasoline.com/src/pages/llms.txt.ts
-  - cookwithgasoline.com/src/pages/llms-full.txt.ts
-  - cookwithgasoline.com/src/pages/markdown/[...slug].md.ts
-  - cookwithgasoline.com/src/pages/search-synonyms.json.ts
-  - cookwithgasoline.com/src/utils/markdownPaths.ts
-  - cookwithgasoline.com/src/utils/siteVersion.ts
+  - .vale/styles/*.yml
+  - gokaboom.dev/astro.config.mjs
+  - gokaboom.dev/src/content.config.ts
+  - gokaboom.dev/public/images/integrations/*.svg
+  - gokaboom.dev/public/images/landing/*.svg
+  - gokaboom.dev/public/images/solutions-seo-signal.svg
+  - gokaboom.dev/src/content/docs/articles/*.md
+  - gokaboom.dev/src/content/docs/blog/*.md
+  - gokaboom.dev/src/content/docs/downloads.md
+  - gokaboom.dev/src/content/docs/guides/start-here-by-role.md
+  - gokaboom.dev/src/content/docs/guides/tracks/*.md
+  - gokaboom.dev/src/content/docs/guides/visual-evidence-standards.md
+  - gokaboom.dev/src/content/docs/guides/seo-analysis.md
+  - gokaboom.dev/src/content/docs/guides/annotation-skill-terminal-workflow.md
+  - gokaboom.dev/src/content/docs/index.mdx
+  - gokaboom.dev/src/content/docs/reference/index.md
+  - gokaboom.dev/src/content/docs/reference/examples/*.md
+  - gokaboom.dev/src/content/docs/reference/observe.md
+  - gokaboom.dev/src/content/docs/reference/analyze.md
+  - gokaboom.dev/src/content/docs/reference/interact.md
+  - gokaboom.dev/src/content/docs/reference/configure.md
+  - gokaboom.dev/src/content/docs/reference/generate.md
+  - gokaboom.dev/src/components/Footer.astro
+  - gokaboom.dev/src/components/Head.astro
+  - gokaboom.dev/src/components/Landing.astro
+  - gokaboom.dev/src/components/ThemeProvider.astro
+  - gokaboom.dev/src/components/ThemeSelect.astro
+  - gokaboom.dev/src/components/WorkflowLibrary.astro
+  - gokaboom.dev/src/components/ArticlesLibrary.astro
+  - gokaboom.dev/src/styles/custom.css
+  - gokaboom.dev/src/data/relatedGuides.ts
+  - gokaboom.dev/src/data/searchSynonyms.ts
+  - gokaboom.dev/src/data/workflows.ts
+  - gokaboom.dev/src/pages/[...slug].md.ts
+  - gokaboom.dev/src/pages/index.md.ts
+  - gokaboom.dev/src/pages/llms.txt.ts
+  - gokaboom.dev/src/pages/llms-full.txt.ts
+  - gokaboom.dev/src/pages/markdown/[...slug].md.ts
+  - gokaboom.dev/src/pages/search-synonyms.json.ts
+  - gokaboom.dev/src/utils/markdownPaths.ts
+  - gokaboom.dev/src/utils/siteVersion.ts
   - scripts/docs/check-docs-quality-gates.mjs
   - scripts/docs/check-site-content-ids.mjs
-  - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-gokaboom-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
@@ -84,7 +84,7 @@ test_paths:
   - scripts/docs/check-docs-quality-gates.mjs
   - scripts/docs/check-site-content-ids.mjs
   - scripts/docs/check-feature-bundles.js
-  - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-gokaboom-content-contract.mjs
   - scripts/docs/check-content-style-contract.mjs
   - scripts/docs/check-downloads-page-contract.mjs
   - scripts/docs/check-landing-layout-contract.mjs
@@ -94,25 +94,25 @@ test_paths:
   - scripts/docs/normalize-site-tags.mjs
   - scripts/docs/sync-verification-metadata.mjs
   - scripts/docs/run-vale-on-changed.mjs
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-28
 ---
 
-# Cookwithgasoline Content Publishing and Agent Markdown Flow
+# Gokaboom Content Publishing and Agent Markdown Flow
 
 ## Scope
 
-Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, tightened hero typography, light-theme header title color tuning, reference-page readability fixes, schema-synced tool-mode coverage, section spacing/overflow hardening for full-page scroll rhythm, a branded integrations card with real agent logos + hover-widget concept preview, split solutions panels with in-panel Gasoline mock visuals + annotation callouts, large-screen left/right stagger offsets for solutions visual rhythm, light-only theme enforcement with no user theme dropdown, updated CTA/footer link treatments, and new task-specific guide pages for SEO and annotation-skill-terminal workflows), plus downloads-page requirement clarity (native binary runtime with optional npm/Node path) and expressive-code frame chrome cleanup driven by annotation feedback. Also covers workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
+Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, tightened hero typography, light-theme header title color tuning, reference-page readability fixes, schema-synced tool-mode coverage, section spacing/overflow hardening for full-page scroll rhythm, a branded integrations card with real agent logos + hover-widget concept preview, split solutions panels with in-panel Kaboom mock visuals + annotation callouts, large-screen left/right stagger offsets for solutions visual rhythm, light-only theme enforcement with no user theme dropdown, updated CTA/footer link treatments, and new task-specific guide pages for SEO and annotation-skill-terminal workflows), plus downloads-page requirement clarity (native binary runtime with optional npm/Node path) and expressive-code frame chrome cleanup driven by annotation feedback. Also covers workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
 
 ## Entrypoints
 
-- Splash homepage in `cookwithgasoline.com/src/content/docs/index.mdx`
-- Downloads page content in `cookwithgasoline.com/src/content/docs/downloads.md`
-- Agent markdown mirror route in `cookwithgasoline.com/src/pages/[...slug].md.ts`
-- Synonym dictionary endpoint in `cookwithgasoline.com/src/pages/search-synonyms.json.ts`
+- Splash homepage in `gokaboom.dev/src/content/docs/index.mdx`
+- Downloads page content in `gokaboom.dev/src/content/docs/downloads.md`
+- Agent markdown mirror route in `gokaboom.dev/src/pages/[...slug].md.ts`
+- Synonym dictionary endpoint in `gokaboom.dev/src/pages/search-synonyms.json.ts`
 - Phase-based docs quality gate in `scripts/docs/check-docs-quality-gates.mjs`
 - Duplicate content-ID guard in `scripts/docs/check-site-content-ids.mjs`
-- Content contract gate in `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- Content contract gate in `scripts/docs/check-gokaboom-content-contract.mjs`
 - Downloads page contract gate in `scripts/docs/check-downloads-page-contract.mjs`
 - Landing layout contract gate in `scripts/docs/check-landing-layout-contract.mjs`
 - Light-theme contract gate in `scripts/docs/check-light-theme-contract.mjs`
@@ -122,8 +122,8 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Primary Flow
 
-1. Starlight loads docs/blog/articles entries from `cookwithgasoline.com/src/content/docs/*` through `docsLoader()`.
-2. Site navigation and information architecture are defined in `cookwithgasoline.com/astro.config.mjs`.
+1. Starlight loads docs/blog/articles entries from `gokaboom.dev/src/content/docs/*` through `docsLoader()`.
+2. Site navigation and information architecture are defined in `gokaboom.dev/astro.config.mjs`.
 3. Splash pages render reusable components for marketing and discovery (`Landing.astro`, `WorkflowLibrary.astro`, `ArticlesLibrary.astro`).
 4. Every docs/blog/articles slug is mirrored as `/<slug>.md` via `src/pages/[...slug].md.ts`.
 5. `<link rel="alternate" type="text/markdown">` in `Head.astro` points each HTML route to its markdown mirror.
@@ -163,30 +163,30 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Code Paths
 
-- `cookwithgasoline.com/astro.config.mjs`
-- `cookwithgasoline.com/public/images/integrations/*.svg`
-- `cookwithgasoline.com/public/images/landing/*.svg`
-- `cookwithgasoline.com/src/components/Head.astro`
-- `cookwithgasoline.com/src/components/Footer.astro`
-- `cookwithgasoline.com/src/components/Landing.astro`
-- `cookwithgasoline.com/src/components/ThemeProvider.astro`
-- `cookwithgasoline.com/src/components/ThemeSelect.astro`
-- `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
-- `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
-- `cookwithgasoline.com/src/styles/custom.css`
-- `cookwithgasoline.com/src/content/docs/index.mdx`
-- `cookwithgasoline.com/src/content/docs/downloads.md`
-- `cookwithgasoline.com/src/content/docs/guides/seo-analysis.md`
-- `cookwithgasoline.com/src/content/docs/guides/annotation-skill-terminal-workflow.md`
-- `cookwithgasoline.com/src/data/workflows.ts`
-- `cookwithgasoline.com/src/pages/[...slug].md.ts`
-- `cookwithgasoline.com/src/pages/index.md.ts`
-- `cookwithgasoline.com/src/pages/llms.txt.ts`
-- `cookwithgasoline.com/src/pages/llms-full.txt.ts`
-- `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`
-- `cookwithgasoline.com/src/utils/markdownPaths.ts`
-- `cookwithgasoline.com/src/utils/siteVersion.ts`
-- `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `gokaboom.dev/astro.config.mjs`
+- `gokaboom.dev/public/images/integrations/*.svg`
+- `gokaboom.dev/public/images/landing/*.svg`
+- `gokaboom.dev/src/components/Head.astro`
+- `gokaboom.dev/src/components/Footer.astro`
+- `gokaboom.dev/src/components/Landing.astro`
+- `gokaboom.dev/src/components/ThemeProvider.astro`
+- `gokaboom.dev/src/components/ThemeSelect.astro`
+- `gokaboom.dev/src/components/WorkflowLibrary.astro`
+- `gokaboom.dev/src/components/ArticlesLibrary.astro`
+- `gokaboom.dev/src/styles/custom.css`
+- `gokaboom.dev/src/content/docs/index.mdx`
+- `gokaboom.dev/src/content/docs/downloads.md`
+- `gokaboom.dev/src/content/docs/guides/seo-analysis.md`
+- `gokaboom.dev/src/content/docs/guides/annotation-skill-terminal-workflow.md`
+- `gokaboom.dev/src/data/workflows.ts`
+- `gokaboom.dev/src/pages/[...slug].md.ts`
+- `gokaboom.dev/src/pages/index.md.ts`
+- `gokaboom.dev/src/pages/llms.txt.ts`
+- `gokaboom.dev/src/pages/llms-full.txt.ts`
+- `gokaboom.dev/src/pages/markdown/[...slug].md.ts`
+- `gokaboom.dev/src/utils/markdownPaths.ts`
+- `gokaboom.dev/src/utils/siteVersion.ts`
+- `scripts/docs/check-gokaboom-content-contract.mjs`
 - `scripts/docs/check-content-style-contract.mjs`
 - `scripts/docs/check-downloads-page-contract.mjs`
 - `scripts/docs/check-landing-layout-contract.mjs`
@@ -195,12 +195,12 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 - `scripts/docs/run-vale-on-changed.mjs`
 - `scripts/docs/check-feature-bundles.js`
 - `.vale.ini`
-- `.vale/styles/Gasoline/*.yml`
+- `.vale/styles/*.yml`
 - `.github/workflows/ci.yml`
 
 ## Test Paths
 
-- `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-gokaboom-content-contract.mjs`
 - `scripts/docs/check-content-style-contract.mjs`
 - `scripts/docs/check-downloads-page-contract.mjs`
 - `scripts/docs/check-landing-layout-contract.mjs`
