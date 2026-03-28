@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 const (
@@ -20,15 +23,20 @@ const (
 	terminateSignalSettleDelay = 100 * time.Millisecond
 )
 
+var forceCleanupCommandNames = []string{"kaboom", "strum", "gasoline"}
+
 // killUnixGasolineProcesses finds and kills gasoline processes on Unix systems
 // using lsof and pkill. Returns (killed, failedToKill) counts.
 func killUnixGasolineProcesses() (int, int) {
 	killed := 0
 	failedToKill := 0
 
-	cmd := exec.Command("lsof", "-c", "gasoline")
-	output, err := cmd.Output()
-	if err == nil {
+	for _, commandName := range forceCleanupCommandNames {
+		cmd := exec.Command("lsof", "-c", commandName)
+		output, err := cmd.Output()
+		if err != nil {
+			continue
+		}
 		lines := strings.Split(string(output), "\n")
 		for _, line := range lines {
 			fields := strings.Fields(line)
@@ -46,8 +54,10 @@ func killUnixGasolineProcesses() (int, int) {
 	}
 
 	// Also try pkill as fallback.
-	pkillCmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
-	_ = pkillCmd.Run()
+	for _, pattern := range []string{"kaboom.*--daemon", "strum.*--daemon", "gasoline.*--daemon"} {
+		pkillCmd := exec.Command("pkill", "-f", pattern)
+		_ = pkillCmd.Run()
+	}
 
 	return killed, failedToKill
 }
@@ -75,9 +85,12 @@ func terminateProcess(pid int) (int, int) {
 // killWindowsGasolineProcesses kills gasoline processes on Windows using taskkill.
 func killWindowsGasolineProcesses() int {
 	killed := 0
-	cmd := exec.Command("taskkill", "/IM", "gasoline.exe", "/F")
-	output, err := cmd.CombinedOutput()
-	if err == nil {
+	for _, imageName := range []string{"kaboom.exe", "strum.exe", "gasoline.exe"} {
+		cmd := exec.Command("taskkill", "/IM", imageName, "/F")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			continue
+		}
 		lines := strings.Split(string(output), "\n")
 		for _, line := range lines {
 			if strings.Contains(line, "SUCCESS") || strings.Contains(line, "terminated") {
@@ -96,19 +109,58 @@ func cleanupPIDFiles() {
 	}
 	for _, p := range ports {
 		removePIDFile(p)
+		removeLegacyPIDVariants(p)
 	}
 }
 
 func killUnixGasolineProcessesQuietly() (int, int) {
-	cmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
-	_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
+	for _, pattern := range []string{"kaboom.*--daemon", "strum.*--daemon", "gasoline.*--daemon"} {
+		cmd := exec.Command("pkill", "-f", pattern)
+		_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
+	}
 	return 0, 0
 }
 
 func killWindowsGasolineProcessesQuietly() int {
-	cmd := exec.Command("taskkill", "/IM", "gasoline.exe", "/F")
-	_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
+	for _, imageName := range []string{"kaboom.exe", "strum.exe", "gasoline.exe"} {
+		cmd := exec.Command("taskkill", "/IM", imageName, "/F")
+		_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
+	}
 	return 0
+}
+
+func removeLegacyPIDVariants(port int) {
+	homeDir, _ := os.UserHomeDir()
+	roots := []string{}
+	if stateRoot, err := state.RootDir(); err == nil && strings.TrimSpace(stateRoot) != "" {
+		roots = append(roots, filepath.Join(stateRoot, "run"))
+	}
+	if homeDir != "" {
+		roots = append(roots,
+			filepath.Join(homeDir, ".kaboom", "run"),
+			filepath.Join(homeDir, ".strum", "run"),
+			filepath.Join(homeDir, ".gasoline", "run"),
+		)
+	}
+	if xdgStateHome := strings.TrimSpace(os.Getenv("XDG_STATE_HOME")); xdgStateHome != "" {
+		roots = append(roots,
+			filepath.Join(xdgStateHome, "kaboom", "run"),
+			filepath.Join(xdgStateHome, "strum", "run"),
+			filepath.Join(xdgStateHome, "gasoline", "run"),
+		)
+	}
+
+	for _, root := range roots {
+		_ = os.Remove(filepath.Join(root, "kaboom-"+strconv.Itoa(port)+".pid"))
+		_ = os.Remove(filepath.Join(root, "strum-"+strconv.Itoa(port)+".pid"))
+		_ = os.Remove(filepath.Join(root, "gasoline-"+strconv.Itoa(port)+".pid"))
+	}
+	if homeDir == "" {
+		return
+	}
+	_ = os.Remove(filepath.Join(homeDir, ".kaboom-"+strconv.Itoa(port)+".pid"))
+	_ = os.Remove(filepath.Join(homeDir, ".strum-"+strconv.Itoa(port)+".pid"))
+	_ = os.Remove(filepath.Join(homeDir, ".gasoline-"+strconv.Itoa(port)+".pid"))
 }
 
 // printForceCleanupSummary outputs the results of the force cleanup operation.

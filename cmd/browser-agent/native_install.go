@@ -21,6 +21,9 @@ import (
 var installerLegacyServerKeys = []string{
 	"gasoline-agentic-browser",
 	"gasoline",
+	"strum-browser-devtools",
+	"strum-agentic-browser",
+	"strum",
 }
 
 func extensionInstallDir(home string) string {
