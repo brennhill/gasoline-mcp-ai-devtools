@@ -173,19 +173,19 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         }
         return false;
     }
-    // #369: Detect if an element is inside a navigation container (nav, header, role=navigation)
-    function isInsideNavigation(el) {
-        let node = el;
+    const LANDMARK_TAGS = new Set(['nav', 'header', 'footer', 'aside', 'main']);
+    const LANDMARK_ROLES = new Set(['navigation', 'banner', 'contentinfo', 'complementary', 'main']);
+    function findNearestLandmark(el) {
+        let node = el.parentElement;
         while (node && node !== document.documentElement) {
             const tag = node.tagName.toLowerCase();
-            if (tag === 'nav' || tag === 'header')
-                return true;
-            const role = node.getAttribute('role');
-            if (role === 'navigation' || role === 'banner')
-                return true;
+            const role = node.getAttribute('role') || undefined;
+            if (LANDMARK_TAGS.has(tag) || (role && LANDMARK_ROLES.has(role))) {
+                return { tag, role };
+            }
             node = node.parentElement;
         }
-        return false;
+        return undefined;
     }
     function extractBoundingBox(el) {
         const htmlEl = el;
@@ -350,8 +350,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             // #369: Apply filters early to maximize useful elements within the 100-cap
             if (visibleOnly && !visible)
                 continue;
-            if (excludeNav && isInsideNavigation(el))
-                continue;
+            if (excludeNav) {
+                const lm = findNearestLandmark(el);
+                if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner'))
+                    continue;
+            }
             const bbox = extractBoundingBox(el);
             // Use >>> selector for shadow DOM elements, regular selector otherwise
             const shadowSel = buildShadowSelector(el);
@@ -369,6 +372,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const ariaRole = el.getAttribute('role') || '';
             if (roleFilter && elementType !== roleFilter && ariaRole.toLowerCase() !== roleFilter)
                 continue;
+            const landmark = findNearestLandmark(el);
             rawEntries.push({
                 el,
                 htmlEl,
@@ -382,7 +386,9 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
                 placeholder: el.getAttribute('placeholder') || undefined,
                 bbox,
                 visible,
-                inOverlay: isInsideOverlay(el)
+                inOverlay: isInsideOverlay(el),
+                landmarkTag: landmark?.tag,
+                landmarkRole: landmark?.role
             });
             if (rawEntries.length >= 100)
                 break;
@@ -496,7 +502,9 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             bbox: entry.bbox,
             visible: entry.visible,
             ...(distPx !== undefined ? { distance_px: distPx } : {}),
-            ...(entry.inOverlay ? { in_overlay: true } : {})
+            ...(entry.inOverlay ? { in_overlay: true } : {}),
+            ...(entry.landmarkTag ? { landmark_tag: entry.landmarkTag } : {}),
+            ...(entry.landmarkRole ? { landmark_role: entry.landmarkRole } : {})
         });
     }
     // #369: Build filter metadata for the response

@@ -57,6 +57,7 @@ var observeHandlers = map[string]ModeHandler{
 	"recording_actions": method((*ToolHandler).toolGetRecordingActions),
 	"playback_results":  method((*ToolHandler).toolGetPlaybackResults),
 	"log_diff_report":   method((*ToolHandler).toolGetLogDiffReport),
+	"site_menus":        method((*ToolHandler).toolObserveSiteMenus),
 }
 
 // observeValueAliases maps shorthand names to their canonical observe mode names with deprecation metadata.
