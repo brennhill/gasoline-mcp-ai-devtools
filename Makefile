@@ -612,13 +612,13 @@ pypi-clean:
 	@find pypi -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@echo "PyPI artifacts cleaned"
 
-# --- Docs Site (cookwithgasoline.com) ---
+# --- Docs Site (gokaboom.dev) ---
 
 site-dev:
-	cd cookwithgasoline.com && npm run dev
+	cd gokaboom.dev && npm run dev
 
 site-build:
-	cd cookwithgasoline.com && npm run build
+	cd gokaboom.dev && npm run build
 
 site-preview:
-	cd cookwithgasoline.com && npm run preview
+	cd gokaboom.dev && npm run preview

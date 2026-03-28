@@ -4,11 +4,11 @@ import { execSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-const DOCS_PREFIX = 'cookwithgasoline.com/src/content/docs/';
+const DOCS_PREFIX = 'gokaboom.dev/src/content/docs/';
 const DOC_EXT_RE = /\.(md|mdx)$/;
 const VERSION_SURFACES = [
   {
-    path: 'cookwithgasoline.com/src/components/Footer.astro',
+    path: 'gokaboom.dev/src/components/Footer.astro',
     checks: [
       {
         pattern: /Docs version:\s*<strong>\{siteVersionLabel\}<\/strong>\s*\(\{siteReleaseChannel\}\)/,
@@ -18,7 +18,7 @@ const VERSION_SURFACES = [
     ]
   },
   {
-    path: 'cookwithgasoline.com/src/pages/index.md.ts',
+    path: 'gokaboom.dev/src/pages/index.md.ts',
     checks: [
       { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
       { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
@@ -26,7 +26,7 @@ const VERSION_SURFACES = [
     ]
   },
   {
-    path: 'cookwithgasoline.com/src/pages/[...slug].md.ts',
+    path: 'gokaboom.dev/src/pages/[...slug].md.ts',
     checks: [
       { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
       { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
@@ -34,7 +34,7 @@ const VERSION_SURFACES = [
     ]
   },
   {
-    path: 'cookwithgasoline.com/src/pages/markdown/[...slug].md.ts',
+    path: 'gokaboom.dev/src/pages/markdown/[...slug].md.ts',
     checks: [
       { pattern: /from '\.\.\/\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
       { pattern: /\\ndocs_version:\s*\$\{toYamlString\(siteVersionLabel\)\}/, message: 'Must set docs_version frontmatter key.' },
@@ -42,7 +42,7 @@ const VERSION_SURFACES = [
     ]
   },
   {
-    path: 'cookwithgasoline.com/src/pages/llms.txt.ts',
+    path: 'gokaboom.dev/src/pages/llms.txt.ts',
     checks: [
       { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
       {
@@ -52,7 +52,7 @@ const VERSION_SURFACES = [
     ]
   },
   {
-    path: 'cookwithgasoline.com/src/pages/llms-full.txt.ts',
+    path: 'gokaboom.dev/src/pages/llms-full.txt.ts',
     checks: [
       { pattern: /from '\.\.\/utils\/siteVersion'/, message: 'Must import siteVersion utility.' },
       {

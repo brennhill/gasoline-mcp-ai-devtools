@@ -20,7 +20,7 @@ export default [
       '.worktrees/',
       '.claude/',
       '.codex/',
-      'cookwithgasoline.com/dist/',
+      'gokaboom.dev/dist/',
       'pypi/**/build/',
       'pypi/**/dist/',
       'pypi/**/*.egg-info/',
@@ -213,7 +213,7 @@ export default [
 
   // Website demo/public snippets (run in browser)
   {
-    files: ['cookwithgasoline.com/public/**/*.js'],
+    files: ['gokaboom.dev/public/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -225,7 +225,7 @@ export default [
 
   // Website utility scripts (run in Node.js)
   {
-    files: ['cookwithgasoline.com/scripts/**/*.js', 'cookwithgasoline.com/scripts/**/*.mjs'],
+    files: ['gokaboom.dev/scripts/**/*.js', 'gokaboom.dev/scripts/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
