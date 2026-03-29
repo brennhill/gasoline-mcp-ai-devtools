@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline Extension Message Protocol
+# Kaboom Extension Message Protocol
 
-This document describes the Chrome runtime message types and handlers used internally by the Gasoline extension. This is for extension developers and integration partners.
+This document describes the Chrome runtime message types and handlers used internally by the Kaboom extension. This is for extension developers and integration partners.
 
 ## Message Architecture
 
@@ -428,11 +428,11 @@ Messages sent from background/popup to content scripts via `chrome.tabs.sendMess
 
 ### Control Messages
 
-#### `GASOLINE_PING`
+#### `KABOOM_PING`
 Health check to verify content script is loaded.
 
 ```typescript
-{ type: 'GASOLINE_PING' }
+{ type: 'KABOOM_PING' }
 ```
 
 **Handler:** `content/message-handlers.js`
@@ -462,17 +462,17 @@ Health check to verify content script is loaded.
 ```
 
 **Handler:** `content/message-handlers.js` → `handleToggleMessage()`
-**Processing:** Converted to `GASOLINE_SETTING` and posted to inject script
+**Processing:** Converted to `KABOOM_SETTING` and posted to inject script
 **Response:** (auto-forwarded)
 
 ### Query Messages (Content Script)
 
-#### `GASOLINE_EXECUTE_JS`
+#### `KABOOM_EXECUTE_JS`
 Execute arbitrary JavaScript in page context (MAIN world).
 
 ```typescript
 {
-  type: 'GASOLINE_EXECUTE_JS',
+  type: 'KABOOM_EXECUTE_JS',
   params: {
     script: string,
     timeout_ms?: number
@@ -496,12 +496,12 @@ Execute arbitrary JavaScript in page context (MAIN world).
 }
 ```
 
-#### `GASOLINE_EXECUTE_QUERY`
+#### `KABOOM_EXECUTE_QUERY`
 Execute query via async polling system.
 
 ```typescript
 {
-  type: 'GASOLINE_EXECUTE_QUERY',
+  type: 'KABOOM_EXECUTE_QUERY',
   queryId: string,
   params: string | object
 }
@@ -599,12 +599,12 @@ Get network performance entries.
 
 ### State Management Messages
 
-#### `GASOLINE_MANAGE_STATE`
+#### `KABOOM_MANAGE_STATE`
 Capture or restore browser state.
 
 ```typescript
 {
-  type: 'GASOLINE_MANAGE_STATE',
+  type: 'KABOOM_MANAGE_STATE',
   params: {
     action: 'capture' | 'restore',
     name?: string,
@@ -627,12 +627,12 @@ Capture or restore browser state.
 
 ### UI Messages
 
-#### `GASOLINE_ACTION_TOAST`
+#### `KABOOM_ACTION_TOAST`
 Display a visual action indicator (color-coded state).
 
 ```typescript
 {
-  type: 'GASOLINE_ACTION_TOAST',
+  type: 'KABOOM_ACTION_TOAST',
   text: string,
   detail?: string,
   state?: 'trying' | 'success' | 'warning' | 'error',
@@ -648,12 +648,12 @@ Display a visual action indicator (color-coded state).
 - `warning` — Amber (warning state)
 - `error` — Red (failed)
 
-#### `GASOLINE_SUBTITLE`
+#### `KABOOM_SUBTITLE`
 Display persistent narration text (like closed captions).
 
 ```typescript
 {
-  type: 'GASOLINE_SUBTITLE',
+  type: 'KABOOM_SUBTITLE',
   text: string
 }
 ```
@@ -664,12 +664,12 @@ Display persistent narration text (like closed captions).
 
 ### Highlight Messages
 
-#### `GASOLINE_HIGHLIGHT`
+#### `KABOOM_HIGHLIGHT`
 Highlight an element by selector.
 
 ```typescript
 {
-  type: 'GASOLINE_HIGHLIGHT',
+  type: 'KABOOM_HIGHLIGHT',
   params: {
     selector: string,
     duration_ms?: number
@@ -696,7 +696,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_SETTING',
+  type: 'KABOOM_SETTING',
   setting: string,
   enabled?: boolean,
   mode?: string,
@@ -706,7 +706,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_EXECUTE_JS',
+  type: 'KABOOM_EXECUTE_JS',
   requestId: number | string,
   script: string,
   timeoutMs?: number
@@ -715,7 +715,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_A11Y_QUERY',
+  type: 'KABOOM_A11Y_QUERY',
   requestId: number | string,
   params?: object
 }
@@ -723,7 +723,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_DOM_QUERY',
+  type: 'KABOOM_DOM_QUERY',
   requestId: number | string,
   params?: object
 }
@@ -731,14 +731,14 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_GET_WATERFALL',
+  type: 'KABOOM_GET_WATERFALL',
   requestId: number | string
 }
 ```
 
 ```typescript
 {
-  type: 'GASOLINE_HIGHLIGHT_REQUEST',
+  type: 'KABOOM_HIGHLIGHT_REQUEST',
   requestId: number | string,
   params: { selector: string, duration_ms?: number }
 }
@@ -746,7 +746,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_STATE_COMMAND',
+  type: 'KABOOM_STATE_COMMAND',
   messageId: string,
   action: 'capture' | 'restore',
   state?: object,
@@ -758,7 +758,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_SETTING',
+  type: 'KABOOM_SETTING',
   setting: string,
   enabled?: boolean
 }
@@ -766,7 +766,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_EXECUTE_JS_RESULT',
+  type: 'KABOOM_EXECUTE_JS_RESULT',
   requestId: number | string,
   result: { success: boolean, result?: any, error?: string }
 }
@@ -774,7 +774,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+  type: 'KABOOM_A11Y_QUERY_RESPONSE',
   requestId: number | string,
   result: { violations?: any[], error?: string }
 }
@@ -782,7 +782,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_DOM_QUERY_RESPONSE',
+  type: 'KABOOM_DOM_QUERY_RESPONSE',
   requestId: number | string,
   result: { matches?: any[], error?: string }
 }
@@ -790,7 +790,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_STATE_RESPONSE',
+  type: 'KABOOM_STATE_RESPONSE',
   messageId: string,
   result: { success?: boolean, error?: string }
 }
@@ -798,7 +798,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_WATERFALL_RESPONSE',
+  type: 'KABOOM_WATERFALL_RESPONSE',
   requestId: number | string,
   entries: any[],
   pageURL?: string
@@ -807,7 +807,7 @@ The extension also uses `window.postMessage()` for MAIN-world page context commu
 
 ```typescript
 {
-  type: 'GASOLINE_HIGHLIGHT_RESPONSE',
+  type: 'KABOOM_HIGHLIGHT_RESPONSE',
   requestId: number | string,
   success: boolean,
   bounds?: { x, y, width, height }
@@ -902,7 +902,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ```javascript
 chrome.tabs.sendMessage(tabId, {
-  type: 'GASOLINE_EXECUTE_JS',
+  type: 'KABOOM_EXECUTE_JS',
   params: {
     script: 'document.title',
     timeout_ms: 5000

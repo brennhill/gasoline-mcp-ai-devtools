@@ -11,7 +11,8 @@ import { errorMessage } from '../lib/error-utils.js';
 import { delay } from '../lib/timeout-utils.js';
 import { buildRecordingToastLabel } from './recording-utils.js';
 import { setLocal, removeLocal } from '../lib/storage-utils.js';
-const LOG = '[Gasoline REC]';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
+const LOG = KABOOM_RECORDING_LOG_PREFIX;
 const AWAITING_APPROVAL_BADGE_TEXT = '?';
 const AWAITING_APPROVAL_BADGE_COLOR = '#d29922';
 let awaitingApprovalBadgeInterval = null;
@@ -102,11 +103,11 @@ function getStreamId(tabId) {
 }
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to open the Gasoline popup and approve.
+ * Shows a toast prompting the user to open the Kaboom popup and approve.
  */
 export async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
     chrome.tabs.update(tab.id, { active: true });
-    sendTabToast(tab.id, `\u2191 Open Gasoline Popup`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
+    sendTabToast(tab.id, `\u2191 Open Kaboom`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
     await setLocal(StorageKey.PENDING_RECORDING, { name, fps, audio, tabId: tab.id, url: tab.url });
     startAwaitingApprovalBadge();
     let gestureResult;
@@ -122,16 +123,16 @@ export async function requestRecordingGesture(tab, name, fps, audio, mediaType) 
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${mediaType} recording request was denied in the Gasoline popup.`
+            error: `RECORD_START: ${mediaType} recording request was denied in the Kaboom popup.`
         };
     }
     if (gestureResult !== 'granted') {
         console.log(LOG, 'GESTURE_TIMEOUT: User did not approve recording request within 30s');
-        sendTabToast(tab.id, `\u2191 Open Gasoline Popup`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(8000));
+        sendTabToast(tab.id, `\u2191 Open Kaboom`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(8000));
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Gasoline popup, click Approve, then try again.`
+            error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Kaboom popup, click Approve, then try again.`
         };
     }
     sendTabToast(tab.id, buildRecordingToastLabel(tab.url), '', 'success', scaleTimeout(2000));

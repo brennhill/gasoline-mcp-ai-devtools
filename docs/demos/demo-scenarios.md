@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline — Demo Scenarios
+# Kaboom Demo Scenarios
 
-Real-world scenarios where Gasoline dramatically accelerates product development.
+Real-world scenarios where Kaboom dramatically accelerates product development.
 
 ---
 
@@ -14,9 +14,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** User reports checkout is broken. Developer can't reproduce locally.
 
-**Without Gasoline:** Open DevTools, try to reproduce, check network tab manually, grep server logs, add console.logs, redeploy, repeat. 30-60 minutes.
+**Without Kaboom:** Open DevTools, try to reproduce, check network tab manually, grep server logs, add console.logs, redeploy, repeat. 30-60 minutes.
 
-**With Gasoline:**
+**With Kaboom:**
 1. AI navigates to checkout, fills the form, submits
 2. `observe(error_bundles, window_seconds: 5)` → shows the 500 error + the POST body that caused it + the console warning about a null field
 3. AI reads the API response body, identifies the missing validation
@@ -31,9 +31,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Compliance deadline approaching, dozens of WCAG violations across the app.
 
-**Without Gasoline:** Hire an a11y consultant, run axe manually page-by-page, create tickets, assign to developers, wait for fixes, re-audit. Weeks.
+**Without Kaboom:** Hire an a11y consultant, run axe manually page-by-page, create tickets, assign to developers, wait for fixes, re-audit. Weeks.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `analyze(accessibility, tags: ["wcag2aa"])` → structured violations with selectors, rule IDs, impact levels
 2. AI iterates: reads violation → fixes code → re-scans → confirms fix
 3. Each cycle is ~30 seconds
@@ -47,9 +47,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** New release deployed, users reporting issues but nothing obvious in logs.
 
-**Without Gasoline:** Compare git diffs, check monitoring dashboards, try to reproduce user reports, deploy hotfix blindly. Hours.
+**Without Kaboom:** Compare git diffs, check monitoring dashboards, try to reproduce user reports, deploy hotfix blindly. Hours.
 
-**With Gasoline:**
+**With Kaboom:**
 1. Record the happy path before deploy
 2. Deploy the change
 3. Replay the flow, `observe(log_diff_report)` shows: 2 new errors, 1 missing API call, 3 changed response shapes
@@ -64,9 +64,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Pre-launch security review needed. No dedicated security team.
 
-**Without Gasoline:** Hire a pentester or manually check OWASP checklist. Days to weeks. Expensive.
+**Without Kaboom:** Hire a pentester or manually check OWASP checklist. Days to weeks. Expensive.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `analyze(security_audit)` → missing HSTS, insecure cookies, no CSP
 2. `analyze(third_party_audit)` → 6 unknown third-party domains loading scripts
 3. `generate(csp, mode: "strict")` → ready-to-deploy CSP header
@@ -82,9 +82,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Greenfield project or legacy app with zero test coverage. Management wants tests.
 
-**Without Gasoline:** Manually write test boilerplate for each page/flow. Days of tedious work. Tests often miss edge cases because they're written from spec, not behavior.
+**Without Kaboom:** Manually write test boilerplate for each page/flow. Days of tedious work. Tests often miss edge cases because they're written from spec, not behavior.
 
-**With Gasoline:**
+**With Kaboom:**
 1. AI navigates every user flow (signup → login → dashboard → settings → checkout)
 2. At each step: interacts, observes real responses, captures real error messages
 3. Generates Playwright tests grounded in actual behavior
@@ -99,9 +99,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Users complaining about performance. PageSpeed score is 42.
 
-**Without Gasoline:** Open Lighthouse in DevTools, read the wall of suggestions, guess which matters most, try fixes one at a time, re-run Lighthouse each time. Hours.
+**Without Kaboom:** Open Lighthouse in DevTools, read the wall of suggestions, guess which matters most, try fixes one at a time, re-run Lighthouse each time. Hours.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `observe(vitals)` → LCP: 4.2s (should be <2.5s), CLS: 0.31 (should be <0.1)
 2. `observe(network_waterfall)` → 3MB uncompressed JS, render-blocking script in `<head>`
 3. `observe(timeline)` → image carousel loading 12 full-res images on mount, font swap at 1.2s causing layout shift
@@ -117,10 +117,10 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Console has 200+ errors. Most are from analytics scripts, browser extensions, and React dev warnings. Real bugs are buried.
 
-**Without Gasoline:** Manually scroll through console, mentally filter noise, miss the real error among the spam.
+**Without Kaboom:** Manually scroll through console, mentally filter noise, miss the real error among the spam.
 
-**With Gasoline:**
-1. `configure(noise_rule, noise_action: "auto_detect")` → Gasoline analyzes the buffer, suggests 8 noise rules with >90% confidence
+**With Kaboom:**
+1. `configure(noise_rule, noise_action: "auto_detect")` → Kaboom analyzes the buffer, suggests 8 noise rules with >90% confidence
 2. AI applies the rules
 3. `observe(errors)` → 3 real errors remain, all actionable
 4. **Signal-to-noise ratio goes from 1.5% to 100%**
@@ -133,9 +133,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** No QA team. Developers ship and hope for the best.
 
-**Without Gasoline:** Manual testing. Click around, check for obvious errors, miss edge cases. Ship with fingers crossed.
+**Without Kaboom:** Manual testing. Click around, check for obvious errors, miss edge cases. Ship with fingers crossed.
 
-**With Gasoline:**
+**With Kaboom:**
 1. AI autonomously navigates every page via interact (click, type, navigate)
 2. At each step, observes errors, network failures, and vitals
 3. Tests edge cases: empty inputs, zero quantities, missing products, rapid clicks
@@ -150,9 +150,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Marketing needs a product demo video. PM wants a walkthrough for stakeholders.
 
-**Without Gasoline:** Screen record manually, write a script, re-record when you mess up. Edit in post.
+**Without Kaboom:** Screen record manually, write a script, re-record when you mess up. Edit in post.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `interact(record_start, name: "product_demo", fps: 30)` → recording starts
 2. AI navigates the happy path with subtitle narration at each step
 3. `interact(highlight)` on key features as AI explains them via subtitle
@@ -167,9 +167,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Marketing updated the site copy. Some internal links now point to pages that were renamed or removed.
 
-**Without Gasoline:** Click every link manually. Miss the ones in the footer. Ship with broken links.
+**Without Kaboom:** Click every link manually. Miss the ones in the footer. Ship with broken links.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `analyze(link_health)` on every page → finds all 404s, redirect loops, timeout links
 2. AI compiles a report: 3 broken links, 1 redirect loop, 2 slow external resources
 3. AI fixes the broken hrefs in the source code
@@ -184,9 +184,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Team agreed on performance budgets (LCP < 2.5s, CLS < 0.1) but nobody enforces them.
 
-**Without Gasoline:** Run Lighthouse manually before each PR. Forget half the time. Budgets drift.
+**Without Kaboom:** Run Lighthouse manually before each PR. Forget half the time. Budgets drift.
 
-**With Gasoline:**
+**With Kaboom:**
 1. `observe(vitals)` → structured metrics with pass/fail against targets
 2. `observe(network_waterfall)` → identifies the specific resources causing slowness
 3. Test boundaries isolate each test scenario's performance data
@@ -201,9 +201,9 @@ Real-world scenarios where Gasoline dramatically accelerates product development
 
 **Context:** Reviewing a PR that changes the checkout flow. Hard to verify visually from code alone.
 
-**Without Gasoline:** Check out the branch, run the app, click through manually, try to remember what changed.
+**Without Kaboom:** Check out the branch, run the app, click through manually, try to remember what changed.
 
-**With Gasoline:**
+**With Kaboom:**
 1. AI navigates the changed flow via interact
 2. Uses highlight to visually mark the affected elements
 3. Subtitle narrates what each change does as the AI tests it

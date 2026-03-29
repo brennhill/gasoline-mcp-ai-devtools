@@ -49,7 +49,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Basic tabId Inclusion
 1. Setup:
-   - Start Gasoline server: `./dist/gasoline`
+   - Start Kaboom server: `./dist/kaboom`
    - Load Chrome with extension
    - Open Tab A, navigate to <https://example.com>
    - Note Tab A's ID (visible in chrome://extensions developer mode console)

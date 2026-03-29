@@ -3,7 +3,7 @@
  */
 
 /**
- * @fileoverview Shared constants for the Gasoline extension capture modules.
+ * @fileoverview Shared constants for the Kaboom extension capture modules.
  */
 import { scaleTimeout } from './timeouts.js'
 
@@ -147,7 +147,7 @@ const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(S
 // =============================================================================
 
 export const RuntimeMessageName = {
-  SHOW_TRACKED_HOVER_LAUNCHER: 'gasoline_show_tracked_hover_launcher'
+  SHOW_TRACKED_HOVER_LAUNCHER: 'kaboom_show_tracked_hover_launcher'
 } as const
 
 /**
@@ -196,20 +196,20 @@ export const StorageKey = {
   NETWORK_BODY_CAPTURE_ENABLED: 'networkBodyCaptureEnabled',
   ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
   SUBTITLES_ENABLED: 'subtitlesEnabled',
-  ACTION_RECORDING: 'gasoline_action_recording',
-  RECORDING: 'gasoline_recording',
-  TRACKED_HOVER_LAUNCHER_HIDDEN: 'gasoline_tracked_hover_launcher_hidden',
-  PENDING_RECORDING: 'gasoline_pending_recording',
-  PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
-  MIC_GRANTED: 'gasoline_mic_granted',
-  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
-  TERMINAL_CONFIG: 'gasoline_terminal_config',
-  TERMINAL_AI_COMMAND: 'gasoline_terminal_ai_command',
-  TERMINAL_DEV_ROOT: 'gasoline_terminal_dev_root',
-  POPUP_LAST_STATUS: 'gasoline_popup_last_status',
-  TERMINAL_SESSION: 'gasoline_terminal_session',
-  TERMINAL_UI_STATE: 'gasoline_terminal_ui_state',
-  TERMINAL_WORKSPACE_GROUP_ID: 'gasoline_terminal_workspace_group_id',
-  TERMINAL_WORKSPACE_MAIN_TAB_ID: 'gasoline_terminal_workspace_main_tab_id',
-  CLOAKED_DOMAINS: 'gasoline_cloaked_domains'
+  ACTION_RECORDING: 'kaboom_action_recording',
+  RECORDING: 'kaboom_recording',
+  TRACKED_HOVER_LAUNCHER_HIDDEN: 'kaboom_tracked_hover_launcher_hidden',
+  PENDING_RECORDING: 'kaboom_pending_recording',
+  PENDING_MIC_RECORDING: 'kaboom_pending_mic_recording',
+  MIC_GRANTED: 'kaboom_mic_granted',
+  RECORD_AUDIO_PREF: 'kaboom_record_audio_pref',
+  TERMINAL_CONFIG: 'kaboom_terminal_config',
+  TERMINAL_AI_COMMAND: 'kaboom_terminal_ai_command',
+  TERMINAL_DEV_ROOT: 'kaboom_terminal_dev_root',
+  POPUP_LAST_STATUS: 'kaboom_popup_last_status',
+  TERMINAL_SESSION: 'kaboom_terminal_session',
+  TERMINAL_UI_STATE: 'kaboom_terminal_ui_state',
+  TERMINAL_WORKSPACE_GROUP_ID: 'kaboom_terminal_workspace_group_id',
+  TERMINAL_WORKSPACE_MAIN_TAB_ID: 'kaboom_terminal_workspace_main_tab_id',
+  CLOAKED_DOMAINS: 'kaboom_cloaked_domains'
 } as const

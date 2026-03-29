@@ -12,22 +12,28 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // installerLegacyServerKeys are historical MCP config IDs that are migrated
 // to the canonical mcpServerName during install.
 var installerLegacyServerKeys = []string{
+	"kaboom-agentic-browser",
+	"kaboom",
+	"gasoline-browser-devtools",
 	"gasoline-agentic-browser",
 	"gasoline",
+	"strum-browser-devtools",
+	"strum-agentic-browser",
+	"strum",
 }
 
 func extensionInstallDir(home string) string {
-	if override := strings.TrimSpace(os.Getenv("GASOLINE_EXTENSION_DIR")); override != "" {
+	if override := strings.TrimSpace(os.Getenv("KABOOM_EXTENSION_DIR")); override != "" {
 		return override
 	}
-	return filepath.Join(home, "GasolineAgenticDevtoolExtension")
+	return filepath.Join(home, "KaboomAgenticDevtoolExtension")
 }
 
 func manualExtensionSetupChecklist(extDir string) []string {
@@ -38,8 +44,8 @@ func manualExtensionSetupChecklist(extDir string) []string {
 		"   2) Enable Developer mode",
 		"   3) Click Load unpacked and select:",
 		fmt.Sprintf("      %s", extDir),
-		"   4) Pin Gasoline in the browser toolbar (recommended)",
-		"   5) Open the Gasoline popup and click Track This Tab",
+		"   4) Pin Kaboom in the browser toolbar (recommended)",
+		"   5) Open the Kaboom popup and click Track This Tab",
 	}
 }
 
@@ -74,7 +80,7 @@ func runNativeInstall() {
 
 	exe, err := os.Executable()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: Could not determine gasoline binary path: %v\n", err)
+		fmt.Fprintf(os.Stderr, "❌ Error: Could not determine kaboom binary path: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -176,20 +182,20 @@ func runNativeInstall() {
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user
 	// can verify the install with a health check.
-	stderrf("🚀 Starting Gasoline server...")
+	stderrf("🚀 Starting Kaboom server...")
 	startDaemonSilently(exe)
 
 	// 5. BIG SUCCESS MESSAGE
-	stderrf("\n\033[1;32m✅ GASOLINE INSTALLED & RUNNING!\033[0m\n")
+	stderrf("\n\033[1;32m✅ KABOOM INSTALLED & RUNNING!\033[0m\n")
 	printInstallerPanel("INSTALL SUMMARY", []string{
-		"Gasoline server started in background on port 7890.",
+		"Kaboom server started in background on port 7890.",
 		"MCP clients are configured with direct binary path (no npx).",
 		fmt.Sprintf("Binary path: %s", exe),
 	})
 	stderrf("\n")
 	printManualExtensionSetupChecklist(extDir)
 	stderrf("\033[1;33mREADY TO COOK:\033[0m\n")
-	stderrf("   The Gasoline server is active on port 7890.\n")
+	stderrf("   The Kaboom server is active on port 7890.\n")
 	stderrf("   Your AI tool (Claude, Cursor, etc.) is now configured.\n")
 	stderrf("\033[1;36m+----------------------------------------------------------+\033[0m\n")
 }

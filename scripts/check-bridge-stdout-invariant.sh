@@ -29,17 +29,17 @@ for file in "${TARGET_FILES[@]}"; do
     VIOLATIONS=1
     continue
   fi
-  if rg -n "$PATTERN" "$file" >/tmp/gasoline-stdout-invariant.tmp 2>/dev/null; then
+  if rg -n "$PATTERN" "$file" >/tmp/kaboom-stdout-invariant.tmp 2>/dev/null; then
     # mcp_stdout.go is the only approved bridge transport writer.
     if [[ "$file" == "cmd/browser-agent/mcp_stdout.go" ]]; then
       continue
     fi
     echo "INVARIANT VIOLATION: direct stdout write in $file"
-    cat /tmp/gasoline-stdout-invariant.tmp
+    cat /tmp/kaboom-stdout-invariant.tmp
     VIOLATIONS=1
   fi
 done
-rm -f /tmp/gasoline-stdout-invariant.tmp
+rm -f /tmp/kaboom-stdout-invariant.tmp
 
 if ! rg -n 'ensureBridgeIOIsolation\(cfg\.logFile\)' cmd/browser-agent/main.go >/dev/null 2>&1; then
   echo "INVARIANT VIOLATION: bridge mode must initialize IO isolation in main.go"

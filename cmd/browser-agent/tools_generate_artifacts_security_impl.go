@@ -6,8 +6,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
-	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/security"
+	gen "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/generate"
 )
 
 func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

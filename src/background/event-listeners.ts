@@ -11,6 +11,7 @@
  */
 
 import type { StorageChange } from '../types/index.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { StorageKey } from '../lib/constants.js'
 import { ALARM_NAME_ANALYTICS } from './analytics.js'
 import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js'
@@ -196,7 +197,7 @@ export async function handleTrackedTabUrlChange(
       if (tab?.title) updates[StorageKey.TRACKED_TAB_TITLE] = tab.title
       await setLocals(updates)
       if (logFn) {
-        logFn('[Gasoline] Tracked tab updated: ' + newUrl)
+        logFn(`${KABOOM_LOG_PREFIX} Tracked tab updated: ${newUrl}`)
       }
     } catch {
       // Tab may have been closed -- update URL only
@@ -216,7 +217,7 @@ export async function handleTrackedTabClosed(
 ): Promise<void> {
   const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID)) as number | undefined
   if (trackedTabId === closedTabId) {
-    if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
+    if (logFn) logFn(`${KABOOM_LOG_PREFIX} Tracked tab closed (id:`, closedTabId)
     clearTrackedTabState()
   }
 }
@@ -262,9 +263,9 @@ export function installStartupListener(logFn?: (message: string) => void): void 
       if (trackedTabId) {
         try {
           await chrome.tabs.get(trackedTabId)
-          if (logFn) logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking')
+          if (logFn) logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab still exists, keeping tracking`)
         } catch {
-          if (logFn) logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state')
+          if (logFn) logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab gone, clearing tracking state`)
           clearTrackedTabState()
         }
       }

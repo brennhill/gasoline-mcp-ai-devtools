@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 const (
@@ -145,7 +145,7 @@ func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string,
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, "--version") // #nosec G204 -- path is a verified binary from resolveCanonicalBinary
-	cmd.Env = append(os.Environ(), "GASOLINE_VERSION_CHECK=1")
+	cmd.Env = append(os.Environ(), "KABOOM_VERSION_CHECK=1")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -159,11 +159,11 @@ func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string,
 }
 
 // parseVersionOutput extracts a version string from --version output.
-// Handles "gasoline v0.8.0", "gasoline 0.8.0", "v0.8.0", and "0.8.0".
+// Handles "kaboom v0.8.0", "kaboom 0.8.0", "v0.8.0", and "0.8.0".
 func parseVersionOutput(output string) (string, error) {
-	// Try "gasoline v0.8.0" or "gasoline 0.8.0"
-	if strings.HasPrefix(output, "gasoline ") {
-		output = strings.TrimPrefix(output, "gasoline ")
+	// Try "kaboom v0.8.0" or "kaboom 0.8.0"
+	if strings.HasPrefix(output, "kaboom ") {
+		output = strings.TrimPrefix(output, "kaboom ")
 	}
 	output = strings.TrimPrefix(output, "v")
 
@@ -203,7 +203,7 @@ func parseVersionCommandOutput(stdout string, stderr string) (string, error) {
 }
 
 // startBinaryWatcher starts a background goroutine that watches the daemon binary for changes.
-// Returns nil if auto-upgrade is disabled via GASOLINE_NO_AUTO_UPGRADE=1.
+// Returns nil if auto-upgrade is disabled via KABOOM_NO_AUTO_UPGRADE=1.
 //
 // Detection loop (every binaryWatchInterval):
 //  1. Stat the executable, compare modtime+size
@@ -221,7 +221,7 @@ func startBinaryWatcherWithConfig(
 	triggerShutdown func(),
 	cfg binaryWatcherConfig,
 ) *BinaryWatcherState {
-	if os.Getenv("GASOLINE_NO_AUTO_UPGRADE") == "1" {
+	if os.Getenv("KABOOM_NO_AUTO_UPGRADE") == "1" {
 		return nil
 	}
 

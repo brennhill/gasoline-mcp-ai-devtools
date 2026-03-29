@@ -50,7 +50,7 @@ function screenshotExpandContainers(): { expanded: number; content_height_hint: 
     if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
       const targetHeight = Math.max(el.scrollHeight, el.clientHeight)
       el.setAttribute(
-        'data-gasoline-fpx',
+        'data-kaboom-fpx',
         JSON.stringify({
           o: el.style.overflow,
           oy: el.style.overflowY,
@@ -87,7 +87,7 @@ function screenshotExpandContainers(): { expanded: number; content_height_hint: 
 /** Self-contained: restore containers after full-page capture. */
 function screenshotRestoreContainers(): void {
   function tryRestore(el: HTMLElement): void {
-    const raw = el.getAttribute('data-gasoline-fpx')
+    const raw = el.getAttribute('data-kaboom-fpx')
     if (!raw) return
     try {
       const s = JSON.parse(raw) as {
@@ -111,10 +111,10 @@ function screenshotRestoreContainers(): void {
     } catch {
       /* ignore parse errors */
     }
-    el.removeAttribute('data-gasoline-fpx')
+    el.removeAttribute('data-kaboom-fpx')
   }
   tryRestore(document.documentElement)
-  const all = document.querySelectorAll('[data-gasoline-fpx]')
+  const all = document.querySelectorAll('[data-kaboom-fpx]')
   for (let i = 0; i < all.length; i++) {
     tryRestore(all[i] as HTMLElement)
   }

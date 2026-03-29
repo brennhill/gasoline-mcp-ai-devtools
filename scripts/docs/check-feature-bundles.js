@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Purpose: Validate docs/features bundles and strict metadata freshness requirements.
-// Why: Keeps feature docs complete and recent for CI quality gates and LLM retrieval quality.
-// Docs: docs/features/feature/gasoline-ci/index.md
+// Why: Keeps Kaboom feature docs complete and recent for CI quality gates and LLM retrieval quality.
+// Docs: docs/features/feature/quality-gates/index.md
 
 import fs from 'node:fs'
 import path from 'node:path'

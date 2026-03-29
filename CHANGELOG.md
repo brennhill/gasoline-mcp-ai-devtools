@@ -140,8 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Network schema improvements** — Unit suffixes (`durationMs`, `transferSizeBytes`), `compressionRatio`, `capturedAt` timestamps, helpful `limitations` array.
 
 ### Infrastructure
-- **PyPI distribution** — `pip install gasoline-mcp` now available alongside NPM
-- **Repository renamed** to `gasoline-agentic-browser-devtools-mcp` for SEO discoverability
+- **PyPI distribution** — `pip install kaboom-agentic-browser` now available alongside NPM
+- **Repository renamed** to `Kaboom-Browser-AI-Devtools-MCP` for SEO discoverability
 - **Documentation overhaul** — Consolidated tests into `tests/`, assets into `docs/assets/`, ADRs into `docs/adrs/`, added templates, feature index, and master doc navigation
 
 ### Known Issues
@@ -164,7 +164,7 @@ See [KNOWN-ISSUES.md](known-issues.md) for issues targeted for v5.2.
 - **Temporal graph** — Cross-session history tracking
 - **Rate limiting and memory enforcement** — Resource management with configurable TTLs
 - **Binary format detection** — Smart handling of non-text network bodies
-- **NPM distribution** — `npx gasoline-mcp` with platform-specific binaries
+- **NPM distribution** — `npx kaboom-agentic-browser` with platform-specific binaries
 
 ### Changed
 - Migrated from multiple discrete tools to 4 composite tools
@@ -175,7 +175,7 @@ See [KNOWN-ISSUES.md](known-issues.md) for issues targeted for v5.2.
 
 ### Added
 
-- **Initial release** — Gasoline v3.0.0 foundation
+- **Initial release** — Kaboom v3.0.0 foundation
 - **Browser Extension (MV3)**
   - Console capture (log, warn, error, info, debug)
   - Network error capture (4xx, 5xx responses)
@@ -237,4 +237,4 @@ This was the architecture exploration phase that bridged the initial plugin-only
 
 ### Notes
 
-This was an initial POC under a different project name, exploring browser plugin generation capabilities. Evolved into Gasoline v3.0.0 with full MCP implementation and production-ready architecture.
+This was an initial POC under a different project name, exploring browser plugin generation capabilities. Evolved into Kaboom v3.0.0 with full MCP implementation and production-ready architecture.

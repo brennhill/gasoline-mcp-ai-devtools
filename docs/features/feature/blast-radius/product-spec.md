@@ -15,7 +15,7 @@ links:
 
 - Problem: AI agents edit files without awareness of what depends on them. Renaming a function, changing a type signature, or modifying an export can silently break N downstream files that the AI never checks.
 - User value: Every edit gets an instant dependency warning — the AI sees which files import the changed module and can verify them before moving on.
-- Binary: `gasoline-hooks blast-radius` (PostToolUse hook)
+- Binary: `kaboom-hooks blast-radius` (PostToolUse hook)
 
 ## Requirements
 

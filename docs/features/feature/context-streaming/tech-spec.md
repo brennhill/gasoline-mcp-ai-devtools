@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Context Streaming transforms Gasoline from a pull-based system (AI polls for data) to a push-based system (server pushes events as they occur). This reduces latency and enables real-time AI responses to browser events.
+Context Streaming transforms Kaboom from a pull-based system (AI polls for data) to a push-based system (server pushes events as they occur). This reduces latency and enables real-time AI responses to browser events.
 
 ### Current model (pull-based):
 ```
@@ -86,7 +86,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
   "method": "notifications/message",
   "params": {
     "level": "error",
-    "logger": "gasoline",
+    "logger": "kaboom",
     "data": {
       "event_type": "error",
       "timestamp": "2026-01-28T10:00:00Z",

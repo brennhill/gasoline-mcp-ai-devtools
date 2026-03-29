@@ -1,4 +1,4 @@
-// Purpose: Resolves runtime state, logs, pid, and recording filesystem paths for Gasoline.
+// Purpose: Resolves runtime state, logs, pid, and recording filesystem paths for Kaboom.
 // Why: Ensures all runtime artifacts use a consistent, configurable directory policy.
 // Docs: docs/features/feature/project-isolation/index.md
 
@@ -15,17 +15,17 @@ import (
 
 const (
 	// StateDirEnv overrides the default runtime state root.
-	StateDirEnv = "GASOLINE_STATE_DIR"
+	StateDirEnv = "KABOOM_STATE_DIR"
 
 	xdgStateHomeEnv = "XDG_STATE_HOME"
-	appName         = "gasoline"
+	appName         = "kaboom"
 )
 
-// RootDir returns the runtime state root for Gasoline.
+// RootDir returns the runtime state root for Kaboom.
 // Resolution order:
-//  1. GASOLINE_STATE_DIR (if set)
-//  2. XDG_STATE_HOME/gasoline (if XDG_STATE_HOME is set)
-//  3. ~/.gasoline (cross-platform dotfolder)
+//  1. KABOOM_STATE_DIR (if set)
+//  2. XDG_STATE_HOME/kaboom (if XDG_STATE_HOME is set)
+//  3. ~/.kaboom (cross-platform dotfolder)
 func RootDir() (string, error) {
 	if override := strings.TrimSpace(os.Getenv(StateDirEnv)); override != "" {
 		return normalizePath(override)
@@ -43,11 +43,11 @@ func RootDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".gasoline"), nil
+	return filepath.Join(homeDir, ".kaboom"), nil
 }
 
 // LegacyRootDir returns the historical runtime root used by earlier versions
-// (os.UserConfigDir()/gasoline, e.g. ~/Library/Application Support/gasoline).
+// (os.UserConfigDir()/kaboom, e.g. ~/Library/Application Support/kaboom).
 func LegacyRootDir() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -57,7 +57,7 @@ func LegacyRootDir() (string, error) {
 }
 
 // ProjectDir returns the centralized project-scoped persistence directory
-// under ~/.gasoline/projects/{abs-path}. The leading path separator is stripped
+// under ~/.kaboom/projects/{abs-path}. The leading path separator is stripped
 // so the absolute project path becomes a relative subpath.
 func ProjectDir(projectPath string) (string, error) {
 	root, err := RootDir()
@@ -74,7 +74,7 @@ func ProjectDir(projectPath string) (string, error) {
 
 // DefaultLogFile returns the default structured log file path.
 func DefaultLogFile() (string, error) {
-	return InRoot("logs", "gasoline.jsonl")
+	return InRoot("logs", "kaboom.jsonl")
 }
 
 // LegacyDefaultLogFile returns the previous default log file path.
@@ -83,7 +83,7 @@ func LegacyDefaultLogFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(homeDir, "gasoline-logs.jsonl"), nil
+	return filepath.Join(homeDir, "kaboom-logs.jsonl"), nil
 }
 
 // CrashLogFile returns the panic crash log file path.
@@ -97,12 +97,12 @@ func LegacyCrashLogFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(homeDir, "gasoline-crash.log"), nil
+	return filepath.Join(homeDir, "kaboom-crash.log"), nil
 }
 
 // PIDFile returns the PID file path for the given server port.
 func PIDFile(port int) (string, error) {
-	return InRoot("run", "gasoline-"+strconv.Itoa(port)+".pid")
+	return InRoot("run", "kaboom-"+strconv.Itoa(port)+".pid")
 }
 
 // LegacyPIDFile returns the historical PID file path for the given server port.
@@ -111,7 +111,7 @@ func LegacyPIDFile(port int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".gasoline-"+strconv.Itoa(port)+".pid"), nil
+	return filepath.Join(homeDir, ".kaboom-"+strconv.Itoa(port)+".pid"), nil
 }
 
 // RecordingsDir returns the recordings directory.
@@ -144,7 +144,7 @@ func LegacySettingsFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".gasoline-settings.json"), nil
+	return filepath.Join(homeDir, ".kaboom-settings.json"), nil
 }
 
 // SecurityConfigFile returns the security configuration path.

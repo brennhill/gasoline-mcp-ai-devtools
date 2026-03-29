@@ -3,7 +3,7 @@
 import { execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
 
-const DOCS_PREFIX = 'cookwithgasoline.com/src/content/docs/';
+const DOCS_PREFIX = 'gokaboom.dev/src/content/docs/';
 const DOC_EXT_RE = /\.(md|mdx)$/;
 
 function splitEnvFileList(value) {
@@ -94,7 +94,7 @@ function main() {
   const targets = changedFiles.filter((file) => file.startsWith(DOCS_PREFIX) && DOC_EXT_RE.test(file));
 
   if (targets.length === 0) {
-    console.log('Vale style gate: no changed cookwithgasoline docs content files detected.');
+    console.log('Vale style gate: no changed gokaboom docs content files detected.');
     return;
   }
 
@@ -122,4 +122,3 @@ try {
   console.error('Vale style gate failed:', error);
   process.exit(1);
 }
-

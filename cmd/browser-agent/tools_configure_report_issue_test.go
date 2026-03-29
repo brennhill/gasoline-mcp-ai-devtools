@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/issuereport"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/issuereport"
 )
 
 // fakeIssueRunner implements issuereport.CommandRunner for handler tests.
@@ -261,7 +261,7 @@ func TestReportIssue_PreviewSnakeCaseFields(t *testing.T) {
 func TestReportIssue_SubmitWithFakeRunner_Success(t *testing.T) {
 	t.Parallel()
 	h := makeToolHandlerWithIssueRunner(t, &fakeIssueRunner{
-		stdout: "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/99\n",
+		stdout: "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues/99\n",
 	})
 
 	resp := callConfigureRaw(h, `{"what":"report_issue","operation":"submit","title":"Test issue","template":"bug","user_context":"testing"}`)
@@ -277,7 +277,7 @@ func TestReportIssue_SubmitWithFakeRunner_Success(t *testing.T) {
 	if data["method"] != "gh_cli" {
 		t.Fatalf("method = %v, want gh_cli", data["method"])
 	}
-	if data["issue_url"] != "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/99" {
+	if data["issue_url"] != "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues/99" {
 		t.Fatalf("issue_url = %v", data["issue_url"])
 	}
 }

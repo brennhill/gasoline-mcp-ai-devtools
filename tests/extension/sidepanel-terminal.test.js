@@ -313,8 +313,8 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const header = getElementById('gasoline-terminal-header')
-    const iframe = getElementById('gasoline-terminal-iframe')
+    const header = getElementById('kaboom-terminal-header')
+    const iframe = getElementById('kaboom-terminal-iframe')
     assert.ok(header, 'terminal header should be mounted')
     assert.ok(iframe, 'terminal iframe should be mounted')
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open')
@@ -350,7 +350,7 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const header = getElementById('gasoline-terminal-header')
+    const header = getElementById('kaboom-terminal-header')
     const powerButton = findButton(header, (node) => node.title === 'Disconnect terminal & end session')
     assert.ok(powerButton, 'power button should be present')
     assert.strictEqual(startCount, 1)
@@ -365,7 +365,7 @@ describe('terminal side panel host', () => {
     assert.strictEqual(chrome.sidePanel.close.mock.calls[0].arguments[0].tabId, 1)
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_SESSION], undefined, 'disconnect should clear persisted session')
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], undefined, 'disconnect should clear persisted UI state')
-    assert.strictEqual(getElementById('gasoline-terminal-widget'), null, 'disconnect should unmount the side panel shell')
+    assert.strictEqual(getElementById('kaboom-terminal-widget'), null, 'disconnect should unmount the side panel shell')
   })
 
   test('minimize button hides the side panel and keeps the current session alive', async () => {
@@ -391,7 +391,7 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const header = getElementById('gasoline-terminal-header')
+    const header = getElementById('kaboom-terminal-header')
     const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
     assert.ok(minimizeButton, 'minimize button should be present')
     assert.strictEqual(startCount, 1)
@@ -409,7 +409,7 @@ describe('terminal side panel host', () => {
       'minimize should keep the persisted session'
     )
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'minimized', 'minimize should persist hidden-session state')
-    assert.strictEqual(getElementById('gasoline-terminal-widget'), null, 'minimize should unmount the side panel shell')
+    assert.strictEqual(getElementById('kaboom-terminal-widget'), null, 'minimize should unmount the side panel shell')
   })
 
   test('redraw button reloads iframe without starting a new session', async () => {
@@ -433,8 +433,8 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const header = getElementById('gasoline-terminal-header')
-    const iframe = getElementById('gasoline-terminal-iframe')
+    const header = getElementById('kaboom-terminal-header')
+    const iframe = getElementById('kaboom-terminal-iframe')
     const redrawButton = findButton(header, (node) => node.title === 'Redraw terminal graphics')
     assert.ok(iframe, 'terminal iframe should exist')
     assert.ok(redrawButton, 'redraw button should exist')
@@ -461,20 +461,20 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const iframe = getElementById('gasoline-terminal-iframe')
+    const iframe = getElementById('kaboom-terminal-iframe')
     assert.ok(iframe, 'terminal iframe should exist')
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'connected' }
+      data: { source: 'kaboom-terminal', event: 'connected' }
     })
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'focus', data: { focused: true } }
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: true } }
     })
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'typing', data: { at: Date.now() } }
+      data: { source: 'kaboom-terminal', event: 'typing', data: { at: Date.now() } }
     })
 
     const callStart = iframe.contentWindow.postMessage.mock.calls.length
@@ -486,7 +486,7 @@ describe('terminal side panel host', () => {
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'focus', data: { focused: false } }
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: false } }
     })
 
     await sleep(800)
@@ -513,16 +513,16 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const iframe = getElementById('gasoline-terminal-iframe')
+    const iframe = getElementById('kaboom-terminal-iframe')
     assert.ok(iframe, 'terminal iframe should exist')
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'connected' }
+      data: { source: 'kaboom-terminal', event: 'connected' }
     })
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'focus', data: { focused: false } }
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: false } }
     })
 
     const callStart = iframe.contentWindow.postMessage.mock.calls.length
@@ -531,11 +531,11 @@ describe('terminal side panel host', () => {
     await sleep(80)
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'focus', data: { focused: true } }
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: true } }
     })
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'typing', data: { at: Date.now() } }
+      data: { source: 'kaboom-terminal', event: 'typing', data: { at: Date.now() } }
     })
 
     await sleep(680)
@@ -547,7 +547,7 @@ describe('terminal side panel host', () => {
 
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
-      data: { source: 'gasoline-terminal', event: 'focus', data: { focused: false } }
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: false } }
     })
 
     await sleep(320)
@@ -572,7 +572,7 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const header = getElementById('gasoline-terminal-header')
+    const header = getElementById('kaboom-terminal-header')
     const minimizeButton = findButton(header, (node) => node.title === 'Minimize terminal')
     const terminalBody = header?.parentElement?.children?.[1] || null
 
@@ -597,17 +597,43 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
-    const root = getElementById('gasoline-terminal-widget')
-    const header = getElementById('gasoline-terminal-header')
-    const iframe = getElementById('gasoline-terminal-iframe')
+    const root = getElementById('kaboom-terminal-widget')
+    const header = getElementById('kaboom-terminal-header')
+    const iframe = getElementById('kaboom-terminal-iframe')
     const terminalShell = header?.parentElement || null
     const newProjectButton = findButton(root, (node) => node.textContent === 'New Project')
+    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
 
     assert.ok(root, 'panel root should exist')
     assert.ok(header, 'terminal header should exist')
     assert.ok(iframe, 'terminal iframe should exist')
     assert.ok(terminalShell, 'terminal shell should wrap the header and iframe')
+    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
     assert.strictEqual(newProjectButton, null, 'placeholder palette action should not be rendered')
     assert.strictEqual(root.children.length, 1, 'terminal shell should be the only top-level panel child')
+  })
+
+  test('daemon-unavailable fallback uses Kaboom copy', async () => {
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(500, { error: 'daemon_unavailable' }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const header = getElementById('kaboom-terminal-header')
+    const terminalBody = header?.parentElement?.children?.[1] || null
+    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
+    const fallbackNode = walkTree(terminalBody, (child) =>
+      child.textContent === 'Terminal unavailable. Start the Kaboom daemon and reopen the panel.'
+    )
+
+    assert.ok(header, 'terminal header should exist')
+    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
+    assert.ok(terminalBody, 'terminal body should exist')
+    assert.ok(fallbackNode, 'fallback should mention the Kaboom daemon')
   })
 })

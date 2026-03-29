@@ -7,7 +7,7 @@ import (
 )
 
 func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
-	extPath := `/Users/tester/GasolineAgenticDevtoolExtension`
+	extPath := `/Users/tester/KaboomAgenticDevtoolExtension`
 	checklist := manualExtensionSetupChecklist(extPath)
 	joined := strings.Join(checklist, "\n")
 
@@ -18,7 +18,7 @@ func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
 		"Enable Developer mode",
 		"Load unpacked",
 		extPath,
-		"Pin Gasoline",
+		"Pin Kaboom",
 		"Track This Tab",
 	}
 
@@ -30,9 +30,9 @@ func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
 }
 
 func TestExtensionInstallDir_DefaultVisiblePath(t *testing.T) {
-	t.Setenv("GASOLINE_EXTENSION_DIR", "")
+	t.Setenv("KABOOM_EXTENSION_DIR", "")
 	home := "/Users/tester"
-	want := filepath.Join(home, "GasolineAgenticDevtoolExtension")
+	want := filepath.Join(home, "KaboomAgenticDevtoolExtension")
 
 	if got := extensionInstallDir(home); got != want {
 		t.Fatalf("extensionInstallDir(%q) = %q, want %q", home, got, want)
@@ -40,11 +40,28 @@ func TestExtensionInstallDir_DefaultVisiblePath(t *testing.T) {
 }
 
 func TestExtensionInstallDir_EnvOverride(t *testing.T) {
-	override := "/tmp/custom-gasoline-ext"
-	t.Setenv("GASOLINE_EXTENSION_DIR", override)
+	override := "/tmp/custom-kaboom-ext"
+	t.Setenv("KABOOM_EXTENSION_DIR", override)
 	home := "/Users/tester"
 
 	if got := extensionInstallDir(home); got != override {
 		t.Fatalf("extensionInstallDir(%q) = %q, want env override %q", home, got, override)
+	}
+}
+
+func TestInstallerLegacyServerKeys_IncludeKaboomAndKaboomVariants(t *testing.T) {
+	joined := strings.Join(installerLegacyServerKeys, "\n")
+	required := []string{
+		"kaboom-agentic-browser",
+		"kaboom",
+		"strum-browser-devtools",
+		"strum-agentic-browser",
+		"strum",
+	}
+
+	for _, want := range required {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("installerLegacyServerKeys missing %q; got %v", want, installerLegacyServerKeys)
+		}
 	}
 }

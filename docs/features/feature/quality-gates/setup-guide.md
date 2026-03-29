@@ -17,8 +17,8 @@ configure(what="setup_quality_gates")
 ```
 
 This automatically:
-- Creates `.gasoline.json` — points to your standards doc, configures thresholds
-- Creates `gasoline-code-standards.md` — starter coding conventions
+- Creates `.kaboom.json` — points to your standards doc, configures thresholds
+- Creates `kaboom-code-standards.md` — starter coding conventions
 - Installs hooks into `.claude/settings.json` — merges with existing settings, never overwrites
 
 After this single command, quality gates are active on every Edit/Write and output compression runs on every Bash command.
@@ -42,7 +42,7 @@ For belt-and-suspenders AI review, add a prompt hook to the Edit|Write matcher i
 
 ### 3. Edit your standards
 
-Open `gasoline-code-standards.md` and add your project's patterns. Be specific — vague rules cause false positives.
+Open `kaboom-code-standards.md` and add your project's patterns. Be specific — vague rules cause false positives.
 
 Good rule: "Request validation must use `validateAndRespond()` from `internal/util/guards.go`. Do not write inline if/else validation chains."
 
@@ -50,7 +50,7 @@ Bad rule: "Use good patterns." (flags everything)
 
 ## What Gets Checked
 
-### By `gasoline-hooks quality-gate`
+### By `kaboom-hooks quality-gate`
 
 | Check | Trigger | Data injected |
 |-------|---------|---------------|
@@ -58,7 +58,7 @@ Bad rule: "Use good patterns." (flags everything)
 | **File size** | File > 90% of limit | Warning with line count and limit |
 | **Convention detection** | New code uses a known pattern | Existing codebase examples + helper extraction suggestion if 2+ instances |
 
-### By `gasoline-hooks compress-output`
+### By `kaboom-hooks compress-output`
 
 | Pattern | Detection | Compression |
 |---------|-----------|-------------|
@@ -91,8 +91,8 @@ Bad rule: "Use good patterns." (flags everything)
 ```
 AI calls Edit/Write
   -> PostToolUse hook fires
-  -> `gasoline-hooks quality-gate` runs:
-     1. Finds .gasoline.json (walks up from changed file)
+  -> `kaboom-hooks quality-gate` runs:
+     1. Finds .kaboom.json (walks up from changed file)
      2. Reads code_standards doc
      3. Checks file line count vs limit
      4. Detects patterns in new code (http.Client{, map[string]func, type decls, etc.)
@@ -104,7 +104,7 @@ AI calls Edit/Write
 
 AI calls Bash (test/build)
   -> PostToolUse hook fires
-  -> `gasoline-hooks compress-output` runs:
+  -> `kaboom-hooks compress-output` runs:
      1. Detects output pattern (go test, jest, tsc, etc.)
      2. Compresses to summary + errors only
      3. Posts savings to daemon for tracking
@@ -114,11 +114,11 @@ AI calls Bash (test/build)
 
 ## Configuration
 
-### `.gasoline.json`
+### `.kaboom.json`
 
 ```json
 {
-  "code_standards": "gasoline-code-standards.md",
+  "code_standards": "kaboom-code-standards.md",
   "file_size_limit": 800,
   "duplicate_threshold": 3
 }
@@ -126,7 +126,7 @@ AI calls Bash (test/build)
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `code_standards` | `gasoline-code-standards.md` | Path to your standards doc |
+| `code_standards` | `kaboom-code-standards.md` | Path to your standards doc |
 | `file_size_limit` | `800` | Warn when files exceed this LOC |
 | `duplicate_threshold` | `3` | Min lines for duplicate detection |
 
@@ -144,7 +144,7 @@ If you already have a conventions doc:
 
 Token savings are tracked per session and across lifetime:
 - **Session summary** logged to stderr on daemon shutdown
-- **Lifetime stats** persisted to `~/.gasoline/stats/lifetime.json`
+- **Lifetime stats** persisted to `~/.kaboom/stats/lifetime.json`
 
 | Approach | Cost per edit |
 |----------|--------------|
@@ -160,10 +160,10 @@ Token savings are tracked per session and across lifetime:
 - Check that `matcher` matches the tool name exactly: `Edit|Write` or `Bash`
 - Run `claude --debug` to see hook execution
 
-**gasoline-hooks not found?**
-- Install hooks standalone: `curl -fsSL https://gasoline.dev/install.sh | sh -s -- --hooks-only`
-- Or install the full suite: `curl -fsSL https://gasoline.dev/install.sh | sh`
-- Via npm: `npm install -g gasoline-agentic-devtools`
+**kaboom-hooks not found?**
+- Install hooks standalone: `curl -fsSL https://kaboom.dev/install.sh | sh -s -- --hooks-only`
+- Or install the full suite: `curl -fsSL https://kaboom.dev/install.sh | sh`
+- Via npm: `npm install -g kaboom-agentic-devtools`
 
 **Too many false positives?**
 - Make rules more specific in the standards doc

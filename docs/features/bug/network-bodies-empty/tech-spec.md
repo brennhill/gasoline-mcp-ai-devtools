@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Gasoline captures network traffic through fetch/XHR interception in inject.js:
+Kaboom captures network traffic through fetch/XHR interception in inject.js:
 1. Extension intercepts fetch() and XMLHttpRequest calls in page context
 2. For each request, captures metadata (url, method, headers) immediately
 3. For completed responses, optionally captures response body
@@ -88,7 +88,7 @@ Check the HTTP POST logic:
 - Verify POST payload format matches server expectation (JSON with url, method, status, body fields)
 - Check if POST happens immediately or in batches
 - Verify POST errors are caught and logged (if server unreachable, don't crash)
-- Check for self-capture prevention (don't capture bodies for requests to Gasoline server itself)
+- Check for self-capture prevention (don't capture bodies for requests to Kaboom server itself)
 
 ### Step 4: Verify Server Storage
 Check the server-side handler:

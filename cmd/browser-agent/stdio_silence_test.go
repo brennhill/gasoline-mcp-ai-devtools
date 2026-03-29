@@ -356,7 +356,7 @@ func TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport(t *testing.T) {
 	}
 
 	cmd := startServerCmd(t, binary, "--bridge", "--port", strconv.Itoa(port), "--state-dir", stateDir)
-	cmd.Env = append(os.Environ(), "GASOLINE_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
+	cmd.Env = append(os.Environ(), "KABOOM_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -387,7 +387,7 @@ func TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport(t *testing.T) {
 	outStr := stdout.String()
 	errStr := stderr.String()
 
-	if strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDOUT") || strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDERR") {
+	if strings.Contains(outStr, "KABOOM_TEST_NOISE_STDOUT") || strings.Contains(outStr, "KABOOM_TEST_NOISE_STDERR") {
 		t.Fatalf("transport polluted by startup noise: %q", outStr)
 	}
 	_ = parseMCPResponses(t, outStr)
@@ -401,10 +401,10 @@ func TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("read wrapper log: %v", readErr)
 	}
-	if !strings.Contains(string(logBody), "GASOLINE_TEST_NOISE_STDOUT") {
+	if !strings.Contains(string(logBody), "KABOOM_TEST_NOISE_STDOUT") {
 		t.Fatalf("wrapper log missing redirected stdout noise: %s", wrapperLogPath)
 	}
-	if !strings.Contains(string(logBody), "GASOLINE_TEST_NOISE_STDERR") {
+	if !strings.Contains(string(logBody), "KABOOM_TEST_NOISE_STDERR") {
 		t.Fatalf("wrapper log missing redirected stderr noise: %s", wrapperLogPath)
 	}
 }
@@ -423,7 +423,7 @@ func TestStdioIsolation_ContentLengthFramingNotPollutedByStartupNoise(t *testing
 	}
 
 	cmd := startServerCmd(t, binary, "--bridge", "--port", strconv.Itoa(port), "--state-dir", stateDir)
-	cmd.Env = append(os.Environ(), "GASOLINE_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
+	cmd.Env = append(os.Environ(), "KABOOM_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -459,7 +459,7 @@ func TestStdioIsolation_ContentLengthFramingNotPollutedByStartupNoise(t *testing
 	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(outStr)), "content-length:") {
 		t.Fatalf("expected content-length framed output, got: %q", outStr)
 	}
-	if strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDOUT") || strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDERR") {
+	if strings.Contains(outStr, "KABOOM_TEST_NOISE_STDOUT") || strings.Contains(outStr, "KABOOM_TEST_NOISE_STDERR") {
 		t.Fatalf("framed transport polluted by startup noise: %q", outStr)
 	}
 

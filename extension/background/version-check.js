@@ -68,13 +68,13 @@ export function updateVersionBadge() {
             color: '#0969da' // Blue for info
         });
         chrome.action.setTitle({
-            title: `Gasoline: New version available (${availableVersion})`
+            title: `Kaboom: New version available (${availableVersion})`
         });
     }
     else {
         // Clear the version update indicator
         chrome.action.setTitle({
-            title: 'Gasoline'
+            title: 'Kaboom'
         });
     }
 }
@@ -86,7 +86,7 @@ export function getUpdateInfo() {
         available: newVersionAvailable,
         currentVersion: getExtensionVersion(),
         availableVersion: availableVersion,
-        downloadUrl: 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest'
+        downloadUrl: 'https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/latest'
     };
 }
 /**

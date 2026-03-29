@@ -1,11 +1,11 @@
 #!/bin/bash
-# Pre-commit hook for Gasoline
+# Pre-commit hook for Kaboom
 # Runs linting and security checks before allowing commits
 
 set -e
 
-echo "[gasoline] Running pre-commit checks..."
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+echo "[Kaboom] Running pre-commit checks..."
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/dev-console}"
 
 # Check for staged Go files
 GO_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
@@ -48,4 +48,4 @@ if [ -n "$GO_STAGED" ]; then
     fi
 fi
 
-echo "[gasoline] All pre-commit checks passed"
+echo "[Kaboom] All pre-commit checks passed"

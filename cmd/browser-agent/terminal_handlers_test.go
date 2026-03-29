@@ -13,7 +13,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 )
 
 func TestNewTerminalFrameWriter_SerializesConcurrentWrites(t *testing.T) {

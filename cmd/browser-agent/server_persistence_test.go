@@ -331,8 +331,8 @@ func TestServerPersistence_StdinNoDataExtendedPeriod(t *testing.T) {
 	}
 
 	// This test takes 30 seconds - skip in CI unless explicitly enabled
-	if os.Getenv("GASOLINE_EXTENDED_TESTS") == "" {
-		t.Skip("skipping 30-second persistence test (set GASOLINE_EXTENDED_TESTS=1 to enable)")
+	if os.Getenv("KABOOM_EXTENDED_TESTS") == "" {
+		t.Skip("skipping 30-second persistence test (set KABOOM_EXTENDED_TESTS=1 to enable)")
 	}
 
 	port := findFreePort(t)

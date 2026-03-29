@@ -12,13 +12,13 @@ last_verified_date: 2026-03-05
 
 ## Context
 
-We want Gasoline to support a browser-native agent workflow (chat + action orchestration) to reduce debugging friction. A naive implementation risks:
+We want Kaboom to support a browser-native agent workflow (chat + action orchestration) to reduce debugging friction. A naive implementation risks:
 
 1. coupling UI-agent behavior to core daemon stability,
 2. bypassing existing MCP contracts,
 3. leaking secrets when auto-context is piped to model prompts.
 
-Gasoline has a strict reliability requirement: startup and core protocol behavior must remain dependable for all external clients.
+Kaboom has a strict reliability requirement: startup and core protocol behavior must remain dependable for all external clients.
 
 ## Decision
 

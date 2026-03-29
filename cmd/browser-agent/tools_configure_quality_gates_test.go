@@ -25,16 +25,16 @@ func TestSetupQualityGates_CreatesConfigAndStandards(t *testing.T) {
 
 	data := extractResultJSON(t, result)
 
-	// Verify .gasoline.json was created.
-	configPath := filepath.Join(dir, ".gasoline.json")
+	// Verify .kaboom.json was created.
+	configPath := filepath.Join(dir, ".kaboom.json")
 	if _, err := os.Stat(configPath); err != nil {
-		t.Fatalf(".gasoline.json not created: %v", err)
+		t.Fatalf(".kaboom.json not created: %v", err)
 	}
 
-	// Verify gasoline-code-standards.md was created.
-	standardsPath := filepath.Join(dir, "gasoline-code-standards.md")
+	// Verify kaboom-code-standards.md was created.
+	standardsPath := filepath.Join(dir, "kaboom-code-standards.md")
 	if _, err := os.Stat(standardsPath); err != nil {
-		t.Fatalf("gasoline-code-standards.md not created: %v", err)
+		t.Fatalf("kaboom-code-standards.md not created: %v", err)
 	}
 
 	// Verify response contains created paths.
@@ -48,23 +48,23 @@ func TestSetupQualityGates_CreatesConfigAndStandards(t *testing.T) {
 	// Verify config content is valid JSON with expected defaults.
 	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
-		t.Fatalf("failed to read .gasoline.json: %v", err)
+		t.Fatalf("failed to read .kaboom.json: %v", err)
 	}
 	var config map[string]any
 	if err := json.Unmarshal(configBytes, &config); err != nil {
-		t.Fatalf(".gasoline.json is not valid JSON: %v", err)
+		t.Fatalf(".kaboom.json is not valid JSON: %v", err)
 	}
-	if config["code_standards"] != "gasoline-code-standards.md" {
-		t.Fatalf("code_standards = %v, want gasoline-code-standards.md", config["code_standards"])
+	if config["code_standards"] != "kaboom-code-standards.md" {
+		t.Fatalf("code_standards = %v, want kaboom-code-standards.md", config["code_standards"])
 	}
 
 	// Verify standards file has content.
 	standardsBytes, err := os.ReadFile(standardsPath)
 	if err != nil {
-		t.Fatalf("failed to read gasoline-code-standards.md: %v", err)
+		t.Fatalf("failed to read kaboom-code-standards.md: %v", err)
 	}
 	if len(standardsBytes) < 100 {
-		t.Fatal("gasoline-code-standards.md is too short — missing starter content")
+		t.Fatal("kaboom-code-standards.md is too short — missing starter content")
 	}
 }
 
@@ -75,9 +75,9 @@ func TestSetupQualityGates_DoesNotOverwriteExistingConfig(t *testing.T) {
 	dir := t.TempDir()
 	server.SetActiveCodebase(dir)
 
-	// Pre-create .gasoline.json with custom content.
+	// Pre-create .kaboom.json with custom content.
 	existing := `{"code_standards":"my-custom-rules.md","file_size_limit":500}`
-	if err := os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(existing), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(existing), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,9 +88,9 @@ func TestSetupQualityGates_DoesNotOverwriteExistingConfig(t *testing.T) {
 	}
 
 	// Verify existing config was NOT overwritten.
-	configBytes, _ := os.ReadFile(filepath.Join(dir, ".gasoline.json"))
+	configBytes, _ := os.ReadFile(filepath.Join(dir, ".kaboom.json"))
 	if string(configBytes) != existing {
-		t.Fatalf(".gasoline.json was overwritten: got %q", string(configBytes))
+		t.Fatalf(".kaboom.json was overwritten: got %q", string(configBytes))
 	}
 
 	data := extractResultJSON(t, result)
@@ -108,7 +108,7 @@ func TestSetupQualityGates_DoesNotOverwriteExistingStandards(t *testing.T) {
 
 	// Pre-create standards file.
 	existing := "# My Custom Standards\n\nDo not overwrite me."
-	if err := os.WriteFile(filepath.Join(dir, "gasoline-code-standards.md"), []byte(existing), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "kaboom-code-standards.md"), []byte(existing), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -119,9 +119,9 @@ func TestSetupQualityGates_DoesNotOverwriteExistingStandards(t *testing.T) {
 	}
 
 	// Verify standards file was NOT overwritten.
-	standardsBytes, _ := os.ReadFile(filepath.Join(dir, "gasoline-code-standards.md"))
+	standardsBytes, _ := os.ReadFile(filepath.Join(dir, "kaboom-code-standards.md"))
 	if string(standardsBytes) != existing {
-		t.Fatalf("gasoline-code-standards.md was overwritten")
+		t.Fatalf("kaboom-code-standards.md was overwritten")
 	}
 }
 
@@ -144,8 +144,8 @@ func TestSetupQualityGates_CustomTargetDir(t *testing.T) {
 	}
 
 	// Verify files created in subdir.
-	if _, err := os.Stat(filepath.Join(subdir, ".gasoline.json")); err != nil {
-		t.Fatal(".gasoline.json not created in target_dir")
+	if _, err := os.Stat(filepath.Join(subdir, ".kaboom.json")); err != nil {
+		t.Fatal(".kaboom.json not created in target_dir")
 	}
 }
 
@@ -194,7 +194,7 @@ func TestSetupQualityGates_CustomStandardsPathInExistingConfig(t *testing.T) {
 
 	// Pre-create config pointing to custom standards file.
 	config := `{"code_standards":"docs/my-patterns.md"}`
-	if err := os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(config), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(config), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -204,8 +204,8 @@ func TestSetupQualityGates_CustomStandardsPathInExistingConfig(t *testing.T) {
 		t.Fatalf("expected success, got error: %s", firstText(result))
 	}
 
-	// Should NOT create gasoline-code-standards.md because config points elsewhere.
-	if _, err := os.Stat(filepath.Join(dir, "gasoline-code-standards.md")); err == nil {
+	// Should NOT create kaboom-code-standards.md because config points elsewhere.
+	if _, err := os.Stat(filepath.Join(dir, "kaboom-code-standards.md")); err == nil {
 		t.Fatal("should not create default standards file when config points to a custom path")
 	}
 }
@@ -318,11 +318,11 @@ func TestSetupQualityGates_InstallsHooks(t *testing.T) {
 	// Verify all hook commands are present.
 	settingsStr := string(settingsBytes)
 	for _, cmd := range []string{
-		"gasoline-hooks quality-gate",
-		"gasoline-hooks compress-output",
-		"gasoline-hooks session-track",
-		"gasoline-hooks blast-radius",
-		"gasoline-hooks decision-guard",
+		"kaboom-hooks quality-gate",
+		"kaboom-hooks compress-output",
+		"kaboom-hooks session-track",
+		"kaboom-hooks blast-radius",
+		"kaboom-hooks decision-guard",
 	} {
 		if !strings.Contains(settingsStr, cmd) {
 			t.Errorf("settings.json missing %s hook command", cmd)

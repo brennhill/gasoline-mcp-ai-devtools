@@ -39,7 +39,7 @@ export async function toggleScreenRecording(handlers, tab, logFn) {
 // =============================================================================
 /**
  * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
- * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ * Sends KABOOM_DRAW_MODE_START or KABOOM_DRAW_MODE_STOP to the active tab's content script.
  */
 export function installDrawModeCommandListener(logFn) {
     if (typeof chrome === 'undefined' || !chrome.commands)

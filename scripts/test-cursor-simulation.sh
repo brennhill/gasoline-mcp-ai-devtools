@@ -5,7 +5,7 @@ set -euo pipefail
 # to reproduce the RED connection issue
 
 PORT=7890
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 TEMP_DIR=$(mktemp -d)
 
 echo "========================================"
@@ -17,7 +17,7 @@ echo ""
 lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 
-echo "Step 1: Cursor spawns gasoline-mcp"
+echo "Step 1: Cursor spawns kaboom-agentic-browser"
 echo "===================================="
 
 # Simulate Cursor's connection sequence
@@ -68,13 +68,13 @@ fi
 echo ""
 
 # Check stderr silence
-STDERR_LINES=$(grep -c '^\[gasoline' "$OUTPUT_FILE" 2>/dev/null || echo "0")
+STDERR_LINES=$(grep -c '^\[' "$OUTPUT_FILE" 2>/dev/null || echo "0")
 echo "Stderr lines: $STDERR_LINES"
 if [ "$STDERR_LINES" -eq 0 ]; then
     echo "✅ Stdio silence maintained"
 else
     echo "❌ Found stderr noise:"
-    grep '^\[gasoline' "$OUTPUT_FILE"
+    grep '^\[' "$OUTPUT_FILE"
 fi
 
 echo ""

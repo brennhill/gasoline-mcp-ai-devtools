@@ -77,7 +77,7 @@ last_reviewed: 2026-02-16
 
 **Setup**: Spy on fetch calls
 
-- [ ] `sendLogsToServer()` includes `X-Gasoline-Extension-Version` header
+- [ ] `sendLogsToServer()` includes `X-Kaboom-Extension-Version` header
 - [ ] `postSettings()` includes version header
 - [ ] `pollPendingQueries()` includes version header plus session/pilot headers
 - [ ] All headers are preserved (no overwrites)
@@ -91,9 +91,9 @@ last_reviewed: 2026-02-16
 
 - [ ] `updateVersionBadge()` with `newVersionAvailable=true` sets badge text "⬆"
 - [ ] Badge background color is blue (#0969da)
-- [ ] Badge tooltip shows version (e.g., "Gasoline: New version available (v5.2.6)")
+- [ ] Badge tooltip shows version (e.g., "Kaboom: New version available (v5.2.6)")
 - [ ] `updateVersionBadge()` with `newVersionAvailable=false` clears badge
-- [ ] Tooltip without update available says "Gasoline"
+- [ ] Tooltip without update available says "Kaboom"
 
 #### Integration Tests: Error Handling
 
@@ -144,7 +144,7 @@ last_reviewed: 2026-02-16
 1. [ ] Open extension popup, verify "Connected"
 2. [ ] Wait for version check (within 30 minutes, or modify interval to 10s for testing)
 3. [ ] Check extension icon - verify blue "⬆" badge appears
-4. [ ] Hover over badge - verify tooltip shows "Gasoline: New version available (v5.2.6)"
+4. [ ] Hover over badge - verify tooltip shows "Kaboom: New version available (v5.2.6)"
 5. [ ] Open Chrome DevTools → Application → Local Storage
 6. [ ] Verify no version state leaked (version checking is in-memory only)
 
@@ -173,7 +173,7 @@ chrome.storage.local.get(['aiWebPilotEnabled'], result => console.log(result));
 1. [ ] Open extension popup, verify "Connected"
 2. [ ] Wait for version check (or trigger with modified interval)
 3. [ ] Check extension icon - verify NO "⬆" badge
-4. [ ] Hover over icon - verify tooltip says "Gasoline" (no version info)
+4. [ ] Hover over icon - verify tooltip says "Kaboom" (no version info)
 5. [ ] Open DevTools Console, check for any errors
 
 **Expected Result**:
@@ -257,7 +257,7 @@ chrome.storage.local.get(['aiWebPilotEnabled'], result => console.log(result));
 1. [ ] Make a request (e.g., POST /settings)
 2. [ ] Click request in Network tab
 3. [ ] Go to "Headers" → "Request Headers"
-4. [ ] Scroll to find `X-Gasoline-Extension-Version`
+4. [ ] Scroll to find `X-Kaboom-Extension-Version`
 5. [ ] Verify header value matches manifest version
 6. [ ] Repeat for other endpoints (/logs, /pending-queries, etc.)
 

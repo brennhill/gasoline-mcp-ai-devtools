@@ -192,14 +192,14 @@ Silently ignored on non-navigation actions (click, type, etc.). Silently ignored
   "message": "Content script ready",
   "summary": {
     "type": "article",
-    "title": "Introduction to Gasoline",
-    "headings": ["h1: Introduction to Gasoline"],
+    "title": "Introduction to Kaboom",
+    "headings": ["h1: Introduction to Kaboom"],
     "primary_actions": [
       {"label": "Get Started", "selector": "text=Get Started", "tag": "a"},
       {"label": "Download", "selector": "text=Download", "tag": "button"}
     ],
     "forms": [],
-    "content_preview": "Gasoline is a browser extension and MCP server for real-time browser telemetry...",
+    "content_preview": "Kaboom is a browser extension and MCP server for real-time browser telemetry...",
     "interactive_count": 24
   }
 }

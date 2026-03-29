@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This spec defines three features that enable AI agents to autonomously verify Gasoline's behavior during development and UAT. Together, they close the loop between "AI writes code" and "AI tests code" without requiring human browser interaction.
+This spec defines three features that enable AI agents to autonomously verify Kaboom's behavior during development and UAT. Together, they close the loop between "AI writes code" and "AI tests code" without requiring human browser interaction.
 
 **Problem Statement:** During UAT, the AI agent can only verify server-side behavior via HTTP endpoints. It cannot:
 1. Retrieve captured data (endpoints are POST-only for ingestion)
@@ -307,7 +307,7 @@ node scripts/uat-runner.js --json > results.json
 │                   uat-runner.js                         │
 ├─────────────────────────────────────────────────────────┤
 │  1. Build server (make dev)                             │
-│  2. Spawn gasoline server on random port                │
+│  2. Spawn kaboom server on random port                │
 │  3. Launch Playwright Chrome with extension loaded      │
 │  4. Navigate to test page (localhost or fixture)        │
 │  5. Execute test scenarios                              │
@@ -374,7 +374,7 @@ const SCENARIOS = {
 The harness provides a helper for calling server endpoints:
 
 ```javascript
-class GasolineAPI {
+class KaboomAPI {
   constructor(port) {
     this.baseUrl = `http://localhost:${port}`;
   }
@@ -467,7 +467,7 @@ For consistent testing, the harness includes a test fixture page:
 <!-- scripts/fixtures/test-page.html -->
 <!DOCTYPE html>
 <html>
-<head><title>Gasoline UAT Test Page</title></head>
+<head><title>Kaboom UAT Test Page</title></head>
 <body>
   <h1 id="title">Test Page</h1>
   <button id="action-btn">Click Me</button>

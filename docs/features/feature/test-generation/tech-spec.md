@@ -485,7 +485,7 @@ Test file paths MUST be validated using existing `validatePathInDir()` from ai_p
 // validateTestFilePath ensures path is within allowed directories
 func validateTestFilePath(path string) error {
     // Must use validatePathInDir from ai_persistence.go
-    // Allowed directories: project directory (from .gasoline or cwd)
+    // Allowed directories: project directory (from .kaboom or cwd)
     // Denied: paths starting with .., absolute paths outside project
     return validatePathInDir(path, getProjectDir())
 }
@@ -601,7 +601,7 @@ var secretPatterns = []string{
 ## 10. Dependencies
 
 ### Required
-- Existing Gasoline infrastructure (Go server, extension, MCP)
+- Existing Kaboom infrastructure (Go server, extension, MCP)
 - Existing codegen.go (Playwright script generation)
 - Existing DOM query infrastructure
 

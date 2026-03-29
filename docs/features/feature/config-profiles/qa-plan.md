@@ -45,7 +45,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Paranoid Profile (Max Security) (Happy Path)
 1. Setup:
-   - Start server: `gasoline --profile=paranoid`
+   - Start server: `kaboom --profile=paranoid`
 2. Steps:
    - [ ] Verify server starts, logs "Profile 'paranoid' loaded"
    - [ ] Check config: `configure({action:"health"})` — verify read_only=true, aggressive redaction
@@ -57,7 +57,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 2: Restricted Profile (Production-Safe)
 1. Setup:
-   - Start: `gasoline --profile=restricted`
+   - Start: `kaboom --profile=restricted`
 2. Steps:
    - [ ] Check config: read_only=false, allowlist enabled
    - [ ] Observe: succeeds
@@ -69,7 +69,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 3: Development Profile (Full Access)
 1. Setup:
-   - Start: `gasoline --profile=development`
+   - Start: `kaboom --profile=development`
 2. Steps:
    - [ ] Check config: no read-only, no allowlist
    - [ ] All tools work: observe, generate, interact (all actions)
@@ -80,7 +80,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 4: CLI Flag Override
 1. Setup:
-   - Start: `gasoline --profile=restricted --project-expiration-minutes=30`
+   - Start: `kaboom --profile=restricted --project-expiration-minutes=30`
 2. Steps:
    - [ ] Check config: verify project expiration is 30 (not 60 from profile)
    - [ ] Verify other restricted settings still applied
@@ -91,7 +91,7 @@ last_verified_date: 2026-03-05
 1. Setup:
    - Create bad.yaml: `read_only: "not_a_boolean"`
 2. Steps:
-   - [ ] Start: `gasoline --profile=bad`
+   - [ ] Start: `kaboom --profile=bad`
    - [ ] Verify server fails to start
    - [ ] Verify error message explains YAML validation failure
 3. Expected Result: Server fails fast with clear error

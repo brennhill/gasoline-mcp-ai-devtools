@@ -4,13 +4,13 @@
  *      without circular dependencies.
  * Docs: docs/features/feature/terminal/index.md
  */
-export declare const WIDGET_ID = "gasoline-terminal-widget";
-export declare const IFRAME_ID = "gasoline-terminal-iframe";
-export declare const HEADER_ID = "gasoline-terminal-header";
-export declare const DISCONNECT_TERMINAL_BUTTON_ID = "gasoline-terminal-disconnect-button";
-export declare const REDRAW_TERMINAL_BUTTON_ID = "gasoline-terminal-redraw-button";
-export declare const MINIMIZE_TERMINAL_BUTTON_ID = "gasoline-terminal-minimize-button";
-export declare const CLOSE_TERMINAL_BUTTON_ID = "gasoline-terminal-close-button";
+export declare const WIDGET_ID = "kaboom-terminal-widget";
+export declare const IFRAME_ID = "kaboom-terminal-iframe";
+export declare const HEADER_ID = "kaboom-terminal-header";
+export declare const DISCONNECT_TERMINAL_BUTTON_ID = "kaboom-terminal-disconnect-button";
+export declare const REDRAW_TERMINAL_BUTTON_ID = "kaboom-terminal-redraw-button";
+export declare const MINIMIZE_TERMINAL_BUTTON_ID = "kaboom-terminal-minimize-button";
+export declare const CLOSE_TERMINAL_BUTTON_ID = "kaboom-terminal-close-button";
 export declare const DEFAULT_WIDGET_WIDTH = "50vw";
 export declare const DEFAULT_WIDGET_HEIGHT = "40vh";
 export declare const MIN_WIDGET_WIDTH = "400px";

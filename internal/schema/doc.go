@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/api-schema/index.md
 
 /*
-Package schema defines the MCP tool input schemas for all five Gasoline tools.
+Package schema defines the MCP tool input schemas for all five Kaboom tools.
 
 Each tool has a dedicated schema function that returns an mcp.MCPTool with the
 tool's name, description, and JSON Schema for its input parameters.

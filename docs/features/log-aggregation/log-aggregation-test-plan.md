@@ -292,7 +292,7 @@ last_verified_date: 2026-03-05
 **Framework:** Bash script + curl
 
 #### Scenarios:
-- Start gasoline, connect extension, navigate to a page with periodic console output
+- Start kaboom, connect extension, navigate to a page with periodic console output
 - Call `observe(what="summarized_logs")` via MCP JSON-RPC
 - Verify response has `groups`, `anomalies`, `summary` keys
 - Verify `summary.total_entries` > 0

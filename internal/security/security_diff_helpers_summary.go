@@ -5,7 +5,7 @@ package security
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 func buildDiffSummary(regressions, improvements []SecurityChange) SecurityDiffSummary {

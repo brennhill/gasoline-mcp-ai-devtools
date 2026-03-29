@@ -1,5 +1,5 @@
 // tools_configure_quality_gates.go — Handler for configure(what="setup_quality_gates").
-// Scaffolds .gasoline.json and gasoline-code-standards.md for code quality gate enforcement.
+// Scaffolds .kaboom.json and kaboom-code-standards.md for code quality gate enforcement.
 // Docs: docs/features/feature/quality-gates/index.md
 
 package main
@@ -11,19 +11,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/hook"
 )
 
 const defaultDuplicateThreshold = 3
 
-const gasolineHookQualityGate = "gasoline-hooks quality-gate"
-const gasolineHookCompressOutput = "gasoline-hooks compress-output"
-const gasolineHookSessionTrack = "gasoline-hooks session-track"
-const gasolineHookBlastRadius = "gasoline-hooks blast-radius"
-const gasolineHookDecisionGuard = "gasoline-hooks decision-guard"
+const kaboomHookQualityGate = "kaboom-hooks quality-gate"
+const kaboomHookCompressOutput = "kaboom-hooks compress-output"
+const kaboomHookSessionTrack = "kaboom-hooks session-track"
+const kaboomHookBlastRadius = "kaboom-hooks blast-radius"
+const kaboomHookDecisionGuard = "kaboom-hooks decision-guard"
 
 // toolConfigureSetupQualityGates handles configure(what="setup_quality_gates").
-// Creates .gasoline.json and gasoline-code-standards.md in the target directory.
+// Creates .kaboom.json and kaboom-code-standards.md in the target directory.
 func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TargetDir string `json:"target_dir"`
@@ -66,16 +66,16 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 			"Provide an existing directory path", withParam("target_dir"))
 	}
 
-	configPath := filepath.Join(absTarget, hook.GasolineConfigFile)
+	configPath := filepath.Join(absTarget, hook.KaboomConfigFile)
 	configExisted := false
 	standardsCreated := false
 	standardsPath := ""
 
-	// Write .gasoline.json if it doesn't exist.
+	// Write .kaboom.json if it doesn't exist.
 	if _, err := os.Stat(configPath); err == nil {
 		configExisted = true
 	} else {
-		cfg := hook.GasolineConfig{
+		cfg := hook.KaboomConfig{
 			CodeStandards:      hook.DefaultCodeStandardsFile,
 			FileSizeLimit:      hook.DefaultFileSizeLimit,
 			DuplicateThreshold: defaultDuplicateThreshold,
@@ -86,7 +86,7 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 		}
 		cfgJSON = append(cfgJSON, '\n')
 		if err := os.WriteFile(configPath, cfgJSON, 0644); err != nil {
-			return fail(req, ErrInternal, "Failed to write "+hook.GasolineConfigFile+": "+err.Error(), "Check file system permissions")
+			return fail(req, ErrInternal, "Failed to write "+hook.KaboomConfigFile+": "+err.Error(), "Check file system permissions")
 		}
 	}
 
@@ -95,7 +95,7 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 	if configExisted {
 		existingCfg, err := os.ReadFile(configPath)
 		if err == nil {
-			var parsed hook.GasolineConfig
+			var parsed hook.KaboomConfig
 			if json.Unmarshal(existingCfg, &parsed) == nil && parsed.CodeStandards != "" {
 				codeStandardsRef = parsed.CodeStandards
 			}
@@ -126,12 +126,12 @@ func (h *ToolHandler) toolConfigureSetupQualityGates(req JSONRPCRequest, args js
 	suggestions := buildQualityGateSuggestions(configExisted, standardsCreated, codeStandardsRef, hooksInstalled)
 
 	responseData := map[string]any{
-		"config_path":      configPath,
-		"config_existed":   configExisted,
-		"defaults":         defaults,
-		"suggestions":      suggestions,
-		"hooks_installed":  hooksInstalled,
-		"settings_path":    settingsPath,
+		"config_path":     configPath,
+		"config_existed":  configExisted,
+		"defaults":        defaults,
+		"suggestions":     suggestions,
+		"hooks_installed": hooksInstalled,
+		"settings_path":   settingsPath,
 	}
 	if hookErr != nil {
 		responseData["hooks_error"] = hookErr.Error()
@@ -152,13 +152,13 @@ func buildQualityGateSuggestions(configExisted, standardsCreated bool, codeStand
 
 	if !configExisted {
 		suggestions = append(suggestions,
-			"Edit .gasoline.json to customize quality gate thresholds",
+			"Edit .kaboom.json to customize quality gate thresholds",
 			"Set code_standards to your existing conventions doc if one exists",
 		)
 	}
 	if standardsCreated {
 		suggestions = append(suggestions,
-			"Edit gasoline-code-standards.md to add your project's coding patterns and conventions",
+			"Edit kaboom-code-standards.md to add your project's coding patterns and conventions",
 		)
 	}
 	if codeStandardsRef != hook.DefaultCodeStandardsFile {
@@ -194,7 +194,7 @@ func buildSetupSummary(configExisted, hooksInstalled bool, hookErr error) string
 	return "Quality gates: " + strings.Join(parts, ", ")
 }
 
-// installClaudeCodeHooks writes gasoline-hooks entries into .claude/settings.json.
+// installClaudeCodeHooks writes Kaboom hook entries into .claude/settings.json.
 // Merges with existing settings — does not overwrite. Returns (installed, settingsPath, error).
 // If hooks are already present, returns (false, path, nil).
 func installClaudeCodeHooks(projectDir string) (bool, string, error) {
@@ -214,7 +214,7 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	}
 
 	// Check if already installed.
-	if containsGasolineHooks(settings) {
+	if containsManagedHooks(settings) {
 		return false, settingsPath, nil
 	}
 
@@ -230,10 +230,10 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	postToolUse = append(postToolUse, map[string]any{
 		"matcher": "Edit|Write",
 		"hooks": []any{
-			map[string]any{"type": "command", "command": gasolineHookQualityGate, "timeout": 10},
-			map[string]any{"type": "command", "command": gasolineHookBlastRadius, "timeout": 10},
-			map[string]any{"type": "command", "command": gasolineHookDecisionGuard, "timeout": 10},
-			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookQualityGate, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookBlastRadius, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookDecisionGuard, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookSessionTrack, "timeout": 10},
 		},
 	})
 
@@ -241,7 +241,7 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	postToolUse = append(postToolUse, map[string]any{
 		"matcher": "Read",
 		"hooks": []any{
-			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookSessionTrack, "timeout": 10},
 		},
 	})
 
@@ -249,8 +249,8 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	postToolUse = append(postToolUse, map[string]any{
 		"matcher": "Bash",
 		"hooks": []any{
-			map[string]any{"type": "command", "command": gasolineHookCompressOutput, "timeout": 10},
-			map[string]any{"type": "command", "command": gasolineHookSessionTrack, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookCompressOutput, "timeout": 10},
+			map[string]any{"type": "command", "command": kaboomHookSessionTrack, "timeout": 10},
 		},
 	})
 
@@ -269,8 +269,8 @@ func installClaudeCodeHooks(projectDir string) (bool, string, error) {
 	return true, settingsPath, nil
 }
 
-// containsGasolineHooks checks if .claude/settings.json already has gasoline hooks.
-func containsGasolineHooks(settings map[string]any) bool {
+// containsManagedHooks checks if .claude/settings.json already has managed hook commands.
+func containsManagedHooks(settings map[string]any) bool {
 	hooks, _ := settings["hooks"].(map[string]any)
 	if hooks == nil {
 		return false
@@ -281,9 +281,7 @@ func containsGasolineHooks(settings map[string]any) bool {
 		hooksList, _ := entryMap["hooks"].([]any)
 		for _, h := range hooksList {
 			hMap, _ := h.(map[string]any)
-			// Trailing space in "gasoline hook " distinguishes the old format from
-			// "gasoline-hooks" — prevents false match on the new binary name.
-			if cmd, _ := hMap["command"].(string); strings.Contains(cmd, "gasoline-hooks") || strings.Contains(cmd, "gasoline hook ") {
+			if cmd, _ := hMap["command"].(string); strings.Contains(cmd, "kaboom-hooks") || strings.Contains(cmd, "kaboom-hooks") || strings.Contains(cmd, "kaboom hook ") {
 				return true
 			}
 		}
@@ -291,7 +289,7 @@ func containsGasolineHooks(settings map[string]any) bool {
 	return false
 }
 
-// defaultCodeStandardsContent is the starter content for gasoline-code-standards.md.
+// defaultCodeStandardsContent is the starter content for kaboom-code-standards.md.
 // Rules are written to be actionable by an LLM reviewer (Haiku): each rule has a
 // specific trigger condition and a concrete action. Vague rules generate false positives.
 const defaultCodeStandardsContent = `# Code Standards

@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/persistence"
 )
 
 func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

@@ -2,7 +2,7 @@
 status: draft
 priority: tier-1
 phase: v5.4-foundation
-relates-to: [PRODUCT_SPEC.md, TECH_SPEC_GASOLINE_RUN.md, TECH_SPEC_LOCAL_TAILER.md]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC_KABOOM_RUN.md, TECH_SPEC_LOCAL_TAILER.md]
 last-updated: 2026-01-31
 last_reviewed: 2026-03-05
 last_verified_version: 0.7.12
@@ -18,13 +18,13 @@ last_verified_date: 2026-03-05
 ## Process Architecture
 
 ```
-Gasoline Daemon
+Kaboom Daemon
    │
    ├─ HTTP Server (localhost:7890)
    ├─ MCP Server (stdio)
    └─ Log Ingestion Goroutines
        │
-       ├─ gasoline-run Listener
+       ├─ kaboom-run Listener
        ├─ Local File Tailer
        └─ SSH Tailer (this spec)
           ├─ SSH connect: prod.example.com
@@ -568,7 +568,7 @@ Response:
 ### Manual Tests
 ```bash
 # Test 1: Single server
-gasoline --remote-tailer-ssh prod.example.com:ubuntu:/var/log/app.log
+kaboom --remote-tailer-ssh prod.example.com:ubuntu:/var/log/app.log
 
 # Test 2: Multiple servers
 # Edit config with 3 SSH sources
@@ -591,7 +591,7 @@ For users without direct SSH access, wrapper script:
 
 ```bash
 #!/bin/bash
-# ~/.gasoline/ssh-tunnel.sh
+# ~/.kaboom/ssh-tunnel.sh
 # Establishes persistent SSH connection for log streaming
 
 HOST=$1
@@ -636,7 +636,7 @@ kill $TUNNEL_PID
 ## Related Documents
 
 - **Product Spec:** [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
-- **gasoline-run:** [TECH_SPEC_GASOLINE_RUN.md](TECH_SPEC_GASOLINE_RUN.md)
+- **kaboom-run:** [TECH_SPEC_KABOOM_RUN.md](TECH_SPEC_KABOOM_RUN.md)
 - **Local Tailer:** [TECH_SPEC_LOCAL_TAILER.md](TECH_SPEC_LOCAL_TAILER.md)
 - **Architecture:** [layer1-be-observability.md](../../core/layer1-be-observability.md)
 

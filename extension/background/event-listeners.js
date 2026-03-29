@@ -2,6 +2,7 @@
  * Purpose: Installs Chrome extension event listeners (alarms, tab lifecycle, storage changes, runtime startup) and re-exports keyboard shortcuts, context menus, and tab-state accessors.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
 import { ALARM_NAME_ANALYTICS } from './analytics.js';
 import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js';
@@ -141,7 +142,7 @@ export async function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
                 updates[StorageKey.TRACKED_TAB_TITLE] = tab.title;
             await setLocals(updates);
             if (logFn) {
-                logFn('[Gasoline] Tracked tab updated: ' + newUrl);
+                logFn(`${KABOOM_LOG_PREFIX} Tracked tab updated: ${newUrl}`);
             }
         }
         catch {
@@ -159,7 +160,7 @@ export async function handleTrackedTabClosed(closedTabId, logFn) {
     const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     if (trackedTabId === closedTabId) {
         if (logFn)
-            logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
+            logFn(`${KABOOM_LOG_PREFIX} Tracked tab closed (id:`, closedTabId);
         clearTrackedTabState();
     }
 }
@@ -199,11 +200,11 @@ export function installStartupListener(logFn) {
                 try {
                     await chrome.tabs.get(trackedTabId);
                     if (logFn)
-                        logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking');
+                        logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab still exists, keeping tracking`);
                 }
                 catch {
                     if (logFn)
-                        logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
+                        logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab gone, clearing tracking state`);
                     clearTrackedTabState();
                 }
             }

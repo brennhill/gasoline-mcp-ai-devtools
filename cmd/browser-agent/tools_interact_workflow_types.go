@@ -6,7 +6,7 @@ package main
 import (
 	"time"
 
-	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
 // WorkflowStep — type alias delegated to internal/tools/interact package.

@@ -44,7 +44,7 @@ function screenshotExpandContainers() {
             ov === 'clip';
         if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
             const targetHeight = Math.max(el.scrollHeight, el.clientHeight);
-            el.setAttribute('data-gasoline-fpx', JSON.stringify({
+            el.setAttribute('data-kaboom-fpx', JSON.stringify({
                 o: el.style.overflow,
                 oy: el.style.overflowY,
                 ox: el.style.overflowX,
@@ -79,7 +79,7 @@ function screenshotExpandContainers() {
 /** Self-contained: restore containers after full-page capture. */
 function screenshotRestoreContainers() {
     function tryRestore(el) {
-        const raw = el.getAttribute('data-gasoline-fpx');
+        const raw = el.getAttribute('data-kaboom-fpx');
         if (!raw)
             return;
         try {
@@ -96,10 +96,10 @@ function screenshotRestoreContainers() {
         catch {
             /* ignore parse errors */
         }
-        el.removeAttribute('data-gasoline-fpx');
+        el.removeAttribute('data-kaboom-fpx');
     }
     tryRestore(document.documentElement);
-    const all = document.querySelectorAll('[data-gasoline-fpx]');
+    const all = document.querySelectorAll('[data-kaboom-fpx]');
     for (let i = 0; i < all.length; i++) {
         tryRestore(all[i]);
     }

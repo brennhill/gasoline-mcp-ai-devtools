@@ -6,7 +6,7 @@ set -euo pipefail
 # Proves MCP connection is 100% reliable and silent
 
 PORT=$((8000 + RANDOM % 1000))
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 TEMP_DIR=$(mktemp -d)
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -37,7 +37,7 @@ test_request() {
     echo "$request" | "$WRAPPER" --port "$PORT" > "$log_file" 2>&1
     # Check stderr is silent
     local stderr_lines
-    stderr_lines=$(grep -c '^\[gasoline' "$log_file" 2>/dev/null || echo "0")
+    stderr_lines=$(grep -c '^\[' "$log_file" 2>/dev/null || echo "0")
 
     # Check for JSON-RPC response
     if grep -q '"result"' "$log_file" 2>/dev/null; then
@@ -236,13 +236,13 @@ SILENCE_LOG="$TEMP_DIR/final_silence.log"
 REQUEST='{"jsonrpc":"2.0","id":999,"method":"tools/list","params":{}}'
 echo "$REQUEST" | "$WRAPPER" --port "$PORT" > "$SILENCE_LOG" 2>&1
 
-FINAL_STDERR=$(grep -c '^\[gasoline' "$SILENCE_LOG" 2>/dev/null || echo "0")
+FINAL_STDERR=$(grep -c '^\[kaboom' "$SILENCE_LOG" 2>/dev/null || echo "0")
 if [ "$FINAL_STDERR" -eq 0 ]; then
     echo "  ✅ Zero stderr output (stdio silence maintained)"
     PASS_COUNT=$((PASS_COUNT + 1))
 else
     echo "  ❌ Found $FINAL_STDERR stderr lines"
-    grep '^\[gasoline' "$SILENCE_LOG" | sed 's/^/       /'
+    grep '^\[kaboom' "$SILENCE_LOG" | sed 's/^/       /'
     FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 

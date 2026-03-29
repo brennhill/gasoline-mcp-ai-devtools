@@ -40,13 +40,13 @@ export function domPrimitiveListInteractive(
   }
 
   function getElementHandleStore(): ElementHandleStore {
-    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
-    if (root.__gasolineElementHandles) {
+    const root = globalThis as typeof globalThis & { __kaboomElementHandles?: ElementHandleStore }
+    if (root.__kaboomElementHandles) {
       // Migrate legacy stores that lack selectorByID (#361)
-      if (!root.__gasolineElementHandles.selectorByID) {
-        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
+      if (!root.__kaboomElementHandles.selectorByID) {
+        root.__kaboomElementHandles.selectorByID = new Map<string, string>()
       }
-      return root.__gasolineElementHandles
+      return root.__kaboomElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
@@ -54,7 +54,7 @@ export function domPrimitiveListInteractive(
       selectorByID: new Map<string, string>(),
       nextID: 1
     }
-    root.__gasolineElementHandles = created
+    root.__kaboomElementHandles = created
     return created
   }
 

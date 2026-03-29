@@ -13,7 +13,7 @@ import (
 // Sync on pipes/ptys can return EINVAL/EBADF even when output is already delivered.
 func syncStdoutBestEffort() {
 	if err := activeMCPTransportWriter().Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
-		stderrf("[gasoline] warning: stdout.Sync failed: %v\n", err)
+		stderrf("[Kaboom] warning: stdout.Sync failed: %v\n", err)
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 // multiFlag implements flag.Value for repeatable string flags (e.g., --upload-deny-pattern).
@@ -66,7 +66,7 @@ func registerFlags() *parsedFlags {
 	f.fastPathMaxFailureRatio = flag.Float64("fastpath-max-failure-ratio", -1, "Maximum allowed fast-path failure ratio in --check (set >=0 to enforce)")
 	f.showVersion = flag.Bool("version", false, "Show version")
 	f.showHelp = flag.Bool("help", false, "Show help")
-	f.apiKey = flag.String("api-key", os.Getenv("GASOLINE_API_KEY"), "API key for HTTP authentication (optional, or GASOLINE_API_KEY env)")
+	f.apiKey = flag.String("api-key", os.Getenv("KABOOM_API_KEY"), "API key for HTTP authentication (optional, or KABOOM_API_KEY env)")
 	f.checkSetup = flag.Bool("check", false, "Verify setup: check if port is available and print status")
 	f.doctorMode = flag.Bool("doctor", false, "Run full diagnostics (alias of --check)")
 	f.stopMode = flag.Bool("stop", false, "Stop the running server on the specified port")
@@ -78,8 +78,8 @@ func registerFlags() *parsedFlags {
 	f.stateDir = flag.String("state-dir", "", "Directory for runtime state (default: OS app state directory)")
 	f.enableOsUploadAutomation = flag.Bool("enable-os-upload-automation", false, "Enable OS-level file upload automation (Stage 4: AppleScript/xdotool)")
 	f.uploadDir = flag.String("upload-dir", "", "Directory from which file uploads are allowed (required for Stages 2-4)")
-	f.forceCleanup = flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
-	f.installMode = flag.Bool("install", false, "Auto-install Gasoline to all detected MCP clients")
+	f.forceCleanup = flag.Bool("force", false, "Force kill all running kaboom daemons (used during install to ensure clean upgrade)")
+	f.installMode = flag.Bool("install", false, "Auto-install Kaboom to all detected MCP clients")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 	flag.Bool("persist", true, "Deprecated no-op (server persistence is default, kept for backwards compatibility)")
 	flag.Var(&f.uploadDenyPatterns, "upload-deny-pattern", "Additional sensitive path patterns to block (repeatable)")
@@ -103,7 +103,7 @@ func parseAndValidateFlags() *serverConfig {
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)
 	if err := applyParallelModeStateDir(*f.parallelMode, f.stateDir); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Invalid --parallel setup: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] Invalid --parallel setup: %v\n", err)
 		os.Exit(1)
 	}
 	handleEarlyExitModes(f)

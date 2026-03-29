@@ -45,7 +45,7 @@ function installWindowMocks() {
       windowMessageHandlers = windowMessageHandlers.filter((h) => h !== handler)
     },
     postMessage(payload) {
-      if (payload?.type === 'gasoline_inject_bridge_ping') {
+      if (payload?.type === 'kaboom_inject_bridge_ping') {
         pingPostCount += 1
         if (!autoBridgePong) return
         const requestId = payload.requestId
@@ -55,7 +55,7 @@ function installWindowMocks() {
               source: globalThis.window,
               origin: globalThis.window.location.origin,
               data: {
-                type: 'gasoline_inject_bridge_pong',
+                type: 'kaboom_inject_bridge_pong',
                 requestId,
                 _nonce: payload._nonce
               }
@@ -141,7 +141,7 @@ describe('script injection readiness', () => {
 
     const injectLoads = appendedScripts.filter((s) => String(s.src).includes('inject.bundled.js'))
     assert.strictEqual(injectLoads.length, 1, 'inject script should be appended exactly once')
-    assert.ok(attrStore['data-gasoline-nonce'], 'nonce should be set on documentElement for inject bridge')
+    assert.ok(attrStore['data-kaboom-nonce'], 'nonce should be set on documentElement for inject bridge')
   })
 
   test('ensureInjectScriptReady can force reinjection when requested', async () => {

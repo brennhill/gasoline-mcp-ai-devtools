@@ -4,7 +4,7 @@
 
 package security
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 // Compare computes regressions/improvements between two snapshots.
 //

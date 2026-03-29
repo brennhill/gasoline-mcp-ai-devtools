@@ -5,27 +5,27 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.svg" alt="Strum AI DevTools — Browser DevTools for AI coding assistants via MCP" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.svg" alt="Kaboom — Browser debugging, inspection, and verification for AI coding assistants via MCP" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/Strum-AI-Devtools/releases)
+[![Version](https://img.shields.io/badge/version-0.8.1-green.svg)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/Strum-AI-Devtools)
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/Strum-AI-Devtools)
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/Strum-AI-Devtools)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/Strum-AI-Devtools/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Snyk Status](https://snyk.io/test/github/brennhill/Strum-AI-Devtools/badge.svg)](https://snyk.io/test/github/brennhill/Strum-AI-Devtools)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/Strum-AI-Devtools/pulls)
-[![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
-[![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://cookwithgasoline.com)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/Kaboom-Browser-AI-Devtools-MCP/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Snyk Status](https://snyk.io/test/github/brennhill/Kaboom-Browser-AI-Devtools-MCP/badge.svg)](https://snyk.io/test/github/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/pulls)
+[![X Follow](https://img.shields.io/badge/follow-%40gokaboomdev-000000.svg?logo=x&logoColor=white)](https://x.com/gokaboomdev)
+[![Fueling rapid development with AI](https://img.shields.io/badge/fueling%20rapid%20development%20with-AI-FF6B6B.svg)](https://gokaboom.dev)
 
-**Agentic Browser Devtools - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
+**Kaboom is an AI debugger, inspector, and verification toolkit for local-first browser development workflows.** Stream console logs, network failures, exceptions, recordings, and browser evidence into any MCP-compatible coding assistant.
 
-[Documentation](https://cookwithgasoline.com) •
-[Quick Start](https://cookwithgasoline.com/getting-started/) •
-[Features](https://cookwithgasoline.com/features/) •
-[MCP Setup](https://cookwithgasoline.com/mcp-integration/)
+[Documentation](https://gokaboom.dev) •
+[Quick Start](https://gokaboom.dev/getting-started/) •
+[Features](https://gokaboom.dev/features/) •
+[MCP Setup](https://gokaboom.dev/mcp-integration/)
 
 </div>
 
@@ -39,12 +39,12 @@ Current version: **v0.8.1** — Link health analyzer, browser automation, record
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 </div>
@@ -53,21 +53,21 @@ irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts
 
 ## Quick Start
 
-**Fire up STRUM (Binary + Extension + Auto-Config) in one command:**
+**Fire up Kaboom (binary + extension + auto-config) in one command:**
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
 1.  **Downloads** the latest stable binary for your platform.
-2.  **Installs** the browser extension files to `~/.strum/extension`.
+2.  **Installs** the browser extension files to `~/.kaboom/extension`.
 3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
@@ -77,19 +77,19 @@ This script automatically:
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked**
-4. Select the folder: `~/.strum/extension` (or wherever the script printed)
+4. Select the folder: `~/.kaboom/extension` (or wherever the script printed)
 
 ### Step 2: Restart Your AI Tool
 
-Restart Claude Code, Cursor, Windsurf, or Zed. The STRUM server will now start automatically when needed.
+Restart Claude Code, Cursor, Windsurf, or Zed. The Kaboom server will now start automatically when needed.
 
-**[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
+**[Full setup guide →](https://gokaboom.dev/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
 ---
 
-## Why You Cook With STRUM
+## Why Teams Use Kaboom
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. STRUM uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Kaboom uses a standard extension, so your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
@@ -116,9 +116,9 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The STRUM server will now start a
 - **Test generation** — Playwright tests from context, self-healing selectors, failure classification
 - **Reproduction scripts** — Playwright scripts from recorded user actions
 - **Noise filtering** — Auto-detect and dismiss irrelevant errors
-- **Developer API** — `window.__strum.annotate()` for custom context
+- **Developer API** — `window.__kaboom.annotate()` for custom context
 
-**[Full feature list →](https://cookwithgasoline.com/features/)**
+**[Full feature list →](https://gokaboom.dev/features/)**
 
 ## Privacy
 
@@ -126,7 +126,7 @@ All captured data (logs, network, actions) stays 100% local — nothing leaves y
 
 We collect anonymous usage statistics (feature usage flags, extension version) using a random identifier not linked to your identity. No URLs, browsing data, or personal information is collected.
 
-**[Privacy details →](https://cookwithgasoline.com/privacy/)**
+**[Privacy details →](https://gokaboom.dev/privacy/)**
 
 ## Performance
 
@@ -160,12 +160,12 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 <img src="docs/assets/images/sparky-wave.png" alt="Sparky the Salamander" width="120" />
 
-**[cookwithgasoline.com](https://cookwithgasoline.com)**
+**[gokaboom.dev](https://gokaboom.dev)**
 
-*Pouring fuel on the AI development fire*
+*Fueling rapid development with AI*
 
-If you find STRUM useful, please consider giving it a star!
+If you find Kaboom useful, please consider giving it a star.
 
-[![Star on GitHub](https://img.shields.io/github/stars/brennhill/Strum-AI-Devtools.svg?style=social)](https://github.com/brennhill/Strum-AI-Devtools)
+[![Star on GitHub](https://img.shields.io/github/stars/brennhill/Kaboom-Browser-AI-Devtools-MCP.svg?style=social)](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
 
 </div>

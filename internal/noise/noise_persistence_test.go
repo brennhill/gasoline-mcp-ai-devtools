@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/persistence"
 )
 
 func newNoiseTestSessionStore(t *testing.T) *persistence.SessionStore {

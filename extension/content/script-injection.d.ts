@@ -7,6 +7,11 @@ export declare function getPageNonce(): string;
 /** Check if inject script has been loaded into the page context */
 export declare function isInjectScriptLoaded(): boolean;
 /**
+ * Ensure inject script is present, deduplicating concurrent inject attempts.
+ * Optionally force a fresh reinjection attempt.
+ */
+export declare function ensureInjectScriptReady(timeoutMs?: number, force?: boolean): Promise<boolean>;
+/**
  * Ensure inject bridge responds to a ping, proving MAIN-world messaging is live.
  */
 export declare function ensureInjectBridgeReady(timeoutMs?: number): Promise<boolean>;

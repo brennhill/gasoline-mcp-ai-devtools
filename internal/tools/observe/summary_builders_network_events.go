@@ -5,7 +5,7 @@ package observe
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // buildNetworkBodiesSummary returns {total, by_status_group, by_method, top_urls, metadata}.

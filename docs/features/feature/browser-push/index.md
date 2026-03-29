@@ -4,7 +4,7 @@ feature_id: browser-push
 status: implementation
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 code_paths:
   - internal/push/
   - cmd/browser-agent/push_state.go
@@ -20,6 +20,7 @@ test_paths:
   - cmd/browser-agent/push_state_test.go
   - cmd/browser-agent/push_handlers_test.go
   - cmd/browser-agent/tools_observe_inbox_test.go
+  - tests/extension/push-handler-branding.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -73,3 +74,7 @@ Push browser content (annotations, screenshots, chat messages) to the AI automat
 |------|---------|
 | `src/background/push-handler.ts` | Keyboard listeners, fetch push, capability cache |
 | `src/content/ui/chat-widget.ts` | Inline chat widget with ARIA, focus trapping, pin toggle |
+
+### Extension Tests
+
+- `tests/extension/push-handler-branding.test.js` validates Kaboom-branded error toasts when screenshot push cannot reach the daemon.

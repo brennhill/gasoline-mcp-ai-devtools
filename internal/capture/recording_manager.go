@@ -6,7 +6,7 @@
 package capture
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/recording"
 )
 
 // NewRecordingManager creates a RecordingManager with initialized state.

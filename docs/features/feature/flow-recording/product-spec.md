@@ -31,21 +31,21 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ## Solution
 
-**Gasoline Flow Recording & Playback** is the **AI-powered regression testing tool for developers**.
+**Kaboom Flow Recording & Playback** is the **AI-powered regression testing tool for developers**.
 
 ### The workflow:
 1. **QA records** a user's reported flow once (e.g., "checkout fails on coupon code entry")
    - Recording captures: clicks, typing, navigation, network calls, console errors, DOM state
 2. **Developer fixes** the bug in code
-3. **LLM invokes Gasoline** to replay the exact same flow (against fixed code)
-4. **Gasoline compares** original recording logs vs replay logs:
+3. **LLM invokes Kaboom** to replay the exact same flow (against fixed code)
+4. **Kaboom compares** original recording logs vs replay logs:
    - What changed? (error message now present, API response different, element location moved?)
    - What's new? (404 error, console warning, network timeout?)
    - What's missing? (cleanup event, success message?)
 5. **LLM analyzes** the diff and tells developer: "Regression is fixed ✓" or "Still broken, here's why"
 6. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
 
-### Why Gasoline:
+### Why Kaboom:
 - **Purpose-built for regression testing**, not general test automation
 - **Structured log diffing** — record a flow once, replay later, automatically detect what changed (the core product)
 - **Error detection** — identify 404s, timeouts, missing elements, log changes automatically
@@ -79,7 +79,7 @@ Regression testing today is **slow, manual, and error-prone**:
 1. Bug found: "Checkout button missing error message"
 2. Dev fixes bug in code
 3. LLM says: "replay shopping-checkout recording"
-4. Gasoline:
+4. Kaboom:
    - Navigates to original URL
    - Replays all clicks/typing in sequence
    - Captures new logs alongside original
@@ -107,9 +107,9 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ```
 1. Playback detects regression (new logs differ from original)
-2. LLM invokes /gasoline-fix skill:
+2. LLM invokes /kaboom-fix skill:
    "Analyze logs and suggest fixes for checkout-flow regression"
-3. Gasoline:
+3. Kaboom:
    - Diffs original vs new logs
    - Identifies error types (404, timeout, DOM change, etc.)
    - Suggests root cause ("Missing field 'cvv' in form")
@@ -203,7 +203,7 @@ Regression testing today is **slow, manual, and error-prone**:
 - [ ] Report to LLM for debugging
 
 #### Competitive Advantage:
-- Gasoline has access to real browser context (logs, network, visual state)
+- Kaboom has access to real browser context (logs, network, visual state)
 - Can detect selector fragility and suggest fixes proactively
 - Unlike cloud-based tools, we see the actual user environment
 
@@ -310,18 +310,18 @@ Regression testing today is **slow, manual, and error-prone**:
 #### Storage:
 - [ ] **Max storage:** 1GB total on disk (warn at 80%, error at 100%)
 - [ ] **Concurrent:** Only 1 active recording at a time
-- [ ] Storage location: `~/.gasoline/recordings/` (configurable)
+- [ ] Storage location: `~/.kaboom/recordings/` (configurable)
 
 #### Guidance (Not Hard Limits):
 - Typical flow: 5-30 minutes, 20-100 actions
 - If recording approaches 1GB, user should manage manually:
   - Delete old recordings
   - Or expand storage
-- Gasoline doesn't auto-delete recordings (data loss risk)
+- Kaboom doesn't auto-delete recordings (data loss risk)
 
 ### R10: Log Diffing & Regression Detection
 
-#### What Gasoline Provides (Core MVP):
+#### What Kaboom Provides (Core MVP):
 
 #### Log Diffing:
 - [ ] Compare original recording logs vs replay logs (structured diff)
@@ -341,8 +341,8 @@ Regression testing today is **slow, manual, and error-prone**:
   - Expected (in both original + replay) = Known issue
   - Fixed (was in original, gone in replay) = SUCCESS
 
-#### What Claude Does (With Gasoline Data):
-- [ ] Review the log diff from Gasoline
+#### What Claude Does (With Kaboom Data):
+- [ ] Review the log diff from Kaboom
 - [ ] Analyze error patterns: "404 on /api/checkout" → likely cause is "endpoint missing"
 - [ ] Propose code fixes: "Update client to call /api/orders instead"
 - [ ] Rank confidence (HIGH/MEDIUM/LOW) based on error clarity
@@ -357,11 +357,11 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ## Out of Scope
 
-- Mobile/native app testing (web only, Gasoline doesn't run in mobile)
+- Mobile/native app testing (web only, Kaboom doesn't run in mobile)
 - Video replay (screenshots + logs sufficient)
 - Real-time collaboration (async sharing via recordings)
 - Multi-user conflict resolution (one recording at a time)
-- Auto-apply fixes without review (Gasoline proposes, LLM reviews and applies)
+- Auto-apply fixes without review (Kaboom proposes, LLM reviews and applies)
 
 ---
 
@@ -377,7 +377,7 @@ Regression testing today is **slow, manual, and error-prone**:
 - ✅ Moved elements logged with screenshots
 - ✅ LLM can read action sequences and generate variations
 - ✅ Generated flows execute and logs are captured
-- ✅ LLM can invoke `/gasoline-fix` skill to analyze regressions
+- ✅ LLM can invoke `/kaboom-fix` skill to analyze regressions
 - ✅ Root cause analysis detects error types (404, timeout, missing element, etc.)
 - ✅ Fix suggestions identify affected files and propose code changes
 - ✅ Git integration finds related commits (if repo available)
@@ -407,7 +407,7 @@ Regression testing today is **slow, manual, and error-prone**:
 - **configure()**: Extended with `action: 'recording_start'`, `action: 'recording_stop'`
 - **Test Boundaries**: Playback runs under test boundary for log correlation
 - **WebSocket**: Requires migration from polling for accurate timing
-- **Claude Skill**: New `/gasoline-fix` skill for LLM to invoke root cause analysis
+- **Claude Skill**: New `/kaboom-fix` skill for LLM to invoke root cause analysis
 - **Git Integration**: Optional (read-only) for finding related commits
 
 ### External
@@ -453,15 +453,15 @@ Playback:
 → LLM notified, suggested update selector for robustness
 ```
 
-### Story 4: Root Cause Analysis (Gasoline + Claude)
+### Story 4: Root Cause Analysis (Kaboom + Claude)
 
 ```
 Original: Checkout flow works (records clean logs).
 Week later: Playback detects regression → POST /api/order returns 404.
 
-LLM invokes /gasoline-fix skill:
+LLM invokes /kaboom-fix skill:
 
-Gasoline provides:
+Kaboom provides:
   - Error detected: "404 Not Found" on POST /api/order
   - Affected action: Step 5 (click checkout button)
   - Related commits: [abc123 "Refactor API endpoints", def456 "Fix endpoint"]
@@ -480,7 +480,7 @@ Developer reviews & applies:
   → ✓ Regression resolved, logs match original
 ```
 
-**Key:** Gasoline (data collection) + Claude (analysis) = Fast root cause + fix verification
+**Key:** Kaboom (data collection) + Claude (analysis) = Fast root cause + fix verification
 
 ---
 
@@ -500,7 +500,7 @@ Developer reviews & applies:
 
 ---
 
-## Claude Skill: Analyze Regression (Gasoline Data → Claude Analysis)
+## Claude Skill: Analyze Regression (Kaboom Data → Claude Analysis)
 
 ### When to Use:
 When playback detects a regression (replay logs differ from original), use this workflow to analyze the diff and suggest fixes.
@@ -515,7 +515,7 @@ When playback detects a regression (replay logs differ from original), use this 
 6. LLM replays recording to verify
 ```
 
-### What Gasoline Provides:
+### What Kaboom Provides:
 - `observe({what: 'logs', test_boundary: 'original-checkout'})` → Original logs
 - `observe({what: 'logs', test_boundary: 'replay-checkout'})` → Replay logs with regression
 - `observe({what: 'recording_actions', recording_id: 'checkout'})` → The exact flow that was recorded

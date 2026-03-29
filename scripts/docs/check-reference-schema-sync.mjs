@@ -11,31 +11,31 @@ const TOOL_SPECS = [
   {
     tool: 'observe',
     schemaPath: 'internal/schema/observe.go',
-    docPath: 'cookwithgasoline.com/src/content/docs/reference/observe.md',
+    docPath: 'gokaboom.dev/src/content/docs/reference/observe.md',
     enumType: 'what'
   },
   {
     tool: 'analyze',
     schemaPath: 'internal/schema/analyze.go',
-    docPath: 'cookwithgasoline.com/src/content/docs/reference/analyze.md',
+    docPath: 'gokaboom.dev/src/content/docs/reference/analyze.md',
     enumType: 'what'
   },
   {
     tool: 'configure',
     schemaPath: 'internal/schema/configure_properties_core.go',
-    docPath: 'cookwithgasoline.com/src/content/docs/reference/configure.md',
+    docPath: 'gokaboom.dev/src/content/docs/reference/configure.md',
     enumType: 'what'
   },
   {
     tool: 'generate',
     schemaPath: 'internal/schema/generate.go',
-    docPath: 'cookwithgasoline.com/src/content/docs/reference/generate.md',
+    docPath: 'gokaboom.dev/src/content/docs/reference/generate.md',
     enumType: 'what'
   },
   {
     tool: 'interact',
     schemaPath: 'internal/schema/interact_actions.go',
-    docPath: 'cookwithgasoline.com/src/content/docs/reference/interact.md',
+    docPath: 'gokaboom.dev/src/content/docs/reference/interact.md',
     enumType: 'interactSpecs',
     specsVar: 'interactActionSpecs',
     ignore: INTERACT_ALIAS_ACTIONS

@@ -107,22 +107,22 @@ func buildLaunchModeWarning(info launchModeInfo, port int) string {
 	if reason == "" {
 		reason = "unknown"
 	}
-	return fmt.Sprintf("launch_mode_warning: detected %s (%s). This session may disconnect when the process exits. Start persistently: gasoline-mcp --daemon --port %d", info.Mode, reason, port)
+	return fmt.Sprintf("launch_mode_warning: detected %s (%s). This session may disconnect when the process exits. Start persistently: kaboom-agentic-browser --daemon --port %d", info.Mode, reason, port)
 }
 
 func enforcePersistentMode(info launchModeInfo) error {
 	if !info.StrictRequired || info.Mode != launchModeLikelyTransient {
 		return nil
 	}
-	return fmt.Errorf("GASOLINE_REQUIRE_PERSISTENT is enabled and launch mode is %s (%s). Start persistently: gasoline-mcp --daemon --port %d", info.Mode, info.Reason, defaultPort)
+	return fmt.Errorf("KABOOM_REQUIRE_PERSISTENT is enabled and launch mode is %s (%s). Start persistently: kaboom-agentic-browser --daemon --port %d", info.Mode, info.Reason, defaultPort)
 }
 
 func isPersistentModeRequired() bool {
-	return truthyEnv("GASOLINE_REQUIRE_PERSISTENT")
+	return truthyEnv("KABOOM_REQUIRE_PERSISTENT")
 }
 
 func isSupervisedLaunch() bool {
-	if truthyEnv("GASOLINE_SUPERVISED") {
+	if truthyEnv("KABOOM_SUPERVISED") {
 		return true
 	}
 	supervisorVars := []string{
@@ -135,8 +135,8 @@ func isSupervisedLaunch() bool {
 		"K_SERVICE",           // Cloud Run
 		"K_REVISION",          // Cloud Run
 		"CONTAINER",           // container supervisors
-		"GASOLINE_DAEMONIZED", // project-local explicit marker
-		"GASOLINE_PERSISTENT", // project-local explicit marker
+		"KABOOM_DAEMONIZED", // project-local explicit marker
+		"KABOOM_PERSISTENT", // project-local explicit marker
 	}
 	for _, key := range supervisorVars {
 		if strings.TrimSpace(os.Getenv(key)) != "" {

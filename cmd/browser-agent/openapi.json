@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Gasoline MCP Server",
+    "title": "Kaboom MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
     "version": "0.7.12",
     "license": {
@@ -11,7 +11,7 @@
   "servers": [
     {
       "url": "http://localhost:{port}",
-      "description": "Local Gasoline server",
+      "description": "Local Kaboom server",
       "variables": {
         "port": {
           "default": "7890",
@@ -345,7 +345,7 @@
           "Control"
         ],
         "summary": "Record token savings from hook compression",
-        "description": "Records token savings metrics from the gasoline-hooks compress-output hook. The hook POSTs category, tokens_before, and tokens_after after compressing verbose test/build output. Stats are tracked per-session and persisted to lifetime totals.",
+        "description": "Records token savings metrics from the kaboom-hooks compress-output hook. The hook POSTs category, tokens_before, and tokens_after after compressing verbose test/build output. Stats are tracked per-session and persisted to lifetime totals.",
         "operationId": "postTokenSavings",
         "requestBody": {
           "required": true,
@@ -990,7 +990,7 @@
           "Media"
         ],
         "summary": "Save screenshot",
-        "description": "Saves a screenshot JPEG from the Chrome extension. The extension captures the visible tab using chrome.tabs.captureVisibleTab() and sends the base64 data URL. Screenshots are saved to the gasoline data directory and can be linked to specific MCP tool invocations via correlation_id. Rate limited to 1 screenshot per second per client to prevent disk flooding.",
+        "description": "Saves a screenshot JPEG from the Chrome extension. The extension captures the visible tab using chrome.tabs.captureVisibleTab() and sends the base64 data URL. Screenshots are saved to the kaboom data directory and can be linked to specific MCP tool invocations via correlation_id. Rate limited to 1 screenshot per second per client to prevent disk flooding.",
         "operationId": "postScreenshot",
         "security": [
           {
@@ -1030,7 +1030,7 @@
           "Media"
         ],
         "summary": "Save video recording",
-        "description": "Saves a tab video recording from the Chrome extension's offscreen document. The extension uses chrome.tabCapture to record the visible tab as WebM video, optionally with audio (tab audio, microphone, or both). Accepts multipart form data with the video blob and a metadata JSON string. Recordings are saved to the gasoline data directory.",
+        "description": "Saves a tab video recording from the Chrome extension's offscreen document. The extension uses chrome.tabCapture to record the visible tab as WebM video, optionally with audio (tab audio, microphone, or both). Accepts multipart form data with the video blob and a metadata JSON string. Recordings are saved to the kaboom data directory.",
         "operationId": "postRecordingSave",
         "security": [
           {
@@ -1127,7 +1127,7 @@
           "Management"
         ],
         "summary": "Register MCP client",
-        "description": "Registers a new MCP client with its working directory. Returns a client ID that should be included in subsequent requests via the X-Gasoline-Client header. Each client gets its own activity tracking and can be independently managed.",
+        "description": "Registers a new MCP client with its working directory. Returns a client ID that should be included in subsequent requests via the X-Kaboom-Client header. Each client gets its own activity tracking and can be independently managed.",
         "operationId": "postClients",
         "security": [
           {
@@ -2200,8 +2200,8 @@
       "extensionClient": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-Gasoline-Client",
-        "description": "Extension client identifier. Must match pattern 'gasoline-extension-*'. Required for extension-only endpoints."
+        "name": "X-Kaboom-Client",
+        "description": "Extension client identifier. Must match pattern 'kaboom-extension-*'. Required for extension-only endpoints."
       }
     },
     "schemas": {
@@ -2237,7 +2237,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "example": "gasoline",
+            "example": "kaboom",
             "description": "Server identifier"
           },
           "version": {

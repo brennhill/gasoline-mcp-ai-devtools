@@ -21,7 +21,7 @@ test_paths:
 
 ## TL;DR
 
-- Design: Append-only JSONL session log in `~/.gasoline/sessions/<session-id>/`, read by all hooks via shared `session_store.go` package
+- Design: Append-only JSONL session log in `~/.kaboom/sessions/<session-id>/`, read by all hooks via shared `session_store.go` package
 - Key constraints: < 20ms per invocation, no locks (append-only), concurrent-safe
 - Rollout risk: Low — purely additive, no changes to existing hooks
 
@@ -37,7 +37,7 @@ test_paths:
 ## Session Store (shared by all hooks)
 
 ```
-~/.gasoline/sessions/<session-id>/
+~/.kaboom/sessions/<session-id>/
   ├── touches.jsonl     # append-only log of tool uses
   └── meta.json         # session metadata (start time, cwd, ppid)
 ```
@@ -79,12 +79,12 @@ No locks. Each hook process appends one line atomically (Go `os.OpenFile` with `
 
 ### Stale session cleanup
 
-On startup, `SessionID()` checks `~/.gasoline/sessions/` for directories with `meta.json` older than 4 hours. Removes them in a background goroutine (non-blocking).
+On startup, `SessionID()` checks `~/.kaboom/sessions/` for directories with `meta.json` older than 4 hours. Removes them in a background goroutine (non-blocking).
 
 ## Hook Logic
 
 ```
-gasoline-hooks session-track:
+kaboom-hooks session-track:
   1. Parse hook input (tool_name, tool_input)
   2. Derive session ID
   3. Append entry to touches.jsonl

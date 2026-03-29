@@ -284,8 +284,8 @@ func TestRunQualityGate_WithConventions(t *testing.T) {
 	t.Parallel()
 	dir := setupConventionProject(t)
 
-	// Create .gasoline.json and standards doc.
-	os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(`{"code_standards":"standards.md","file_size_limit":800}`), 0644)
+	// Create .kaboom.json and standards doc.
+	os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(`{"code_standards":"standards.md","file_size_limit":800}`), 0644)
 	os.WriteFile(filepath.Join(dir, "standards.md"), []byte("# Standards\n"), 0644)
 
 	// Create a file that introduces http.Client{

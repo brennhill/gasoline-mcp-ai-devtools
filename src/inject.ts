@@ -14,7 +14,7 @@
  *
  * This is a barrel/facade file that re-exports from the modular structure in
  * /inject subdirectory. The actual implementation is split into:
- * - inject/api.ts (GasolineAPI interface)
+ * - inject/api.ts (KaboomAPI interface)
  * - inject/observers.ts (Observer setup and installation)
  * - inject/message-handlers.ts (Content script message handling)
  * - inject/state.ts (State capture/restore)
@@ -133,8 +133,8 @@ export {
   MAX_WATERFALL_ENTRIES,
   MAX_PERFORMANCE_ENTRIES,
   SENSITIVE_HEADERS,
-  installGasolineAPI,
-  uninstallGasolineAPI,
+  installKaboomAPI,
+  uninstallKaboomAPI,
   install,
   uninstall,
   wrapFetch,
@@ -155,7 +155,7 @@ export {
   restoreState,
   highlightElement,
   clearHighlight,
-  type GasolineAPI,
+  type KaboomAPI,
   type DeferralState,
   type RestoreStateResult,
   type RestoredCounts,

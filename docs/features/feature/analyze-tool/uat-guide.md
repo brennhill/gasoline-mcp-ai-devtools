@@ -15,8 +15,8 @@ This guide provides step-by-step instructions for human testers to verify the `a
 **Estimated Time:** 45-60 minutes
 
 ### Required Setup:
-- Gasoline extension installed
-- Gasoline server running
+- Kaboom extension installed
+- Kaboom server running
 - Claude or MCP-compatible AI client
 - Test pages with known issues
 
@@ -26,7 +26,7 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 ### Environment Checklist
 
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and shows "Connected" in popup
 - [ ] AI Web Pilot toggle is ON
 - [ ] MCP client (Claude Desktop, Cursor, etc.) connected

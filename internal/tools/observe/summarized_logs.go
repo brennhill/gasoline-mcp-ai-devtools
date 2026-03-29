@@ -8,7 +8,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // GetSummarizedLogs handles observe(what="summarized_logs").

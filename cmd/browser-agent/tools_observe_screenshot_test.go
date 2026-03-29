@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
 // TestGetScreenshot_InlineImageInResponse verifies that a successful screenshot

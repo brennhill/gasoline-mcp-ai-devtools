@@ -19,7 +19,7 @@
  * - Cause: chrome.storage.local.get() callback is async; polling starts before cache init
  * - Why UI is correct: Popup reads response from background message (immediate)
  * - Why server is wrong: Polling happens before cache initialized, sends wrong header
- * - Result: First ~6 polls send X-Gasoline-Pilot: 0, server records pilot_enabled=false
+ * - Result: First ~6 polls send X-Kaboom-Pilot: 0, server records pilot_enabled=false
  * - Tests: "Service Worker Restart Race Condition" suite (lines 496-575)
  * - Fix: Await _aiWebPilotInitPromise before polling starts (multi-layer defense)
  * - If these tests fail: The await was removed or polling starts before init complete
@@ -263,7 +263,7 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('gasoline_highlight', { selector: '.test' })
+    const result = await handlePilotCommand('kaboom_highlight', { selector: '.test' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
@@ -280,13 +280,13 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('gasoline_manage_state', { action: 'save' })
+    const result = await handlePilotCommand('kaboom_manage_state', { action: 'save' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
   })
 
-  test('GASOLINE_EXECUTE_JS command should return error when pilot disabled', async () => {
+  test('kaboom_execute_js command should return error when pilot disabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
@@ -297,7 +297,7 @@ describe('Pilot Commands Rejection When Disabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('gasoline_execute_js', { script: 'console.log("test")' })
+    const result = await handlePilotCommand('kaboom_execute_js', { script: 'console.log("test")' })
 
     assert.ok(result.error, 'Should return an error')
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return ai_web_pilot_disabled error')
@@ -327,7 +327,7 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('gasoline_highlight', { selector: '.test' })
+    const result = await handlePilotCommand('kaboom_highlight', { selector: '.test' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
@@ -345,12 +345,12 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('gasoline_manage_state', { action: 'list' })
+    const result = await handlePilotCommand('kaboom_manage_state', { action: 'list' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
 
-  test('GASOLINE_EXECUTE_JS command should be accepted when pilot enabled', async () => {
+  test('kaboom_execute_js command should be accepted when pilot enabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: true })
     })
@@ -363,7 +363,7 @@ describe('Pilot Commands Acceptance When Enabled', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    const result = await handlePilotCommand('gasoline_execute_js', { script: 'return 1+1' })
+    const result = await handlePilotCommand('kaboom_execute_js', { script: 'return 1+1' })
 
     assert.ok(!result.error, 'Should not return an error when enabled')
   })
@@ -474,7 +474,7 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
   //   t=4ms:    startQueryPolling() called IMMEDIATELY (didn't wait for init!)
   //   t=5ms:    setInterval triggers first poll
   //   t=6ms:    pollPendingQueries() runs with cache still null
-  //   t=7ms:    Poll sent with X-Gasoline-Pilot: 0 ← WRONG!
+  //   t=7ms:    Poll sent with X-Kaboom-Pilot: 0 ← WRONG!
   //             Server records: pilot_enabled = false (incorrect state recorded!)
   //   t=100ms:  chrome.storage.local.get() CALLBACK finally fires
   //             Cache = true (TOO LATE - wrong state already sent to server!)
@@ -529,7 +529,7 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     skip: 'Requires full background.js startup simulation with service worker lifecycle — cannot be unit tested without module re-initialization'
   }, () => {})
 
-  test('polling header X-Gasoline-Pilot should reflect cache state after init', {
+  test('polling header X-Kaboom-Pilot should reflect cache state after init', {
     skip: 'Requires intercepting HTTP headers from pollPendingQueries — integration test, not unit test'
   }, () => {})
 

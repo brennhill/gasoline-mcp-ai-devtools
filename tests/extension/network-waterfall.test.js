@@ -10,7 +10,7 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // Define esbuild constant not available in Node test env
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 // Mock performance API
 let originalPerformance
@@ -522,17 +522,17 @@ describe('Network Waterfall - Configuration', () => {
     assert.strictEqual(isNetworkWaterfallEnabled(), false)
   })
 
-  test('should expose network waterfall through __gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, setNetworkWaterfallEnabled } =
+  test('should expose network waterfall through __kaboom API', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI, setNetworkWaterfallEnabled } =
       await import('../../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
-    installGasolineAPI()
+    installKaboomAPI()
 
-    assert.ok(globalThis.window.__gasoline)
-    assert.ok(typeof globalThis.window.__gasoline.setNetworkWaterfall === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.getNetworkWaterfall === 'function')
+    assert.ok(globalThis.window.__kaboom)
+    assert.ok(typeof globalThis.window.__kaboom.setNetworkWaterfall === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.getNetworkWaterfall === 'function')
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
   })
 })

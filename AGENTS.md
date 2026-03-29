@@ -1,4 +1,4 @@
-# Gasoline MCP — Core Rules
+# Kaboom MCP — Core Rules
 
 Browser extension + MCP server for real-time browser telemetry.
 **Stack:** Go (zero deps) | Chrome Extension (MV3) | MCP (JSON-RPC 2.0)
@@ -49,7 +49,7 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 
 - **NEVER modify tests during UAT** — run tests as-is, report results
 - If tests have issues, note them and propose changes AFTER UAT completes
-- UAT validates the npm-installed version (`gasoline-mcp` from PATH)
+- UAT validates the npm-installed version (`kaboom-agentic-browser` from PATH)
 - Extension must be connected for data flow tests to pass
 
 ## Code Standards

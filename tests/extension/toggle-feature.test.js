@@ -431,7 +431,7 @@ describe('Content Script Toggle Forwarding', () => {
     assert.ok(postCalls.length > 0, 'Should call window.postMessage')
 
     const payload = postCalls[0].arguments[0]
-    assert.strictEqual(payload.type, 'gasoline_setting')
+    assert.strictEqual(payload.type, 'kaboom_setting')
     assert.strictEqual(payload.setting, 'set_network_waterfall_enabled')
     assert.strictEqual(payload.enabled, false)
 

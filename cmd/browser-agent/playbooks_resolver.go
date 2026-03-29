@@ -47,24 +47,24 @@ func resolvePlaybookKey(raw string) string {
 	}
 }
 
-// resolveResourceContent resolves a gasoline resource URI into canonical URI + markdown.
+// resolveResourceContent resolves a kaboom resource URI into canonical URI + markdown.
 func resolveResourceContent(uri string) (string, string, bool) {
 	switch {
-	case uri == "gasoline://capabilities":
+	case uri == "kaboom://capabilities":
 		return uri, capabilityIndex, true
-	case uri == "gasoline://guide":
+	case uri == "kaboom://guide":
 		return uri, guideContent, true
-	case uri == "gasoline://quickstart":
+	case uri == "kaboom://quickstart":
 		return uri, quickstartContent, true
-	case strings.HasPrefix(uri, "gasoline://playbook/"):
-		key := resolvePlaybookKey(strings.TrimPrefix(uri, "gasoline://playbook/"))
+	case strings.HasPrefix(uri, "kaboom://playbook/"):
+		key := resolvePlaybookKey(strings.TrimPrefix(uri, "kaboom://playbook/"))
 		text, ok := playbooks[key]
 		if !ok {
 			return "", "", false
 		}
-		return "gasoline://playbook/" + key, text, true
-	case strings.HasPrefix(uri, "gasoline://demo/"):
-		name := strings.TrimPrefix(uri, "gasoline://demo/")
+		return "kaboom://playbook/" + key, text, true
+	case strings.HasPrefix(uri, "kaboom://demo/"):
+		name := strings.TrimPrefix(uri, "kaboom://demo/")
 		text, ok := demoScripts[name]
 		if !ok {
 			return "", "", false

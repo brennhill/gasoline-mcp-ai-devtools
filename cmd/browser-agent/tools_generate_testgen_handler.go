@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // testGenHandlerDeps defines the narrow interface that testGenHandler needs from its parent.

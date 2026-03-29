@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.join(__dirname, '..', '..')
 
 export default async function globalSetup() {
-  const binaryPath = path.join(projectRoot, 'dist', 'gasoline')
+  const binaryPath = path.join(projectRoot, 'dist', 'kaboom-agentic-browser')
 
   // Build the server binary
   console.log('[e2e] Building Go server binary...')

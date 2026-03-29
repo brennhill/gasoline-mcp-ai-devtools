@@ -1,5 +1,5 @@
 ---
-feature: Gasoline CI Infrastructure
+feature: Kaboom CI Infrastructure
 doc_type: qa-plan
 feature_id: feature-ci-infrastructure
 last_reviewed: 2026-03-05
@@ -7,7 +7,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# QA Plan: Gasoline CI Infrastructure
+# QA Plan: Kaboom CI Infrastructure
 
 > Comprehensive testing strategy. Code testing + human UAT + edge case analysis + issues found.
 
@@ -28,9 +28,9 @@ last_verified_date: 2026-03-05
 
 **Recommendation:** Add explicit mock ID system:
 ```
-mock1 = await gasoline.mock({endpoint, response})  // Returns ID
-mock2 = await gasoline.mock({endpoint, response})  // Returns ID
-await gasoline.unmock(mock1)                       // Clear specific mock
+mock1 = await kaboom.mock({endpoint, response})  // Returns ID
+mock2 = await kaboom.mock({endpoint, response})  // Returns ID
+await kaboom.unmock(mock1)                       // Clear specific mock
 ```
 
 **Test Case Needed:** Verify ordering + cleanup behavior under concurrency
@@ -68,22 +68,22 @@ await gasoline.unmock(mock1)                       // Clear specific mock
 
 #### Example that's confusing:
 ```javascript
-test('test1', async ({ gasoline }) => {
-  await gasoline.testBoundary('test1');
+test('test1', async ({ kaboom }) => {
+  await kaboom.testBoundary('test1');
   // logs marked test1
   console.log('test1 log');
   // test1 crashes here
   // Is testBoundary cleaned up?
 });
 
-test('test2', async ({ gasoline }) => {
+test('test2', async ({ kaboom }) => {
   // Are test2 logs still marked as test1? BUG?
   console.log('test2 log');
 });
 ```
 
 #### Recommendation:
-- **Explicit cleanup:** `await gasoline.endBoundary()`
+- **Explicit cleanup:** `await kaboom.endBoundary()`
 - **Or auto-cleanup:** Tie to test lifecycle (afterEach)
 - **Or scoped:** `async with boundary('test1'): ...` (context manager)
 
@@ -136,9 +136,9 @@ Snapshot Lifetime:
 #### Scenario:
 ```javascript
 // AI does this (in parallel):
-result1 = await gasoline.async(() => rerunTest('test1.spec.ts'))  // 30 sec
-result2 = await gasoline.async(() => rerunTest('test2.spec.ts'))  // 30 sec
-result3 = await gasoline.async(() => rerunTest('test3.spec.ts'))  // 30 sec
+result1 = await kaboom.async(() => rerunTest('test1.spec.ts'))  // 30 sec
+result2 = await kaboom.async(() => rerunTest('test2.spec.ts'))  // 30 sec
+result3 = await kaboom.async(() => rerunTest('test3.spec.ts'))  // 30 sec
 // ... all queued at once
 ```
 
@@ -168,7 +168,7 @@ Concurrency Model:
 
 #### Example:
 ```javascript
-await gasoline.configure({
+await kaboom.configure({
   action: 'mock',
   endpoint: 'api/order',  // Missing leading slash
   response: { statusCode: 200, body: {...} }
@@ -239,14 +239,14 @@ Snapshot Restoration:
 
 #### Example:
 ```javascript
-test('complex test', async ({ gasoline }) => {
-  await gasoline.testBoundary('setup');
+test('complex test', async ({ kaboom }) => {
+  await kaboom.testBoundary('setup');
   // ... setup code ...
   
-  await gasoline.testBoundary('main-flow');  // NEW boundary?
+  await kaboom.testBoundary('main-flow');  // NEW boundary?
   // ... main test code ...
   
-  await gasoline.testBoundary('cleanup');    // ANOTHER boundary?
+  await kaboom.testBoundary('cleanup');    // ANOTHER boundary?
   // ... cleanup code ...
 });
 ```
@@ -386,15 +386,15 @@ Rule: Only ONE active boundary per test
 ### Scenario 1: Developer Pushes Code, Test Fails, AI Fixes
 
 #### Setup:
-1. Clone Gasoline repo
+1. Clone Kaboom repo
 2. Create simple Playwright test that fails (timeout)
 3. Push to GitHub
-4. GitHub Actions runs tests with Gasoline CI Infrastructure
+4. GitHub Actions runs tests with Kaboom CI Infrastructure
 
 #### Steps:
 
 1. [ ] **Test Fails:** Test fails with "Timeout waiting for element"
-2. [ ] **Snapshot Captured:** Gasoline auto-captures snapshot (DOM, network, logs)
+2. [ ] **Snapshot Captured:** Kaboom auto-captures snapshot (DOM, network, logs)
 3. [ ] **AI Analyzes:** AI retrieves snapshot via `observe({what: 'snapshots'})`
 4. [ ] **AI Diagnoses:** AI says "Element selector timing out; API call pending"
 5. [ ] **AI Proposes Fix:** AI suggests increasing timeout OR mocking slow endpoint
@@ -422,7 +422,7 @@ Rule: Only ONE active boundary per test
 
 1. [ ] **Test Passes Locally:** Engineer runs `npm test` locally, passes
 2. [ ] **Test Fails in CI:** GitHub Actions runs same test, fails: "Column 'user_metadata' not found"
-3. [ ] **Snapshot Captured:** Gasoline captures snapshot showing DB error
+3. [ ] **Snapshot Captured:** Kaboom captures snapshot showing DB error
 4. [ ] **AI Diagnoses:** AI analyzes snapshot, detects schema mismatch
 5. [ ] **AI Identifies Root Cause:** "PostgreSQL schema version mismatch (12 vs 14)"
 6. [ ] **AI Proposes Fix:** Update mock to match PG14 schema
@@ -477,7 +477,7 @@ Rule: Only ONE active boundary per test
 - [ ] **Buffer Clearing:** Verify existing buffer clear operations work (v5.3)
 - [ ] **Pagination:** Verify pagination still works for large datasets (v5.3)
 - [ ] **Redaction:** Verify existing redaction rules still applied to snapshots
-- [ ] **Performance:** Verify Gasoline doesn't degrade (snapshot capture <500ms overhead)
+- [ ] **Performance:** Verify Kaboom doesn't degrade (snapshot capture <500ms overhead)
 
 ---
 

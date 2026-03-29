@@ -40,7 +40,7 @@ func setupBatchHandler(t *testing.T) *ToolHandler {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 	return h

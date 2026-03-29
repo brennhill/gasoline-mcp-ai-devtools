@@ -22,7 +22,7 @@ let injectionPromise: Promise<boolean> | null = null
 let bridgeProbePromise: Promise<boolean> | null = null
 /** Monotonic ID for bridge probe request IDs */
 let bridgeProbeCounter = 0
-const NONCE_ATTR = 'data-gasoline-nonce'
+const NONCE_ATTR = 'data-kaboom-nonce'
 
 /** Per-page-load nonce for authenticating postMessages to inject.js */
 const pageNonce = crypto
@@ -73,7 +73,7 @@ async function syncStoredSettings(): Promise<void> {
     if (setting.isMode) {
       window.postMessage(
         {
-          type: 'gasoline_setting',
+          type: 'kaboom_setting',
           setting: setting.messageType,
           mode: value as WebSocketCaptureMode,
           _nonce: pageNonce
@@ -82,7 +82,7 @@ async function syncStoredSettings(): Promise<void> {
       )
     } else {
       window.postMessage(
-        { type: 'gasoline_setting', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
+        { type: 'kaboom_setting', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
         window.location.origin
       )
     }
@@ -94,9 +94,9 @@ async function syncStoredSettings(): Promise<void> {
  * Must be called from content script context (has chrome.runtime API access)
  */
 function injectAxeCore(): void {
-  if (document.getElementById('gasoline-axe-loader')) return
+  if (document.getElementById('kaboom-axe-loader')) return
   const script = document.createElement('script')
-  script.id = 'gasoline-axe-loader'
+  script.id = 'kaboom-axe-loader'
   script.src = chrome.runtime.getURL('lib/axe.min.js')
   script.onload = () => script.remove()
   ;(document.head || document.documentElement).appendChild(script)
@@ -115,7 +115,7 @@ function injectScript(): Promise<boolean> {
   const script = document.createElement('script')
   script.src = chrome.runtime.getURL('inject.bundled.js')
   script.type = 'module'
-  script.dataset.gasolineNonce = pageNonce
+  script.dataset.kaboomNonce = pageNonce
 
   return new Promise((resolve) => {
     script.onload = () => {
@@ -169,7 +169,7 @@ function beginInjection(force = false): Promise<boolean> {
  * Ensure inject script is present, deduplicating concurrent inject attempts.
  * Optionally force a fresh reinjection attempt.
  */
-async function ensureInjectScriptReady(timeoutMs = 2000, force = false): Promise<boolean> {
+export async function ensureInjectScriptReady(timeoutMs = 2000, force = false): Promise<boolean> {
   if (!force && injected) return true
   const injection = beginInjection(force)
   if (timeoutMs <= 0) return injection
@@ -214,7 +214,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
 
     const onMessage = (event: MessageEvent<{ type?: string; requestId?: string; _nonce?: string }>) => {
       if (event.source !== window || event.origin !== window.location.origin) return
-      if (event.data?.type !== 'gasoline_inject_bridge_pong') return
+      if (event.data?.type !== 'kaboom_inject_bridge_pong') return
       if (event.data?.requestId !== requestId) return
       if (event.data?._nonce && event.data._nonce !== pageNonce) return
       finish(true)
@@ -226,7 +226,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350): Promise<boolean>
     try {
       window.postMessage(
         {
-          type: 'gasoline_inject_bridge_ping',
+          type: 'kaboom_inject_bridge_ping',
           requestId,
           _nonce: pageNonce
         },

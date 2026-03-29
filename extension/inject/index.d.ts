@@ -20,7 +20,7 @@ export { getSize, formatPayload, truncateWsMessage, createConnectionTracker, ins
 export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries.js';
 export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, installPerfObservers, uninstallPerfObservers, getLongTaskMetrics, getFCP, getLCP, getCLS, getINP, sendPerformanceSnapshot, isPerformanceSnapshotEnabled, setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js';
 export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js';
-export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api.js';
+export { installKaboomAPI, uninstallKaboomAPI, type KaboomAPI } from './api.js';
 export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installXHRCapture, uninstallXHRCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure, type DeferralState } from './observers.js';
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js';
 export { captureState, restoreState, highlightElement, clearHighlight, type RestoreStateResult, type RestoredCounts, type HighlightResult } from './state.js';

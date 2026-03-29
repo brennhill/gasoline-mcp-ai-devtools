@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: mcp-daemon-lifecycle
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-29
 owners:
   - Brenn
 entrypoints:
@@ -17,15 +17,24 @@ code_paths:
   - cmd/browser-agent/daemon_lifecycle.go
   - cmd/browser-agent/daemon_lock_file.go
   - cmd/browser-agent/server_routes.go
+  - cmd/browser-agent/server_middleware.go
+  - cmd/browser-agent/handler_http.go
+  - cmd/browser-agent/connect_mode.go
+  - cmd/browser-agent/server_routes_media_screenshots.go
   - internal/identity/mcp.go
 test_paths:
   - cmd/browser-agent/main_connection_coverage_test.go
   - cmd/browser-agent/main_connection_diag_test.go
   - cmd/browser-agent/main_connection_pid_contract_test.go
+  - cmd/browser-agent/handler_http_headers_test.go
+  - cmd/browser-agent/server_middleware_test.go
+  - cmd/browser-agent/connect_mode_run_test.go
+  - cmd/browser-agent/handler_consistency_test.go
+  - cmd/browser-agent/server_routes_unit_test.go
   - cmd/browser-agent/daemon_lifecycle_policy_test.go
   - cmd/browser-agent/runtime_mode_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-29
 ---
 
 # MCP Daemon Lifecycle
@@ -51,6 +60,7 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 8. PID file and daemon lock are persisted.
 9. Runtime blocks on `awaitShutdownSignal`.
 10. Runtime identity surfaces resolve canonical server naming from shared identity constants.
+11. Extension-facing HTTP routes and connect-mode forwarding use the `X-Kaboom-*` header family for per-client routing, diagnostics, and screenshot rate limiting.
 
 ## Error and Recovery Paths
 
@@ -65,7 +75,8 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - PID file + daemon lock reflect active owner and are cleared on shutdown.
 - `httpDone` channel is the listener liveness signal.
 - Launch-mode classification is surfaced in health/diagnostics for operator visibility.
-- Canonical server name (`gasoline-browser-devtools`) is sourced from `internal/identity` to avoid cross-package drift.
+- Canonical server name (`kaboom-browser-devtools`) is sourced from `internal/identity` to avoid cross-package drift.
+- Extension traffic is keyed by `X-Kaboom-Client`; HTTP debug context also records `X-Kaboom-Ext-Session` and `X-Kaboom-Extension-Version`.
 
 ## Code Paths
 
@@ -76,6 +87,10 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - `cmd/browser-agent/main_connection_mcp_shutdown.go`
 - `cmd/browser-agent/daemon_lifecycle.go`
 - `cmd/browser-agent/daemon_lock_file.go`
+- `cmd/browser-agent/server_middleware.go`
+- `cmd/browser-agent/handler_http.go`
+- `cmd/browser-agent/connect_mode.go`
+- `cmd/browser-agent/server_routes_media_screenshots.go`
 - `internal/identity/mcp.go`
 
 ## Test Paths
@@ -83,6 +98,11 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - `cmd/browser-agent/main_connection_coverage_test.go`
 - `cmd/browser-agent/main_connection_diag_test.go`
 - `cmd/browser-agent/main_connection_pid_contract_test.go`
+- `cmd/browser-agent/handler_http_headers_test.go`
+- `cmd/browser-agent/server_middleware_test.go`
+- `cmd/browser-agent/connect_mode_run_test.go`
+- `cmd/browser-agent/handler_consistency_test.go`
+- `cmd/browser-agent/server_routes_unit_test.go`
 - `cmd/browser-agent/daemon_lifecycle_policy_test.go`
 - `cmd/browser-agent/runtime_mode_test.go`
 

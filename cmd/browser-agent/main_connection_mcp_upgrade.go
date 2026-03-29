@@ -9,7 +9,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // binaryUpgradeState tracks whether a binary upgrade has been detected on disk.

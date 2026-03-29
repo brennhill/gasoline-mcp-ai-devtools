@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // timedEntry pairs a log entry with its parsed timestamp.

@@ -1,11 +1,11 @@
 # Scaffold Wizard
 
 status: spec
-last_reviewed: 2026-03-19
+last_reviewed: 2026-03-28
 
 ## Overview
 
-A browser-based scaffold wizard that lets users create a new web app from inside Strum. Two phases: a fast automated scaffold builds the empty project and starts the dev server, then an AI agent takes over and **live-composes the first real UI in the browser** — the user watches components appear, layouts form, and content populate in real-time.
+A browser-based scaffold wizard that lets users create a new web app from inside Kaboom. Two phases: a fast automated scaffold builds the empty project and starts the dev server, then an AI agent takes over and **live-composes the first real UI in the browser** — the user watches components appear, layouts form, and content populate in real-time.
 
 Goal: go from "I want to build X" to a meaningful, editable app in the browser — not boilerplate, a real first screen — in under 90 seconds.
 
@@ -110,7 +110,7 @@ We choose for them based on audience. The goal is zero backend code — everythi
 - Row-level security = auth-aware queries without writing backend code
 - Revenue share via Supabase partner program
 
-No alternatives offered. One BaaS, one path. Users who outgrow Supabase have graduated from Strum.
+No alternatives offered. One BaaS, one path. Users who outgrow Supabase have graduated from Kaboom.
 
 #### Revenue Share: Backend Services
 
@@ -197,7 +197,7 @@ Fast, deterministic, no AI needed. Sets up the full project with everything the 
 9. Connect security scanner (if selected in Step 7)
 10. Start dev server
 11. Detect ready port, navigate browser to it
-12. Gasoline auto-tracks the new tab
+12. Kaboom auto-tracks the new tab
 
 Progress streams to wizard UI via WebSocket. Each step shows: spinner → checkmark.
 
@@ -205,7 +205,7 @@ Progress streams to wizard UI via WebSocket. Each step shows: spinner → checkm
 
 This is the magic. Once the dev server is running and showing a blank app, an AI agent takes over and builds the first real UI — live, in the browser, while the user watches.
 
-The agent uses Gasoline's own tools (`interact`, `observe`, `analyze`) to:
+The agent uses Kaboom's own tools (`interact`, `observe`, `analyze`) to:
 
 1. **Read the user's description and first feature** from the wizard context
 2. **Plan the layout** — header, main content area, feature section, footer
@@ -232,7 +232,7 @@ The browser is the canvas. Each component write → HMR update → screenshot ve
 
 ### How It Maps to Pencil's Mechanisms
 
-| Pencil | Strum Phase 2 |
+| Pencil | Kaboom Phase 2 |
 |--------|---------------|
 | `batch_design` (25 atomic ops) | Write component file → HMR renders it instantly |
 | WASM re-render after each batch | Vite HMR updates browser after each file write |
@@ -269,7 +269,7 @@ We choose for them. The point is speed to editing, not framework selection.
 | Styling | Tailwind CSS v4 | Utility-first, annotation-mode friendly — class edits = instant visual feedback via HMR |
 | Components | shadcn/ui | Copy-paste into user source tree (not node_modules), excellent defaults, annotation mode can locate and edit actual files |
 | Package manager | pnpm | Fast, disk-efficient, deterministic lockfile |
-| Directory | `~/strum-projects/<slug>` | Discoverable, no decision paralysis |
+| Directory | `~/kaboom-projects/<slug>` | Discoverable, no decision paralysis |
 
 ### Why This Stack for Live Composition + Annotation Mode
 
@@ -291,7 +291,7 @@ We choose for them. The point is speed to editing, not framework selection.
                   | POST /api/scaffold
                   v
 +----------------------------------+     PHASE 1: Automated (~15s)
-|  Gasoline Daemon (port 7890)     |
+|  Kaboom Daemon (port 7890)     |
 |  +----------------------------+  |
 |  |  Scaffold Handler          |  |
 |  |  1. pnpm create vite       |  |
@@ -312,7 +312,7 @@ We choose for them. The point is speed to editing, not framework selection.
 |  |  → next component         |  |
 |  |  (user watches it happen)  |  |
 |  +----------------------------+  |
-|  Gasoline tracking + annotation  |
+|  Kaboom tracking + annotation  |
 +----------------------------------+
 
 WebSocket (port 7891):
@@ -338,13 +338,13 @@ Generated project hooks:
 ### 1. Wizard Landing Page
 
 **Route:** `GET /launch`
-**Served by:** Gasoline daemon HTTP server (port 7890)
+**Served by:** Kaboom daemon HTTP server (port 7890)
 **Content:** Static HTML/CSS/JS — minimal, no framework needed for the wizard itself
 
 UI design:
 - Conversational flow, one question at a time (not a form)
 - Each step slides in after the previous is answered
-- Dark theme matching Gasoline popup aesthetic
+- Dark theme matching Kaboom popup aesthetic
 - Progress bar showing 4 steps
 - "Create" button appears after Step 4
 - Phase 1 progress replaces wizard questions
@@ -538,9 +538,9 @@ Generated into the project so any AI agent immediately understands it.
 - Dev commands (`pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm tsc`)
 - Conventions: component naming, file organization, Tailwind-first styling
 
-**`.claude/skills/strum-dev/SKILL.md`** — bootstrap skill (Superpowers pattern):
+**`.claude/skills/kaboom-dev/SKILL.md`** — bootstrap skill (Superpowers pattern):
 - Teaches the agent how to use annotation mode for visual editing
-- References the gasoline MCP tools for browser interaction
+- References the kaboom MCP tools for browser interaction
 - Anti-rationalization table for common AI shortcuts
 
 **Bootstrap skill enforced rules (anti-slop invariants):**
@@ -559,55 +559,55 @@ Generated into the project so any AI agent immediately understands it.
 | **Responsive from birth** | Every component must not break at 375px width. | "I'll handle mobile later" |
 | **Accessible by default** | Form inputs need labels. Images need alt text. Interactive elements need focus states. | "Accessibility can come later" |
 
-**`.mcp.json`** — pre-wires Gasoline as an MCP server so tools are available immediately.
+**`.mcp.json`** — pre-wires Kaboom as an MCP server so tools are available immediately.
 
 ### 7. Dev Server with Pretty URLs (Portless)
 
 The scaffold uses **portless** (Apache-2.0, 1 dependency, 280KB) to give every project a named local URL instead of `localhost:5173`.
 
-**What the user sees:** `http://todo-app.strum` instead of `http://localhost:5173`
+**What the user sees:** `http://todo-app.kaboom` instead of `http://localhost:5173`
 
-The project name from the wizard becomes the subdomain with a `.strum` TLD. Multiple projects run simultaneously: `todo-app.strum`, `dashboard.strum`, `landing-page.strum`.
+The project name from the wizard becomes the subdomain with a `.kaboom` TLD. Multiple projects run simultaneously: `todo-app.kaboom`, `dashboard.kaboom`, `landing-page.kaboom`.
 
 **Phase 1 installs portless globally** (if not already installed):
 ```bash
 pnpm add -g portless
 ```
 
-**One-time `.strum` domain setup** (during first scaffold):
+**One-time `.kaboom` domain setup** (during first scaffold):
 
 The wizard tries the premium path first, explains what it needs, and falls back gracefully:
 
 ```
 Step: Set up your dev domain
 
-We'd like to give your app a clean URL: http://todo-app.strum
+We'd like to give your app a clean URL: http://todo-app.kaboom
 
-This requires a one-time system change to route .strum
+This requires a one-time system change to route .kaboom
 domains to your machine. Your password is needed for this.
 
-  [Set up .strum domains]     [Skip, use default]
+  [Set up .kaboom domains]     [Skip, use default]
 ```
 
 If they click "Set up":
 ```bash
-sudo portless proxy start --tld strum
+sudo portless proxy start --tld kaboom
 ```
-→ All future projects get `http://project-name.strum`
+→ All future projects get `http://project-name.kaboom`
 
 If they click "Skip" or sudo fails:
 → Falls back to `http://todo-app.localhost:1355` (works everywhere, no permissions needed)
 
-The wizard stores which path succeeded in `~/.strum/config.json` so it never asks again.
+The wizard stores which path succeeded in `~/.kaboom/config.json` so it never asks again.
 
 **Dev server starts via portless (both paths):**
 
 ```bash
-# If .strum is set up:
+# If .kaboom is set up:
 portless todo-app pnpm dev
-# → http://todo-app.strum
+# → http://todo-app.kaboom
 
-# If .strum failed/skipped:
+# If .kaboom failed/skipped:
 portless todo-app pnpm dev
 # → http://todo-app.localhost:1355
 ```
@@ -624,12 +624,12 @@ Same command either way — portless handles the routing based on whether the pr
 ```
 
 **Detection:** After `portless` starts:
-- Parse stdout for the ready URL (either `.strum` or `.localhost:1355`)
+- Parse stdout for the ready URL (either `.kaboom` or `.localhost:1355`)
 - Fallback: poll both URLs
 - Timeout after 30 seconds with error
 
 **Benefits:**
-- **Best case:** `http://todo-app.strum` — clean, branded, no port numbers
+- **Best case:** `http://todo-app.kaboom` — clean, branded, no port numbers
 - **Fallback:** `http://todo-app.localhost:1355` — still named, still works, zero permissions
 - **Either way:** better than `localhost:5173`
 - **Multi-project** — multiple apps run simultaneously on different names
@@ -703,8 +703,8 @@ Writes the context metrics bridge file that Hook 2 reads.
 
 - `node` >= 18 on PATH
 - `pnpm` on PATH (wizard offers to install if missing: `npm install -g pnpm`)
-- Gasoline daemon running (serves the wizard — always true if user opened `/launch`)
-- Chrome with Gasoline extension installed (for annotation mode; Phase 1 works without it)
+- Kaboom daemon running (serves the wizard — always true if user opened `/launch`)
+- Chrome with Kaboom extension installed (for annotation mode; Phase 1 works without it)
 
 The wizard checks these before showing "Create" and shows clear, actionable errors.
 
@@ -773,7 +773,7 @@ Before any deploy, a security scan runs automatically. This is the last gate —
 **Frontend scan** (runs locally, no account needed):
 - `pnpm audit` — checks dependencies for known CVEs, blocks on high/critical
 - ESLint security rules (`eslint-plugin-security`) — catches common patterns: `eval()`, `innerHTML`, unsanitized URLs, prototype pollution
-- Gasoline's own `analyze(what='security_audit')` — scans the running app for XSS vectors, insecure headers, mixed content, open redirects
+- Kaboom's own `analyze(what='security_audit')` — scans the running app for XSS vectors, insecure headers, mixed content, open redirects
 
 **Backend scan** (when applicable):
 - `pnpm audit` covers server-side deps too
@@ -802,7 +802,7 @@ Tip: Connect a cloud scanner for continuous monitoring:
 
 `pnpm security:setup` is an interactive script that walks the user through connecting their preferred scanner, creates the config file, and (if they have a GitHub repo) sets up the GitHub App integration.
 
-**Revenue share strategy:** Same model as deploy platforms — every Strum project recommends a scanner, negotiate referral terms with all four. Codacy and Snyk are the strongest candidates (both have active partner programs for dev tools).
+**Revenue share strategy:** Same model as deploy platforms — every Kaboom project recommends a scanner, negotiate referral terms with all four. Codacy and Snyk are the strongest candidates (both have active partner programs for dev tools).
 
 ### Auto-Commit Hook (keeps work saved)
 
@@ -893,7 +893,7 @@ Your app is running! Next steps:
 
 ### Revenue Share Strategy
 
-Every Strum-scaffolded project recommends a deploy platform, security scanner, and GitHub. At scale, this is significant referral volume across three revenue streams.
+Every Kaboom-scaffolded project recommends a deploy platform, security scanner, and GitHub. At scale, this is significant referral volume across three revenue streams.
 
 #### Partner Revenue Breakdown
 
@@ -929,7 +929,7 @@ At 1,000 scaffolded projects/month, even 5% conversion to paid tiers generates m
 
 ## Production Observability (Post-Scaffold)
 
-Gasoline captures everything during development — but what about after deploy? The scaffold pre-wires production observability so the user's app is never a black box.
+Kaboom captures everything during development — but what about after deploy? The scaffold pre-wires production observability so the user's app is never a black box.
 
 ### Error Tracking
 
@@ -938,7 +938,7 @@ The scaffold pre-installs a lightweight error boundary and recommends connecting
 **Built-in (no account needed):**
 - React error boundary in `src/components/ErrorBoundary.tsx` — catches render crashes, shows friendly fallback
 - `window.onerror` + `window.onunhandledrejection` handlers in `src/lib/error-reporter.ts`
-- During dev: errors flow to Gasoline automatically (already works)
+- During dev: errors flow to Kaboom automatically (already works)
 - During production: errors log to console (baseline) or forward to a service (if connected)
 
 **Recommended service (wizard Step 7b — alongside security scanner):**
@@ -1090,14 +1090,14 @@ This turns every editing session into an implicit tutorial. The user learns Reac
 
 ## Terminal-First Architecture: Decorated Commands
 
-The terminal (xterm on port 7891) is the **single source of truth**. The user always has complete control. Everything flows through it — whether the user types directly or clicks a button in the Strum UI.
+The terminal (xterm on port 7891) is the **single source of truth**. The user always has complete control. Everything flows through it — whether the user types directly or clicks a button in the Kaboom UI.
 
 ### How It Works
 
-The Strum browser UI provides contextual action buttons. When clicked, they compose a **decorated prompt** — a well-crafted command with full project context — and inject it into the xterm PTY. The user sees it appear in the terminal as if they typed it. Claude Code receives and executes it.
+The Kaboom browser UI provides contextual action buttons. When clicked, they compose a **decorated prompt** — a well-crafted command with full project context — and inject it into the xterm PTY. The user sees it appear in the terminal as if they typed it. Claude Code receives and executes it.
 
 ```
-┌─ Strum UI (browser) ────────────────────────────────┐
+┌─ Kaboom UI (browser) ────────────────────────────────┐
 │                                                      │
 │  Your app: todo-app    [2 errors]  [HMR: ok]        │
 │                                                      │
@@ -1146,7 +1146,7 @@ Add a contact form page to the app. Requirements:
 ```
 
 The decoration pulls from:
-- **Code quality standards** — `.strum/code-quality-standards.md` is appended to every decorated prompt. Contains all file size limits, naming conventions, styling rules, testing requirements, and "what NOT to do" rules. This is the non-negotiable baseline.
+- **Code quality standards** — `.kaboom/code-quality-standards.md` is appended to every decorated prompt. Contains all file size limits, naming conventions, styling rules, testing requirements, and "what NOT to do" rules. This is the non-negotiable baseline.
 - **Project config** — stack, database, auth setup (from CLAUDE.md)
 - **Available components** — what shadcn components are installed
 - **Current page state** — what's on screen (from `observe(what='page')`)
@@ -1158,7 +1158,7 @@ The code quality standards file (`code-quality-standards.md`) ships with every s
 
 ### Action Buttons
 
-The Strum UI shows contextual buttons based on project state:
+The Kaboom UI shows contextual buttons based on project state:
 
 | Button | When Shown | Decorated Prompt Includes |
 |--------|-----------|--------------------------|
@@ -1167,19 +1167,19 @@ The Strum UI shows contextual buttons based on project state:
 | **Fix errors** | When `observe(errors)` > 0 | Actual error messages, affected components, stack traces |
 | **Deploy** | Deploy platform connected | Security scan first, then deploy command |
 | **Run tests** | Always | `pnpm test` with coverage report |
-| **Security scan** | Always | `pnpm audit` + Gasoline `analyze(what='security_audit')` |
+| **Security scan** | Always | `pnpm audit` + Kaboom `analyze(what='security_audit')` |
 | **Improve this page** | Tab tracked | Screenshot of current page, accessibility audit results |
 | **Make it mobile-friendly** | Tab tracked | Current viewport screenshot + 375px screenshot comparison |
 
-### Skills and Hooks (Shipped with Gasoline Install)
+### Skills and Hooks (Shipped with Kaboom Install)
 
-When Gasoline installs, it ships with skills and hooks that make this work even without the Strum UI — so users typing directly in Claude Code get the same quality:
+When Kaboom installs, it ships with skills and hooks that make this work even without the Kaboom UI — so users typing directly in Claude Code get the same quality:
 
-**Shipped skills** (in `claude_skill/gasoline/`):
+**Shipped skills** (in `claude_skill/kaboom/`):
 - Already have the 5-tool reference (observe, analyze, generate, configure, interact)
 - Workflow guides already teach best practices for debugging, automation, testing
 
-**Scaffolded project skills** (generated into `.claude/skills/strum-dev/`):
+**Scaffolded project skills** (generated into `.claude/skills/kaboom-dev/`):
 - Bootstrap skill with anti-rationalization table
 - Project-specific conventions (stack, components, database, auth)
 - These survive `/clear` via the SessionStart hook
@@ -1199,26 +1199,26 @@ The combination means: button clicks get decorated prompts → great results. Di
 - **Fallback** — if the UI breaks, the terminal still works. Skills and hooks don't depend on the UI.
 - **Universal** — works with any AI agent in the terminal (Claude Code, Codex, Gemini CLI), not just our UI.
 
-## Context Menu: Right-Click Actions on Strum Projects
+## Context Menu: Right-Click Actions on Kaboom Projects
 
-When the user is on a Strum project (localhost with `<meta name="strum-project">` tag), the extension dynamically adds context menu items. These only appear on Strum projects — not on any other site.
+When the user is on a Kaboom project (localhost with `<meta name="kaboom-project">` tag), the extension dynamically adds context menu items. These only appear on Kaboom projects — not on any other site.
 
 ### Detection
 
 During scaffold, the Vite plugin injects a meta tag into `index.html`:
 
 ```html
-<meta name="strum-project" content="todo-app" data-stack="react,supabase,stripe">
+<meta name="kaboom-project" content="todo-app" data-stack="react,supabase,stripe">
 ```
 
 The content script checks for this on every page load:
 
 ```typescript
-const strumMeta = document.querySelector('meta[name="strum-project"]')
-if (strumMeta) {
-  chrome.runtime.sendMessage({ type: 'strum_project_detected',
-    name: strumMeta.content,
-    stack: strumMeta.dataset.stack
+const kaboomMeta = document.querySelector('meta[name="kaboom-project"]')
+if (kaboomMeta) {
+  chrome.runtime.sendMessage({ type: 'kaboom_project_detected',
+    name: kaboomMeta.content,
+    stack: kaboomMeta.dataset.stack
   })
 }
 ```
@@ -1227,11 +1227,11 @@ The background script creates/removes context menu items based on this signal.
 
 ### Context Menu Items
 
-When on a Strum project, right-click shows:
+When on a Kaboom project, right-click shows:
 
 ```
 ┌─────────────────────────────┐
-│  Strum                    → │
+│  Kaboom                    → │
 │  ├── Add feature            │
 │  ├── Add page               │
 │  ├── Update this element    │
@@ -1241,7 +1241,7 @@ When on a Strum project, right-click shows:
 └─────────────────────────────┘
 ```
 
-When NOT on a Strum project (or not on localhost), the "Strum" submenu doesn't appear at all.
+When NOT on a Kaboom project (or not on localhost), the "Kaboom" submenu doesn't appear at all.
 
 ### Inline Chat Box
 
@@ -1294,7 +1294,7 @@ Use Tailwind classes for sizing. Keep the theme tokens.
 ### Flow: Right-Click → Chat → Terminal → HMR
 
 ```
-1. User right-clicks on their Strum app
+1. User right-clicks on their Kaboom app
 2. Selects "Add feature" from context menu
 3. Chat box appears at click position
 4. User types "dark mode toggle" and hits Enter
@@ -1315,39 +1315,39 @@ Use Tailwind classes for sizing. Keep the theme tokens.
 ```typescript
 // background script
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'strum_project_detected') {
+  if (msg.type === 'kaboom_project_detected') {
     chrome.contextMenus.create({
-      id: 'strum-menu',
-      title: 'Strum',
+      id: 'kaboom-menu',
+      title: 'Kaboom',
       contexts: ['page', 'selection', 'link', 'image'],
       documentUrlPatterns: ['http://localhost/*']
     })
     chrome.contextMenus.create({
-      id: 'strum-add-feature',
-      parentId: 'strum-menu',
+      id: 'kaboom-add-feature',
+      parentId: 'kaboom-menu',
       title: 'Add feature',
       contexts: ['page']
     })
     chrome.contextMenus.create({
-      id: 'strum-update-element',
-      parentId: 'strum-menu',
+      id: 'kaboom-update-element',
+      parentId: 'kaboom-menu',
       title: 'Update this element',
       contexts: ['page', 'selection', 'image']
     })
     // ... other items
   }
 
-  if (msg.type === 'strum_project_left') {
+  if (msg.type === 'kaboom_project_left') {
     chrome.contextMenus.removeAll()
   }
 })
 ```
 
-Only active on `http://localhost/*` pages that have the `strum-project` meta tag. Completely invisible on all other sites.
+Only active on `http://localhost/*` pages that have the `kaboom-project` meta tag. Completely invisible on all other sites.
 
 ## Zero-Token Status Overlays
 
-The extension already has subtitle and toast infrastructure (content script overlays). We use these to narrate what Strum is doing — without any LLM calls. The daemon sends commands directly through the `/sync` command pipeline.
+The extension already has subtitle and toast infrastructure (content script overlays). We use these to narrate what Kaboom is doing — without any LLM calls. The daemon sends commands directly through the `/sync` command pipeline.
 
 ### How It Works
 
@@ -1428,7 +1428,7 @@ func usageBeaconLoop() {
 -- Most popular tool actions (last 7 days)
 -- props are in blob4 as JSON, extract and sum
 SELECT index1, count() as beacons
-FROM strum_events
+FROM kaboom_events
 WHERE index1 = 'usage_summary' AND timestamp > now() - interval '7 day'
 GROUP BY index1
 
@@ -1440,7 +1440,7 @@ GROUP BY index1
 - **One beacon per 10 minutes** instead of one per tool call — 100x fewer requests to the endpoint
 - **Aggregated** — individual actions can't be correlated to a timeline or user session
 - **No activity = no beacon** — idle daemons send nothing
-- **Respects `STRUM_TELEMETRY=off`** — same opt-out as everything else
+- **Respects `KABOOM_TELEMETRY=off`** — same opt-out as everything else
 
 ### Event-to-Subtitle Mapping
 
@@ -1500,7 +1500,7 @@ The extension already handles subtitle and toast commands from the sync response
 During Phase 2 (AI composition) and during normal development with decorated commands, the daemon can watch for file changes in the project directory and show subtitles automatically:
 
 ```go
-// Watch ~/strum-projects/todo-app/src/ for changes
+// Watch ~/kaboom-projects/todo-app/src/ for changes
 // On file write: push subtitle "Building {filename}..."
 // On test file write: push subtitle "Writing test for {component}..."
 // Debounce: 500ms (Vite HMR writes multiple files quickly)
@@ -1519,7 +1519,7 @@ The user gets a narrated experience — "Building Header...", "Running tests..."
 
 ## Entry Point: Extension Popup
 
-The scaffold wizard is discoverable from the extension popup's "no tab tracked" state — the cold-start moment when the user has Gasoline installed but nothing to point it at.
+The scaffold wizard is discoverable from the extension popup's "no tab tracked" state — the cold-start moment when the user has Kaboom installed but nothing to point it at.
 
 **When no tab is tracked, the popup shows two buttons:**
 
@@ -1554,8 +1554,8 @@ Product telemetry to understand adoption and usage without tracking individuals.
 
 1. **No PII.** No IP addresses stored, no email, no machine fingerprints, no names, no URLs.
 2. **No cookies.** Server-side event counting only.
-3. **Random install ID only.** A random hex string (`iid`) generated once at install time, stored at `~/.strum/install_id`. Not derived from hardware, username, or any machine property. Cannot be reversed to identify a person. Allows tracking usage patterns per install over time without knowing who the install belongs to.
-4. **Opt-out available.** `STRUM_TELEMETRY=off` env var disables all beacons. Documented in CLAUDE.md.
+3. **Random install ID only.** A random hex string (`iid`) generated once at install time, stored at `~/.kaboom/install_id`. Not derived from hardware, username, or any machine property. Cannot be reversed to identify a person. Allows tracking usage patterns per install over time without knowing who the install belongs to.
+4. **Opt-out available.** `KABOOM_TELEMETRY=off` env var disables all beacons. Documented in CLAUDE.md.
 5. **Transparent.** Every beacon call is visible in source code, never hidden.
 
 ### Install ID Generation
@@ -1563,12 +1563,12 @@ Product telemetry to understand adoption and usage without tracking individuals.
 Generated once during first daemon startup. Never changes. Pure random, not derived from anything:
 
 ```go
-// On first startup, if ~/.strum/install_id doesn't exist:
+// On first startup, if ~/.kaboom/install_id doesn't exist:
 func generateInstallID() string {
     b := make([]byte, 6) // 12 hex chars
     rand.Read(b)
     id := hex.EncodeToString(b)
-    os.WriteFile(filepath.Join(strumDir, "install_id"), []byte(id), 0600)
+    os.WriteFile(filepath.Join(kaboomDir, "install_id"), []byte(id), 0600)
     return id
 }
 ```
@@ -1579,7 +1579,7 @@ The `iid` field is included in every beacon event (not just usage_summary) so al
 
 ### Telemetry Endpoint
 
-A single endpoint hosted at `https://t.getstrum.dev/v1/event` (or self-hosted equivalent):
+A single endpoint hosted at `https://t.gokaboom.dev/v1/event` (or self-hosted equivalent):
 
 ```
 POST /v1/event
@@ -1633,9 +1633,9 @@ The endpoint is a minimal Go service (or Cloudflare Worker) that increments coun
 
 **Install script beacon** (`scripts/install.sh`):
 ```bash
-# Anonymous telemetry (disable: STRUM_TELEMETRY=off)
-if [ "$STRUM_TELEMETRY" != "off" ]; then
-  curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+# Anonymous telemetry (disable: KABOOM_TELEMETRY=off)
+if [ "$KABOOM_TELEMETRY" != "off" ]; then
+  curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
     -H "Content-Type: application/json" \
     -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\"}" \
     > /dev/null 2>&1 &
@@ -1646,13 +1646,13 @@ Fire-and-forget: backgrounded, 2s timeout, stdout/stderr suppressed. Never block
 
 **Daemon beacon** (Go, on startup):
 ```go
-// Anonymous telemetry — disable with STRUM_TELEMETRY=off
+// Anonymous telemetry — disable with KABOOM_TELEMETRY=off
 func beaconEvent(event string, props map[string]any) {
-    if os.Getenv("STRUM_TELEMETRY") == "off" {
+    if os.Getenv("KABOOM_TELEMETRY") == "off" {
         return
     }
     go func() {
-        // fire-and-forget POST to t.getstrum.dev/v1/event
+        // fire-and-forget POST to t.gokaboom.dev/v1/event
         // 2s timeout, ignore errors
     }()
 }
@@ -1660,11 +1660,11 @@ func beaconEvent(event string, props map[string]any) {
 
 **Wizard beacon** (browser JS):
 ```javascript
-// Anonymous telemetry — respects STRUM_TELEMETRY=off via daemon config
+// Anonymous telemetry — respects KABOOM_TELEMETRY=off via daemon config
 function beacon(event, props = {}) {
-  if (window.__strum_telemetry_off) return
-  navigator.sendBeacon('https://t.getstrum.dev/v1/event',
-    JSON.stringify({ event, v: STRUM_VERSION, ...props }))
+  if (window.__kaboom_telemetry_off) return
+  navigator.sendBeacon('https://t.gokaboom.dev/v1/event',
+    JSON.stringify({ event, v: Kaboom_VERSION, ...props }))
 }
 ```
 
@@ -1672,7 +1672,7 @@ function beacon(event, props = {}) {
 
 ### Analytics Dashboard
 
-**Website analytics:** Umami (self-hosted, already in use for cookwithgasoline.com). Migrate to getstrum.dev. No cookies, GDPR-compliant.
+**Website analytics:** Umami (self-hosted, already in use for `gokaboom.dev`). No cookies, GDPR-compliant.
 
 **Product analytics:** Custom dashboard reading from the telemetry endpoint's counter store. Key views:
 
@@ -1694,7 +1694,7 @@ Recommend Cloudflare Worker for v1 — zero cost, global edge, no server to mana
 ## Open Questions
 
 - **Error recovery**: if Phase 1 fails mid-way, clean up partial directory or leave for debugging?
-- **Project gallery**: should `/launch` also list existing strum-projects for re-opening?
+- **Project gallery**: should `/launch` also list existing kaboom-projects for re-opening?
 - **Port conflicts**: if 5173 is taken, Vite auto-picks another — need to parse actual port from stdout
 - **Template variants**: start with one template (React + shadcn), add more later?
 - **AI agent selection**: which model for Phase 2 composition? Needs to be fast (Sonnet?) but capable of good UI decisions
@@ -1734,6 +1734,6 @@ Recommend Cloudflare Worker for v1 — zero cost, global edge, no server to mana
 - Session-start hook survives `/clear` — agent always knows project conventions
 - Context monitor fires warnings at 35% and 25% remaining
 - Telemetry beacons fire on install, daemon start, wizard steps, scaffold complete, and first deploy
-- All beacons are fire-and-forget (never block the user), respect `STRUM_TELEMETRY=off`
+- All beacons are fire-and-forget (never block the user), respect `KABOOM_TELEMETRY=off`
 - No PII in any telemetry event — no IPs, no user IDs, no project content
 - Funnel visibility: can measure install → scaffold → deploy conversion

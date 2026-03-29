@@ -388,6 +388,6 @@ git checkout <commit-hash> -- internal/capture/
 
 ---
 
-**The async queue is now the most protected code in Gasoline.**
+**The async queue is now the most protected code in Kaboom.**
 
 **Mission accomplished! 🚀**

@@ -310,23 +310,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/recording"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/types"
 
 	// Import from new type files
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/interfaces"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/type-aliases"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/session-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/security-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/network-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/websocket-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/extension-logging-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/enhanced-actions-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/internal-types"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/constants"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/buffer-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/interfaces"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/type-aliases"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/session-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/security-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/network-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/websocket-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/extension-logging-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/enhanced-actions-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/internal-types"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/constants"
+	"github.com/brennhill/kaboom-agentic-browser-devtools-mcp/internal/capture/buffer-types"
 )
 ```
 

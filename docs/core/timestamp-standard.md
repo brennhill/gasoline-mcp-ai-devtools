@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Timestamp Standard - Gasoline Project
+# Timestamp Standard - Kaboom Project
 
 **Version:** v5.3+
 **Last Updated:** 2026-01-30
@@ -96,7 +96,7 @@ func serializeLogEntry(entry LogEntry) map[string]interface{} {
 
 ### Why UTC?
 - **No timezone ambiguity** - All timestamps comparable without conversion
-- **Server-side consistency** - Gasoline server runs in single timezone
+- **Server-side consistency** - Kaboom server runs in single timezone
 - **Avoids DST issues** - Daylight saving time doesn't affect UTC
 
 ### Why Normalize at Response Time (Not Storage)?
@@ -118,7 +118,7 @@ If an entry has no timestamp (e.g., `Timestamp: ""`), the response serializer MU
 
 ### Clock Skew
 Browser and server clocks may differ. **Solution:**
-- Use **server-side timestamps** whenever possible (when log arrives at Gasoline)
+- Use **server-side timestamps** whenever possible (when log arrives at Kaboom)
 - For browser-generated timestamps, accept as-is (don't adjust) to preserve client-side temporal relationships
 
 ### Non-UTC Timestamps from Browser

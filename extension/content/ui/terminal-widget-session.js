@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/terminal/index.md
  */
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js';
+import { getDaemonStartHint } from '../../lib/brand.js';
 import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js';
 import { state, getTerminalServerUrl } from './terminal-widget-types.js';
 // =============================================================================
@@ -134,7 +135,7 @@ export async function startSession(config, onSandboxError) {
                     onSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '');
                 }
                 else {
-                    console.warn('[Gasoline] Terminal sandbox restriction: ' +
+                    console.warn('[Kaboom] Terminal sandbox restriction: ' +
                         (body.message ?? 'no message') +
                         '. ' +
                         (body.instruction ?? 'No instruction provided.'));
@@ -147,7 +148,7 @@ export async function startSession(config, onSandboxError) {
                 persistSession(ss);
                 return ss;
             }
-            console.warn('[Gasoline] Terminal session rejected (HTTP ' + resp.status + '): ' +
+            console.warn('[Kaboom] Terminal session rejected (HTTP ' + resp.status + '): ' +
                 (body.error ?? 'unknown') + '. Check the daemon logs for details.');
             return null;
         }
@@ -157,9 +158,9 @@ export async function startSession(config, onSandboxError) {
         return ss;
     }
     catch (err) {
-        console.warn('[Gasoline] Terminal session start failed: ' +
+        console.warn('[Kaboom] Terminal session start failed: ' +
             (err instanceof Error ? err.message : String(err)) +
-            '. Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser');
+            `. ${getDaemonStartHint()}`);
         return null;
     }
 }

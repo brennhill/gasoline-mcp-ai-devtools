@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Gasoline's redaction engine scrubs sensitive data from MCP tool responses before they reach AI clients. Currently, redaction uses a fixed set of built-in patterns loaded at startup. This feature adds user-defined regex patterns via an MCP tool, supporting custom patterns for domain-specific sensitive data (internal account numbers, proprietary tokens, PII formats), with configurable replacement strategies (mask, hash, remove) and per-field targeting.
+Kaboom's redaction engine scrubs sensitive data from MCP tool responses before they reach AI clients. Currently, redaction uses a fixed set of built-in patterns loaded at startup. This feature adds user-defined regex patterns via an MCP tool, supporting custom patterns for domain-specific sensitive data (internal account numbers, proprietary tokens, PII formats), with configurable replacement strategies (mask, hash, remove) and per-field targeting.
 
 ---
 

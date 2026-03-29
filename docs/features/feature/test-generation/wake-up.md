@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 ✅ **All 7 test generation modes fully implemented** (1,693 lines)
 ✅ **77 comprehensive tests passing** (2,996 lines)
 ✅ **Complete documentation** including validation guide
-✅ **Ready to validate** using ~/dev/gasoline-demos
+✅ **Ready to validate** using ~/dev/kaboom-demos
 
 **Next step:** Run validation (2 hours) to prove it works
 
@@ -64,7 +64,7 @@ last_verified_date: 2026-03-05
 
 ### Demo Environment
 
-**Location:** `~/dev/gasoline-demos`
+**Location:** `~/dev/kaboom-demos`
 **What it is:** ShopBroken — e-commerce site with 34 intentional bugs
 #### Key bugs:
 - Phase 1: Products API 404, WebSocket connection errors
@@ -79,7 +79,7 @@ last_verified_date: 2026-03-05
 **Time required:** ~2 hours total
 
 #### 4 Phases:
-1. **WebSocket test generation** (30 min) — Tests Gasoline's unique advantage
+1. **WebSocket test generation** (30 min) — Tests Kaboom's unique advantage
 2. **WebSocket interaction test** (15 min) — More WebSocket validation
 3. **Selector healing** (30 min) — Create broken test, heal it, verify it works
 4. **Failure classification** (20 min) — Classify real failures, check accuracy
@@ -90,7 +90,7 @@ last_verified_date: 2026-03-05
 
 ## The WebSocket Advantage
 
-> "Pay particular attention to the WebSocket bugs. Those are a unique feature of Gasoline."
+> "Pay particular attention to the WebSocket bugs. Those are a unique feature of Kaboom."
 
 ### Why This Matters
 
@@ -100,7 +100,7 @@ last_verified_date: 2026-03-05
 - ❌ Detect WebSocket timing issues
 - ❌ Generate tests for WebSocket behavior
 
-#### Gasoline can:
+#### Kaboom can:
 - ✅ Capture every WebSocket frame in real-time
 - ✅ Monitor connection lifecycle
 - ✅ Generate tests with frame-level assertions
@@ -116,7 +116,7 @@ last_verified_date: 2026-03-05
 
 **This is our killer feature.** After validation, we can say:
 
-> "Gasoline is the only tool that can generate tests for WebSocket-heavy applications automatically."
+> "Kaboom is the only tool that can generate tests for WebSocket-heavy applications automatically."
 
 ---
 
@@ -126,13 +126,13 @@ last_verified_date: 2026-03-05
 
 ```bash
 # Terminal 1: Start demo
-cd ~/dev/gasoline-demos
+cd ~/dev/kaboom-demos
 npm run demo
 
-# Terminal 2: Start Gasoline
-cd ~/dev/gasoline
+# Terminal 2: Start Kaboom
+cd ~/dev/kaboom
 make dev
-./dist/gasoline-mcp
+./dist/kaboom-mcp
 
 # Follow validation-guide.md step-by-step
 ```
@@ -185,7 +185,7 @@ Any of these are fair questions:
 
 ```bash
 # Verify implementation compiles
-cd ~/dev/gasoline
+cd ~/dev/kaboom
 go build ./cmd/browser-agent/
 
 # Verify tests pass
@@ -227,7 +227,7 @@ To **prove it in practice**, run the validation guide.
    - `README.md` with validated examples
 
 3. Claim confidently:
-   > "Gasoline has TestSprite parity + WebSocket monitoring"
+   > "Kaboom has TestSprite parity + WebSocket monitoring"
 
 ### If Validation Finds Issues
 

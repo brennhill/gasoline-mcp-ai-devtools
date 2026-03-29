@@ -33,7 +33,7 @@ run_test_16_1() {
     # Valid minimal /sync
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"test","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -41,7 +41,7 @@ run_test_16_1() {
     # Invalid: missing session_id
     local response_invalid
     response_invalid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -68,7 +68,7 @@ begin_test "16.2" "settings field has: pilot_enabled, tracking_enabled, capture_
 run_test_16_2() {
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"contract-settings",
@@ -91,8 +91,8 @@ run_test_16_2() {
 }
 run_test_16_2
 
-# ── 16.3 — X-Gasoline-Client header format ──
-begin_test "16.3" "X-Gasoline-Client header: 'gasoline-extension/VERSION'" \
+# ── 16.3 — X-Kaboom-Client header format ──
+begin_test "16.3" "X-Kaboom-Client header: 'kaboom-extension/VERSION'" \
     "Server must validate header format" \
     "Contract: Wrong format = rejected"
 
@@ -100,7 +100,7 @@ run_test_16_3() {
     # Valid header
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"header-test","settings":{}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -108,7 +108,7 @@ run_test_16_3() {
     # Invalid header (wrong prefix)
     local response_invalid
     response_invalid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: invalid-prefix/5.8.0" \
+        -H "X-Kaboom-Client: invalid-prefix/5.8.0" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"header-test-invalid","settings":{}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -118,7 +118,7 @@ run_test_16_3() {
             # Server accepts any header (lenient)
             pass "/sync accepts requests with Client header"
         else
-            pass "/sync validates X-Gasoline-Client header format"
+            pass "/sync validates X-Kaboom-Client header format"
         fi
     else
         fail "/sync rejected valid header format"
@@ -135,7 +135,7 @@ run_test_16_4() {
     # Valid result
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"cmd-result-valid",
@@ -151,7 +151,7 @@ run_test_16_4() {
     # Missing correlation_id
     local response_invalid
     response_invalid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"cmd-result-invalid",
@@ -179,7 +179,7 @@ begin_test "16.5" "extension_logs: timestamp, level, message, source required" \
 run_test_16_5() {
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"ext-logs-test",

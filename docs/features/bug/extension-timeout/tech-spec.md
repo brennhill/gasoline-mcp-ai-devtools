@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Gasoline extension architecture involves three components:
+Kaboom extension architecture involves three components:
 1. **Background service worker (background.js):** Message hub, polls server, forwards queries to content scripts
 2. **Content script (content.js):** Bridge between page and background worker
 3. **Inject script (inject.js):** Executes queries in page context, captures telemetry
@@ -68,7 +68,7 @@ Operation 6: Worker throttled → operations slow to a crawl → appear to hang
 
 ### Step 1: Reproduce the Issue
 Set up a test environment:
-- Start Gasoline server and extension
+- Start Kaboom server and extension
 - Run a script that performs 10 consecutive DOM queries via MCP
 - Monitor extension with Chrome DevTools (Console, Memory, Performance)
 - Identify at which operation number the issue occurs
@@ -149,7 +149,7 @@ Implement diagnostic endpoints:
 We assume operations are sent one at a time, not concurrently. If concurrent, the queue may overflow differently.
 
 ### Assumption 2: Browser Has Sufficient Resources
-We assume the browser has enough memory and CPU. On low-end systems, any extension may become unresponsive; not specific to Gasoline.
+We assume the browser has enough memory and CPU. On low-end systems, any extension may become unresponsive; not specific to Kaboom.
 
 ### Assumption 3: Issue Is Extension-Side
 We assume the server is responding correctly and not causing backpressure. Verify server health separately.
@@ -163,7 +163,7 @@ We assume the server is responding correctly and not causing backpressure. Verif
 **Mitigation:** Run full extension test suite after fix. Test all MCP tools (observe, generate, configure, interact) to ensure no breakage.
 
 ### Risk 3: Issue Is Chrome Bug
-**Mitigation:** If issue persists after all Gasoline fixes, file Chrome bug report. Document Chrome version where issue occurs. Test on different Chrome versions.
+**Mitigation:** If issue persists after all Kaboom fixes, file Chrome bug report. Document Chrome version where issue occurs. Test on different Chrome versions.
 
 ### Risk 4: Memory Leak Is in Third-Party Library
 **Mitigation:** Profile which objects are leaking. If axe-core or another bundled library leaks, consider updating to newer version or replacing.

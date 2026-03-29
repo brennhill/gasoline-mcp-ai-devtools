@@ -11,8 +11,8 @@ package analysis
 import (
 	"testing"
 
-	cap "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	cap "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // Integration tests for binary format detection in network/websocket

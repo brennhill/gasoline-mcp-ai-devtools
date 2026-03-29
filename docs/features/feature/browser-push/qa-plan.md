@@ -74,7 +74,7 @@ last_verified_date: 2026-03-05
 1. Disable sampling in daemon config (or use Codex/Gemini)
 2. Push annotations from browser
 3. Verify: no sampling request sent
-4. Make any Gasoline tool call
+4. Make any Kaboom tool call
 5. Verify: response includes `_pending_push` hint
 6. Call `observe({what: "inbox"})`
 7. Verify: full push content returned

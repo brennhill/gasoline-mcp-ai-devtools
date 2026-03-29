@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. The E2E Testing Integration exports captured Gasoline state as Playwright test fixtures, CI configuration YAML, and failure snapshots. Generated artifacts are intended to be committed to version control, posted in PRs, and uploaded as CI artifacts -- making data leak prevention especially critical since these files persist beyond the ephemeral Gasoline session.
+**Goal:** Verify the feature does NOT expose data it shouldn't. The E2E Testing Integration exports captured Kaboom state as Playwright test fixtures, CI configuration YAML, and failure snapshots. Generated artifacts are intended to be committed to version control, posted in PRs, and uploaded as CI artifacts -- making data leak prevention especially critical since these files persist beyond the ephemeral Kaboom session.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -54,11 +54,11 @@ last_verified_date: 2026-03-05
 |---|--------------|----------------|--------|
 | CL-1 | Artifact type selection | Verify that the AI clearly understands the four `artifact` options (`fixture_data`, `test_harness`, `ci_config`, `failure_snapshot`) and knows which to use for each task | [ ] |
 | CL-2 | Fixture data is JSON, not executable | Verify that `fixture_data` output is clearly a JSON data file (for use with `page.route()`), not an executable test -- the AI should save it as `.json`, not `.spec.js` | [ ] |
-| CL-3 | Test harness vs existing test generation | Verify the AI understands that `playwright_fixture` + `test_harness` is for CI-integrated tests (with Gasoline CI fixture), while `generate({format: "test"})` is for standalone scripts | [ ] |
+| CL-3 | Test harness vs existing test generation | Verify the AI understands that `playwright_fixture` + `test_harness` is for CI-integrated tests (with Kaboom CI fixture), while `generate({format: "test"})` is for standalone scripts | [ ] |
 | CL-4 | CI config is a fragment, not a complete file | Verify that the AI understands `ci_config` produces a workflow YAML that may need customization (e.g., adding environment variables, adjusting Node version) | [ ] |
 | CL-5 | Failure snapshot vs live observation | Verify the AI understands that `failure_snapshot` is a point-in-time export of server state, not a live stream -- it captures what is currently in buffers | [ ] |
 | CL-6 | filter_url is a substring match | Verify the AI understands `filter_url: "/api/"` matches any URL containing "/api/" as a substring, not an exact path match or regex | [ ] |
-| CL-7 | Generated code needs file saving | Verify the AI understands that all `generate` output is returned as MCP response content and must be explicitly saved to files -- Gasoline does not write to the project directory | [ ] |
+| CL-7 | Generated code needs file saving | Verify the AI understands that all `generate` output is returned as MCP response content and must be explicitly saved to files -- Kaboom does not write to the project directory | [ ] |
 | CL-8 | Multiple content blocks in response | Verify the AI correctly handles responses with multiple `content` blocks (e.g., `fixture_data` returns both the JSON file and the `fixture-loader.js` helper as separate blocks) | [ ] |
 | CL-9 | Redacted values in fixtures | Verify the AI understands that `[REDACTED]` values in fixture data need to be replaced with test-appropriate values before the test can run | [ ] |
 | CL-10 | base_url replacement scope | Verify the AI understands that `base_url` replaces the origin in generated URLs but does not affect the fixture data's captured URLs | [ ] |
@@ -67,8 +67,8 @@ last_verified_date: 2026-03-05
 - [ ] AI might try to execute fixture_data as a test file -- verify it is clearly labeled as a JSON data file
 - [ ] AI might assume ci_config is complete and ready to commit without review -- verify it includes comments suggesting customization
 - [ ] AI might use failure_snapshot as fixture_data -- verify these serve different purposes (debugging vs testing)
-- [ ] AI might not realize that generated test requires `@anthropic/gasoline-playwright` to be installed -- verify the import is clear
-- [ ] AI might set `include_gasoline_fixture: false` without understanding the test will lack runtime capture capability -- verify the trade-off is documented in output
+- [ ] AI might not realize that generated test requires `@anthropic/kaboom-playwright` to be installed -- verify the import is clear
+- [ ] AI might set `include_kaboom_fixture: false` without understanding the test will lack runtime capture capability -- verify the trade-off is documented in output
 - [ ] AI might interpret empty fixture_data `{}` as an error -- verify it is clearly marked as "no JSON API responses found"
 
 ---
@@ -90,11 +90,11 @@ last_verified_date: 2026-03-05
 
 ### Default Behavior Verification
 - [ ] `fixture_data` works without any options (exports all JSON API responses)
-- [ ] `test_harness` defaults to including `@anthropic/gasoline-playwright` fixture import
+- [ ] `test_harness` defaults to including `@anthropic/kaboom-playwright` fixture import
 - [ ] `ci_config` defaults to `github_actions` provider
 - [ ] `include_headers` defaults to `false` (safer default -- no headers exported)
 - [ ] `filter_url` defaults to unset (all network bodies included)
-- [ ] `include_gasoline_fixture` defaults to `true` (CI-integrated by default)
+- [ ] `include_kaboom_fixture` defaults to `true` (CI-integrated by default)
 - [ ] Non-JSON responses automatically excluded without explicit filtering
 - [ ] Duplicate API endpoints deduplicated (most recent response kept) without configuration
 
@@ -117,14 +117,14 @@ last_verified_date: 2026-03-05
 | UT-9 | fixture_data includes fixture-loader.js | Any fixture_data request | Response contains 2 content blocks: JSON data + loader helper | must |
 | UT-10 | fixture_data empty (no captures) | No network bodies captured | Empty JSON `{}` with comment "no JSON API responses found" | must |
 | UT-11 | test_harness generates valid Playwright test | User actions captured (click, type, navigate) | Complete `.spec.js` file with imports, test function, action replay | must |
-| UT-12 | test_harness imports @anthropic/gasoline-playwright | Default options | First line: `import { test, expect } from '@anthropic/gasoline-playwright'` | must |
-| UT-13 | test_harness imports @playwright/test when gasoline fixture disabled | `include_gasoline_fixture: false` | First line: `import { test, expect } from '@playwright/test'` | should |
+| UT-12 | test_harness imports @anthropic/kaboom-playwright | Default options | First line: `import { test, expect } from '@anthropic/kaboom-playwright'` | must |
+| UT-13 | test_harness imports @playwright/test when kaboom fixture disabled | `include_kaboom_fixture: false` | First line: `import { test, expect } from '@playwright/test'` | should |
 | UT-14 | test_harness uses correct locator priority | Actions with testId, role, ariaLabel, text, id, cssPath | Locators follow priority: testId > role > ariaLabel > text > id > cssPath | must |
 | UT-15 | test_harness includes fixture loading | fixture_data available | Test includes `loadFixtures(page, fixtures)` call | must |
 | UT-16 | test_harness with no actions | No user actions captured | Minimal test skeleton with comment "no user actions available" | must |
 | UT-17 | test_harness with base_url replacement | `base_url: "http://localhost:3000"`, captured URLs from `http://localhost:8080` | All URLs replaced with `http://localhost:3000` | should |
 | UT-18 | test_harness with test_name | `test_name: "user login flow"` | Test function named `test('user login flow', ...)` | must |
-| UT-19 | ci_config generates valid GitHub Actions YAML | Default options | Valid YAML with checkout, setup-node, npm ci, Playwright install, Gasoline start, test, upload steps | must |
+| UT-19 | ci_config generates valid GitHub Actions YAML | Default options | Valid YAML with checkout, setup-node, npm ci, Playwright install, Kaboom start, test, upload steps | must |
 | UT-20 | ci_config generates valid GitLab CI YAML | `ci_provider: "gitlab_ci"` | Valid GitLab CI YAML with equivalent stages | should |
 | UT-21 | ci_config contains no secrets | Any options | Output has no `${{ secrets.* }}`, no hardcoded tokens, no credentials | must |
 | UT-22 | failure_snapshot matches SnapshotResponse structure | Server has captured data | JSON output matches `SnapshotResponse` struct with logs, websocket_events, network_bodies, enhanced_actions, stats | must |
@@ -138,9 +138,9 @@ last_verified_date: 2026-03-05
 | # | Test Case | Components Involved | Expected Behavior | Priority |
 |---|-----------|--------------------|--------------------|----------|
 | IT-1 | fixture_data uses generateFixtures() infrastructure | `reproduction.go` + `tools_core.go` dispatch | Fixture data extends existing generateFixtures() with method/status/contentType metadata | must |
-| IT-2 | test_harness uses generateEnhancedPlaywrightScript() | `reproduction.go` + `codegen.go` + tools_core.go dispatch | Test harness wraps existing script generation with Gasoline CI fixture imports | must |
+| IT-2 | test_harness uses generateEnhancedPlaywrightScript() | `reproduction.go` + `codegen.go` + tools_core.go dispatch | Test harness wraps existing script generation with Kaboom CI fixture imports | must |
 | IT-3 | failure_snapshot uses computeSnapshotStats() from ci.go | `ci.go` + tools_core.go dispatch | Snapshot stats match what `/snapshot` endpoint would return | must |
-| IT-4 | filter_url consistent with NetworkBodyFilter | filter_url pattern + existing network body filtering | Same URL matching behavior as other network filtering across Gasoline | must |
+| IT-4 | filter_url consistent with NetworkBodyFilter | filter_url pattern + existing network body filtering | Same URL matching behavior as other network filtering across Kaboom | must |
 | IT-5 | since filter consistent with filterLogsSince() from ci.go | since parameter + existing log filtering | Same timestamp filtering behavior as `/snapshot?since=` endpoint | should |
 | IT-6 | base_url uses replaceOrigin() from codegen.go | base_url option + existing origin replacement | Same origin replacement behavior as existing test generation | should |
 | IT-7 | Tool dispatch in tools_core.go | `format: "playwright_fixture"` in generate tool | Correctly dispatched to `toolGeneratePlaywrightFixture()` handler | must |
@@ -184,7 +184,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application loaded with the developer performing a user flow (login, navigate, interact)
 - [ ] At least 3 API requests captured in network bodies
@@ -200,14 +200,14 @@ last_verified_date: 2026-03-05
 | UAT-4 | AI generates fixture data with headers: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"fixture_data","options":{"include_headers":true}}}` | N/A | Fixtures include response headers, but Authorization/Cookie headers stripped | [ ] |
 | UAT-5 | AI generates test harness: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"test_harness","options":{"test_name":"user login flow","base_url":"http://localhost:3000"}}}` | N/A | Complete Playwright test file with imports, fixture loading, and action replay | [ ] |
 | UAT-6 | Human verifies test harness is valid JS | Read generated code | Valid JavaScript/TypeScript syntax, correct Playwright API usage | [ ] |
-| UAT-7 | Human verifies test harness imports Gasoline fixture | Check import statement | `import { test, expect } from '@anthropic/gasoline-playwright'` | [ ] |
+| UAT-7 | Human verifies test harness imports Kaboom fixture | Check import statement | `import { test, expect } from '@anthropic/kaboom-playwright'` | [ ] |
 | UAT-8 | Human verifies password fields use placeholders | Check form fill actions | Password fields show `[user-provided]`, not actual captured values | [ ] |
 | UAT-9 | AI generates CI config: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"ci_config"}}` | N/A | Valid GitHub Actions YAML workflow | [ ] |
 | UAT-10 | Human verifies CI config has no secrets | Read YAML | No `${{ secrets.* }}`, no hardcoded tokens, no credentials | [ ] |
 | UAT-11 | Human verifies CI config is valid YAML | Parse YAML | Valid YAML structure with correct GitHub Actions syntax | [ ] |
 | UAT-12 | AI generates failure snapshot: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"failure_snapshot"}}` | N/A | JSON snapshot with logs, network_bodies, websocket_events, actions, stats | [ ] |
 | UAT-13 | Human verifies snapshot stats accuracy | Compare stats to known captured data | error_count, warning_count, network_failures match expected values | [ ] |
-| UAT-14 | AI generates test harness without Gasoline fixture: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"test_harness","options":{"include_gasoline_fixture":false}}}` | N/A | Test imports from `@playwright/test` instead of `@anthropic/gasoline-playwright` | [ ] |
+| UAT-14 | AI generates test harness without Kaboom fixture: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"test_harness","options":{"include_kaboom_fixture":false}}}` | N/A | Test imports from `@playwright/test` instead of `@anthropic/kaboom-playwright` | [ ] |
 | UAT-15 | AI generates GitLab CI config: `{"tool":"generate","arguments":{"type":"playwright_fixture","artifact":"ci_config","options":{"ci_provider":"gitlab_ci"}}}` | N/A | Valid GitLab CI YAML configuration | [ ] |
 
 ### Data Leak UAT Verification

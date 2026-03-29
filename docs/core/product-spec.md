@@ -12,7 +12,7 @@ canonical: true
 # Core MCP Product Spec (TARGET)
 
 ## Purpose
-Define the user-visible, canonical behavior of the Gasoline MCP surface. This spec is the product contract for all tool calls and resource discovery.
+Define the user-visible, canonical behavior of the Kaboom MCP surface. This spec is the product contract for all tool calls and resource discovery.
 
 ## Scope
 - JSON-RPC transport at `POST /mcp`

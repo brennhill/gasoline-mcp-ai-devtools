@@ -7,8 +7,8 @@ package capture
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // normalizeInProgressList sanitizes extension heartbeat command state for reconciliation.

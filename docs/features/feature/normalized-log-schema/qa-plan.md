@@ -69,7 +69,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. Each service logs in its native format
-2. All services send logs to Gasoline
+2. All services send logs to Kaboom
 3. Query: `observe({what: 'normalized-logs', level: 'ERROR'})`
 
 #### Expected Result:

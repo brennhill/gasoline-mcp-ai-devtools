@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
+	cfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/configure"
 )
 
 // toolConfigureDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().

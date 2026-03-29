@@ -37,7 +37,7 @@ try {
     target: ['chrome120'],
     sourcemap: true,
     minify: false,
-    define: { __GASOLINE_VERSION__: JSON.stringify(version) }
+    define: { __KABOOM_VERSION__: JSON.stringify(version) }
   })
   console.log('✅ Inject script bundled successfully')
 

@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Gasoline consists of 5 main containers orchestrating the MCP protocol, extension telemetry, and browser control.
+Kaboom consists of 5 main containers orchestrating the MCP protocol, extension telemetry, and browser control.
 
 ## C2 Architecture Diagram
 
@@ -21,7 +21,7 @@ graph TB
     end
 
     subgraph "Node.js Wrapper"
-        Wrapper["📦 gasoline-mcp<br/>(Node.js Script)<br/>- Spawns Go binary<br/>- Bridges stdio → HTTP<br/>- Handles process lifecycle"]
+        Wrapper["📦 kaboom-mcp<br/>(Node.js Script)<br/>- Spawns Go binary<br/>- Bridges stdio → HTTP<br/>- Handles process lifecycle"]
     end
 
     subgraph "Go Server (localhost:7890)"
@@ -56,7 +56,7 @@ graph TB
     end
 
     subgraph "Filesystem"
-        Storage["💾 Gasoline Storage<br/>~/.gasoline/<br/>- Recordings (.webm)<br/>- Metadata (.json)<br/>- Session state"]
+        Storage["💾 Kaboom Storage<br/>~/.kaboom/<br/>- Recordings (.webm)<br/>- Metadata (.json)<br/>- Session state"]
     end
 
     %% Data flows
@@ -111,9 +111,9 @@ graph TB
   - Polls for async results
 - **Communication:** Via stdin/stdout through wrapper
 
-### 2. Node.js Wrapper (gasoline-mcp)
+### 2. Node.js Wrapper (kaboom-mcp)
 - **Technology:** Node.js script, execFileSync
-- **Location:** `bin/gasoline-mcp`
+- **Location:** `bin/kaboom-mcp`
 - **Responsibilities:**
   - Spawns Go binary once
   - Bridges stdio (MCP) to HTTP (server)
@@ -229,7 +229,7 @@ AI Agent
 ## References
 
 ### Implementation Files
-- **Wrapper:** `bin/gasoline-mcp`
+- **Wrapper:** `bin/kaboom-mcp`
 - **Server Entry:** `cmd/browser-agent/main.go:handleMCPConnection()`
 - **MCP Handler:** `cmd/browser-agent/handler.go`
 - **Capture:** `internal/capture/types.go:Capture`

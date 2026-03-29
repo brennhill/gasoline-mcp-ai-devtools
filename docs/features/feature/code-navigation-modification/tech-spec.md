@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Kaboom MCP Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Code Router                                   │  │
 │  │ - Dispatch code_search, code_read, code_modify│  │
@@ -129,7 +129,7 @@ last_verified_date: 2026-03-05
    - Timeout enforcement (30s default)
 
 3. **Modification Logger**
-   - Record all code changes to `.gasoline/modifications.jsonl`
+   - Record all code changes to `.kaboom/modifications.jsonl`
    - Index by correlation_id for full-stack tracing
    - Support rollback by modification_id
 
@@ -356,7 +356,7 @@ observe({
 
 ## Configuration
 
-Services should support `/.gasoline/code` endpoint to customize:
+Services should support `/.kaboom/code` endpoint to customize:
 - Allowed languages (typescript, python, go, etc.)
 - Test commands for each language
 - Paths to exclude from search (.gitignore aware by default)

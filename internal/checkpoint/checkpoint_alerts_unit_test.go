@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
-	gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/server"
+	gasTypes "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 func float64Ptr(v float64) *float64 {

@@ -51,21 +51,21 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
   })
 
   test(
-    'Phase 1 should install window.__gasoline API',
-    { skip: 'installGasolineAPI has double-install guard — module state persists across tests' },
+    'Phase 1 should install window.__kaboom API',
+    { skip: 'installKaboomAPI has double-install guard — module state persists across tests' },
     async () => {
       const { installPhase1 } = await import('../../extension/inject.js')
 
       // Ensure clean state
-      delete globalThis.window.__gasoline
+      delete globalThis.window.__kaboom
 
       installPhase1()
 
-      assert.ok(globalThis.window.__gasoline, 'Phase 1 should install __gasoline API')
-      assert.ok(globalThis.window.__gasoline.version, 'API should have version')
+      assert.ok(globalThis.window.__kaboom, 'Phase 1 should install __kaboom API')
+      assert.ok(globalThis.window.__kaboom.version, 'API should have version')
 
       // Cleanup
-      delete globalThis.window.__gasoline
+      delete globalThis.window.__kaboom
     }
   )
 
@@ -79,7 +79,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     assert.ok(state.injectionTimestamp > 0, 'Injection timestamp should be positive')
 
     // Cleanup
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('Phase 1 should NOT modify console methods', async () => {
@@ -96,7 +96,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     assert.strictEqual(globalThis.console.warn, originalWarn, 'console.warn should not be wrapped in Phase 1')
 
     // Cleanup
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('Phase 1 should NOT modify fetch', async () => {
@@ -110,7 +110,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     assert.strictEqual(globalThis.window.fetch, fetchBefore, 'fetch should not be wrapped in Phase 1')
 
     // Cleanup
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('Phase 1 should NOT modify WebSocket constructor', async () => {
@@ -124,7 +124,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     assert.strictEqual(globalThis.window.WebSocket, OriginalWebSocket, 'WebSocket should not be replaced in Phase 1')
 
     // Cleanup
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test(
@@ -150,7 +150,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
       assert.ok(observerCount >= 3, `Expected at least 3 PerformanceObservers, got ${observerCount}`)
 
       // Cleanup
-      delete globalThis.window.__gasoline
+      delete globalThis.window.__kaboom
     }
   )
 
@@ -163,7 +163,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     assert.strictEqual(state.phase2Installed, false, 'Phase 2 should not be installed after Phase 1')
 
     // Cleanup
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 })
 
@@ -328,7 +328,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(getDeferralState().phase2Installed, true, 'Phase 2 should install after load + 100ms')
 
     uninstall()
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('deferralEnabled=false: Phase 2 installs immediately', async () => {
@@ -347,7 +347,7 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     uninstall()
     setDeferralEnabled(true) // reset
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('document.readyState=complete at injection: installs immediately (+100ms)', async () => {
@@ -377,7 +377,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     )
 
     uninstall()
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('10-second timeout fallback: Phase 2 installs if load never fires', async () => {
@@ -417,7 +417,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     timerIds.forEach((id) => clearTimeout(id))
     globalThis.setTimeout = originalSetTimeout
     uninstall()
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('Console logs before Phase 2 are not captured (intentional)', async () => {
@@ -436,11 +436,11 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     // postMessage should not have been called with a GASOLINE_LOG for this
     const gasolineLogs = globalThis.window.postMessage.mock.calls.filter(
-      (call) => call.arguments[0]?.type === 'gasoline_log'
+      (call) => call.arguments[0]?.type === 'kaboom_log'
     )
     assert.strictEqual(gasolineLogs.length, 0, 'Console logs before Phase 2 should not be captured')
 
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 
   test('SPA navigation after Phase 2 does not re-defer interceptors', async () => {
@@ -465,7 +465,7 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     uninstall()
     setDeferralEnabled(true)
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 })
 
@@ -547,7 +547,7 @@ describe('Interception Deferral: State Management', () => {
 
     uninstall()
     setDeferralEnabled(true)
-    delete globalThis.window.__gasoline
+    delete globalThis.window.__kaboom
   })
 })
 

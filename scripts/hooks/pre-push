@@ -1,14 +1,14 @@
 #!/bin/bash
-# Pre-push hook for Gasoline
+# Pre-push hook for Kaboom
 # Runs comprehensive CI checks before allowing push
 
 set -e
 
-echo "[gasoline] Running pre-push CI checks..."
+echo "[Kaboom] Running pre-push CI checks..."
 echo ""
 
 # Run the full local CI suite
 make ci-local
 
 echo ""
-echo "[gasoline] All pre-push checks passed"
+echo "[Kaboom] All pre-push checks passed"

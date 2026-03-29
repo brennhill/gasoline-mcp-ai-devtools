@@ -18,12 +18,12 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Periodic Snapshot Creation
 #### Setup:
-- Gasoline running with snapshot interval = 1 minute
+- Kaboom running with snapshot interval = 1 minute
 - Events being generated
 
 #### Steps:
-1. Let Gasoline run for 5 minutes
-2. Check disk: ~/.gasoline/snapshots/
+1. Let Kaboom run for 5 minutes
+2. Check disk: ~/.kaboom/snapshots/
 3. Verify snapshots created at each interval
 
 #### Expected Result:
@@ -115,7 +115,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. Run test, test fails
-2. Gasoline automatically saves snapshot with tag
+2. Kaboom automatically saves snapshot with tag
 3. Developer queries: `observe({what: 'snapshots', test_run_id: 'xyz'})`
 
 #### Expected Result:

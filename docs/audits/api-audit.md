@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP API Audit -- Findings
+# Kaboom MCP API Audit -- Findings
 
 > Audit date: 2026-02-14
 > Auditor: Automated code analysis
@@ -29,7 +29,7 @@ last_reviewed: 2026-02-16
 
 **Severity**: HIGH
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (line 18, `what` enum) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (lines 32-44, `observeHandlers` map)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (line 18, `what` enum) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (lines 32-44, `observeHandlers` map)
 
 **Description**: The observe tool schema defines a `what` enum with 22 values, but the `observeHandlers` map registers 25 handlers. Three modes are accessible at runtime but invisible to MCP clients:
 - `api` -- returns "not_implemented" status
@@ -46,7 +46,7 @@ last_reviewed: 2026-02-16
 
 **Severity**: HIGH
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (line 98, `what` enum) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_analyze.go` (lines 32-85, `analyzeHandlers` map)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (line 98, `what` enum) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_analyze.go` (lines 32-85, `analyzeHandlers` map)
 
 **Description**: The analyze tool schema enum lists 11 values, but the handler map registers 15. Four modes are inaccessible to MCP clients:
 - `api_validation` -- functional (analyze/report/clear operations)
@@ -64,7 +64,7 @@ last_reviewed: 2026-02-16
 
 **Severity**: HIGH
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (line 206, `format` enum) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_generate.go` (lines 21-35, `generateHandlers` map)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (line 206, `format` enum) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_generate.go` (lines 21-35, `generateHandlers` map)
 
 **Description**: The generate tool schema enum lists 9 values, but the handler map registers 14. Five formats are inaccessible to MCP clients:
 - `test` -- fully functional Playwright test generation
@@ -82,7 +82,7 @@ last_reviewed: 2026-02-16
 
 **Severity**: HIGH
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (line 314, `action` enum) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_configure.go` (lines 33-48, `configureHandlers` map)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (line 314, `action` enum) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_configure.go` (lines 33-48, `configureHandlers` map)
 
 **Description**: The configure tool schema enum lists 12 values, but the handler map registers 14. Two actions are hidden:
 - `diff_sessions` -- session comparison
@@ -98,7 +98,7 @@ last_reviewed: 2026-02-16
 
 **Severity**: HIGH
 
-**Location**: `/Users/brenn/dev/gasoline/src/background/server.ts` (lines 410, 449, 379) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/server_routes.go`
+**Location**: `/Users/brenn/dev/kaboom/src/background/server.ts` (lines 410, 449, 379) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/server_routes.go`
 
 **Description**: The extension background script makes fetch calls to three endpoints:
 - `POST /api/extension-status`
@@ -117,7 +117,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (lines 505-517)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (lines 505-517)
 
 **Description**: Two observe modes return stub responses with `"status": "not_implemented"` messages. They occupy handler map entries and would confuse callers if they somehow reached them.
 
@@ -129,7 +129,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_security.go` (lines 81-97)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_security.go` (lines 81-97)
 
 **Description**: `toolDiffSecurity` always returns `{"status":"ok","differences":[]}` regardless of input. It ignores the `compare_from` and `compare_to` parameters.
 
@@ -141,7 +141,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: All observe handlers -- `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (multiple locations)
+**Location**: All observe handlers -- `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (multiple locations)
 
 **Description**: The `limit` parameter defaults to 100 when <= 0, but has no upper bound. A caller can set `limit: 999999` and receive all buffered entries. While buffers are capped, the response could still be very large.
 
@@ -153,7 +153,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_analyze.go` (line 296)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_analyze.go` (line 296)
 
 **Description**: When `toolValidateLinks` rejects URLs that are not HTTP/HTTPS, it returns `ErrInvalidJSON` ("invalid_json") as the error code. This is misleading -- the JSON is valid, the URL values are wrong.
 
@@ -165,7 +165,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_generate.go` (line 395)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_generate.go` (line 395)
 
 **Description**: The HAR export error path uses a string literal `"export_failed"` rather than the defined constant `ErrExportFailed`. This breaks the pattern used everywhere else and could lead to inconsistency.
 
@@ -177,7 +177,7 @@ These endpoints are not visible in `setupHTTPRoutes()` / `registerCaptureRoutes(
 
 **Severity**: MEDIUM
 
-**Location**: Multiple observe handlers in `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` and `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe_analysis.go`
+**Location**: Multiple observe handlers in `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` and `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe_analysis.go`
 
 **Description**: Different observe modes use inconsistent top-level keys for their data arrays:
 - `errors` uses key `"errors"`
@@ -201,7 +201,7 @@ While each makes semantic sense, a uniform key (or at least a convention) would 
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_generate.go` (lines 412-443)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_generate.go` (lines 412-443)
 
 **Description**: The `mode` parameter schema specifies enum `["strict", "moderate", "report_only"]`, but the handler code defaults to `"moderate"` when empty and passes the value through without validation. Any arbitrary string is accepted.
 
@@ -213,7 +213,7 @@ While each makes semantic sense, a uniform key (or at least a convention) would 
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (line 187)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (line 187)
 
 **Description**: The error response maps `entry["tabId"]` to the output key `"tab_id"`. While this correctly converts the internal camelCase field to snake_case for the API, the source data from the extension uses `tabId`. If the extension ever changes this field name, the mapping would break silently. The same pattern exists in `toolGetBrowserLogs` (line 305).
 
@@ -225,7 +225,7 @@ While each makes semantic sense, a uniform key (or at least a convention) would 
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_configure.go` (lines 108-109 vs 156-165)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_configure.go` (lines 108-109 vs 156-165)
 
 **Description**: When `sessionStoreImpl` is nil:
 - `store` action returns an error: `ErrNotInitialized`
@@ -241,7 +241,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (configure schema) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/recording_handlers.go` (line 98)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (configure schema) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/recording_handlers.go` (line 98)
 
 **Description**: The `event_recording_stop` handler expects a `recording_id` parameter, but the schema for the `configure` tool does not explicitly include `recording_id` in its properties. While it could be passed as a generic `session_id`, the mapping is unclear.
 
@@ -253,19 +253,19 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: MEDIUM
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/auth.go` vs `/Users/brenn/dev/gasoline/cmd/browser-agent/server_routes.go`
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/auth.go` vs `/Users/brenn/dev/kaboom/cmd/browser-agent/server_routes.go`
 
 **Description**: The `AuthMiddleware` function is defined and accepts an `expectedKey` parameter, but `setupHTTPRoutes()` does not visibly apply it. It may be applied at a higher level (e.g., in `main.go`), but the route setup code only shows `corsMiddleware` and `extensionOnly` wrappers.
 
-**Recommendation**: Verify where `AuthMiddleware` is applied and document its activation conditions (e.g., `GASOLINE_API_KEY` env var). If it's not applied, this is a security gap for non-extension endpoints.
+**Recommendation**: Verify where `AuthMiddleware` is applied and document its activation conditions (e.g., `KABOOM_API_KEY` env var). If it's not applied, this is a security gap for non-extension endpoints.
 
 ---
 
-### LOW-1: `gasoline://guide` resource contains `api` and `changes` observe modes that are not implemented
+### LOW-1: `kaboom://guide` resource contains `api` and `changes` observe modes that are not implemented
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/handler.go` (line 340)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/handler.go` (line 340)
 
 **Description**: The guide resource text lists `api` and `changes` as valid observe modes, but these return "not_implemented" stubs.
 
@@ -277,7 +277,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_interact.go` (line 81)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_interact.go` (line 81)
 
 **Description**: The `ErrMissingParam` error for missing `action` includes a hardcoded list of valid actions. Unlike `observe`/`analyze`/`generate`/`configure` which compute valid values dynamically from their handler maps, `interact` uses a static string.
 
@@ -289,7 +289,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (line 264) -- not in schema
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (line 264) -- not in schema
 
 **Description**: The `toolGetBrowserLogs` handler accepts and uses a `source` parameter for exact-match filtering, but this parameter is not in the observe tool schema.
 
@@ -301,7 +301,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (line 253) -- `level` not in schema
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (line 253) -- `level` not in schema
 
 **Description**: The logs handler supports both `level` (exact match) and `min_level` (threshold). Only `min_level` is in the schema. The `level` parameter is silently accepted.
 
@@ -313,9 +313,9 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/docs/`
+**Location**: `/Users/brenn/dev/kaboom/docs/`
 
-**Description**: The `docs/` directory had no `audits/` subdirectory. The existing `docs/developer-api.md` covers only the `window.__gasoline` in-page JavaScript API, not the MCP or HTTP APIs.
+**Description**: The `docs/` directory had no `audits/` subdirectory. The existing `docs/developer-api.md` covers only the `window.__kaboom` in-page JavaScript API, not the MCP or HTTP APIs.
 
 **Recommendation**: Maintain the API reference created by this audit as the source of truth for API documentation.
 
@@ -325,7 +325,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_observe.go` (lines 82-84) vs `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_analyze.go`
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_observe.go` (lines 82-84) vs `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_analyze.go`
 
 **Description**: The `observe` dispatcher prepends a disconnect warning for non-server-side modes when the extension is disconnected. The `analyze` dispatcher does not have equivalent logic -- individual handlers check extension status inconsistently (e.g., `accessibility` checks tracking status, `security_audit` does not check connectivity).
 
@@ -337,7 +337,7 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_generate.go` (line 548)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_generate.go` (line 548)
 
 **Description**: When SRI generation fails, the error code is `ErrInvalidJSON` with message "SRI generation failed: ...". The actual error may not be JSON-related.
 
@@ -349,11 +349,11 @@ This is inconsistent. The caller gets an error for `store` but a misleading succ
 
 **Severity**: LOW
 
-**Location**: `/Users/brenn/dev/gasoline/cmd/browser-agent/tools_schema.go` (lines 13-87)
+**Location**: `/Users/brenn/dev/kaboom/cmd/browser-agent/tools_schema.go` (lines 13-87)
 
 **Description**: The observe tool schema defines all parameters at the top level (url, method, status_min, status_max, connection_id, direction, min_level, etc.) even though most only apply to specific `what` modes. This is a design trade-off for schema simplicity but means clients see 20+ parameters when only 1-3 are relevant for a given mode.
 
-**Recommendation**: No immediate action needed -- this is a deliberate design choice documented in code comments ("Descriptions are kept minimal to reduce token usage"). Consider adding per-mode parameter descriptions in the `gasoline://guide` resource.
+**Recommendation**: No immediate action needed -- this is a deliberate design choice documented in code comments ("Descriptions are kept minimal to reduce token usage"). Consider adding per-mode parameter descriptions in the `kaboom://guide` resource.
 
 ---
 

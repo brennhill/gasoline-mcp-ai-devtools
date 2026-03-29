@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: Binary Format Detection
 
 **Branch:** `feature/binary-detection`
-**Worktree:** `../gasoline-binary-detection`
+**Worktree:** `../kaboom-binary-detection`
 **Priority:** P5 (nice-to-have, parallel)
 
 ---

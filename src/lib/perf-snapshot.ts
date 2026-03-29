@@ -341,7 +341,7 @@ export function sendPerformanceSnapshot(): void {
   const snapshot = capturePerformanceSnapshot()
   if (!snapshot) return
 
-  window.postMessage({ type: 'gasoline_performance_snapshot', payload: snapshot }, window.location.origin)
+  window.postMessage({ type: 'kaboom_performance_snapshot', payload: snapshot }, window.location.origin)
 }
 
 // Debounce timer for snapshot re-sends triggered by user timing changes

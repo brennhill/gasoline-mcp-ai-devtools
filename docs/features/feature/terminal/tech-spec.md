@@ -2,11 +2,11 @@
 doc_type: tech_spec
 feature_id: feature-terminal
 status: shipped
-last_reviewed: 2026-03-22
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-22
+last_verified_date: 2026-03-28
 ---
 
 # Tech Spec
@@ -29,7 +29,7 @@ last_verified_date: 2026-03-22
 
 - Terminal server runs on `main_port + 1` to isolate WebSocket behavior from MCP request timeouts.
 - Terminal session is singleton and restored via `chrome.storage.session`.
-- Terminal panel ownership is resolved through a STRUM work context backed by one Chrome tab group.
+- Terminal panel ownership is resolved through a Kaboom work context backed by one Chrome tab group.
 - The initial rollout keeps broader tracking flows on `TRACKED_TAB_*`, but terminal open/close targeting is driven by workspace-group resolution.
 - The hover launcher keeps the page overlay for screenshots/recording, but terminal visibility is controlled by the side panel and `TERMINAL_UI_STATE`.
 - Auto-write queue must defer sends while user typing/focus is active.

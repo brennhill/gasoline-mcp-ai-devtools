@@ -27,7 +27,7 @@ Serialize Event Store
     ↓
 Snapshot Writer (JSON or SQLite)
     ↓
-Disk Storage (~/.gasoline/snapshots/)
+Disk Storage (~/.kaboom/snapshots/)
     ↓
 Cleanup/Retention Policy (>7 days)
 ```
@@ -127,11 +127,11 @@ type SnapshotDiffRequest struct {
 ```
 
 ## Code References
-- **Snapshot manager:** `/Users/brenn/dev/gasoline/server/snapshots/manager.go` (new)
-- **Serializer:** `/Users/brenn/dev/gasoline/server/snapshots/serializer.go` (new)
-- **Writers:** `/Users/brenn/dev/gasoline/server/snapshots/writer.go` (new)
-- **Loader:** `/Users/brenn/dev/gasoline/server/snapshots/loader.go` (new)
-- **Differ:** `/Users/brenn/dev/gasoline/server/snapshots/differ.go` (new)
+- **Snapshot manager:** `/Users/brenn/dev/kaboom/server/snapshots/manager.go` (new)
+- **Serializer:** `/Users/brenn/dev/kaboom/server/snapshots/serializer.go` (new)
+- **Writers:** `/Users/brenn/dev/kaboom/server/snapshots/writer.go` (new)
+- **Loader:** `/Users/brenn/dev/kaboom/server/snapshots/loader.go` (new)
+- **Differ:** `/Users/brenn/dev/kaboom/server/snapshots/differ.go` (new)
 - **Config:** Config file for snapshot settings (modified)
 
 ## Performance Requirements
@@ -178,7 +178,7 @@ type SnapshotDiffRequest struct {
 
 ## Storage Layout
 ```
-~/.gasoline/snapshots/
+~/.kaboom/snapshots/
 ├── snap-20260131-090000.json
 ├── snap-20260131-100000.json
 ├── snap-20260131-110000.json

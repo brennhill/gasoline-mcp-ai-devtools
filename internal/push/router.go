@@ -69,7 +69,7 @@ func (r *Router) DeliverPush(ev PushEvent) (DeliveryResult, error) {
 	if caps.SupportsNotifications && r.notifier != nil {
 		r.notifier.SendNotification("notifications/message", map[string]any{
 			"level":  "info",
-			"logger": "gasoline-push",
+			"logger": "kaboom-push",
 			"data": map[string]any{
 				"type":     ev.Type,
 				"page_url": ev.PageURL,

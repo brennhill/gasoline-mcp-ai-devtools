@@ -14,12 +14,12 @@ func TestHandleBrowserActionNavigate_InsecureSchemeRequiresSecurityMode(t *testi
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"what":"navigate","url":"gasoline-insecure://https://example.com"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"kaboom-insecure://https://example.com"}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
 	if !result.IsError {
-		t.Fatal("navigate with gasoline-insecure scheme should fail when security mode is normal")
+		t.Fatal("navigate with kaboom-insecure scheme should fail when security mode is normal")
 	}
 	if text := firstText(result); !strings.Contains(strings.ToLower(text), "security_mode") {
 		t.Fatalf("error should mention security_mode enablement, got: %s", text)
@@ -30,7 +30,7 @@ func TestHandleBrowserActionNavigate_InsecureSchemeRequiresSecurityMode(t *testi
 	}
 }
 
-func TestHandleBrowserActionNavigate_RewritesGasolineInsecureURL(t *testing.T) {
+func TestHandleBrowserActionNavigate_RewritesKaboomInsecureURL(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
@@ -41,7 +41,7 @@ func TestHandleBrowserActionNavigate_RewritesGasolineInsecureURL(t *testing.T) {
 		t.Fatalf("security mode enable failed: %s", firstText(enableResult))
 	}
 
-	result, ok := env.callInteract(t, `{"what":"navigate","url":"gasoline-insecure://https://example.com/path?q=1#frag"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"kaboom-insecure://https://example.com/path?q=1#frag"}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
@@ -73,7 +73,7 @@ func TestHandleBrowserActionNavigate_RewritesGasolineInsecureURL(t *testing.T) {
 	}
 }
 
-func TestHandleBrowserActionNewTab_RewritesGasolineInsecureURL(t *testing.T) {
+func TestHandleBrowserActionNewTab_RewritesKaboomInsecureURL(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
@@ -83,7 +83,7 @@ func TestHandleBrowserActionNewTab_RewritesGasolineInsecureURL(t *testing.T) {
 		t.Fatalf("security mode enable failed: %s", firstText(parseToolResult(t, enable)))
 	}
 
-	result, ok := env.callInteract(t, `{"what":"new_tab","url":"gasoline-insecure://https://example.org"}`)
+	result, ok := env.callInteract(t, `{"what":"new_tab","url":"kaboom-insecure://https://example.org"}`)
 	if !ok {
 		t.Fatal("new_tab should return result")
 	}

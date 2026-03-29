@@ -3,12 +3,12 @@
  * Why: Centralizes message validation and sender security checks in one place.
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { pushChatMessage } from './push-handler.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
-import { setGasolineOverlayVisibility } from './tab-state.js';
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js';
-import { resolveTerminalWorkspaceTarget } from './tab-state.js';
+import { resolveTerminalWorkspaceTarget, setKaboomOverlayVisibility } from './tab-state.js';
 async function openTerminalSidePanel(tabId) {
     if (typeof chrome === 'undefined' || !chrome.sidePanel?.open) {
         return { success: false, error: 'side panel unavailable' };
@@ -202,11 +202,11 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'set_server_url':
             handleSetServerUrl(message.url, sendResponse, deps);
             return false;
-        case 'gasoline_capture_screenshot':
+        case 'kaboom_capture_screenshot':
             // Content script requests screenshot capture (while draw mode overlay is still visible)
             handleDrawModeCaptureScreenshot(sender, sendResponse);
             return true;
-        case 'gasoline_push_chat':
+        case 'kaboom_push_chat':
             handlePushChatAsync(message, sender, sendResponse);
             return true;
         case 'draw_mode_completed':
@@ -230,7 +230,7 @@ async function handleLogMessageAsync(message, sender, deps) {
         await deps.handleLogMessage(message.payload, sender, message.tabId);
     }
     catch (err) {
-        console.error('[Gasoline] Failed to handle log message:', err);
+        console.error(`${KABOOM_LOG_PREFIX} Failed to handle log message:`, err);
     }
 }
 // #lizard forgives
@@ -240,15 +240,15 @@ async function handleClearLogsAsync(sendResponse, deps) {
         sendResponse(result);
     }
     catch (err) {
-        console.error('[Gasoline] Failed to clear logs:', err);
+        console.error(`${KABOOM_LOG_PREFIX} Failed to clear logs:`, err);
         sendResponse({ error: errorMessage(err) });
     }
 }
 function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
     const newValue = enabled === true;
-    console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`);
+    console.log(`${KABOOM_LOG_PREFIX} AI Web Pilot toggle: -> ${newValue}`);
     deps.setAiWebPilotEnabled(newValue, () => {
-        console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`);
+        console.log(`${KABOOM_LOG_PREFIX} AI Web Pilot persisted to storage: ${newValue}`);
         // Settings now sent automatically via /sync
         // Broadcast tracking state change to tracked tab (for favicon flicker)
         broadcastTrackingState();
@@ -272,7 +272,7 @@ async function handleGetTrackingState(sendResponse, deps, senderTabId) {
         });
     }
     catch (err) {
-        console.error('[Gasoline] Failed to get tracking state:', err);
+        console.error(`${KABOOM_LOG_PREFIX} Failed to get tracking state:`, err);
         sendResponse({ state: { isTracked: false, aiPilotEnabled: false } });
     }
 }
@@ -317,7 +317,7 @@ export async function broadcastTrackingState(untrackedTabId) {
         }
     }
     catch (err) {
-        console.error('[Gasoline] Failed to broadcast tracking state:', err);
+        console.error(`${KABOOM_LOG_PREFIX} Failed to broadcast tracking state:`, err);
     }
 }
 async function handleGetDiagnosticState(sendResponse, deps) {
@@ -371,7 +371,7 @@ function handleForwardedSetting(message, sendResponse, deps) {
     sendResponse({ success: true });
 }
 /**
- * Handle GASOLINE_CAPTURE_SCREENSHOT from content script.
+ * Handle KABOOM_CAPTURE_SCREENSHOT from content script.
  * Captures visible tab while draw mode overlay is still visible (annotations in screenshot).
  */
 async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
@@ -382,14 +382,14 @@ async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
     }
     try {
         const tab = await chrome.tabs.get(tabId);
-        await setGasolineOverlayVisibility(tabId, false);
+        await setKaboomOverlayVisibility(tabId, false);
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-        await setGasolineOverlayVisibility(tabId, true);
+        await setKaboomOverlayVisibility(tabId, true);
         sendResponse({ dataUrl });
     }
     catch (err) {
-        console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err));
-        await setGasolineOverlayVisibility(tabId, true).catch(() => { });
+        console.error(`${KABOOM_LOG_PREFIX} Draw mode screenshot capture failed:`, errorMessage(err));
+        await setKaboomOverlayVisibility(tabId, true).catch(() => { });
         sendResponse({ dataUrl: '' });
     }
 }
@@ -428,7 +428,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
     }
 }
 /**
- * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
+ * Handle KABOOM_PUSH_CHAT from content script (chat widget).
  * Pushes a text message to the daemon's push pipeline.
  */
 async function handlePushChatAsync(message, sender, sendResponse) {
@@ -459,7 +459,7 @@ function handleSetServerUrl(url, sendResponse, deps) {
 // =============================================================================
 // STATE SNAPSHOT STORAGE
 // =============================================================================
-const SNAPSHOT_KEY = 'gasoline_state_snapshots';
+const SNAPSHOT_KEY = 'kaboom_state_snapshots';
 /**
  * Save a state snapshot to persistent storage
  */

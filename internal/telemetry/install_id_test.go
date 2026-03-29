@@ -16,8 +16,8 @@ var hexPattern = regexp.MustCompile(`^[0-9a-f]{12}$`)
 func TestGetInstallID_GeneratesOnFirstCall(t *testing.T) {
 	dir := t.TempDir()
 	resetInstallIDState()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	id := GetInstallID()
 	if !hexPattern.MatchString(id) {
@@ -28,8 +28,8 @@ func TestGetInstallID_GeneratesOnFirstCall(t *testing.T) {
 func TestGetInstallID_PersistsAcrossCalls(t *testing.T) {
 	dir := t.TempDir()
 	resetInstallIDState()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	id1 := GetInstallID()
 	id2 := GetInstallID()
@@ -41,8 +41,8 @@ func TestGetInstallID_PersistsAcrossCalls(t *testing.T) {
 func TestGetInstallID_ReadsFromFile(t *testing.T) {
 	dir := t.TempDir()
 	resetInstallIDState()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	// Pre-write a known ID file.
 	knownID := "aabbccddeeff"
@@ -59,8 +59,8 @@ func TestGetInstallID_ReadsFromFile(t *testing.T) {
 func TestGetInstallID_CreatesDirectory(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "nested", ".strum")
 	resetInstallIDState()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	id := GetInstallID()
 	if !hexPattern.MatchString(id) {
@@ -93,8 +93,8 @@ func TestGetInstallID_ReadFailure(t *testing.T) {
 
 	dir := t.TempDir()
 	resetInstallIDState()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	// Create a directory where the install_id file would be, making ReadFile fail.
 	idPath := filepath.Join(dir, "install_id")

@@ -3,7 +3,7 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/identity"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/identity"
 
 const (
 	// mcpServerName is the canonical MCP server identity shown to clients and LLMs.

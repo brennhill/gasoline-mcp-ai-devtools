@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Normalized Log Schema
 
 ## Overview
-Normalized Log Schema automatically parses heterogeneous backend logs (from Go, Node.js, Python, Java) and converts them into a unified structure. Backend services log in wildly different formats: some use JSON, others use text with "[LEVEL]" prefixes, others use syslog format. Gasoline parses each format, extracts structured fields (timestamp, level, message, context), and normalizes them into a canonical format. This enables querying and correlating logs across services written in different languages, each with its own logging convention.
+Normalized Log Schema automatically parses heterogeneous backend logs (from Go, Node.js, Python, Java) and converts them into a unified structure. Backend services log in wildly different formats: some use JSON, others use text with "[LEVEL]" prefixes, others use syslog format. Kaboom parses each format, extracts structured fields (timestamp, level, message, context), and normalizes them into a canonical format. This enables querying and correlating logs across services written in different languages, each with its own logging convention.
 
 ## Problem
 Logs from different services use incompatible formats, making cross-service analysis difficult:
@@ -109,7 +109,7 @@ services:
 [10:15:23] ERROR: Payment failed - user_id: 123
 ```
 
-#### Gasoline query:
+#### Kaboom query:
 ```javascript
 observe({
   what: 'normalized-logs',

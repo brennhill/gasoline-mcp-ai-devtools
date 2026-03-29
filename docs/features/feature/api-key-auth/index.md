@@ -4,11 +4,15 @@ feature_id: feature-api-key-auth
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-29
 code_paths:
+  - cmd/browser-agent/auth.go
+  - cmd/browser-agent/server_middleware.go
 test_paths: []
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+  - cmd/browser-agent/auth_test.go
+  - cmd/browser-agent/http_helpers_unit_test.go
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-29
 ---
 
 # Api Key Auth
@@ -34,4 +38,6 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- Auth middleware: `cmd/browser-agent/auth.go`
+- CORS allowlist for auth header: `cmd/browser-agent/server_middleware.go`
+- Tests: `cmd/browser-agent/auth_test.go`, `cmd/browser-agent/http_helpers_unit_test.go`

@@ -14,16 +14,16 @@
  */
 export function domPrimitiveOverlay(action, options) {
     // — Shared helpers (duplicated for self-containment) —
-    function isGasolineOwnedElement(element) {
+    function isKaboomOwnedElement(element) {
         let node = element;
         while (node) {
             const id = node.id || '';
-            if (id.startsWith('gasoline-'))
+            if (id.startsWith('kaboom-'))
                 return true;
             const className = node.className;
-            if (typeof className === 'string' && className.includes('gasoline-'))
+            if (typeof className === 'string' && className.includes('kaboom-'))
                 return true;
-            if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true')
+            if (node.getAttribute && node.getAttribute('data-kaboom-owned') === 'true')
                 return true;
             node = node.parentElement;
         }
@@ -37,7 +37,7 @@ export function domPrimitiveOverlay(action, options) {
             return results;
         const matches = Array.from(root.querySelectorAll(selector));
         for (const match of matches) {
-            if (!isGasolineOwnedElement(match))
+            if (!isKaboomOwnedElement(match))
                 results.push(match);
         }
         const children = 'children' in root
@@ -109,11 +109,11 @@ export function domPrimitiveOverlay(action, options) {
     }
     function getElementHandleStore() {
         const root = globalThis;
-        if (root.__gasolineElementHandles) {
-            if (!root.__gasolineElementHandles.selectorByID) {
-                root.__gasolineElementHandles.selectorByID = new Map();
+        if (root.__kaboomElementHandles) {
+            if (!root.__kaboomElementHandles.selectorByID) {
+                root.__kaboomElementHandles.selectorByID = new Map();
             }
-            return root.__gasolineElementHandles;
+            return root.__kaboomElementHandles;
         }
         const created = {
             byElement: new WeakMap(),
@@ -121,7 +121,7 @@ export function domPrimitiveOverlay(action, options) {
             selectorByID: new Map(),
             nextID: 1
         };
-        root.__gasolineElementHandles = created;
+        root.__kaboomElementHandles = created;
         return created;
     }
     function getOrCreateElementID(el) {
@@ -284,7 +284,7 @@ export function domPrimitiveOverlay(action, options) {
         const getAttr = element.getAttribute;
         if (typeof getAttr !== 'function')
             return null;
-        const value = getAttr.call(element, 'data-gasoline-dismiss-ts');
+        const value = getAttr.call(element, 'data-kaboom-dismiss-ts');
         return typeof value === 'string' && value.length > 0 ? value : null;
     }
     function writeDismissStamp(element) {
@@ -293,7 +293,7 @@ export function domPrimitiveOverlay(action, options) {
         const setAttr = element.setAttribute;
         if (typeof setAttr !== 'function')
             return;
-        setAttr.call(element, 'data-gasoline-dismiss-ts', String(Date.now()));
+        setAttr.call(element, 'data-kaboom-dismiss-ts', String(Date.now()));
     }
     function clearDismissStamp(element) {
         if (!element)
@@ -301,7 +301,7 @@ export function domPrimitiveOverlay(action, options) {
         const removeAttr = element.removeAttribute;
         if (typeof removeAttr !== 'function')
             return;
-        removeAttr.call(element, 'data-gasoline-dismiss-ts');
+        removeAttr.call(element, 'data-kaboom-dismiss-ts');
     }
     const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i;
     const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply|confirm|yes|allow|accept)/i;

@@ -11,6 +11,7 @@
  */
 
 import type { ContentMessage, WebSocketCaptureMode } from '../types/index.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { SettingName } from '../lib/constants.js'
 import {
   isValidBackgroundSender,
@@ -32,7 +33,6 @@ import {
   handleGetMarkdown,
   handlePageSummary
 } from './message-handlers.js'
-import { getLocals } from '../lib/storage-utils.js'
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
@@ -41,23 +41,41 @@ import { toggleChatWidget } from './ui/chat-widget.js'
 let actionToastsEnabled = true
 let subtitlesEnabled = true
 
+function applyOverlayToggleState(result: Record<string, unknown>): void {
+  if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled as boolean
+  if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled as boolean
+}
+
+function hydrateOverlayToggleState(): void {
+  if (typeof chrome === 'undefined' || !chrome.storage?.local) return
+  try {
+    const maybePromise = chrome.storage.local.get(
+      ['actionToastsEnabled', 'subtitlesEnabled'],
+      applyOverlayToggleState
+    ) as Promise<Record<string, unknown>> | void
+    if (maybePromise && typeof maybePromise.then === 'function') {
+      void maybePromise.then((result: Record<string, unknown>) => applyOverlayToggleState(result))
+    }
+  } catch {
+    // Storage hydration is best-effort. Keep defaults if the content context cannot read storage.
+  }
+}
+
 /**
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
-export async function initRuntimeMessageListener(): Promise<void> {
-  // Load overlay toggle states from storage
-  const result = await getLocals(['actionToastsEnabled', 'subtitlesEnabled'])
-  if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled as boolean
-  if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled as boolean
-
+export function initRuntimeMessageListener(): void {
+  actionToastsEnabled = true
+  subtitlesEnabled = true
+  hydrateOverlayToggleState()
   /** Sync message handlers — return false (no async response needed) */
   type SyncMsg = ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string; params?: unknown }
   const syncHandlers: Record<string, (msg: SyncMsg) => false | void> = {
-    gasoline_ping: () => {
+    kaboom_ping: () => {
       /* handled below via sendResponse */
     },
-    gasoline_action_toast: (msg) => {
+    kaboom_action_toast: (msg) => {
       if (!actionToastsEnabled) return false
       const m = msg as {
         text?: string
@@ -68,15 +86,15 @@ export async function initRuntimeMessageListener(): Promise<void> {
       if (m.text) showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms)
       return false
     },
-    gasoline_toggle_chat: (msg) => {
+    kaboom_toggle_chat: (msg) => {
       toggleChatWidget((msg as { client_name?: string }).client_name)
       return false
     },
-    gasoline_recording_watermark: (msg) => {
+    kaboom_recording_watermark: (msg) => {
       toggleRecordingWatermark((msg as { visible?: boolean }).visible ?? false)
       return false
     },
-    gasoline_subtitle: (msg) => {
+    kaboom_subtitle: (msg) => {
       if (!subtitlesEnabled) return false
       showSubtitle((msg as { text?: string }).text ?? '')
       return false
@@ -94,7 +112,7 @@ export async function initRuntimeMessageListener(): Promise<void> {
   /** Delegated handlers — return boolean | undefined (some are async, returning true) */
   type DelegatedHandler = (msg: SyncMsg, sendResponse: (r?: unknown) => void) => boolean | undefined
   const delegatedHandlers: Record<string, DelegatedHandler> = {
-    gasoline_draw_mode_start: (msg, sr) => {
+    kaboom_draw_mode_start: (msg, sr) => {
       const m = msg as { started_by?: string; annot_session_name?: string; correlation_id?: string }
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
@@ -108,7 +126,7 @@ export async function initRuntimeMessageListener(): Promise<void> {
         .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
       return true
     },
-    gasoline_draw_mode_stop: (_msg, sr) => {
+    kaboom_draw_mode_stop: (_msg, sr) => {
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
           const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.()
@@ -117,7 +135,7 @@ export async function initRuntimeMessageListener(): Promise<void> {
         .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
       return true
     },
-    gasoline_get_annotations: (_msg, sr) => {
+    kaboom_get_annotations: (_msg, sr) => {
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
           sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false })
@@ -125,21 +143,21 @@ export async function initRuntimeMessageListener(): Promise<void> {
         .catch(() => sr({ draw_mode_active: false }))
       return true
     },
-    gasoline_highlight: (msg, sr) => {
+    kaboom_highlight: (msg, sr) => {
       forwardHighlightMessage({ params: msg.params as { selector: string; duration_ms?: number } })
         .then((r) => sr(r))
         .catch((e: Error) => sr({ success: false, error: e.message }))
       return true
     },
-    gasoline_manage_state: (msg, sr) => {
+    kaboom_manage_state: (msg, sr) => {
       handleStateCommand(msg.params as Record<string, unknown>)
         .then((r) => sr(r))
         .catch((e: Error) => sr({ error: e.message }))
       return true
     },
-    gasoline_execute_js: (msg, sr) =>
+    kaboom_execute_js: (msg, sr) =>
       handleExecuteJs((msg.params as { script?: string; timeout_ms?: number }) || {}, sr),
-    gasoline_execute_query: (msg, sr) => handleExecuteQuery((msg.params || {}) as Record<string, unknown>, sr),
+    kaboom_execute_query: (msg, sr) => handleExecuteQuery((msg.params || {}) as Record<string, unknown>, sr),
     a11y_query: (msg, sr) => handleA11yQuery((msg.params || {}) as Record<string, unknown>, sr),
     dom_query: (msg, sr) => handleDomQuery((msg.params || {}) as Record<string, unknown>, sr),
     get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
@@ -148,9 +166,9 @@ export async function initRuntimeMessageListener(): Promise<void> {
     form_discovery_query: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     form_state_query: (msg, sr) => handleFormStateQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     data_table_query: (msg, sr) => handleDataTableQuery((msg.params ?? {}) as Record<string, unknown>, sr),
-    gasoline_get_readable: (_msg, sr) => handleGetReadable(sr),
-    gasoline_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-    gasoline_page_summary: (_msg, sr) => handlePageSummary(sr)
+    kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
+    kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+    kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
   }
 
   chrome.runtime.onMessage.addListener(
@@ -160,12 +178,12 @@ export async function initRuntimeMessageListener(): Promise<void> {
       sendResponse: (response?: unknown) => void
     ): boolean | undefined => {
       if (!isValidBackgroundSender(sender)) {
-        console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id)
+        console.warn(KABOOM_LOG_PREFIX, 'Rejected message from untrusted sender:', sender.id)
         return false
       }
 
       // Ping is special: sync handler that needs sendResponse
-      if (message.type === 'gasoline_ping') return handlePing(sendResponse)
+      if (message.type === 'kaboom_ping') return handlePing(sendResponse)
 
       // Try sync handlers first
       const syncHandler = syncHandlers[message.type] // nosemgrep: unsafe-dynamic-method

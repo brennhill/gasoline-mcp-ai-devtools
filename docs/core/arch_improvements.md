@@ -20,7 +20,7 @@ canonical: false
 
 ## Why this document exists
 
-Gasoline is shipping quickly and already has strong core architecture patterns (zero-dependency Go server, async queue model, extension command pipeline, drift checks for wire types). The next step is to make the system easier to evolve without regressions as tool surface area grows.
+Kaboom is shipping quickly and already has strong core architecture patterns (zero-dependency Go server, async queue model, extension command pipeline, drift checks for wire types). The next step is to make the system easier to evolve without regressions as tool surface area grows.
 
 This roadmap defines concrete architecture improvements with:
 

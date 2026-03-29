@@ -69,7 +69,7 @@ last_verified_date: 2026-03-05
   - **Then:** Parse fails, no upgrade triggered
 
 - **Test:** Feature disabled via env var
-  - **Given:** `GASOLINE_NO_AUTO_UPGRADE=1` set
+  - **Given:** `KABOOM_NO_AUTO_UPGRADE=1` set
   - **When:** Daemon starts
   - **Then:** Binary watcher is not started (returns nil)
 
@@ -126,7 +126,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. `make dev` to start daemon
-2. `go build -ldflags "-X main.version=99.0.0" -o $(which gasoline-mcp) ./cmd/browser-agent/`
+2. `go build -ldflags "-X main.version=99.0.0" -o $(which kaboom-mcp) ./cmd/browser-agent/`
 3. Wait ~35 seconds
 4. Verify daemon restarted via `curl localhost:9160/health`
 5. Verify upgrade warning in next tool call

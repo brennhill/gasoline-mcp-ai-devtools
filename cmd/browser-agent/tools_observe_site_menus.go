@@ -8,8 +8,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/menus"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/menus"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 func (h *ToolHandler) toolObserveSiteMenus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

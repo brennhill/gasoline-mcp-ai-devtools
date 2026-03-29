@@ -75,13 +75,13 @@ export function handleFeatureToggle(storageKey, messageType, enabled) {
     // Background will handle the write after updating its internal state
     chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
         if (chrome.runtime.lastError) {
-            console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal feature flag name, not user-controlled
+            console.error(`[Kaboom] Message error for ${messageType}:`, chrome.runtime.lastError.message); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal feature flag name, not user-controlled
         }
         else if (response?.success) {
-            console.log(`[Gasoline] ${messageType} acknowledged by background`);
+            console.log(`[Kaboom] ${messageType} acknowledged by background`);
         }
         else {
-            console.warn(`[Gasoline] ${messageType} - no response from background`);
+            console.warn(`[Kaboom] ${messageType} - no response from background`);
         }
     });
 }

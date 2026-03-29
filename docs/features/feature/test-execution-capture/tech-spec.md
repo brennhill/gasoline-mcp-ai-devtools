@@ -22,7 +22,7 @@ Jest/Playwright/Mocha (test framework)
     ↓ Adapter emits lifecycle events
 Custom Event API (trace_id = test_id)
     ↓ events indexed by trace_id
-Gasoline Event Store
+Kaboom Event Store
     ↓ on observe('test-execution', trace_id)
 Test Report Generator
     ↓ HTML timeline + flamegraph
@@ -31,9 +31,9 @@ Frontend Extension / CI
 
 ### Components
 1. **Test Framework Adapters** (npm packages)
-   - `@gasoline/jest-adapter`: Hook into Jest test lifecycle
-   - `@gasoline/playwright-adapter`: Hook into Playwright page events
-   - `@gasoline/mocha-adapter`: Hook into Mocha hooks and tests
+   - `@kaboom/jest-adapter`: Hook into Jest test lifecycle
+   - `@kaboom/playwright-adapter`: Hook into Playwright page events
+   - `@kaboom/mocha-adapter`: Hook into Mocha hooks and tests
    - Emit test:started, test:completed, assertion:failed, etc.
    - Each test gets unique trace_id
 
@@ -82,17 +82,17 @@ type TestFailure struct {
 
 ### Phase 1: Core Framework (Week 1)
 1. Define test lifecycle event schema
-2. Implement Jest adapter (`@gasoline/jest-adapter`)
+2. Implement Jest adapter (`@kaboom/jest-adapter`)
    - Hook into beforeEach, afterEach, test() callback
    - Emit test:started, test:completed, assertion:failed
-   - Allocate trace_id, propagate to browser via window.gasoline_trace_id
+   - Allocate trace_id, propagate to browser via window.kaboom_trace_id
 3. Test with simple Jest project
 
 ### Phase 2: Browser Integration (Week 2)
-1. Frontend extension listens for `window.gasoline_trace_id`
+1. Frontend extension listens for `window.kaboom_trace_id`
 2. Include trace_id in all frontend events (network, dom, logs)
 3. Frontend SDK sends trace_id with all custom events
-4. Implement correlation in Gasoline server
+4. Implement correlation in Kaboom server
 
 ### Phase 3: Report Generation (Week 3)
 1. Implement test session store (in-memory, indexed by trace_id)
@@ -113,32 +113,32 @@ type TestFailure struct {
 ```javascript
 // In jest.config.js
 module.exports = {
-  setupFilesAfterEnv: ['@gasoline/jest-adapter/setup.js'],
+  setupFilesAfterEnv: ['@kaboom/jest-adapter/setup.js'],
 };
 
 // Adapter automatically hooks into:
 // - expect() for assertions
 // - test() for test lifecycle
-// - Emits to Gasoline via MCP or HTTP
+// - Emits to Kaboom via MCP or HTTP
 ```
 
 ### Playwright Adapter Example
 ```javascript
-const { gasoline } = require('@gasoline/playwright-adapter');
+const { kaboom } = require('@kaboom/playwright-adapter');
 
 test.beforeEach(async ({ page }) => {
-  const traceId = await gasoline.startTest(page, 'should load page');
+  const traceId = await kaboom.startTest(page, 'should load page');
   page.context().traceId = traceId;
 });
 
 test.afterEach(async ({ page }) => {
-  await gasoline.endTest(page, page.context().traceId, 'passed');
+  await kaboom.endTest(page, page.context().traceId, 'passed');
 });
 ```
 
 ### Backend SDK Example (Node.js)
 ```javascript
-const gasoline = require('@gasoline/sdk');
+const kaboom = require('@kaboom/sdk');
 
 // Middleware to extract trace_id from request headers
 app.use((req, res, next) => {
@@ -151,7 +151,7 @@ app.use((req, res, next) => {
 logger.info('Processing request', { traceId: res.locals.traceId });
 
 // Emit custom events with trace_id
-gasoline.emit('payment:authorized', { traceId: res.locals.traceId, amount: 99.99 });
+kaboom.emit('payment:authorized', { traceId: res.locals.traceId, amount: 99.99 });
 ```
 
 ### Test Report API
@@ -168,12 +168,12 @@ func handleTestReport(req *TestReportRequest) (*TestReportResponse, error) {
 ```
 
 ## Code References
-- **Jest adapter:** `/Users/brenn/dev/gasoline/js-adapters/jest-adapter/src` (new)
-- **Playwright adapter:** `/Users/brenn/dev/gasoline/js-adapters/playwright-adapter/src` (new)
-- **Test session store:** `/Users/brenn/dev/gasoline/server/test-session.go` (new)
-- **Report generator:** `/Users/brenn/dev/gasoline/server/reports/test-report.go` (new)
-- **Backend SDK:** `/Users/brenn/dev/gasoline/sdk/node-sdk/src` (modified)
-- **Go SDK:** `/Users/brenn/dev/gasoline/sdk/go-sdk/sdk.go` (modified)
+- **Jest adapter:** `/Users/brenn/dev/kaboom/js-adapters/jest-adapter/src` (new)
+- **Playwright adapter:** `/Users/brenn/dev/kaboom/js-adapters/playwright-adapter/src` (new)
+- **Test session store:** `/Users/brenn/dev/kaboom/server/test-session.go` (new)
+- **Report generator:** `/Users/brenn/dev/kaboom/server/reports/test-report.go` (new)
+- **Backend SDK:** `/Users/brenn/dev/kaboom/sdk/node-sdk/src` (modified)
+- **Go SDK:** `/Users/brenn/dev/kaboom/sdk/go-sdk/sdk.go` (modified)
 
 ## Performance Requirements
 - **Adapter overhead:** <10% slowdown on test execution
@@ -197,7 +197,7 @@ func handleTestReport(req *TestReportRequest) (*TestReportResponse, error) {
 - Verify report generation works
 
 ### E2E Tests
-- Run full test suite with Gasoline enabled
+- Run full test suite with Kaboom enabled
 - Verify frontend and backend events correlated
 - Verify HTML report is generated and links work
 - Test with real backend services
@@ -209,7 +209,7 @@ func handleTestReport(req *TestReportRequest) (*TestReportResponse, error) {
 
 ## Dependencies
 - **Test frameworks:** Jest 27+, Playwright 1.20+, Mocha 9+
-- **Browser extension:** Already provides window.gasoline API
+- **Browser extension:** Already provides window.kaboom API
 - **Custom event API:** Must be enabled to emit test events
 - **Backend SDKs:** Must propagate trace_id from headers
 
@@ -227,12 +227,12 @@ func handleTestReport(req *TestReportRequest) (*TestReportResponse, error) {
 
 ## Backward Compatibility
 - Adapters are opt-in (setup files)
-- Gasoline works without adapters (no test integration)
+- Kaboom works without adapters (no test integration)
 - No changes to test code required (adapters are transparent)
 - Existing tests run unmodified
 
 ## Future Extensions
-- CI/CD integration: Attach Gasoline reports to GitHub Actions, Jenkins, etc.
+- CI/CD integration: Attach Kaboom reports to GitHub Actions, Jenkins, etc.
 - Test flakiness analysis: Detect which operations cause flakiness
 - Performance budgets: Assert test execution time is within limits
 - Visual regression: Screenshot comparison (integration with Percy)

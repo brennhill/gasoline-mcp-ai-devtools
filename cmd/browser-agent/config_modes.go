@@ -6,14 +6,14 @@ package main
 import (
 	"os"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/session"
 )
 
 // handleEarlyExitModes handles --version, --help, --force, --check/--doctor, --stop, --connect.
 // Calls os.Exit for any matched mode; returns normally if none matched.
 func handleEarlyExitModes(f *parsedFlags) {
 	if *f.showVersion {
-		stderrf("gasoline v%s\n", version)
+		stderrf("kaboom v%s\n", version)
 		os.Exit(0)
 	}
 	if *f.showHelp {

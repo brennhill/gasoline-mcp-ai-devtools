@@ -1,5 +1,5 @@
 /**
- * Purpose: Timeout scaling helpers that read GASOLINE_TEST_TIMEOUT_SCALE to accelerate timeouts during automated tests.
+ * Purpose: Timeout scaling helpers that read KABOOM_TEST_TIMEOUT_SCALE to accelerate timeouts during automated tests.
  */
 
 /**
@@ -10,12 +10,12 @@ declare const process: { env: Record<string, string | undefined> } | undefined
 function readTestScale(): number {
   const globalScale =
     typeof globalThis !== 'undefined' &&
-    typeof (globalThis as { GASOLINE_TEST_TIMEOUT_SCALE?: number }).GASOLINE_TEST_TIMEOUT_SCALE === 'number'
-      ? (globalThis as unknown as { GASOLINE_TEST_TIMEOUT_SCALE: number }).GASOLINE_TEST_TIMEOUT_SCALE
+    typeof (globalThis as { KABOOM_TEST_TIMEOUT_SCALE?: number }).KABOOM_TEST_TIMEOUT_SCALE === 'number'
+      ? (globalThis as unknown as { KABOOM_TEST_TIMEOUT_SCALE: number }).KABOOM_TEST_TIMEOUT_SCALE
       : null
   if (globalScale !== null) return globalScale
   if (typeof process !== 'undefined' && process.env) {
-    const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE
+    const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE
     if (raw) {
       const parsed = Number(raw)
       if (Number.isFinite(parsed)) return parsed

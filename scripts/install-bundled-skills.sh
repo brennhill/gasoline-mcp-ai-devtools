@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # install-bundled-skills.sh
-# Purpose: Install bundled managed skills from source for manual/local Gasoline builds.
+# Purpose: Install bundled managed skills from source for manual/local Kaboom builds.
 # Why: Gives source-build users the same skill availability as npm/PyPI install flows.
 # Docs: docs/features/feature/enhanced-cli-config/index.md
-# Install bundled Gasoline skills from source tree for manual/local builds.
+# Install bundled Kaboom skills from source tree for manual/local builds.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILLS_SRC_DIR="${GASOLINE_BUNDLED_SKILLS_DIR:-$PROJECT_ROOT/npm/gasoline-agentic-browser/skills}"
-MARKER="<!-- gasoline-managed-skill"
+SKILLS_SRC_DIR="${KABOOM_BUNDLED_SKILLS_DIR:-$PROJECT_ROOT/npm/kaboom-agentic-browser/skills}"
+MARKER="<!-- kaboom-managed-skill"
 
-SCOPE="${GASOLINE_SKILL_SCOPE:-global}"
-TARGETS_RAW="${GASOLINE_SKILL_TARGETS:-${GASOLINE_SKILL_TARGET:-claude,codex,gemini}}"
-PROJECT_SCOPE_ROOT="${GASOLINE_PROJECT_ROOT:-$(pwd)}"
+SCOPE="${KABOOM_SKILL_SCOPE:-global}"
+TARGETS_RAW="${KABOOM_SKILL_TARGETS:-${KABOOM_SKILL_TARGET:-claude,codex,gemini}}"
+PROJECT_SCOPE_ROOT="${KABOOM_PROJECT_ROOT:-$(pwd)}"
 
 CREATED=0
 UPDATED=0
@@ -26,7 +26,7 @@ ERRORS=0
 case "$SCOPE" in
   global|project|all) ;;
   *)
-    echo "Invalid GASOLINE_SKILL_SCOPE='$SCOPE' (expected: global, project, all)" >&2
+    echo "Invalid KABOOM_SKILL_SCOPE='$SCOPE' (expected: global, project, all)" >&2
     exit 1
     ;;
 esac
@@ -40,15 +40,15 @@ agent_global_root() {
   local agent="$1"
   case "$agent" in
     claude)
-      printf "%s\n" "${GASOLINE_CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+      printf "%s\n" "${KABOOM_CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
       ;;
     codex)
       local codex_home="${CODEX_HOME:-$HOME/.codex}"
-      printf "%s\n" "${GASOLINE_CODEX_SKILLS_DIR:-$codex_home/skills}"
+      printf "%s\n" "${KABOOM_CODEX_SKILLS_DIR:-$codex_home/skills}"
       ;;
     gemini)
       local gemini_home="${GEMINI_HOME:-$HOME/.gemini}"
-      printf "%s\n" "${GASOLINE_GEMINI_SKILLS_DIR:-$gemini_home/skills}"
+      printf "%s\n" "${KABOOM_GEMINI_SKILLS_DIR:-$gemini_home/skills}"
       ;;
     *)
       return 1
@@ -89,7 +89,7 @@ remove_legacy_skill() {
   local agent="$1"
   local root="$2"
   local skill_id="$3"
-  local legacy_id="gasoline-$skill_id"
+  local legacy_id="kaboom-$skill_id"
   local legacy_path
   legacy_path="$(skill_dest_path "$agent" "$root" "$legacy_id")"
 

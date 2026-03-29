@@ -1,7 +1,7 @@
 {
-  "name": "@brennhill/gasoline-agentic-browser-darwin-x64",
+  "name": "@brennhill/kaboom-agentic-browser-darwin-x64",
   "version": "0.8.1",
-  "description": "Gasoline binary for macOS x64 (Intel)",
+  "description": "Kaboom binary for macOS x64 (Intel)",
   "license": "AGPL-3.0-only",
   "os": [
     "darwin"
@@ -10,7 +10,7 @@
     "x64"
   ],
   "files": [
-    "bin/gasoline",
-    "bin/gasoline-hooks"
+    "bin/kaboom-agentic-browser",
+    "bin/kaboom-hooks"
   ]
 }

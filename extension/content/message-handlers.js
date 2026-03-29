@@ -55,7 +55,7 @@ export function forwardHighlightMessage(message) {
         const deferred = createDeferredPromise();
         // Post message to page context (inject.js)
         postToInject({
-            type: 'gasoline_highlight_request',
+            type: 'kaboom_highlight_request',
             requestId,
             params: message.params
         });
@@ -82,7 +82,7 @@ export async function handleStateCommand(params) {
     const responseHandler = (event) => {
         if (event.source !== window)
             return;
-        if (event.data?.type === 'gasoline_state_response' && event.data?.messageId === messageId) {
+        if (event.data?.type === 'kaboom_state_response' && event.data?.messageId === messageId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve(event.data.result || { error: 'No result from state command' });
         }
@@ -90,7 +90,7 @@ export async function handleStateCommand(params) {
     window.addEventListener('message', responseHandler);
     // Send command to inject.js (include state for restore action)
     postToInject({
-        type: 'gasoline_state_command',
+        type: 'kaboom_state_command',
         messageId,
         action,
         name,
@@ -104,7 +104,7 @@ export async function handleStateCommand(params) {
     });
 }
 /**
- * Handle GASOLINE_PING message
+ * Handle KABOOM_PING message
  */
 export function handlePing(sendResponse) {
     sendResponse({ status: 'alive', timestamp: Date.now() });
@@ -116,7 +116,7 @@ export function handlePing(sendResponse) {
 export function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
         return;
-    const payload = { type: 'gasoline_setting', setting: message.type };
+    const payload = { type: 'kaboom_setting', setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
         payload.mode = message.mode;
     }
@@ -150,14 +150,14 @@ function executeInMainWorld(params, sendResponse) {
         }
     }, safetyTimeoutMs);
     postToInject({
-        type: 'gasoline_execute_js',
+        type: 'kaboom_execute_js',
         requestId,
         script: params.script || '',
         timeoutMs
     });
 }
 /**
- * Handle GASOLINE_EXECUTE_JS message.
+ * Handle kaboom_execute_js message.
  * Always executes in MAIN world via inject script.
  * Returns inject_not_loaded error if inject script isn't available,
  * so background can fallback to chrome.scripting API.
@@ -181,7 +181,7 @@ export function handleExecuteJs(params, sendResponse) {
     return true;
 }
 /**
- * Handle GASOLINE_EXECUTE_QUERY message (async command path)
+ * Handle KABOOM_EXECUTE_QUERY message (async command path)
  */
 export function handleExecuteQuery(params, sendResponse) {
     let parsedParams = {};
@@ -213,7 +213,7 @@ export function handleA11yQuery(params, sendResponse) {
     }, ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
     postToInject({
-        type: 'gasoline_a11y_query',
+        type: 'kaboom_a11y_query',
         requestId,
         params: parsedParams
     });
@@ -234,7 +234,7 @@ export function handleDomQuery(params, sendResponse) {
     }, ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
     postToInject({
-        type: 'gasoline_dom_query',
+        type: 'kaboom_dom_query',
         requestId,
         params: parsedParams
     });
@@ -255,7 +255,7 @@ export function handleGetNetworkWaterfall(sendResponse) {
         const nonce = event.data?._nonce;
         if (nonce && nonce !== getPageNonce())
             return;
-        if (event.data?.type === 'gasoline_waterfall_response' && event.data?.requestId === requestId) {
+        if (event.data?.type === 'kaboom_waterfall_response' && event.data?.requestId === requestId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve({ entries: event.data.entries || [] });
         }
@@ -263,7 +263,7 @@ export function handleGetNetworkWaterfall(sendResponse) {
     window.addEventListener('message', responseHandler);
     // Post message to page context
     postToInject({
-        type: 'gasoline_get_waterfall',
+        type: 'kaboom_get_waterfall',
         requestId
     });
     // Timeout fallback: respond with empty array after 5 seconds
@@ -307,19 +307,19 @@ function forwardInjectQuery(queryType, responseType, label, params, sendResponse
     return true;
 }
 export function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery('gasoline_computed_styles_query', 'gasoline_computed_styles_response', 'Computed styles query', params, sendResponse);
+    return forwardInjectQuery('kaboom_computed_styles_query', 'kaboom_computed_styles_response', 'Computed styles query', params, sendResponse);
 }
 export function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery('gasoline_form_discovery_query', 'gasoline_form_discovery_response', 'Form discovery', params, sendResponse);
+    return forwardInjectQuery('kaboom_form_discovery_query', 'kaboom_form_discovery_response', 'Form discovery', params, sendResponse);
 }
 export function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery('gasoline_form_state_query', 'gasoline_form_state_response', 'Form state', params, sendResponse);
+    return forwardInjectQuery('kaboom_form_state_query', 'kaboom_form_state_response', 'Form state', params, sendResponse);
 }
 export function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery('gasoline_data_table_query', 'gasoline_data_table_response', 'Data table extraction', params, sendResponse);
+    return forwardInjectQuery('kaboom_data_table_query', 'kaboom_data_table_response', 'Data table extraction', params, sendResponse);
 }
 export function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery('gasoline_link_health_query', 'gasoline_link_health_response', 'Link health check', params, sendResponse);
+    return forwardInjectQuery('kaboom_link_health_query', 'kaboom_link_health_response', 'Link health check', params, sendResponse);
 }
 // ============================================
 // Content-Script-Native Extractors (ISOLATED world, CSP-safe)

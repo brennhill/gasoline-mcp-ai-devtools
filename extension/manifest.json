@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "STRUM Devtools",
+  "name": "Kaboom Devtools",
   "version": "0.8.1",
   "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
   "icons": {
@@ -14,7 +14,7 @@
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "STRUM: Agentic Browser Devtools"
+    "default_title": "Kaboom: Agentic Browser Devtools"
   },
   "background": {
     "service_worker": "background.js",

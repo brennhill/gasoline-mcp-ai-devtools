@@ -14,8 +14,8 @@ links:
 ## TL;DR
 
 - Problem: Each AI coding agent (Claude Code, Gemini CLI, Codex) has a different hook protocol. Building separate hook binaries per agent doesn't scale.
-- User value: One binary, one install, works with any supported agent. Users install `gasoline-hooks` once and configure it in whichever agent they use.
-- Binary: `gasoline-hooks` (same binary, auto-detects calling agent)
+- User value: One binary, one install, works with any supported agent. Users install `kaboom-hooks` once and configure it in whichever agent they use.
+- Binary: `kaboom-hooks` (same binary, auto-detects calling agent)
 
 ## Requirements
 
@@ -76,7 +76,7 @@ These are opt-in enhancements, not required for basic functionality. All hooks m
 
 ### MULTI_AGENT_007: Single install path
 
-The bash installer and npm packages ship one `gasoline-hooks` binary. No per-agent builds. The binary self-adapts at runtime.
+The bash installer and npm packages ship one `kaboom-hooks` binary. No per-agent builds. The binary self-adapts at runtime.
 
 ## Non-Goals
 

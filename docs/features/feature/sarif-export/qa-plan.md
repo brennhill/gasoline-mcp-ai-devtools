@@ -162,7 +162,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page loaded with known a11y violations (e.g., missing alt text on images, low contrast text)
 - [ ] Page has at least one `data-component` or `data-testid` attribute on a violating element
@@ -172,13 +172,13 @@ last_verified_date: 2026-03-05
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | `{"tool": "generate", "arguments": {"type": "sarif"}}` | Review inline SARIF JSON in MCP response | Valid SARIF 2.1.0 with violations, rules, and tool sections | [ ] |
-| UAT-2 | `{"tool": "generate", "arguments": {"type": "sarif", "output_path": ".gasoline/reports/a11y.sarif"}}` | Check file exists at specified path | File created, response shows `file_path`, `violations_count`, `rules_checked` | [ ] |
+| UAT-2 | `{"tool": "generate", "arguments": {"type": "sarif", "output_path": ".kaboom/reports/a11y.sarif"}}` | Check file exists at specified path | File created, response shows `file_path`, `violations_count`, `rules_checked` | [ ] |
 | UAT-3 | `{"tool": "generate", "arguments": {"type": "sarif", "scope": "main"}}` | Compare violation count to full-page audit | Scoped audit has fewer or equal violations | [ ] |
 | UAT-4 | `{"tool": "generate", "arguments": {"type": "sarif", "tags": ["wcag2a"]}}` | Check that only WCAG 2.0 Level A rules are checked | No Level AA-only rules in the rules section | [ ] |
 | UAT-5 | `{"tool": "generate", "arguments": {"type": "sarif", "include_passes": true}}` | Look for passed rules in results | Results include both violations and passes, distinguishable by level/kind | [ ] |
 | UAT-6 | Open generated SARIF in VS Code with SARIF Viewer extension | VS Code shows violations | Violations appear with correct locations and messages | [ ] |
 | UAT-7 | Fix one a11y violation (e.g., add alt text), re-export SARIF | Compare violation counts | New SARIF has one fewer violation | [ ] |
-| UAT-8 | Upload SARIF to GitHub: `gh api /repos/{owner}/{repo}/code-scanning/sarifs -f "sarif=$(gzip -c .gasoline/reports/a11y.sarif \| base64)"` | Check GitHub Code Scanning tab | Violations appear as annotations | [ ] |
+| UAT-8 | Upload SARIF to GitHub: `gh api /repos/{owner}/{repo}/code-scanning/sarifs -f "sarif=$(gzip -c .kaboom/reports/a11y.sarif \| base64)"` | Check GitHub Code Scanning tab | Violations appear as annotations | [ ] |
 
 ### Data Leak UAT Verification
 

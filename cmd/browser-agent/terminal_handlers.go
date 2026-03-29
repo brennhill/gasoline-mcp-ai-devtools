@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 )
 
 // terminalPingInterval is how often the server sends WebSocket ping frames.
@@ -55,7 +55,7 @@ func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager
 	// Serve xterm.js and other static assets.
 	staticFS, err := fs.Sub(terminalAssetsFS, "terminal_assets")
 	if err != nil {
-		stderrf("[gasoline] failed to create terminal static FS: %v\n", err)
+		stderrf("[Kaboom] failed to create terminal static FS: %v\n", err)
 		return
 	}
 	mux.Handle("/terminal/static/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -433,7 +433,7 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 		sess.SetIdleConfig(pty.IdleConfig{
 			Timeout: terminalIdleTimeout,
 			Callback: func(id string) {
-				stderrf("[gasoline] terminal session %s is idle\n", id)
+				stderrf("[Kaboom] terminal session %s is idle\n", id)
 			},
 		})
 		if req.InitCommand != "" {
@@ -449,7 +449,7 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 				"error":       "sandbox_restricted",
 				"message":     "The daemon was started by an MCP client and cannot spawn terminal processes due to macOS sandbox restrictions.",
 				"instruction": "Run this command in a separate terminal to restart the daemon with full permissions:",
-				"command":     "gasoline-mcp --stop && gasoline-mcp --daemon",
+				"command":     "kaboom-agentic-browser --stop && kaboom-agentic-browser --daemon",
 			})
 			return
 		}

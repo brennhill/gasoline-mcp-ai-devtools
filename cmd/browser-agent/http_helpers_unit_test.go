@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
 func TestAuthMiddleware(t *testing.T) {
@@ -30,7 +30,7 @@ func TestAuthMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusAccepted)
 	}))
 	wrongReq := httptest.NewRequest(http.MethodGet, "/", nil)
-	wrongReq.Header.Set("X-Gasoline-Key", "nope")
+	wrongReq.Header.Set("X-Kaboom-Key", "nope")
 	wrongRR := httptest.NewRecorder()
 	protected.ServeHTTP(wrongRR, wrongReq)
 	if wrongRR.Code != http.StatusUnauthorized {
@@ -45,7 +45,7 @@ func TestAuthMiddleware(t *testing.T) {
 	}
 
 	okReq := httptest.NewRequest(http.MethodGet, "/", nil)
-	okReq.Header.Set("X-Gasoline-Key", "secret")
+	okReq.Header.Set("X-Kaboom-Key", "secret")
 	okRR := httptest.NewRecorder()
 	protected.ServeHTTP(okRR, okReq)
 	if okRR.Code != http.StatusAccepted {

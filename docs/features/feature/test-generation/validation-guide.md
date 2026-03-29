@@ -2,7 +2,7 @@
 feature: test-generation
 type: validation
 status: ready_to_execute
-demo_site: ~/dev/gasoline-demos
+demo_site: ~/dev/kaboom-demos
 last_reviewed: 2026-03-05
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
@@ -22,24 +22,24 @@ Prove that the test generation implementation actually works by:
 
 ```bash
 # Start the demo site (ShopBroken - 34 intentional bugs)
-cd ~/dev/gasoline-demos
+cd ~/dev/kaboom-demos
 npm run demo
 
-# In another terminal, start Gasoline MCP server
-cd ~/dev/gasoline
+# In another terminal, start Kaboom MCP server
+cd ~/dev/kaboom
 make dev
-./dist/gasoline-mcp
+./dist/kaboom-mcp
 ```
 
 ## Validation 1: Generate Test from WebSocket Error (30 min)
 
 **Bug:** Chat WebSocket connects to wrong endpoint + message parsing failures
 
-**Why This Matters:** WebSocket monitoring is a **unique Gasoline feature** that TestSprite doesn't have. This validates our competitive advantage.
+**Why This Matters:** WebSocket monitoring is a **unique Kaboom feature** that TestSprite doesn't have. This validates our competitive advantage.
 
 ### Step 1: Trigger the WebSocket Errors
 
-1. Open <http://localhost:3000> in Chrome with Gasoline extension
+1. Open <http://localhost:3000> in Chrome with Kaboom extension
 2. Click "Chat" in the header to open live chat widget
 3. Observe multiple errors:
    - WebSocket connection error (wrong endpoint `/ws/chat` instead of `/chat`)
@@ -56,7 +56,7 @@ make dev
 ### Step 2: Verify WebSocket Errors were Captured
 
 ```bash
-# Check WebSocket events (UNIQUE TO GASOLINE)
+# Check WebSocket events (UNIQUE TO KABOOM)
 {
   "jsonrpc": "2.0",
   "id": 1,
@@ -120,7 +120,7 @@ make dev
 - Content: Valid Playwright test with:
   - `await page.goto('http://localhost:3000')`
   - Click action to open chat: `await page.locator('[data-testid="chat-button"]').click()`
-  - **WebSocket monitoring** (UNIQUE TO GASOLINE):
+  - **WebSocket monitoring** (UNIQUE TO KABOOM):
     ```typescript
     // Listen for WebSocket frames
     page.on('websocket', ws => {
@@ -140,7 +140,7 @@ make dev
 
 ```bash
 # Save generated test
-cd ~/dev/gasoline-demos
+cd ~/dev/kaboom-demos
 mkdir -p tests
 # Copy generated content to tests/generated-products-404.spec.ts
 
@@ -171,7 +171,7 @@ npx playwright test tests/generated-products-404.spec.ts
 
 ## Validation 1B: WebSocket-Specific Test Generation (15 min)
 
-**Gasoline's Unique Advantage:** TestSprite doesn't monitor WebSocket frames.
+**Kaboom's Unique Advantage:** TestSprite doesn't monitor WebSocket frames.
 
 ### Generate Test from Interaction (Not Just Errors)
 
@@ -210,7 +210,7 @@ npx playwright test tests/generated-chat-interaction.spec.ts
 - ✅ Test captures WebSocket connection lifecycle
 - ✅ Test validates WebSocket frame content
 - ✅ Test reproduces chat interaction sequence
-- ✅ No manual WebSocket mocking needed (Gasoline captured it)
+- ✅ No manual WebSocket mocking needed (Kaboom captured it)
 
 ---
 
@@ -267,7 +267,7 @@ test('add to cart', async ({ page }) => {
 First, load the actual page so DOM is available:
 
 ```bash
-# Open http://localhost:3000 in browser with Gasoline extension
+# Open http://localhost:3000 in browser with Kaboom extension
 # Wait for products to load (they'll 404, but DOM structure is there)
 ```
 
@@ -543,16 +543,16 @@ After validation, document any issues found:
 
 ```bash
 # Terminal 1: Start demo
-cd ~/dev/gasoline-demos && npm run demo
+cd ~/dev/kaboom-demos && npm run demo
 
-# Terminal 2: Start Gasoline
-cd ~/dev/gasoline && ./dist/gasoline-mcp
+# Terminal 2: Start Kaboom
+cd ~/dev/kaboom && ./dist/kaboom-mcp
 
 # Browser: Open http://localhost:3000
 # See 404 error in console
 
 # Claude Code:
-"Use Gasoline to observe the error, then generate a Playwright test from it"
+"Use Kaboom to observe the error, then generate a Playwright test from it"
 
 # Result: Working test that reproduces the bug
 # Time: < 2 minutes

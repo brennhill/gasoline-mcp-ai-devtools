@@ -8,14 +8,14 @@ const assert = require('node:assert')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const config = require('../../npm/gasoline-mcp/lib/config')
+const config = require('../../npm/kaboom-agentic-browser/lib/config')
 const {
   InvalidJSONError,
   FileSizeError,
   ConfigValidationError: _ConfigValidationError
-} = require('../../npm/gasoline-mcp/lib/errors')
+} = require('../../npm/kaboom-agentic-browser/lib/errors')
 
-const testDir = path.join(os.tmpdir(), 'gasoline-cli-test')
+const testDir = path.join(os.tmpdir(), 'kaboom-cli-test')
 
 function setupTestDir() {
   if (!fs.existsSync(testDir)) {
@@ -31,7 +31,8 @@ function cleanupTestDir() {
 
 test('config.getConfigCandidates returns expected file-client paths', () => {
   const candidates = config.getConfigCandidates()
-  assert.strictEqual(candidates.length, 4, 'Should return 4 config paths')
+  const fileClientCount = config.CLIENT_DEFINITIONS.filter((def) => def.type === 'file').length
+  assert.strictEqual(candidates.length, fileClientCount, 'Should return one config path per file-based client')
   assert.ok(candidates.some((p) => p.includes('Claude')), 'Should include Claude Desktop path')
   assert.ok(candidates.some((p) => p.includes('.cursor')), 'Should include Cursor path')
   assert.ok(candidates.some((p) => p.includes('.codeium')), 'Should include Windsurf path')
@@ -51,7 +52,7 @@ test('config.readConfigFile reads and parses valid JSON', () => {
   const testFile = path.join(testDir, 'valid-config.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] }
+      'kaboom-browser-devtools': { command: 'kaboom-agentic-browser', args: [] }
     }
   }
   fs.writeFileSync(testFile, JSON.stringify(testData))
@@ -99,7 +100,7 @@ test('config.writeConfigFile writes file atomically', () => {
   const testFile = path.join(testDir, 'atomic-write.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] }
+      'kaboom-browser-devtools': { command: 'kaboom-agentic-browser', args: [] }
     }
   }
 
@@ -120,7 +121,7 @@ test('config.writeConfigFile with dryRun=true does not write', () => {
   const testFile = path.join(testDir, 'dry-run.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] }
+      'kaboom-browser-devtools': { command: 'kaboom-agentic-browser', args: [] }
     }
   }
 
@@ -134,7 +135,7 @@ test('config.writeConfigFile with dryRun=true does not write', () => {
 test('config.validateMCPConfig accepts valid config', () => {
   const validConfig = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp' }
+      'kaboom-browser-devtools': { command: 'kaboom-agentic-browser' }
     }
   }
 
@@ -156,36 +157,40 @@ test('config.validateMCPConfig rejects non-object mcpServers', () => {
   assert.ok(errors[0].includes('object'), 'Error should mention object')
 })
 
-test('config.mergeGassolineConfig preserves existing entries', () => {
+test('config.mergeKaboomConfig preserves existing entries', () => {
   const existing = {
     mcpServers: {
       other: { command: 'other-tool' }
     }
   }
 
-  const gasoline = { command: 'gasoline-mcp', args: [] }
-  const merged = config.mergeGassolineConfig(existing, gasoline, {})
+  const kaboom = { command: 'kaboom-agentic-browser', args: [] }
+  const merged = config.mergeKaboomConfig(existing, kaboom, {})
 
-  assert.ok(merged.mcpServers.gasoline, 'gasoline entry should be added')
+  assert.ok(merged.mcpServers['kaboom-browser-devtools'], 'kaboom entry should be added')
   assert.ok(merged.mcpServers.other, 'other entry should be preserved')
   assert.strictEqual(merged.mcpServers.other.command, 'other-tool', 'other entry unchanged')
 })
 
-test('config.mergeGassolineConfig adds env vars', () => {
+test('config.mergeKaboomConfig removes legacy entries and adds env vars', () => {
   const existing = { mcpServers: {} }
-  const gasoline = { command: 'gasoline-mcp', args: [] }
+  existing.mcpServers.gasoline = { command: 'gasoline-mcp', args: [] }
+  existing.mcpServers['strum-browser-devtools'] = { command: 'strum-agentic-browser', args: [] }
+  const kaboom = { command: 'kaboom-agentic-browser', args: [] }
   const envVars = { DEBUG: '1', API_KEY: 'secret' }
 
-  const merged = config.mergeGassolineConfig(existing, gasoline, envVars)
-  assert.deepStrictEqual(merged.mcpServers.gasoline.env, envVars, 'Env vars should be added')
+  const merged = config.mergeKaboomConfig(existing, kaboom, envVars)
+  assert.deepStrictEqual(merged.mcpServers['kaboom-browser-devtools'].env, envVars, 'Env vars should be added')
+  assert.strictEqual(merged.mcpServers.gasoline, undefined, 'legacy gasoline entry should be removed')
+  assert.strictEqual(merged.mcpServers['strum-browser-devtools'], undefined, 'legacy strum entry should be removed')
 })
 
-test('config.mergeGassolineConfig without env vars does not add empty env object', () => {
+test('config.mergeKaboomConfig without env vars does not add empty env object', () => {
   const existing = { mcpServers: {} }
-  const gasoline = { command: 'gasoline-mcp', args: [] }
+  const kaboom = { command: 'kaboom-agentic-browser', args: [] }
 
-  const merged = config.mergeGassolineConfig(existing, gasoline, {})
-  assert.strictEqual(merged.mcpServers.gasoline.env, undefined, 'Empty env should not be added')
+  const merged = config.mergeKaboomConfig(existing, kaboom, {})
+  assert.strictEqual(merged.mcpServers['kaboom-browser-devtools'].env, undefined, 'Empty env should not be added')
 })
 
 test('config.parseEnvVar parses valid KEY=VALUE', () => {

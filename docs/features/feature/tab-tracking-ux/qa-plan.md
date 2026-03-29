@@ -20,13 +20,13 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
 | DL-1 | Tracked tab URL displayed in confirmation dialog | The switch confirmation dialog shows the URL of the currently tracked tab and the new tab. URLs may contain session tokens, PII in paths, or sensitive query parameters. Verify only necessary URL info is shown. | high |
 | DL-2 | Tracked tab URL in notification | The tab close notification shows the URL/title of the closed tab. This may reveal browsing history to anyone who can see OS notifications (shared screen, screen recording). | high |
-| DL-3 | Browsing history exposure via badge tooltip | Badge tooltip shows "Gasoline: tracking tab 42" or tab URL. If the tooltip shows a URL, it could expose browsing info to shoulder surfers. | medium |
+| DL-3 | Browsing history exposure via badge tooltip | Badge tooltip shows "Kaboom: tracking tab 42" or tab URL. If the tooltip shows a URL, it could expose browsing info to shoulder surfers. | medium |
 | DL-4 | Tab data in chrome.storage.local | `trackedTabId` and `trackedTabUrl` are already stored in `chrome.storage.local`. No NEW data is stored by this feature. Verify no additional sensitive data is persisted. | medium |
 | DL-5 | Notification content logged by OS | Chrome notifications may be logged by the OS notification center (macOS Notification Center, Windows Action Center). The tab URL/title in the notification persists in the OS log. | medium |
 | DL-6 | Data transmission path | This feature is entirely extension-side. No server communication is involved. Verify no data is sent to the Go server for any of the three sub-features. | critical |
@@ -94,9 +94,9 @@ last_verified_date: 2026-03-05
 | UT-3 | Badge shows red "!" when server disconnected | Server connection lost | Badge text: "!", background: #f85149 | must |
 | UT-4 | Server disconnect overrides tracking state | Tracking active + server disconnected | Badge shows red "!", not green | must |
 | UT-5 | Badge updates within 200ms | Change tracking state, measure badge update | < 200ms from state change to visual update | must |
-| UT-6 | Badge tooltip for tracking state | Tracking tab 42 | Tooltip: "Gasoline: tracking tab 42" | should |
-| UT-7 | Badge tooltip for no tracking | No tab tracked | Tooltip: "Gasoline: not tracking" | should |
-| UT-8 | Badge tooltip for disconnected | Server disconnected | Tooltip: "Gasoline: server disconnected" | should |
+| UT-6 | Badge tooltip for tracking state | Tracking tab 42 | Tooltip: "Kaboom: tracking tab 42" | should |
+| UT-7 | Badge tooltip for no tracking | No tab tracked | Tooltip: "Kaboom: not tracking" | should |
+| UT-8 | Badge tooltip for disconnected | Server disconnected | Tooltip: "Kaboom: server disconnected" | should |
 | UT-9 | No flicker on rapid state changes | Multiple state changes within 50ms | Final state is correct, no visible flicker | should |
 | UT-10 | Badge reads storage on extension startup | Extension reloaded with existing tracking state | Badge reflects stored state immediately | should |
 | **Sub-feature B: Confirmation Dialog** | | | | |
@@ -120,7 +120,7 @@ last_verified_date: 2026-03-05
 | UT-27 | Notification click opens popup | Click notification | Popup opens (if `chrome.action.openPopup()` available) or browser focused | should |
 | UT-28 | Only one notification for multiple rapid closes | Close tracked tab + 2 other tabs rapidly | Only one notification shown | should |
 | UT-29 | Graceful degradation without `chrome.notifications` | `chrome.notifications` unavailable | Console log fallback, no crash | should |
-| UT-30 | Notification uses Gasoline icon | Check notification properties | `iconUrl` set to Gasoline extension icon | could |
+| UT-30 | Notification uses Kaboom icon | Check notification properties | `iconUrl` set to Kaboom extension icon | could |
 | UT-31 | Badge updates to grey dash on tab close | Tracked tab closes | Badge shows "-" with grey background | must |
 | UT-32 | Popup updates on tab close (if open) | Popup is open when tracked tab closes | Popup shows "Track This Tab" state | should |
 | UT-33 | Stale tab ID on browser restart | Browser restarts, old `trackedTabId` in storage | `onStartup` clears it, badge shows no-tracking state, no notification | should |
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] At least 3 browser tabs open with different pages
 - [ ] No tab currently tracked (fresh state)
@@ -184,9 +184,9 @@ last_verified_date: 2026-03-05
 | **Sub-feature A: Badge Indicator** | | | | |
 | UAT-1 | N/A (human observes badge) | Look at extension badge with no tab tracked | Grey "-" badge with grey background (#6e7681) | [ ] |
 | UAT-2 | N/A (human clicks "Track This Tab" on tab A) | Look at badge after tracking | Green badge (green background #3fb950) | [ ] |
-| UAT-3 | N/A (human hovers over extension icon) | Read tooltip | "Gasoline: tracking tab [ID]" or similar descriptive text | [ ] |
-| UAT-4 | N/A (stop Gasoline server) | Look at badge after server disconnect | Red "!" badge with red background (#f85149) | [ ] |
-| UAT-5 | N/A (restart Gasoline server) | Look at badge after server reconnect | Green badge restored (tracking still active) | [ ] |
+| UAT-3 | N/A (human hovers over extension icon) | Read tooltip | "Kaboom: tracking tab [ID]" or similar descriptive text | [ ] |
+| UAT-4 | N/A (stop Kaboom server) | Look at badge after server disconnect | Red "!" badge with red background (#f85149) | [ ] |
+| UAT-5 | N/A (restart Kaboom server) | Look at badge after server reconnect | Green badge restored (tracking still active) | [ ] |
 | UAT-6 | N/A (click "Stop Tracking") | Look at badge | Grey "-" badge (no tracking) | [ ] |
 | **Sub-feature B: Switch Confirmation** | | | | |
 | UAT-7 | N/A (human tracks tab A, navigates to tab B, opens popup, clicks "Track This Tab") | Popup UI | Confirmation dialog appears with info about tab A and tab B | [ ] |

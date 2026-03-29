@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This feature adds a browser-side chat/control panel that operates as a first-party client of Gasoline MCP. It does not replace the existing daemon or MCP tool contracts. Instead, it composes them with:
+This feature adds a browser-side chat/control panel that operates as a first-party client of Kaboom MCP. It does not replace the existing daemon or MCP tool contracts. Instead, it composes them with:
 
 1. Context orchestration (event-triggered bundle assembly).
 2. Safety controls (approval gating for mutating actions).
@@ -31,7 +31,7 @@ flowchart LR
     U[User in Browser] --> P[Agent Panel UI]
     P --> B[Extension Background Broker]
     B --> Q[Pending Query Queue]
-    Q --> S[Gasoline Daemon]
+    Q --> S[Kaboom Daemon]
     S --> C[(Capture Buffers)]
     S --> R[Redaction Gateway]
     R --> A[Agent Context Builder]
@@ -44,7 +44,7 @@ flowchart LR
 
 ### Key Principle
 
-Gasoline remains the deterministic source of truth. The panel is an orchestrator and presentation layer over existing contracts.
+Kaboom remains the deterministic source of truth. The panel is an orchestrator and presentation layer over existing contracts.
 
 ## Components
 

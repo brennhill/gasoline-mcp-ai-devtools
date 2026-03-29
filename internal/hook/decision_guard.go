@@ -1,5 +1,5 @@
 // decision_guard.go — Architectural decision enforcement for PostToolUse hooks.
-// Checks edited code against locked decisions in .gasoline/decisions.json.
+// Checks edited code against locked decisions in .kaboom/decisions.json.
 
 package hook
 
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	decisionsDir  = ".gasoline"
+	decisionsDir  = ".kaboom"
 	decisionsFile = "decisions.json"
 )
 

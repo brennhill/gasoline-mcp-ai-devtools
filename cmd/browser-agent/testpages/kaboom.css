@@ -1,0 +1,442 @@
+/* kaboom.css — Kaboom Test Harness Design System */
+
+/* ─── Reset & Base ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:            #1a1a1a;
+  --bg-section:    #252525;
+  --bg-card:       #2a2a2a;
+  --bg-input:      #1e1e1e;
+  --text:          #e0e0e0;
+  --text-dim:      #888;
+  --text-bright:   #ffffff;
+  --border:        #333;
+  --border-bright: #444;
+  --green:         #3fb950;
+  --green-bg:      rgba(63, 185, 80, 0.12);
+  --red:           #f85149;
+  --red-bg:        rgba(248, 81, 73, 0.12);
+  --blue:          #58a6ff;
+  --blue-bg:       rgba(88, 166, 255, 0.12);
+  --amber:         #d29922;
+  --amber-bg:      rgba(210, 153, 34, 0.12);
+  --purple:        #a371f7;
+  --purple-bg:     rgba(163, 113, 247, 0.12);
+  --flame-base:    #f97316;
+  --flame-mid:     #fb923c;
+  --flame-tip:     #fbbf24;
+  --flame-inner:   #fef3c7;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─── Header ────────────────────────────────────────── */
+.gh-header {
+  background: var(--bg-section);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.gh-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.gh-wordmark {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -0.3px;
+}
+
+.gh-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.gh-badge-harness { background: var(--blue-bg);   color: var(--blue);   border: 1px solid rgba(88,166,255,0.3); }
+.gh-badge-green   { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(63,185,80,0.3);  }
+.gh-badge-red     { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(248,81,73,0.3);  }
+.gh-badge-amber   { background: var(--amber-bg);  color: var(--amber);  border: 1px solid rgba(210,153,34,0.3); }
+.gh-badge-purple  { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(163,113,247,0.3);}
+
+.gh-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.gh-nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.gh-nav a:hover  { background: var(--border); color: var(--text); }
+.gh-nav a.active { background: var(--bg-card); color: var(--text-bright); }
+
+/* ─── Layout ────────────────────────────────────────── */
+.gh-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+.gh-hero {
+  padding: 28px 0 22px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.gh-hero h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-hero p {
+  color: var(--text-dim);
+  font-size: 13px;
+  max-width: 640px;
+  line-height: 1.6;
+}
+
+/* ─── Section / Card ────────────────────────────────── */
+.gh-section {
+  background: var(--bg-section);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.gh-section-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-section-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.gh-section-header .section-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: auto;
+  font-family: monospace;
+}
+
+.gh-section-body { padding: 16px; }
+
+/* ─── Form Elements ─────────────────────────────────── */
+input[type=text],
+input[type=email],
+input[type=password],
+input[type=number],
+select,
+textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  font-family: inherit;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+}
+
+select option { background: var(--bg-section); }
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.gh-form-row   { margin-bottom: 12px; }
+
+.gh-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gh-form-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-form-inline label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+}
+
+input[type=checkbox] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+
+/* ─── Buttons ───────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn:active   { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary { background: var(--blue);               color: #fff; }
+.btn-green   { background: var(--green);              color: #000; }
+.btn-red     { background: var(--red);                color: #fff; }
+.btn-amber   { background: var(--amber);              color: #000; }
+.btn-ghost   { background: var(--bg-card);            color: var(--text);  border: 1px solid var(--border-bright); }
+.btn-danger  { background: var(--red-bg);             color: var(--red);   border: 1px solid rgba(248,81,73,0.3); }
+.btn-purple  { background: var(--purple-bg);          color: var(--purple);border: 1px solid rgba(163,113,247,0.3);}
+.btn-sm      { padding: 4px 10px; font-size: 12px; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ─── Status / Log Output ───────────────────────────── */
+.gh-status {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  min-height: 36px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 8px;
+}
+.gh-status.ok   { border-color: rgba(63,185,80,0.4);  color: var(--green); }
+.gh-status.err  { border-color: rgba(248,81,73,0.4);  color: var(--red); }
+.gh-status.info { border-color: rgba(88,166,255,0.4); color: var(--blue); }
+
+.gh-log {
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  height: 180px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+.log-line        { margin: 1px 0; }
+.log-line.log    { color: #7ee787; }
+.log-line.warn   { color: var(--amber); }
+.log-line.error  { color: var(--red); }
+.log-line.info   { color: var(--blue); }
+.log-line.ws     { color: var(--purple); }
+.log-line.system { color: var(--text-dim); }
+
+/* ─── Tags / Badges ─────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-family: monospace;
+}
+.tag-id     { background: var(--purple-bg); color: var(--purple); }
+.tag-dom    { background: var(--blue-bg);   color: var(--blue); }
+.tag-error  { background: var(--red-bg);    color: var(--red); }
+.tag-ok     { background: var(--green-bg);  color: var(--green); }
+.tag-warn   { background: var(--amber-bg);  color: var(--amber); }
+
+/* ─── Indicator Dot ─────────────────────────────────── */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.dot-green  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.dot-red    { background: var(--red); }
+.dot-amber  { background: var(--amber); animation: pulse 1.2s ease-in-out infinite; }
+.dot-dim    { background: var(--text-dim); }
+
+/* ─── Index Page ────────────────────────────────────── */
+.gh-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.gh-card {
+  background: var(--bg-section);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+  display: block;
+}
+.gh-card:hover { border-color: var(--border-bright); background: var(--bg-card); }
+
+.gh-card-icon  { font-size: 26px; margin-bottom: 10px; }
+.gh-card-title { font-size: 14px; font-weight: 600; color: var(--text-bright); margin-bottom: 5px; }
+.gh-card-desc  { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.6; }
+.gh-card-tags  { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ─── Special Elements ──────────────────────────────── */
+.flame-text {
+  background: linear-gradient(90deg, var(--flame-base), var(--flame-mid), var(--flame-tip));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.overlay-trap {
+  position: relative;
+  display: inline-block;
+}
+.overlay-trap .honeypot {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  opacity: 0;
+  cursor: default;
+  pointer-events: none; /* disabled by default — enable via JS to test */
+}
+
+.gh-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 9998;
+  align-items: center;
+  justify-content: center;
+}
+.gh-modal-backdrop.open { display: flex; }
+.gh-modal {
+  background: var(--bg-section);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  z-index: 9999;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+/* ─── Performance Page ──────────────────────────────── */
+.cls-box {
+  background: linear-gradient(135deg, var(--blue-bg), var(--purple-bg));
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 6px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blue);
+  font-size: 12px;
+  transition: none; /* No transition — sudden shift must be unanimated to register as CLS */
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.lcp-hero {
+  width: 100%;
+  height: 200px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  border: 1px dashed var(--border-bright);
+}
+
+/* ─── A11y Page (deliberate violations inline) ──────── */
+.a11y-contrast-fail {
+  color: #aaaaaa;       /* fails on #252525 bg */
+  background: #2d2d2d;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.a11y-contrast-bad {
+  color: #888;          /* fails WCAG AA */
+  background: #707070;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ─── Animations ────────────────────────────────────── */
+@keyframes pulse  { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+@keyframes glow   { 0%,100% { box-shadow:0 0 5px var(--red); } 50% { box-shadow:0 0 15px var(--red); } }
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}

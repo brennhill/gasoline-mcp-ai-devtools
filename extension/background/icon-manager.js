@@ -13,19 +13,19 @@ const ANIMATION_INTERVAL_MS = 400
 const BADGE_TRACKING_ONLY = {
   text: '🔥',
   color: '#FF6B35', // Orange - tracking enabled, pilot disabled
-  title: 'STRUM - TRACKING THIS TAB (viewing only)'
+  title: 'Kaboom - TRACKING THIS TAB (viewing only)'
 }
 
 const BADGE_PILOT_ACTIVE = {
   text: '⚡', // Lightning - both tracking and pilot enabled
   color: '#00D9FF', // Cyan/electric blue
-  title: 'STRUM - AI WEB PILOT ACTIVE (can control)'
+  title: 'Kaboom - AI WEB PILOT ACTIVE (can control)'
 }
 
 const BADGE_OFF = {
   text: '',
   color: '',
-  title: 'STRUM'
+  title: 'Kaboom'
 }
 
 /**
@@ -73,7 +73,7 @@ export function updateIcon(state, tabId = null) {
 function startAnimation(targetTabId = null) {
   if (animationInterval) return // Already running
 
-  console.log('[STRUM] Starting AI Pilot animation')
+  console.log('[Kaboom] Starting AI Pilot animation')
 
   animationInterval = setInterval(() => {
     currentFrame = (currentFrame + 1) % ANIMATION_FRAMES
@@ -86,7 +86,7 @@ function startAnimation(targetTabId = null) {
     const updateTab = (tabId) => {
       chrome.action.setBadgeText({ text: emoji, tabId }).catch(() => {
         // Tab might have been closed
-        console.log('[STRUM] Tab closed during animation')
+        console.log('[Kaboom] Tab closed during animation')
       })
     }
 
@@ -95,7 +95,7 @@ function startAnimation(targetTabId = null) {
     } else {
       // Update globally
       chrome.action.setBadgeText({ text: emoji }).catch(() => {
-        console.log('[STRUM] Failed to update global badge')
+        console.log('[Kaboom] Failed to update global badge')
       })
     }
   }, ANIMATION_INTERVAL_MS)
@@ -107,7 +107,7 @@ function startAnimation(targetTabId = null) {
 function stopAnimation() {
   if (!animationInterval) return
 
-  console.log('[STRUM] Stopping AI Pilot animation')
+  console.log('[Kaboom] Stopping AI Pilot animation')
   clearInterval(animationInterval)
   animationInterval = null
   currentFrame = 0
@@ -139,7 +139,7 @@ export async function updateTrackedTabIcon(isPilotEnabled) {
       })
     }
   } catch (err) {
-    console.error('[STRUM] Failed to update tracked tab icon:', err)
+    console.error('[Kaboom] Failed to update tracked tab icon:', err)
   }
 }
 
@@ -178,7 +178,7 @@ export async function updateAllTabIcons(enabled) {
       }
     }
   } catch (err) {
-    console.error('[STRUM] Failed to update all tab icons:', err)
+    console.error('[Kaboom] Failed to update all tab icons:', err)
   }
 }
 
@@ -209,12 +209,12 @@ export async function initializeIconState(pilotEnabled) {
       })
     }
   } catch (err) {
-    console.error('[STRUM] Failed to initialize icon state:', err)
+    console.error('[Kaboom] Failed to initialize icon state:', err)
   }
 }
 
 /**
- * Clean up when STRUM is disabled
+ * Clean up when Kaboom is disabled
  */
 export function cleanup() {
   stopAnimation()

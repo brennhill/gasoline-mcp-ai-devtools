@@ -18,18 +18,18 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Single Service Streaming Logs at Normal Rate
 #### Setup:
-- Start one backend service (api-server) connected to Gasoline
+- Start one backend service (api-server) connected to Kaboom
 - Service configured to log at INFO level
 - ~100 logs per second
 
 #### Steps:
-1. Start Gasoline MCP server
+1. Start Kaboom MCP server
 2. Connect backend service via gRPC
 3. Backend emits logs for 30 seconds
 4. Call `observe({what: 'backend-logs'})`
 
 #### Expected Result:
-- All logs appear in Gasoline within 100ms of emission
+- All logs appear in Kaboom within 100ms of emission
 - Logs are searchable by timestamp, service name, level
 - No logs are lost or duplicated
 
@@ -73,12 +73,12 @@ last_verified_date: 2026-03-05
 #### Steps:
 1. Backend streaming logs normally
 2. Kill network connection (simulated)
-3. Observe error handling in Gasoline
+3. Observe error handling in Kaboom
 4. Manually reconnect backend
 5. Verify queued logs are replayed
 
 #### Expected Result:
-- Gasoline detects connection loss
+- Kaboom detects connection loss
 - Backend queues logs locally (in-memory)
 - On reconnect, queued logs are replayed in order
 - No logs are lost
@@ -101,7 +101,7 @@ last_verified_date: 2026-03-05
 1. Trigger a user action in the browser (e.g., "Submit Form")
 2. Frontend XHR includes `X-Request-ID: req-12345`
 3. Backend receives request, logs with `request_id: req-12345`
-4. Query Gasoline for logs with `request_id: req-12345`
+4. Query Kaboom for logs with `request_id: req-12345`
 
 #### Expected Result:
 - Backend logs are correlated with frontend action
@@ -122,7 +122,7 @@ last_verified_date: 2026-03-05
 - Services have overlapping request processing
 
 #### Steps:
-1. Start all 3 services connected to Gasoline
+1. Start all 3 services connected to Kaboom
 2. User action triggers requests across all services
 3. Query logs by service name
 4. Query logs for specific request ID across all services
@@ -141,13 +141,13 @@ last_verified_date: 2026-03-05
 
 ### Scenario 6: Memory Eviction Under Load
 #### Setup:
-- Gasoline configured with 500MB max memory
+- Kaboom configured with 500MB max memory
 - Long-running backend service continuously logging
 - 5000 logs/sec for 1 hour
 
 #### Steps:
 1. Run backend for 1 hour at 5K logs/sec
-2. Monitor memory usage in Gasoline
+2. Monitor memory usage in Kaboom
 3. Query for oldest logs (should be evicted)
 4. Query for recent logs (should still exist)
 
@@ -173,12 +173,12 @@ last_verified_date: 2026-03-05
 #### Steps:
 1. Trigger error condition (e.g., division by zero)
 2. Backend logs ERROR level with stack trace
-3. Query Gasoline for ERROR logs
+3. Query Kaboom for ERROR logs
 4. Verify stack trace is preserved
 
 #### Expected Result:
 - Error logs are captured with full stack trace
-- Stack trace is readable in Gasoline UI
+- Stack trace is readable in Kaboom UI
 - Error context (user_id, operation, etc.) is included
 
 #### Acceptance Criteria:
@@ -192,13 +192,13 @@ last_verified_date: 2026-03-05
 ### Scenario 8: Graceful Shutdown
 #### Setup:
 - Backend service connected and actively logging
-- Gasoline is shut down
+- Kaboom is shut down
 
 #### Steps:
 1. Backend service running, streaming logs
-2. Initiate graceful shutdown of Gasoline
+2. Initiate graceful shutdown of Kaboom
 3. Verify backend doesn't lose logs
-4. Restart Gasoline, verify recent logs persist (if applicable)
+4. Restart Kaboom, verify recent logs persist (if applicable)
 
 #### Expected Result:
 - Graceful shutdown gives 30s drain time

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -39,7 +39,7 @@ func newInteractHelpersTestEnv(t *testing.T) *interactHelpersTestEnv {
 
 	// Simulate extension connection so tests that enable pilot don't hit the extension gate.
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 
 	// Simulate tab tracking so tests don't hit the tab tracking gate.

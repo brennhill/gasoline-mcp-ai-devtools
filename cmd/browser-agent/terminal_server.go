@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // terminalPortOffset is the offset from the main daemon port for the terminal server.
@@ -52,7 +52,7 @@ func startTerminalServer(server *Server, port int, mux *http.ServeMux) (*http.Se
 		ready <- nil
 		// #nosec G114 -- localhost-only terminal server
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			stderrf("[gasoline] terminal server error on port %d: %v\n", port, err)
+			stderrf("[Kaboom] terminal server error on port %d: %v\n", port, err)
 		}
 	})
 

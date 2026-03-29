@@ -16,8 +16,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 type videoTestEnv struct {
@@ -125,7 +125,7 @@ func TestSanitizeVideoSlug(t *testing.T) {
 func TestPathWithinDir(t *testing.T) {
 	t.Parallel()
 
-	root := filepath.Join(string(os.PathSeparator), "tmp", "gasoline")
+	root := filepath.Join(string(os.PathSeparator), "tmp", "kaboom")
 
 	if !pathWithinDir(filepath.Join(root, "recordings", "a.webm"), root) {
 		t.Fatal("expected child path to be within root")
@@ -543,7 +543,7 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 		t.Fatalf("screen_recording_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
 	}
 	userPrompt, _ := startData["user_prompt"].(string)
-	if !strings.Contains(strings.ToLower(userPrompt), "open the gasoline popup") {
+	if !strings.Contains(strings.ToLower(userPrompt), "open the kaboom popup") {
 		t.Fatalf("screen_recording_start user_prompt = %q, want guidance to open popup and approve", userPrompt)
 	}
 	if int(startData["fps"].(float64)) != 60 {

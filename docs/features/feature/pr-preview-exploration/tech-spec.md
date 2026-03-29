@@ -14,9 +14,9 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-PR Preview Exploration is an **agent orchestration pattern**, not a Gasoline MCP tool or mode. Gasoline provides the primitives (`observe`, `generate`, `configure`, `interact`), and the AI agent composes them into a multi-phase workflow that validates preview deployments against behavioral baselines.
+PR Preview Exploration is an **agent orchestration pattern**, not a Kaboom MCP tool or mode. Kaboom provides the primitives (`observe`, `generate`, `configure`, `interact`), and the AI agent composes them into a multi-phase workflow that validates preview deployments against behavioral baselines.
 
-The feature adds no new MCP tools, no new modes, and requires zero changes to the Gasoline server or extension. It is entirely implemented as agent-side logic that uses existing capabilities in a specific sequence.
+The feature adds no new MCP tools, no new modes, and requires zero changes to the Kaboom server or extension. It is entirely implemented as agent-side logic that uses existing capabilities in a specific sequence.
 
 ## Key Components
 
@@ -27,7 +27,7 @@ The agent learns the preview URL through one of three mechanisms (in priority or
 
 - **Human provides URL**: Developer pastes the preview URL directly. Immediate workflow start.
 - **URL convention template**: Agent retrieves a stored template from persistent memory (e.g., `preview-{pr_number}.myapp.dev`) and substitutes the PR number.
-- **GitHub Deployment API**: Agent queries GitHub's deployment status API for the preview URL (requires external `gh` CLI access, not part of Gasoline).
+- **GitHub Deployment API**: Agent queries GitHub's deployment status API for the preview URL (requires external `gh` CLI access, not part of Kaboom).
 
 If all mechanisms fail, the agent prompts the human for the URL.
 
@@ -58,7 +58,7 @@ The agent performs a bounded set of interactions using `interact({action: "execu
 - Scroll to load lazy content
 - Exercise key user flows
 
-Gasoline passively captures telemetry during this phase (console logs, network requests, WebSocket events, Web Vitals).
+Kaboom passively captures telemetry during this phase (console logs, network requests, WebSocket events, Web Vitals).
 
 #### Step 3.4: Capture session snapshot
 ```
@@ -129,7 +129,7 @@ Agent exercises application
   -> interact({action: "execute_js"}) [multiple calls]
   |
   v
-Gasoline captures telemetry passively
+Kaboom captures telemetry passively
   -> Console errors, network, WebSocket, performance
   |
   v
@@ -149,16 +149,16 @@ Agent generates findings report
   -> generate({format: "sarif"}) [optional]
   |
   v
-Agent posts report to PR (via external gh CLI, not Gasoline)
+Agent posts report to PR (via external gh CLI, not Kaboom)
 ```
 
 ## Implementation Strategy
 
-**No Gasoline changes required.** This feature is entirely agent-side logic. The implementation is:
+**No Kaboom changes required.** This feature is entirely agent-side logic. The implementation is:
 
 1. **Skill definition file** (if using Claude Code skills): A YAML or JSON file that encodes the workflow phases, exploration bounds, and thresholds.
 2. **Agent prompt enhancement**: Instructions for the agent on how to orchestrate the five phases when the developer requests preview exploration.
-3. **External GitHub integration**: Use `gh` CLI or GitHub API to post PR comments (not part of Gasoline's scope).
+3. **External GitHub integration**: Use `gh` CLI or GitHub API to post PR comments (not part of Kaboom's scope).
 
 The trade-off: no new server overhead, but the workflow requires agent reasoning to execute. The agent must remember to capture the baseline before deploying, navigate to the preview after deployment, and wait for page loads between actions.
 
@@ -187,7 +187,7 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 - A1: The browser extension is connected and tracking the tab used for preview exploration.
 - A2: The AI Web Pilot toggle is enabled (human has opted in to browser control via `execute_js`).
 - A3: The preview environment is accessible from the machine running the browser (localhost or network-accessible).
-- A4: The Gasoline server is running and accepting MCP tool calls.
+- A4: The Kaboom server is running and accepting MCP tool calls.
 - A5: The agent has sufficient context window to hold the exploration report plus the PR diff (for correlation).
 - A6: Preview environments serve a web application that can be meaningfully explored via browser interactions (not a raw API, not a native app).
 
@@ -195,7 +195,7 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 
 ### Risk 1: Preview URL validation bypass
 - **Description**: Agent navigates to a malicious URL disguised as a preview (e.g., `javascript:`, `file://`, or internal network address).
-- **Mitigation**: Agent-side workflow validates URL scheme (HTTPS only), domain pattern (matches configured allowlist like `*.vercel.app`, `*.netlify.app`, or custom domain), and excludes private network addresses (10.x.x.x, 192.168.x.x, 127.0.0.x except Gasoline localhost).
+- **Mitigation**: Agent-side workflow validates URL scheme (HTTPS only), domain pattern (matches configured allowlist like `*.vercel.app`, `*.netlify.app`, or custom domain), and excludes private network addresses (10.x.x.x, 192.168.x.x, 127.0.0.x except Kaboom localhost).
 
 ### Risk 2: Unbounded exploration
 - **Description**: Agent explores infinitely, visiting hundreds of pages and consuming excessive time/tokens.
@@ -203,7 +203,7 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 
 ### Risk 3: Auth token leakage
 - **Description**: Preview environments requiring authentication expose tokens in URL params or cookies, which leak into telemetry.
-- **Mitigation**: Gasoline strips Authorization headers and redacts sensitive cookies from network captures (existing privacy layer). Agent-side workflow must redact any token values from the exploration report before posting to PR.
+- **Mitigation**: Kaboom strips Authorization headers and redacts sensitive cookies from network captures (existing privacy layer). Agent-side workflow must redact any token values from the exploration report before posting to PR.
 
 ### Risk 4: Extension disconnects mid-workflow
 - **Description**: Network interruption or browser crash disconnects the extension during exploration.
@@ -230,35 +230,35 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 
 ## Performance Considerations
 
-Gasoline per-operation overhead is minimal:
+Kaboom per-operation overhead is minimal:
 
-| Operation | Gasoline overhead | Notes |
+| Operation | Kaboom overhead | Notes |
 |-----------|------------------|-------|
 | Navigate to preview | < 2s | Actual page load depends on preview environment |
 | Session capture | < 200ms | Existing `diff_sessions` performance |
 | Session comparison | < 500ms | Depends on session size |
 | Baseline comparison | < 20ms | Existing `compare_baseline` performance |
 | PR summary generation | < 300ms | Existing `pr_summary` generation |
-| Full exploration workflow | < 15 minutes | Agent-side bound, not a Gasoline SLO |
+| Full exploration workflow | < 15 minutes | Agent-side bound, not a Kaboom SLO |
 
-Dominant costs are page load time (preview environment performance) and agent reasoning time (outside Gasoline's control).
+Dominant costs are page load time (preview environment performance) and agent reasoning time (outside Kaboom's control).
 
 ## Security Considerations
 
-**Preview URL validation**: Agent must validate URLs before navigation. Only HTTPS scheme, domain matches configured allowlist (e.g., `*.vercel.app`, `*.netlify.app`, or custom domain), no private network addresses except Gasoline's localhost.
+**Preview URL validation**: Agent must validate URLs before navigation. Only HTTPS scheme, domain matches configured allowlist (e.g., `*.vercel.app`, `*.netlify.app`, or custom domain), no private network addresses except Kaboom's localhost.
 
 **Authentication for preview environments**: Many previews require auth. Two mechanisms:
 - **Cookie injection**: Agent uses `execute_js` to set cookies before navigating. Cookie value must come from secure source (CI secret, vault), never hardcoded.
 - **Bearer token in URL**: Token appended as query param (e.g., `?token=abc`).
 
 Security constraints:
-- Auth tokens must never appear in Gasoline telemetry. Gasoline already strips Authorization headers. Cookie values set via `execute_js` are not captured in logs.
+- Auth tokens must never appear in Kaboom telemetry. Kaboom already strips Authorization headers. Cookie values set via `execute_js` are not captured in logs.
 - Auth tokens must be redacted from PR comment output.
 - Skill definition must document which secrets are required and how they're injected.
 
-**Data sensitivity**: Preview environments may contain test data. Gasoline's existing privacy controls apply:
+**Data sensitivity**: Preview environments may contain test data. Kaboom's existing privacy controls apply:
 - Network body capture is opt-in (off by default). Agent enables selectively for API endpoints it wants to validate.
-- Gasoline strips sensitive headers (Authorization, Cookie, tokens).
+- Kaboom strips sensitive headers (Authorization, Cookie, tokens).
 - Redaction patterns (configured via `configure({action: "noise_rule"})`) apply to all captured data.
 
 **execute_js security surface**: Agent generates scripts simulating user behavior (clicking, typing, scrolling). It does not read sensitive page data (localStorage, sessionStorage, form values). AI Web Pilot toggle must be enabled by human before `execute_js` works (existing security gate).

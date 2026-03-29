@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // applyToolResponsePostProcessing applies redaction and operator warnings to tool output.
@@ -125,7 +125,7 @@ func maybeAddUpdateAvailableWarning(resp JSONRPCResponse) JSONRPCResponse {
 	}
 	updateNotifyLastShown = time.Now()
 
-	warning := fmt.Sprintf("UPDATE AVAILABLE: Gasoline v%s is available (current: v%s). Run: npm install -g gasoline-mcp@latest\n\n", availVer, version)
+	warning := fmt.Sprintf("UPDATE AVAILABLE: Kaboom v%s is available (current: v%s). Run: npm install -g kaboom-agentic-browser@latest\n\n", availVer, version)
 	return prependWarningToResponse(resp, warning)
 }
 
@@ -140,6 +140,6 @@ func maybeAddUpgradeWarning(resp JSONRPCResponse) JSONRPCResponse {
 	}
 
 	elapsed := time.Since(detectedAt).Truncate(time.Second)
-	warning := fmt.Sprintf("NOTICE: Gasoline v%s detected on disk (current: v%s, detected %s ago). Auto-restart imminent. Your next tool call will use the new version.\n\n", newVer, version, elapsed)
+	warning := fmt.Sprintf("NOTICE: Kaboom v%s detected on disk (current: v%s, detected %s ago). Auto-restart imminent. Your next tool call will use the new version.\n\n", newVer, version, elapsed)
 	return prependWarningToResponse(resp, warning)
 }

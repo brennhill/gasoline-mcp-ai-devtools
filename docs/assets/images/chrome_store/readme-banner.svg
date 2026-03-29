@@ -12,7 +12,7 @@
   <!-- Glow -->
   <rect width="1280" height="280" rx="12" fill="url(#glow)"/>
 
-  <!-- STRUM logo -->
+  <!-- Kaboom logo -->
   <g transform="translate(100, 50) scale(1.4)">
     <g transform="translate(1.5, 1.5) scale(0.25)">
       <circle cx="250" cy="250" r="240" fill="#302d2a" />
@@ -33,7 +33,7 @@
   </g>
 
   <!-- Title -->
-  <text x="360" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#302d2a">STRUM</text>
+  <text x="360" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#302d2a">Kaboom</text>
 
   <!-- Tagline -->
   <text x="360" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#6e7681">Agentic Browser Devtools - rapid e2e web development</text>

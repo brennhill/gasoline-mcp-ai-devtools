@@ -17,7 +17,7 @@ import (
 	"sync"
 	"testing"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // Helper functions
@@ -54,10 +54,10 @@ func init() {
 func buildTestBinary(t *testing.T) string {
 	t.Helper()
 	testBinaryOnce.Do(func() {
-		testBinaryPath = filepath.Join(os.TempDir(), "gasoline-test-binary")
+		testBinaryPath = filepath.Join(os.TempDir(), "kaboom-test-binary")
 		cmd := exec.Command("go", "build", "-cover", "-o", testBinaryPath, ".") // #nosec G204,G202 -- test binary from buildTestBinary(t)
 		if output, err := cmd.CombinedOutput(); err != nil {
-			testBinaryErr = fmt.Errorf("failed to build gasoline: %v\nOutput: %s", err, output)
+			testBinaryErr = fmt.Errorf("failed to build kaboom: %v\nOutput: %s", err, output)
 		}
 	})
 	if testBinaryErr != nil {
@@ -69,7 +69,7 @@ func buildTestBinary(t *testing.T) string {
 func getTestStateDir(t *testing.T) string {
 	t.Helper()
 	testStateOnce.Do(func() {
-		testStateDir, testStateErr = os.MkdirTemp("", "gasoline-test-state-*")
+		testStateDir, testStateErr = os.MkdirTemp("", "kaboom-test-state-*")
 		if testStateErr != nil {
 			testStateErr = fmt.Errorf("failed to create isolated test state dir: %w", testStateErr)
 		}

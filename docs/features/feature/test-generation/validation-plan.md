@@ -80,7 +80,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 3. **Use test_heal to analyze**
    ```bash
-   gasoline-mcp <<EOF
+   kaboom-mcp <<EOF
    {
      "jsonrpc": "2.0",
      "id": 1,
@@ -99,7 +99,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 4. **Use test_heal to repair**
    ```bash
-   gasoline-mcp <<EOF
+   kaboom-mcp <<EOF
    {
      "jsonrpc": "2.0",
      "id": 2,
@@ -133,13 +133,13 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 #### Steps:
 
 1. **Navigate to demo app and trigger an error**
-   - Open browser with Gasoline extension
+   - Open browser with Kaboom extension
    - Navigate to app with known error (e.g., form validation failure)
    - Trigger the error in the console
 
 2. **Verify error was captured**
    ```bash
-   gasoline-mcp <<EOF
+   kaboom-mcp <<EOF
    {
      "jsonrpc": "2.0",
      "id": 3,
@@ -156,7 +156,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 3. **Generate test from error**
    ```bash
-   gasoline-mcp <<EOF
+   kaboom-mcp <<EOF
    {
      "jsonrpc": "2.0",
      "id": 4,
@@ -199,7 +199,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 2. **Classify each failure**
    ```bash
    for failure in failures/*.json; do
-     gasoline-mcp <<EOF
+     kaboom-mcp <<EOF
      {
        "jsonrpc": "2.0",
        "id": 1,

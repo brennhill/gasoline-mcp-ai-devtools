@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Chrome Extension CRX Distribution
 
-> **Status:** Enables direct installation of Gasoline extension while waiting for Chrome Web Store approval
+> **Status:** Enables direct installation of Kaboom extension while waiting for Chrome Web Store approval
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ Then build:
 make extension-crx  # Build the signed CRX file
 ```
 
-The CRX file will be created at `dist/gasoline-extension-v[VERSION].crx` with automatic extension ID computation.
+The CRX file will be created at `dist/kaboom-extension-v[VERSION].crx` with automatic extension ID computation.
 
 **Note:** The build script tries multiple methods in order:
 
@@ -37,7 +37,7 @@ The CRX file will be created at `dist/gasoline-extension-v[VERSION].crx` with au
 ### CRX Format & Signing
 - **Format:** CRX3 (Chrome Extension version 3)
 - **Algorithm:** RSA-2048 with SHA-256
-- **Private Key:** `~/.gasoline/extension-signing-key.pem` (generated separately)
+- **Private Key:** `~/.kaboom/extension-signing-key.pem` (generated separately)
 - **Extension ID:** Deterministically derived from the public key's SHA-256 hash (base32)
 
 ### Key Management
@@ -46,7 +46,7 @@ The extension ID is locked to the private key. This means:
 - ✅ If you generate a new key, you get a new extension ID
 - ⚠️ Lose the key = can't update existing installations
 
-Current signing key location: `~/.gasoline/extension-signing-key.pem`
+Current signing key location: `~/.kaboom/extension-signing-key.pem`
 
 ## Distribution Setup
 
@@ -57,20 +57,20 @@ make extension-crx
 
 Output:
 ```
-✨ CRX file created: dist/gasoline-extension-v5.8.2.crx
+✨ CRX file created: dist/kaboom-extension-v5.8.2.crx
 📦 Extension ID: behrmkvjipzkr7hu6mwmbt5vpdgcdyvk
 ```
 
-### Step 2: Host on cookwithgasoline.com
+### Step 2: Host on gokaboom.dev
 
-Upload the CRX to: `https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx`
+Upload the CRX to: `https://gokaboom.dev/downloads/kaboom-extension-v5.8.2.crx`
 
 Typical directory structure:
 ```
-cookwithgasoline.com/
+gokaboom.dev/
   downloads/
-    gasoline-extension-v5.8.2.crx
-    latest.crx → gasoline-extension-v5.8.2.crx (symlink for auto-update)
+    kaboom-extension-v5.8.2.crx
+    latest.crx → kaboom-extension-v5.8.2.crx (symlink for auto-update)
     checksums.txt
 ```
 
@@ -109,7 +109,7 @@ make extension-crx
 # 3. Run tests (optional but recommended)
 make test-js
 
-# 4. Upload CRX to cookwithgasoline.com
+# 4. Upload CRX to gokaboom.dev
 # 5. Update version in VERSION file for next release
 # 6. Commit and push
 ```
@@ -125,7 +125,7 @@ For CI/CD automation, use the Sign Chrome Extension CRX File action:
     crxFilePath: 'build/extension.crx'
     privateKey: ${{ secrets.CHROME_CRX_PRIVATE_KEY }}
     updateXmlPath: 'build/update.xml'
-    updateXmlCodebaseUrl: 'https://cookwithgasoline.com/downloads/gasoline-extension.crx'
+    updateXmlCodebaseUrl: 'https://gokaboom.dev/downloads/kaboom-extension.crx'
 ```
 
 **Setup:**
@@ -158,8 +158,8 @@ make compile-ts test-js
 # 3. Generate new CRX (automatically updates extension ID through manifest)
 make extension-crx
 
-# 4. Upload to cookwithgasoline.com/downloads/gasoline-extension-v[NEW_VERSION].crx
-# 5. Update symlink: latest.crx → gasoline-extension-v[NEW_VERSION].crx
+# 4. Upload to gokaboom.dev/downloads/kaboom-extension-v[NEW_VERSION].crx
+# 5. Update symlink: latest.crx → kaboom-extension-v[NEW_VERSION].crx
 ```
 
 Users will need to manually download and install the new version since we're not using auto-updates yet.
@@ -173,7 +173,7 @@ For fully automated updates, you can later implement:
 <?xml version='1.0' encoding='UTF-8'?>
 <gupdate xmlns='http://www.google.com/update2/response' protocol='3.0'>
   <app appid='behrmkvjipzkr7hu6mwmbt5vpdgcdyvk'>
-    <updatecheck codebase='https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx' version='5.8.2' />
+    <updatecheck codebase='https://gokaboom.dev/downloads/kaboom-extension-v5.8.2.crx' version='5.8.2' />
   </app>
 </gupdate>
 ```
@@ -181,7 +181,7 @@ For fully automated updates, you can later implement:
 Add to manifest.json:
 ```json
 {
-  "update_url": "https://cookwithgasoline.com/update_manifest.xml"
+  "update_url": "https://gokaboom.dev/update_manifest.xml"
 }
 ```
 
@@ -192,8 +192,8 @@ Then users get automatic updates without re-downloading.
 ### "Failed to read private key"
 ```bash
 # Regenerate key
-mkdir -p ~/.gasoline
-openssl genrsa 2048 > ~/.gasoline/extension-signing-key.pem
+mkdir -p ~/.kaboom
+openssl genrsa 2048 > ~/.kaboom/extension-signing-key.pem
 ```
 
 ### Extension ID doesn't match

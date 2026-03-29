@@ -56,7 +56,7 @@ Covers configure-time streaming state changes and runtime MCP notification emiss
 ## State and Contracts
 
 1. `StreamState` lock protects config + counters + dedup state transitions.
-2. Notification logger identity is canonicalized as `gasoline-browser-devtools` via `internal/identity`.
+2. Notification logger identity is canonicalized as `kaboom-browser-devtools` via `internal/identity`.
 3. Writer defaults to `nil` to avoid protocol-breaking stdout writes.
 4. Pending batches are bounded (`MaxPendingBatch`) to prevent unbounded memory growth.
 

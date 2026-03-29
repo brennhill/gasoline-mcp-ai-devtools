@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // WaitForResult blocks until result is available or timeout.

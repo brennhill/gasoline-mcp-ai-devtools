@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // GetScreenshot captures a screenshot of the current page via the extension.
@@ -21,7 +21,7 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	cap := deps.GetCapture()
 	enabled, _, _ := cap.GetTrackingStatus()
 	if !enabled {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", mcp.WithHint(deps.DiagnosticHintString()))}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrNoData, "No tab is being tracked. Open the Kaboom extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", mcp.WithHint(deps.DiagnosticHintString()))}
 	}
 
 	var params struct {

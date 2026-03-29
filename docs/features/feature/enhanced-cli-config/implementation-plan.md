@@ -5,9 +5,9 @@ ai-priority: high
 tags: [implementation, planning]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-03-05
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-03-28
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-28
 ---
 
 # Implementation Plan: Enhanced CLI Configuration Management
@@ -49,7 +49,7 @@ last_verified_date: 2026-03-05
 ### Tasks
 
 1. **Create module structure**
-   - [ ] Create `/Users/brenn/dev/gasoline/npm/gasoline-mcp/lib/` directory
+   - [ ] Create `/Users/brenn/dev/kaboom/npm/kaboom-agentic-browser/lib/` directory
    - [ ] Create `lib/config.js` (config file utilities)
    - [ ] Create `lib/doctor.js` (diagnostics)
    - [ ] Create `lib/install.js` (install logic)
@@ -58,7 +58,7 @@ last_verified_date: 2026-03-05
    - [ ] Create `lib/errors.js` (error classes and messages)
 
 2. **Create test structure**
-   - [ ] Create `/Users/brenn/dev/gasoline/tests/cli/` directory
+   - [ ] Create `/Users/brenn/dev/kaboom/tests/cli/` directory
    - [ ] Create `config.test.js` (config utilities tests)
    - [ ] Create `install.test.js` (install flow tests)
    - [ ] Create `doctor.test.js` (doctor tests)
@@ -82,7 +82,7 @@ last_verified_date: 2026-03-05
 **Goal:** Extract config utilities from existing code without changing behavior
 
 ### Current Code Location
-`npm/gasoline-mcp/bin/gasoline-mcp` (Lines 70-151)
+`npm/kaboom-agentic-browser/bin/kaboom-agentic-browser` (Lines 70-151)
 
 ### Tasks
 
@@ -108,8 +108,8 @@ last_verified_date: 2026-03-05
      - Check dir existence (file-type) or command existence (cli-type)
 
 2. **Extract `lib/install.js`**
-   - [ ] Create `mergeGassolineConfig(existing, gassolineEntry, envVars)` function
-     - Merge gasoline entry into `existing.mcpServers`
+   - [ ] Create `mergeKaboomConfig(existing, kaboomEntry, envVars)` function
+     - Merge Kaboom-managed entry into `existing.mcpServers`
      - Preserve other MCP servers
      - Return merged config
 
@@ -119,7 +119,7 @@ last_verified_date: 2026-03-05
    - [ ] Create `formatInfo(message)` → `ℹ️  message`
    - [ ] Create `formatWarning(message)` → `⚠️  message`
 
-4. **Update `bin/gasoline-mcp`**
+4. **Update `bin/kaboom-agentic-browser`**
    - [ ] Import from `lib/config.js`, `lib/install.js`, `lib/output.js`
    - [ ] Replace inline code with function calls
    - [ ] Verify existing `--config`, `--install`, `--help` still work (regression test)
@@ -127,7 +127,7 @@ last_verified_date: 2026-03-05
 ### Tests to Write First
 
 ```javascript
-// npm/gasoline-mcp/lib/config.test.js
+// npm/kaboom-agentic-browser/lib/config.test.js
 - [ ] CLIENT_DEFINITIONS has 5 entries with correct fields
 - [ ] getClientConfigPath() returns correct platform paths
 - [ ] isClientInstalled() detects existing/missing dirs
@@ -143,7 +143,7 @@ last_verified_date: 2026-03-05
 - `lib/config.js` with client registry and detection functions
 - `lib/install.js` with merge function
 - `lib/output.js` with formatters
-- Updated `bin/gasoline-mcp` using new functions
+- Updated `bin/kaboom-agentic-browser` using new functions
 - All Phase 1 tests passing
 
 ---
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
      - Highlight changes
      - Clear for user to understand
 
-4. **Update `bin/gasoline-mcp`**
+4. **Update `bin/kaboom-agentic-browser`**
    - [ ] Handle `--install --dry-run` flag
    - [ ] Call `executeInstall({dryRun: true})`
    - [ ] Display diffs without prompting for confirmation
@@ -211,13 +211,13 @@ last_verified_date: 2026-03-05
      - For each config candidate:
        - Check file exists
        - Validate JSON syntax
-       - Verify gasoline entry present
+       - Verify kaboom-browser-devtools entry present
        - Check binary exists and is executable
      - Return report: `{clients: [{name, type, status, issues, suggestions}], legacyWarnings: [], summary: string}`
 
 3. **Binary testing in `lib/doctor.js`**
    - [ ] Create `testBinary()` function
-     - Run `gasoline --version`
+     - Run `kaboom-agentic-browser --version`
      - Check exit code = 0
      - Extract version from output
      - Return `{ok: bool, version: string, error?: string}`
@@ -228,7 +228,7 @@ last_verified_date: 2026-03-05
      - List issues and recovery suggestions
      - Summary at bottom
 
-5. **Update `bin/gasoline-mcp`**
+5. **Update `bin/kaboom-agentic-browser`**
    - [ ] Handle `--doctor` flag
    - [ ] Call `runDiagnostics(verbose)`
    - [ ] Display formatted report
@@ -238,13 +238,13 @@ last_verified_date: 2026-03-05
 ```javascript
 // tests/cli/doctor.test.js
 - [ ] runDiagnostics() checks all 4 candidates
-- [ ] Status "ok" when config valid + gasoline present + binary works
+- [ ] Status "ok" when config valid + kaboom present + binary works
 - [ ] Status "error" when JSON invalid
-- [ ] Status "error" when gasoline missing
+- [ ] Status "error" when kaboom missing
 - [ ] Status "error" when binary not found
 - [ ] Provides recovery suggestions for each issue
 - [ ] Summary text is accurate
-- [ ] testBinary() runs gasoline --version
+- [ ] testBinary() runs kaboom-agentic-browser --version
 - [ ] testBinary() returns version string
 ```
 
@@ -282,7 +282,7 @@ last_verified_date: 2026-03-05
 ### Tests to Write First
 
 ```javascript
-// npm/gasoline-mcp/lib/install.test.js
+// npm/kaboom-agentic-browser/lib/install.test.js
 - [ ] installToClient() dispatches file-type correctly
 - [ ] installToClient() creates new config
 - [ ] installToClient() merges into existing config
@@ -323,7 +323,7 @@ last_verified_date: 2026-03-05
      - Validate key: no null bytes, no control chars
      - Return `{valid: bool, key: string, value: string, error?: string}`
 
-4. **Update `bin/gasoline-mcp`**
+4. **Update `bin/kaboom-agentic-browser`**
    - [ ] Parse all `--env` arguments
    - [ ] Build env var object
    - [ ] Pass to `executeInstall({envVars: {...}})`
@@ -353,7 +353,7 @@ last_verified_date: 2026-03-05
 
 ## Phase 6: Implement --uninstall (2 hours)
 
-**Goal:** Remove Gasoline from configs cleanly, preserving other MCP servers
+**Goal:** Remove Kaboom-managed entries from configs cleanly, preserving other MCP servers
 
 ### Tasks
 
@@ -366,8 +366,8 @@ last_verified_date: 2026-03-05
      - `options = {dryRun: bool, verbose: bool}`
      - For each config candidate:
        - Read config
-       - Check if gasoline present
-       - Remove gasoline entry
+       - Check if kaboom present
+       - Remove kaboom-browser-devtools entry
        - Preserve other MCP servers
        - Write back if changed
      - Return `{success: bool, removed: [paths], notFound: [paths], errors: [details]}`
@@ -378,7 +378,7 @@ last_verified_date: 2026-03-05
      - List which clients updated
      - Show any errors
 
-4. **Update `bin/gasoline-mcp`**
+4. **Update `bin/kaboom-agentic-browser`**
    - [ ] Handle `--uninstall` flag
    - [ ] Handle `--uninstall --dry-run` (show what would be removed)
    - [ ] Call `executeUninstall()`
@@ -388,9 +388,9 @@ last_verified_date: 2026-03-05
 
 ```javascript
 // tests/cli/uninstall.test.js
-- [ ] executeUninstall() removes gasoline entry
+- [ ] executeUninstall() removes kaboom-browser-devtools entry
 - [ ] Preserves other MCP servers
-- [ ] Works when gasoline not present (no-op)
+- [ ] Works when kaboom not present (no-op)
 - [ ] dryRun=true shows what would be removed
 - [ ] dryRun=false actually removes
 - [ ] Produces valid JSON after removal
@@ -429,7 +429,7 @@ last_verified_date: 2026-03-05
    - [ ] Return descriptive errors with recovery suggestions
    - [ ] Use consistent format: `{success: false, message: string, recovery?: string}`
 
-3. **Update help text in `bin/gasoline-mcp`**
+3. **Update help text in `bin/kaboom-agentic-browser`**
    - [ ] Add one-liner for each command
    - [ ] Add example for each flag combination
    - [ ] Update `--help` output
@@ -510,7 +510,7 @@ Reference for Phase 7 implementation:
 ```
 ❌ Error: Permission denied writing ~/.cursor/mcp.json
    Recovery:
-   1. Try: sudo gasoline-mcp --install
+   1. Try: sudo kaboom-agentic-browser --install
    2. Or: Check permissions with: ls -la ~/.cursor/
    3. Or: Change permissions: chmod 755 ~/.cursor
 ```
@@ -523,16 +523,16 @@ Reference for Phase 7 implementation:
    Recovery:
    1. Manually edit: code ~/.cursor/mcp.json
    2. Or: Restore from backup and try --install again
-   3. Or: Run: gasoline-mcp --doctor (for diagnostics)
+   3. Or: Run: kaboom-agentic-browser --doctor (for diagnostics)
 ```
 
 ### Binary Not Found
 ```
-❌ Error: Gasoline binary not found
-   Expected: /usr/local/bin/gasoline
+❌ Error: Kaboom binary not found
+   Expected: /usr/local/bin/kaboom-agentic-browser
 
    Recovery:
-   1. Reinstall: npm install -g gasoline-mcp@latest
+   1. Reinstall: npm install -g kaboom-agentic-browser@latest
    2. Check PATH: echo $PATH
    3. Or: specify PATH manually (advanced)
 ```
@@ -540,11 +540,11 @@ Reference for Phase 7 implementation:
 ### Env Var Errors
 ```
 ❌ Error: --env only works with --install
-   Usage: gasoline-mcp --install --env KEY=VALUE
+   Usage: kaboom-agentic-browser --install --env KEY=VALUE
 
    Examples:
-   - gasoline-mcp --install --env DEBUG=1
-   - gasoline-mcp --install --env GASOLINE_SERVER=http://localhost:7890
+   - kaboom-agentic-browser --install --env DEBUG=1
+   - kaboom-agentic-browser --install --env KABOOM_SERVER=http://localhost:7890
 ```
 
 ```
@@ -552,7 +552,7 @@ Reference for Phase 7 implementation:
 
    Examples of valid formats:
    - --env DEBUG=1
-   - --env GASOLINE_SERVER=http://localhost:7890
+   - --env KABOOM_SERVER=http://localhost:7890
    - --env LOG_LEVEL=info
 ```
 
@@ -574,7 +574,7 @@ For each phase:
 
 - [ ] Multi-client: `--install` targets all detected clients by default
 - [ ] No file corruption: `--dry-run` never writes
-- [ ] Other MCP servers preserved: only gasoline entry modified
+- [ ] Other MCP servers preserved: only kaboom-browser-devtools entry modified
 - [ ] Atomic writes: files only written completely, never half-written
 - [ ] Error messages: all errors have actionable recovery suggestions
 - [ ] Security: env vars safely stored, paths safe from traversal
@@ -589,34 +589,34 @@ For each phase:
 ### Tasks
 
 1. **Create Python module structure**
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/config.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/config.py`
      - Port `CLIENT_DEFINITIONS`, detection, path resolution
      - Use `shutil.which()` for CLI detection, `os.path.isdir()` for file-type
      - Match Node.js behavior exactly (same defaults, same errors)
 
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/doctor.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/doctor.py`
      - Port `runDiagnostics()`, `testBinary()`
      - Use `subprocess.run()` for binary invocation
      - Match Node.js error detection
 
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/install.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py`
      - Port `executeInstall()`, `installToClient()`, `installViaCli()`, `installViaFile()`
      - Handle dryRun, envVars options identically
 
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/uninstall.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/uninstall.py`
      - Port `executeUninstall()`
      - Preserve other MCP servers
 
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/output.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/output.py`
      - Port all formatters: success, error, info, warning
      - Ensure emoji output matches NPM version
 
-   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/errors.py`
+   - [ ] Create `pypi/kaboom-agentic-browser/kaboom_agentic_browser/errors.py`
      - Define error classes and messages
      - Use same error message catalog as NPM
 
 2. **Update entry point**
-   - [ ] Modify `pypi/gasoline-mcp/gasoline_mcp/__main__.py`
+   - [ ] Modify `pypi/kaboom-agentic-browser/kaboom_agentic_browser/__main__.py`
      - Add CLI argument parsing (similar to NPM)
      - Route commands to handlers (--config, --install, --doctor, etc.)
      - Call binary for non-config commands
@@ -624,7 +624,7 @@ For each phase:
 3. **Verify imports work**
    - [ ] All Python modules import correctly
    - [ ] No missing stdlib imports
-   - [ ] Entry point executable: `python -m gasoline_mcp`
+   - [ ] Entry point executable: `python -m kaboom_agentic_browser`
 
 ### Key Porting Rules
 
@@ -660,7 +660,7 @@ For each phase:
 
 ### Deliverables
 
-- 6 Python modules in `pypi/gasoline-mcp/gasoline_mcp/`
+- 6 Python modules in `pypi/kaboom-agentic-browser/kaboom_agentic_browser/`
 - Updated `__main__.py` with CLI routing
 - All modules use stdlib only (no new dependencies)
 - Python code structure mirrors NPM logic
@@ -684,7 +684,7 @@ For each phase:
    - [ ] All tests pass (same coverage as NPM)
 
 2. **Manual UAT (same 7 scenarios)**
-   - [ ] Install via `pip install gasoline-mcp`
+   - [ ] Install via `pip install kaboom-agentic-browser`
    - [ ] Run all 7 UAT scenarios (Scenario 1-7 from QA_PLAN)
    - [ ] Verify output matches NPM version exactly
 
@@ -779,4 +779,4 @@ For each phase:
 - Tech Spec: `tech-spec.md`
 - QA Plan: `qa-plan.md`
 - Review Summary: `review-summary.md`
-- Existing CLI Code: `/Users/brenn/dev/gasoline/npm/gasoline-mcp/bin/gasoline-mcp`
+- Existing CLI Code: `/Users/brenn/dev/kaboom/npm/kaboom-agentic-browser/bin/kaboom-agentic-browser`

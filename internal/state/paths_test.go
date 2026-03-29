@@ -58,7 +58,7 @@ func TestRuntimePathsUnderRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DefaultLogFile() error = %v", err)
 	}
-	if want := filepath.Join(root, "logs", "gasoline.jsonl"); logFile != want {
+	if want := filepath.Join(root, "logs", "kaboom.jsonl"); logFile != want {
 		t.Fatalf("DefaultLogFile() = %q, want %q", logFile, want)
 	}
 
@@ -74,7 +74,7 @@ func TestRuntimePathsUnderRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PIDFile() error = %v", err)
 	}
-	if want := filepath.Join(root, "run", "gasoline-7890.pid"); pidFile != want {
+	if want := filepath.Join(root, "run", "kaboom-7890.pid"); pidFile != want {
 		t.Fatalf("PIDFile() = %q, want %q", pidFile, want)
 	}
 
@@ -109,7 +109,7 @@ func TestLegacyPathsUseUserConfigDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacyDefaultLogFile() error = %v", err)
 	}
-	if want := filepath.Join(home, "gasoline-logs.jsonl"); legacyLog != want {
+	if want := filepath.Join(home, "kaboom-logs.jsonl"); legacyLog != want {
 		t.Fatalf("LegacyDefaultLogFile() = %q, want %q", legacyLog, want)
 	}
 }

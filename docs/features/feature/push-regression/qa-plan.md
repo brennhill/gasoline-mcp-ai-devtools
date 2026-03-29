@@ -20,14 +20,14 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
 | DL-1 | Regression alert URL field exposes internal paths | Verify `url` in performance_alerts uses the same URL path visible in the browser address bar, not internal routing | high |
 | DL-2 | Metric baseline/current values reveal app state | Verify `metrics` object contains only numeric timing/size values (ms, bytes, percentages), no content data | medium |
 | DL-3 | Alert summary text contains user-specific data | Verify `summary` field uses generic descriptions ("Load time regressed by 847ms") not user-identifying context | medium |
-| DL-4 | Recommendation field references internal tools | Verify `recommendation` references only public Gasoline tools (`check_performance`, `causal_diff`), not internal endpoints | low |
+| DL-4 | Recommendation field references internal tools | Verify `recommendation` references only public Kaboom tools (`check_performance`, `causal_diff`), not internal endpoints | low |
 | DL-5 | Multiple tab alerts reveal user browsing patterns | Verify `performance_alerts` array does not expose tab IDs or browsing sequences across multiple tabs | high |
 | DL-6 | Stale baseline from persistent memory leaks old session data | Verify baseline values in alerts are numeric only (no old session context like URLs visited, errors seen) | medium |
 | DL-7 | Pending alert accumulation reveals monitoring scope | Verify pending alerts (up to 10) do not collectively reveal which pages the user has been visiting | medium |
@@ -170,7 +170,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web app with controllable performance (can add/remove scripts to cause regressions)
 - [ ] Performance baseline established for the test page (at least one prior load)

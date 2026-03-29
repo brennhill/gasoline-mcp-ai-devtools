@@ -15,10 +15,10 @@ last_verified_date: 2026-03-05
 # Custom Event API
 
 ## Overview
-Custom Event API allows backend services and frontend JavaScript code to emit arbitrary events into Gasoline's observation timeline. These events are first-class citizens in Gasoline's event system—not just logs or network traffic, but semantic business events that carry structured data. A payment processor can emit `payment:authorized`, an API can emit `rate-limit:triggered`, a test framework can emit `test:started`, or a feature flag service can emit `feature:toggled`. Developers query these events alongside browser events, backend logs, and network requests to understand their system's complete behavior.
+Custom Event API allows backend services and frontend JavaScript code to emit arbitrary events into Kaboom's observation timeline. These events are first-class citizens in Kaboom's event system—not just logs or network traffic, but semantic business events that carry structured data. A payment processor can emit `payment:authorized`, an API can emit `rate-limit:triggered`, a test framework can emit `test:started`, or a feature flag service can emit `feature:toggled`. Developers query these events alongside browser events, backend logs, and network requests to understand their system's complete behavior.
 
 ## Problem
-Gasoline captures logs and network traffic automatically, but doesn't capture application-specific semantics:
+Kaboom captures logs and network traffic automatically, but doesn't capture application-specific semantics:
 - When does a critical business operation complete? (Payment processing, order fulfillment, user signup)
 - When do guard rails trigger? (Rate limiting, feature flags, circuit breakers)
 - When does a test actually start vs. when the test framework is loaded?
@@ -33,11 +33,11 @@ Custom Event API provides a simple HTTP/gRPC endpoint where services emit typed 
 3. **Exposed** through MCP observation API with filtering and search
 4. **Correlated** with other events (frontend, backend logs, network) via trace context
 
-Example: Backend emits `event:type=payment:authorized, amount=99.99, currency=USD, user_id=123, trace_id=abc`. Frontend simultaneously emits `event:type=checkout:success`. Gasoline aligns them on the timeline.
+Example: Backend emits `event:type=payment:authorized, amount=99.99, currency=USD, user_id=123, trace_id=abc`. Frontend simultaneously emits `event:type=checkout:success`. Kaboom aligns them on the timeline.
 
 ## User Stories
 - As a backend engineer, I want to emit semantic events (payments authorized, orders shipped) so that tests and debugging can react to business outcomes
-- As a test automation engineer, I want to emit test lifecycle events from my test runner so that Gasoline can correlate test execution with observed behavior
+- As a test automation engineer, I want to emit test lifecycle events from my test runner so that Kaboom can correlate test execution with observed behavior
 - As a frontend developer, I want to emit custom analytics events so that I can trace user workflows across the application
 - As a platform engineer, I want to see rate limiting and circuit breaker activations as events so that I can identify bottlenecks
 - As a QA engineer, I want to query events by type and properties so that I can verify feature flags and experiments applied correctly
@@ -101,7 +101,7 @@ test:assertion
 ### Example 1: Payment Authorization
 #### Backend (Go):
 ```go
-gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
+kaboom.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
     "payment_id": "pay-999",
     "amount": 99.99,
     "currency": "USD",
@@ -111,7 +111,7 @@ gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
 })
 ```
 
-#### Gasoline View:
+#### Kaboom View:
 ```
 [10:15:23.100] Frontend: Click "Complete Purchase"
 [10:15:23.120] Frontend: XHR POST /api/payments
@@ -124,14 +124,14 @@ gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
 ### Example 2: Test Lifecycle
 #### Test Runner (Node.js):
 ```javascript
-gasoline.emit({
+kaboom.emit({
     type: "test:started",
     fields: { test_name: "auth.spec.js", suite: "authentication" }
 });
 
 // ... test runs ...
 
-gasoline.emit({
+kaboom.emit({
     type: "test:completed",
     fields: {
         test_name: "auth.spec.js",
@@ -141,7 +141,7 @@ gasoline.emit({
 });
 ```
 
-#### Gasoline Timeline:
+#### Kaboom Timeline:
 ```
 [10:30:00.100] Custom Event: test:started (test_name: auth.spec.js)
 [10:30:00.150] Frontend: Page load
@@ -154,7 +154,7 @@ gasoline.emit({
 #### Frontend (JavaScript):
 ```javascript
 const variant = await featureFlags.get("checkout_redesign");
-gasoline.emit({
+kaboom.emit({
     type: "feature:toggled",
     fields: {
         flag: "checkout_redesign",

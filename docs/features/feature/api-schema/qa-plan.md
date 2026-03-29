@@ -93,7 +93,7 @@ last_verified_date: 2026-03-05
 
 ### Default Behavior Verification
 - [ ] Feature works with zero configuration (schema builds automatically from observed traffic)
-- [ ] Default format is "gasoline" (structured JSON)
+- [ ] Default format is "kaboom" (structured JSON)
 - [ ] Default `min_observations` is 1 (all endpoints included)
 - [ ] No explicit "start observing" step needed -- observation begins on first network body
 - [ ] Schema is available immediately after traffic is captured (no manual build step)
@@ -185,7 +185,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page that makes multiple API calls to various endpoints (REST API with CRUD operations)
 - [ ] Network body capture enabled (opt-in)

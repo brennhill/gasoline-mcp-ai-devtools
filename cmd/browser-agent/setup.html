@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Setup - Gasoline MCP Server</title>
+<title>Setup - Kaboom MCP Server</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZmxhbWUiIHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIwJSIgeTI9IjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y5NzMxNiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjUwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZiOTIzYyIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmYmJmMjQiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImlubmVyRmxhbWUiIHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIwJSIgeTI9IjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZiYmYyNCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZWYzYzciLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjY0IiBjeT0iNjQiIHI9IjYwIiBmaWxsPSIjMWExYTFhIi8+CiAgPHBhdGggZD0iTTY0IDE2IEM0MCA0MCwgMjggNjAsIDI4IDgwIEMyOCAxMDAsIDQ0IDExNiwgNjQgMTE2IEM4NCAxMTYsIDEwMCAxMDAsIDEwMCA4MCBDMTAwIDYwLCA4OCA0MCwgNjQgMTYgWiIgZmlsbD0idXJsKCNmbGFtZSkiLz4KICA8cGF0aCBkPSJNNjQgNDggQzUyIDYwLCA0NCA3MiwgNDQgODQgQzQ0IDk2LCA1MiAxMDQsIDY0IDEwNCBDNzYgMTA0LCA4NCA5NiwgODQgODQgQzg0IDcyLCA3NiA2MCwgNjQgNDggWiIgZmlsbD0idXJsKCNpbm5lckZsYW1lKSIvPgo8L3N2Zz4K">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -158,7 +158,7 @@ async function refresh() {
       pass: h.status === 'ok',
       status: h.status === 'ok' ? 'v' + h.version : 'not responding',
       detail: '<p>The server should start automatically when your MCP client connects. To start manually:</p>' +
-        '<code>gasoline-mcp</code>'
+        '<code>kaboom-mcp</code>'
     });
 
     // 2. Extension connected
@@ -169,10 +169,10 @@ async function refresh() {
       title: 'Browser Extension Connected',
       pass: extConnected,
       status: extConnected ? 'connected' : 'not connected',
-      detail: '<p>Install the Gasoline browser extension and make sure it shows "Connected" in the popup.</p>' +
+      detail: '<p>Install the Kaboom browser extension and make sure it shows "Connected" in the popup.</p>' +
         '<p>The extension connects to <strong>localhost:' + location.port + '</strong> automatically.</p>' +
         '<p>If installed but not connecting, try:</p>' +
-        '<code>1. Click the Gasoline extension icon\n2. Check the server URL matches this port\n3. Reload the extension (chrome://extensions)</code>'
+        '<code>1. Click the Kaboom extension icon\n2. Check the server URL matches this port\n3. Reload the extension (chrome://extensions)</code>'
     });
 
     // 3. Browser data flowing
@@ -195,8 +195,8 @@ async function refresh() {
       pass: pilotEnabled,
       status: pilotEnabled ? 'enabled' : 'disabled',
       detail: '<p>Web Pilot lets AI agents interact with your browser (click, type, navigate). Enable it in the extension popup:</p>' +
-        '<code>1. Click the Gasoline extension icon\n2. Toggle "AI Web Pilot" to ON</code>' +
-        '<p>This is optional \u2014 Gasoline works in observe-only mode without it.</p>'
+        '<code>1. Click the Kaboom extension icon\n2. Toggle "AI Web Pilot" to ON</code>' +
+        '<p>This is optional \u2014 Kaboom works in observe-only mode without it.</p>'
     });
 
     // 5. Version check
@@ -207,7 +207,7 @@ async function refresh() {
       pass: !hasUpdate,
       status: hasUpdate ? 'v' + h.available_version + ' available' : 'v' + h.version,
       detail: '<p>A newer version is available. Update with:</p>' +
-        '<code>npm update -g gasoline-mcp</code>'
+        '<code>npm update -g kaboom-mcp</code>'
     });
 
     // Render

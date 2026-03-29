@@ -106,7 +106,7 @@ Response: {
   screenshots: [
     {
       id: "uuid",
-      filepath: "/data/gasoline/screenshots/...",
+      filepath: "/data/kaboom/screenshots/...",
       metadata: {component, variant, viewport, ...},
       timestamp: "2026-01-30T10:15:23Z",
       size_bytes: 245600

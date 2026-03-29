@@ -124,7 +124,7 @@ A structured log file records all AI-initiated setting changes. Solo developers 
 
 ### File Location
 
-`~/.gasoline/audit.jsonl` by default. Configurable via `--audit-log` flag or `GASOLINE_AUDIT_LOG` environment variable.
+`~/.kaboom/audit.jsonl` by default. Configurable via `--audit-log` flag or `KABOOM_AUDIT_LOG` environment variable.
 
 ### Format
 

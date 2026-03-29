@@ -89,7 +89,7 @@ describe('recording shortcut command listener', () => {
     await commandListener('toggle_action_sequence_recording')
 
     const toastCall = mockChrome.tabs.sendMessage.mock.calls.find(
-      (c) => c.arguments[1]?.type === 'gasoline_action_toast'
+      (c) => c.arguments[1]?.type === 'kaboom_action_toast'
     )
     assert.ok(toastCall, 'expected an error toast when shortcut start fails')
     assert.strictEqual(toastCall.arguments[1].text, 'Start recording failed')

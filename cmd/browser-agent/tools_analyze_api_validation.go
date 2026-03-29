@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
 )
 
 func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

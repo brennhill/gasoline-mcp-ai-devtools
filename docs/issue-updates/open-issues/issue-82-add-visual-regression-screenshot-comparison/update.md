@@ -1,12 +1,12 @@
 # Product Update: Issue #82
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/82
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/82
 - Title: Add visual regression / screenshot comparison
 - Last Updated: 2026-02-16T14:43:40Z
 
 ## Change Summary
-This update resolves or advances Issue #82 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #82 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Add visual regression / screenshot comparison

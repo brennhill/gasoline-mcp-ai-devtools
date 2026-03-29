@@ -3,7 +3,7 @@
 # Run this before every commit or deployment
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 echo "⚡ Quick Regression Check"
@@ -15,9 +15,9 @@ ERRORS=0
 
 # 1. Binary compilation
 echo "1️⃣  Compiling binary..."
-if go build -o /tmp/gasoline-quick-test "$CMD_PKG" 2>/dev/null; then
+if go build -o /tmp/kaboom-quick-test "$CMD_PKG" 2>/dev/null; then
     echo "   ✅ Binary compiles"
-    rm /tmp/gasoline-quick-test
+    rm /tmp/kaboom-quick-test
 else
     echo "   ❌ COMPILATION FAILED"
     ERRORS="$((ERRORS + 1))"

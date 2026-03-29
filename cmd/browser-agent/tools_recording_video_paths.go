@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // recordingsDir returns the runtime recordings directory, creating it if needed.

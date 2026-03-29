@@ -29,7 +29,7 @@ Dynamic exposure uses runtime feature flags stored in YAML config file. Server l
 ## Data Flows
 
 ```
-Server startup: gasoline --feature-flags=features.yaml
+Server startup: kaboom --feature-flags=features.yaml
   → Load features.yaml
   → Parse into map: {"interact_execute_js": true, "generate_har": false}
   → Store in registry with RWMutex

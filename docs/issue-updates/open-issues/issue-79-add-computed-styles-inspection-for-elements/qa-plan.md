@@ -1,7 +1,7 @@
 # QA Plan: Issue #79
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/79
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/79
 - Title: Add computed styles inspection for elements
 
 ## QA Goal

@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline Performance Benchmarks
+# Kaboom Performance Benchmarks
 
 **Generated:** 2026-02-06T14:00:00Z
 **Machine:** Darwin arm64, Apple M1 Pro, 32 GB RAM

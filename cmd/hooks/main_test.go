@@ -1,4 +1,4 @@
-// main_test.go — Tests for the gasoline-hooks binary CLI dispatch.
+// main_test.go — Tests for the kaboom-hooks binary CLI dispatch.
 
 package main
 
@@ -18,20 +18,20 @@ var hooksBinary string
 
 func TestMain(m *testing.M) {
 	// Build the binary once for all tests.
-	dir, err := os.MkdirTemp("", "gasoline-hooks-test-*")
+	dir, err := os.MkdirTemp("", "kaboom-hooks-test-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create temp dir: %v\n", err)
 		os.Exit(1)
 	}
 	defer os.RemoveAll(dir)
 
-	binPath := filepath.Join(dir, "gasoline-hooks")
+	binPath := filepath.Join(dir, "kaboom-hooks")
 	repoRoot := findRepoRoot()
 	cmd := exec.Command("go", "build", "-o", binPath, ".")
 	cmd.Dir = filepath.Join(repoRoot, "cmd", "hooks")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build gasoline-hooks: %v\n%s\n", err, out)
+		fmt.Fprintf(os.Stderr, "failed to build kaboom-hooks: %v\n%s\n", err, out)
 		os.Exit(1)
 	}
 
@@ -138,9 +138,9 @@ func TestCLI_CompressOutput_EmptyStdin(t *testing.T) {
 func TestCLI_QualityGate_ValidInput(t *testing.T) {
 	t.Parallel()
 
-	// Create a project with .gasoline.json and standards.
+	// Create a project with .kaboom.json and standards.
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(`{"code_standards":"standards.md","file_size_limit":800}`), 0644)
+	os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(`{"code_standards":"standards.md","file_size_limit":800}`), 0644)
 	os.WriteFile(filepath.Join(dir, "standards.md"), []byte("# Standards\nNo dead code.\n"), 0644)
 
 	// Create the file being edited.
@@ -205,7 +205,7 @@ func TestCLI_CompressOutput_GoTestOutput(t *testing.T) {
 	cmd := exec.Command(hooksBinary, "compress-output")
 	cmd.Stdin = bytes.NewReader(inputJSON)
 	// Set port 0 so token savings POST silently fails (no daemon).
-	cmd.Env = append(os.Environ(), "GASOLINE_PORT=0")
+	cmd.Env = append(os.Environ(), "KABOOM_PORT=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("compress-output failed: %v\n%s", err, out)

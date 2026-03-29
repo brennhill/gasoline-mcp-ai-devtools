@@ -1,7 +1,7 @@
 {
-  "name": "gasoline-agentic-browser",
+  "name": "kaboom-agentic-browser",
   "version": "0.8.1",
-  "description": "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
+  "description": "Kaboom Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",
     "logs",
@@ -12,20 +12,20 @@
     "copilot",
     "devtools",
     "console",
-    "gasoline"
+    "kaboom"
   ],
-  "homepage": "https://cookwithgasoline.com",
+  "homepage": "https://gokaboom.dev",
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
+    "url": "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git"
+    "url": "git+https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP.git"
   },
   "license": "AGPL-3.0-only",
   "author": "Brenn Hill",
   "bin": {
-    "gasoline": "bin/gasoline"
+    "kaboom": "bin/kaboom"
   },
   "scripts": {
     "postinstall": "node scripts/install.js"

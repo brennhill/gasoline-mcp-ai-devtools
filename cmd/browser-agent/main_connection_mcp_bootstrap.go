@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/session"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // initCapture creates and configures the capture buffers with lifecycle logging.
@@ -101,7 +101,7 @@ func cleanupStalePIDFile(server *Server, port int) error {
 			for _, ownerPID := range ownerPIDs {
 				if ownerPID == pid {
 					server.logLifecycle("port_conflict_detected", port, map[string]any{"existing_pid": pid})
-					return fmt.Errorf("port %d already in use by PID %d (run 'gasoline --stop --port %d' to stop it)", port, pid, port)
+					return fmt.Errorf("port %d already in use by PID %d (run 'kaboom --stop --port %d' to stop it)", port, pid, port)
 				}
 			}
 			server.logLifecycle("stale_pid_owner_mismatch", port, map[string]any{
@@ -176,7 +176,7 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 				"port":  port,
 				"error": err.Error(),
 			})
-			stderrf("[gasoline] HTTP server error: %v\n", err)
+			stderrf("[Kaboom] HTTP server error: %v\n", err)
 		}
 	})
 

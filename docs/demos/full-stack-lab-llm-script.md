@@ -4,10 +4,10 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Full Stack Lab Demo Script (LLM + Gasoline MCP)
+# Full Stack Lab Demo Script (LLM + Kaboom)
 
 ## Goal
-Show end-to-end Gasoline capabilities on a single demo surface:
+Show end-to-end Kaboom capabilities on a single demo surface:
 - subtitles and action toasts
 - usability review and element highlighting
 - annotation flow with proposed UI fix
@@ -20,16 +20,16 @@ Run these in separate terminals:
 
 ```bash
 # terminal 1: fake third-party websocket server
-cd ~/dev/gasoline-site
+cd ~/dev/kaboom-site
 node scripts/third-party-ws-server.mjs
 
 # terminal 2: demo site
-cd ~/dev/gasoline-site
+cd ~/dev/kaboom-site
 npm run dev -- --host
 
-# terminal 3: gasoline mcp server
-cd ~/dev/gasoline
-./gasoline-mcp --daemon
+# terminal 3: kaboom daemon
+cd ~/dev/kaboom
+./kaboom-agentic-browser --daemon
 ```
 
 Demo URL:
@@ -44,7 +44,7 @@ http://localhost:4321/demo/full-stack-lab.html
 Prompt to LLM:
 
 ```text
-Start a new demo recording. Verify Gasoline health. Then navigate to http://localhost:4321/demo/full-stack-lab.html.
+Start a new demo recording. Verify Kaboom health. Then navigate to http://localhost:4321/demo/full-stack-lab.html.
 Add subtitle: "Today we will debug usability, websocket contracts, and dependency safety in one pass."
 ```
 
@@ -114,7 +114,7 @@ then explain what changed.
 Preferred one-command call:
 
 ```text
-interact({action:"execute_js", script:"window.gasolineDemo.applyPostFixMode()"})
+interact({action:"execute_js", script:"window.kaboomDemo.applyPostFixMode()"})
 ```
 
 What changes immediately:
@@ -141,17 +141,17 @@ Revert to broken mode in one command so we can compare behavior.
 One-command call:
 
 ```text
-interact({action:"execute_js", script:"window.gasolineDemo.applyBrokenMode()"})
+interact({action:"execute_js", script:"window.kaboomDemo.applyBrokenMode()"})
 ```
 
 ## Runtime API for LLM
 Available in page context:
 
 ```text
-window.gasolineDemo.applyPostFixMode()
-window.gasolineDemo.applyBrokenMode()
-window.gasolineDemo.setMode("fixed" | "broken")
-window.gasolineDemo.getMode()
+window.kaboomDemo.applyPostFixMode()
+window.kaboomDemo.applyBrokenMode()
+window.kaboomDemo.setMode("fixed" | "broken")
+window.kaboomDemo.getMode()
 ```
 
 ## Optional Closeout Line

@@ -4,17 +4,17 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline Demo Strategy
+# Kaboom Demo Strategy
 
 ## Overview
 
-Marketing demos for Gasoline MCP, showcasing how AI + browser telemetry accelerates the product development lifecycle.
+Marketing demos for Kaboom, showcasing how AI + browser telemetry accelerates the product development lifecycle.
 
 ## Contents
 
 - [demo-strategy.md](demo-strategy.md) — This file (overview + demo scripts)
 - [feature-power-ranking.md](feature-power-ranking.md) — Most powerful features ranked
-- [demo-scenarios.md](demo-scenarios.md) — Real-world scenarios where Gasoline shines
+- [demo-scenarios.md](demo-scenarios.md) — Real-world scenarios where Kaboom shines
 - [shopbroken-spec.md](shopbroken-spec.md) — Demo site specification
 
 ---
@@ -260,10 +260,10 @@ Marketing demos for Gasoline MCP, showcasing how AI + browser telemetry accelera
 
 ## Implementation
 
-Demo site lives at `~/dev/gasoline-demos/new/shopbroken/`.
+Demo site lives at `~/dev/kaboom-demos/new/shopbroken/`.
 
 ```bash
-cd ~/dev/gasoline-demos/new/shopbroken
+cd ~/dev/kaboom-demos/new/shopbroken
 npm install
 npm start
 # → http://localhost:3456

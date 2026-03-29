@@ -131,12 +131,12 @@ type NormalizedLogsResponse struct {
 ```
 
 ## Code References
-- **Format detector:** `/Users/brenn/dev/gasoline/server/parsing/format-detector.go` (new)
-- **Parsers:** `/Users/brenn/dev/gasoline/server/parsing/parsers/` (new directory)
-- **Normalizer:** `/Users/brenn/dev/gasoline/server/parsing/normalizer.go` (new)
-- **Config:** `/Users/brenn/dev/gasoline/config/log-parsers.yaml` (new)
-- **MCP handler:** `/Users/brenn/dev/gasoline/server/handlers.go` (modified)
-- **Tests:** `/Users/brenn/dev/gasoline/server/parsing/parsing_test.go` (new)
+- **Format detector:** `/Users/brenn/dev/kaboom/server/parsing/format-detector.go` (new)
+- **Parsers:** `/Users/brenn/dev/kaboom/server/parsing/parsers/` (new directory)
+- **Normalizer:** `/Users/brenn/dev/kaboom/server/parsing/normalizer.go` (new)
+- **Config:** `/Users/brenn/dev/kaboom/config/log-parsers.yaml` (new)
+- **MCP handler:** `/Users/brenn/dev/kaboom/server/handlers.go` (modified)
+- **Tests:** `/Users/brenn/dev/kaboom/server/parsing/parsing_test.go` (new)
 
 ## Performance Requirements
 - **Parse latency:** <1ms per log entry

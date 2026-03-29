@@ -13,7 +13,7 @@ func SafeMarshal(v any, fallback string) json.RawMessage {
 	resultJSON, err := json.Marshal(v)
 	if err != nil {
 		// This should never happen with simple structs, but handle it defensively
-		fmt.Fprintf(os.Stderr, "[gasoline] JSON marshal error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] JSON marshal error: %v\n", err)
 		return json.RawMessage(fallback)
 	}
 	return json.RawMessage(resultJSON)
@@ -27,7 +27,7 @@ func LenientUnmarshal(args json.RawMessage, v any) {
 		return
 	}
 	if err := json.Unmarshal(args, v); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] optional param parse: %v (args: %.100s)\n", err, string(args))
+		fmt.Fprintf(os.Stderr, "[Kaboom] optional param parse: %v (args: %.100s)\n", err, string(args))
 	}
 }
 

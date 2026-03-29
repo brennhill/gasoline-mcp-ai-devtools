@@ -1,10 +1,10 @@
 /**
- * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Gasoline MCP server.
+ * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Kaboom MCP server.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 /**
  * @fileoverview Server Communication - HTTP functions for sending data to
- * the Gasoline server.
+ * the Kaboom server.
  */
 import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ConnectionStatus } from '../types/index.js';
 /**

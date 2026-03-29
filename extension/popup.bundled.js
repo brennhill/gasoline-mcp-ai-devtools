@@ -2,11 +2,11 @@
 (() => {
   // extension/lib/timeouts.js
   function readTestScale() {
-    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.KABOOM_TEST_TIMEOUT_SCALE === "number" ? globalThis.KABOOM_TEST_TIMEOUT_SCALE : null;
     if (globalScale !== null)
       return globalScale;
     if (typeof process !== "undefined" && process.env) {
-      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+      const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE;
       if (raw) {
         const parsed = Number(raw);
         if (Number.isFinite(parsed))
@@ -42,7 +42,7 @@
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher"
+    SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -75,22 +75,22 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
-    ACTION_RECORDING: "gasoline_action_recording",
-    RECORDING: "gasoline_recording",
-    TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
-    PENDING_RECORDING: "gasoline_pending_recording",
-    PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
-    MIC_GRANTED: "gasoline_mic_granted",
-    RECORD_AUDIO_PREF: "gasoline_record_audio_pref",
-    TERMINAL_CONFIG: "gasoline_terminal_config",
-    TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command",
-    TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root",
-    POPUP_LAST_STATUS: "gasoline_popup_last_status",
-    TERMINAL_SESSION: "gasoline_terminal_session",
-    TERMINAL_UI_STATE: "gasoline_terminal_ui_state",
-    TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id",
-    TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id",
-    CLOAKED_DOMAINS: "gasoline_cloaked_domains"
+    ACTION_RECORDING: "kaboom_action_recording",
+    RECORDING: "kaboom_recording",
+    TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden",
+    PENDING_RECORDING: "kaboom_pending_recording",
+    PENDING_MIC_RECORDING: "kaboom_pending_mic_recording",
+    MIC_GRANTED: "kaboom_mic_granted",
+    RECORD_AUDIO_PREF: "kaboom_record_audio_pref",
+    TERMINAL_CONFIG: "kaboom_terminal_config",
+    TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command",
+    TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root",
+    POPUP_LAST_STATUS: "kaboom_popup_last_status",
+    TERMINAL_SESSION: "kaboom_terminal_session",
+    TERMINAL_UI_STATE: "kaboom_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id",
+    CLOAKED_DOMAINS: "kaboom_cloaked_domains"
   };
 
   // extension/lib/storage-utils.js
@@ -99,49 +99,109 @@
       return null;
     return chrome.storage;
   }
+  function isPromiseLike(value) {
+    return typeof value === "object" && value !== null && typeof value.then === "function";
+  }
+  function readStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (result = {}) => {
+        if (settled)
+          return;
+        settled = true;
+        resolve(result);
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then((result) => finish(result ?? {})).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function writeStorage(method, items) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(items, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function removeFromStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
   async function getLocal(key) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return void 0;
-    const result = await chrome.storage.local.get([key]);
+    const result = await readStorage(chrome.storage.local.get.bind(chrome.storage.local), key);
     return result[key];
   }
   async function getLocals(keys) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return {};
-    return await chrome.storage.local.get(keys);
+    return await readStorage(chrome.storage.local.get.bind(chrome.storage.local), keys);
   }
   async function setLocal(key, value) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.set({ [key]: value });
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), { [key]: value });
   }
   async function setLocals(items) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.set(items);
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), items);
   }
   async function removeLocal(key) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.remove([key]);
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), [key]);
   }
   async function removeLocals(keys) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.remove(keys);
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), keys);
   }
   async function getSession(key) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
       return void 0;
-    const result = await storage.session.get([key]);
+    const result = await readStorage(storage.session.get.bind(storage.session), key);
     return result[key];
   }
   async function setSession(key, value) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
       return;
-    await storage.session.set({ [key]: value });
+    await writeStorage(storage.session.set.bind(storage.session), { [key]: value });
   }
   function onStorageChanged(listener) {
     if (typeof chrome === "undefined" || !chrome.storage)
@@ -301,6 +361,10 @@
     }
   }
 
+  // extension/lib/brand.js
+  var KABOOM_LOG_PREFIX = "[Kaboom]";
+  var KABOOM_RECORDING_LOG_PREFIX = "[Kaboom REC]";
+
   // extension/lib/error-utils.js
   function errorMessage(err, fallback = "Unknown error") {
     if (err instanceof Error && err.message)
@@ -311,6 +375,7 @@
   }
 
   // extension/popup/recording-io.js
+  var LOG = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`;
   function sendRecordingGestureDecision(type) {
     chrome.runtime.sendMessage({ type }, () => {
       void chrome.runtime.lastError;
@@ -333,11 +398,11 @@
     }
   }
   function sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2) {
-    console.log("[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:", audioMode);
+    console.log(LOG, "sendStart() called, sending screen_recording_start with audio:", audioMode);
     chrome.runtime.sendMessage({ type: "screen_recording_start", audio: audioMode }, (resp) => {
-      console.log("[Gasoline REC] Popup: screen_recording_start response:", resp);
+      console.log(LOG, "screen_recording_start response:", resp);
       if (chrome.runtime.lastError) {
-        console.error("[Gasoline REC] Popup: screen_recording_start lastError:", chrome.runtime.lastError.message);
+        console.error(LOG, "screen_recording_start lastError:", chrome.runtime.lastError.message);
       }
       if (resp?.status === "recording" && resp.name) {
         showRecording3(els, state, resp.name, resp.startTime ?? Date.now());
@@ -349,14 +414,14 @@
     });
   }
   function tryMicPermissionThenStart(els, state, audioMode, showRecording3, showIdle3, showStartError2) {
-    console.log("[Gasoline REC] Popup: trying getUserMedia from popup...");
+    console.log(LOG, "trying getUserMedia from popup...");
     navigator.mediaDevices.getUserMedia({ audio: true }).then((micStream) => {
-      console.log("[Gasoline REC] Popup: getUserMedia succeeded from popup");
+      console.log(LOG, "getUserMedia succeeded from popup");
       micStream.getTracks().forEach((t) => t.stop());
       void setLocal(StorageKey.MIC_GRANTED, true);
       sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
     }).catch((err) => {
-      console.log("[Gasoline REC] Popup: getUserMedia FAILED:", err.name, errorMessage(err));
+      console.log(LOG, "getUserMedia FAILED:", err.name, errorMessage(err));
       void removeLocal(StorageKey.MIC_GRANTED);
       showIdle3(els, state);
       if (els.saveInfoEl)
@@ -373,7 +438,7 @@
       els.saveInfoEl.style.display = "none";
     els.label.textContent = "Starting...";
     if (audioMode === "mic" || audioMode === "both") {
-      console.log("[Gasoline REC] Popup: mic/both mode \u2014 checking gasoline_mic_granted");
+      console.log(LOG, "mic/both mode \u2014 checking stored mic approval");
       tryMicPermissionThenStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
     } else {
       sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
@@ -382,11 +447,11 @@
   function handleStopClick(els, state, showIdle3, showSaveResult2) {
     els.row.classList.remove("is-recording");
     els.label.textContent = "Saving...";
-    console.log("[Gasoline REC] Popup: sending screen_recording_stop");
+    console.log(LOG, "sending screen_recording_stop");
     chrome.runtime.sendMessage({ type: "screen_recording_stop" }, (resp) => {
-      console.log("[Gasoline REC] Popup: screen_recording_stop response:", resp);
+      console.log(LOG, "screen_recording_stop response:", resp);
       if (chrome.runtime.lastError) {
-        console.error("[Gasoline REC] Popup: screen_recording_stop lastError:", chrome.runtime.lastError.message);
+        console.error(LOG, "screen_recording_stop lastError:", chrome.runtime.lastError.message);
       }
       showIdle3(els, state);
       showSaveResult2(els.saveInfoEl, resp);
@@ -399,6 +464,7 @@
   var HIGHLIGHT_LABEL = "\u25CF \xAB Click here to record";
   var RECENT_RECORDING_START_MS = 8e3;
   var TOP_NOTICE_DURATION_MS = 4e3;
+  var LOG2 = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`;
   var AUDIO_LABELS = {
     "": "Video only",
     tab: "Video + tab audio",
@@ -612,9 +678,9 @@
     row.style.visibility = "hidden";
     void getLocal(StorageKey.RECORDING).then(async (value) => {
       const rec = value;
-      console.log("[Gasoline REC] Popup: gasoline_recording from storage:", rec);
+      console.log(LOG2, "recording state from storage:", rec);
       if (rec?.active && rec.name && rec.startTime) {
-        console.log("[Gasoline REC] Popup: resuming recording UI for", rec.name);
+        console.log(LOG2, "resuming recording UI for", rec.name);
         showRecording(els, state, rec.name, rec.startTime);
       }
       row.style.visibility = "visible";
@@ -624,7 +690,7 @@
     onStorageChanged((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.RECORDING]) {
         const rec = changes[StorageKey.RECORDING].newValue;
-        console.log("[Gasoline REC] Popup: gasoline_recording changed:", rec);
+        console.log(LOG2, "recording state changed:", rec);
         if (rec?.active && rec.name && rec.startTime) {
           showRecording(els, state, rec.name, rec.startTime);
         } else {
@@ -649,15 +715,15 @@
     });
     void getLocal(StorageKey.PENDING_MIC_RECORDING).then(async (value) => {
       const intent = value;
-      console.log("[Gasoline REC] Popup: pending_mic_recording intent:", intent);
+      console.log(LOG2, "pending mic recording intent:", intent);
       if (!intent?.audioMode)
         return;
-      console.log("[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:", intent.audioMode);
+      console.log(LOG2, "consuming mic intent, pre-selecting audio mode:", intent.audioMode);
       await removeLocal(StorageKey.PENDING_MIC_RECORDING);
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
-            type: "gasoline_action_toast",
+            type: "kaboom_action_toast",
             text: "",
             detail: "",
             state: "success",
@@ -679,9 +745,9 @@
       }
     });
     row.addEventListener("click", () => {
-      console.log("[Gasoline REC] Popup: record row clicked, isRecording:", state.isRecording);
+      console.log(LOG2, "record row clicked, isRecording:", state.isRecording);
       if (pendingRecordingIntent && !state.isRecording) {
-        console.log("[Gasoline REC] Popup: record row click ignored while approval is pending");
+        console.log(LOG2, "record row click ignored while approval is pending");
         return;
       }
       removeRecordHighlight(els);
@@ -725,7 +791,7 @@
           return;
         }
         label.textContent = "Starting...";
-        chrome.tabs.sendMessage(tab.id, { type: "gasoline_draw_mode_start", started_by: "user" }, (resp) => {
+        chrome.tabs.sendMessage(tab.id, { type: "kaboom_draw_mode_start", started_by: "user" }, (resp) => {
           if (chrome.runtime.lastError) {
             showDrawModeError(label, "Content script not loaded \u2014 try refreshing the page");
             return;
@@ -741,18 +807,18 @@
   }
 
   // extension/lib/daemon-http.js
-  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  var DEFAULT_CLIENT_NAME = "kaboom-extension";
   function buildDaemonHeaders(options = {}) {
     const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
     const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
     const headers = {
-      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+      "X-Kaboom-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
     };
     if (contentType !== null) {
       headers["Content-Type"] = contentType;
     }
     if (normalizedVersion) {
-      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+      headers["X-Kaboom-Extension-Version"] = normalizedVersion;
     }
     return {
       ...headers,
@@ -975,11 +1041,11 @@
   function handleFeatureToggle(storageKey, messageType, enabled) {
     chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
       if (chrome.runtime.lastError) {
-        console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message);
+        console.error(`[Kaboom] Message error for ${messageType}:`, chrome.runtime.lastError.message);
       } else if (response?.success) {
-        console.log(`[Gasoline] ${messageType} acknowledged by background`);
+        console.log(`[Kaboom] ${messageType} acknowledged by background`);
       } else {
-        console.warn(`[Gasoline] ${messageType} - no response from background`);
+        console.warn(`[Kaboom] ${messageType} - no response from background`);
       }
     });
   }
@@ -1045,7 +1111,7 @@
       state: { isTracked: false, aiPilotEnabled: false }
     }).catch(() => {
     });
-    console.log("[Gasoline] Stopped tracking via bar stop button");
+    console.log(KABOOM_LOG_PREFIX, "Stopped tracking via bar stop button");
   }
   async function handleUrlClick(tabId) {
     if (!tabId)
@@ -1056,9 +1122,9 @@
       if (tab.windowId) {
         await chrome.windows.update(tab.windowId, { focused: true });
       }
-      console.log("[Gasoline] Switched to tracked tab:", tabId);
+      console.log(KABOOM_LOG_PREFIX, "Switched to tracked tab:", tabId);
     } catch (err) {
-      console.error("[Gasoline] Failed to switch to tracked tab:", err);
+      console.error(KABOOM_LOG_PREFIX, "Failed to switch to tracked tab:", err);
       void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
     }
   }
@@ -1094,15 +1160,15 @@
     });
     if (btn)
       showTrackingState2(btn, tab.url, tab.id);
-    console.log("[Gasoline] Now tracking tab:", tab.id, tab.url);
+    console.log(KABOOM_LOG_PREFIX, "Now tracking tab:", tab.id, tab.url);
     if (tab.id) {
       const tabId = tab.id;
-      chrome.tabs.sendMessage(tabId, { type: "gasoline_ping" }, (response) => {
+      chrome.tabs.sendMessage(tabId, { type: "kaboom_ping" }, (response) => {
         if (chrome.runtime.lastError || !response?.status) {
-          console.log("[Gasoline] Content script not found, reloading tab", tabId);
+          console.log(KABOOM_LOG_PREFIX, "Content script not found, reloading tab", tabId);
           chrome.tabs.reload(tabId);
         } else {
-          console.log("[Gasoline] Content script already loaded, skipping reload");
+          console.log(KABOOM_LOG_PREFIX, "Content script already loaded, skipping reload");
           chrome.tabs.sendMessage(tabId, {
             type: "tracking_state_changed",
             state: { isTracked: true, aiPilotEnabled: false }
@@ -1129,7 +1195,7 @@
       trackingBar.style.display = "none";
     btn.disabled = true;
     btn.textContent = "Tracking Disabled on This Site";
-    btn.title = "This domain is in the cloaked domains list. Gasoline is disabled here to prevent interference.";
+    btn.title = "This domain is in the cloaked domains list. Kaboom is disabled here to prevent interference.";
     Object.assign(btn.style, { opacity: "0.5", background: "#252525", color: "#888", borderColor: "#333" });
   }
   function showTrackingState(btn, trackedTabUrl, trackedTabId) {
@@ -1248,7 +1314,7 @@
   async function handleAiWebPilotToggle(enabled) {
     chrome.runtime.sendMessage({ type: "set_ai_web_pilot_enabled", enabled }, (response) => {
       if (!response || !response.success) {
-        console.error("[Gasoline] Failed to set AI Web Pilot toggle in background");
+        console.error("[Kaboom] Failed to set AI Web Pilot toggle in background");
         const toggle = document.getElementById("aiWebPilotEnabled");
         if (toggle) {
           toggle.checked = !enabled;
@@ -1262,15 +1328,7 @@
     const logo = document.querySelector(".logo");
     if (!logo)
       return;
-    const idleSrc = chrome.runtime.getURL("icons/icon.svg");
-    const hoverSrc = chrome.runtime.getURL("icons/logo-animated.svg");
-    logo.src = idleSrc;
-    logo.addEventListener("mouseenter", () => {
-      logo.src = hoverSrc;
-    });
-    logo.addEventListener("mouseleave", () => {
-      logo.src = idleSrc;
-    });
+    logo.src = chrome.runtime.getURL("icons/icon.svg");
   }
 
   // extension/popup/settings.js
@@ -1460,7 +1518,7 @@
         const urlEl = document.getElementById("tracking-bar-url");
         if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
           urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
-          console.log("[Gasoline] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
+          console.log("[Kaboom] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
         }
       }
     });

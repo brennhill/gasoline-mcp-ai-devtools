@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/security"
 )
 
 // ============================================

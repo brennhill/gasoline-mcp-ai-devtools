@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 > "Looks good. Works terribly."
 
-A deliberately buggy e-commerce site designed to showcase every Gasoline capability.
+A deliberately buggy e-commerce site designed to showcase every Kaboom capability.
 
 ## Tech Stack
 
@@ -34,7 +34,7 @@ ShopBroken
 
 ### Errors (Demo 1: Bug Detective)
 
-| Bug | Location | Gasoline Detection |
+| Bug | Location | Kaboom Detection |
 |-----|----------|--------------------|
 | Uncaught TypeError when cart quantity = 0 | `/cart` — quantity input onChange | `observe(error_bundles)` |
 | Unhandled promise rejection on failed fetch | `/products` — API call with no catch | `observe(errors)` |
@@ -100,7 +100,7 @@ ShopBroken
 
 ## Design Principles
 
-1. **Site must look polished** — The bugs are invisible to the eye but visible to Gasoline. Professional design with real product images, proper layout, consistent branding.
+1. **Site must look polished** — The bugs are invisible to the eye but visible to Kaboom. Professional design with real product images, proper layout, consistent branding.
 
 2. **Each bug fixable in 1-3 lines** — Keeps demos fast. No complex refactoring needed.
 
@@ -189,10 +189,10 @@ Each script does minimal work (sets a cookie, adds a tracking pixel, logs to con
 ## Running the Demo
 
 ```bash
-cd ~/dev/gasoline-demos/new/shopbroken
+cd ~/dev/kaboom-demos/new/shopbroken
 npm install
 npm start
 # → http://localhost:3456
 ```
 
-Port 3456 chosen to avoid conflicts with Gasoline (7890) and common dev ports (3000, 5173, 8080).
+Port 3456 is chosen to avoid conflicts with the Kaboom daemon (7890) and common dev ports (3000, 5173, 8080).

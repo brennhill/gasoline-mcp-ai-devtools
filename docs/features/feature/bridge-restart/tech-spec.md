@@ -13,7 +13,7 @@ Related startup flow map: [Bridge Startup Contention and Convergence](../../../a
 
 ## Architecture
 
-Gasoline uses a **two-process model**:
+Kaboom uses a **two-process model**:
 - **Bridge** (foreground): stateless stdio-to-HTTP proxy, reads JSON-RPC from stdin, forwards `tools/call` to daemon via HTTP
 - **Daemon** (background): persistent HTTP server on `127.0.0.1:<port>`, holds all state
 

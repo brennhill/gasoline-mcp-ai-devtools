@@ -16,13 +16,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // extensionRequest creates a localhost request with the required extension header.
 func extensionRequest(method, path string, body io.Reader) *http.Request {
 	r := httptest.NewRequest(method, "http://localhost"+path, body)
-	r.Header.Set("X-Gasoline-Client", "gasoline-extension/test")
+	r.Header.Set("X-Kaboom-Client", "kaboom-extension/test")
 	return r
 }
 

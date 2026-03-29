@@ -387,7 +387,7 @@ describe('Draw Mode — Event Handling Basics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
+      if (msg.type === 'kaboom_capture_screenshot' && typeof callback === 'function') {
         // Simulate background returning a screenshot synchronously
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
@@ -421,7 +421,7 @@ describe('Draw Mode — Event Handling Basics', () => {
       assert.ok(Array.isArray(completed.annotations), 'expected annotations array')
 
       // Verify toast was sent
-      const toast = sentMessages.find((m) => m.type === 'gasoline_action_toast')
+      const toast = sentMessages.find((m) => m.type === 'kaboom_action_toast')
       assert.ok(toast, 'expected GASOLINE_ACTION_TOAST message')
       assert.strictEqual(toast.text, 'Annotations submitted')
       assert.strictEqual(toast.state, 'success')
@@ -645,7 +645,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
+      if (msg.type === 'kaboom_capture_screenshot' && typeof callback === 'function') {
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
       return undefined
@@ -675,7 +675,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
     const sentMessages = []
     globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
       sentMessages.push(msg)
-      if (msg.type === 'gasoline_capture_screenshot' && typeof callback === 'function') {
+      if (msg.type === 'kaboom_capture_screenshot' && typeof callback === 'function') {
         callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
       }
       return undefined
@@ -692,7 +692,7 @@ describe('Draw Mode — Drawing Mechanics', () => {
     assert.strictEqual(dm.isDrawModeActive(), true, 'draw mode should remain active on invalid submit')
     assert.ok(inputEl.parentElement, 'text input should remain mounted for correction')
 
-    const errorToast = sentMessages.find((m) => m.type === 'gasoline_action_toast' && m.state === 'error')
+    const errorToast = sentMessages.find((m) => m.type === 'kaboom_action_toast' && m.state === 'error')
     assert.ok(errorToast, 'expected validation error toast')
     assert.ok(!sentMessages.some((m) => m.type === 'draw_mode_completed'), 'should not send completion on invalid submit')
   })

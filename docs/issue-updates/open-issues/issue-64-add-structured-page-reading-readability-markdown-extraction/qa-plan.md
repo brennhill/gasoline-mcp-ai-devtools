@@ -1,7 +1,7 @@
 # QA Plan: Issue #64
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/64
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/64
 - Title: Add structured page reading (readability/markdown extraction)
 
 ## QA Goal

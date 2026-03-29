@@ -2,7 +2,7 @@
 
 ## Scope
 
-Architecture-focused review of Gasoline control-plane reliability and failure modes across:
+Architecture-focused review of Kaboom control-plane reliability and failure modes across:
 
 - Go MCP bridge/daemon server (`cmd/browser-agent`, `internal/*`)
 - Chrome extension runtime (`src/background`, `src/content`, `src/inject`)
@@ -68,7 +68,7 @@ Architecture-focused review of Gasoline control-plane reliability and failure mo
 - Evidence: `src/background/state.ts:84`, `src/background/state.ts:97`, `src/background/connection-state.ts:95`, `src/background/connection-state.ts:421`.
 
 8. Low — Extension endpoint trust is header-based unless API key is configured.
-- `X-Gasoline-Client` alone is spoofable by local processes in same-host threat models.
+- `X-Kaboom-Client` alone is spoofable by local processes in same-host threat models.
 - Evidence: `cmd/browser-agent/server_middleware.go:146`, `cmd/browser-agent/server_middleware.go:149`, `cmd/browser-agent/auth.go:21`.
 
 ## Suggested Next Hardening Priorities

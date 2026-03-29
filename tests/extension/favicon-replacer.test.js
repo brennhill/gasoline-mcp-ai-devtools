@@ -165,12 +165,12 @@ describe('Favicon Replacer', () => {
       const behavior = {
         savesOriginal: true,
         restoresOnStop: true,
-        removesGasolineFavicon: true
+        removesKaboomFavicon: true
       }
 
       assert.strictEqual(behavior.savesOriginal, true, 'Should save original favicon href')
       assert.strictEqual(behavior.restoresOnStop, true, 'Should restore original when tracking stops')
-      assert.strictEqual(behavior.removesGasolineFavicon, true, 'Should remove Gasoline favicon element')
+      assert.strictEqual(behavior.removesKaboomFavicon, true, 'Should remove Kaboom favicon element')
     })
   })
 

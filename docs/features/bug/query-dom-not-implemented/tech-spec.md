@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Gasoline uses a request/response pattern for on-demand queries:
+Kaboom uses a request/response pattern for on-demand queries:
 1. MCP tool creates a pending query in the server
 2. Extension polls for pending queries
 3. Background service worker receives query via `/poll-for-queries`

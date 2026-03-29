@@ -6,7 +6,7 @@ package security
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 func TestCheckNonStandardPortBranches(t *testing.T) {

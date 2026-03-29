@@ -2,9 +2,9 @@
 feature: Enhanced CLI Configuration Management
 doc_type: qa-plan
 feature_id: feature-enhanced-cli-config
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-03-28
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-28
 ---
 
 # QA Plan: Enhanced CLI Configuration Management
@@ -48,21 +48,21 @@ last_verified_date: 2026-03-05
 - [ ] `executeInstall()` idempotent: running twice produces same result
 - [ ] npm `--install` reports bundled skill install summary (created/updated/unchanged/skipped/errors)
 - [ ] PyPI `--install` reports bundled skill install summary with same semantics
-- [ ] `GASOLINE_SKIP_SKILL_INSTALL=1` skips skill installation in both wrappers
+- [ ] `KABOOM_SKIP_SKILL_INSTALL=1` skips skill installation in both wrappers
 
 #### Unit Tests: Bundled Skills
 
 - [ ] PyPI `install_bundled_skills()` writes managed skills to codex/claude/gemini roots
 - [ ] Existing user-owned skill files are not overwritten
-- [ ] Legacy managed `gasoline-*` skill IDs are removed on successful install
+- [ ] Legacy managed `kaboom-*`, `gasoline-*`, and `strum-*` skill IDs are removed on successful install
 - [ ] Packaged `skills.json` and `skills/*/SKILL.md` are present in wheel/sdist
 
 #### Unit Tests: Doctor Flow
 
 - [ ] `runDiagnostics()` checks all 5 client definitions
-- [ ] `runDiagnostics()` reports "ok" for valid config with gasoline entry
+- [ ] `runDiagnostics()` reports "ok" for valid config with `kaboom-browser-devtools` entry
 - [ ] `runDiagnostics()` reports "error" for invalid JSON
-- [ ] `runDiagnostics()` reports "error" for missing gasoline entry
+- [ ] `runDiagnostics()` reports "error" for missing `kaboom-browser-devtools` entry
 - [ ] `runDiagnostics()` reports "info" for undetected clients
 - [ ] `runDiagnostics()` handles CLI-type clients via subprocess check
 - [ ] `runDiagnostics()` detects legacy paths and warns about orphaned configs
@@ -72,10 +72,10 @@ last_verified_date: 2026-03-05
 #### Unit Tests: Uninstall Flow
 
 - [ ] `executeUninstall()` with `dryRun=true` shows what would be removed
-- [ ] `executeUninstall()` removes gasoline entry cleanly
+- [ ] `executeUninstall()` removes Kaboom-managed entries cleanly
 - [ ] `executeUninstall()` preserves other MCP servers
-- [ ] `executeUninstall()` handles gasoline not being in config gracefully
-- [ ] `executeUninstall()` reports count of clients from which gasoline was removed
+- [ ] `executeUninstall()` handles Kaboom not being in config gracefully
+- [ ] `executeUninstall()` reports count of clients from which Kaboom was removed
 - [ ] `uninstallViaCli()` runs correct subprocess for CLI-type clients
 - [ ] Uninstall produces valid JSON in remaining config
 
@@ -102,7 +102,7 @@ last_verified_date: 2026-03-05
 
 #### Install + Doctor Integration
 
-- [ ] Run `--install` then `--doctor` shows gasoline as configured for all detected clients
+- [ ] Run `--install` then `--doctor` shows Kaboom as configured for all detected clients
 - [ ] Run `--install --env VAR=val` then read config file shows env object
 
 #### Uninstall + Doctor Integration
@@ -119,8 +119,8 @@ last_verified_date: 2026-03-05
 #### Manual/Local Build Verification
 
 - [ ] `./scripts/install-bundled-skills.sh` installs managed skills from source tree
-- [ ] Script respects `GASOLINE_SKILL_SCOPE` (`global`, `project`, `all`)
-- [ ] Script respects target overrides (`GASOLINE_SKILL_TARGETS`, `GASOLINE_CODEX_SKILLS_DIR`, etc.)
+- [ ] Script respects `KABOOM_SKILL_SCOPE` (`global`, `project`, `all`)
+- [ ] Script respects target overrides (`KABOOM_SKILL_TARGETS`, `KABOOM_CODEX_SKILLS_DIR`, etc.)
 
 #### File System Scenarios
 
@@ -136,7 +136,7 @@ last_verified_date: 2026-03-05
 
 #### Data Leak Tests
 
-- [ ] Config files contain only gasoline entry and env vars
+- [ ] Config files contain only Kaboom-managed entry and env vars
 - [ ] Auth headers/tokens not captured in config
 - [ ] User home path not exposed in error messages
 
@@ -173,22 +173,22 @@ last_verified_date: 2026-03-05
 
 **Setup**:
 1. Backup any existing configs
-2. Fresh gasoline-mcp install (npm install -g gasoline-mcp@latest)
+2. Fresh Kaboom install (`npm install -g kaboom-agentic-browser@latest`)
 
 **Steps**:
-- [ ] Run `gasoline-mcp --config`
+- [ ] Run `kaboom-agentic-browser --config`
   - **Expected**: Shows all 5 client definitions with detection status
   - **Verification**: Detected clients marked, correct paths shown
 
-- [ ] Run `gasoline-mcp --install --dry-run`
+- [ ] Run `kaboom-agentic-browser --install --dry-run`
   - **Expected**: Shows what would be installed for each detected client
   - **Verification**: No actual files created or CLI commands run
 
-- [ ] Run `gasoline-mcp --install`
+- [ ] Run `kaboom-agentic-browser --install`
   - **Expected**: Shows success for each detected client
   - **Verification**: Config files created / CLI commands executed
 
-- [ ] Run `gasoline-mcp --doctor`
+- [ ] Run `kaboom-agentic-browser --doctor`
   - **Expected**: All installed clients show as configured
   - **Verification**: Correct status for each client
 
@@ -206,17 +206,17 @@ last_verified_date: 2026-03-05
 2. Create existing config with other MCP servers for one file-type client
 
 **Steps**:
-- [ ] Run `gasoline-mcp --install`
+- [ ] Run `kaboom-agentic-browser --install`
   - **Expected**: Shows success for each detected client (CLI-type and file-type)
   - **Verification**: Each client's config modified/created as expected
 
 - [ ] Read each config file and verify:
-  - gasoline entry present
+  - `kaboom-browser-devtools` entry present
   - Other MCP servers preserved
   - Valid JSON syntax
 
 - [ ] For CLI-type (Claude Code): verify via `claude mcp list`
-  - **Expected**: gasoline entry present
+  - **Expected**: `kaboom-browser-devtools` entry present
 
 **Result**: ✅ PASS (multi-client install works)
 
@@ -233,7 +233,7 @@ last_verified_date: 2026-03-05
 **Steps**:
 - [ ] Run:
   ```bash
-  gasoline-mcp --install --env GASOLINE_SERVER=http://custom:7890 --env DEBUG=1
+  kaboom-agentic-browser --install --env KABOOM_SERVER=http://custom:7890 --env DEBUG=1
   ```
   - **Expected**: Success for all detected clients
   - **Verification**: Config files contain env vars
@@ -242,7 +242,7 @@ last_verified_date: 2026-03-05
   - **Expected**:
     ```json
     "env": {
-      "GASOLINE_SERVER": "http://custom:7890",
+      "KABOOM_SERVER": "http://custom:7890",
       "DEBUG": "1"
     }
     ```
@@ -250,10 +250,10 @@ last_verified_date: 2026-03-05
 
 - [ ] Run again with different env var:
   ```bash
-  gasoline-mcp --install --env LOG_LEVEL=debug
+  kaboom-mcp --install --env LOG_LEVEL=debug
   ```
   - **Expected**: Merged with existing env vars (not replaced)
-  - **Verification**: All 3 env vars still present (GASOLINE_SERVER, DEBUG, LOG_LEVEL)
+  - **Verification**: All 3 env vars still present (`KABOOM_SERVER`, `DEBUG`, `LOG_LEVEL`)
 
 **Result**: ✅ PASS (env vars work correctly)
 
@@ -266,16 +266,16 @@ last_verified_date: 2026-03-05
 
 **Setup**:
 1. Create test scenario: some clients configured, some not
-   - Claude Code: `claude` on PATH, gasoline installed via CLI
-   - Cursor: `~/.cursor/mcp.json` - valid with gasoline
+   - Claude Code: `claude` on PATH, Kaboom installed via CLI
+   - Cursor: `~/.cursor/mcp.json` - valid with Kaboom
    - Windsurf: `~/.codeium/windsurf/mcp_config.json` - invalid JSON
    - Claude Desktop / VS Code: not installed
 
 **Steps**:
-- [ ] Run `gasoline-mcp --doctor`
+- [ ] Run `kaboom-agentic-browser --doctor`
   - **Expected**:
     ```
-    Gasoline MCP Diagnostic Report
+    Kaboom Agentic Browser Diagnostic Report
 
     ✅ Claude Code
        Configured via CLI
@@ -285,7 +285,7 @@ last_verified_date: 2026-03-05
 
     ❌ Windsurf
        ~/.codeium/windsurf/mcp_config.json - invalid JSON
-       Suggestion: Fix syntax error or run: gasoline-mcp --install
+       Suggestion: Fix syntax error or run: kaboom-agentic-browser --install
 
     ⚪ Claude Desktop
        Not detected
@@ -311,22 +311,22 @@ last_verified_date: 2026-03-05
 **Goal**: Verify clean uninstall without losing other MCP servers.
 
 **Setup**:
-1. Install gasoline to at least one file-type client with other MCP servers present
+1. Install Kaboom to at least one file-type client with other MCP servers present
 
 **Steps**:
-- [ ] Run `gasoline-mcp --uninstall --dry-run`
-  - **Expected**: Shows which clients gasoline would be removed from
+- [ ] Run `kaboom-agentic-browser --uninstall --dry-run`
+  - **Expected**: Shows which clients Kaboom would be removed from
   - **Verification**: other MCP server entries shown as preserved
 
-- [ ] Run `gasoline-mcp --uninstall`
+- [ ] Run `kaboom-agentic-browser --uninstall`
   - **Expected**: "Removed from N clients"
-  - **Verification**: gasoline entry removed from all clients
+  - **Verification**: Kaboom-managed entries removed from all clients
 
 - [ ] Read a file-type config file:
-  - **Expected**: other MCP server entries still present; gasoline gone
+  - **Expected**: other MCP server entries still present; Kaboom gone
   - **Verification**: Config valid JSON with only other servers
 
-- [ ] Run `gasoline-mcp --doctor`
+- [ ] Run `kaboom-agentic-browser --doctor`
   - **Expected**: Shows unconfigured for all clients
   - **Verification**: Doctor confirms removal
 
@@ -343,12 +343,12 @@ last_verified_date: 2026-03-05
 1. Create broken config for a file-type client (e.g., `~/.cursor/mcp.json`) with missing quote
 
 **Steps**:
-- [ ] Run `gasoline-mcp --install`
+- [ ] Run `kaboom-agentic-browser --install`
   - **Expected**: Error for that client, success for other detected clients
   - **Verification**: Error message clear and actionable, includes recovery suggestions
 
 - [ ] Fix the broken JSON file
-- [ ] Run `gasoline-mcp --install` again
+- [ ] Run `kaboom-agentic-browser --install` again
   - **Expected**: Now succeeds for all clients
   - **Verification**: Error recovery works
 
@@ -365,15 +365,15 @@ last_verified_date: 2026-03-05
 1. Clean state
 
 **Steps**:
-- [ ] Run `gasoline-mcp --config`
+- [ ] Run `kaboom-agentic-browser --config`
   - **Expected**: Shows all 5 client definitions with detection status
   - **Verification**: Command works without errors
 
-- [ ] Run `gasoline-mcp --install`
+- [ ] Run `kaboom-agentic-browser --install`
   - **Expected**: Installs to all detected clients (new default behavior)
   - **Verification**: All detected clients configured
 
-- [ ] Run `gasoline-mcp --help`
+- [ ] Run `kaboom-agentic-browser --help`
   - **Expected**: Help shows all commands including new features
   - **Verification**: 5 supported clients listed
 
@@ -387,44 +387,44 @@ last_verified_date: 2026-03-05
 
 #### Critical: Verify all v5.2 CLI commands still work unchanged
 
-- [ ] `gasoline-mcp --config`
+- [ ] `kaboom-agentic-browser --config`
   - Expected: Shows all 5 client definitions with detection status
   - Verification: Correct paths, detection status
 
-- [ ] `gasoline-mcp --install` (without flags)
+- [ ] `kaboom-agentic-browser --install` (without flags)
   - Expected: Installs to ALL detected clients (new default behavior)
   - Verification: All detected clients configured
 
-- [ ] `gasoline-mcp --help`
+- [ ] `kaboom-agentic-browser --help`
   - Expected: Lists all commands (old + new)
   - Verification: Shows --config, --install, --help, --doctor, --uninstall, --env, --dry-run, --verbose
 
 - [ ] Binary path resolution
   - Expected: findBinary() still works (unchanged)
-  - Verification: gasoline-mcp finds binary correctly on macOS/Linux/Windows
+  - Verification: `kaboom-agentic-browser` finds the binary correctly on macOS/Linux/Windows
 
 - [ ] Unsupported platform error
   - Expected: Shows clear error for unsupported OS (unchanged)
   - Verification: Error message format and text unchanged from v5.2
 
 - [ ] Other npm packages install correctly
-  - Expected: NPM ecosystem not affected by gasoline-mcp changes
+  - Expected: NPM ecosystem not affected by `kaboom-agentic-browser` changes
   - Verification: `npm install` and `npm ci` work normally
 
 ### Concurrent Operations
 
-- [ ] Two simultaneous `gasoline-mcp --install` processes
+- [ ] Two simultaneous `kaboom-agentic-browser --install` processes
   - Setup: Start two install processes to same config file in parallel
   - Expected: Both complete without corruption
-  - Verification: Config file has valid JSON and gasoline entry present
+  - Verification: Config file has valid JSON and `kaboom-browser-devtools` entry present
   - Implementation: Use atomic writes (temp file + rename) to prevent race conditions
 
-### Integration with gasoline Binary
+### Integration with Kaboom Binary
 
-- [ ] `gasoline-mcp` entry in config correctly points to binary
+- [ ] `kaboom-browser-devtools` entry in config correctly points to binary
 - [ ] Binary path resolution works across macOS, Linux, Windows paths
 - [ ] Extension still loads MCP correctly with new config format
-- [ ] gasoline binary can be invoked from config (test with --version)
+- [ ] Kaboom binary can be invoked from config (test with `--version`)
 
 ---
 
@@ -439,12 +439,12 @@ last_verified_date: 2026-03-05
 
 ## Test Files
 
-### npm (`npm/gasoline-mcp/lib/`)
+### npm (`npm/kaboom-agentic-browser/lib/`)
 - `config.test.js` — Client registry, detection, path resolution (23 tests)
 - `install.test.js` — Install flow for CLI + file-type clients (11 tests)
 - `uninstall.test.js` — Uninstall flow for CLI + file-type clients (7 tests)
 
-### Python (`pypi/gasoline-mcp/tests/`)
+### Python (`pypi/kaboom-agentic-browser/tests/`)
 - `test_config.py` — Client registry, detection, path resolution (23 tests)
 - `test_install.py` — Install flow (9 tests)
 - `test_uninstall.py` — Uninstall flow (6 tests)

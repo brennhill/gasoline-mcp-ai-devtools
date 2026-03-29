@@ -3,7 +3,7 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/schema"
 
 // ToolsList returns all MCP tool definitions.
 func (h *ToolHandler) ToolsList() []MCPTool {

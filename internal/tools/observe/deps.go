@@ -3,7 +3,7 @@
 
 package observe
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
 // Deps provides all dependencies the observe handlers need.
 // *ToolHandler in cmd/browser-agent/ satisfies this interface.

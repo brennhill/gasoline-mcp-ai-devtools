@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
 const (
@@ -47,7 +47,7 @@ func readMCPStdioMessage(reader *bufio.Reader) ([]byte, bridge.StdioFraming, err
 func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, stats *bridgeSessionStats) {
 	wg.Wait()
 	if readErr != nil && !errors.Is(readErr, io.EOF) {
-		stderrf("[gasoline-bridge] ERROR: stdin read error: %v\n", readErr)
+		stderrf("[kaboom-bridge] ERROR: stdin read error: %v\n", readErr)
 	}
 
 	select {

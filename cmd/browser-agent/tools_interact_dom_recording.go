@@ -4,7 +4,7 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 // recordDOMPrimitiveAction records a DOM primitive action with reproduction-compatible
 // type and field mapping. Falls back to "dom_<action>" for actions without a mapping.

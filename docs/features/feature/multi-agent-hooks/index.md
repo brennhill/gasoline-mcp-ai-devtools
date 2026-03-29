@@ -4,7 +4,7 @@ feature_id: feature-multi-agent-hooks
 status: implemented
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-07
+last_reviewed: 2026-03-28
 code_paths:
   - internal/hook/protocol.go
   - internal/hook/session_store.go
@@ -20,7 +20,7 @@ test_paths:
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
 | **Status**    | implemented                             |
-| **Binary**    | gasoline-hooks                          |
+| **Binary**    | kaboom-hooks                            |
 | **Agents**    | Claude Code, Gemini CLI, Codex (future) |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |
 
@@ -31,7 +31,7 @@ test_paths:
 
 ## Summary
 
-The `gasoline-hooks` binary auto-detects which AI coding agent is calling it and adapts its output protocol accordingly. All hooks (quality-gate, compress-output, session-track, blast-radius, decision-guard) work across agents without separate binaries or configuration. The hook logic is agent-agnostic; only the thin I/O protocol layer adapts.
+The `kaboom-hooks` binary auto-detects which AI coding agent is calling it and adapts its output protocol accordingly. All hooks (quality-gate, compress-output, session-track, blast-radius, decision-guard) work across agents without separate binaries or configuration. The hook logic is agent-agnostic; only the thin I/O protocol layer adapts.
 
 ## Supported Agents
 

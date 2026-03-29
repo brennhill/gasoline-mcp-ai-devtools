@@ -134,7 +134,7 @@ last_verified_date: 2026-03-05
 | IT-6 | Health endpoint includes TTL section | HTTP /v4/health handler + TTLConfig | Response JSON includes `ttl.config` and `ttl.effective` | must |
 | IT-7 | observe tool respects TTL | observe handler + read-time filtering | observe returns only entries within TTL | must |
 | IT-8 | get_changes_since respects TTL | diff handler + read-time filtering | Diff results exclude TTL-expired entries | must |
-| IT-9 | Environment variable GASOLINE_TTL works | env var + main.go | Server starts with TTL from env var | should |
+| IT-9 | Environment variable KABOOM_TTL works | env var + main.go | Server starts with TTL from env var | should |
 | IT-10 | TTL change during active reads | Concurrent TTL update + buffer reads | Read uses consistent TTL for entire query (RLock) | must |
 
 ### 4.3 Performance Tests
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application running locally that generates continuous activity (console logs, network requests)
 - [ ] Ability to wait 5+ minutes between steps to verify TTL expiration

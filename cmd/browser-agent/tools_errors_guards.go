@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // guardCheck is a precondition that returns (response, true) to short-circuit the caller.
@@ -88,7 +88,7 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 		}),
 	}, extraOpts...)
 	return fail(req, ErrNoData, "Extension not connected. Commands cannot be dispatched.",
-		"Check that the Gasoline browser extension is installed and the page is open.",
+		"Check that the Kaboom browser extension is installed and the page is open.",
 		opts...,
 	), true
 }

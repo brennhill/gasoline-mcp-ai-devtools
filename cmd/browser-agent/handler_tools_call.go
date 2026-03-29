@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
 // handleToolsCall validates tool call payload, executes tool, then applies response guards.

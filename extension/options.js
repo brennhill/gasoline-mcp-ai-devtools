@@ -110,12 +110,12 @@ export async function loadOptions() {
     // Set terminal AI command
     const aiCmdInput = document.getElementById('terminal-ai-command');
     if (aiCmdInput) {
-        aiCmdInput.value = result.gasoline_terminal_ai_command || 'claude';
+        aiCmdInput.value = result.kaboom_terminal_ai_command || 'claude';
     }
     // Set terminal dev root
     const devRootInput = document.getElementById('terminal-dev-root');
     if (devRootInput) {
-        devRootInput.value = result.gasoline_terminal_dev_root || '';
+        devRootInput.value = result.kaboom_terminal_dev_root || '';
     }
 }
 /**
@@ -248,16 +248,16 @@ export async function testConnection() {
             resultEl.style.color = '#f85149';
             const errorMsg = err instanceof Error ? err.message : 'Unknown error';
             if (errorMsg.includes('timeout')) {
-                resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx gasoline-mcp`;
+                resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx kaboom-mcp`;
             }
             else if (errorMsg.includes('HTTP 404')) {
-                resultEl.textContent = `Failed — server running but health endpoint not found. Is this Gasoline MCP v5.8.0+?`;
+                resultEl.textContent = `Failed — server running but health endpoint not found. Is this Kaboom MCP v5.8.0+?`;
             }
             else if (errorMsg.includes('HTTP')) {
                 resultEl.textContent = `Failed — server error (${errorMsg}). Check server logs.`;
             }
             else {
-                resultEl.textContent = `Failed — ${errorMsg}. Is the server running? Run: npx gasoline-mcp`;
+                resultEl.textContent = `Failed — ${errorMsg}. Is the server running? Run: npx kaboom-mcp`;
             }
         }
     }
@@ -288,7 +288,7 @@ export async function handleExportDebugLog() {
                 const blob = new Blob([response.log], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const filename = `gasoline-debug-${timestamp}.json`;
+                const filename = `kaboom-debug-${timestamp}.json`;
                 // Trigger download
                 const a = document.createElement('a');
                 a.href = url;

@@ -6,7 +6,7 @@ set -euo pipefail
 
 PORT=$((8000 + RANDOM % 1000))
 TEMP_DIR=$(mktemp -d)
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 
 echo "========================================"
 echo "MCP Stdio Silence Invariant Test"
@@ -18,8 +18,8 @@ echo ""
 
 # Find the wrapper
 if ! command -v "$WRAPPER" &> /dev/null; then
-    echo "❌ ERROR: gasoline-mcp not found in PATH"
-    echo "Run 'npm link' from npm/gasoline-mcp first"
+    echo "❌ ERROR: kaboom-agentic-browser not found in PATH"
+    echo "Run 'npm link' from npm/kaboom-agentic-browser first"
     exit 1
 fi
 
@@ -64,9 +64,9 @@ else
     echo "  ❌ FAIL: Expected 0 stderr lines, got $STDERR_LINES"
     echo ""
     echo "INVARIANT VIOLATION: All logs must go to:"
-    echo "  - ~/gasoline-wrapper.log (wrapper logs)"
-    echo "  - ~/gasoline-logs.jsonl (server logs)"
-    echo "  - /tmp/gasoline-debug-*.log (debug logs)"
+    echo "  - ~/kaboom-wrapper.log (wrapper logs)"
+    echo "  - ~/kaboom-logs.jsonl (server logs)"
+    echo "  - /tmp/kaboom-debug-*.log (debug logs)"
     echo ""
     # Cleanup
     lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true

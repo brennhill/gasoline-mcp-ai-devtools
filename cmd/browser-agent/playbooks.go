@@ -4,7 +4,7 @@
 package main
 
 // capabilityIndex is the token-efficient capability discovery resource.
-var capabilityIndex = `# Gasoline Capability Index (Token-Efficient)
+var capabilityIndex = `# Kaboom Capability Index (Token-Efficient)
 
 Use this index for discovery. Load detailed guidance only when task intent matches.
 
@@ -18,22 +18,22 @@ Use this index for discovery. Load detailed guidance only when task intent match
 
 | Capability | When to Use | Playbook URI |
 |---|---|---|
-| performance | Regressions, slow pages, bottlenecks, Core Web Vitals | gasoline://playbook/performance/quick |
-| accessibility | WCAG/axe issues, semantic/contrast/navigation checks | gasoline://playbook/accessibility/quick |
-| security | Credential leaks, CSP/cookie/header risks, third-party origin risk | gasoline://playbook/security/quick |
-| automation | Navigate sites, fill forms, click buttons, post content, any browser task | gasoline://playbook/automation/quick |
-| api_validation | Contract mismatches, malformed responses, endpoint drift | See gasoline://guide |
+| performance | Regressions, slow pages, bottlenecks, Core Web Vitals | kaboom://playbook/performance/quick |
+| accessibility | WCAG/axe issues, semantic/contrast/navigation checks | kaboom://playbook/accessibility/quick |
+| security | Credential leaks, CSP/cookie/header risks, third-party origin risk | kaboom://playbook/security/quick |
+| automation | Navigate sites, fill forms, click buttons, post content, any browser task | kaboom://playbook/automation/quick |
+| api_validation | Contract mismatches, malformed responses, endpoint drift | See kaboom://guide |
 
 ## Available Playbook Variants
 
-- gasoline://playbook/performance/quick
-- gasoline://playbook/performance/full
-- gasoline://playbook/accessibility/quick
-- gasoline://playbook/accessibility/full
-- gasoline://playbook/security/quick
-- gasoline://playbook/security/full
-- gasoline://playbook/automation/quick
-- gasoline://playbook/automation/full
+- kaboom://playbook/performance/quick
+- kaboom://playbook/performance/full
+- kaboom://playbook/accessibility/quick
+- kaboom://playbook/accessibility/full
+- kaboom://playbook/security/quick
+- kaboom://playbook/security/full
+- kaboom://playbook/automation/quick
+- kaboom://playbook/automation/full
 
 ## Runtime Discovery
 
@@ -44,7 +44,7 @@ When unsure which params a mode accepts, use per-mode filtering:
 ## Notes
 
 - Keep this index small; do not inline full workflows here.
-- Add future playbooks under gasoline://playbook/{capability}/{quick|full}.
+- Add future playbooks under kaboom://playbook/{capability}/{quick|full}.
 `
 
 // playbooks maps "{capability}/{level}" keys to markdown playbook content.

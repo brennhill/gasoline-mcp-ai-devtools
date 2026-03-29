@@ -5,10 +5,10 @@
 package capture
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/circuit"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/circuit"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/recording"
 )
 
 // Type aliases for imported packages to avoid qualifying every use.

@@ -11,7 +11,7 @@ last-verified: 2026-02-11
 
 **See Also:** [.claude/refs/architecture.md](../../.claude/refs/architecture.md) (canonical system design)
 
-Gasoline MCP implements [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) JSON-RPC semantics with a stdio client boundary and a local HTTP bridge.
+Kaboom MCP implements [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) JSON-RPC semantics with a stdio client boundary and a local HTTP bridge.
 
 **Protocol Version:** `2024-11-05` (with version negotiation for `2025-11-25`)
 
@@ -31,15 +31,15 @@ Gasoline MCP implements [Model Context Protocol](https://modelcontextprotocol.io
 |----|-----------|---------------|
 | L-6, J-6 | Respond to `initialized` notification with `{}` | Some MCP clients (including Claude Code) expect a response. Removing it could break compatibility. Track spec evolution. |
 | — | `_meta` field on tools with `data_counts` | Non-standard but uses `_` prefix convention. Provides AI with buffer state without extra tool call. No spec conflict. |
-| — | `X-Gasoline MCP-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. |
+| — | `X-Kaboom MCP-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. |
 | — | Only `type: "text"` content blocks | MCP allows image/resource content types. All our data is textual. No spec violation — we just don't use all content types. |
 
 ## Key Implementation Details
 
 **Capabilities declared:**
 - `tools` — 5 tools: observe, generate, configure, interact, analyze
-- `resources` — 2 resources: `gasoline://guide`, `gasoline://quickstart`
-- `resourceTemplates` — 1 template: `gasoline://demo/{name}`
+- `resources` — 2 resources: `kaboom://guide`, `kaboom://quickstart`
+- `resourceTemplates` — 1 template: `kaboom://demo/{name}`
 
 **Error handling:**
 - Three-tier model: transport (HTTP status) → protocol (JSON-RPC error) → application (`isError: true`)
@@ -53,7 +53,7 @@ Gasoline MCP implements [Model Context Protocol](https://modelcontextprotocol.io
 - Sensitive fields redacted in bridge diagnostics and debug logs
 
 **Transport:**
-- **Primary (MCP clients):** stdio JSON-RPC (`npx gasoline-mcp` process per MCP client)
+- **Primary (MCP clients):** stdio JSON-RPC (`npx kaboom-agentic-browser` process per MCP client)
   - Silent stdio transport contract (no non-protocol stdout/stderr noise)
   - JSON-RPC 2.0 request/response semantics
   - Notification handling per MCP/JSON-RPC constraints

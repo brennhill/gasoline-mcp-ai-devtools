@@ -21,7 +21,7 @@ func TestInteract_ExplorePage_DispatchesPendingQuery(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -56,7 +56,7 @@ func TestInteract_ExplorePage_NoURL_UsesCurrentTab(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -83,7 +83,7 @@ func TestInteract_ExplorePage_WithURL_IncludesNavigate(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -113,7 +113,7 @@ func TestInteract_ExplorePage_ForwardsParams(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -216,7 +216,7 @@ func TestInteract_ExplorePage_JavascriptURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -236,7 +236,7 @@ func TestInteract_ExplorePage_DataURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -252,7 +252,7 @@ func TestInteract_ExplorePage_ChromeURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -268,7 +268,7 @@ func TestInteract_ExplorePage_FileURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -284,7 +284,7 @@ func TestInteract_ExplorePage_HTTPURL_Accepted(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -300,7 +300,7 @@ func TestInteract_ExplorePage_MalformedURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -316,7 +316,7 @@ func TestInteract_ExplorePage_BareDomain_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -332,7 +332,7 @@ func TestInteract_ExplorePage_VbscriptURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -348,7 +348,7 @@ func TestInteract_ExplorePage_BlobURL_Rejected(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -392,7 +392,7 @@ func TestInteract_ExplorePage_SuccessResponseStructure(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -421,7 +421,7 @@ func TestInteract_ExplorePage_TabIDForwarded(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 

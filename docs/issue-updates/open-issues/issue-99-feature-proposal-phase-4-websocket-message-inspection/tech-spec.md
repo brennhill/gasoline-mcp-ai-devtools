@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #99
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/99
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/99
 - Title: [Feature Proposal] Phase 4: WebSocket Message Inspection
 
 ## Objective

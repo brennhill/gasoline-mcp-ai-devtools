@@ -386,7 +386,7 @@ The integration test (`integration_test.go` lines 151-157) calls the following m
 
 ## 5. Guide Accuracy
 
-The guide is defined in `handler.go` lines 332-397 as the `gasoline://guide` resource.
+The guide is defined in `handler.go` lines 332-397 as the `kaboom://guide` resource.
 
 ### 5.1 observe modes listed in guide vs schema
 

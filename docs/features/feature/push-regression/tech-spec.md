@@ -30,7 +30,7 @@ This transforms the AI's development workflow from "write code → hope it works
 
 ## Opportunity & Business Value
 
-**Thesis-critical feedback loop**: This is the single most important feature for the "AI writes code → Gasoline detects impact → AI adjusts" cycle. Without it, the loop has a human-dependent step ("remember to check performance"). With it, the loop is fully automatic.
+**Thesis-critical feedback loop**: This is the single most important feature for the "AI writes code → Kaboom detects impact → AI adjusts" cycle. Without it, the loop has a human-dependent step ("remember to check performance"). With it, the loop is fully automatic.
 
 **Token efficiency**: Instead of the agent calling `check_performance` after every code change (expensive — returns full baseline data, resource breakdowns, etc.), the regression alert is a lightweight addition to the diff stream the agent is already consuming. No extra round-trip, no extra tokens for a "looks fine" response.
 

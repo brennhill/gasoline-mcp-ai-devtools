@@ -1,32 +1,32 @@
-# STRUM — Claude Code Skill
+# Kaboom — Claude Code Skill
 
 ## What is this?
 
-STRUM is an MCP server by default, but it can also run as a CLI. This skill packages the CLI into a Claude Code skill for browser observation, debugging, automation, and testing.
+Kaboom is an MCP server by default, but it can also run as a CLI. This skill packages the CLI into a Claude Code skill for browser observation, debugging, automation, and testing.
 
 There is no difference in functionality between the MCP and the skill — both expose the same 5 tools and capabilities. The advantage of the skill is that it uses progressive disclosure to load only what's needed, instead of loading ~21,250 tokens of MCP tool schemas into every conversation, saving tokens upfront.
 
 ## Installation
 
-1. Install the STRUM Chrome Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/strum/ghgoccajngbgapjmhofojkkagjgffmpj), or [load the unpacked extension](#loading-the-unpacked-extension) for development.
+1. Install the Kaboom Chrome Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/ghgoccajngbgapjmhofojkkagjgffmpj), or [load the unpacked extension](#loading-the-unpacked-extension) for development.
 2. Run the install script:
    ```bash
    bash claude_skill/install.sh
    ```
    The script will:
    - Ask where to install the skill files:
-     - **Globally** (`~/.claude/skills/strum/`) — available in all Claude Code sessions
-     - **Project-only** (`.claude/skills/strum/`) — available only in the current project
-   - Install the MCP server binary (`strum-agentic-browser`) via npm. To avoid version mismatches,
-     the script asks for your extension version (check `chrome://extensions` → STRUM Devtools).
+     - **Globally** (`~/.claude/skills/kaboom/`) — available in all Claude Code sessions
+     - **Project-only** (`.claude/skills/kaboom/`) — available only in the current project
+   - Install the MCP server binary (`kaboom-agentic-browser`) via npm. To avoid version mismatches,
+     the script asks for your extension version (check `chrome://extensions` → Kaboom Devtools).
      Press Enter to install the latest version instead.
 
-   > **Note:** Unlike the standard MCP setup (`npx strum-mcp` in `.mcp.json`), this installs
+   > **Note:** Unlike the standard MCP setup (`npx kaboom-agentic-browser` in `.mcp.json`), this installs
    > the binary globally. The skill calls it directly via HTTP, not as an MCP server.
 
 ## Usage
 
-Before using the skill, navigate to the tab you want to inspect, open the STRUM extension popup, and click **Track this tab**. This tells the extension to start capturing telemetry for that tab.
+Before using the skill, navigate to the tab you want to inspect, open the Kaboom extension popup, and click **Track this tab**. This tells the extension to start capturing telemetry for that tab.
 
 Once tracking, the skill is automatically triggered in Claude Code when you ask about browser debugging, screenshots, automation, audits, etc. Examples:
 
@@ -64,7 +64,7 @@ If you're developing or want to run from source instead of the Chrome Web Store 
 3. Enable **Developer mode** (toggle in the top-right corner)
 4. Click **Load unpacked**
 5. Select the `extension/` folder from this repository
-6. The STRUM Devtools extension should now appear in your extensions list
+6. The Kaboom Devtools extension should now appear in your extensions list
 
 > **Tip:** After making changes to the extension source, run `make compile-ts` again and click the refresh icon on the extension card in `chrome://extensions` to reload it.
 
@@ -72,4 +72,4 @@ If you're developing or want to run from source instead of the Chrome Web Store 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GASOLINE_PORT` | 7890 | Daemon HTTP port |
+| `KABOOM_PORT` | 7890 | Daemon HTTP port |

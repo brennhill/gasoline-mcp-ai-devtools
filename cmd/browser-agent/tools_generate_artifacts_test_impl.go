@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
+	gen "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/generate"
 )
 
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

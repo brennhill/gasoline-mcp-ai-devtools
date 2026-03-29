@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	az "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/analyze"
 )
 
 func newAnalyzeValidationHandler(t *testing.T) *ToolHandler {

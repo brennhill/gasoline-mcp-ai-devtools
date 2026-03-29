@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/reproduction"
 )
 
 // Function aliases for callers in tools_generate.go and other cmd/browser-agent code.
@@ -27,7 +27,7 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	params := reproduction.ParseParams(args)
 
 	if err := reproduction.ValidateOutputFormat(params.OutputFormat); err != "" {
-		return fail(req, ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"))
+		return fail(req, ErrInvalidParam, err, "Use 'kaboom' or 'playwright'", withParam("output_format"))
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()

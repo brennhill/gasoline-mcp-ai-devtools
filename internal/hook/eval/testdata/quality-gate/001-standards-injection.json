@@ -1,5 +1,5 @@
 {
-  "description": "Edit a Go file in the gasoline project — should inject code standards",
+  "description": "Edit a Go file in the kaboom project — should inject code standards",
   "hook": "quality-gate",
   "project_root": "REPO_ROOT",
   "input": {

@@ -99,7 +99,7 @@ interact({                   start_boundary('replay-X')
 
 ### Recording Format (Metadata)
 
-**File:** `~/.gasoline/recordings/{recording-id}/metadata.json`
+**File:** `~/.kaboom/recordings/{recording-id}/metadata.json`
 
 ```json
 {
@@ -361,7 +361,7 @@ observe({what: 'logs', test_boundary: 'replay-checkout'})
 observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 // LLM internally diffs and analyzes
-// Gasoline provides structured diff via logs themselves
+// Kaboom provides structured diff via logs themselves
 ```
 
 ---
@@ -388,7 +388,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 #### Screenshot Capture:
 - Reuse existing screenshot functionality (used by error detection)
 - Capture on: page load, selector failure, error
-- Store locally at `~/.gasoline/recordings/{recording_id}/screenshots/`
+- Store locally at `~/.kaboom/recordings/{recording_id}/screenshots/`
 
 #### Why Minimal New Code:
 - Extension already captures click/input/keydown/navigation via `inject/action-capture.ts`
@@ -402,7 +402,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 #### Responsibilities:
 - In-memory recording buffer (ring, max 100 recordings)
-- Persist recordings to disk (~/.gasoline/recordings/)
+- Persist recordings to disk (~/.kaboom/recordings/)
 - Query recordings by ID/name
 - Load recordings from disk on startup
 - Cleanup old recordings (manual, not auto)
@@ -560,7 +560,7 @@ Already implemented in prior work:
 
 ### Naming Convention:
 ```
-~/.gasoline/recordings/{recording-id}/screenshots/
+~/.kaboom/recordings/{recording-id}/screenshots/
 ├── {date}-{recording-id}-{action-index}-{issue-type}.jpg
 ├── 20260130-shopping-checkout-001-page-load.jpg
 ├── 20260130-shopping-checkout-003-moved-selector.jpg
@@ -602,7 +602,7 @@ Already implemented in prior work:
 #### Storage Quota Enforcement (1GB Hard Limit):
 - At 80% capacity (800MB): Log warning to user: "Recording storage at 80%. Consider deleting old recordings."
 - At 100% capacity (1GB): `recording_start` returns error: "Recording storage at capacity (1GB). Delete old recordings to continue."
-- User must manually delete old recordings: `rm ~/.gasoline/recordings/{recording_id}`
+- User must manually delete old recordings: `rm ~/.kaboom/recordings/{recording_id}`
 - Next `recording_start` call still fails if capacity not freed
 - Design: No auto-delete (data loss risk per PRODUCT_SPEC)
 
@@ -610,7 +610,7 @@ Implementation in server:
 ```go
 // Check storage quota before starting new recording
 func (c *Capture) RecordingStart(name, url string) error {
-  totalSize := calculateRecordingStorageUsage() // sum all ~/.gasoline/recordings/
+  totalSize := calculateRecordingStorageUsage() // sum all ~/.kaboom/recordings/
 
   if totalSize >= 1.0 * GB {
     return fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Delete old recordings via file system to continue.")
@@ -641,7 +641,7 @@ func (c *Capture) RecordingStart(name, url string) error {
 ## Security & Privacy
 
 ### Recording Data:
-- Stored locally at `~/.gasoline/recordings/` only
+- Stored locally at `~/.kaboom/recordings/` only
 - Not transmitted to cloud
 
 ### Sensitive Data Toggle (Credential Recording):
@@ -680,7 +680,7 @@ Implementation in extension:
 ### Orthogonal Concerns (But Coordinated):
 
 1. **Recording** captures action metadata (click, type, navigate, selector, x/y, screenshot)
-   - Stored to disk at `~/.gasoline/recordings/{recording_id}/metadata.json`
+   - Stored to disk at `~/.kaboom/recordings/{recording_id}/metadata.json`
    - Independent of test boundaries
 
 2. **Test Boundaries** tag LOGS, NETWORK, WEBSOCKET, ACTIONS with test context
@@ -812,7 +812,7 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 
 **Zero External Dependencies** (production runtime)
 
-### Existing Gasoline Infrastructure Used:
+### Existing Kaboom Infrastructure Used:
 - Test boundaries (activeTestIDs, TestIDs tagging)
 - Ring buffers (logs, network, WebSocket, actions)
 - MCP tools (observe, interact, configure)
@@ -863,5 +863,5 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 1. **Principal Review** — Validate technical approach against product spec
 2. **QA Plan** — Define test cases (unit + integration + UAT)
 3. **Implementation** — TDD, write failing tests first
-4. **Release** — Tag as v6.0, deploy with existing Gasoline
+4. **Release** — Tag as v6.0, deploy with existing Kaboom
 

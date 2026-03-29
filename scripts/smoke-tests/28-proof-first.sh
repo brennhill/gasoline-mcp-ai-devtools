@@ -12,7 +12,7 @@
 #
 # Artifacts:
 # - Writes screenshot paths and correlation IDs to:
-#   ~/.gasoline/smoke-results/proof-first-artifacts.log
+#   ~/.kaboom/smoke-results/proof-first-artifacts.log
 set -eo pipefail
 
 begin_category "28" "Proof-First Real-World Flows" "6"
@@ -188,7 +188,7 @@ run_test_28_3() {
         return
     fi
 
-    local post_text="${SMOKE_SOCIAL_POST_TEXT:-This post written with Gasoline MCP}"
+    local post_text="${SMOKE_SOCIAL_POST_TEXT:-This post written with Kaboom MCP}"
     local post_text_json
     post_text_json=$(printf '%s' "$post_text" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     interact_and_wait "type" "{\"action\":\"type\",\"selector\":\"[role='dialog'] [contenteditable='true']\",\"text\":${post_text_json},\"clear\":true,\"reason\":\"Type LinkedIn post\"}" 30
@@ -247,7 +247,7 @@ run_test_28_4() {
         return
     fi
 
-    local post_text="${SMOKE_SOCIAL_POST_TEXT:-This post written with Gasoline MCP}"
+    local post_text="${SMOKE_SOCIAL_POST_TEXT:-This post written with Kaboom MCP}"
     local post_text_json
     post_text_json=$(printf '%s' "$post_text" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     interact_and_wait "type" "{\"action\":\"type\",\"selector\":\"[role='dialog'] [contenteditable='true']\",\"text\":${post_text_json},\"clear\":true,\"reason\":\"Type Facebook post\"}" 30

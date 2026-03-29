@@ -84,7 +84,7 @@ Refactor [FILE/COMPONENT].
 
 ## 🎓 Learning Path
 
-**New to Gasoline development?**
+**New to Kaboom development?**
 
 1. Read [feature-request-template.md](feature-request-template.md) (15 min)
 2. Read [.claude/docs/feature-workflow.md](../../.claude/docs/feature-workflow.md) (10 min)

@@ -1,5 +1,5 @@
 // Purpose: Implements multi-client connect mode, forwarding MCP stdin/stdout to an existing daemon via HTTP.
-// Why: Enables multiple Claude Code sessions to share a single Gasoline server with client ID isolation.
+// Why: Enables multiple Claude Code sessions to share a single Kaboom server with client ID isolation.
 
 package main
 
@@ -28,22 +28,22 @@ const (
 	connectModeForwardTimeout = 30 * time.Second
 )
 
-// runConnectMode connects to an existing Gasoline server as an MCP client.
+// runConnectMode connects to an existing Kaboom server as an MCP client.
 // This enables multiple Claude Code sessions to share a single server.
-// The client ID is sent via X-Gasoline-Client header for state isolation.
+// The client ID is sent via X-Kaboom-Client header for state isolation.
 func runConnectMode(port int, clientID string, cwd string) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 	connectCheckHealth(serverURL, port)
 	connectRegisterClient(serverURL, clientID, cwd)
 
-	stderrf("[gasoline] Connected to %s (client: %s)\n", serverURL, clientID)
+	stderrf("[Kaboom] Connected to %s (client: %s)\n", serverURL, clientID)
 
 	connectForwardLoop(serverURL+"/mcp", clientID)
 
 	connectUnregisterClient(serverURL, clientID)
 
-	stderrf("[gasoline] Disconnected from %s\n", serverURL)
+	stderrf("[Kaboom] Disconnected from %s\n", serverURL)
 }
 
 // connectCheckHealth verifies the server is running. Exits on failure.
@@ -53,20 +53,20 @@ func connectCheckHealth(serverURL string, port int) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/health", nil)
 	if err != nil {
-		stderrf("[gasoline] Failed to create health check request: %v\n", err)
+		stderrf("[Kaboom] Failed to create health check request: %v\n", err)
 		os.Exit(1)
 	}
 
 	resp, err := http.DefaultClient.Do(req) // #nosec G107,G704 -- localhost URL constructed from trusted port flag
 	if err != nil {
-		stderrf("[gasoline] Cannot connect to server at %s: %v\n", serverURL, err)
-		stderrf("[gasoline] Start a server first: gasoline --server --port %d\n", port)
+		stderrf("[Kaboom] Cannot connect to server at %s: %v\n", serverURL, err)
+		stderrf("[Kaboom] Start a server first: kaboom --server --port %d\n", port)
 		os.Exit(1)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		stderrf("[gasoline] Server health check failed: %d\n", resp.StatusCode)
+		stderrf("[Kaboom] Server health check failed: %d\n", resp.StatusCode)
 		os.Exit(1)
 	}
 }
@@ -81,15 +81,15 @@ func connectRegisterClient(serverURL, clientID, cwd string) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", serverURL+"/clients", strings.NewReader(string(regBody)))
 	if err != nil {
-		stderrf("[gasoline] Warning: could not create registration request: %v\n", err)
+		stderrf("[Kaboom] Warning: could not create registration request: %v\n", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Gasoline-Client", clientID)
+	req.Header.Set("X-Kaboom-Client", clientID)
 
 	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- request targets localhost-only serverURL
 	if err != nil {
-		stderrf("[gasoline] Warning: could not register client: %v\n", err)
+		stderrf("[Kaboom] Warning: could not register client: %v\n", err)
 		return
 	}
 	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup after client registration
@@ -122,7 +122,7 @@ func connectForwardRequest(mcpURL, clientID, line string) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Gasoline-Client", clientID)
+	req.Header.Set("X-Kaboom-Client", clientID)
 
 	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- request targets localhost-only serverURL
 	if err != nil {
@@ -171,7 +171,7 @@ func connectUnregisterClient(serverURL, clientID string) {
 	if err != nil {
 		return
 	}
-	req.Header.Set("X-Gasoline-Client", clientID)
+	req.Header.Set("X-Kaboom-Client", clientID)
 	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- request targets localhost-only serverURL
 	if err == nil {
 		_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup after unregister

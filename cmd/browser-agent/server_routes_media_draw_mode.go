@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // saveDrawScreenshot decodes a data URL and writes the screenshot to disk.
@@ -72,7 +72,7 @@ func storeElementDetails(store *AnnotationStore, details map[string]json.RawMess
 				if len(rawStr) > 200 {
 					rawStr = rawStr[:200] + "..."
 				}
-				stderrf("[gasoline] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
+				stderrf("[Kaboom] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
 			}
 			detail.CorrelationID = correlationID
 			store.StoreDetail(correlationID, detail)
@@ -81,7 +81,7 @@ func storeElementDetails(store *AnnotationStore, details map[string]json.RawMess
 			if len(rawStr) > 200 {
 				rawStr = rawStr[:200] + "..."
 			}
-			stderrf("[gasoline] draw detail %s: unmarshal error: %v (raw=%s)\n", correlationID, err, rawStr)
+			stderrf("[Kaboom] draw detail %s: unmarshal error: %v (raw=%s)\n", correlationID, err, rawStr)
 		}
 	}
 }

@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: AI Web Pilot Toggle Infrastructure
 
 **Branch:** `feature/pilot-toggle`
-**Worktree:** `../gasoline-pilot-toggle`
+**Worktree:** `../kaboom-pilot-toggle`
 **Priority:** P4 Phase 1 (blocking — must complete before Phase 2 agents)
 
 ---
@@ -55,7 +55,7 @@ async function isAiWebPilotEnabled() {
 }
 ```
 
-When receiving `GASOLINE_HIGHLIGHT`, `GASOLINE_MANAGE_STATE`, or `GASOLINE_EXECUTE_JS`:
+When receiving `KABOOM_HIGHLIGHT`, `KABOOM_MANAGE_STATE`, or `KABOOM_EXECUTE_JS`:
 - Check `isAiWebPilotEnabled()`
 - If false, respond with `{ error: 'ai_web_pilot_disabled' }`
 - If true, forward to content script / inject.js

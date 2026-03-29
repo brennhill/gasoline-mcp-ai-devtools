@@ -5,9 +5,9 @@
     {
       "tool": {
         "driver": {
-          "name": "Gasoline Agentic Browser",
+          "name": "Kaboom Agentic Browser",
           "version": "VERSION",
-          "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
+          "informationUri": "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP",
           "rules": [
             {
               "id": "color-contrast",

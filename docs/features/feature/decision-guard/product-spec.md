@@ -15,13 +15,13 @@ links:
 
 - Problem: AI agents forget or re-debate architectural decisions made earlier in a session or across sessions. A team decides "always use the shared HTTP client", but two sessions later the AI creates a new `http.Client{}` because it doesn't remember the decision.
 - User value: Lock decisions once, enforce them automatically on every edit. The AI sees the relevant rule at the moment it's about to violate it — before the code is committed.
-- Binary: `gasoline-hooks decision-guard` (PostToolUse hook) + `gasoline-hooks lock-decision` (CLI utility)
+- Binary: `kaboom-hooks decision-guard` (PostToolUse hook) + `kaboom-hooks lock-decision` (CLI utility)
 
 ## Requirements
 
 ### DECISION_001: Decision file format
 
-Decisions are stored in `.gasoline/decisions.json` in the project root (same directory as `.gasoline.json`). Format:
+Decisions are stored in `.kaboom/decisions.json` in the project root (same directory as `.kaboom.json`). Format:
 
 ```json
 [
@@ -62,7 +62,7 @@ When one or more decisions match:
 
   use-shared-http-client: Use the shared HTTP client from internal/util/http.go. Do not create new http.Client instances.
 
-Comply with these decisions or update .gasoline/decisions.json if they are outdated.
+Comply with these decisions or update .kaboom/decisions.json if they are outdated.
 ```
 
 When multiple match:
@@ -73,26 +73,26 @@ When multiple match:
   use-shared-http-client: Use the shared HTTP client from internal/util/http.go.
   error-format: Error messages must follow: "{OPERATION}: {ROOT_CAUSE}. {RECOVERY_ACTION}"
 
-Comply with these decisions or update .gasoline/decisions.json if they are outdated.
+Comply with these decisions or update .kaboom/decisions.json if they are outdated.
 ```
 
 ### DECISION_004: CLI for locking decisions
 
-`gasoline-hooks lock-decision` provides a quick way to add decisions:
+`kaboom-hooks lock-decision` provides a quick way to add decisions:
 
 ```bash
-gasoline-hooks lock-decision \
+kaboom-hooks lock-decision \
   --id "use-shared-http-client" \
   --pattern "http.Client{" \
   --rule "Use the shared HTTP client from internal/util/http.go" \
   --scope "*.go"
 ```
 
-This appends to `.gasoline/decisions.json`, creating the file if it doesn't exist. The file lives in the project root (same as `.gasoline.json`).
+This appends to `.kaboom/decisions.json`, creating the file if it doesn't exist. The file lives in the project root (same as `.kaboom.json`).
 
 ### DECISION_005: AI-writable decisions
 
-The AI can lock decisions by writing directly to `.gasoline/decisions.json`. The hook doesn't care who wrote the file — it just reads it. This means:
+The AI can lock decisions by writing directly to `.kaboom/decisions.json`. The hook doesn't care who wrote the file — it just reads it. This means:
 - A human can add decisions by hand
 - The AI can add decisions when asked ("remember this for future sessions")
 - CI can validate decisions are respected

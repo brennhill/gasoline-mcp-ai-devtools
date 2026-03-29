@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/menus"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/menus"
 )
 
 // handleExplorePage handles interact(what="explore_page").

@@ -97,12 +97,12 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 }
 
 func fallbackLogFilePath() string {
-	return filepath.Join(os.TempDir(), "gasoline", "logs", "gasoline.jsonl")
+	return filepath.Join(os.TempDir(), "kaboom", "logs", "kaboom.jsonl")
 }
 
 func ensureLogFileWritable(path string) error {
 	if path == "" {
-		return fmt.Errorf("log_init: log file path is empty. Set a valid path via --log-file or GASOLINE_LOG_FILE")
+		return fmt.Errorf("log_init: log file path is empty. Set a valid path via --log-file or KABOOM_LOG_FILE")
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- local path configured at startup
 	if err != nil {

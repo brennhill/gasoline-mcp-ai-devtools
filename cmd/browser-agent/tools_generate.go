@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
+	gen "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/generate"
 )
 
 // generateHandlers maps generate format names to their handler functions.

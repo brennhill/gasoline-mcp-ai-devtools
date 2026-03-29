@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/bridge-restart/index.md
 
 /*
-Package bridge handles the transport layer between MCP clients and the Gasoline daemon.
+Package bridge handles the transport layer between MCP clients and the Kaboom daemon.
 
 Key types:
   - StdioFraming: indicates whether a message used line-delimited or Content-Length framing.

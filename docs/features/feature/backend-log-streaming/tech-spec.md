@@ -23,7 +23,7 @@ Backend Service
     ↓ (BackendLogEntry)
 MCP Server (logs.go)
     ↓ index & buffer
-Gasoline In-Memory Store
+Kaboom In-Memory Store
     ↓ on observe('backend-logs')
 Frontend Extension
 ```
@@ -122,11 +122,11 @@ func handleBackendLogs(req *BackendLogsRequest) (*BackendLogsResponse, error) {
 ```
 
 ## Code References
-- **gRPC handler:** `/Users/brenn/dev/gasoline/server/logs.go` (new)
-- **Indexing:** `/Users/brenn/dev/gasoline/server/index/logs.go` (new)
-- **Buffer:** `/Users/brenn/dev/gasoline/server/buffer/circular.go` (new)
-- **Proto definitions:** `/Users/brenn/dev/gasoline/proto/logs.proto` (new)
-- **Tests:** `/Users/brenn/dev/gasoline/server/logs_test.go` (new)
+- **gRPC handler:** `/Users/brenn/dev/kaboom/server/logs.go` (new)
+- **Indexing:** `/Users/brenn/dev/kaboom/server/index/logs.go` (new)
+- **Buffer:** `/Users/brenn/dev/kaboom/server/buffer/circular.go` (new)
+- **Proto definitions:** `/Users/brenn/dev/kaboom/proto/logs.proto` (new)
+- **Tests:** `/Users/brenn/dev/kaboom/server/logs_test.go` (new)
 
 ## Performance Requirements
 - **Ingestion latency:** <1ms per log entry (before buffering)
@@ -151,12 +151,12 @@ func handleBackendLogs(req *BackendLogsRequest) (*BackendLogsResponse, error) {
 
 ### E2E Tests
 - Real backend service sending logs
-- Verify logs appear in Gasoline observation API
+- Verify logs appear in Kaboom observation API
 - Verify correlation with frontend events (same request_id)
 
 ## Dependencies
 - **Protobuf runtime:** (already in Go stdlib)
-- **gRPC:** (already used in Gasoline)
+- **gRPC:** (already used in Kaboom)
 - **Backend SDK:** Backend service must include log streaming client (separate repo)
 - **Correlation IDs:** Frontend must set X-Request-ID header (already implemented)
 

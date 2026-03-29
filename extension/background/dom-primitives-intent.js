@@ -13,16 +13,16 @@
  */
 export function domPrimitiveIntent(action, options) {
     // — Shared helpers (duplicated for self-containment) —
-    function isGasolineOwnedElement(element) {
+    function isKaboomOwnedElement(element) {
         let node = element;
         while (node) {
             const id = node.id || '';
-            if (id.startsWith('gasoline-'))
+            if (id.startsWith('kaboom-'))
                 return true;
             const className = node.className;
-            if (typeof className === 'string' && className.includes('gasoline-'))
+            if (typeof className === 'string' && className.includes('kaboom-'))
                 return true;
-            if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true')
+            if (node.getAttribute && node.getAttribute('data-kaboom-owned') === 'true')
                 return true;
             node = node.parentElement;
         }
@@ -36,7 +36,7 @@ export function domPrimitiveIntent(action, options) {
             return results;
         const matches = Array.from(root.querySelectorAll(selector));
         for (const match of matches) {
-            if (!isGasolineOwnedElement(match))
+            if (!isKaboomOwnedElement(match))
                 results.push(match);
         }
         const children = 'children' in root
@@ -55,7 +55,7 @@ export function domPrimitiveIntent(action, options) {
     }
     function querySelectorDeep(selector, root = document) {
         const fast = root.querySelector(selector);
-        if (fast && !isGasolineOwnedElement(fast))
+        if (fast && !isKaboomOwnedElement(fast))
             return fast;
         return querySelectorDeepWalk(selector, root);
     }
@@ -72,7 +72,7 @@ export function domPrimitiveIntent(action, options) {
             const shadow = getShadowRoot(child);
             if (shadow) {
                 const match = shadow.querySelector(selector);
-                if (match && !isGasolineOwnedElement(match))
+                if (match && !isKaboomOwnedElement(match))
                     return match;
                 const deep = querySelectorDeepWalk(selector, shadow, depth + 1);
                 if (deep)
@@ -97,7 +97,7 @@ export function domPrimitiveIntent(action, options) {
         return fallback;
     }
     function isVisible(el) {
-        if (isGasolineOwnedElement(el))
+        if (isKaboomOwnedElement(el))
             return false;
         if (!(el instanceof HTMLElement))
             return true;
@@ -173,11 +173,11 @@ export function domPrimitiveIntent(action, options) {
     }
     function getElementHandleStore() {
         const root = globalThis;
-        if (root.__gasolineElementHandles) {
-            if (!root.__gasolineElementHandles.selectorByID) {
-                root.__gasolineElementHandles.selectorByID = new Map();
+        if (root.__kaboomElementHandles) {
+            if (!root.__kaboomElementHandles.selectorByID) {
+                root.__kaboomElementHandles.selectorByID = new Map();
             }
-            return root.__gasolineElementHandles;
+            return root.__kaboomElementHandles;
         }
         const created = {
             byElement: new WeakMap(),
@@ -185,7 +185,7 @@ export function domPrimitiveIntent(action, options) {
             selectorByID: new Map(),
             nextID: 1
         };
-        root.__gasolineElementHandles = created;
+        root.__kaboomElementHandles = created;
         return created;
     }
     function getOrCreateElementID(el) {

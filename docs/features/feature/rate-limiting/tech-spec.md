@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-A busy browser app can overwhelm the Gasoline server. A React app in development mode might emit hundreds of console logs per second, a trading dashboard might push thousands of WebSocket messages per second, or a runaway network polling loop might flood the server with body captures. Without protection, the server's memory grows unbounded and response latency spikes.
+A busy browser app can overwhelm the Kaboom server. A React app in development mode might emit hundreds of console logs per second, a trading dashboard might push thousands of WebSocket messages per second, or a runaway network polling loop might flood the server with body captures. Without protection, the server's memory grows unbounded and response latency spikes.
 
 Rate limiting and circuit breaker logic ensures the server degrades gracefully under load — rejecting excess data with 429 responses rather than consuming it — and that the extension backs off intelligently rather than hammering a struggling server.
 

@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
 const (
@@ -92,7 +92,7 @@ func buildPushNotification(ev push.PushEvent) []byte {
 		"method":  "notifications/message",
 		"params": map[string]any{
 			"level":  "info",
-			"logger": "gasoline-push",
+			"logger": "kaboom-push",
 			"data": map[string]any{
 				"type":     ev.Type,
 				"page_url": ev.PageURL,

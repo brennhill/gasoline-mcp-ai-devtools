@@ -1,9 +1,9 @@
 /**
- * Global type declarations for Gasoline extension
+ * Global type declarations for Kaboom extension
  */
 
-// Gasoline Developer API exposed on window
-interface GasolineAPI {
+// Kaboom Developer API exposed on window
+interface KaboomAPI {
   version: string
   annotate(key: string, value: unknown): void
   removeAnnotation(key: string): void
@@ -39,7 +39,7 @@ interface GasolineAPI {
 }
 
 interface Window {
-  __gasoline?: GasolineAPI
+  __gasoline?: KaboomAPI
 }
 
 // axe-core accessibility testing library (loaded dynamically)

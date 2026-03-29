@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
 	uploadScript := string(uploadRaw)
 
 	// If bootstrap starts daemon with Stage 4 enabled and no explicit --upload-dir,
-	// smoke upload fixtures must live under the daemon default: ~/gasoline-upload-dir.
+	// smoke upload fixtures must live under the daemon default: ~/kaboom-upload-dir.
 	usesDefaultUploadDir := strings.Contains(bootstrap, "start_daemon_with_flags --enable-os-upload-automation") &&
 		!strings.Contains(bootstrap, "--upload-dir=")
 	if !usesDefaultUploadDir {
@@ -46,8 +46,8 @@ func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
 		t.Fatalf("UPLOAD_TEST_DIR assignment not found in %s", uploadPath)
 	}
 	uploadDirExpr := match[1]
-	if !strings.HasPrefix(uploadDirExpr, "${HOME}/gasoline-upload-dir/") {
-		t.Fatalf("smoke upload dir (%q) is outside default Stage 4 upload dir (${HOME}/gasoline-upload-dir); Stage 4 tests will fail with 'outside allowed upload directory'", uploadDirExpr)
+	if !strings.HasPrefix(uploadDirExpr, "${HOME}/kaboom-upload-dir/") {
+		t.Fatalf("smoke upload dir (%q) is outside default Stage 4 upload dir (${HOME}/kaboom-upload-dir); Stage 4 tests will fail with 'outside allowed upload directory'", uploadDirExpr)
 	}
 }
 
@@ -58,12 +58,12 @@ func TestOSAutomation_RejectsSmokeTmpPathOutsideDefaultUploadDir(t *testing.T) {
 		home = resolvedHome
 	}
 
-	allowedDir := filepath.Join(home, "gasoline-upload-dir")
+	allowedDir := filepath.Join(home, "kaboom-upload-dir")
 	if err := os.MkdirAll(allowedDir, 0o755); err != nil {
 		t.Fatalf("failed to create allowed dir: %v", err)
 	}
 
-	smokeFile := filepath.Join(home, ".gasoline", "tmp", "smoke-upload-12345", "upload-15-16.txt")
+	smokeFile := filepath.Join(home, ".kaboom", "tmp", "smoke-upload-12345", "upload-15-16.txt")
 	if err := os.MkdirAll(filepath.Dir(smokeFile), 0o755); err != nil {
 		t.Fatalf("failed to create smoke tmp dir: %v", err)
 	}

@@ -4,9 +4,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const astroConfigPath = 'cookwithgasoline.com/astro.config.mjs';
-const themeProviderPath = 'cookwithgasoline.com/src/components/ThemeProvider.astro';
-const themeSelectPath = 'cookwithgasoline.com/src/components/ThemeSelect.astro';
+const astroConfigPath = 'gokaboom.dev/astro.config.mjs';
+const themeProviderPath = 'gokaboom.dev/src/components/ThemeProvider.astro';
+const themeSelectPath = 'gokaboom.dev/src/components/ThemeSelect.astro';
 
 async function read(relativePath) {
   return fs.readFile(path.join(repoRoot, relativePath), 'utf8');

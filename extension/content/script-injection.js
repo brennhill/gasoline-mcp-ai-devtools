@@ -14,7 +14,7 @@ let injectionPromise = null;
 let bridgeProbePromise = null;
 /** Monotonic ID for bridge probe request IDs */
 let bridgeProbeCounter = 0;
-const NONCE_ATTR = 'data-gasoline-nonce';
+const NONCE_ATTR = 'data-kaboom-nonce';
 /** Per-page-load nonce for authenticating postMessages to inject.js */
 const pageNonce = crypto
     .getRandomValues(new Uint8Array(16))
@@ -53,14 +53,14 @@ async function syncStoredSettings() {
             continue; // Use default if not set
         if (setting.isMode) {
             window.postMessage({
-                type: 'gasoline_setting',
+                type: 'kaboom_setting',
                 setting: setting.messageType,
                 mode: value,
                 _nonce: pageNonce
             }, window.location.origin);
         }
         else {
-            window.postMessage({ type: 'gasoline_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+            window.postMessage({ type: 'kaboom_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
         }
     }
 }
@@ -69,10 +69,10 @@ async function syncStoredSettings() {
  * Must be called from content script context (has chrome.runtime API access)
  */
 function injectAxeCore() {
-    if (document.getElementById('gasoline-axe-loader'))
+    if (document.getElementById('kaboom-axe-loader'))
         return;
     const script = document.createElement('script');
-    script.id = 'gasoline-axe-loader';
+    script.id = 'kaboom-axe-loader';
     script.src = chrome.runtime.getURL('lib/axe.min.js');
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
@@ -90,7 +90,7 @@ function injectScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('inject.bundled.js');
     script.type = 'module';
-    script.dataset.gasolineNonce = pageNonce;
+    script.dataset.kaboomNonce = pageNonce;
     return new Promise((resolve) => {
         script.onload = () => {
             script.remove();
@@ -141,7 +141,7 @@ function beginInjection(force = false) {
  * Ensure inject script is present, deduplicating concurrent inject attempts.
  * Optionally force a fresh reinjection attempt.
  */
-async function ensureInjectScriptReady(timeoutMs = 2000, force = false) {
+export async function ensureInjectScriptReady(timeoutMs = 2000, force = false) {
     if (!force && injected)
         return true;
     const injection = beginInjection(force);
@@ -189,7 +189,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         const onMessage = (event) => {
             if (event.source !== window || event.origin !== window.location.origin)
                 return;
-            if (event.data?.type !== 'gasoline_inject_bridge_pong')
+            if (event.data?.type !== 'kaboom_inject_bridge_pong')
                 return;
             if (event.data?.requestId !== requestId)
                 return;
@@ -201,7 +201,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
         try {
             window.postMessage({
-                type: 'gasoline_inject_bridge_ping',
+                type: 'kaboom_inject_bridge_ping',
                 requestId,
                 _nonce: pageNonce
             }, window.location.origin);

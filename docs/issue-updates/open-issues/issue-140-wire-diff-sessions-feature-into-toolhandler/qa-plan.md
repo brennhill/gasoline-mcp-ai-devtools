@@ -1,7 +1,7 @@
 # QA Plan: Issue #140
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/140
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/140
 - Title: Wire diff_sessions feature into ToolHandler
 
 ## QA Goal

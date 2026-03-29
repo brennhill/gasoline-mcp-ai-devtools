@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 const (
@@ -46,7 +46,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		// HTTP listener died unexpectedly — exit instead of hanging forever
 		shutdownSource = "http_listener_died"
 		s = syscall.SIGTERM // synthetic, for logging
-		stderrf("[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
+		stderrf("[Kaboom] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
 	}
 
 	server.logLifecycle("shutdown", port, map[string]any{
@@ -61,7 +61,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		"uptime_seconds":  time.Since(startTime).Seconds(),
 		"unexpected":      shutdownSource == "http_listener_died",
 	}); diagPath != "" && shutdownSource == "http_listener_died" {
-		stderrf("[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
+		stderrf("[Kaboom] Shutdown diagnostics written to: %s\n", diagPath)
 	}
 
 	// Shut down terminal server first (if running) — non-blocking, best-effort.
@@ -105,12 +105,12 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 	// Log token savings summary and persist lifetime stats.
 	if server.tokenTracker != nil {
 		if summary := server.tokenTracker.GetSessionSummary(); summary != "" {
-			stderrf("[gasoline] %s", summary)
+			stderrf("[Kaboom] %s", summary)
 		}
 		if root, err := state.RootDir(); err == nil {
 			lifetimePath := filepath.Join(root, "stats", "lifetime.json")
 			if err := server.tokenTracker.SaveLifetime(lifetimePath); err != nil {
-				stderrf("[gasoline] Failed to save lifetime token stats: %v\n", err)
+				stderrf("[Kaboom] Failed to save lifetime token stats: %v\n", err)
 			}
 		}
 	}

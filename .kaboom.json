@@ -1,0 +1,5 @@
+{
+  "code_standards": "kaboom-code-standards.md",
+  "file_size_limit": 800,
+  "duplicate_threshold": 3
+}

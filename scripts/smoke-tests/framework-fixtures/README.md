@@ -5,7 +5,7 @@ This directory contains source fixtures used by smoke module `29-framework-selec
 Goals:
 - Use real framework runtimes (React, Vue, Svelte, Next.js), not hand-faked DOM pages.
 - Regenerate selector ids/classes on each page load to stress selector resilience.
-- Keep fixture visual styling on-brand with Gasoline (including the flame mark) while preserving stable test semantics.
+- Keep fixture visual styling on-brand with Kaboom (including the flame mark) while preserving stable test semantics.
 - Model hard automation failure modes:
   - delayed hydration and event binding
   - overlay interception (`Accept Cookies`)

@@ -1,7 +1,7 @@
 # QA Plan: Issue #52
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/52
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/52
 - Title: Deterministic targeting: require explicit tab/session for browser actions
 
 ## QA Goal

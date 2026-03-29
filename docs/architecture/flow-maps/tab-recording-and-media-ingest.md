@@ -68,7 +68,7 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 1. `recordingInteractHandler.handleRecordStart` validates extension readiness, clamps FPS/audio, resolves path, and queues extension command.
 2. Recording state transitions are derived from command results in `recordingInteractHandler.resolveInteractRecordingState`.
 3. `recordingInteractHandler.handleRecordStop` enforces valid state before queueing stop command.
-4. MCP-initiated start writes `gasoline_pending_recording`; popup renders an approval card and sends `RECORDING_GESTURE_GRANTED` / `RECORDING_GESTURE_DENIED`.
+4. MCP-initiated start writes `kaboom_pending_recording`; popup renders an approval card and sends `RECORDING_GESTURE_GRANTED` / `RECORDING_GESTURE_DENIED`.
 5. Popup row and recording shortcut call extension `startRecording(..., fromPopup=true, targetTabId=trackedOrActiveTab)` so manual record follows tracked-tab intent.
 6. Shortcut toggle checks current recording state: active -> `stopRecording`; idle -> `startRecording`.
 7. Context-menu labels are refreshed on `contextMenus.onShown` to reflect live state (`Control/Release`, `Record/Stop`, `Annotate/Stop`, action recording start/stop).

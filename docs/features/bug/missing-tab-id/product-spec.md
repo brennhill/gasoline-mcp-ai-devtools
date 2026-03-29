@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 When users call `observe()` to retrieve browser telemetry, the response does not include a `tabId` field, making it impossible to filter or correlate data by browser tab. The extension's content script attaches `tabId` to captured events, but the server doesn't forward it in MCP responses.
 
 ### Current User Experience:
-1. User has multiple tabs open with Gasoline extension
+1. User has multiple tabs open with Kaboom extension
 2. User calls `observe({what: "errors"})` to get console errors
 3. Response contains errors from all tabs, but no `tabId` field
 4. User cannot determine which errors came from which tab

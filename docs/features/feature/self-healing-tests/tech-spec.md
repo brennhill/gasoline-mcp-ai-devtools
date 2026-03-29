@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Self-healing tests add two new modes to existing Gasoline MCP tools:
+Self-healing tests add two new modes to existing Kaboom MCP tools:
 1. **test_diagnosis** (observe tool) — Correlates test failure against captured browser telemetry to produce structured diagnosis
 2. **test_fix** (generate tool) — Generates targeted fix proposal from diagnosis
 
@@ -25,7 +25,7 @@ Test fails → Agent calls observe(test_diagnosis) → Diagnosis returned
 → Agent applies fix → Re-runs test
 ```
 
-This is NOT an autonomous loop within Gasoline. The AI agent controls the workflow. Gasoline provides observation and generation primitives.
+This is NOT an autonomous loop within Kaboom. The AI agent controls the workflow. Kaboom provides observation and generation primitives.
 
 ## Key Components
 
@@ -231,7 +231,7 @@ Failure: "Element not found: [data-testid='submit-btn']"
 ## Edge Cases & Assumptions
 
 ### Edge Case 1: No Telemetry in Time Window
-**Handling:** Return category: "unknown", confidence: "low", with message explaining no telemetry found. Suggest agent verify Gasoline is capturing (check observe({what: "page"})).
+**Handling:** Return category: "unknown", confidence: "low", with message explaining no telemetry found. Suggest agent verify Kaboom is capturing (check observe({what: "page"})).
 
 ### Edge Case 2: Multiple Candidate Selectors
 **Handling:** Return all candidates sorted by score. Fix proposal uses highest-scoring candidate but includes warning: "Multiple candidates found, manual review recommended".
@@ -239,13 +239,13 @@ Failure: "Element not found: [data-testid='submit-btn']"
 ### Edge Case 3: Failure Message Ambiguous
 **Handling:** Parser extracts best guess (partial selector, error type). If parsing fails, return category: "unknown" with raw failure message in evidence.
 
-### Edge Case 4: Test Failure Outside Gasoline Window
-**Handling:** If test ran before Gasoline started capturing, no telemetry available. Return category: "unknown" with note about timing.
+### Edge Case 4: Test Failure Outside Kaboom Window
+**Handling:** If test ran before Kaboom started capturing, no telemetry available. Return category: "unknown" with note about timing.
 
 ### Edge Case 5: Diagnosis Disagrees with Fix
 **Handling:** Diagnosis says "selector_stale", but no candidates found. Fix proposal escalates to "element_removed" and recommends manual investigation.
 
-### Assumption 1: Gasoline Is Capturing During Test
+### Assumption 1: Kaboom Is Capturing During Test
 We assume the browser extension is active and capturing telemetry when the test runs. Without this, diagnosis returns "unknown".
 
 ### Assumption 2: Test Failure Output Available
@@ -292,7 +292,7 @@ We assume failures occur in the browser (DOM, network, JS errors). Non-browser f
 ### Depended On By (Proposed Features)
 - **Agentic E2E Repair** — Specializes self-healing for API contract drift
 - **Agentic CI/CD** — Orchestrates self-healing in CI pipelines
-- **Gasoline CI** — Provides headless capture for CI environments
+- **Kaboom CI** — Provides headless capture for CI environments
 
 ## Performance Considerations
 
@@ -307,7 +307,7 @@ We assume failures occur in the browser (DOM, network, JS errors). Non-browser f
 - **No new data capture:** Reads existing ring buffers, no new capture mechanisms
 - **Failure messages may contain sensitive data:** Test output could include API keys, tokens, PII. Apply existing redaction rules to diagnosis response.
 - **No code execution:** test_fix generates text proposals (selectors, waits, mocks). Does not execute JavaScript or modify files. AI agent handles application.
-- **Test file paths informational only:** test_file parameter used for context. Gasoline does not read or write files on disk.
+- **Test file paths informational only:** test_file parameter used for context. Kaboom does not read or write files on disk.
 
 ## Test Plan Reference
 

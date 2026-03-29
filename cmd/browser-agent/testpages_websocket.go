@@ -137,7 +137,7 @@ func wsEchoLoop(conn net.Conn, rw *bufio.ReadWriter) {
 			reply := buildQueryParams(map[string]any{
 				"type":   "echo",
 				"echo":   string(payload),
-				"server": "gasoline-test-harness",
+				"server": "kaboom-test-harness",
 				"ts":     time.Now().UnixMilli(),
 			})
 			if err := wsWriteFrame(rw, 0x1, reply); err != nil {

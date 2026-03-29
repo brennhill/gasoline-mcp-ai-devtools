@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Without persistence, every time the Gasoline server restarts, the agent starts from zero — no noise rules, no baselines, no knowledge of previous errors. In an AI-driven workflow where agents work in sessions (start, code, stop), this means re-discovering the same noise patterns, re-saving baselines, and losing error history every time.
+Without persistence, every time the Kaboom server restarts, the agent starts from zero — no noise rules, no baselines, no knowledge of previous errors. In an AI-driven workflow where agents work in sessions (start, code, stop), this means re-discovering the same noise patterns, re-saving baselines, and losing error history every time.
 
 Persistent memory gives the server a disk-backed store that survives restarts. When a new session starts, the agent can call `load_session_context` and immediately know: what baselines exist, what noise rules were configured, what errors were seen before, and how many sessions have been recorded for this project.
 
@@ -30,16 +30,16 @@ Persistent memory gives the server a disk-backed store that survives restarts. W
 
 ### Project-Local Storage
 
-Persistent data lives in `.gasoline/` at the project root (the server's working directory), gitignored. No hashing, no indirection — the project directory IS the identity.
+Persistent data lives in `.kaboom/` at the project root (the server's working directory), gitignored. No hashing, no indirection — the project directory IS the identity.
 
 This follows the same pattern as `.vscode/`, `.next/`, `.turbo/`, and other tool-local state directories. The developer can inspect, delete, or back up the data trivially.
 
-The server adds `.gasoline/` to `.gitignore` automatically on first use if not already present.
+The server adds `.kaboom/` to `.gitignore` automatically on first use if not already present.
 
 ### Storage Layout
 
 ```
-<project-root>/.gasoline/
+<project-root>/.kaboom/
 ├── meta.json              # Session metadata (count, timestamps)
 ├── baselines/             # Behavioral baselines
 │   ├── login.json
@@ -146,7 +146,7 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 ## Size Limits
 
 - Max 1MB per individual file (checked on save)
-- Max 10MB total for `.gasoline/` directory
+- Max 10MB total for `.kaboom/` directory
 - Error history capped at 500 entries
 - Stale errors (>30 days old) are automatically evicted
 
@@ -156,8 +156,8 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 
 - **Sensitive data**: Same sanitization as in-memory data applies. Auth headers are stripped, passwords are redacted before they ever reach the store.
 - **File permissions**: Files are created with 0644, directories with 0755 (user-readable by default).
-- **Gitignored by default**: The server adds `.gasoline/` to `.gitignore` on first use. Persistent data never enters version control.
-- **Concurrent instances**: If multiple Gasoline server instances run for the same project, the first one takes a file lock (`flock()`) on meta.json. The second instance operates in read-only mode for persistence.
+- **Gitignored by default**: The server adds `.kaboom/` to `.gitignore` on first use. Persistent data never enters version control.
+- **Concurrent instances**: If multiple Kaboom server instances run for the same project, the first one takes a file lock (`flock()`) on meta.json. The second instance operates in read-only mode for persistence.
 
 ---
 
@@ -185,8 +185,8 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 
 ## Test Scenarios
 
-1. Store created at `.gasoline/` in working directory
-2. `.gasoline/` added to `.gitignore` if not already present
+1. Store created at `.kaboom/` in working directory
+2. `.kaboom/` added to `.gitignore` if not already present
 3. Save then load returns identical data
 4. Load nonexistent key → error
 5. List returns all keys without .json extension

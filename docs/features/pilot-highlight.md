@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: highlight_element
 
 **Branch:** `feature/pilot-highlight`
-**Worktree:** `../gasoline-pilot-highlight`
+**Worktree:** `../kaboom-pilot-highlight`
 **Priority:** P4 Phase 2 (parallel — requires Phase 1 complete)
 **Dependency:** Merge `feature/pilot-toggle` first
 
@@ -33,13 +33,13 @@ Add in AI Web Pilot section:
 // AI WEB PILOT: HIGHLIGHT
 // ============================================================================
 
-let gasolineHighlighter = null
+let kaboomHighlighter = null
 
 function highlightElement(selector, durationMs = 5000) {
   // Remove existing highlight
-  if (gasolineHighlighter) {
-    gasolineHighlighter.remove()
-    gasolineHighlighter = null
+  if (kaboomHighlighter) {
+    kaboomHighlighter.remove()
+    kaboomHighlighter = null
   }
 
   const element = document.querySelector(selector)
@@ -49,9 +49,9 @@ function highlightElement(selector, durationMs = 5000) {
 
   const rect = element.getBoundingClientRect()
 
-  gasolineHighlighter = document.createElement('div')
-  gasolineHighlighter.id = 'gasoline-highlighter'
-  Object.assign(gasolineHighlighter.style, {
+  kaboomHighlighter = document.createElement('div')
+  kaboomHighlighter.id = 'kaboom-highlighter'
+  Object.assign(kaboomHighlighter.style, {
     position: 'fixed',
     top: `${rect.top}px`,
     left: `${rect.left}px`,
@@ -65,12 +65,12 @@ function highlightElement(selector, durationMs = 5000) {
     boxSizing: 'border-box'
   })
 
-  document.body.appendChild(gasolineHighlighter)
+  document.body.appendChild(kaboomHighlighter)
 
   setTimeout(() => {
-    if (gasolineHighlighter) {
-      gasolineHighlighter.remove()
-      gasolineHighlighter = null
+    if (kaboomHighlighter) {
+      kaboomHighlighter.remove()
+      kaboomHighlighter = null
     }
   }, durationMs)
 
@@ -83,14 +83,14 @@ function highlightElement(selector, durationMs = 5000) {
 
 // Handle scroll — update position
 window.addEventListener('scroll', () => {
-  if (gasolineHighlighter) {
-    const selector = gasolineHighlighter.dataset.selector
+  if (kaboomHighlighter) {
+    const selector = kaboomHighlighter.dataset.selector
     if (selector) {
       const el = document.querySelector(selector)
       if (el) {
         const rect = el.getBoundingClientRect()
-        gasolineHighlighter.style.top = `${rect.top}px`
-        gasolineHighlighter.style.left = `${rect.left}px`
+        kaboomHighlighter.style.top = `${rect.top}px`
+        kaboomHighlighter.style.left = `${rect.left}px`
       }
     }
   }
@@ -101,14 +101,14 @@ window.addEventListener('scroll', () => {
 
 **File:** `extension/background.js`
 
-Handle `GASOLINE_HIGHLIGHT` message:
+Handle `KABOOM_HIGHLIGHT` message:
 - Check `isAiWebPilotEnabled()`
 - Forward to content script → inject.js
 - Return result to server
 
 **File:** `extension/content.js`
 
-Forward `GASOLINE_HIGHLIGHT` to page context, return response.
+Forward `KABOOM_HIGHLIGHT` to page context, return response.
 
 ### 3. MCP Tool Handler
 
@@ -165,7 +165,7 @@ go test -v ./cmd/browser-agent/ -run Highlight
 | File | Change |
 |------|--------|
 | `extension/inject.js` | `highlightElement()` function |
-| `extension/background.js` | Route GASOLINE_HIGHLIGHT |
+| `extension/background.js` | Route KABOOM_HIGHLIGHT |
 | `extension/content.js` | Forward highlight message |
 | `cmd/browser-agent/pilot.go` | `handleHighlightElement()` |
 | `extension-tests/pilot-highlight.test.js` | New file |

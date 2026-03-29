@@ -211,8 +211,8 @@ func setupTestProject(t *testing.T) string {
 	// go.mod
 	writeFile(t, root, "go.mod", "module github.com/test/web\n\ngo 1.21\n")
 
-	// .gasoline.json
-	writeFile(t, root, ".gasoline.json", `{"code_standards":"standards.md","file_size_limit":800}`)
+	// .kaboom.json
+	writeFile(t, root, ".kaboom.json", `{"code_standards":"standards.md","file_size_limit":800}`)
 
 	// handlers/handlers.go — imports db package.
 	writeFile(t, root, "handlers/handlers.go", `package handlers

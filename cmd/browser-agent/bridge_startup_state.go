@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // daemonState tracks the state of daemon startup for fast-start mode.
@@ -191,7 +191,7 @@ func (s *daemonState) respawnIfNeeded() bool {
 		return false
 	}
 
-	stderrf("[gasoline] daemon not responding, respawning on port %d\n", s.port)
+	stderrf("[Kaboom] daemon not responding, respawning on port %d\n", s.port)
 
 	cmd, err := s.buildDaemonCmd()
 	if err != nil {
@@ -205,7 +205,7 @@ func (s *daemonState) respawnIfNeeded() bool {
 
 	if waitForServer(s.port, daemonStartupReadyTimeout) {
 		s.markReady()
-		stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
+		stderrf("[Kaboom] daemon respawned successfully on port %d\n", s.port)
 		return true
 	}
 

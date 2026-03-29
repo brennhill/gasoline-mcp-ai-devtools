@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestMergeJSONConfig_PreservesExistingServers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -50,7 +51,7 @@ func TestMergeJSONConfig_RefusesToOverwriteInvalidJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false)
+	err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON, got nil")
 	}
@@ -71,7 +72,7 @@ func TestMergeJSONConfig_CreatesBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -91,8 +92,8 @@ func TestMergeJSONConfig_RemovesLegacyKeys(t *testing.T) {
 
 	existing := map[string]any{
 		"mcpServers": map[string]any{
-			"gasoline":                 map[string]any{"command": "old"},
-			"gasoline-agentic-browser": map[string]any{"command": "older"},
+			"kaboom":                 map[string]any{"command": "old"},
+			"kaboom-agentic-browser": map[string]any{"command": "older"},
 			"github":                   map[string]any{"command": "github-mcp"},
 		},
 	}
@@ -101,7 +102,7 @@ func TestMergeJSONConfig_RemovesLegacyKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -129,7 +130,7 @@ func TestMergeJSONConfig_EmptyFileCreatesNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -144,7 +145,7 @@ func TestMergeJSONConfig_MissingFileCreatesNew(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "mcp.json")
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -152,6 +153,57 @@ func TestMergeJSONConfig_MissingFileCreatesNew(t *testing.T) {
 	servers := result["mcpServers"].(map[string]any)
 	if _, ok := servers[mcpServerName]; !ok {
 		t.Errorf("%s server was not added", mcpServerName)
+	}
+}
+
+func TestGoStaticContractsUseKaboomBranding(t *testing.T) {
+	checklist := manualExtensionSetupChecklist("/tmp/KaboomExtension")
+	joinedChecklist := strings.Join(checklist, "\n")
+	if !strings.Contains(joinedChecklist, "Pin Kaboom") {
+		t.Fatalf("manualExtensionSetupChecklist should mention Kaboom pinning, got %q", joinedChecklist)
+	}
+	if !strings.Contains(joinedChecklist, "Open the Kaboom popup") {
+		t.Fatalf("manualExtensionSetupChecklist should mention the Kaboom popup, got %q", joinedChecklist)
+	}
+
+	setupHTML, err := os.ReadFile("setup.html")
+	if err != nil {
+		t.Fatalf("os.ReadFile(setup.html) error = %v", err)
+	}
+	setupText := string(setupHTML)
+	if !strings.Contains(setupText, "Kaboom MCP Server") {
+		t.Fatalf("setup.html should mention Kaboom MCP Server")
+	}
+	if !strings.Contains(setupText, "kaboom-mcp") {
+		t.Fatalf("setup.html should reference kaboom-mcp")
+	}
+
+	docsHTML, err := os.ReadFile("docs.html")
+	if err != nil {
+		t.Fatalf("os.ReadFile(docs.html) error = %v", err)
+	}
+	if !strings.Contains(string(docsHTML), "Kaboom MCP Server") {
+		t.Fatalf("docs.html should mention Kaboom MCP Server")
+	}
+
+	logsHTML, err := os.ReadFile("logs.html")
+	if err != nil {
+		t.Fatalf("os.ReadFile(logs.html) error = %v", err)
+	}
+	if !strings.Contains(string(logsHTML), "Kaboom MCP Server") {
+		t.Fatalf("logs.html should mention Kaboom MCP Server")
+	}
+
+	openapiJSON, err := os.ReadFile("openapi.json")
+	if err != nil {
+		t.Fatalf("os.ReadFile(openapi.json) error = %v", err)
+	}
+	openapiText := string(openapiJSON)
+	if !strings.Contains(openapiText, "Kaboom MCP Server") {
+		t.Fatalf("openapi.json should mention Kaboom MCP Server")
+	}
+	if !strings.Contains(openapiText, "X-Kaboom-Client") {
+		t.Fatalf("openapi.json should reference X-Kaboom-Client")
 	}
 }
 

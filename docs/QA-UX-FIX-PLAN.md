@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# QA/UX Fix Plan — Gasoline MCP Tools
+# QA/UX Fix Plan — Kaboom MCP Tools
 
 > **Status: COMPLETED** — All P0–P4 fixes implemented. Documentation updated.
 
@@ -127,7 +127,7 @@ Stubs waste LLM tokens. Remove from schema enum arrays. Keep handler code for fu
 ### P4-2: Fix hardcoded User-Agent version
 
 - **File:** `cmd/browser-agent/tools_analyze.go:287`
-- **Fix:** Replace `"Gasoline/0.7.12"` with `fmt.Sprintf("Gasoline/%s", version)`
+- **Fix:** Replace `"Kaboom/0.7.12"` with `fmt.Sprintf("Kaboom/%s", version)`
 
 ### P4-3: Enrich `observe({what: "page"})` response
 

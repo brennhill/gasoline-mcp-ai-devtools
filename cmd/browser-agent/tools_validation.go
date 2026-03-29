@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {

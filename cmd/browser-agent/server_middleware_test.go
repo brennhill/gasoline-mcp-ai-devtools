@@ -11,8 +11,8 @@ import (
 )
 
 func TestIsAllowedOrigin(t *testing.T) {
-	t.Setenv("GASOLINE_EXTENSION_ID", "")
-	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
+	t.Setenv("KABOOM_EXTENSION_ID", "")
+	t.Setenv("KABOOM_FIREFOX_EXTENSION_ID", "")
 
 	tests := []struct {
 		origin string
@@ -78,8 +78,8 @@ func TestIsAllowedHost(t *testing.T) {
 }
 
 func TestCorsMiddleware(t *testing.T) {
-	t.Setenv("GASOLINE_EXTENSION_ID", "")
-	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
+	t.Setenv("KABOOM_EXTENSION_ID", "")
+	t.Setenv("KABOOM_FIREFOX_EXTENSION_ID", "")
 
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -146,7 +146,7 @@ func TestExtensionOnly(t *testing.T) {
 
 	t.Run("accepts exact match", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/data", nil)
-		req.Header.Set("X-Gasoline-Client", "gasoline-extension")
+		req.Header.Set("X-Kaboom-Client", "kaboom-extension")
 		rr := httptest.NewRecorder()
 		handler(rr, req)
 		if rr.Code != http.StatusOK {
@@ -156,7 +156,7 @@ func TestExtensionOnly(t *testing.T) {
 
 	t.Run("accepts versioned format", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/data", nil)
-		req.Header.Set("X-Gasoline-Client", "gasoline-extension/6.0.3")
+		req.Header.Set("X-Kaboom-Client", "kaboom-extension/6.0.3")
 		rr := httptest.NewRecorder()
 		handler(rr, req)
 		if rr.Code != http.StatusOK {
@@ -166,7 +166,7 @@ func TestExtensionOnly(t *testing.T) {
 
 	t.Run("rejects invalid client", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/data", nil)
-		req.Header.Set("X-Gasoline-Client", "other-client")
+		req.Header.Set("X-Kaboom-Client", "other-client")
 		rr := httptest.NewRecorder()
 		handler(rr, req)
 		if rr.Code != http.StatusForbidden {
@@ -176,8 +176,8 @@ func TestExtensionOnly(t *testing.T) {
 }
 
 func TestIsAllowedOriginEnvOverrideRequiresExactExtensionID(t *testing.T) {
-	t.Setenv("GASOLINE_EXTENSION_ID", "allowedextensionid123")
-	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
+	t.Setenv("KABOOM_EXTENSION_ID", "allowedextensionid123")
+	t.Setenv("KABOOM_FIREFOX_EXTENSION_ID", "")
 
 	allowed := "chrome-extension://allowedextensionid123"
 	rejected := "chrome-extension://differentextensionid"

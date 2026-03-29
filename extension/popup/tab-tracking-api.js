@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { isInternalUrl } from './ui-utils.js';
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocal, setLocals, removeLocals } from '../lib/storage-utils.js';
 import { isDomainCloaked } from '../lib/cloaked-domains.js';
@@ -33,7 +34,7 @@ export async function handleStopTracking(showIdleState) {
         .catch(() => {
         /* tab may be closed */
     });
-    console.log('[Gasoline] Stopped tracking via bar stop button');
+    console.log(KABOOM_LOG_PREFIX, 'Stopped tracking via bar stop button');
 }
 /**
  * Handle clicking on the tracked URL.
@@ -49,10 +50,10 @@ export async function handleUrlClick(tabId) {
         if (tab.windowId) {
             await chrome.windows.update(tab.windowId, { focused: true });
         }
-        console.log('[Gasoline] Switched to tracked tab:', tabId);
+        console.log(KABOOM_LOG_PREFIX, 'Switched to tracked tab:', tabId);
     }
     catch (err) {
-        console.error('[Gasoline] Failed to switch to tracked tab:', err);
+        console.error(KABOOM_LOG_PREFIX, 'Failed to switch to tracked tab:', err);
         // Tab might have been closed - clear tracking
         void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
     }
@@ -100,19 +101,19 @@ export async function handleTrackPageClick(showInternalPageState, showCloakedSta
     });
     if (btn)
         showTrackingState(btn, tab.url, tab.id);
-    console.log('[Gasoline] Now tracking tab:', tab.id, tab.url);
+    console.log(KABOOM_LOG_PREFIX, 'Now tracking tab:', tab.id, tab.url);
     // Only reload if content script is not already injected
     if (tab.id) {
         const tabId = tab.id;
-        chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }, (response) => {
+        chrome.tabs.sendMessage(tabId, { type: 'kaboom_ping' }, (response) => {
             if (chrome.runtime.lastError || !response?.status) {
                 // Content script not loaded — reload to inject it
-                console.log('[Gasoline] Content script not found, reloading tab', tabId);
+                console.log(KABOOM_LOG_PREFIX, 'Content script not found, reloading tab', tabId);
                 chrome.tabs.reload(tabId);
             }
             else {
                 // Content script already running — notify it of tracking change
-                console.log('[Gasoline] Content script already loaded, skipping reload');
+                console.log(KABOOM_LOG_PREFIX, 'Content script already loaded, skipping reload');
                 chrome.tabs.sendMessage(tabId, {
                     type: 'tracking_state_changed',
                     state: { isTracked: true, aiPilotEnabled: false }

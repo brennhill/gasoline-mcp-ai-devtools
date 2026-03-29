@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Discord Server Setup Guide for Gasoline MCP
+# Discord Server Setup Guide for Kaboom MCP
 
-This guide will help you set up a Discord community for Gasoline MCP users and contributors.
+This guide will help you set up a Discord community for Kaboom MCP users and contributors.
 
 ---
 
@@ -29,16 +29,16 @@ A Discord server will provide:
 2. Click the "+" icon on the left sidebar
 3. Select "Create My Own"
 4. Choose "For me and my friends" or "For a club or community"
-5. Server name: `Gasoline MCP`
-6. Upload server icon (use Gasoline logo)
+5. Server name: `Kaboom MCP`
+6. Upload server icon (use Kaboom logo)
 7. Click "Create"
 
 ### 1.2 Server Settings
 
 Go to Server Settings → Overview:
 
-- **Server Name:** Gasoline MCP
-- **Server Icon:** Upload Gasoline logo
+- **Server Name:** Kaboom MCP
+- **Server Icon:** Upload Kaboom logo
 - **Server Banner:** Upload banner image
 - **Server Region:** Choose closest to your audience
 - **Verification Level:** Medium (recommended for security)
@@ -191,15 +191,15 @@ Consider a bot to sync with GitHub:
 ### 5.1 #welcome Channel
 
 ```
-👋 Welcome to Gasoline MCP!
+👋 Welcome to Kaboom MCP!
 
-Gasoline MCP is a browser observability tool for AI coding agents. 
+Kaboom MCP is a browser observability tool for AI coding agents. 
 It gives your AI assistant real-time visibility into browser activity.
 
 🚀 Get Started:
-• Documentation: https://cookwithgasoline.com
-• Quick Start: https://cookwithgasoline.com/getting-started/
-• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• Documentation: https://gokaboom.dev
+• Quick Start: https://gokaboom.dev/getting-started/
+• GitHub: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 
 ❓ Need Help?
 • Check #faq for common questions
@@ -213,7 +213,7 @@ It gives your AI assistant real-time visibility into browser activity.
 
 📢 Stay Updated:
 • Enable the 📢 Announcements role for updates
-• Follow @gasolinedev on Twitter
+• Follow @kaboomdev on Twitter
 • Star us on GitHub!
 
 🎉 Welcome to the community!
@@ -224,7 +224,7 @@ It gives your AI assistant real-time visibility into browser activity.
 ```
 📢 **Announcements**
 
-This channel is for official Gasoline MCP updates, releases, and news.
+This channel is for official Kaboom MCP updates, releases, and news.
 
 Enable the 📢 Announcements role to get notified of new announcements!
 ```
@@ -253,10 +253,10 @@ Report issues to moderators via DM or in #help.
 📚 **Resources**
 
 🔗 Official Links:
-• Website: https://cookwithgasoline.com
-• Documentation: https://cookwithgasoline.com/docs/
-• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
-• Chrome Extension: https://cookwithgasoline.com/downloads/
+• Website: https://gokaboom.dev
+• Documentation: https://gokaboom.dev/docs/
+• GitHub: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
+• Chrome Extension: https://gokaboom.dev/downloads/
 
 📖 Documentation:
 • Getting Started Guide
@@ -271,7 +271,7 @@ Report issues to moderators via DM or in #help.
 • Zed: https://zed.dev
 
 🤝 Community:
-• Twitter: https://twitter.com/gasolinedev
+• Twitter: https://twitter.com/kaboomdev
 • Discord Invite: [Your invite link]
 • GitHub Discussions: [Link]
 ```
@@ -281,16 +281,16 @@ Report issues to moderators via DM or in #help.
 ```
 ❓ **Frequently Asked Questions**
 
-Q: How do I install Gasoline MCP?
-A: See the Quick Start guide: https://cookwithgasoline.com/getting-started/
+Q: How do I install Kaboom MCP?
+A: See the Quick Start guide: https://gokaboom.dev/getting-started/
 
-Q: Which AI tools does Gasoline work with?
+Q: Which AI tools does Kaboom work with?
 A: Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue, and any MCP-compatible tool.
 
-Q: Is Gasoline free?
-A: Yes! Gasoline is open source and free to use.
+Q: Is Kaboom free?
+A: Yes! Kaboom is open source and free to use.
 
-Q: Does Gasoline send my data to the cloud?
+Q: Does Kaboom send my data to the cloud?
 A: No. All data stays on your machine. No cloud, no telemetry.
 
 Q: How do I report a bug?
@@ -412,7 +412,7 @@ Create a permanent invite for website/social media:
 
 ### 10.1 Add to Website
 
-Add Discord link to cookwithgasoline.com:
+Add Discord link to gokaboom.dev:
 
 ```html
 <a href="https://discord.gg/YOUR_INVITE_CODE" target="_blank">
@@ -433,7 +433,7 @@ Add to GitHub README.md:
 Announce on Twitter/X, LinkedIn, Reddit:
 
 ```
-🎉 We just launched the Gasoline MCP Discord community!
+🎉 We just launched the Kaboom MCP Discord community!
 
 Join us for:
 • Real-time support
@@ -443,7 +443,7 @@ Join us for:
 
 🔗 https://discord.gg/YOUR_INVITE_CODE
 
-#GasolineMCP #Discord #Community
+#KaboomMCP #Discord #Community
 ```
 
 ---

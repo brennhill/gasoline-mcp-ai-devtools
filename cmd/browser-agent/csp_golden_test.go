@@ -11,8 +11,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	gen "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/generate"
 )
 
 func TestGoldenCSPModerate(t *testing.T) {

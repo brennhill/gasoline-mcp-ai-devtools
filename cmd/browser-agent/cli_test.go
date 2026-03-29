@@ -95,8 +95,8 @@ func TestResolveCLIConfigFlagOverrides(t *testing.T) {
 }
 
 func TestResolveCLIConfigEnvOverrides(t *testing.T) {
-	t.Setenv("GASOLINE_PORT", "8888")
-	t.Setenv("GASOLINE_FORMAT", "csv")
+	t.Setenv("KABOOM_PORT", "8888")
+	t.Setenv("KABOOM_FORMAT", "csv")
 
 	cfg, _ := resolveCLIConfig([]string{"observe", "errors"})
 	if cfg.Port != 8888 {
@@ -108,7 +108,7 @@ func TestResolveCLIConfigEnvOverrides(t *testing.T) {
 }
 
 func TestResolveCLIConfigFlagBeatsEnv(t *testing.T) {
-	t.Setenv("GASOLINE_PORT", "8888")
+	t.Setenv("KABOOM_PORT", "8888")
 
 	cfg, _ := resolveCLIConfig([]string{"--port", "9999", "observe", "errors"})
 	if cfg.Port != 9999 {

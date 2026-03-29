@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // lastConsoleEvent returns a summary of the most recent console log entry.

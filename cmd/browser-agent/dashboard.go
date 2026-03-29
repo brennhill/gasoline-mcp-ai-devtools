@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 //go:embed dashboard.html
@@ -56,7 +56,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(dashboardHTML); err != nil {
-		stderrf("[gasoline] failed to write dashboard response: %v\n", err)
+		stderrf("[Kaboom] failed to write dashboard response: %v\n", err)
 	}
 }
 
@@ -137,6 +137,6 @@ func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, content []byte, n
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(content); err != nil {
-		stderrf("[gasoline] failed to write %s response: %v\n", name, err)
+		stderrf("[Kaboom] failed to write %s response: %v\n", name, err)
 	}
 }

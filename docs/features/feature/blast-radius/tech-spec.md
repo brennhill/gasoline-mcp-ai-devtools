@@ -59,7 +59,7 @@ type ImportGraph struct {
    b. Extract import paths using language-specific regex
    c. Resolve import path to file path (relative to project root)
    d. Record reverse edge: `graph.Dependents[imported_file] = append(..., importing_file)`
-3. Write graph to `~/.gasoline/sessions/<id>/graph.json`
+3. Write graph to `~/.kaboom/sessions/<id>/graph.json`
 
 ### Import regex patterns
 
@@ -95,7 +95,7 @@ The cached graph is invalidated when:
 ## Hook Logic
 
 ```
-gasoline-hooks blast-radius:
+kaboom-hooks blast-radius:
   1. Parse hook input (tool_name, tool_input)
   2. Skip if tool_name is not Edit or Write
   3. Extract file_path and new_string

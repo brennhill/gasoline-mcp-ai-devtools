@@ -11,6 +11,7 @@
  */
 
 import { StorageKey } from '../lib/constants.js'
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js'
 import { getLocal, removeLocal, onStorageChanged } from '../lib/storage-utils.js'
 import {
   sendRecordingGestureDecision,
@@ -41,6 +42,7 @@ const STOP_LABEL = 'Stop recording'
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record'
 const RECENT_RECORDING_START_MS = 8000
 const TOP_NOTICE_DURATION_MS = 4000
+const LOG = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`
 const AUDIO_LABELS: Record<string, string> = {
   '': 'Video only',
   tab: 'Video + tab audio',
@@ -263,9 +265,9 @@ export function setupRecordingUI(): void {
 
   void getLocal(StorageKey.RECORDING).then(async (value: unknown) => {
     const rec = value as { active?: boolean; name?: string; startTime?: number } | undefined
-    console.log('[Gasoline REC] Popup: gasoline_recording from storage:', rec)
+    console.log(LOG, 'recording state from storage:', rec)
     if (rec?.active && rec.name && rec.startTime) {
-      console.log('[Gasoline REC] Popup: resuming recording UI for', rec.name)
+      console.log(LOG, 'resuming recording UI for', rec.name)
       showRecording(els, state, rec.name, rec.startTime)
     }
     row.style.visibility = 'visible'
@@ -280,7 +282,7 @@ export function setupRecordingUI(): void {
       const rec = changes[StorageKey.RECORDING]!.newValue as
         | { active?: boolean; name?: string; startTime?: number }
         | undefined
-      console.log('[Gasoline REC] Popup: gasoline_recording changed:', rec)
+      console.log(LOG, 'recording state changed:', rec)
       if (rec?.active && rec.name && rec.startTime) {
         showRecording(els, state, rec.name, rec.startTime)
       } else {
@@ -308,17 +310,17 @@ export function setupRecordingUI(): void {
 
   void getLocal(StorageKey.PENDING_MIC_RECORDING).then(async (value: unknown) => {
     const intent = value as { audioMode?: string } | undefined
-    console.log('[Gasoline REC] Popup: pending_mic_recording intent:', intent)
+    console.log(LOG, 'pending mic recording intent:', intent)
     if (!intent?.audioMode) return
 
-    console.log('[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:', intent.audioMode)
+    console.log(LOG, 'consuming mic intent, pre-selecting audio mode:', intent.audioMode)
     await removeLocal(StorageKey.PENDING_MIC_RECORDING)
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) {
         chrome.tabs
           .sendMessage(tabs[0].id, {
-            type: 'gasoline_action_toast',
+            type: 'kaboom_action_toast',
             text: '',
             detail: '',
             state: 'success' as const,
@@ -341,9 +343,9 @@ export function setupRecordingUI(): void {
   })
 
   row.addEventListener('click', () => {
-    console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording)
+    console.log(LOG, 'record row clicked, isRecording:', state.isRecording)
     if (pendingRecordingIntent && !state.isRecording) {
-      console.log('[Gasoline REC] Popup: record row click ignored while approval is pending')
+      console.log(LOG, 'record row click ignored while approval is pending')
       return
     }
     removeRecordHighlight(els)

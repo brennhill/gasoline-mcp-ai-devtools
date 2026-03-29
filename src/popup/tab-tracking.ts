@@ -40,7 +40,7 @@ function showCloakedState(btn: HTMLButtonElement): void {
   if (trackingBar) trackingBar.style.display = 'none'
   btn.disabled = true
   btn.textContent = 'Tracking Disabled on This Site'
-  btn.title = 'This domain is in the cloaked domains list. Gasoline is disabled here to prevent interference.'
+  btn.title = 'This domain is in the cloaked domains list. Kaboom is disabled here to prevent interference.'
   Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' })
 }
 
@@ -156,4 +156,3 @@ export function initTrackPageButton(): void {
 export async function handleTrackPageClick(): Promise<void> {
   return handleTrackPageClickAPI(showInternalPageState, showCloakedState, showTrackingState, showIdleState)
 }
-

@@ -1,5 +1,5 @@
 ---
-feature: Gasoline CI Infrastructure
+feature: Kaboom CI Infrastructure
 status: proposed
 tier: v6.0 Wave 1 (Core Thesis)
 last_reviewed: 2026-03-05
@@ -7,7 +7,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Business Pitch: Gasoline CI Infrastructure
+# Business Pitch: Kaboom CI Infrastructure
 
 ## Executive Summary
 
@@ -17,7 +17,7 @@ last_verified_date: 2026-03-05
 - Root causes remain hidden (just error text)
 - Fixes proposed by AI lack verification
 
-**Solution:** Gasoline CI Infrastructure brings full observability to CI pipelines. Test failures autonomously diagnosed and repaired **in seconds, with proof**, using the same browser context AI has in local development.
+**Solution:** Kaboom CI Infrastructure brings full observability to CI pipelines. Test failures autonomously diagnosed and repaired **in seconds, with proof**, using the same browser context AI has in local development.
 
 ### Business Impact:
 - **60% reduction** in mean time to debug (MTTD) — from 45 minutes to 18 minutes
@@ -87,14 +87,14 @@ Annual impact:
 
 ---
 
-## The Solution: Gasoline CI Infrastructure
+## The Solution: Kaboom CI Infrastructure
 
 ### New Workflow (With CI Infrastructure)
 
 ```
 🟥 TEST FAILS IN GITHUB ACTIONS
    ↓
-📸 GASOLINE CAPTURES SNAPSHOT
+📸 KABOOM CAPTURES SNAPSHOT
    • Browser state (DOM, network calls, logs)
    • Test isolation (marks test-specific logs)
    • Network trace (all API calls recorded)
@@ -156,7 +156,7 @@ Annual impact:
 
 ### Secondary: AI Coding Agent Builders
 
-**Who:** Anthropic, Cursor, GitHub Copilot, etc. (integrating Gasoline)
+**Who:** Anthropic, Cursor, GitHub Copilot, etc. (integrating Kaboom)
 
 #### Pain Point:
 - "Our agents work great locally, but fail in CI"
@@ -274,7 +274,7 @@ AI proposes code fix → Engineer manually verifies → Human approval required
 
 #### With CI Infrastructure:
 ```
-AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
+AI proposes fix → Kaboom captures snapshot → Test re-runs autonomously
 → Evidence trail generated → Audit log created
 ```
 
@@ -352,12 +352,12 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 - ✗ No autonomous repair
 - ✗ No browser context in CI
 
-#### Gasoline CI:
+#### Kaboom CI:
 - ✓ Full browser context (snapshots)
 - ✓ Autonomous diagnosis + repair
 - ✓ Integrated with AI agents
 
-**Winner:** Gasoline (by 10x)
+**Winner:** Kaboom (by 10x)
 
 ---
 
@@ -369,12 +369,12 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 - ✗ No diagnosis; human must interpret
 - ✗ No repair capability
 
-#### Gasoline CI:
+#### Kaboom CI:
 - ✓ Captures trace automatically
 - ✓ AI diagnoses autonomously
 - ✓ AI repairs + verifies
 
-**Winner:** Gasoline (complementary, but AI adds 10x value)
+**Winner:** Kaboom (complementary, but AI adds 10x value)
 
 ---
 
@@ -389,14 +389,14 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 - Commits + waits for CI
 - MTTD: 45 minutes
 
-#### Gasoline CI Process:
+#### Kaboom CI Process:
 - AI analyzes snapshot automatically
 - AI re-runs test in CI (same hardware)
 - AI generates fix + evidence
 - Developer reviews PR comment
 - MTTD: 5 minutes
 
-**Winner:** Gasoline (9x faster)
+**Winner:** Kaboom (9x faster)
 
 ---
 
@@ -446,10 +446,10 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 #### Channels:
 - Twitter/X: "CI test failures fixed autonomously in 3 minutes"
-- Dev blogs: "How Gasoline cuts MTTD by 12x"
+- Dev blogs: "How Kaboom cuts MTTD by 12x"
 - HN, Reddit, Product Hunt: Launch story
 
-**Message:** "Tired of debugging in CI? Gasoline does it for you."
+**Message:** "Tired of debugging in CI? Kaboom does it for you."
 
 **Target:** Solos, small teams (build adoption)
 
@@ -513,7 +513,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 **Today:** CI test failures waste 750,000+ hours/year across 100-person teams.
 
-### With Gasoline CI Infrastructure:
+### With Kaboom CI Infrastructure:
 - **12-15x faster** failure diagnosis (30 min → 3 min)
 - **95% cost reduction** ($100-200/failure → $5-10/failure)
 - **Autonomous repair** (AI diagnoses + verifies in CI)
@@ -530,4 +530,3 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 - Lock-in: Becomes default layer for all CI debugging
 
 **Launch Timeline:** v6.0 Wave 1 (4-6 weeks), ready for Y1 launch + marketing
-

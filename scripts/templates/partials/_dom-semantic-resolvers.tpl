@@ -25,7 +25,7 @@
             }
           }
           const target = interactive || interactiveChild || parent
-          if (isGasolineOwnedElement(target) || !isVisible(target)) continue
+          if (isKaboomOwnedElement(target) || !isVisible(target)) continue
           if (!seen.has(target)) {
             seen.add(target)
             results.push(target)
@@ -107,7 +107,7 @@
             }
           }
           const target = interactive || interactiveChild || parent
-          if (isGasolineOwnedElement(target)) continue
+          if (isKaboomOwnedElement(target)) continue
           if (!fallback) fallback = target
           if (isVisible(target)) return target
         }

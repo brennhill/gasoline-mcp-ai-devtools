@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	az "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/analyze"
 )
 
 // toolAnalyzeLinkHealth checks all links on the current page for health issues.

@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-When `browser_action navigate` is called, Chrome navigates to the new URL but the Gasoline content script may not be loaded on the destination page. This causes subsequent AI Web Pilot tools (`highlight_element`, `execute_javascript`, `manage_state`) to fail with "content script not loaded" errors.
+When `browser_action navigate` is called, Chrome navigates to the new URL but the Kaboom content script may not be loaded on the destination page. This causes subsequent AI Web Pilot tools (`highlight_element`, `execute_javascript`, `manage_state`) to fail with "content script not loaded" errors.
 
 Currently, this requires manual page refresh, breaking the autonomous AI workflow.
 
@@ -26,7 +26,7 @@ The background script will ping the content script after navigation completes:
 
 ```javascript
 // Send ping to content script
-const response = await chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' })
+const response = await chrome.tabs.sendMessage(tabId, { type: 'KABOOM_PING' })
 // If response received, content script is loaded
 // If error thrown, content script is not loaded
 ```
@@ -71,7 +71,7 @@ The `browser_action navigate` response will include additional fields:
 Add to content.js:
 
 ```javascript
-if (message.type === 'GASOLINE_PING') {
+if (message.type === 'KABOOM_PING') {
   sendResponse({ status: 'alive', timestamp: Date.now() })
   return true
 }

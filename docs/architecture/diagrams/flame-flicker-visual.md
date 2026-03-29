@@ -26,7 +26,7 @@ stateDiagram-v2
 
     note right of NotTracking
         Favicon: Site's original icon
-        No Gasoline indicator
+        No Kaboom indicator
     end note
 
     note right of TrackingOnly
@@ -73,7 +73,7 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User
-    participant Popup as Gasoline Popup
+    participant Popup as Kaboom Popup
     participant BG as Background Script
     participant Storage as chrome.storage.local
     participant Content as Content Script<br/>(Tracked Tab)
@@ -268,7 +268,7 @@ graph TD
 
 ```mermaid
 journey
-    title Developer Using Gasoline with AI Pilot
+    title Developer Using Kaboom with AI Pilot
 
     section Working on Bug
       Open buggy page: 5: Developer

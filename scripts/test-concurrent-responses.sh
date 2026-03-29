@@ -5,7 +5,7 @@ set -euo pipefail
 # Verifies no race conditions cause empty responses
 
 PORT="$((8000 + RANDOM % 1000))"
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 TEMP_DIR="$(mktemp -d)"
 
 echo "========================================"

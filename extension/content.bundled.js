@@ -2,11 +2,11 @@
 (() => {
   // extension/lib/timeouts.js
   function readTestScale() {
-    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.KABOOM_TEST_TIMEOUT_SCALE === "number" ? globalThis.KABOOM_TEST_TIMEOUT_SCALE : null;
     if (globalScale !== null)
       return globalScale;
     if (typeof process !== "undefined" && process.env) {
-      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+      const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE;
       if (raw) {
         const parsed = Number(raw);
         if (Number.isFinite(parsed))
@@ -41,7 +41,7 @@
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher"
+    SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -74,22 +74,22 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
-    ACTION_RECORDING: "gasoline_action_recording",
-    RECORDING: "gasoline_recording",
-    TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
-    PENDING_RECORDING: "gasoline_pending_recording",
-    PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
-    MIC_GRANTED: "gasoline_mic_granted",
-    RECORD_AUDIO_PREF: "gasoline_record_audio_pref",
-    TERMINAL_CONFIG: "gasoline_terminal_config",
-    TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command",
-    TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root",
-    POPUP_LAST_STATUS: "gasoline_popup_last_status",
-    TERMINAL_SESSION: "gasoline_terminal_session",
-    TERMINAL_UI_STATE: "gasoline_terminal_ui_state",
-    TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id",
-    TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id",
-    CLOAKED_DOMAINS: "gasoline_cloaked_domains"
+    ACTION_RECORDING: "kaboom_action_recording",
+    RECORDING: "kaboom_recording",
+    TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden",
+    PENDING_RECORDING: "kaboom_pending_recording",
+    PENDING_MIC_RECORDING: "kaboom_pending_mic_recording",
+    MIC_GRANTED: "kaboom_mic_granted",
+    RECORD_AUDIO_PREF: "kaboom_record_audio_pref",
+    TERMINAL_CONFIG: "kaboom_terminal_config",
+    TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command",
+    TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root",
+    POPUP_LAST_STATUS: "kaboom_popup_last_status",
+    TERMINAL_SESSION: "kaboom_terminal_session",
+    TERMINAL_UI_STATE: "kaboom_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id",
+    CLOAKED_DOMAINS: "kaboom_cloaked_domains"
   };
 
   // extension/lib/storage-utils.js
@@ -98,32 +98,92 @@
       return null;
     return chrome.storage;
   }
+  function isPromiseLike(value) {
+    return typeof value === "object" && value !== null && typeof value.then === "function";
+  }
+  function readStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (result = {}) => {
+        if (settled)
+          return;
+        settled = true;
+        resolve(result);
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then((result) => finish(result ?? {})).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function writeStorage(method, items) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(items, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function removeFromStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
   async function getLocal(key) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return void 0;
-    const result = await chrome.storage.local.get([key]);
+    const result = await readStorage(chrome.storage.local.get.bind(chrome.storage.local), key);
     return result[key];
   }
   async function getLocals(keys) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return {};
-    return await chrome.storage.local.get(keys);
+    return await readStorage(chrome.storage.local.get.bind(chrome.storage.local), keys);
   }
   async function setLocal(key, value) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.set({ [key]: value });
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), { [key]: value });
   }
   async function removeLocal(key) {
     if (typeof chrome === "undefined" || !chrome.storage)
       return;
-    await chrome.storage.local.remove([key]);
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), [key]);
   }
   async function getSession(key) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
       return void 0;
-    const result = await storage.session.get([key]);
+    const result = await readStorage(storage.session.get.bind(storage.session), key);
     return result[key];
   }
   function onStorageChanged(listener) {
@@ -201,7 +261,7 @@
   var injectionPromise = null;
   var bridgeProbePromise = null;
   var bridgeProbeCounter = 0;
-  var NONCE_ATTR = "data-gasoline-nonce";
+  var NONCE_ATTR = "data-kaboom-nonce";
   var pageNonce = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
   function getPageNonce() {
     return pageNonce;
@@ -226,21 +286,21 @@
         continue;
       if (setting.isMode) {
         window.postMessage({
-          type: "gasoline_setting",
+          type: "kaboom_setting",
           setting: setting.messageType,
           mode: value,
           _nonce: pageNonce
         }, window.location.origin);
       } else {
-        window.postMessage({ type: "gasoline_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+        window.postMessage({ type: "kaboom_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
       }
     }
   }
   function injectAxeCore() {
-    if (document.getElementById("gasoline-axe-loader"))
+    if (document.getElementById("kaboom-axe-loader"))
       return;
     const script = document.createElement("script");
-    script.id = "gasoline-axe-loader";
+    script.id = "kaboom-axe-loader";
     script.src = chrome.runtime.getURL("lib/axe.min.js");
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
@@ -254,7 +314,7 @@
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
     script.type = "module";
-    script.dataset.gasolineNonce = pageNonce;
+    script.dataset.kaboomNonce = pageNonce;
     return new Promise((resolve) => {
       script.onload = () => {
         script.remove();
@@ -341,7 +401,7 @@
       const onMessage = (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
           return;
-        if (event.data?.type !== "gasoline_inject_bridge_pong")
+        if (event.data?.type !== "kaboom_inject_bridge_pong")
           return;
         if (event.data?.requestId !== requestId)
           return;
@@ -353,7 +413,7 @@
       timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
       try {
         window.postMessage({
-          type: "gasoline_inject_bridge_ping",
+          type: "kaboom_inject_bridge_ping",
           requestId,
           _nonce: pageNonce
         }, window.location.origin);
@@ -499,13 +559,21 @@
     cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS);
   }
 
+  // extension/lib/brand.js
+  var KABOOM_DOCS_URL = "https://gokaboom.dev/docs";
+  var KABOOM_REPOSITORY_URL = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP";
+  var KABOOM_LOG_PREFIX = "[Kaboom]";
+  function getReloadedExtensionWarning() {
+    return "[Kaboom] Please refresh this page. The Kaboom extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.";
+  }
+
   // extension/content/message-forwarding.js
   var MESSAGE_MAP = {
-    gasoline_log: "log",
-    gasoline_ws: "ws_event",
-    gasoline_network_body: "network_body",
-    gasoline_enhanced_action: "enhanced_action",
-    gasoline_performance_snapshot: "performance_snapshot"
+    kaboom_log: "log",
+    kaboom_ws: "ws_event",
+    kaboom_network_body: "network_body",
+    kaboom_enhanced_action: "enhanced_action",
+    kaboom_performance_snapshot: "performance_snapshot"
   };
   var contextValid = true;
   function safeSendMessage(msg) {
@@ -516,17 +584,17 @@
     } catch (e) {
       if (e instanceof Error && e.message?.includes("Extension context invalidated")) {
         contextValid = false;
-        console.warn("[Gasoline] Please refresh this page. The Gasoline extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.");
+        console.warn(getReloadedExtensionWarning());
       }
     }
   }
 
   // extension/content/window-message-listener.js
   var RESPONSE_HANDLERS = {
-    gasoline_highlight_response: (id, result) => resolveHighlightRequest(id, result),
-    gasoline_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
-    gasoline_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
-    gasoline_dom_query_response: (id, result) => resolveDomRequest(id, result)
+    kaboom_highlight_response: (id, result) => resolveHighlightRequest(id, result),
+    kaboom_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
+    kaboom_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
+    kaboom_dom_query_response: (id, result) => resolveDomRequest(id, result)
   };
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
@@ -578,11 +646,12 @@
   async function withTimeoutAndCleanup(promise, timeoutMs, options) {
     const fallback = options?.fallback;
     const cleanup = options?.cleanup;
+    let timeoutId;
     try {
       return await Promise.race([
         promise,
         new Promise((_, reject) => {
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             cleanup?.();
             if (fallback !== void 0) {
               reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
@@ -597,6 +666,9 @@
         return err.fallback;
       }
       throw err;
+    } finally {
+      if (timeoutId)
+        clearTimeout(timeoutId);
     }
   }
 
@@ -1009,7 +1081,7 @@
       const requestId = registerHighlightRequest((result) => deferred.resolve(result));
       const deferred = createDeferredPromise();
       postToInject({
-        type: "gasoline_highlight_request",
+        type: "kaboom_highlight_request",
         requestId,
         params: message.params
       });
@@ -1030,14 +1102,14 @@
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "gasoline_state_response" && event.data?.messageId === messageId) {
+      if (event.data?.type === "kaboom_state_response" && event.data?.messageId === messageId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve(event.data.result || { error: "No result from state command" });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "gasoline_state_command",
+      type: "kaboom_state_command",
       messageId,
       action,
       name,
@@ -1056,7 +1128,7 @@
   function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
       return;
-    const payload = { type: "gasoline_setting", setting: message.type };
+    const payload = { type: "kaboom_setting", setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
       payload.mode = message.mode;
     } else if (message.type === SettingName.SERVER_URL) {
@@ -1081,7 +1153,7 @@
       }
     }, safetyTimeoutMs);
     postToInject({
-      type: "gasoline_execute_js",
+      type: "kaboom_execute_js",
       requestId,
       script: params.script || "",
       timeoutMs
@@ -1126,7 +1198,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "gasoline_a11y_query",
+      type: "kaboom_a11y_query",
       requestId,
       params: parsedParams
     });
@@ -1142,7 +1214,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "gasoline_dom_query",
+      type: "kaboom_dom_query",
       requestId,
       params: parsedParams
     });
@@ -1157,14 +1229,14 @@
       const nonce = event.data?._nonce;
       if (nonce && nonce !== getPageNonce())
         return;
-      if (event.data?.type === "gasoline_waterfall_response" && event.data?.requestId === requestId) {
+      if (event.data?.type === "kaboom_waterfall_response" && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve({ entries: event.data.entries || [] });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "gasoline_get_waterfall",
+      type: "kaboom_get_waterfall",
       requestId
     });
     withTimeoutAndCleanup(deferred.promise, 5e3, {
@@ -1201,19 +1273,19 @@
     return true;
   }
   function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery("gasoline_computed_styles_query", "gasoline_computed_styles_response", "Computed styles query", params, sendResponse);
+    return forwardInjectQuery("kaboom_computed_styles_query", "kaboom_computed_styles_response", "Computed styles query", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery("gasoline_form_discovery_query", "gasoline_form_discovery_response", "Form discovery", params, sendResponse);
+    return forwardInjectQuery("kaboom_form_discovery_query", "kaboom_form_discovery_response", "Form discovery", params, sendResponse);
   }
   function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery("gasoline_form_state_query", "gasoline_form_state_response", "Form state", params, sendResponse);
+    return forwardInjectQuery("kaboom_form_state_query", "kaboom_form_state_response", "Form state", params, sendResponse);
   }
   function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery("gasoline_data_table_query", "gasoline_data_table_response", "Data table extraction", params, sendResponse);
+    return forwardInjectQuery("kaboom_data_table_query", "kaboom_data_table_response", "Data table extraction", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery("gasoline_link_health_query", "gasoline_link_health_response", "Link health check", params, sendResponse);
+    return forwardInjectQuery("kaboom_link_health_query", "kaboom_link_health_response", "Link health check", params, sendResponse);
   }
   function handleGetReadable(sendResponse) {
     try {
@@ -1249,25 +1321,25 @@
     audio: { bg: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", shadow: "rgba(249, 115, 22, 0.5)" }
   };
   var TOAST_ANIMATION_CSS = [
-    "@keyframes gasolineArrowBounceUp {",
+    "@keyframes kaboomArrowBounceUp {",
     "  0%, 100% { transform: translateY(0); opacity: 1; }",
     "  50% { transform: translateY(-6px); opacity: 0.7; }",
     "}",
-    "@keyframes gasolineToastPulse {",
+    "@keyframes kaboomToastPulse {",
     "  0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }",
     "  50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }",
     "}",
-    ".gasoline-toast-arrow {",
+    ".kaboom-toast-arrow {",
     "  display: inline-block; margin-left: 8px;",
-    "  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;",
+    "  animation: kaboomArrowBounceUp 1.5s ease-in-out infinite;",
     "}",
-    ".gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }"
+    ".kaboom-toast-pulse { animation: kaboomToastPulse 2s ease-in-out infinite; }"
   ].join("\n");
   function injectToastAnimationStyles() {
-    if (document.getElementById("gasoline-toast-animations"))
+    if (document.getElementById("kaboom-toast-animations"))
       return;
     const style = document.createElement("style");
-    style.id = "gasoline-toast-animations";
+    style.id = "kaboom-toast-animations";
     style.textContent = TOAST_ANIMATION_CSS;
     document.head.appendChild(style);
   }
@@ -1277,7 +1349,7 @@
     return text.slice(0, maxLen - 1) + "\u2026";
   }
   function showActionToast(text, detail, state = "trying", durationMs = 3e3) {
-    const existing = document.getElementById("gasoline-action-toast");
+    const existing = document.getElementById("kaboom-action-toast");
     if (existing)
       existing.remove();
     injectToastAnimationStyles();
@@ -1285,9 +1357,9 @@
     const isAudioPrompt = state === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
     const arrowChar = "\u2191";
     const toast = document.createElement("div");
-    toast.id = "gasoline-action-toast";
+    toast.id = "kaboom-action-toast";
     if (isAudioPrompt) {
-      toast.className = "gasoline-toast-pulse";
+      toast.className = "kaboom-toast-pulse";
     }
     if (isAudioPrompt) {
       const icon = document.createElement("img");
@@ -1316,7 +1388,7 @@
     }
     if (isAudioPrompt) {
       const arrow = document.createElement("span");
-      arrow.className = "gasoline-toast-arrow";
+      arrow.className = "kaboom-toast-arrow";
       arrow.textContent = arrowChar;
       Object.assign(arrow.style, {
         fontSize: "16px",
@@ -1391,12 +1463,12 @@
   }
   function clearSubtitle() {
     clearAutoTimer();
-    fadeOutAndRemove("gasoline-subtitle", 200);
+    fadeOutAndRemove("kaboom-subtitle", 200);
     detachEscapeListener();
   }
   function showSubtitle(text) {
-    const ELEMENT_ID = "gasoline-subtitle";
-    const CLOSE_BTN_ID = "gasoline-subtitle-close";
+    const ELEMENT_ID = "kaboom-subtitle";
+    const CLOSE_BTN_ID = "kaboom-subtitle-close";
     if (!text) {
       clearSubtitle();
       return;
@@ -1496,7 +1568,7 @@
     }, SUBTITLE_AUTO_TIMEOUT_MS);
   }
   function toggleRecordingWatermark(visible) {
-    const ELEMENT_ID = "gasoline-recording-watermark";
+    const ELEMENT_ID = "kaboom-recording-watermark";
     if (!visible) {
       const existing = document.getElementById(ELEMENT_ID);
       if (existing) {
@@ -1533,10 +1605,10 @@
   }
 
   // extension/content/ui/chat-widget.js
-  var WIDGET_ID = "gasoline-chat-widget";
-  var INPUT_ID = "gasoline-chat-input";
-  var PIN_ID = "gasoline-chat-pin";
-  var STATUS_ID = "gasoline-chat-status";
+  var WIDGET_ID = "kaboom-chat-widget";
+  var INPUT_ID = "kaboom-chat-input";
+  var PIN_ID = "kaboom-chat-pin";
+  var STATUS_ID = "kaboom-chat-status";
   var isPinned = false;
   var currentClientName = "AI";
   var chatEscapeHandler = null;
@@ -1781,7 +1853,7 @@
       statusEl.style.color = "#60a5fa";
     }
     chrome.runtime.sendMessage({
-      type: "gasoline_push_chat",
+      type: "kaboom_push_chat",
       message,
       page_url: window.location.href
     }, (response) => {
@@ -1816,16 +1888,31 @@
   // extension/content/runtime-message-listener.js
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
-  async function initRuntimeMessageListener() {
-    const result = await getLocals(["actionToastsEnabled", "subtitlesEnabled"]);
+  function applyOverlayToggleState(result) {
     if (result.actionToastsEnabled !== void 0)
       actionToastsEnabled = result.actionToastsEnabled;
     if (result.subtitlesEnabled !== void 0)
       subtitlesEnabled = result.subtitlesEnabled;
+  }
+  function hydrateOverlayToggleState() {
+    if (typeof chrome === "undefined" || !chrome.storage?.local)
+      return;
+    try {
+      const maybePromise = chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], applyOverlayToggleState);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        void maybePromise.then((result) => applyOverlayToggleState(result));
+      }
+    } catch {
+    }
+  }
+  function initRuntimeMessageListener() {
+    actionToastsEnabled = true;
+    subtitlesEnabled = true;
+    hydrateOverlayToggleState();
     const syncHandlers = {
-      gasoline_ping: () => {
+      kaboom_ping: () => {
       },
-      gasoline_action_toast: (msg) => {
+      kaboom_action_toast: (msg) => {
         if (!actionToastsEnabled)
           return false;
         const m = msg;
@@ -1833,15 +1920,15 @@
           showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
         return false;
       },
-      gasoline_toggle_chat: (msg) => {
+      kaboom_toggle_chat: (msg) => {
         toggleChatWidget(msg.client_name);
         return false;
       },
-      gasoline_recording_watermark: (msg) => {
+      kaboom_recording_watermark: (msg) => {
         toggleRecordingWatermark(msg.visible ?? false);
         return false;
       },
-      gasoline_subtitle: (msg) => {
+      kaboom_subtitle: (msg) => {
         if (!subtitlesEnabled)
           return false;
         showSubtitle(msg.text ?? "");
@@ -1857,28 +1944,28 @@
       }
     };
     const delegatedHandlers = {
-      gasoline_draw_mode_start: (msg, sr) => {
+      kaboom_draw_mode_start: (msg, sr) => {
         const m = msg;
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result2 = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
-          sr(result2);
+          const result = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
+          sr(result);
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      gasoline_draw_mode_stop: (_msg, sr) => {
+      kaboom_draw_mode_stop: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
         ).then((mod) => {
-          const result2 = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
-          sr(result2 || { status: "stopped" });
+          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
+          sr(result || { status: "stopped" });
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      gasoline_get_annotations: (_msg, sr) => {
+      kaboom_get_annotations: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1887,16 +1974,16 @@
         }).catch(() => sr({ draw_mode_active: false }));
         return true;
       },
-      gasoline_highlight: (msg, sr) => {
+      kaboom_highlight: (msg, sr) => {
         forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;
       },
-      gasoline_manage_state: (msg, sr) => {
+      kaboom_manage_state: (msg, sr) => {
         handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
         return true;
       },
-      gasoline_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-      gasoline_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      kaboom_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      kaboom_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
       a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
       dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
       get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
@@ -1905,16 +1992,16 @@
       form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
       form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
       data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
-      gasoline_get_readable: (_msg, sr) => handleGetReadable(sr),
-      gasoline_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-      gasoline_page_summary: (_msg, sr) => handlePageSummary(sr)
+      kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
+      kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
-        console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
+        console.warn(KABOOM_LOG_PREFIX, "Rejected message from untrusted sender:", sender.id);
         return false;
       }
-      if (message.type === "gasoline_ping")
+      if (message.type === "kaboom_ping")
         return handlePing(sendResponse);
       const syncHandler = syncHandlers[message.type];
       if (syncHandler) {
@@ -1970,15 +2057,15 @@
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
-    link.id = "gasoline-favicon";
+    link.id = "kaboom-favicon";
     const iconPath = withGlow ? "icons/icon-glow.svg" : "icons/icon.svg";
     link.href = chrome.runtime.getURL(iconPath);
     document.head.appendChild(link);
   }
   function restoreOriginalFavicon() {
-    const gasolineIcon = document.getElementById("gasoline-favicon");
-    if (gasolineIcon) {
-      gasolineIcon.remove();
+    const kaboomIcon = document.getElementById("kaboom-favicon");
+    if (kaboomIcon) {
+      kaboomIcon.remove();
     }
     if (originalFaviconHref) {
       const link = document.createElement("link");
@@ -2012,10 +2099,10 @@
     let currentFrameIndex = 0;
     flickerInterval = window.setInterval(() => {
       currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length;
-      const gasolineIcon = document.getElementById("gasoline-favicon");
-      if (gasolineIcon) {
+      const kaboomIcon = document.getElementById("kaboom-favicon");
+      if (kaboomIcon) {
         const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
-        gasolineIcon.href = chrome.runtime.getURL(iconPath);
+        kaboomIcon.href = chrome.runtime.getURL(iconPath);
       }
     }, 150);
   }
@@ -2098,10 +2185,10 @@
   }
 
   // extension/content/ui/tracked-hover-launcher.js
-  var ROOT_ID = "gasoline-tracked-hover-launcher";
-  var PANEL_ID = "gasoline-tracked-hover-panel";
-  var TOGGLE_ID = "gasoline-tracked-hover-toggle";
-  var SETTINGS_MENU_ID = "gasoline-tracked-hover-settings-menu";
+  var ROOT_ID = "kaboom-tracked-hover-launcher";
+  var PANEL_ID = "kaboom-tracked-hover-panel";
+  var TOGGLE_ID = "kaboom-tracked-hover-toggle";
+  var SETTINGS_MENU_ID = "kaboom-tracked-hover-settings-menu";
   var rootEl = null;
   var panelEl = null;
   var settingsMenuEl = null;
@@ -2280,18 +2367,18 @@
     if (annotationListenerInstalled)
       return;
     annotationListenerInstalled = true;
-    window.addEventListener("gasoline-annotations-ready", handleAnnotationsReady);
+    window.addEventListener("kaboom-annotations-ready", handleAnnotationsReady);
   }
   function uninstallAnnotationListener() {
     if (!annotationListenerInstalled)
       return;
     annotationListenerInstalled = false;
-    window.removeEventListener("gasoline-annotations-ready", handleAnnotationsReady);
+    window.removeEventListener("kaboom-annotations-ready", handleAnnotationsReady);
   }
   async function startDrawMode() {
     try {
       if (!chrome?.runtime?.getURL) {
-        console.warn("[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
+        console.warn("[Kaboom] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
         return;
       }
       const drawModeModule = await import(
@@ -2302,7 +2389,7 @@
         drawModeModule.activateDrawMode("user");
       }
     } catch (err) {
-      console.warn("[Gasoline] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
+      console.warn("[Kaboom] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
     }
   }
   var shutterAudioCtx = null;
@@ -2610,9 +2697,9 @@
       pointerEvents: "none",
       willChange: "opacity, transform"
     });
-    const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", "https://cookwithgasoline.com/docs");
-    const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp");
-    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide STRUM Devtool");
+    const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", KABOOM_DOCS_URL);
+    const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", KABOOM_REPOSITORY_URL);
+    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide Kaboom Devtool");
     hideButton.addEventListener("click", () => {
       hideLauncherUntilPopupReopen();
     });
@@ -2622,10 +2709,10 @@
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
-    toggle.title = "STRUM quick actions";
+    toggle.title = "Kaboom quick actions";
     const toggleIcon = document.createElement("img");
     toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
-    toggleIcon.alt = "STRUM";
+    toggleIcon.alt = "Kaboom";
     Object.assign(toggleIcon.style, {
       width: "36px",
       height: "36px",

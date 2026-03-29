@@ -5,7 +5,7 @@ package main
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // sortedMapKeys returns a sorted, comma-separated list of keys from a string-keyed map.

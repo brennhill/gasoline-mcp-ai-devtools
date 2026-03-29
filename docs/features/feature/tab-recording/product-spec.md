@@ -34,16 +34,16 @@ Today's workflow for sharing what happened in a browser:
 ### The workflow:
 
 1. Start recording (AI says `interact({action: "screen_recording_start", name: "checkout bug"})` or user clicks Record in popup)
-2. Interact with the page normally — Gasoline's subtitles and action toasts are captured in the video automatically
-3. Stop recording → video saved to `~/.gasoline/recordings/` with a metadata sidecar file
+2. Interact with the page normally — Kaboom's subtitles and action toasts are captured in the video automatically
+3. Stop recording → video saved to `~/.kaboom/recordings/` with a metadata sidecar file
 4. AI can list recordings via `observe({what: "saved_videos"})` and reference them by name
 
-### Why this belongs in Gasoline:
+### Why this belongs in Kaboom:
 
 - **Subtitles and toasts are already in-page** — they appear in the recorded video for free, providing narration without extra tooling
 - **Zero extra apps** — no Loom, no OBS, no browser extension conflicts
 - **AI-controlled** — the AI can start/stop recording as part of a test flow or debugging session
-- **Paired with telemetry** — the video sits alongside console logs, network data, and performance metrics already in Gasoline
+- **Paired with telemetry** — the video sits alongside console logs, network data, and performance metrics already in Kaboom
 
 ---
 
@@ -55,9 +55,9 @@ Today's workflow for sharing what happened in a browser:
 1. Developer: "Record yourself reproducing the checkout bug"
 2. AI calls interact({action: "screen_recording_start", name: "checkout bug repro"})
 3. AI navigates to checkout, fills form, triggers the bug
-4. Gasoline subtitles narrate each step in the video
+4. Kaboom subtitles narrate each step in the video
 5. AI calls interact({action: "screen_recording_stop"})
-6. Video saved: ~/.gasoline/recordings/checkout-bug-repro--2026-02-07-1423.webm
+6. Video saved: ~/.kaboom/recordings/checkout-bug-repro--2026-02-07-1423.webm
 7. Developer shares the video — no Loom needed
 ```
 
@@ -113,7 +113,7 @@ Today's workflow for sharing what happened in a browser:
   - `15` — default, ~4MB/min (bug repros, most demos)
   - `30` — smooth, ~8MB/min (polished product demos)
   - `60` — high fidelity, ~15MB/min (animation/transition debugging)
-- [ ] Returns: `{status: "recording", name: "checkout-bug--2026-02-07-1423", path: "~/.gasoline/recordings/checkout-bug--2026-02-07-1423.webm", fps: 15}`
+- [ ] Returns: `{status: "recording", name: "checkout-bug--2026-02-07-1423", path: "~/.kaboom/recordings/checkout-bug--2026-02-07-1423.webm", fps: 15}`
 - [ ] If already recording, returns error: `"RECORD_START: Already recording. Stop current recording first."`
 
 #### Stop:
@@ -158,7 +158,7 @@ Today's workflow for sharing what happened in a browser:
     {
       "name": "checkout-bug-repro--2026-02-07-1423",
       "file": "checkout-bug-repro--2026-02-07-1423.webm",
-      "path": "/Users/brenn/.gasoline/recordings/checkout-bug-repro--2026-02-07-1423.webm",
+      "path": "/Users/brenn/.kaboom/recordings/checkout-bug-repro--2026-02-07-1423.webm",
       "created_at": "2026-02-07T14:23:00Z",
       "duration_seconds": 154,
       "size_bytes": 18400000,
@@ -171,17 +171,17 @@ Today's workflow for sharing what happened in a browser:
 ```
 
 #### Implementation:
-- [ ] Server globs `~/.gasoline/recordings/*.webm`
+- [ ] Server globs `~/.kaboom/recordings/*.webm`
 - [ ] Reads sidecar `*_meta.json` for each video
 - [ ] Returns sorted by `created_at` descending (newest first)
 
 ### R4: File Storage
 
-**Directory:** `~/.gasoline/recordings/` (created on first recording)
+**Directory:** `~/.kaboom/recordings/` (created on first recording)
 
 #### Files per recording:
 ```
-~/.gasoline/recordings/
+~/.kaboom/recordings/
   checkout-bug-repro--2026-02-07-1423.webm        # video
   checkout-bug-repro--2026-02-07-1423_meta.json    # metadata sidecar
 ```
@@ -209,7 +209,7 @@ Today's workflow for sharing what happened in a browser:
 
 ### R5: Subtitle & Toast Capture
 
-- [ ] Gasoline subtitles (`interact({action: "subtitle"})`) render as DOM elements in the page
+- [ ] Kaboom subtitles (`interact({action: "subtitle"})`) render as DOM elements in the page
 - [ ] Action toasts (from `reason` param) render as DOM elements in the page
 - [ ] `chrome.tabCapture` captures the rendered tab content, including these DOM overlays
 - [ ] No extra work needed — subtitles appear in the video automatically
@@ -230,7 +230,7 @@ Today's workflow for sharing what happened in a browser:
 
 - [ ] **Memory guard at 100MB** — recording auto-stops and saves when chunks exceed 100MB in memory. At 15fps (~4MB/min) that's ~25 min. At 60fps (~15MB/min) that's ~7 min. Recording is saved with `truncated: true`, not lost.
 - [ ] **One recording at a time** — concurrent recordings not supported
-- [ ] **Active tab only** — records the tab Gasoline is connected to
+- [ ] **Active tab only** — records the tab Kaboom is connected to
 - [ ] **No audio** — video only (tab audio is a future enhancement)
 - [ ] **Chrome/Chromium only** — `tabCapture` API is Chrome-specific
 
@@ -278,7 +278,7 @@ Today's workflow for sharing what happened in a browser:
 ### Functional
 - AI can start/stop recordings via `interact()`
 - User can start/stop recordings from extension popup
-- Named recordings with timestamps saved to `~/.gasoline/recordings/`
+- Named recordings with timestamps saved to `~/.kaboom/recordings/`
 - Metadata sidecar written alongside each video
 - `observe({what: "saved_videos"})` lists all recordings with metadata
 - Subtitles and action toasts visible in recorded video

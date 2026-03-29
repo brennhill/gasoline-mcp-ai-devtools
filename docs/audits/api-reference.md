@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP -- Complete API Reference
+# Kaboom MCP -- Complete API Reference
 
 > Generated from source code audit on 2026-02-14.
 > This document covers every API surface: MCP tools, HTTP endpoints, and extension-daemon communication.
@@ -59,10 +59,10 @@ Negotiated during `initialize`. Server supports `2024-11-05`.
 
 ### Authentication
 
-- **HTTP API key**: Optional `X-Gasoline-Key` header. When `GASOLINE_API_KEY` env is set, all HTTP requests must include the matching key. Returns `401 Unauthorized` on mismatch.
+- **HTTP API key**: Optional `X-Kaboom-Key` header. When `KABOOM_API_KEY` env is set, all HTTP requests must include the matching key. Returns `401 Unauthorized` on mismatch.
 - **CORS**: Origin must be localhost, `chrome-extension://`, or `moz-extension://`. Returns `403 Forbidden` on invalid origin.
 - **Host validation**: Host header must be a localhost variant (DNS rebinding protection). Returns `403 Forbidden` on invalid host.
-- **Extension trust (TOFU)**: First-seen extension ID is paired and persisted. Subsequent connections must match. Override with `GASOLINE_EXTENSION_ID` or `GASOLINE_FIREFOX_EXTENSION_ID` env vars.
+- **Extension trust (TOFU)**: First-seen extension ID is paired and persisted. Subsequent connections must match. Override with `KABOOM_EXTENSION_ID` or `KABOOM_FIREFOX_EXTENSION_ID` env vars.
 
 ### Error Response Format
 
@@ -1013,7 +1013,7 @@ API discovery root.
 
 **Response (200)**:
 ```json
-{"name": "gasoline", "version": "...", "health": "/health", "logs": "/logs"}
+{"name": "kaboom", "version": "...", "health": "/health", "logs": "/logs"}
 ```
 
 **Response (404)**: For any path other than `/`:
@@ -1076,7 +1076,7 @@ Embedded OpenAPI 3.1.0 specification.
 
 Ingest log entries from extension.
 
-**Auth**: Extension only (`X-Gasoline-Client` header required)
+**Auth**: Extension only (`X-Kaboom-Client` header required)
 
 **Request body**:
 ```json
@@ -1159,7 +1159,7 @@ Initiate graceful shutdown via SIGTERM.
 
 ## 4. Extension-to-Daemon Endpoints
 
-All endpoints require `X-Gasoline-Client` header with value `gasoline-extension`, `gasoline-extension/{version}`, or `gasoline-extension-offscreen`.
+All endpoints require `X-Kaboom-Client` header with value `kaboom-extension`, `kaboom-extension/{version}`, or `kaboom-extension-offscreen`.
 
 ### Telemetry Ingestion
 
@@ -1214,17 +1214,17 @@ All endpoints require `X-Gasoline-Client` header with value `gasoline-extension`
 
 ## 5. MCP Resources
 
-### gasoline://guide
+### kaboom://guide
 
-**Name**: Gasoline Usage Guide
+**Name**: Kaboom Usage Guide
 
 **MIME Type**: text/markdown
 
 **Content**: Comprehensive usage guide with tool reference table, key patterns (pagination, async commands, error debugging), common workflows, and tips.
 
-### gasoline://quickstart
+### kaboom://quickstart
 
-**Name**: Gasoline MCP Quickstart
+**Name**: Kaboom MCP Quickstart
 
 **MIME Type**: text/markdown
 
@@ -1232,6 +1232,6 @@ All endpoints require `X-Gasoline-Client` header with value `gasoline-extension`
 
 ### Resource templates
 
-**Template**: gasoline://demo/{name}
+**Template**: kaboom://demo/{name}
 
 **Description**: Demo scripts for websockets, annotations, recording, and dependency vetting.

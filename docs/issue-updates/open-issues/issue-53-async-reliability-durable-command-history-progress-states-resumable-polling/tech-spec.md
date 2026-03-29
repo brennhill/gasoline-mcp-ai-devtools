@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #53
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/53
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/53
 - Title: Async reliability: durable command history, progress states, resumable polling
 
 ## Objective

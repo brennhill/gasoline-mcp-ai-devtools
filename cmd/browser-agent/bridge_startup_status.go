@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
 )
 
 // isServerRunning delegates to internal/bridge for health check.
@@ -39,7 +39,7 @@ func runningServerVersionCompatible(port int) (bool, string, string) {
 	}
 
 	serviceName := meta.resolvedServiceName()
-	if !isGasolineService(serviceName) {
+	if !isKaboomService(serviceName) {
 		return false, strings.TrimSpace(meta.Version), serviceName
 	}
 
@@ -58,9 +58,9 @@ func waitForServer(port int, timeout time.Duration) bool {
 func daemonStartupSuggestion(failErr string, port int) string {
 	suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
 	if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
-		suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
+		suggestion += fmt.Sprintf("Port may be in use. Try: npx kaboom-agentic-browser --port %d", port+1)
 	} else {
-		suggestion += "Try: npx gasoline-mcp --doctor"
+		suggestion += "Try: npx kaboom-agentic-browser --doctor"
 	}
 	return suggestion
 }

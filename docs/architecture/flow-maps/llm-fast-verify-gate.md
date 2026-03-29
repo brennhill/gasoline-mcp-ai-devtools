@@ -14,7 +14,7 @@ code_paths:
   - scripts/generate-wire-types.js
   - scripts/lint-documentation.py
   - scripts/docs/check-feature-bundles.js
-  - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-gokaboom-content-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
   - cmd/browser-agent/tools_schema_parity_test.go
   - cmd/browser-agent/tools_interact_navigate_document_test.go
@@ -73,7 +73,7 @@ Covers the fast, high-signal `verify-llm` quality gate for LLM maintenance loops
 - `scripts/generate-wire-types.js`
 - `scripts/lint-documentation.py`
 - `scripts/docs/check-feature-bundles.js`
-- `scripts/docs/check-cookwithgasoline-content-contract.mjs`
+- `scripts/docs/check-gokaboom-content-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`
 - `cmd/browser-agent/tools_schema_parity_test.go`
 - `cmd/browser-agent/tools_interact_navigate_document_test.go`

@@ -5,7 +5,7 @@ package export
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // matchesWaterfallFilter checks if a waterfall entry passes the filter criteria.

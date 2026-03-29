@@ -53,7 +53,7 @@ The MCP server runs **on your own machine**. No cloud service, no external APIs,
 2. **MCP server memory** (ring buffers, cleared on restart)
 3. **Local disk** (only if you use `--log-file` flag, stored at path you specify)
 
-No one else can access this data. Not Google, not Gasoline developers, not third parties.
+No one else can access this data. Not Google, not Kaboom developers, not third parties.
 
 ---
 
@@ -126,7 +126,7 @@ No one else can access this data. Not Google, not Gasoline developers, not third
 - ❌ Send data to any remote server
 - ❌ Contact the internet
 
-**Verification:** Open DevTools Network tab while Gasoline is running - you'll only see requests to localhost:7890.
+**Verification:** Open DevTools Network tab while Kaboom is running - you'll only see requests to localhost:7890.
 
 ### Why content script on `<all_urls>`?
 **Purpose:** Capture telemetry from any web application being debugged.
@@ -142,7 +142,7 @@ No one else can access this data. Not Google, not Gasoline developers, not third
 - ❌ Track your browsing across sites
 - ❌ Collect data from all tabs
 
-**Why `<all_urls>`?** This is a **developer tool** - you need to debug any web application (localhost, staging, production, any domain). Restricting to specific domains would make Gasoline useless.
+**Why `<all_urls>`?** This is a **developer tool** - you need to debug any web application (localhost, staging, production, any domain). Restricting to specific domains would make Kaboom useless.
 
 **User control:**
 1. Explicitly click "Track This Tab" to start
@@ -169,8 +169,8 @@ No one else can access this data. Not Google, not Gasoline developers, not third
 
 **How to verify:**
 ```bash
-# Monitor network traffic while Gasoline runs
-lsof -i -n -P | grep gasoline
+# Monitor network traffic while Kaboom runs
+lsof -i -n -P | grep kaboom
 # You'll only see localhost:7890
 ```
 
@@ -188,7 +188,7 @@ lsof -i -n -P | grep gasoline
 
 ### 4. Transparency
 **Open source:**
-- Full source code: <https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp>
+- Full source code: <https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp>
 - License: AGPL-3.0
 - All code is readable (no obfuscation)
 - Community can audit and verify privacy claims
@@ -233,18 +233,18 @@ lsof -i -n -P | grep gasoline
 
 ## Privacy Policy Summary
 
-**For cookwithgasoline.com/privacy/ page:**
+**For gokaboom.dev/privacy/ page:**
 
 ```markdown
-# Gasoline Privacy Policy
+# Kaboom Privacy Policy
 
 Last updated: February 2, 2026
 
 ## TL;DR
-Gasoline never sends your data anywhere. Everything stays on your machine. No cloud, no external servers, no telemetry.
+Kaboom never sends your data anywhere. Everything stays on your machine. No cloud, no external servers, no telemetry.
 
 ## What We Collect
-When you use Gasoline, the browser extension captures:
+When you use Kaboom, the browser extension captures:
 - Console logs from the tab you track
 - Network requests and responses
 - JavaScript errors and exceptions
@@ -258,7 +258,7 @@ When you use Gasoline, the browser extension captures:
 <http://localhost:7890>
 ```
 
-The MCP server runs on YOUR machine. We (Gasoline developers) cannot access this data.
+The MCP server runs on YOUR machine. We (Kaboom developers) cannot access this data.
 
 ## What We Automatically Redact
 Before sending to localhost:
@@ -285,12 +285,12 @@ You decide:
 You can uninstall anytime to stop all collection.
 
 ## Open Source
-Full source code: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+Full source code: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 License: AGPL-3.0
 Community can audit our privacy claims.
 
 ## Contact
-Questions? support@cookwithgasoline.com
+Questions? support@gokaboom.dev
 ```
 
 ---
@@ -331,10 +331,10 @@ This extension:
 - ✅ Each feature has clear description in popup
 
 **In the documentation:**
-- ✅ Setup guide shows `npx gasoline-mcp` (local server)
+- ✅ Setup guide shows `npx kaboom-mcp` (local server)
 - ✅ Privacy policy emphasizes localhost-only
 - ✅ GitHub README shows open source license
 - ✅ Architecture diagrams show no external connections
 
 **Competitive advantage:**
-Unlike SaaS observability tools (Sentry, LogRocket), Gasoline keeps ALL data on your infrastructure. This is our key differentiator.
+Unlike SaaS observability tools (Sentry, LogRocket), Kaboom keeps ALL data on your infrastructure. This is our key differentiator.

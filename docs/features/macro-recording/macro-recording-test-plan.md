@@ -253,7 +253,7 @@ last_verified_date: 2026-03-05
 SCENARIO: Save a login sequence, replay it, verify all steps executed
 
 GIVEN:
-  - Gasoline server running
+  - Kaboom server running
   - Extension connected with pilot enabled
   - Test app running at https://app.local
 
@@ -290,7 +290,7 @@ THEN:
 SCENARIO: Create, read, list, update, delete a sequence
 
 GIVEN:
-  - Gasoline server running
+  - Kaboom server running
 
 WHEN:
   Step 1: Save
@@ -362,7 +362,7 @@ THEN:
 
 ### UAT/Acceptance Tests
 
-**Framework:** Manual testing via Claude Code with gasoline-mcp from PATH
+**Framework:** Manual testing via Claude Code with kaboom-mcp from PATH
 
 #### UAT 1: Save and Replay a Navigation Sequence
 
@@ -487,7 +487,7 @@ THEN:
 4. Save a multi-step sequence (navigate + click + type)
 5. Replay the sequence
 6. Verify browser ends up in expected state
-7. Check ~/.gasoline/store/sequences/ for the persisted JSON file
+7. Check ~/.kaboom/store/sequences/ for the persisted JSON file
 8. Verify file contents match the saved sequence
 9. Restart daemon, verify sequence still accessible
 

@@ -7,7 +7,7 @@ relates-to: [360-observability-roadmap.md, backend-frontend-unification.md]
 last-verified: 2026-01-31
 ---
 
-# Gasoline 360° Observability: Target Architecture
+# Kaboom 360° Observability: Target Architecture
 
 **Comprehensive system design for v6 and v7 that enables autonomous feature development and test automation.**
 
@@ -99,12 +99,12 @@ last-verified: 2026-01-31
 
 ```typescript
 // extension/content.js
-class GasolineSensor {
+class KaboomSensor {
   private buffer = new CircularBuffer(maxSize: 10_000_events);
   private correlationId = generateUUID();
 
   // Intercept and buffer all events
-  captureEvent(event: GasolineEvent) {
+  captureEvent(event: KaboomEvent) {
     event.correlation_id = this.correlationId;
     event.timestamp = performance.now();
     this.buffer.push(event);
@@ -747,7 +747,7 @@ analyze({
 #### Baseline Storage
 
 ```
-.gasoline/
+.kaboom/
 ├── checkpoints/
 │   ├── happy_path_checkout.json
 │   ├── add_to_cart.json
@@ -774,7 +774,7 @@ analyze({
 3. LLM: interact({action: "explore", steps: [...]})
    → User fills form, submits
    ↓
-4. Gasoline captures:
+4. Kaboom captures:
    - DOM before/after
    - Console logs
    - Network requests
@@ -833,7 +833,7 @@ Git History ──────→ Normalize ──→ Enrichment ──→ (show
 5. LLM: interact({action: "explore", steps: [use_filter]})
    → Test new feature
    ↓
-6. Gasoline captures new behavior
+6. Kaboom captures new behavior
    ↓
 7. LLM: analyze({type: "regression"})
    → Compare to checkpoint

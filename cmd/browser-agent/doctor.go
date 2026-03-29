@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func isLocalPortAvailable(port int) bool {
@@ -40,7 +40,7 @@ func checkPortAvailability(port int) {
 		fmt.Println("FAILED")
 		fmt.Printf("  Port %d is already in use.\n", port)
 		fmt.Printf("  Fix: %s\n", portKillHint(port))
-		fmt.Printf("  Quick stop (Gasoline): gasoline --stop --port %d\n", port)
+		fmt.Printf("  Quick stop (Kaboom): kaboom --stop --port %d\n", port)
 		if suggested, ok := suggestAvailablePort(port+1, 25); ok {
 			fmt.Printf("  Suggested free port: --port %d\n", suggested)
 		} else {
@@ -71,8 +71,15 @@ func checkStateDirectory() {
 }
 
 func runSetupCheckWithOptions(port int, options setupCheckOptions) bool {
+	if options.minSamples == 0 && options.maxFailureRatio == 0 {
+		options.maxFailureRatio = -1
+	}
+	if options.minSamples == 0 {
+		options.minSamples = 50
+	}
+
 	fmt.Println()
-	fmt.Println("GASOLINE SETUP CHECK")
+	fmt.Println("KABOOM SETUP CHECK")
 	fmt.Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()
 	fmt.Printf("Version: %s\n", version)
@@ -105,7 +112,7 @@ func runSetupCheckWithOptions(port int, options setupCheckOptions) bool {
 	fmt.Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()
 	fmt.Println("Next steps:")
-	fmt.Println("  1. Start server:    npx gasoline-mcp")
+	fmt.Println("  1. Start server:    npx kaboom-agentic-browser")
 	fmt.Println("  2. Install extension:")
 	fmt.Println("     - Open chrome://extensions")
 	fmt.Println("     - Enable Developer mode")

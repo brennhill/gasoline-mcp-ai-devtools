@@ -36,9 +36,9 @@ Daily content schedule for Week 1:
 
 ### ✅ 3. Three Blog Posts Written
 **Files:**
-- [`01-how-gasoline-captures-websocket-messages.md`](docs/marketing/blog-drafts/01-how-gasoline-captures-websocket-messages.md:1) - Technical deep-dive
-- [`02-debugging-ai-generated-code-with-gasoline.md`](docs/marketing/blog-drafts/02-debugging-ai-generated-code-with-gasoline.md:1) - Practical tutorial
-- [`03-gasoline-vs-puppeteer-why-browser-extensions-win.md`](docs/marketing/blog-drafts/03-gasoline-vs-puppeteer-why-browser-extensions-win.md:1) - Comparison article
+- [`01-how-kaboom-captures-websocket-messages.md`](docs/marketing/blog-drafts/01-how-kaboom-captures-websocket-messages.md:1) - Technical deep-dive
+- [`02-debugging-ai-generated-code-with-kaboom.md`](docs/marketing/blog-drafts/02-debugging-ai-generated-code-with-kaboom.md:1) - Practical tutorial
+- [`03-kaboom-vs-puppeteer-why-browser-extensions-win.md`](docs/marketing/blog-drafts/03-kaboom-vs-puppeteer-why-browser-extensions-win.md:1) - Comparison article
 
 ### ✅ 4. Two Video Scripts Created
 **Files:**
@@ -97,7 +97,7 @@ Step-by-step instructions for:
 - [ ] Share video on social media
 
 ### Day 4 (Thursday)
-- [ ] Publish blog post #3 (Gasoline vs Puppeteer)
+- [ ] Publish blog post #3 (Kaboom vs Puppeteer)
 - [ ] Post Day 4 social media content
 - [ ] Record video #2 (WebSocket Capture Demo)
 
@@ -118,7 +118,7 @@ Step-by-step instructions for:
 ## Quick Reference: Links to Create
 
 ### Social Media Posts
-- Twitter/X: @gasolinedev
+- Twitter/X: @kaboomdev
 - LinkedIn: Create company page or use personal profile
 - Reddit: r/LocalLLaMA, r/ProgrammingTools, r/webdev
 
@@ -129,12 +129,12 @@ Step-by-step instructions for:
 - Add to website and README
 
 ### YouTube
-- Create channel: "Gasoline MCP"
+- Create channel: "Kaboom MCP"
 - Upload videos with descriptions from scripts
 - Create thumbnails
 
 ### Website Updates
-- Add blog section to cookwithgasoline.com
+- Add blog section to gokaboom.dev
 - Add Slack link to header/footer
 - Add GA4 tracking code to `<head>`
 - Add blog posts
@@ -169,8 +169,8 @@ Step-by-step instructions for:
 Before publishing, prepare these assets:
 
 ### Visual Assets
-- [ ] Gasoline logo (PNG/SVG)
-- [ ] Gasoline banner/header
+- [ ] Kaboom logo (PNG/SVG)
+- [ ] Kaboom banner/header
 - [ ] Sparky mascot image
 - [ ] Feature screenshots (WebSocket, network, console)
 - [ ] Demo screenshots
@@ -195,7 +195,7 @@ Before publishing, prepare these assets:
 - [x] Google Analytics account ✅ (Already configured: G-BDRZ2Z24M7)
 - [x] Slack account ✅ (Already created)
 - [ ] YouTube account
-- [ ] Twitter/X account (already exists: @gasolinedev)
+- [ ] Twitter/X account (already exists: @kaboomdev)
 - [ ] LinkedIn account
 
 ### Recommended

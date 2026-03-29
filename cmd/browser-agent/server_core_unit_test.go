@@ -336,7 +336,7 @@ func TestNewServer_FallbacksWhenLogDirUnwritable(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o500); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", dir, err)
 	}
-	logFile := filepath.Join(dir, "gasoline.jsonl")
+	logFile := filepath.Join(dir, "kaboom.jsonl")
 
 	srv, err := NewServer(logFile, 10)
 	if err != nil {

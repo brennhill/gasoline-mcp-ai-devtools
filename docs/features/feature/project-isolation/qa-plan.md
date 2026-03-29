@@ -50,7 +50,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Multi-Agent Isolation (Happy Path)
 1. Setup:
-   - Start Gasoline server
+   - Start Kaboom server
    - Open two Claude Code sessions (Agent A, Agent B)
 2. Steps:
    - [ ] Agent A connects with project_key="projectA"

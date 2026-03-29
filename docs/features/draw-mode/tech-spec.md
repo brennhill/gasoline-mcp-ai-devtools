@@ -66,7 +66,7 @@ sequenceDiagram
 
     BG->>Server: Poll /pending-queries
     Server-->>BG: {type: "draw_mode", action: "start"}
-    BG->>CS: chrome.tabs.sendMessage<br/>(GASOLINE_DRAW_MODE_START)
+    BG->>CS: chrome.tabs.sendMessage<br/>(KABOOM_DRAW_MODE_START)
     CS->>CS: Create canvas overlay<br/>Register mouse handlers
 
     Note over User: User draws rectangles<br/>and types annotations
@@ -217,7 +217,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
   status: "success",
   count: 2,
   annotations: [ /* array of Annotation objects */ ],
-  screenshot_path: "/tmp/gasoline-draw-mode-1707580860000.png",
+  screenshot_path: "/tmp/kaboom-draw-mode-1707580860000.png",
   page_url: "https://example.com/checkout",
   duration_ms: 45000  // time draw mode was active
 }
@@ -226,7 +226,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
 ### Internal Storage Format (chrome.storage.session)
 
 ```js
-// Key: "gasoline_draw_annotations"
+// Key: "kaboom_draw_annotations"
 {
   active: false,
   tab_id: 123,
@@ -369,7 +369,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
 
 | Message | Direction | Transport | Payload |
 |---------|-----------|-----------|---------|
-| `GASOLINE_DRAW_MODE_START` | Server -> Extension | PendingQuery (polled via WebSocket/HTTP) | `{action: "draw_mode_start", correlation_id: "dm_abc"}` |
+| `KABOOM_DRAW_MODE_START` | Server -> Extension | PendingQuery (polled via WebSocket/HTTP) | `{action: "draw_mode_start", correlation_id: "dm_abc"}` |
 | `DRAW_MODE_COMPLETED` | Extension -> Server | HTTP POST `/draw-mode-result` | `{correlation_id, annotations[], screenshot_base64, page_url}` |
 | `ANNOTATION_DETAIL_REQUEST` | Server -> Extension | PendingQuery | `{action: "annotation_detail", correlation_id: "ann_detail_abc", selector: "..."}` |
 | `ANNOTATION_DETAIL_RESULT` | Extension -> Server | HTTP POST `/annotation-detail-result` | `{correlation_id, selector, computed_styles, ...}` |
@@ -477,7 +477,7 @@ When `analyze({what: "annotations", wait: true})` is called:
 
 ### Required
 
-- Existing Gasoline infrastructure (Go server, extension, MCP, PendingQuery system)
+- Existing Kaboom infrastructure (Go server, extension, MCP, PendingQuery system)
 - `chrome.tabs.captureVisibleTab` permission (already granted via `activeTab`)
 - `chrome.storage.session` API (already used by extension)
 

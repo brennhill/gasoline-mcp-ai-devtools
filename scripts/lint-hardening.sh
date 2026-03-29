@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lint-hardening.sh — Custom linters for Gasoline codebase hardening.
+# lint-hardening.sh — Custom linters for Kaboom codebase hardening.
 # Catches patterns that standard linters miss: unprotected goroutines,
 # missing Content-Type headers, unchecked JSON encodes, route mismatches.
 #

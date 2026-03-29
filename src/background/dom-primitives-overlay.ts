@@ -48,14 +48,14 @@ export function domPrimitiveOverlay(
 } {
   // — Shared helpers (duplicated for self-containment) —
 
-  function isGasolineOwnedElement(element: Element | null): boolean {
+  function isKaboomOwnedElement(element: Element | null): boolean {
     let node: Element | null = element
     while (node) {
       const id = (node as HTMLElement).id || ''
-      if (id.startsWith('gasoline-')) return true
+      if (id.startsWith('kaboom-')) return true
       const className = (node as HTMLElement).className
-      if (typeof className === 'string' && className.includes('gasoline-')) return true
-      if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true') return true
+      if (typeof className === 'string' && className.includes('kaboom-')) return true
+      if (node.getAttribute && node.getAttribute('data-kaboom-owned') === 'true') return true
       node = node.parentElement
     }
     return false
@@ -74,7 +74,7 @@ export function domPrimitiveOverlay(
     if (depth > 10) return results
     const matches = Array.from(root.querySelectorAll(selector))
     for (const match of matches) {
-      if (!isGasolineOwnedElement(match)) results.push(match)
+      if (!isKaboomOwnedElement(match)) results.push(match)
     }
     const children = 'children' in root
       ? (root as Element).children
@@ -150,12 +150,12 @@ export function domPrimitiveOverlay(
   }
 
   function getElementHandleStore(): ElementHandleStore {
-    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
-    if (root.__gasolineElementHandles) {
-      if (!root.__gasolineElementHandles.selectorByID) {
-        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
+    const root = globalThis as typeof globalThis & { __kaboomElementHandles?: ElementHandleStore }
+    if (root.__kaboomElementHandles) {
+      if (!root.__kaboomElementHandles.selectorByID) {
+        root.__kaboomElementHandles.selectorByID = new Map<string, string>()
       }
-      return root.__gasolineElementHandles
+      return root.__kaboomElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
@@ -163,7 +163,7 @@ export function domPrimitiveOverlay(
       selectorByID: new Map<string, string>(),
       nextID: 1
     }
-    root.__gasolineElementHandles = created
+    root.__kaboomElementHandles = created
     return created
   }
 
@@ -316,7 +316,7 @@ export function domPrimitiveOverlay(
     if (!element) return null
     const getAttr = (element as { getAttribute?: unknown }).getAttribute
     if (typeof getAttr !== 'function') return null
-    const value = getAttr.call(element, 'data-gasoline-dismiss-ts')
+    const value = getAttr.call(element, 'data-kaboom-dismiss-ts')
     return typeof value === 'string' && value.length > 0 ? value : null
   }
 
@@ -324,14 +324,14 @@ export function domPrimitiveOverlay(
     if (!element) return
     const setAttr = (element as { setAttribute?: unknown }).setAttribute
     if (typeof setAttr !== 'function') return
-    setAttr.call(element, 'data-gasoline-dismiss-ts', String(Date.now()))
+    setAttr.call(element, 'data-kaboom-dismiss-ts', String(Date.now()))
   }
 
   function clearDismissStamp(element: Element | null | undefined): void {
     if (!element) return
     const removeAttr = (element as { removeAttribute?: unknown }).removeAttribute
     if (typeof removeAttr !== 'function') return
-    removeAttr.call(element, 'data-gasoline-dismiss-ts')
+    removeAttr.call(element, 'data-kaboom-dismiss-ts')
   }
 
   const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i

@@ -1,6 +1,6 @@
 # Eval Fixtures Reference
 
-> 51 fixtures, 28 pass / 23 fail (55%). All fixtures run against the gasoline codebase itself.
+> 51 fixtures, 28 pass / 23 fail (55%). All fixtures run against the kaboom codebase itself.
 >
 > **Regression fixtures** validate existing capabilities. All must pass — a failure means a hook broke.
 > **Aspirational fixtures** define improvement targets. Each failure is a concrete capability gap.
@@ -11,13 +11,13 @@
 
 Source: `internal/hook/quality_gate.go` (195 LOC), `internal/hook/convention_detect.go` (251 LOC)
 
-The quality gate fires on every Edit/Write. It finds `.gasoline.json` in the parent chain, loads the project's code standards, checks file size, and detects convention drift.
+The quality gate fires on every Edit/Write. It finds `.kaboom.json` in the parent chain, loads the project's code standards, checks file size, and detects convention drift.
 
 ### Passing
 
 **001 — Standards injection** `quality-gate/001-standards-injection.json`
 
-Edits `internal/hook/protocol.go`. The hook finds `.gasoline.json` at the repo root, reads `gasoline-code-standards.md`, and injects the first 150 lines into the agent's context. Expects `PROJECT CODE STANDARDS` and `Max 800 lines`. This is the core loop: every edit, the agent sees the project's rules.
+Edits `internal/hook/protocol.go`. The hook finds `.kaboom.json` at the repo root, reads `kaboom-code-standards.md`, and injects the first 150 lines into the agent's context. Expects `PROJECT CODE STANDARDS` and `Max 800 lines`. This is the core loop: every edit, the agent sees the project's rules.
 
 **002 — File size warning** `quality-gate/002-file-size-warning.json`
 
@@ -223,7 +223,7 @@ Edits to add a method to an interface. Expects warning about implementors. **Why
 
 Source: `internal/hook/decision_guard.go` (156 LOC)
 
-Checks edited code against locked architectural decisions in `.gasoline/decisions.json`. Supports literal patterns, regex, and expiry dates.
+Checks edited code against locked architectural decisions in `.kaboom/decisions.json`. Supports literal patterns, regex, and expiry dates.
 
 ### Passing
 
@@ -302,7 +302,7 @@ Each fixture is a JSON file in `internal/hook/eval/testdata/<hook-name>/`:
 
 | Field | Purpose |
 |-------|---------|
-| `project_root: "REPO_ROOT"` | Resolves to the gasoline repo root at test time |
+| `project_root: "REPO_ROOT"` | Resolves to the kaboom repo root at test time |
 | `session_state` | Pre-populates the session store before running the hook |
 | `has_output` | `true` = hook must produce output, `false` = must be silent |
 | `contains` | Every string must appear in the output |

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // finalizeResponseEnrichment attaches evidence, transient elements, and retry context
@@ -98,7 +98,7 @@ func (h *ToolHandler) formatTimeoutCommandResult(req JSONRPCRequest, cmd queries
 	responseData["message"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
 	retryMsg := "Extension connected but page execution timed out. This page may block content scripts (common on Google, Chrome Web Store, etc.). Try navigating to a different page: interact({what: 'navigate', url: 'https://example.com'})"
 	if !h.capture.IsExtensionConnected() {
-		retryMsg = "Extension is disconnected. Ensure the Gasoline extension shows 'Connected' and a tab is tracked, then retry."
+		retryMsg = "Extension is disconnected. Ensure the Kaboom extension shows 'Connected' and a tab is tracked, then retry."
 	}
 	responseData["retry"] = retryMsg
 	responseData["hint"] = h.DiagnosticHintString()

@@ -187,7 +187,7 @@ Server-side Gating:
 
 #### Category 13: Pilot State Contract Tests (3 tests)
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-13-pilot-contract.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-13-pilot-contract.sh`
 
 | Cat | Test | Line | Scenario |
 |-----|------|------|----------|
@@ -199,7 +199,7 @@ Server-side Gating:
 
 #### Category 14: Extension Startup Sequence (5 tests)
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-14-extension-startup.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-14-extension-startup.sh`
 
 | Cat | Test | Line | Scenario |
 |-----|------|------|----------|
@@ -211,7 +211,7 @@ Server-side Gating:
 
 #### Category 15: Pilot-Gated Actions Success Path (4 tests)
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-15-pilot-success-path.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-15-pilot-success-path.sh`
 
 | Cat | Test | Line | Scenario |
 |-----|------|------|----------|

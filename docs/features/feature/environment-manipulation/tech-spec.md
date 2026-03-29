@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Kaboom MCP Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Environment Router                            │  │
 │  │ - Discover services & config sources          │  │
@@ -84,14 +84,14 @@ last_verified_date: 2026-03-05
 ### Data Flow: Modify API Endpoint
 ```
 1. AI calls: interact({action: "environment_modify", service: "frontend", changes: {API_ENDPOINT: "..."}})
-2. Gasoline creates BEFORE snapshot: env-snap-20260131-101500
-3. Gasoline reads current .env file
-4. Gasoline updates API_ENDPOINT in memory
-5. Gasoline writes updated .env file (backup created)
-6. Gasoline sends SIGTERM to frontend service
-7. Gasoline waits for graceful shutdown (<5s timeout)
-8. Gasoline restarts service: npm run dev
-9. Gasoline polls health check (/health endpoint)
+2. Kaboom creates BEFORE snapshot: env-snap-20260131-101500
+3. Kaboom reads current .env file
+4. Kaboom updates API_ENDPOINT in memory
+5. Kaboom writes updated .env file (backup created)
+6. Kaboom sends SIGTERM to frontend service
+7. Kaboom waits for graceful shutdown (<5s timeout)
+8. Kaboom restarts service: npm run dev
+9. Kaboom polls health check (/health endpoint)
 10. After restart confirmed: create AFTER snapshot
 11. AI calls: interact({action: "navigate", url: "..."})
 12. Frontend uses new API_ENDPOINT from updated .env
@@ -394,7 +394,7 @@ observe({
 
 ## Configuration
 
-Services can expose `/.gasoline/env` endpoint to customize:
+Services can expose `/.kaboom/env` endpoint to customize:
 - Health check endpoint
 - Service restart command
 - Supported config files

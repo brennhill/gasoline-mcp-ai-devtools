@@ -18,14 +18,14 @@ last_verified_date: 2026-03-05
 Historical Snapshots periodically saves complete system state (all events, logs, network activity, variable values) to disk, allowing developers to "rewind time" and examine what the system looked like at any point in the past. When a bug is discovered, developers can replay the exact sequence of events that led to it, including state at each step. Snapshots are indexed by timestamp and tagged with metadata (test run ID, Git commit, feature flag state), enabling rich queries like "Show me all snapshots where feature X was enabled and we had errors."
 
 ## Problem
-Ephemeral event storage means once a developer closes Gasoline, all observation data is lost. If a bug manifests hours later, there's no way to examine what happened when the bug was introduced. "Let me just run the test again" often doesn't reproduce intermittent issues. Long-running observations (overnight test suites, extended debugging sessions) can't save intermediate results.
+Ephemeral event storage means once a developer closes Kaboom, all observation data is lost. If a bug manifests hours later, there's no way to examine what happened when the bug was introduced. "Let me just run the test again" often doesn't reproduce intermittent issues. Long-running observations (overnight test suites, extended debugging sessions) can't save intermediate results.
 
 ## Solution
 Historical Snapshots:
 1. **Periodic Saving:** Snapshot entire system state every N minutes (configurable, default 1 minute)
 2. **Metadata Tagging:** Each snapshot includes timestamp, test run ID, git commit, feature flags
 3. **Selective Storage:** Save to disk (SQLite or JSON) with configurable retention (default 7 days)
-4. **Replay Capability:** Load snapshot and query it as if Gasoline is running on that point in time
+4. **Replay Capability:** Load snapshot and query it as if Kaboom is running on that point in time
 5. **Comparison:** Compare two snapshots to see what changed
 
 ## User Stories
@@ -103,7 +103,7 @@ Historical Snapshots:
 ```
 [10:15:23] Test starts
 [10:15:30] Test fails (assertion error)
-[10:15:31] Gasoline automatically saves snapshot with tag "test-failure-xyz"
+[10:15:31] Kaboom automatically saves snapshot with tag "test-failure-xyz"
 ```
 
 #### Developer investigates later:

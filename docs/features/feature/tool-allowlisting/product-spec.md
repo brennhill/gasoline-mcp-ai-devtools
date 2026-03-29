@@ -49,7 +49,7 @@ Add tool allowlisting via configuration file. Define which tools (observe, gener
 ## User Workflow
 
 1. Admin creates allowlist.yaml defining permitted tools/actions
-2. Start server: `gasoline --allowlist-config=allowlist.yaml`
+2. Start server: `kaboom --allowlist-config=allowlist.yaml`
 3. Agent connects, queries allowlist: `configure({action:"health"})`
 4. Agent calls allowed tool: succeeds
 5. Agent calls non-allowed tool: fails with "tool_not_allowed" error

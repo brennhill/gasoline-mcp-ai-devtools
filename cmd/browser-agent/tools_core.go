@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/issuereport"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/issuereport"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/noise"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/persistence"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/security"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/session"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/streaming"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
 // Note: Response helpers, error codes, and validation functions have been moved to:

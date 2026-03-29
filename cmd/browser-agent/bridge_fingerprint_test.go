@@ -31,7 +31,7 @@ func TestBridgeLaunchFingerprint(t *testing.T) {
 	t.Parallel()
 
 	tmp := t.TempDir()
-	exePath := tmp + "/gasoline-mcp-test"
+	exePath := tmp + "/kaboom-agentic-browser-test"
 	content := []byte("header" + goBuildIDPrefix + "test-build-id\"tail")
 	if err := os.WriteFile(exePath, content, 0o755); err != nil {
 		t.Fatalf("os.WriteFile() error = %v", err)

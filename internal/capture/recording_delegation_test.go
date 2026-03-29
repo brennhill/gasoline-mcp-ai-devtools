@@ -7,7 +7,7 @@ package capture
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func TestNewCaptureDelegation_RecordingManager(t *testing.T) {

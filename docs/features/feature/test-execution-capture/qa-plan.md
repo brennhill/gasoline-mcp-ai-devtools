@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Simple Test Lifecycle
 #### Setup:
-- Jest with Gasoline adapter installed
+- Jest with Kaboom adapter installed
 - Simple test: `it('should add 2+2', () => expect(2+2).toBe(4))`
 
 #### Steps:
@@ -178,7 +178,7 @@ last_verified_date: 2026-03-05
 ### Scenario 7: Trace ID Propagation to Backend
 #### Setup:
 - Frontend test: Playwright
-- Backend: Node.js with Gasoline SDK
+- Backend: Node.js with Kaboom SDK
 - Test triggers API request
 
 #### Steps:
@@ -209,7 +209,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. Call `generateTestReport({trace_id: "test-123", format: "html"})`
-2. Gasoline generates HTML report
+2. Kaboom generates HTML report
 3. Open report in browser
 4. Verify all sections present and correct
 
@@ -259,12 +259,12 @@ last_verified_date: 2026-03-05
 
 ### Scenario 10: Adapter Overhead Measurement
 #### Setup:
-- Same test suite run without and with Gasoline adapter
+- Same test suite run without and with Kaboom adapter
 
 #### Steps:
 1. Run test suite 3 times without adapter
 2. Measure average execution time (baseline)
-3. Install Gasoline adapter
+3. Install Kaboom adapter
 4. Run same test suite 3 times with adapter
 5. Calculate overhead percentage
 

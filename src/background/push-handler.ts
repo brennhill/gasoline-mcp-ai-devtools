@@ -83,7 +83,7 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
       // Show "trying" toast for visual loading state
       try {
         await chrome.tabs.sendMessage(tab.id, {
-          type: 'gasoline_action_toast',
+          type: 'kaboom_action_toast',
           text: 'Capturing screenshot...',
           state: 'trying',
           duration_ms: 3000
@@ -101,7 +101,7 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
       try {
         if (result) {
           await chrome.tabs.sendMessage(tab.id, {
-            type: 'gasoline_action_toast',
+            type: 'kaboom_action_toast',
             text: 'Screenshot pushed',
             detail: result.status === 'delivered' ? 'Sent via sampling' : 'Queued in inbox',
             state: 'success',
@@ -109,9 +109,9 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
           })
         } else {
           await chrome.tabs.sendMessage(tab.id, {
-            type: 'gasoline_action_toast',
+            type: 'kaboom_action_toast',
             text: 'Screenshot push failed',
-            detail: 'Could not reach Gasoline daemon',
+            detail: 'Could not reach Kaboom daemon',
             state: 'error',
             duration_ms: 3000
           })
@@ -147,7 +147,7 @@ export function installChatCommandListener(logFn?: (message: string) => void): v
       if (!tab?.id) return
 
       await chrome.tabs.sendMessage(tab.id, {
-        type: 'gasoline_toggle_chat',
+        type: 'kaboom_toggle_chat',
         client_name: caps.client_name || 'AI'
       })
     } catch (err) {
@@ -223,7 +223,7 @@ async function showPushUnavailableToast(detail: string): Promise<void> {
     if (!tab?.id) return
 
     await chrome.tabs.sendMessage(tab.id, {
-      type: 'gasoline_action_toast',
+      type: 'kaboom_action_toast',
       text: 'Push unavailable',
       detail,
       state: 'error',

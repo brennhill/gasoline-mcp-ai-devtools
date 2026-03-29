@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -67,7 +67,7 @@ func newToolTestEnv(t *testing.T) *toolTestEnv {
 func mockConnectedTrackedTab(t *testing.T, cap *capture.Store) {
 	t.Helper()
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 }

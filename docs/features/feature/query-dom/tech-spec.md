@@ -23,7 +23,7 @@ last_verified_date: 2026-03-05
 ## Extension Path
 1. `src/background/pending-queries.ts` handles `query.type === 'dom'`.
 2. Background sends `DOM_QUERY` to content script.
-3. Content relays `GASOLINE_DOM_QUERY` to inject script.
+3. Content relays `KABOOM_DOM_QUERY` to inject script.
 4. Inject executes `executeDOMQuery` from `src/lib/dom-queries.ts`.
 5. Result returns through sync command-results channel.
 

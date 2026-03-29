@@ -1,12 +1,12 @@
 # Incident Report: LinkedIn Automation Failure (2026-02-21)
 
 ## Summary
-On **February 21, 2026**, an end-to-end automation task to publish a LinkedIn post via Gasoline failed.  
+On **February 21, 2026**, an end-to-end automation task to publish a LinkedIn post via Kaboom failed.  
 The attempt exposed multiple reliability defects across CLI/browser action dispatch, command result payloads, and reconnect timing.
 
 ## Context
-- Goal: research a current AI release, generate a LinkedIn post, and publish it through Gasoline automation.
-- Environment: `gasoline-mcp 0.7.12`, macOS (`darwin/arm64`), extension connected intermittently.
+- Goal: research a current AI release, generate a LinkedIn post, and publish it through Kaboom automation.
+- Environment: `kaboom-mcp 0.7.12`, macOS (`darwin/arm64`), extension connected intermittently.
 
 ## Coverage Matrix
 | Flow | Status | Notes |
@@ -21,9 +21,9 @@ The attempt exposed multiple reliability defects across CLI/browser action dispa
 Commands run on **2026-02-21**:
 
 ```bash
-gasoline-mcp interact navigate --url https://www.linkedin.com/feed/
-gasoline-mcp interact new-tab --url https://www.linkedin.com/feed/
-gasoline-mcp interact list-interactive
+kaboom-mcp interact navigate --url https://www.linkedin.com/feed/
+kaboom-mcp interact new-tab --url https://www.linkedin.com/feed/
+kaboom-mcp interact list-interactive
 ```
 
 Observed output excerpts:

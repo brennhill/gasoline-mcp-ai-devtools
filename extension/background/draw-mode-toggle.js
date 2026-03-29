@@ -10,10 +10,10 @@
 export async function toggleDrawModeForTab(tabId) {
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'gasoline_get_annotations'
+            type: 'kaboom_get_annotations'
         }));
         if (result?.draw_mode_active) {
-            await chrome.tabs.sendMessage(tabId, { type: 'gasoline_draw_mode_stop' });
+            await chrome.tabs.sendMessage(tabId, { type: 'kaboom_draw_mode_stop' });
             return;
         }
     }
@@ -21,7 +21,7 @@ export async function toggleDrawModeForTab(tabId) {
         // Content script might not support state query yet; continue with start fallback.
     }
     await chrome.tabs.sendMessage(tabId, {
-        type: 'gasoline_draw_mode_start',
+        type: 'kaboom_draw_mode_start',
         started_by: 'user'
     });
 }

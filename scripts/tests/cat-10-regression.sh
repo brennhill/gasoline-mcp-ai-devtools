@@ -163,10 +163,10 @@ run_test_10_3() {
     local version_flag
     version_flag=$("$WRAPPER" --version 2>/dev/null)
     if [ -z "$version_flag" ]; then
-        fail "gasoline-mcp --version returned empty output."
+        fail "kaboom-agentic-browser --version returned empty output."
         return
     fi
-    # Extract version number from output like "gasoline v5.7.6"
+    # Extract version number from output like "kaboom v5.7.6"
     # Strip everything except the version number
     local version_from_flag
     version_from_flag=$(echo "$version_flag" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)

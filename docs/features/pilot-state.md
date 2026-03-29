@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: manage_state
 
 **Branch:** `feature/pilot-state`
-**Worktree:** `../gasoline-pilot-state`
+**Worktree:** `../kaboom-pilot-state`
 **Priority:** P4 Phase 2 (parallel — requires Phase 1 complete)
 **Dependency:** Merge `feature/pilot-toggle` first
 
@@ -105,7 +105,7 @@ function restoreState(state, includeUrl = true) {
 
 Snapshots stored in `chrome.storage.local`:
 ```javascript
-const SNAPSHOT_KEY = 'gasoline_state_snapshots'
+const SNAPSHOT_KEY = 'kaboom_state_snapshots'
 
 async function saveStateSnapshot(name, state) {
   const { [SNAPSHOT_KEY]: snapshots = {} } = await chrome.storage.local.get(SNAPSHOT_KEY)

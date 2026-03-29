@@ -20,15 +20,15 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-Gasoline's single-tab tracking model (shipped in v5.1.0) silently captures telemetry from one explicitly tracked tab. However, the current UX has three gaps that cause confusion and data loss:
+Kaboom's single-tab tracking model (shipped in v5.1.0) silently captures telemetry from one explicitly tracked tab. However, the current UX has three gaps that cause confusion and data loss:
 
-1. **Invisible tracking state.** The extension badge currently shows only server connection status (green with error count, or red "!" for disconnected). There is no visual indicator of *which* tab is being tracked or whether tracking is active at all. A developer glancing at the toolbar cannot tell if Gasoline is capturing their work tab without opening the popup.
+1. **Invisible tracking state.** The extension badge currently shows only server connection status (green with error count, or red "!" for disconnected). There is no visual indicator of *which* tab is being tracked or whether tracking is active at all. A developer glancing at the toolbar cannot tell if Kaboom is capturing their work tab without opening the popup.
 
 2. **Accidental tab switches.** Clicking "Track This Tab" in the popup on a different tab immediately and silently switches tracking to that tab. There is no confirmation step. If a developer opens the popup on the wrong tab and clicks, they lose telemetry from their intended target without any warning. The previous tracking context is gone.
 
-3. **Silent tracking loss on tab close.** When the tracked tab is closed, `background.js` clears `trackedTabId` and `trackedTabUrl` from storage and logs a console message, but the user sees nothing. Tracking simply stops. The developer may continue working, assuming Gasoline is still capturing, only to discover later that all telemetry was lost after the tab close. There is no suggestion to re-attach tracking to another tab.
+3. **Silent tracking loss on tab close.** When the tracked tab is closed, `background.js` clears `trackedTabId` and `trackedTabUrl` from storage and logs a console message, but the user sees nothing. Tracking simply stops. The developer may continue working, assuming Kaboom is still capturing, only to discover later that all telemetry was lost after the tab close. There is no suggestion to re-attach tracking to another tab.
 
-These three gaps are especially problematic because Gasoline is used alongside AI coding assistants that rely on continuous telemetry. A silent tracking gap means the AI loses context and the developer wastes time reproducing issues.
+These three gaps are especially problematic because Kaboom is used alongside AI coding assistants that rely on continuous telemetry. A silent tracking gap means the AI loses context and the developer wastes time reproducing issues.
 
 ## Solution
 
@@ -42,9 +42,9 @@ Three coordinated UX improvements, all scoped entirely to the Chrome extension (
 
 ## User Stories
 
-- As a developer using Gasoline, I want to see at a glance whether my current tab is being tracked so that I can be confident telemetry is flowing without opening the popup.
-- As a developer using Gasoline, I want a confirmation step before switching my tracked tab so that I do not accidentally lose telemetry context.
-- As a developer using Gasoline, I want to be notified when my tracked tab closes so that I can immediately re-attach tracking and avoid a gap in capture.
+- As a developer using Kaboom, I want to see at a glance whether my current tab is being tracked so that I can be confident telemetry is flowing without opening the popup.
+- As a developer using Kaboom, I want a confirmation step before switching my tracked tab so that I do not accidentally lose telemetry context.
+- As a developer using Kaboom, I want to be notified when my tracked tab closes so that I can immediately re-attach tracking and avoid a gap in capture.
 - As an AI coding agent, I want the developer's tracking state to be stable so that my telemetry stream is not unexpectedly interrupted.
 
 ## MCP Interface
@@ -62,7 +62,7 @@ Three coordinated UX improvements, all scoped entirely to the Chrome extension (
 | A3 | When actively tracking a tab and connected to the server, the badge must show a green dot character or empty text with a green background (#3fb950), consistent with the existing connected state. Error counts continue to overlay as they do today. | must |
 | A4 | When the server is disconnected, the badge must show "!" with a red background (#f85149), exactly as it does today. Server disconnection always takes visual priority over tracking state. | must |
 | A5 | Badge state must update within 200ms of any tracking state change (track, untrack, tab close, server connect/disconnect). | must |
-| A6 | The badge tooltip (title text on the extension icon) should describe the current state in plain English, e.g., "Gasoline: tracking tab 42", "Gasoline: not tracking", "Gasoline: server disconnected". | should |
+| A6 | The badge tooltip (title text on the extension icon) should describe the current state in plain English, e.g., "Kaboom: tracking tab 42", "Kaboom: not tracking", "Kaboom: server disconnected". | should |
 | A7 | Badge updates must not cause visible flicker when multiple state changes occur in rapid succession (e.g., tab close + storage clear). The final state must always be correct. | should |
 
 ### Sub-feature B: Track Switch Confirmation Dialog
@@ -75,7 +75,7 @@ Three coordinated UX improvements, all scoped entirely to the Chrome extension (
 | B4 | If the user cancels, no state change occurs. The popup UI remains unchanged. The previously tracked tab continues to be tracked. | must |
 | B5 | The dialog must not appear when starting tracking from a state where no tab is tracked. In that case, tracking begins immediately as it does today. | must |
 | B6 | The dialog must not appear when the user clicks "Stop Tracking". Untracking always proceeds immediately. | must |
-| B7 | The confirmation dialog should be implemented as an inline HTML element within the popup (not `window.confirm()` or a system dialog) so that it can be styled consistently with the Gasoline dark theme. | should |
+| B7 | The confirmation dialog should be implemented as an inline HTML element within the popup (not `window.confirm()` or a system dialog) so that it can be styled consistently with the Kaboom dark theme. | should |
 | B8 | The dialog should be keyboard-accessible: Enter to confirm, Escape to cancel, and proper focus management (focus moves to dialog on open, returns to trigger button on close). | should |
 | B9 | The dialog must include an accessible label (aria-label or aria-labelledby) and role="dialog" for screen readers. | should |
 
@@ -85,18 +85,18 @@ Three coordinated UX improvements, all scoped entirely to the Chrome extension (
 |---|-------------|----------|
 | C1 | When the tracked tab is closed, the extension must notify the user that tracking has stopped, rather than silently clearing state. | must |
 | C2 | The notification must be a Chrome notification (via `chrome.notifications` API) that appears even when the popup is not open. Console-only logging is insufficient. | must |
-| C3 | The notification message must state that the tracked tab was closed, include the URL or title of the closed tab for context, and suggest opening the Gasoline popup to track a new tab. | must |
-| C4 | The notification should auto-dismiss after 8 seconds. Clicking the notification should open the Gasoline popup (if possible via `chrome.action.openPopup()`) or focus the extension icon. | should |
+| C3 | The notification message must state that the tracked tab was closed, include the URL or title of the closed tab for context, and suggest opening the Kaboom popup to track a new tab. | must |
+| C4 | The notification should auto-dismiss after 8 seconds. Clicking the notification should open the Kaboom popup (if possible via `chrome.action.openPopup()`) or focus the extension icon. | should |
 | C5 | If `chrome.action.openPopup()` is not available (it requires Chrome 99+ and the `action` permission), clicking the notification should bring the browser to the foreground so the user can manually click the extension icon. | should |
 | C6 | The notification must not appear if the user explicitly clicked "Stop Tracking" before closing the tab. It should only trigger on unexpected tab closure (tracked tab removed while tracking was active). | must |
 | C7 | If the user closes multiple tabs rapidly (including the tracked tab), only one notification should be shown. Duplicate notifications must be suppressed. | should |
-| C8 | The notification icon should use the Gasoline extension icon for brand consistency. | could |
+| C8 | The notification icon should use the Kaboom extension icon for brand consistency. | could |
 
 ## Non-Goals
 
 - This feature does NOT change any MCP tools, modes, or server-side behavior. It is purely a Chrome extension UX change.
 - This feature does NOT automatically re-attach tracking to another tab when the tracked tab closes. It only *suggests* that the user do so. Automatic re-attachment would violate the explicit opt-in principle of single-tab tracking.
-- This feature does NOT add per-tab badge indicators. Chrome's MV3 extension API only supports a single global badge. The badge reflects the overall Gasoline state, not per-tab state.
+- This feature does NOT add per-tab badge indicators. Chrome's MV3 extension API only supports a single global badge. The badge reflects the overall Kaboom state, not per-tab state.
 - This feature does NOT introduce any new popup pages, options pages, or separate UI surfaces. All UI changes are within the existing popup and the extension badge.
 - This feature does NOT modify the "Track This Tab" button behavior for first-time tracking (no tab currently tracked). That flow remains a single click with no dialog.
 - Out of scope: changing the tracked tab via keyboard shortcut or context menu. Those are separate feature proposals.

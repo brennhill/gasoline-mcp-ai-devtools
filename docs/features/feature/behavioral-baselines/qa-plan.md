@@ -20,18 +20,18 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
 | DL-1 | Response shape extraction leaks values | Verify shape extraction records only field names and types (`{"id": "number"}`), never actual values (`{"id": 42}`) | critical |
-| DL-2 | Baseline JSON on disk contains response bodies | Verify `~/.gasoline/baselines/<name>.json` stores shapes, not raw response content | critical |
+| DL-2 | Baseline JSON on disk contains response bodies | Verify `~/.kaboom/baselines/<name>.json` stores shapes, not raw response content | critical |
 | DL-3 | API endpoint paths reveal internal architecture | Verify normalized paths (`/api/users/{uuid}/posts`) do not expose internal routing patterns beyond what the browser already sees | medium |
 | DL-4 | Console error fingerprints contain PII | Verify known-error fingerprints are hashed or normalized, not raw messages containing user data | high |
 | DL-5 | WebSocket URL patterns expose internal services | Verify WebSocket baseline records URL patterns without leaking auth tokens in query strings | high |
 | DL-6 | Comparison results expose raw error text | Verify regression descriptions use normalized summaries, not raw console messages with user data | high |
 | DL-7 | Baseline name/description user-provided fields | Verify agent-provided names and descriptions are stored as-is but do not echo sensitive data in list responses | medium |
-| DL-8 | Disk persistence accessible by other users | Verify `~/.gasoline/baselines/` directory has appropriate permissions (user-only read/write) | high |
+| DL-8 | Disk persistence accessible by other users | Verify `~/.kaboom/baselines/` directory has appropriate permissions (user-only read/write) | high |
 | DL-9 | Latency data reveals internal API topology | Verify latency baselines do not include internal hostnames or IP addresses, only URL paths | medium |
 
 ### Negative Tests (must NOT leak)
@@ -155,7 +155,7 @@ last_verified_date: 2026-03-05
 | EC-1 | Endpoint not observed in current session | Baseline has endpoint `/api/users`, current session has not visited it | Not flagged as regression (might not have navigated there) | must |
 | EC-2 | Non-JSON response body | HTML or XML response | Shape is nil, no shape comparison | must |
 | EC-3 | Concurrent access to baseline store | Multiple save/compare/list operations overlapping | RWMutex prevents data corruption | must |
-| EC-4 | Baseline file corruption | Manually corrupt `~/.gasoline/baselines/test.json` | Graceful error on load, other baselines unaffected | should |
+| EC-4 | Baseline file corruption | Manually corrupt `~/.kaboom/baselines/test.json` | Graceful error on load, other baselines unaffected | should |
 | EC-5 | Baseline with empty network data | No network requests captured at save time | Baseline saved with empty network section, compare skips network | should |
 | EC-6 | Very long URL path | URL with 50+ segments | Path normalization handles without crash or truncation | should |
 | EC-7 | Null/undefined JSON values | Response body with `{"key": null}` | Shape records `{"key": "null"}` | must |
@@ -170,10 +170,10 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web app with API endpoints, console logging, and optionally WebSocket connections
-- [ ] `~/.gasoline/baselines/` directory exists (created automatically on first save)
+- [ ] `~/.kaboom/baselines/` directory exists (created automatically on first save)
 
 ### Step-by-Step Verification
 
@@ -191,16 +191,16 @@ last_verified_date: 2026-03-05
 | UAT-10 | `{"tool": "configure", "arguments": {"action": "compare_baseline", "name": "main-page"}}` | AI receives comparison | Console regression detected for new error | [ ] |
 | UAT-11 | `{"tool": "configure", "arguments": {"action": "save_baseline", "name": "main-page", "overwrite": true}}` | AI overwrites baseline | Response: version: 2, updated baseline | [ ] |
 | UAT-12 | `{"tool": "configure", "arguments": {"action": "delete_baseline", "name": "main-page"}}` | AI confirms deletion | Baseline removed from list, file deleted from disk | [ ] |
-| UAT-13 | Restart Gasoline server, then list baselines | Human restarts `./dist/gasoline` | Baselines loaded from disk (excluding deleted one) | [ ] |
+| UAT-13 | Restart Kaboom server, then list baselines | Human restarts `./dist/kaboom` | Baselines loaded from disk (excluding deleted one) | [ ] |
 
 ### Data Leak UAT Verification
 
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
-| DL-UAT-1 | No response values in baseline | Inspect `~/.gasoline/baselines/main-page.json` on disk | Only field names and types in shape data, no actual values | [ ] |
+| DL-UAT-1 | No response values in baseline | Inspect `~/.kaboom/baselines/main-page.json` on disk | Only field names and types in shape data, no actual values | [ ] |
 | DL-UAT-2 | No auth headers in baseline | Inspect baseline file for "Authorization", "Cookie", "Bearer" | None present | [ ] |
 | DL-UAT-3 | Compare output hides raw error text | Trigger comparison with new console error containing PII-like text | Regression description uses fingerprint, not raw message | [ ] |
-| DL-UAT-4 | Disk file permissions | `ls -la ~/.gasoline/baselines/` | Files owned by current user, not world-readable | [ ] |
+| DL-UAT-4 | Disk file permissions | `ls -la ~/.kaboom/baselines/` | Files owned by current user, not world-readable | [ ] |
 
 ### Regression Checks
 - [ ] Existing `observe(what: "network")` still works independently of baselines

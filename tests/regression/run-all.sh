@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# External Regression Test Suite for Gasoline MCP Server
+# External Regression Test Suite for Kaboom
 #
 # This test suite is intentionally external to the main codebase
 # to catch regressions that internal tests might miss.
@@ -124,7 +124,7 @@ print_summary() {
 # Main
 main() {
     echo "╔══════════════════════════════════════════╗"
-    echo "║   Gasoline External Regression Tests     ║"
+    echo "║    Kaboom External Regression Tests      ║"
     echo "╚══════════════════════════════════════════╝"
     echo ""
     echo "Binary: $GASOLINE_BINARY"
@@ -149,12 +149,12 @@ main() {
         local repo_root
         repo_root=$(cd "$SCRIPT_DIR/../.." && pwd)
 
-        if [[ -x "$repo_root/dist/gasoline" ]]; then
-            export GASOLINE_BINARY="$repo_root/dist/gasoline"
+        if [[ -x "$repo_root/dist/kaboom-agentic-browser" ]]; then
+            export GASOLINE_BINARY="$repo_root/dist/kaboom-agentic-browser"
         else
-            echo "ERROR: Gasoline binary not found"
+            echo "ERROR: Kaboom binary not found"
             echo "Expected: $GASOLINE_BINARY"
-            echo "Run: go build -o dist/gasoline ./cmd/browser-agent"
+            echo "Run: go build -o dist/kaboom-agentic-browser ./cmd/browser-agent"
             exit 1
         fi
     fi

@@ -149,7 +149,7 @@ func TestSessionID_GeminiEnv(t *testing.T) {
 }
 
 func TestCleanStaleSessions(t *testing.T) {
-	// Create a temp dir simulating ~/.gasoline/sessions/
+	// Create a temp dir simulating ~/.kaboom/sessions/
 	baseDir := t.TempDir()
 	sessionDir := filepath.Join(baseDir, "stale-session")
 	if err := os.MkdirAll(sessionDir, 0o755); err != nil {

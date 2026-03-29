@@ -90,7 +90,7 @@ last_verified_date: 2026-03-05
 |----------|---------------|-------------------|
 | Phase 1: Discover preview URL (human provides) | 1 step: human pastes URL | No -- already minimal |
 | Phase 1: Discover via convention | 2 steps: (1) load stored template, (2) substitute PR number | Yes -- could auto-detect PR number from git context |
-| Phase 1: Discover via GitHub API | 2 steps: (1) query `gh api`, (2) extract environment_url | Yes -- but outside Gasoline's scope (external tool) |
+| Phase 1: Discover via GitHub API | 2 steps: (1) query `gh api`, (2) extract environment_url | Yes -- but outside Kaboom's scope (external tool) |
 | Phase 2: Baseline capture (live) | 3 steps: (1) navigate to production, (2) capture session snapshot, (3) save behavioral baseline | Yes -- could combine into single "capture baseline from URL" action |
 | Phase 2: Baseline capture (stored) | 1 step: load saved baseline | No -- already minimal |
 | Phase 3: Explore | 4+ steps: (1) open new tab, (2) wait for load, (3) interact with pages, (4) capture at end | No -- exploration is inherently multi-step; each page visit is a step |
@@ -150,20 +150,20 @@ last_verified_date: 2026-03-05
 | IT-6 | PR summary includes exploration context | generate(pr_summary) after exploration | Report includes preview URL, pages visited, findings, regressions | must |
 | IT-7 | Multiple concurrent explorations | Two agents exploring PR-42 and PR-43 simultaneously | Each uses unique session names, no data cross-contamination | should |
 | IT-8 | Exploration with AI Web Pilot disabled | interact(execute_js) without Web Pilot toggle | execute_js calls fail with clear error "AI Web Pilot not enabled" | must |
-| IT-9 | URL scheme validation | interact(navigate) with `javascript:alert(1)` | Navigation blocked (if Gasoline adds scheme validation per OI-1) or agent-side skill prevents it | should |
+| IT-9 | URL scheme validation | interact(navigate) with `javascript:alert(1)` | Navigation blocked (if Kaboom adds scheme validation per OI-1) or agent-side skill prevents it | should |
 | IT-10 | Stored baseline staleness detection | Baseline saved 48 hours ago, threshold is 24 hours | Agent warns "baseline is stale (48h old, threshold 24h)" | should |
 
 ### 4.3 Performance Tests
 
 | # | Test Case | Metric | Target | Priority |
 |---|-----------|--------|--------|----------|
-| PT-1 | Navigate to preview overhead | Gasoline overhead for `interact({action: "navigate"})` | < 2s (Gasoline overhead, actual page load depends on preview) | must |
+| PT-1 | Navigate to preview overhead | Kaboom overhead for `interact({action: "navigate"})` | < 2s (Kaboom overhead, actual page load depends on preview) | must |
 | PT-2 | Session capture speed | `diff_sessions({session_action: "capture"})` | < 200ms | must |
 | PT-3 | Session comparison speed | `diff_sessions({session_action: "compare"})` | < 500ms | must |
 | PT-4 | Behavioral baseline comparison | `compare_baseline` | < 20ms | should |
 | PT-5 | PR summary generation | `generate({format: "pr_summary"})` | < 300ms | must |
 | PT-6 | Full exploration workflow | End-to-end from discover to report | < 15 minutes (agent-side bound) | must |
-| PT-7 | execute_js interaction overhead | Per-interaction Gasoline overhead | < 100ms per execute_js call | should |
+| PT-7 | execute_js interaction overhead | Per-interaction Kaboom overhead | < 100ms per execute_js call | should |
 | PT-8 | Observe after each page visit | `observe({what: "errors"})` during exploration | < 50ms per observe call | should |
 
 ### 4.4 Edge Case Tests
@@ -179,7 +179,7 @@ last_verified_date: 2026-03-05
 | EC-7 | Preview URL changes mid-exploration | Dynamic URL becomes invalid during exploration | Agent stops, captures partial results, reports partial findings | should |
 | EC-8 | No baseline available | First exploration ever, no production URL access | Agent reports absolute findings only, notes "no baseline comparison available" | must |
 | EC-9 | Stale baseline (7 days old) | Stored baseline created 7 days ago | Agent warns about staleness, proceeds with comparison but notes reduced reliability | should |
-| EC-10 | Preview environment has CORS restrictions | Preview blocks cross-origin requests from Gasoline | Gasoline capture script runs in-page (not cross-origin), so CORS does not affect capture. If interact(execute_js) scripts make cross-origin requests, they are subject to browser CORS. Agent handles gracefully. | should |
+| EC-10 | Preview environment has CORS restrictions | Preview blocks cross-origin requests from Kaboom | Kaboom capture script runs in-page (not cross-origin), so CORS does not affect capture. If interact(execute_js) scripts make cross-origin requests, they are subject to browser CORS. Agent handles gracefully. | should |
 | EC-11 | Very slow preview (30+ second load times) | Preview environment under heavy load | Per-page timeout (30s) fires, agent proceeds to next page, notes timeout | should |
 | EC-12 | Preview serves single-page app (SPA) | All navigation is client-side routing | Agent uses execute_js for navigation instead of navigate, captures telemetry at each route change | should |
 | EC-13 | Preview has anti-bot protection | CAPTCHA or Cloudflare challenge | Agent detects challenge page, reports "preview has anti-bot protection, cannot explore automatically" | should |
@@ -191,7 +191,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] AI Web Pilot toggle ENABLED by human in extension settings
 - [ ] A web application running locally at `http://localhost:3000` (simulates production/stable branch)

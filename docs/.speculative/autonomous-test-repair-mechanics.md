@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 **Status:** Design Document for v6.0 Wave 1 (Self-Healing Tests feature) — **Minimal MVP**
 
-**Purpose:** This document describes how Claude uses Gasoline's v5.1 telemetry capabilities to autonomously diagnose failing E2E tests, propose fixes, apply them, and verify success.
+**Purpose:** This document describes how Claude uses Kaboom's v5.1 telemetry capabilities to autonomously diagnose failing E2E tests, propose fixes, apply them, and verify success.
 
 **Key Insight:** v5.1 already has all required infrastructure. v6.0 is **validation that Claude can use it autonomously.** Zero new code required for MVP.
 
@@ -55,7 +55,7 @@ Claude uses v5.1's existing telemetry to diagnose and fix autonomously (1-2 minu
 ```
 Test fails
   ↓
-Gasoline (v5.1) captured: timeline, network, logs, DOM
+Kaboom (v5.1) captured: timeline, network, logs, DOM
   ↓
 Claude reads timeline via MCP observe()
   ↓
@@ -86,7 +86,7 @@ Not capture or correlation (v5.1 does that). The **autonomous workflow**:
 └──────────────┬───────────────────────────────────────────┘
                ↓
 ┌──────────────────────────────────────────────────────────┐
-│              Gasoline Server v5.1 (Go)                   │
+│              Kaboom Server v5.1 (Go)                   │
 │                                                          │
 │  Existing Capabilities (proven, in production):          │
 │                                                          │
@@ -130,7 +130,7 @@ Not capture or correlation (v5.1 does that). The **autonomous workflow**:
 
 | Component | Responsibility | Status |
 |-----------|---|---|
-| **Gasoline** | Capture telemetry, expose via MCP | v5.1 ✅ |
+| **Kaboom** | Capture telemetry, expose via MCP | v5.1 ✅ |
 | **Claude** | Diagnose, fix, verify | v6.0 NEW |
 | **GitHub** | Report results | v6.0 NEW |
 
@@ -143,7 +143,7 @@ Not capture or correlation (v5.1 does that). The **autonomous workflow**:
 **Already exists. Merges and sorts events.**
 
 ```javascript
-// Gasoline v5.1 implementation (codegen.go:256-384)
+// Kaboom v5.1 implementation (codegen.go:256-384)
 // Merges three sources:
 // 1. Actions (clicks, navigations, inputs)
 // 2. Network (HTTP requests/responses)
@@ -177,7 +177,7 @@ Timeline = [
 **Already exists. Full HTTP payloads.**
 
 ```javascript
-// Gasoline v5.1 implementation (network.go)
+// Kaboom v5.1 implementation (network.go)
 
 NetworkCapture = {
   url: 'https://api.example.com/checkout',
@@ -204,7 +204,7 @@ NetworkCapture = {
 **Already exists. Console output with timestamps.**
 
 ```javascript
-// Gasoline v5.1 implementation (tools.go)
+// Kaboom v5.1 implementation (tools.go)
 
 ConsoleLogs = [
   { timestamp: 0, level: 'log', message: 'Loading checkout page' },
@@ -225,7 +225,7 @@ ConsoleLogs = [
 **Already exists. DOM snapshots & metadata.**
 
 ```javascript
-// Gasoline v5.1 implementation (queries.go)
+// Kaboom v5.1 implementation (queries.go)
 
 PageSnapshot = {
   title: 'Checkout',
@@ -266,7 +266,7 @@ npm test:e2e
     at test/checkout.test.ts:18
 ```
 
-Gasoline (v5.1) captured everything during the test run. Data is in memory.
+Kaboom (v5.1) captured everything during the test run. Data is in memory.
 
 ### Step 2: Claude Reads Timeline
 
@@ -274,7 +274,7 @@ Gasoline (v5.1) captured everything during the test run. Data is in memory.
 Claude calls:
 observe({ what: 'timeline', limit: 100 })
 
-Gasoline returns:
+Kaboom returns:
 [
   { t: 0, kind: 'action', type: 'navigate', url: '/checkout' },
   { t: 245, kind: 'network', method: 'POST', status: null },
@@ -355,7 +355,7 @@ Verdict: ✅ VERIFIED
 ### Step 6: Claude Reports
 
 ```bash
-gh pr comment <PR_ID> -b "✅ **Gasoline Auto-Fix: VERIFIED**
+gh pr comment <PR_ID> -b "✅ **Kaboom Auto-Fix: VERIFIED**
 
 Root Cause: Test assumption error
 - Spinner removed at T+1210ms, test expected it at T+5000ms
@@ -463,7 +463,7 @@ gh pr comment <PR> -b "..."
 
 ### Memory
 
-Gasoline v5.1 uses ring buffers (bounded):
+Kaboom v5.1 uses ring buffers (bounded):
 
 | Buffer | Capacity |
 |--------|----------|
@@ -534,7 +534,7 @@ Only add code if validation shows it's necessary.
 - ❌ Pre-compute observations (Claude asks for data)
 - ❌ Diagnose with confidence scores (Claude reasons)
 
-Gasoline provides **facts**. Claude provides **reasoning**.
+Kaboom provides **facts**. Claude provides **reasoning**.
 
 ---
 
@@ -543,7 +543,7 @@ Gasoline provides **facts**. Claude provides **reasoning**.
 This feature ships with **zero new code**.
 
 ### What's Required
-- ✅ Gasoline v5.1 (already exists)
+- ✅ Kaboom v5.1 (already exists)
 - ✅ MCP observe() endpoints (already exist)
 - ✅ Claude with Bash tool (already exists)
 - ✅ GitHub CLI (user installs if needed)
@@ -584,7 +584,7 @@ This feature ships with **zero new code**.
 
 ## References
 
-- [Gasoline Architecture](./architecture.md)
+- [Kaboom Architecture](./architecture.md)
 - [v5.1 Completed Features](../roadmap.md#completed-features-canonical-list)
 - [Timeline Implementation](../../cmd/browser-agent/codegen.go#L256)
 - [v6.0 Roadmap](../roadmap.md)

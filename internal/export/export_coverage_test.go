@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // ============================================
@@ -275,7 +275,7 @@ func TestExportHARMergedToFile_Success(t *testing.T) {
 		},
 	}
 
-	tmpFile := "/tmp/gasoline-test-har-merged-export.har"
+	tmpFile := "/tmp/kaboom-test-har-merged-export.har"
 	defer os.Remove(tmpFile)
 
 	result, err := ExportHARMergedToFile(bodies, waterfall, types.NetworkBodyFilter{}, "6.0.3", tmpFile)
@@ -337,7 +337,7 @@ func TestExportHARMergedToFile_NonexistentDir(t *testing.T) {
 	_, err := ExportHARMergedToFile(
 		[]types.NetworkBody{{Method: "GET", URL: "https://example.com", Status: 200}},
 		nil, types.NetworkBodyFilter{}, "test",
-		"/tmp/gasoline-nonexist-merged/deep/file.har",
+		"/tmp/kaboom-nonexist-merged/deep/file.har",
 	)
 	if err == nil {
 		t.Error("expected error for nonexistent parent dir")
@@ -347,7 +347,7 @@ func TestExportHARMergedToFile_NonexistentDir(t *testing.T) {
 func TestExportHARMergedToFile_EmptyData(t *testing.T) {
 	t.Parallel()
 
-	tmpFile := "/tmp/gasoline-test-har-merged-empty.har"
+	tmpFile := "/tmp/kaboom-test-har-merged-empty.har"
 	defer os.Remove(tmpFile)
 
 	result, err := ExportHARMergedToFile(nil, nil, types.NetworkBodyFilter{}, "test", tmpFile)
@@ -397,7 +397,7 @@ func TestValidateSARIFSavePath_TempDirPath(t *testing.T) {
 		t.Skipf("cannot resolve temp dir: %v", err)
 	}
 
-	testPath := filepath.Join(resolvedTmp, "gasoline-test", "output.sarif")
+	testPath := filepath.Join(resolvedTmp, "kaboom-test", "output.sarif")
 	err = validateSARIFSavePath(testPath, testPath)
 	if err != nil {
 		t.Errorf("validateSARIFSavePath under temp dir should succeed, got: %v", err)

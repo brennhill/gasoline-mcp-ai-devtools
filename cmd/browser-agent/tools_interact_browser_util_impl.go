@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
 // stashPerfSnapshotImpl saves the current performance snapshot as a "before" baseline
@@ -29,7 +29,7 @@ func (h *interactActionHandler) stashPerfSnapshotImpl(correlationID string) {
 
 func (h *interactActionHandler) resolveNavigateURLImpl(rawURL string) (string, error) {
 	trimmed := strings.TrimSpace(rawURL)
-	const insecurePrefix = "gasoline-insecure://"
+	const insecurePrefix = "kaboom-insecure://"
 	if !strings.HasPrefix(strings.ToLower(trimmed), insecurePrefix) {
 		return trimmed, nil
 	}
@@ -44,17 +44,17 @@ func (h *interactActionHandler) resolveNavigateURLImpl(rawURL string) (string, e
 
 	target := strings.TrimSpace(trimmed[len(insecurePrefix):])
 	if target == "" {
-		return "", fmt.Errorf("resolve insecure URL: target URL is empty. Provide a URL after the gasoline-insecure:// prefix")
+		return "", fmt.Errorf("resolve insecure URL: target URL is empty. Provide a URL after the kaboom-insecure:// prefix")
 	}
 	parsed, err := url.Parse(target)
 	if err != nil {
-		return "", fmt.Errorf("invalid gasoline-insecure target URL: %v", err)
+		return "", fmt.Errorf("invalid kaboom-insecure target URL: %v", err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", fmt.Errorf("gasoline-insecure target URL must use http or https")
+		return "", fmt.Errorf("kaboom-insecure target URL must use http or https")
 	}
 	if parsed.Host == "" {
-		return "", fmt.Errorf("gasoline-insecure target URL must include host")
+		return "", fmt.Errorf("kaboom-insecure target URL must include host")
 	}
 
 	port := defaultPort

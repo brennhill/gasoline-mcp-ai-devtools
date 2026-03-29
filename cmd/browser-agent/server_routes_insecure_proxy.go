@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 const (
@@ -116,13 +116,13 @@ func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap
 			w.Header().Add(key, value)
 		}
 	}
-	w.Header().Set("X-Gasoline-Proxy-Mode", mode)
-	w.Header().Set("X-Gasoline-Production-Parity", "false")
+	w.Header().Set("X-Kaboom-Proxy-Mode", mode)
+	w.Header().Set("X-Kaboom-Production-Parity", "false")
 	if len(rewrites) > 0 {
-		w.Header().Set("X-Gasoline-Insecure-Rewrites", strings.Join(rewrites, ","))
+		w.Header().Set("X-Kaboom-Insecure-Rewrites", strings.Join(rewrites, ","))
 	}
 	if productionParity {
-		w.Header().Set("X-Gasoline-Production-Parity", "true")
+		w.Header().Set("X-Kaboom-Production-Parity", "true")
 	}
 	w.WriteHeader(upstreamResp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(upstreamResp.Body, insecureProxyMaxResponseBytes))

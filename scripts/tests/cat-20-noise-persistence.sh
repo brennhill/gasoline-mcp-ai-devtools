@@ -14,12 +14,12 @@ begin_category "20" "Noise Persistence" "5"
 
 # Resolve project-scoped noise persistence path:
 # ${STATE_ROOT}/projects/${ABS_PROJECT_PATH_WITHOUT_LEADING_SLASH}/noise/rules.json
-if [ -n "${GASOLINE_STATE_DIR:-}" ]; then
-    STATE_ROOT="$GASOLINE_STATE_DIR"
+if [ -n "${KABOOM_STATE_DIR:-}" ]; then
+    STATE_ROOT="$KABOOM_STATE_DIR"
 elif [ -n "${XDG_STATE_HOME:-}" ]; then
-    STATE_ROOT="$XDG_STATE_HOME/gasoline"
+    STATE_ROOT="$XDG_STATE_HOME/kaboom"
 else
-    STATE_ROOT="$HOME/.gasoline"
+    STATE_ROOT="$HOME/.kaboom"
 fi
 PROJECT_ABS="$(pwd -P)"
 PROJECT_REL="${PROJECT_ABS#/}"

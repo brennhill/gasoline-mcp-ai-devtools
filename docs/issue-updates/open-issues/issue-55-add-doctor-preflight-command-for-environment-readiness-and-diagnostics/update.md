@@ -1,12 +1,12 @@
 # Product Update: Issue #55
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/55
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/55
 - Title: Add doctor preflight command for environment readiness and diagnostics
 - Last Updated: 2026-02-16T13:19:33Z
 
 ## Change Summary
-This update resolves or advances Issue #55 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #55 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Add doctor preflight command for environment readiness and diagnostics

@@ -2,7 +2,7 @@
 /**
  * @fileoverview a11y-runtime-error.test.js — Tests for Bug #3: Accessibility Audit Runtime Error.
  * Verifies that runAxeAuditWithTimeout is properly imported and accessible at runtime
- * when the GASOLINE_A11Y_QUERY message handler executes in inject.js.
+ * when the kaboom_a11y_query message handler executes in inject.js.
  *
  * Bug: "runAxeAuditWithTimeout is not defined" error at runtime.
  * Root cause: Function was re-exported from inject.js but not imported for local use.
@@ -478,7 +478,7 @@ describe('Regression: DOM queries still work after fix', () => {
 // Test Suite: Message Handler Integration
 // =============================================================================
 
-describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () => {
+describe('kaboom_a11y_query message handler uses runAxeAuditWithTimeout', () => {
   beforeEach(() => {
     originalDocument = globalThis.document
     originalWindow = globalThis.window
@@ -491,7 +491,7 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
     globalThis.window = originalWindow
   })
 
-  test('should handle GASOLINE_A11Y_QUERY message and call runAxeAuditWithTimeout', async () => {
+  test('should handle kaboom_a11y_query message and call runAxeAuditWithTimeout', async () => {
     // This test simulates the message handler behavior
     const { runAxeAuditWithTimeout } = await import('../../extension/inject.js')
 
@@ -516,7 +516,7 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
     // Post response (as the message handler would)
     globalThis.window.postMessage(
       {
-        type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+        type: 'kaboom_a11y_query_response',
         requestId,
         result: auditResult
       },
@@ -526,7 +526,7 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
     // Verify postMessage was called with correct structure
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
     const [response, origin] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(response.type, 'GASOLINE_A11Y_QUERY_RESPONSE')
+    assert.strictEqual(response.type, 'kaboom_a11y_query_response')
     assert.strictEqual(response.requestId, requestId)
     assert.ok(response.result !== undefined)
     assert.strictEqual(origin, 'http://localhost:3000')

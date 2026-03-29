@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // httpRequestContext collects metadata from an HTTP request for debug logging.
@@ -26,8 +26,8 @@ type httpRequestContext struct {
 func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestContext {
 	ctx := httpRequestContext{
 		startTime:    time.Now(),
-		extSessionID: r.Header.Get("X-Gasoline-Ext-Session"),
-		clientID:     r.Header.Get("X-Gasoline-Client"),
+		extSessionID: r.Header.Get("X-Kaboom-Ext-Session"),
+		clientID:     r.Header.Get("X-Kaboom-Client"),
 	}
 
 	ctx.headers = make(map[string]string)
@@ -40,8 +40,8 @@ func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestCon
 		}
 	}
 
-	if extVer := r.Header.Get("X-Gasoline-Extension-Version"); extVer != "" && extVer != serverVersion {
-		stderrf("[gasoline] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
+	if extVer := r.Header.Get("X-Kaboom-Extension-Version"); extVer != "" && extVer != serverVersion {
+		stderrf("[Kaboom] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
 	}
 
 	return ctx
@@ -149,6 +149,6 @@ func jsonResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		stderrf("[gasoline] Error encoding JSON response: %v\n", err)
+		stderrf("[Kaboom] Error encoding JSON response: %v\n", err)
 	}
 }

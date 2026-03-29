@@ -10,13 +10,13 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-Users report that after running `npm install -g gasoline-mcp`, the old version continues to run until they manually uninstall with `npm uninstall -g gasoline-mcp`.
+Users report that after running `npm install -g kaboom-mcp`, the old version continues to run until they manually uninstall with `npm uninstall -g kaboom-mcp`.
 
 **Root cause**: npm's global package cache keeps the old binary in PATH even after new install completes.
 
 ## User Stories
 
-1. **As a user upgrading gasoline-mcp**, I want `npm install -g` to automatically remove the old version, so I don't have to manually uninstall first.
+1. **As a user upgrading kaboom-mcp**, I want `npm install -g` to automatically remove the old version, so I don't have to manually uninstall first.
 
 2. **As a user**, I want a single command to upgrade to the latest version, without multi-step workarounds.
 
@@ -25,13 +25,13 @@ Users report that after running `npm install -g gasoline-mcp`, the old version c
 ### Functional
 
 1. **Auto-Uninstall**
-   - Run `npm uninstall -g gasoline-mcp` before installing new version
+   - Run `npm uninstall -g kaboom-mcp` before installing new version
    - Execute via npm `preinstall` hook
    - Must be silent (no error output if old version doesn't exist)
    - Must not block install if uninstall fails
 
 2. **Installation Flow**
-   - User runs: `npm install -g gasoline-mcp@latest`
+   - User runs: `npm install -g kaboom-mcp@latest`
    - npm runs: `preinstall` script → uninstalls old version
    - npm continues: installs new version
    - Result: Only new version in PATH
@@ -54,14 +54,14 @@ Users report that after running `npm install -g gasoline-mcp`, the old version c
 2. **Multiple versions installed**: npm handles cleanup
 3. **Permission denied**: Install continues (logged but not fatal)
 4. **Network timeout during uninstall**: Install continues
-5. **User has gasoline-mcp locally (not global)**: Local version unaffected
+5. **User has kaboom-mcp locally (not global)**: Local version unaffected
 
 ## Implementation
 
 ```json
 {
   "scripts": {
-    "preinstall": "node -e \"try{require('child_process').execSync('npm uninstall -g gasoline-mcp',{stdio:'ignore'})}catch(e){}\""
+    "preinstall": "node -e \"try{require('child_process').execSync('npm uninstall -g kaboom-mcp',{stdio:'ignore'})}catch(e){}\""
   }
 }
 ```
@@ -78,7 +78,7 @@ Users report that after running `npm install -g gasoline-mcp`, the old version c
 - Migrating user settings from old version
 - Backing up old binaries
 - Prompting user before uninstall
-- Uninstalling other gasoline packages (gasoline-cli, etc.)
+- Uninstalling other kaboom packages (kaboom-cli, etc.)
 
 ## Success Metrics
 

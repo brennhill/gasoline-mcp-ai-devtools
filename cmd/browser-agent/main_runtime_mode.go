@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
 // detectStdinMode returns whether stdin is a TTY and the file mode for diagnostics.
@@ -62,12 +62,12 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 
 	if warning := buildLaunchModeWarning(launchInfo, cfg.port); warning != "" {
 		server.AddWarning(warning)
-		stderrf("[gasoline] Gasoline appears to be running in non-persistent mode (%s).\n", launchInfo.Reason)
-		stderrf("[gasoline] This will disconnect the extension when the process exits.\n")
-		stderrf("[gasoline] Start persistently: gasoline-mcp --daemon --port %d\n", cfg.port)
+		stderrf("[Kaboom] Kaboom appears to be running in non-persistent mode (%s).\n", launchInfo.Reason)
+		stderrf("[Kaboom] This will disconnect the extension when the process exits.\n")
+		stderrf("[Kaboom] Start persistently: kaboom-agentic-browser --daemon --port %d\n", cfg.port)
 	}
 	if err := enforcePersistentMode(launchInfo); err != nil {
-		stderrf("[gasoline] %v\n", err)
+		stderrf("[Kaboom] %v\n", err)
 		os.Exit(1)
 	}
 
@@ -81,9 +81,9 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 				"error": err.Error(),
 			})
 			if diagPath != "" {
-				stderrf("[gasoline] Startup diagnostics written to: %s\n", diagPath)
+				stderrf("[Kaboom] Startup diagnostics written to: %s\n", diagPath)
 			}
-			stderrf("[gasoline] Daemon error: %v\n", err)
+			stderrf("[Kaboom] Daemon error: %v\n", err)
 			os.Exit(1)
 		}
 		return
@@ -94,17 +94,17 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 		}
 		server.logLifecycle("bridge_mode_start", cfg.port, bridgeLaunchFingerprint())
 		if cfg.bridgeMode {
-			stderrf("[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
+			stderrf("[Kaboom] Starting in bridge mode (stdio -> HTTP)\n")
 		} else if isTTY && mcpConfigPath != "" {
-			stderrf("[gasoline] MCP config detected at %s; running in bridge mode for tool compatibility.\n", mcpConfigPath)
+			stderrf("[Kaboom] MCP config detected at %s; running in bridge mode for tool compatibility.\n", mcpConfigPath)
 		} else if isTTY {
-			stderrf("[gasoline] Running in bridge mode by default. Use --daemon for server-only mode.\n")
+			stderrf("[Kaboom] Running in bridge mode by default. Use --daemon for server-only mode.\n")
 		}
-		if os.Getenv("GASOLINE_TEST_BRIDGE_NOISE") == "1" {
+		if os.Getenv("KABOOM_TEST_BRIDGE_NOISE") == "1" {
 			// Test-only probe: verifies transport isolation prevents accidental
 			// stdout/stderr writes from corrupting MCP responses.
-			fmt.Fprintln(os.Stdout, "GASOLINE_TEST_NOISE_STDOUT")
-			fmt.Fprintln(os.Stderr, "GASOLINE_TEST_NOISE_STDERR")
+			fmt.Fprintln(os.Stdout, "KABOOM_TEST_NOISE_STDOUT")
+			fmt.Fprintln(os.Stderr, "KABOOM_TEST_NOISE_STDERR")
 		}
 		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return

@@ -1,5 +1,5 @@
 ---
-feature: Gasoline CI Infrastructure
+feature: Kaboom CI Infrastructure
 status: proposed
 doc_type: tech-spec
 feature_id: feature-ci-infrastructure
@@ -8,13 +8,13 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Tech Spec: Gasoline CI Infrastructure
+# Tech Spec: Kaboom CI Infrastructure
 
 > Plain language architecture. No code. Describes HOW the implementation works at a high level.
 
 ## Architecture Overview
 
-CI Infrastructure extends Gasoline with three new capabilities:
+CI Infrastructure extends Kaboom with three new capabilities:
 
 ```
 Test Execution (CI)
@@ -22,7 +22,7 @@ Test Execution (CI)
   ├─ Test Boundary Marking (isolate test logs from noise)
   └─ Network Mocking (AI controls API responses)
         ↓
-    MCP Server (Gasoline)
+    MCP Server (Kaboom)
   ├─ observe({what: 'snapshots'})
   ├─ configure({action: 'mock'})
   ├─ interact({action: 'restore'})
@@ -48,8 +48,8 @@ Test Execution (CI)
 
 #### Inside the engine:
 - **DOM Serializer:** Walks DOM tree, captures structure + attributes (but prunes non-essential data like internal framework props)
-- **Network Interceptor:** Captures requests + responses (matching existing Gasoline network logging)
-- **Log Collector:** Gathers console.log/warn/error (already done by Gasoline)
+- **Network Interceptor:** Captures requests + responses (matching existing Kaboom network logging)
+- **Log Collector:** Gathers console.log/warn/error (already done by Kaboom)
 - **Performance Metrics:** LCP, FCP, load time, paint duration (from Performance API)
 - **Compression:** Snapshots gzipped before storage (reduce size ~80%)
 - **Storage:** In-memory (ephemeral), tied to test execution lifecycle
@@ -86,10 +86,10 @@ Snapshot {
 **What it does:** Tags logs/network calls as "test-specific" or "background"
 
 #### How it works:
-- Developer calls `gasoline.testBoundary('test-name')`
-- Gasoline adds tag to subsequent log entries: `{level, message, boundary: 'test-name'}`
+- Developer calls `kaboom.testBoundary('test-name')`
+- Kaboom adds tag to subsequent log entries: `{level, message, boundary: 'test-name'}`
 - Developer ends test (Jest afterEach, Playwright teardown, etc.)
-- Gasoline removes tag for next test
+- Kaboom removes tag for next test
 - When AI queries logs, can filter: `logs.filter(l => l.boundary === 'test-name')`
 
 #### Noise filtering:
@@ -112,7 +112,7 @@ LogEntry {
 **What it does:** Intercepts HTTP requests, returns mocked responses
 
 #### Implementation approach:
-- Leverage existing Gasoline network interception (already intercepts Fetch + XHR)
+- Leverage existing Kaboom network interception (already intercepts Fetch + XHR)
 - Add mock registry: `{endpoint: '/api/users', response: {...}}`
 - On request to /api/users:
   - Check if endpoint in mock registry
@@ -146,12 +146,12 @@ Mock {
 **What it does:** Wraps long-running operations so they don't block MCP server
 
 #### Problem it solves:
-- `gasoline.rerunTest('checkout.spec.ts')` takes 30+ seconds
+- `kaboom.rerunTest('checkout.spec.ts')` takes 30+ seconds
 - If called synchronously, MCP server blocked (no other requests processed)
 - LLM can't send new queries while waiting
 
 #### Solution:
-- Wrap in async handler: `await gasoline.async(() => rerunTest())`
+- Wrap in async handler: `await kaboom.async(() => rerunTest())`
 - Operation runs in background thread/goroutine
 - MCP server remains responsive
 - Result returned asynchronously via callback or polling
@@ -214,14 +214,14 @@ AsyncOperation {
 - Link in GitHub/GitLab PR
 
 ### 6. Fixture Adapter Layer
-**What it does:** Exposes Gasoline API in test frameworks with zero friction
+**What it does:** Exposes Kaboom API in test frameworks with zero friction
 
 #### Playwright Fixture
 ```
 // Define fixture in test setup
 export const test = base.extend({
-  gasoline: async ({ page }, use) => {
-    const g = new GasolineClient();
+  kaboom: async ({ page }, use) => {
+    const g = new KaboomClient();
     await g.initialize();
     await use(g);
     await g.cleanup();
@@ -229,39 +229,39 @@ export const test = base.extend({
 });
 
 // Use in test
-test('my test', async ({ page, gasoline }) => {
-  await gasoline.snapshot('before');
+test('my test', async ({ page, kaboom }) => {
+  await kaboom.snapshot('before');
   // ... test code ...
 });
 ```
 
 ##### How it works:
 - Base fixture extends @playwright/test
-- Gasoline fixture initializes on test start
-- Provides `gasoline` object with all APIs
+- Kaboom fixture initializes on test start
+- Provides `kaboom` object with all APIs
 - Auto-cleanup on test end
 
 #### Jest Fixture
 Similar pattern using Jest beforeEach/afterEach hooks.
 
 #### Cypress Plugin
-Expose as Cypress commands: `cy.gasoline.snapshot()`, `cy.gasoline.boundary()`.
+Expose as Cypress commands: `cy.kaboom.snapshot()`, `cy.kaboom.boundary()`.
 
 ## Data Flows
 
 ### Flow 1: Snapshot Capture
 ```
 Test Code:
-  await gasoline.snapshot('before-action')
+  await kaboom.snapshot('before-action')
     ↓
-  Gasoline Extension (browser):
+  Kaboom Extension (browser):
     - Serialize DOM
     - Collect network calls (from existing buffer)
     - Collect logs (from existing buffer)
     - Get performance metrics
     - Compress data
     ↓
-  Gasoline Server (Go):
+  Kaboom Server (Go):
     - Receive snapshot data
     - Store in memory (ephemeral)
     - Return snapshot ID
@@ -283,14 +283,14 @@ AI Agent:
     response: { statusCode: 200, body: {...} }
   })
     ↓
-  Gasoline Server:
+  Kaboom Server:
     - Register mock in registry
     - Store: endpoint → response mapping
     ↓
   Test Code:
     - Makes request: fetch('/api/order', ...)
     ↓
-  Gasoline Network Interceptor:
+  Kaboom Network Interceptor:
     - Check: is '/api/order' mocked?
     - Yes: return mocked response immediately
     - No: forward to real backend
@@ -304,9 +304,9 @@ AI Agent:
 ### Flow 3: Test Isolation (Boundary Marking)
 ```
 Test Starts:
-  await gasoline.testBoundary('checkout-test')
+  await kaboom.testBoundary('checkout-test')
     ↓
-  Gasoline Server:
+  Kaboom Server:
     - Tag: subsequent logs with boundary='checkout-test'
     ↓
   Test Code:
@@ -323,11 +323,11 @@ Test Starts:
 ### Flow 4: Async Execution
 ```
 AI Agent:
-  const result = await gasoline.async(() => {
+  const result = await kaboom.async(() => {
     return rerunTest('checkout.spec.ts')
   })
     ↓
-  Gasoline Server:
+  Kaboom Server:
     - Create AsyncOperation {id, status: 'pending'}
     - Return operation ID immediately
     - Spawn background thread
@@ -397,7 +397,7 @@ AI Agent:
 ### Edge Case 5: Sensitive Data in Snapshots
 **Scenario:** Snapshot captures request body with auth token
 **Handling:** Redact sensitive fields (Authorization, passwords, tokens)
-**Implementation:** Use existing Gasoline redaction rules
+**Implementation:** Use existing Kaboom redaction rules
 
 ### Edge Case 6: Network Mock + Real Backend Race
 **Scenario:** Mock registered, but real request already in flight
@@ -412,8 +412,8 @@ AI Agent:
 ## Assumptions
 
 1. **Tests are isolated:** Each test run gets clean environment
-2. **Network is intercepted:** Gasoline already intercepts Fetch/XHR
-3. **Logs are centralized:** All logs feed into Gasoline buffer
+2. **Network is intercepted:** Kaboom already intercepts Fetch/XHR
+3. **Logs are centralized:** All logs feed into Kaboom buffer
 4. **Snapshots ephemeral:** Stored in-memory, not persisted
 5. **CI environment has browser:** Assumes containerized browser (Chrome, Playwright)
 6. **Test failure triggers snapshot:** Automatic capture on assert failure
@@ -447,7 +447,7 @@ AI Agent:
 
 ## Dependencies
 
-### Internal (Gasoline)
+### Internal (Kaboom)
 - **Network Interception:** Already working, extend with mock support
 - **Log Buffering:** Already working, extend with boundary tagging
 - **MCP Server:** Extend with new commands (snapshot, mock, boundary)
@@ -471,7 +471,7 @@ AI Agent:
 
 - **Snapshot Data:** May contain auth tokens, passwords, user data
   - Mitigation: Redact sensitive fields before storage
-  - Comply with existing Gasoline redaction rules
+  - Comply with existing Kaboom redaction rules
   
 - **Mock Responses:** Could be manipulated by attacker
   - Mitigation: Mocks only apply to test context, not production

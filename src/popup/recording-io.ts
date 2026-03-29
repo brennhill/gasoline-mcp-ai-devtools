@@ -6,6 +6,7 @@
  */
 
 import { StorageKey } from '../lib/constants.js'
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { setLocal, removeLocal } from '../lib/storage-utils.js'
 
@@ -26,6 +27,8 @@ export interface RecordingState {
 export type ShowRecordingFn = (els: RecordingElements, state: RecordingState, name: string, startTime: number) => void
 export type ShowIdleFn = (els: RecordingElements, state: RecordingState) => void
 export type ShowStartErrorFn = (saveInfoEl: HTMLElement | null, errorText: string) => void
+
+const LOG = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`
 
 export function sendRecordingGestureDecision(type: 'recording_gesture_granted' | 'recording_gesture_denied'): void {
   chrome.runtime.sendMessage({ type }, () => {
@@ -59,13 +62,13 @@ function sendRecordStart(
   showIdle: ShowIdleFn,
   showStartError: ShowStartErrorFn
 ): void {
-  console.log('[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:', audioMode)
+  console.log(LOG, 'sendStart() called, sending screen_recording_start with audio:', audioMode)
   chrome.runtime.sendMessage(
     { type: 'screen_recording_start', audio: audioMode },
     (resp: { status?: string; name?: string; startTime?: number; error?: string } | undefined) => {
-      console.log('[Gasoline REC] Popup: screen_recording_start response:', resp)
+      console.log(LOG, 'screen_recording_start response:', resp)
       if (chrome.runtime.lastError) {
-        console.error('[Gasoline REC] Popup: screen_recording_start lastError:', chrome.runtime.lastError.message)
+        console.error(LOG, 'screen_recording_start lastError:', chrome.runtime.lastError.message)
       }
       if (resp?.status === 'recording' && resp.name) {
         showRecording(els, state, resp.name, resp.startTime ?? Date.now())
@@ -86,17 +89,17 @@ function tryMicPermissionThenStart(
   showIdle: ShowIdleFn,
   showStartError: ShowStartErrorFn
 ): void {
-  console.log('[Gasoline REC] Popup: trying getUserMedia from popup...')
+  console.log(LOG, 'trying getUserMedia from popup...')
   navigator.mediaDevices
     .getUserMedia({ audio: true })
     .then((micStream) => {
-      console.log('[Gasoline REC] Popup: getUserMedia succeeded from popup')
+      console.log(LOG, 'getUserMedia succeeded from popup')
       micStream.getTracks().forEach((t) => t.stop())
       void setLocal(StorageKey.MIC_GRANTED, true)
       sendRecordStart(els, state, audioMode, showRecording, showIdle, showStartError)
     })
     .catch((err) => {
-      console.log('[Gasoline REC] Popup: getUserMedia FAILED:', (err as Error).name, errorMessage(err))
+      console.log(LOG, 'getUserMedia FAILED:', (err as Error).name, errorMessage(err))
       void removeLocal(StorageKey.MIC_GRANTED)
       showIdle(els, state)
       if (els.saveInfoEl) showMicPermissionPrompt(els.saveInfoEl, audioMode)
@@ -118,7 +121,7 @@ export function handleStartClick(
   els.label.textContent = 'Starting...'
 
   if (audioMode === 'mic' || audioMode === 'both') {
-    console.log('[Gasoline REC] Popup: mic/both mode — checking gasoline_mic_granted')
+    console.log(LOG, 'mic/both mode — checking stored mic approval')
     tryMicPermissionThenStart(els, state, audioMode, showRecording, showIdle, showStartError)
   } else {
     sendRecordStart(els, state, audioMode, showRecording, showIdle, showStartError)
@@ -133,13 +136,13 @@ export function handleStopClick(
 ): void {
   els.row.classList.remove('is-recording')
   els.label.textContent = 'Saving...'
-  console.log('[Gasoline REC] Popup: sending screen_recording_stop')
+  console.log(LOG, 'sending screen_recording_stop')
   chrome.runtime.sendMessage(
     { type: 'screen_recording_stop' },
     (resp: { status?: string; name?: string; path?: string; error?: string } | undefined) => {
-      console.log('[Gasoline REC] Popup: screen_recording_stop response:', resp)
+      console.log(LOG, 'screen_recording_stop response:', resp)
       if (chrome.runtime.lastError) {
-        console.error('[Gasoline REC] Popup: screen_recording_stop lastError:', chrome.runtime.lastError.message)
+        console.error(LOG, 'screen_recording_stop lastError:', chrome.runtime.lastError.message)
       }
       showIdle(els, state)
       showSaveResult(els.saveInfoEl, resp)

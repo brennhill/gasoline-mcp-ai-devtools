@@ -8,8 +8,8 @@ const assert = require('node:assert')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const doctor = require('../../npm/gasoline-mcp/lib/doctor')
-const config = require('../../npm/gasoline-mcp/lib/config')
+const doctor = require('../../npm/kaboom-agentic-browser/lib/doctor')
+const config = require('../../npm/kaboom-agentic-browser/lib/config')
 
 test('doctor.testBinary returns object with expected structure', () => {
   const result = doctor.testBinary()
@@ -122,7 +122,7 @@ test('doctor.runDiagnostics identifies existing valid configs', () => {
     const testPath = path.join(testDir, 'claude.mcp.json')
     const validConfig = {
       mcpServers: {
-        gasoline: { command: 'gasoline-mcp' }
+        'kaboom-browser-devtools': { command: 'kaboom-agentic-browser' }
       }
     }
     fs.writeFileSync(testPath, JSON.stringify(validConfig))

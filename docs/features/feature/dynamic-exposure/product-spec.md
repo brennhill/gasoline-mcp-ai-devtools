@@ -47,7 +47,7 @@ Add feature flag system for dynamic capability gating. Flags are boolean toggles
 ## User Workflow
 
 1. Admin defines feature flags in features.yaml
-2. Start server: `gasoline --feature-flags=features.yaml`
+2. Start server: `kaboom --feature-flags=features.yaml`
 3. Agent calls feature, server checks flag before execution
 4. If disabled, return error with flag name
 5. Admin updates features.yaml (enable/disable)
@@ -69,7 +69,7 @@ features:
 
 ## Start with feature flags:
 ```bash
-gasoline --feature-flags=features.yaml
+kaboom --feature-flags=features.yaml
 ```
 
 ## Query feature flags:
@@ -99,7 +99,7 @@ generate({format: "har"})
 ## Emergency disable via CLI:
 ```bash
 # Override config, force disable
-gasoline --feature-flags=features.yaml --disable-feature=interact_execute_js
+kaboom --feature-flags=features.yaml --disable-feature=interact_execute_js
 ```
 
 ## Hot-reload:

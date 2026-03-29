@@ -58,7 +58,7 @@ describe('highlightElement function', () => {
         if (selector === '.nonexistent') {
           return null
         }
-        if (selector === '#gasoline-highlighter') {
+        if (selector === '#kaboom-highlighter') {
           return gasolineHighlighter
         }
         return null
@@ -106,7 +106,7 @@ describe('highlightElement function', () => {
     const rect = element.getBoundingClientRect()
 
     gasolineHighlighter = document.createElement('div')
-    gasolineHighlighter.id = 'gasoline-highlighter'
+    gasolineHighlighter.id = 'kaboom-highlighter'
     gasolineHighlighter.dataset.selector = selector
     Object.assign(gasolineHighlighter.style, {
       position: 'fixed',
@@ -150,7 +150,7 @@ describe('highlightElement function', () => {
 
     assert.ok(appendedElements.length > 0, 'Should append a highlighter element')
     const highlighter = appendedElements[appendedElements.length - 1]
-    assert.strictEqual(highlighter.id, 'gasoline-highlighter', 'Should have correct ID')
+    assert.strictEqual(highlighter.id, 'kaboom-highlighter', 'Should have correct ID')
   })
 
   test('creates div with fixed positioning', () => {

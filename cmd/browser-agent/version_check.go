@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 const (
@@ -29,10 +29,10 @@ var (
 )
 
 var (
-	// githubAPIURL can be overridden via GASOLINE_RELEASES_URL env var for forked repos.
+	// githubAPIURL can be overridden via KABOOM_RELEASES_URL env var for forked repos.
 	// Access must be protected by versionCheckMu (read via getGitHubAPIURL).
-	githubAPIURL = getEnvOrDefault("GASOLINE_RELEASES_URL",
-		"https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest")
+	githubAPIURL = getEnvOrDefault("KABOOM_RELEASES_URL",
+		"https://api.github.com/repos/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/latest")
 )
 
 // getGitHubAPIURL returns the current GitHub API URL (test use only).

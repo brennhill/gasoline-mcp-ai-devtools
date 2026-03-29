@@ -13,11 +13,11 @@ last_reviewed: 2026-02-16
 
 `element.shadowRoot` returns `null` for closed shadow roots. Once `attachShadow({ mode: 'closed' })` executes, the ShadowRoot reference is gone forever — unless intercepted at creation time.
 
-Without interception, Gasoline's deep traversal engine (from the open shadow DOM spec) stops at every closed boundary. Components using closed roots include: Salesforce Lightning, some Shopify Polaris internals, banking/fintech widgets, and any security-conscious web component.
+Without interception, Kaboom's deep traversal engine (from the open shadow DOM spec) stops at every closed boundary. Components using closed roots include: Salesforce Lightning, some Shopify Polaris internals, banking/fintech widgets, and any security-conscious web component.
 
 ## Approach
 
-Monkey-patch `Element.prototype.attachShadow` in `early-patch.ts` to capture closed ShadowRoot references in a WeakMap before page JavaScript runs. This follows the exact same pattern Gasoline already uses for WebSocket capture: early-patch saves originals, inject script adopts them.
+Monkey-patch `Element.prototype.attachShadow` in `early-patch.ts` to capture closed ShadowRoot references in a WeakMap before page JavaScript runs. This follows the exact same pattern Kaboom already uses for WebSocket capture: early-patch saves originals, inject script adopts them.
 
 ## Architecture
 
@@ -52,8 +52,8 @@ Add the `attachShadow` patch alongside the existing WebSocket patch. Same IIFE, 
 const OriginalAttachShadow = Element.prototype.attachShadow
 if (OriginalAttachShadow) {
   const closedRoots = new WeakMap<Element, ShadowRoot>()
-  window.__GASOLINE_CLOSED_SHADOWS__ = closedRoots
-  window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__ = OriginalAttachShadow
+  window.__KABOOM_CLOSED_SHADOWS__ = closedRoots
+  window.__KABOOM_ORIGINAL_ATTACH_SHADOW__ = OriginalAttachShadow
 
   Element.prototype.attachShadow = function (
     this: Element,
@@ -86,10 +86,10 @@ Add to the `Window` interface:
 
 ```typescript
 /** Early-patch: captured closed shadow roots (host → ShadowRoot) */
-__GASOLINE_CLOSED_SHADOWS__?: WeakMap<Element, ShadowRoot>
+__KABOOM_CLOSED_SHADOWS__?: WeakMap<Element, ShadowRoot>
 
 /** Early-patch: original attachShadow saved before patch */
-__GASOLINE_ORIGINAL_ATTACH_SHADOW__?: typeof Element.prototype.attachShadow
+__KABOOM_ORIGINAL_ATTACH_SHADOW__?: typeof Element.prototype.attachShadow
 ```
 
 ### 3. Adoption: `src/inject/shadow-registry.ts` (new file)
@@ -106,11 +106,11 @@ let closedRoots: WeakMap<Element, ShadowRoot> | null = null
  * Called once during inject Phase 1 initialization.
  */
 export function adoptClosedShadowRoots(): void {
-  closedRoots = window.__GASOLINE_CLOSED_SHADOWS__ ?? null
+  closedRoots = window.__KABOOM_CLOSED_SHADOWS__ ?? null
 
   // Clean up globals
-  delete window.__GASOLINE_CLOSED_SHADOWS__
-  delete window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__
+  delete window.__KABOOM_CLOSED_SHADOWS__
+  delete window.__KABOOM_ORIGINAL_ATTACH_SHADOW__
 }
 
 /**
@@ -126,8 +126,8 @@ export function getClosedShadowRoot(host: Element): ShadowRoot | null {
  */
 export function destroyShadowRegistry(): void {
   closedRoots = null
-  delete window.__GASOLINE_CLOSED_SHADOWS__
-  delete window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__
+  delete window.__KABOOM_CLOSED_SHADOWS__
+  delete window.__KABOOM_ORIGINAL_ATTACH_SHADOW__
 }
 ```
 
@@ -137,29 +137,29 @@ The deep traversal engine (from the open shadow DOM spec) needs access to closed
 
 **Option A: Window global (recommended)**
 
-The WeakMap stays on `window.__GASOLINE_CLOSED_SHADOWS__` and `domPrimitive` reads it directly. The inject script does NOT delete the global — it only ensures the early-patch is cleaned up on unload.
+The WeakMap stays on `window.__KABOOM_CLOSED_SHADOWS__` and `domPrimitive` reads it directly. The inject script does NOT delete the global — it only ensures the early-patch is cleaned up on unload.
 
 ```typescript
 // Inside domPrimitive (self-contained)
 function getShadowRoot(el: Element): ShadowRoot | null {
   if (el.shadowRoot) return el.shadowRoot // open
-  const closed = (window as any).__GASOLINE_CLOSED_SHADOWS__
+  const closed = (window as any).__KABOOM_CLOSED_SHADOWS__
   return closed?.get(el) ?? null
 }
 ```
 
 **Why not Option B (pass as arg):** `chrome.scripting.executeScript` serializes arguments. WeakMap is not serializable. The global is the only viable path.
 
-**Implication:** The `adoptClosedShadowRoots()` function should NOT delete `window.__GASOLINE_CLOSED_SHADOWS__`. Instead, it should only delete `__GASOLINE_ORIGINAL_ATTACH_SHADOW__` (the saved original, which is no longer needed). The WeakMap must remain accessible for the lifetime of the page.
+**Implication:** The `adoptClosedShadowRoots()` function should NOT delete `window.__KABOOM_CLOSED_SHADOWS__`. Instead, it should only delete `__KABOOM_ORIGINAL_ATTACH_SHADOW__` (the saved original, which is no longer needed). The WeakMap must remain accessible for the lifetime of the page.
 
 Revised adoption:
 
 ```typescript
 export function adoptClosedShadowRoots(): void {
-  closedRoots = window.__GASOLINE_CLOSED_SHADOWS__ ?? null
-  // Keep __GASOLINE_CLOSED_SHADOWS__ on window — dom-primitives needs it
+  closedRoots = window.__KABOOM_CLOSED_SHADOWS__ ?? null
+  // Keep __KABOOM_CLOSED_SHADOWS__ on window — dom-primitives needs it
   // Only clean up the original function reference
-  delete window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__
+  delete window.__KABOOM_ORIGINAL_ATTACH_SHADOW__
 }
 ```
 
@@ -169,7 +169,7 @@ export function adoptClosedShadowRoots(): void {
 
 **Likelihood:** Low but possible. A page could save a reference to `Element.prototype.attachShadow` before early-patch runs (impossible — early-patch runs at `document_start` before any page script) or compare the function's `toString()` output.
 
-**Mitigation:** None needed. This is standard practice for browser automation tools (Playwright, Puppeteer, Selenium all do this). Gasoline is a developer tool, not a stealth tool.
+**Mitigation:** None needed. This is standard practice for browser automation tools (Playwright, Puppeteer, Selenium all do this). Kaboom is a developer tool, not a stealth tool.
 
 ### Risk 2: Patch doesn't run before page JS
 
@@ -177,7 +177,7 @@ export function adoptClosedShadowRoots(): void {
 - **Prerendered pages:** Chrome may not inject content scripts into prerendered pages until activation. Components constructed during prerender would be missed.
 - **Extension reload:** If the extension reloads while a page is already loaded, the patch misses components that already called `attachShadow`.
 
-**Mitigation:** The guard `if (window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__) return` prevents double-patching. Missed closed roots degrade gracefully — the deep traversal simply won't enter those roots, same as today. No errors, no crashes.
+**Mitigation:** The guard `if (window.__KABOOM_ORIGINAL_ATTACH_SHADOW__) return` prevents double-patching. Missed closed roots degrade gracefully — the deep traversal simply won't enter those roots, same as today. No errors, no crashes.
 
 ### Risk 3: WeakMap memory pressure
 

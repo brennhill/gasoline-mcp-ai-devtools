@@ -51,7 +51,7 @@ async function setBackgroundToggle(context, extensionId, messageType, enabled) {
 async function setPageFeature(page, setting, enabled) {
   await page.evaluate(
     ({ setting, enabled }) => {
-      window.postMessage({ type: 'gasoline_setting', setting, enabled }, window.location.origin)
+      window.postMessage({ type: 'kaboom_setting', setting, enabled }, window.location.origin)
     },
     { setting, enabled }
   )
@@ -304,10 +304,10 @@ test.describe('Performance Marks Toggle', () => {
     await page.click('#trigger-perf-mark')
     await page.waitForTimeout(500)
 
-    // Verify the mark was captured via __gasoline API
+    // Verify the mark was captured via __kaboom API
     const marks = await page.evaluate(() => {
-      if (window.__gasoline && window.__gasoline.getMarks) {
-        return window.__gasoline.getMarks()
+      if (window.__kaboom && window.__kaboom.getMarks) {
+        return window.__kaboom.getMarks()
       }
       return null
     })
@@ -361,8 +361,8 @@ test.describe('Performance Marks Toggle', () => {
     await page.waitForTimeout(500)
 
     const measures = await page.evaluate(() => {
-      if (window.__gasoline && window.__gasoline.getMeasures) {
-        return window.__gasoline.getMeasures()
+      if (window.__kaboom && window.__kaboom.getMeasures) {
+        return window.__kaboom.getMeasures()
       }
       return null
     })
@@ -398,8 +398,8 @@ test.describe('Network Waterfall Toggle', () => {
 
     // Check that waterfall data was collected
     const waterfall = await page.evaluate(() => {
-      if (window.__gasoline && window.__gasoline.getNetworkWaterfall) {
-        return window.__gasoline.getNetworkWaterfall()
+      if (window.__kaboom && window.__kaboom.getNetworkWaterfall) {
+        return window.__kaboom.getNetworkWaterfall()
       }
       return null
     })

@@ -40,7 +40,7 @@ func seedAnnotationSession(t *testing.T, h *ToolHandler) {
 				PageURL:        "https://example.com/checkout",
 			},
 		},
-		ScreenshotPath: "/tmp/gasoline/draw_test_annotated.png",
+		ScreenshotPath: "/tmp/kaboom/draw_test_annotated.png",
 		PageURL:        "https://example.com/checkout",
 		TabID:          1,
 		Timestamp:      1707580800000,

@@ -4,6 +4,6 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 
 var isPrivateIP = upload.IsPrivateIP

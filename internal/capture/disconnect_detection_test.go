@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // ============================================
@@ -160,7 +160,7 @@ func TestHandleSync_UpdatesLastSyncSeen(t *testing.T) {
 	req := SyncRequest{ExtSessionID: "test-session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
-	httpReq.Header.Set("X-Gasoline-Client", "client-123")
+	httpReq.Header.Set("X-Kaboom-Client", "client-123")
 	w := httptest.NewRecorder()
 
 	c.HandleSync(w, httpReq)

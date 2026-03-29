@@ -1,4 +1,4 @@
-// Purpose: Generates versioned process titles (e.g., gasoline-mcp-079) for daemon child processes.
+// Purpose: Generates versioned process titles (e.g., kaboom-agentic-browser-079) for daemon child processes.
 // Why: Makes daemon instances identifiable in process listings when multiple versions coexist.
 
 package main
@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-const defaultProcessBaseName = "gasoline-mcp"
+const defaultProcessBaseName = "kaboom-agentic-browser"
 
 // daemonProcessArgv0 returns a versioned process title for daemon child processes.
-// Example: gasoline-mcp-076
+// Example: kaboom-agentic-browser-076
 func daemonProcessArgv0(exePath string) string {
 	return daemonProcessArgv0ForVersion(exePath, version)
 }

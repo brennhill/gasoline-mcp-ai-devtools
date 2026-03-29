@@ -15,7 +15,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// RootDir — GASOLINE_STATE_DIR with spaces/dots (normalization)
+// RootDir — KABOOM_STATE_DIR with spaces/dots (normalization)
 // ---------------------------------------------------------------------------
 
 func TestRootDir_OverrideWithTrailingSlash(t *testing.T) {
@@ -47,7 +47,7 @@ func TestRootDir_OverrideWhitespaceOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RootDir() error = %v", err)
 	}
-	want := filepath.Join(home, ".gasoline")
+	want := filepath.Join(home, ".kaboom")
 	if got != want {
 		t.Fatalf("RootDir() = %q, want %q (whitespace override should fall through)", got, want)
 	}
@@ -65,14 +65,14 @@ func TestRootDir_XDGWhitespaceOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RootDir() error = %v", err)
 	}
-	want := filepath.Join(home, ".gasoline")
+	want := filepath.Join(home, ".kaboom")
 	if got != want {
 		t.Fatalf("RootDir() = %q, want %q (whitespace XDG should fall through)", got, want)
 	}
 }
 
 func TestRootDir_OverrideRelativePath(t *testing.T) {
-	// Relative path in GASOLINE_STATE_DIR should be resolved to absolute
+	// Relative path in KABOOM_STATE_DIR should be resolved to absolute
 	t.Setenv(StateDirEnv, "relative-state-dir")
 	t.Setenv(xdgStateHomeEnv, "")
 
@@ -220,7 +220,7 @@ func TestLegacyDefaultLogFile_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacyDefaultLogFile() error = %v", err)
 	}
-	want := filepath.Join(home, "gasoline-logs.jsonl")
+	want := filepath.Join(home, "kaboom-logs.jsonl")
 	if got != want {
 		t.Fatalf("LegacyDefaultLogFile() = %q, want %q", got, want)
 	}
@@ -239,7 +239,7 @@ func TestLegacyCrashLogFile_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacyCrashLogFile() error = %v", err)
 	}
-	want := filepath.Join(home, "gasoline-crash.log")
+	want := filepath.Join(home, "kaboom-crash.log")
 	if got != want {
 		t.Fatalf("LegacyCrashLogFile() = %q, want %q", got, want)
 	}
@@ -258,7 +258,7 @@ func TestLegacyPIDFile_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacyPIDFile() error = %v", err)
 	}
-	want := filepath.Join(home, ".gasoline-8080.pid")
+	want := filepath.Join(home, ".kaboom-8080.pid")
 	if got != want {
 		t.Fatalf("LegacyPIDFile() = %q, want %q", got, want)
 	}
@@ -275,8 +275,8 @@ func TestLegacyPIDFile_DifferentPorts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LegacyPIDFile(%d) error = %v", port, err)
 		}
-		if !strings.Contains(got, ".gasoline-") {
-			t.Errorf("LegacyPIDFile(%d) = %q, missing .gasoline- prefix", port, got)
+		if !strings.Contains(got, ".kaboom-") {
+			t.Errorf("LegacyPIDFile(%d) = %q, missing .kaboom- prefix", port, got)
 		}
 		if !strings.HasSuffix(got, ".pid") {
 			t.Errorf("LegacyPIDFile(%d) = %q, missing .pid suffix", port, got)
@@ -297,7 +297,7 @@ func TestLegacySettingsFile_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacySettingsFile() error = %v", err)
 	}
-	want := filepath.Join(home, ".gasoline-settings.json")
+	want := filepath.Join(home, ".kaboom-settings.json")
 	if got != want {
 		t.Fatalf("LegacySettingsFile() = %q, want %q", got, want)
 	}
@@ -356,10 +356,10 @@ func TestPIDFile_Ports(t *testing.T) {
 		port int
 		file string
 	}{
-		{0, "gasoline-0.pid"},
-		{80, "gasoline-80.pid"},
-		{8080, "gasoline-8080.pid"},
-		{65535, "gasoline-65535.pid"},
+		{0, "kaboom-0.pid"},
+		{80, "kaboom-80.pid"},
+		{8080, "kaboom-8080.pid"},
+		{65535, "kaboom-65535.pid"},
 	}
 	for _, tt := range tests {
 		got, err := PIDFile(tt.port)
@@ -439,7 +439,7 @@ func TestDefaultLogFilePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DefaultLogFile() error = %v", err)
 	}
-	want := filepath.Join(root, "logs", "gasoline.jsonl")
+	want := filepath.Join(root, "logs", "kaboom.jsonl")
 	if got != want {
 		t.Fatalf("DefaultLogFile() = %q, want %q", got, want)
 	}
@@ -512,8 +512,8 @@ func TestNormalizePath_EmptyReturnsError(t *testing.T) {
 func TestStateDirEnvConstant(t *testing.T) {
 	t.Parallel()
 
-	if StateDirEnv != "GASOLINE_STATE_DIR" {
-		t.Fatalf("StateDirEnv = %q, want GASOLINE_STATE_DIR", StateDirEnv)
+	if StateDirEnv != "KABOOM_STATE_DIR" {
+		t.Fatalf("StateDirEnv = %q, want KABOOM_STATE_DIR", StateDirEnv)
 	}
 }
 
@@ -523,7 +523,7 @@ func TestStateDirEnvConstant(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRootDir_ErrorWhenHomeUndefined(t *testing.T) {
-	// No GASOLINE_STATE_DIR, no XDG, and no HOME => RootDir falls to
+	// No KABOOM_STATE_DIR, no XDG, and no HOME => RootDir falls to
 	// os.UserHomeDir() which errors with "$HOME is not defined".
 	t.Setenv(StateDirEnv, "")
 	t.Setenv(xdgStateHomeEnv, "")

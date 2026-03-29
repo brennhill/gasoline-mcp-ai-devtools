@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // logCommandInvocation writes a lifecycle log entry for a stop or cleanup command.
@@ -33,7 +33,7 @@ func resolveLogFile() string {
 		if legacy, legacyErr := state.LegacyDefaultLogFile(); legacyErr == nil {
 			return legacy
 		}
-		return filepath.Join(os.TempDir(), "gasoline.jsonl")
+		return filepath.Join(os.TempDir(), "kaboom.jsonl")
 	}
 	return logFile
 }

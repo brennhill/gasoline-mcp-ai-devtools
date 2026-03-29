@@ -33,9 +33,9 @@ function detachEscapeListener() {
 /**
  * Remove the subtitle element, clean up Escape listener.
  */
-function clearSubtitle() {
+export function clearSubtitle() {
     clearAutoTimer();
-    fadeOutAndRemove('gasoline-subtitle', 200);
+    fadeOutAndRemove('kaboom-subtitle', 200);
     detachEscapeListener();
 }
 /**
@@ -44,8 +44,8 @@ function clearSubtitle() {
  * Escape key listener for dismissal.
  */
 export function showSubtitle(text) {
-    const ELEMENT_ID = 'gasoline-subtitle';
-    const CLOSE_BTN_ID = 'gasoline-subtitle-close';
+    const ELEMENT_ID = 'kaboom-subtitle';
+    const CLOSE_BTN_ID = 'kaboom-subtitle-close';
     if (!text) {
         clearSubtitle();
         return;
@@ -153,11 +153,11 @@ export function showSubtitle(text) {
     }, SUBTITLE_AUTO_TIMEOUT_MS);
 }
 /**
- * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
+ * Show or hide a recording watermark (Kaboom flame icon) in the bottom-right corner.
  * The icon renders at 64x64px with 50% opacity, captured in the tab video.
  */
 export function toggleRecordingWatermark(visible) {
-    const ELEMENT_ID = 'gasoline-recording-watermark';
+    const ELEMENT_ID = 'kaboom-recording-watermark';
     if (!visible) {
         const existing = document.getElementById(ELEMENT_ID);
         if (existing) {

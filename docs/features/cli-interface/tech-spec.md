@@ -8,13 +8,13 @@ last_verified_date: 2026-03-05
 
 # CLI Interface — Tech Spec
 
-**Feature:** `gasoline-cmd` binary for direct CLI access to all MCP tools, enabling script-based automation, CI/CD integration, and future web client support.
+**Feature:** `kaboom-cmd` binary for direct CLI access to all MCP tools, enabling script-based automation, CI/CD integration, and future web client support.
 
 ## Use Cases:
-- Command-line automation (e.g., `gasoline-cmd interact upload --selector "#File" --file /path`)
+- Command-line automation (e.g., `kaboom-cmd interact upload --selector "#File" --file /path`)
 - CI/CD pipelines (bulk uploads, form submissions, automation)
 - Headless systems (no browser extension needed)
-- Future web client wrapper (HTTP → `gasoline-cmd` → MCP server)
+- Future web client wrapper (HTTP → `kaboom-cmd` → MCP server)
 - Direct command invocation without MCP overhead
 
 ---
@@ -26,13 +26,13 @@ last_verified_date: 2026-03-05
 ```
 CLI User / Script / CI Pipeline
   ↓
-gasoline-cmd (separate binary)
-  ├─ Connects to gasoline-mcp (auto-start or existing)
+kaboom-cmd (separate binary)
+  ├─ Connects to kaboom-mcp (auto-start or existing)
   ├─ Translates CLI args → MCP JSON-RPC
   ├─ Handles async (streaming vs sync)
   └─ Returns JSON/human/CSV output
 
-gasoline-mcp (existing MCP server)
+kaboom-mcp (existing MCP server)
   ├─ 5 tools: observe, generate, configure, interact, analyze
   ├─ Unchanged from MCP perspective
   └─ Serves both extension + CLI clients
@@ -40,9 +40,9 @@ gasoline-mcp (existing MCP server)
 
 ### Why Separate Binary?
 
-- **gasoline-mcp**: MCP server, talks JSON-RPC via stdio
-- **gasoline-cmd**: CLI client, translates flags → MCP calls, manages server lifecycle
-- **Future**: Web client can also connect to same `gasoline-mcp`
+- **kaboom-mcp**: MCP server, talks JSON-RPC via stdio
+- **kaboom-cmd**: CLI client, translates flags → MCP calls, manages server lifecycle
+- **Future**: Web client can also connect to same `kaboom-mcp`
 - **Cleaner**: Each has single responsibility
 
 ---
@@ -52,14 +52,14 @@ gasoline-mcp (existing MCP server)
 ### Format
 
 ```bash
-gasoline-cmd <tool> <action> [options] [--flags]
+kaboom-cmd <tool> <action> [options] [--flags]
 ```
 
 ### Examples
 
 #### Single file upload:
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --selector "#Filedata" \
   --file-path "./video.mp4" \
   --format human
@@ -75,7 +75,7 @@ gasoline-cmd interact upload \
 
 #### Bulk CSV upload:
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --csv-file videos.csv \
   --selector "#Filedata" \
   --format csv \
@@ -92,7 +92,7 @@ file_path,status,stage,duration_ms,error
 
 #### Streaming progress (newline-delimited JSON):
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --selector "#Filedata" \
   --file-path large-4gb-video.mp4 \
   --stream
@@ -109,19 +109,19 @@ gasoline-cmd interact upload \
 
 #### Fill form field:
 ```bash
-gasoline-cmd interact fill \
+kaboom-cmd interact fill \
   --selector "#title" \
   --text "My Video Title"
 ```
 
 #### Click button:
 ```bash
-gasoline-cmd interact click --selector "button[type=submit]"
+kaboom-cmd interact click --selector "button[type=submit]"
 ```
 
 #### Get page text:
 ```bash
-gasoline-cmd interact get-text --selector ".upload-status"
+kaboom-cmd interact get-text --selector ".upload-status"
 ```
 
 ---
@@ -133,16 +133,16 @@ gasoline-cmd interact get-text --selector ".upload-status"
 ```
 Defaults
   ↓ (override with)
-.gasoline.json (project directory)
+.kaboom.json (project directory)
   ↓ (override with)
-$GASOLINE_PORT, $GASOLINE_FORMAT, $GASOLINE_SERVER
+$KABOOM_PORT, $KABOOM_FORMAT, $KABOOM_SERVER
   ↓ (override with)
 --flags (command-line arguments)
 ```
 
 ### Configuration Files
 
-#### Global (~/.gasoline/config.json)
+#### Global (~/.kaboom/config.json)
 
 ```json
 {
@@ -153,7 +153,7 @@ $GASOLINE_PORT, $GASOLINE_FORMAT, $GASOLINE_SERVER
 }
 ```
 
-#### Project (.gasoline.json, checked into repo)
+#### Project (.kaboom.json, checked into repo)
 
 ```json
 {
@@ -167,16 +167,16 @@ $GASOLINE_PORT, $GASOLINE_FORMAT, $GASOLINE_SERVER
 #### Environment Variables
 
 ```bash
-export GASOLINE_PORT=9224              # Override server port
-export GASOLINE_FORMAT=json            # Override output format
-export GASOLINE_TIMEOUT=30000          # Override global timeout
-export GASOLINE_NO_AUTO_START=1        # Don't auto-start server
+export KABOOM_PORT=9224              # Override server port
+export KABOOM_FORMAT=json            # Override output format
+export KABOOM_TIMEOUT=30000          # Override global timeout
+export KABOOM_NO_AUTO_START=1        # Don't auto-start server
 ```
 
 #### Command-Line Flags (Highest Priority)
 
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --server-port 9224 \
   --format csv \
   --timeout 30000 \
@@ -192,7 +192,7 @@ gasoline-cmd interact upload \
 ### Human-Readable (Default)
 
 ```bash
-$ gasoline-cmd interact upload \
+$ kaboom-cmd interact upload \
     --selector "#Filedata" \
     --file-path video.mp4
 
@@ -207,7 +207,7 @@ $ gasoline-cmd interact upload \
 ### JSON (machine-parseable)
 
 ```bash
-$ gasoline-cmd interact upload \
+$ kaboom-cmd interact upload \
     --selector "#Filedata" \
     --file-path video.mp4 \
     --format json
@@ -229,7 +229,7 @@ $ gasoline-cmd interact upload \
 ### CSV (bulk operations)
 
 ```bash
-$ gasoline-cmd interact upload \
+$ kaboom-cmd interact upload \
     --csv-file videos.csv \
     --selector "#Filedata" \
     --format csv
@@ -250,7 +250,7 @@ file_path,file_name,size_bytes,status,stage,duration_ms,error
 ### Default: Synchronous (Block Until Complete)
 
 ```bash
-gasoline-cmd interact upload --selector "#File" --file video.mp4
+kaboom-cmd interact upload --selector "#File" --file video.mp4
 # Blocks until upload finishes
 # Returns final result
 ```
@@ -263,7 +263,7 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 ### Optional: Streaming Progress (--stream flag)
 
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --selector "#File" \
   --file video.mp4 \
   --stream
@@ -302,7 +302,7 @@ file_path,title,tags,category
 ### Command
 
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --csv-file videos.csv \
   --selector "#Filedata" \
   --selector-title "#title" \
@@ -341,12 +341,12 @@ file_path,title,status,stage,duration_ms,error
 ### Auto-Start Behavior
 
 ```bash
-gasoline-cmd interact upload --selector "#File" --file video.mp4
+kaboom-cmd interact upload --selector "#File" --file video.mp4
 ```
 
 #### What happens:
-1. Check if `gasoline-mcp` is running on `$GASOLINE_PORT` (default 9223)
-2. If not running, auto-start: `gasoline-mcp --enable-os-upload-automation --trust-llm-context`
+1. Check if `kaboom-mcp` is running on `$KABOOM_PORT` (default 9223)
+2. If not running, auto-start: `kaboom-mcp --enable-os-upload-automation --trust-llm-context`
 3. Wait for server to be ready (5s timeout)
 4. Execute command
 5. Keep server running (don't shut down)
@@ -354,8 +354,8 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 ### Disable Auto-Start
 
 ```bash
-export GASOLINE_NO_AUTO_START=1
-gasoline-cmd interact upload --selector "#File" --file video.mp4
+export KABOOM_NO_AUTO_START=1
+kaboom-cmd interact upload --selector "#File" --file video.mp4
 # Error: Server not running on port 9223
 # Exit code 1
 ```
@@ -364,10 +364,10 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 
 ```bash
 # Start server manually
-gasoline-mcp --enable-os-upload-automation --trust-llm-context &
+kaboom-mcp --enable-os-upload-automation --trust-llm-context &
 
 # Use it
-gasoline-cmd interact upload --selector "#File" --file video.mp4
+kaboom-cmd interact upload --selector "#File" --file video.mp4
 
 # Server keeps running for next command
 ```
@@ -376,7 +376,7 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 
 ```bash
 # Use custom port
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --selector "#File" \
   --file video.mp4 \
   --server-port 9224
@@ -391,7 +391,7 @@ gasoline-cmd interact upload \
 ### Human-Readable Errors
 
 ```bash
-$ gasoline-cmd interact upload --selector "#BadSelector" --file video.mp4
+$ kaboom-cmd interact upload --selector "#BadSelector" --file video.mp4
 ❌ Upload failed: Form not found
    Selector: #BadSelector
    Reason: No element matching selector on current page
@@ -402,7 +402,7 @@ Exit code: 1
 ### JSON Errors
 
 ```bash
-$ gasoline-cmd interact upload \
+$ kaboom-cmd interact upload \
     --selector "#BadSelector" \
     --file video.mp4 \
     --format json
@@ -454,7 +454,7 @@ Check file path and permissions.
 ### interact tool
 
 ```bash
-gasoline-cmd interact <action> [options]
+kaboom-cmd interact <action> [options]
 ```
 
 #### Actions:
@@ -475,7 +475,7 @@ gasoline-cmd interact <action> [options]
 ### observe tool
 
 ```bash
-gasoline-cmd observe <mode> [options]
+kaboom-cmd observe <mode> [options]
 ```
 
 #### Modes:
@@ -491,7 +491,7 @@ gasoline-cmd observe <mode> [options]
 ### configure tool
 
 ```bash
-gasoline-cmd configure <action> [options]
+kaboom-cmd configure <action> [options]
 ```
 
 #### Actions:
@@ -505,7 +505,7 @@ gasoline-cmd configure <action> [options]
 ### generate tool
 
 ```bash
-gasoline-cmd generate <format> [options]
+kaboom-cmd generate <format> [options]
 ```
 
 #### Formats:
@@ -524,10 +524,10 @@ gasoline-cmd generate <format> [options]
 ### Go Binary Structure
 
 ```
-gasoline-cmd (CLI binary)
+kaboom-cmd (CLI binary)
   ├─ main.go
   │   ├─ Parse CLI args
-  │   ├─ Load config (env vars, .gasoline.json, flags)
+  │   ├─ Load config (env vars, .kaboom.json, flags)
   │   ├─ Check/start server
   │   ├─ Route to command handler
   │   └─ Format output
@@ -554,7 +554,7 @@ gasoline-cmd (CLI binary)
 ### How CLI Args Map to MCP Calls
 
 ```bash
-gasoline-cmd interact upload \
+kaboom-cmd interact upload \
   --selector "#Filedata" \
   --file-path ./video.mp4
 ```
@@ -602,7 +602,7 @@ gasoline-cmd interact upload \
 
 ### No Remote Server Connections
 
-- `gasoline-cmd` only talks to local `gasoline-mcp`
+- `kaboom-cmd` only talks to local `kaboom-mcp`
 - Default: localhost:9223 (not exposed to network)
 - File paths are local filesystem only
 - No external API calls from CLI
@@ -650,9 +650,9 @@ Web Client (Vue.js, HTML)
   ↓ HTTP requests
 Web Wrapper Service (Node.js, Python, Go)
   ↓ shell execution
-gasoline-cmd (CLI binary)
+kaboom-cmd (CLI binary)
   ↓ MCP JSON-RPC
-gasoline-mcp (MCP server)
+kaboom-mcp (MCP server)
   ↓
 Browser Extension / Go Server
 ```
@@ -667,7 +667,7 @@ await client.upload({
 });
 
 // Translates to shell command
-shell.exec("gasoline-cmd interact upload --selector '#File' --file-path ./video.mp4");
+shell.exec("kaboom-cmd interact upload --selector '#File' --file-path ./video.mp4");
 
 // Returns JSON result
 {

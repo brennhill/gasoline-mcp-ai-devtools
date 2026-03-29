@@ -25,6 +25,6 @@ func JSONResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] Error encoding JSON response: %v\n", err)
 	}
 }

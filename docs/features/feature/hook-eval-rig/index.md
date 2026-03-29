@@ -17,8 +17,8 @@ test_paths:
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
 | **Status**    | implemented (Tier 1)                    |
-| **Binary**    | gasoline-hooks                          |
-| **Command**   | `gasoline-hooks eval`                   |
+| **Binary**    | kaboom-hooks                          |
+| **Command**   | `kaboom-hooks eval`                   |
 | **Purpose**   | Measure token savings, accuracy, and redundancy elimination |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |
 
@@ -29,6 +29,6 @@ test_paths:
 
 ## Summary
 
-A deterministic evaluation framework for measuring the real-world impact of gasoline-hooks on AI coding sessions. Three tiers of testing: unit-level hook evals (synthetic inputs, known-good outputs), integration evals (controlled codebases with known dependency graphs), and live session metrics (real usage data aggregated across sessions).
+A deterministic evaluation framework for measuring the real-world impact of kaboom-hooks on AI coding sessions. Three tiers of testing: unit-level hook evals (synthetic inputs, known-good outputs), integration evals (controlled codebases with known dependency graphs), and live session metrics (real usage data aggregated across sessions).
 
 The rig answers: "Do these hooks actually make AI coding better, and by how much?"

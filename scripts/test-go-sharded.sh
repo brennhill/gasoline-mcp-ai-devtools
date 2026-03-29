@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
+PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 SHARDS="${GO_TEST_SHARDS:-4}"
 COUNT="${GO_TEST_COUNT:-1}"
 SHORT_MODE=0
@@ -17,7 +17,7 @@ usage() {
 Usage: scripts/test-go-sharded.sh [options] [-- <extra go test args>]
 
 Options:
-  --package <pkg>   Go package to shard (default: $GASOLINE_CMD_PKG or ./cmd/browser-agent)
+  --package <pkg>   Go package to shard (default: $KABOOM_CMD_PKG or ./cmd/browser-agent)
   --shards <n>      Number of shards/processes (default: 4)
   --count <n>       go test -count value (default: 1)
   --short           Enable go test -short
@@ -105,7 +105,7 @@ for i in "${!TESTS[@]}"; do
   fi
 done
 
-TMP_DIR="$(mktemp -d /tmp/gasoline-go-shards.XXXXXX)"
+TMP_DIR="$(mktemp -d /tmp/kaboom-go-shards.XXXXXX)"
 cleanup() {
   rm -rf "$TMP_DIR"
   if [[ -f "$SCRIPT_DIR/cleanup-test-daemons.sh" ]]; then

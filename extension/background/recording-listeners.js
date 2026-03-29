@@ -13,7 +13,8 @@ import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
 import { stopRecordingBadgeTimer } from './recording-badge.js';
-const LOG = '[Gasoline REC]';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
+const LOG = KABOOM_RECORDING_LOG_PREFIX;
 async function resolvePopupRecordingTargetTab() {
     const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     if (trackedTabId) {
@@ -138,9 +139,9 @@ export function installRecordingListeners(deps) {
                         console.log(LOG, 'Sending guidance toast to tab', returnTabId);
                         chrome.tabs
                             .sendMessage(returnTabId, {
-                            type: 'gasoline_action_toast',
+                            type: 'kaboom_action_toast',
                             text: 'Mic permission granted',
-                            detail: 'Open Gasoline and click Record',
+                            detail: 'Open Kaboom and click Record',
                             state: 'success',
                             duration_ms: scaleTimeout(8000)
                         })

@@ -1,6 +1,6 @@
 // debug_log.go — File-based debug logging, enabled by default.
 // Why: Enables append-only diagnostic tracing without polluting stderr or stdout MCP transport.
-// Disable with STRUM_DEBUG=off. Override path with GASOLINE_MCP_DEBUG_FILE.
+// Disable with KABOOM_DEBUG=off. Override path with KABOOM_MCP_DEBUG_FILE.
 
 package main
 
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 var (
@@ -21,12 +21,12 @@ var (
 
 func debugEnabled() bool {
 	debugLogOnce.Do(func() {
-		if os.Getenv("STRUM_DEBUG") == "off" {
+		if os.Getenv("KABOOM_DEBUG") == "off" {
 			debugLogEnabled = false
 			return
 		}
 		// Explicit path override takes priority
-		if override := os.Getenv("GASOLINE_MCP_DEBUG_FILE"); override != "" {
+		if override := os.Getenv("KABOOM_MCP_DEBUG_FILE"); override != "" {
 			debugLogPath = override
 			debugLogEnabled = true
 			return

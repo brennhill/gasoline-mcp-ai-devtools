@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/testgen"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/testgen"
 )
 
 type TestFromContextRequest = testgen.TestFromContextRequest

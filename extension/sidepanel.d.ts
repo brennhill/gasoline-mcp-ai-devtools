@@ -1,5 +1,5 @@
 /**
- * Purpose: Side panel host for the Gasoline terminal.
+ * Purpose: Side panel host for the Kaboom terminal.
  * Why: Removes the terminal from page context so CSP on arbitrary sites cannot
  * interfere with the xterm host, while keeping the session and reconnect model intact.
  * Docs: docs/features/feature/terminal/index.md

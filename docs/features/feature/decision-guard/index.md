@@ -19,8 +19,8 @@ test_paths:
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
 | **Status**    | implemented                             |
-| **Binary**    | gasoline-hooks                          |
-| **Command**   | `gasoline-hooks decision-guard`         |
+| **Binary**    | kaboom-hooks                          |
+| **Command**   | `kaboom-hooks decision-guard`         |
 | **Hook**      | PostToolUse on Edit, Write              |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |
 
@@ -33,13 +33,13 @@ test_paths:
 
 Decision guard enforces locked architectural decisions. Teams and AI agents accumulate decisions during a project — "use validateAndRespond() for all validation", "error messages follow the format X", "never import package Y directly". Without enforcement, these decisions drift as the AI forgets or re-derives them.
 
-Decision guard reads `.gasoline/decisions.json` from the project root and injects relevant decisions when an edit touches matching code patterns. Decisions can be added by hand, by the AI writing to the file, or via `gasoline-hooks lock-decision`.
+Decision guard reads `.kaboom/decisions.json` from the project root and injects relevant decisions when an edit touches matching code patterns. Decisions can be added by hand, by the AI writing to the file, or via `kaboom-hooks lock-decision`.
 
 ## Hook Configuration
 
 ```json
 {
   "matcher": "Edit|Write",
-  "hooks": [{"type": "command", "command": "gasoline-hooks decision-guard", "timeout": 10}]
+  "hooks": [{"type": "command", "command": "kaboom-hooks decision-guard", "timeout": 10}]
 }
 ```

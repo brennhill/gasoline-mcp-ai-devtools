@@ -48,7 +48,7 @@ func TestAuth_NoKeyConfigured_IgnoresProvidedKey(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/health", nil)
-	req.Header.Set("X-Gasoline-Key", "some-random-key")
+	req.Header.Set("X-Kaboom-Key", "some-random-key")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -70,7 +70,7 @@ func TestAuth_CorrectKey_Accepted(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Gasoline-Key", secret)
+	req.Header.Set("X-Kaboom-Key", secret)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -93,7 +93,7 @@ func TestAuth_CorrectKey_AllHTTPMethods(t *testing.T) {
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
 			req := httptest.NewRequest(method, "/api/data", nil)
-			req.Header.Set("X-Gasoline-Key", secret)
+			req.Header.Set("X-Kaboom-Key", secret)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
@@ -116,7 +116,7 @@ func TestAuth_WrongKey_Rejected(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Gasoline-Key", "wrong-key-456")
+	req.Header.Set("X-Kaboom-Key", "wrong-key-456")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -133,7 +133,7 @@ func TestAuth_WrongKey_ResponseFormat(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Gasoline-Key", "bad-key")
+	req.Header.Set("X-Kaboom-Key", "bad-key")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -178,7 +178,7 @@ func TestAuth_WrongKey_Variants(t *testing.T) {
 	for _, tc := range badKeys {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/api/data", nil)
-			req.Header.Set("X-Gasoline-Key", tc.key)
+			req.Header.Set("X-Kaboom-Key", tc.key)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
@@ -201,7 +201,7 @@ func TestAuth_MissingKey_Rejected(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	// No X-Gasoline-Key header set
+	// No X-Kaboom-Key header set
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -230,7 +230,7 @@ func TestAuth_EmptyKeyHeader_Rejected(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Gasoline-Key", "")
+	req.Header.Set("X-Kaboom-Key", "")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -288,7 +288,7 @@ func TestAuth_DifferentLengthKeys_Rejected(t *testing.T) {
 	for _, key := range keys {
 		t.Run("len_"+strings.Replace(key[:min(len(key), 10)], " ", "_", -1), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/api/data", nil)
-			req.Header.Set("X-Gasoline-Key", key)
+			req.Header.Set("X-Kaboom-Key", key)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
@@ -314,10 +314,10 @@ func TestAuth_HeaderCaseSensitivity(t *testing.T) {
 
 	// Go's http package canonicalizes headers, so these should all work
 	headerNames := []string{
-		"X-Gasoline-Key",
-		"x-gasoline-key",
-		"X-GASOLINE-KEY",
-		"x-Gasoline-key",
+		"X-Kaboom-Key",
+		"x-kaboom-key",
+		"X-KABOOM-KEY",
+		"x-Kaboom-key",
 	}
 
 	for _, name := range headerNames {
@@ -343,8 +343,8 @@ func TestAuth_MultipleHeaderValues(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/api/data", nil)
-	req.Header.Set("X-Gasoline-Key", secret)
-	req.Header.Add("X-Gasoline-Key", "second-value")
+	req.Header.Set("X-Kaboom-Key", secret)
+	req.Header.Add("X-Kaboom-Key", "second-value")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -365,8 +365,8 @@ func TestAuth_WrongHeaderName(t *testing.T) {
 	wrongHeaders := []string{
 		"Authorization",
 		"X-Api-Key",
-		"X-Gasoline-Token",
-		"X-Gasoline-Secret",
+		"X-Kaboom-Token",
+		"X-Kaboom-Secret",
 	}
 
 	for _, hdr := range wrongHeaders {
@@ -401,7 +401,7 @@ func TestAuth_MiddlewareChaining(t *testing.T) {
 	t.Run("authorized_calls_next", func(t *testing.T) {
 		called = false
 		req := httptest.NewRequest("GET", "/", nil)
-		req.Header.Set("X-Gasoline-Key", secret)
+		req.Header.Set("X-Kaboom-Key", secret)
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
@@ -413,7 +413,7 @@ func TestAuth_MiddlewareChaining(t *testing.T) {
 	t.Run("unauthorized_blocks_next", func(t *testing.T) {
 		called = false
 		req := httptest.NewRequest("GET", "/", nil)
-		req.Header.Set("X-Gasoline-Key", "wrong")
+		req.Header.Set("X-Kaboom-Key", "wrong")
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
@@ -449,7 +449,7 @@ func TestAuth_SpecialCharacterKeys(t *testing.T) {
 
 			// Correct key should pass
 			req := httptest.NewRequest("GET", "/", nil)
-			req.Header.Set("X-Gasoline-Key", key)
+			req.Header.Set("X-Kaboom-Key", key)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 			if rr.Code != http.StatusOK {
@@ -458,7 +458,7 @@ func TestAuth_SpecialCharacterKeys(t *testing.T) {
 
 			// Wrong key should fail
 			req2 := httptest.NewRequest("GET", "/", nil)
-			req2.Header.Set("X-Gasoline-Key", "wrong")
+			req2.Header.Set("X-Kaboom-Key", "wrong")
 			rr2 := httptest.NewRecorder()
 			handler.ServeHTTP(rr2, req2)
 			if rr2.Code != http.StatusUnauthorized {

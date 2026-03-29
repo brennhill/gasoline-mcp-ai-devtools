@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
 // handlePanicRecovery logs crash details and writes a crash file for diagnostic discovery.
@@ -36,11 +36,11 @@ func handlePanicRecovery(r any) {
 	}
 	telemetry.BeaconError("daemon_panic", map[string]string{"type": panicTypeName})
 
-	fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL ERROR\n")
+	fmt.Fprintf(os.Stderr, "\n[Kaboom] FATAL ERROR\n")
 
 	logFile, err := state.DefaultLogFile()
 	if err != nil {
-		logFile = filepath.Join(os.TempDir(), "gasoline.jsonl")
+		logFile = filepath.Join(os.TempDir(), "kaboom.jsonl")
 	}
 	entry := map[string]any{
 		"type":       "lifecycle",
@@ -67,7 +67,7 @@ func handlePanicRecovery(r any) {
 		"reason": fmt.Sprintf("%v", r),
 		"stack":  string(stack),
 	}); diagPath != "" {
-		fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", diagPath)
+		fmt.Fprintf(os.Stderr, "[Kaboom] Crash details written to: %s\n", diagPath)
 	}
 	os.Exit(1)
 }

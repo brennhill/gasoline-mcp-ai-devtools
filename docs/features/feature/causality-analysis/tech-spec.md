@@ -62,9 +62,9 @@ MCP Response
 3. Visualize causal graph
 
 ## Code References
-- **Causality engine:** `/Users/brenn/dev/gasoline/server/analysis/causality.go` (new)
-- **Causal graph:** `/Users/brenn/dev/gasoline/server/analysis/causal-graph.go` (new)
-- **MCP handler:** `/Users/brenn/dev/gasoline/server/handlers.go` (modified)
+- **Causality engine:** `/Users/brenn/dev/kaboom/server/analysis/causality.go` (new)
+- **Causal graph:** `/Users/brenn/dev/kaboom/server/analysis/causal-graph.go` (new)
+- **MCP handler:** `/Users/brenn/dev/kaboom/server/handlers.go` (modified)
 
 ## Performance Requirements
 - **Causality analysis:** <500ms for 1000-event session

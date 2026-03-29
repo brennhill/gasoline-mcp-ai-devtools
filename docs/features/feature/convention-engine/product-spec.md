@@ -150,7 +150,7 @@ probes     — per-edit mechanical checks for approved patterns
 1. Engine scans `go.mod` / `package.json` / `requirements.txt`
 2. Matches import signals against registered plugins
 3. Activates matching plugins automatically
-4. `.gasoline.json` can override: force-enable, force-disable, or configure thresholds
+4. `.kaboom.json` can override: force-enable, force-disable, or configure thresholds
 
 ### Configuration
 
@@ -186,7 +186,7 @@ Call-site pattern discovery. Convention summary injection on every edit. Discove
 Implement the 10 principle probes for Go and TypeScript. Mechanical checks, no LLM needed at edit time.
 
 ### Phase 3 — Suggestion + approval loop
-Surface discovered conventions as suggestions. Store approvals/rejections in `.gasoline/conventions.json`. Approved conventions become enforced.
+Surface discovered conventions as suggestions. Store approvals/rejections in `.kaboom/conventions.json`. Approved conventions become enforced.
 
 ### Phase 4 — Pattern catalog + LLM pass
 One-time LLM assessment of codebase against pattern catalog. Framework plugin activation. Migration declarations.

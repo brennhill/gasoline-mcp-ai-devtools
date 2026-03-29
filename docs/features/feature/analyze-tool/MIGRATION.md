@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This migration expands Gasoline from 4 MCP tools to 5, adding the `analyze` tool for structured analysis and auditing capabilities.
+This migration expands Kaboom from 4 MCP tools to 5, adding the `analyze` tool for structured analysis and auditing capabilities.
 
 ### Before:
 ```
@@ -135,7 +135,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
 ### Stage 3: General Availability
 - Release v7.0
 - Update marketing site
-- Blog post: "Gasoline now supports unified debugging lifecycle"
+- Blog post: "Kaboom now supports unified debugging lifecycle"
 
 ## Rollback Plan
 

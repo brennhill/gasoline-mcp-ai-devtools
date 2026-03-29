@@ -4,12 +4,13 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js';
+import { KABOOM_DOCS_URL, KABOOM_REPOSITORY_URL } from '../../lib/brand.js';
 import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
 import { initTerminalPanelBridge, isTerminalVisible, onTerminalPanelVisibilityChanged, openTerminalPanel, writeToTerminal } from './terminal-panel-bridge.js';
-const ROOT_ID = 'gasoline-tracked-hover-launcher';
-const PANEL_ID = 'gasoline-tracked-hover-panel';
-const TOGGLE_ID = 'gasoline-tracked-hover-toggle';
-const SETTINGS_MENU_ID = 'gasoline-tracked-hover-settings-menu';
+const ROOT_ID = 'kaboom-tracked-hover-launcher';
+const PANEL_ID = 'kaboom-tracked-hover-panel';
+const TOGGLE_ID = 'kaboom-tracked-hover-toggle';
+const SETTINGS_MENU_ID = 'kaboom-tracked-hover-settings-menu';
 let rootEl = null;
 let panelEl = null;
 let settingsMenuEl = null;
@@ -196,18 +197,18 @@ function installAnnotationListener() {
     if (annotationListenerInstalled)
         return;
     annotationListenerInstalled = true;
-    window.addEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+    window.addEventListener('kaboom-annotations-ready', handleAnnotationsReady);
 }
 function uninstallAnnotationListener() {
     if (!annotationListenerInstalled)
         return;
     annotationListenerInstalled = false;
-    window.removeEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+    window.removeEventListener('kaboom-annotations-ready', handleAnnotationsReady);
 }
 async function startDrawMode() {
     try {
         if (!chrome?.runtime?.getURL) {
-            console.warn('[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.');
+            console.warn('[Kaboom] Draw mode unavailable: extension context invalidated. Refresh the page to restore.');
             return;
         }
         const drawModeModule = await import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'));
@@ -216,7 +217,7 @@ async function startDrawMode() {
         }
     }
     catch (err) {
-        console.warn('[Gasoline] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
+        console.warn('[Kaboom] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
             '. The extension may need to be reloaded at chrome://extensions.');
     }
 }
@@ -532,9 +533,9 @@ function createLauncherUi() {
         pointerEvents: 'none',
         willChange: 'opacity, transform'
     });
-    const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', 'https://cookwithgasoline.com/docs');
-    const repoLink = createSettingsMenuLink(ICON_GITHUB, 'GitHub Repository', 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp');
-    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide STRUM Devtool');
+    const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', KABOOM_DOCS_URL);
+    const repoLink = createSettingsMenuLink(ICON_GITHUB, 'GitHub Repository', KABOOM_REPOSITORY_URL);
+    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Kaboom Devtool');
     hideButton.addEventListener('click', () => {
         hideLauncherUntilPopupReopen();
     });
@@ -544,10 +545,10 @@ function createLauncherUi() {
     const toggle = document.createElement('button');
     toggle.id = TOGGLE_ID;
     toggle.type = 'button';
-    toggle.title = 'STRUM quick actions';
+    toggle.title = 'Kaboom quick actions';
     const toggleIcon = document.createElement('img');
     toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
-    toggleIcon.alt = 'STRUM';
+    toggleIcon.alt = 'Kaboom';
     Object.assign(toggleIcon.style, {
         width: '36px',
         height: '36px',

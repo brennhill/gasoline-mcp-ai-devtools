@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 type testLimiter struct {
@@ -221,27 +221,27 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 	if len(resourceData.Resources) != 3 {
 		t.Fatalf("resources/list result = %+v, want 3 resources", resourceData)
 	}
-	if resourceData.Resources[0].URI != "gasoline://capabilities" {
-		t.Fatalf("resources/list first resource = %q, want gasoline://capabilities", resourceData.Resources[0].URI)
+	if resourceData.Resources[0].URI != "kaboom://capabilities" {
+		t.Fatalf("resources/list first resource = %q, want kaboom://capabilities", resourceData.Resources[0].URI)
 	}
-	if resourceData.Resources[1].URI != "gasoline://guide" {
-		t.Fatalf("resources/list second resource = %q, want gasoline://guide", resourceData.Resources[1].URI)
+	if resourceData.Resources[1].URI != "kaboom://guide" {
+		t.Fatalf("resources/list second resource = %q, want kaboom://guide", resourceData.Resources[1].URI)
 	}
-	if resourceData.Resources[2].URI != "gasoline://quickstart" {
-		t.Fatalf("resources/list third resource = %q, want gasoline://quickstart", resourceData.Resources[2].URI)
+	if resourceData.Resources[2].URI != "kaboom://quickstart" {
+		t.Fatalf("resources/list third resource = %q, want kaboom://quickstart", resourceData.Resources[2].URI)
 	}
 
 	readCapabilities := h.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      40,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://capabilities"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://capabilities"}`),
 	})
 	if readCapabilities == nil || readCapabilities.Error != nil {
 		t.Fatalf("resources/read capabilities response = %+v, want success", readCapabilities)
 	}
 	readCapabilitiesData := mustDecodeJSON[MCPResourcesReadResult](t, readCapabilities.Result)
-	if len(readCapabilitiesData.Contents) != 1 || readCapabilitiesData.Contents[0].URI != "gasoline://capabilities" {
+	if len(readCapabilitiesData.Contents) != 1 || readCapabilitiesData.Contents[0].URI != "kaboom://capabilities" {
 		t.Fatalf("resources/read capabilities result = %+v, want one capabilities content entry", readCapabilitiesData)
 	}
 
@@ -259,7 +259,7 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      3,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://missing"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://missing"}`),
 	})
 	if readNotFound == nil || readNotFound.Error == nil || readNotFound.Error.Code != -32002 {
 		t.Fatalf("resources/read not-found response = %+v", readNotFound)
@@ -269,13 +269,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      4,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://guide"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://guide"}`),
 	})
 	if readOK == nil || readOK.Error != nil {
 		t.Fatalf("resources/read response = %+v, want success", readOK)
 	}
 	readData := mustDecodeJSON[MCPResourcesReadResult](t, readOK.Result)
-	if len(readData.Contents) != 1 || readData.Contents[0].URI != "gasoline://guide" {
+	if len(readData.Contents) != 1 || readData.Contents[0].URI != "kaboom://guide" {
 		t.Fatalf("resources/read result = %+v, want one guide content entry", readData)
 	}
 
@@ -283,13 +283,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      5,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://quickstart"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://quickstart"}`),
 	})
 	if readQuickstart == nil || readQuickstart.Error != nil {
 		t.Fatalf("resources/read quickstart response = %+v, want success", readQuickstart)
 	}
 	readQuickData := mustDecodeJSON[MCPResourcesReadResult](t, readQuickstart.Result)
-	if len(readQuickData.Contents) != 1 || readQuickData.Contents[0].URI != "gasoline://quickstart" {
+	if len(readQuickData.Contents) != 1 || readQuickData.Contents[0].URI != "kaboom://quickstart" {
 		t.Fatalf("resources/read quickstart result = %+v, want one quickstart content entry", readQuickData)
 	}
 
@@ -297,13 +297,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      6,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://demo/ws"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://demo/ws"}`),
 	})
 	if readDemo == nil || readDemo.Error != nil {
 		t.Fatalf("resources/read demo response = %+v, want success", readDemo)
 	}
 	readDemoData := mustDecodeJSON[MCPResourcesReadResult](t, readDemo.Result)
-	if len(readDemoData.Contents) != 1 || readDemoData.Contents[0].URI != "gasoline://demo/ws" {
+	if len(readDemoData.Contents) != 1 || readDemoData.Contents[0].URI != "kaboom://demo/ws" {
 		t.Fatalf("resources/read demo result = %+v, want demo content entry", readDemoData)
 	}
 
@@ -311,13 +311,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      61,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/performance/quick"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://playbook/performance/quick"}`),
 	})
 	if readPlaybook == nil || readPlaybook.Error != nil {
 		t.Fatalf("resources/read playbook response = %+v, want success", readPlaybook)
 	}
 	readPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readPlaybook.Result)
-	if len(readPlaybookData.Contents) != 1 || readPlaybookData.Contents[0].URI != "gasoline://playbook/performance/quick" {
+	if len(readPlaybookData.Contents) != 1 || readPlaybookData.Contents[0].URI != "kaboom://playbook/performance/quick" {
 		t.Fatalf("resources/read playbook result = %+v, want playbook content entry", readPlaybookData)
 	}
 
@@ -325,13 +325,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      62,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security/full"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://playbook/security/full"}`),
 	})
 	if readSecurityPlaybook == nil || readSecurityPlaybook.Error != nil {
 		t.Fatalf("resources/read security playbook response = %+v, want success", readSecurityPlaybook)
 	}
 	readSecurityPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readSecurityPlaybook.Result)
-	if len(readSecurityPlaybookData.Contents) != 1 || readSecurityPlaybookData.Contents[0].URI != "gasoline://playbook/security/full" {
+	if len(readSecurityPlaybookData.Contents) != 1 || readSecurityPlaybookData.Contents[0].URI != "kaboom://playbook/security/full" {
 		t.Fatalf("resources/read security playbook result = %+v, want security playbook content entry", readSecurityPlaybookData)
 	}
 
@@ -339,13 +339,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      63,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security_audit/quick"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://playbook/security_audit/quick"}`),
 	})
 	if readAliasedPlaybook == nil || readAliasedPlaybook.Error != nil {
 		t.Fatalf("resources/read aliased playbook response = %+v, want success", readAliasedPlaybook)
 	}
 	readAliasedPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readAliasedPlaybook.Result)
-	if len(readAliasedPlaybookData.Contents) != 1 || readAliasedPlaybookData.Contents[0].URI != "gasoline://playbook/security/quick" {
+	if len(readAliasedPlaybookData.Contents) != 1 || readAliasedPlaybookData.Contents[0].URI != "kaboom://playbook/security/quick" {
 		t.Fatalf("resources/read aliased playbook result = %+v, want canonical security/quick content entry", readAliasedPlaybookData)
 	}
 
@@ -353,13 +353,13 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      64,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://playbook/security"}`),
 	})
 	if readBareCapability == nil || readBareCapability.Error != nil {
 		t.Fatalf("resources/read bare capability response = %+v, want success defaulting to quick", readBareCapability)
 	}
 	readBareCapabilityData := mustDecodeJSON[MCPResourcesReadResult](t, readBareCapability.Result)
-	if len(readBareCapabilityData.Contents) != 1 || readBareCapabilityData.Contents[0].URI != "gasoline://playbook/security/quick" {
+	if len(readBareCapabilityData.Contents) != 1 || readBareCapabilityData.Contents[0].URI != "kaboom://playbook/security/quick" {
 		t.Fatalf("resources/read bare capability result = %+v, want canonical security/quick content entry", readBareCapabilityData)
 	}
 
@@ -367,7 +367,7 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      65,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/nonexistent/quick"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://playbook/nonexistent/quick"}`),
 	})
 	if readInvalidPlaybook == nil || readInvalidPlaybook.Error == nil || readInvalidPlaybook.Error.Code != -32002 {
 		t.Fatalf("resources/read invalid playbook response = %+v, want -32002 error", readInvalidPlaybook)
@@ -377,7 +377,7 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      66,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://demo/nonexistent"}`),
+		Params:  json.RawMessage(`{"uri":"kaboom://demo/nonexistent"}`),
 	})
 	if readInvalidDemo == nil || readInvalidDemo.Error == nil || readInvalidDemo.Error.Code != -32002 {
 		t.Fatalf("resources/read invalid demo response = %+v, want -32002 error", readInvalidDemo)

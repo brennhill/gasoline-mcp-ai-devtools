@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -20,7 +20,7 @@ import (
 
 func TestNewToolHandler(t *testing.T) {
 	// Create minimal dependencies
-	server, err := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestNewToolHandler(t *testing.T) {
 // ============================================
 
 func TestHandleToolCall_UnknownTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 
@@ -83,7 +83,7 @@ func TestHandleToolCall_UnknownTool(t *testing.T) {
 }
 
 func TestHandleToolCall_ObserveTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -121,7 +121,7 @@ func TestHandleToolCall_ObserveTool(t *testing.T) {
 }
 
 func TestHandleToolCall_GenerateTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -155,7 +155,7 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 }
 
 func TestHandleToolCall_ConfigureTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -189,7 +189,7 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 }
 
 func TestHandleToolCall_InteractTool(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -228,7 +228,7 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 // ============================================
 
 func TestToolObserve_MissingWhat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -257,7 +257,7 @@ func TestToolObserve_MissingWhat(t *testing.T) {
 }
 
 func TestToolObserve_UnknownMode(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -289,7 +289,7 @@ func TestToolObserve_UnknownMode(t *testing.T) {
 }
 
 func TestToolObserve_NetworkBodies(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -322,7 +322,7 @@ func TestToolObserve_NetworkBodies(t *testing.T) {
 // ============================================
 
 func TestToolGenerate_MissingFormat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -348,7 +348,7 @@ func TestToolGenerate_MissingFormat(t *testing.T) {
 }
 
 func TestToolGenerate_UnknownFormat(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -381,7 +381,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 // ============================================
 
 func TestToolConfigure_MissingAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -407,7 +407,7 @@ func TestToolConfigure_MissingAction(t *testing.T) {
 }
 
 func TestToolConfigure_UnknownAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -436,7 +436,7 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 }
 
 func TestToolConfigure_Health(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -473,7 +473,7 @@ func TestToolConfigure_Health(t *testing.T) {
 // ============================================
 
 func TestToolInteract_MissingAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -499,7 +499,7 @@ func TestToolInteract_MissingAction(t *testing.T) {
 }
 
 func TestToolInteract_UnknownAction(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -532,7 +532,7 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 // ============================================
 
 func TestToolsList(t *testing.T) {
-	server, _ := NewServer(t.TempDir()+"/test-gasoline.jsonl", 100)
+	server, _ := NewServer(t.TempDir()+"/test-kaboom.jsonl", 100)
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)

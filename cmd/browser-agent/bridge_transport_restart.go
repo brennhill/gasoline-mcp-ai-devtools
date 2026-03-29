@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
 )
 
 const (
@@ -52,7 +52,7 @@ func handleBridgeRestart(req JSONRPCRequest, state *daemonState, port int, frami
 		return false
 	}
 
-	stderrf("[gasoline] bridge restart requested, stopping daemon on port %d\n", port)
+	stderrf("[Kaboom] bridge restart requested, stopping daemon on port %d\n", port)
 
 	// Kill the daemon (3-layer: HTTP → PID → lsof).
 	// First send SIGCONT to unfreeze any SIGSTOP'd process so signals can be delivered.
@@ -79,16 +79,16 @@ func handleBridgeRestart(req JSONRPCRequest, state *daemonState, port int, frami
 	case <-readyCh:
 		status = "ok"
 		message = "Daemon restarted successfully"
-		stderrf("[gasoline] daemon restarted successfully on port %d\n", port)
+		stderrf("[Kaboom] daemon restarted successfully on port %d\n", port)
 	case <-failedCh:
 		errMsg := daemonFailureErr(state)
 		status = "error"
 		message = "Daemon restart failed: " + errMsg
-		stderrf("[gasoline] daemon restart failed: %s\n", errMsg)
+		stderrf("[Kaboom] daemon restart failed: %s\n", errMsg)
 	case <-time.After(restartGracePeriod):
 		status = "error"
 		message = "Daemon restart timed out after 6s"
-		stderrf("[gasoline] daemon restart timed out\n")
+		stderrf("[Kaboom] daemon restart timed out\n")
 	}
 
 	result := map[string]any{

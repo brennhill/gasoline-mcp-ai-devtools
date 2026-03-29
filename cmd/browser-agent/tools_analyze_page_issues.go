@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/security"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 const (
@@ -154,31 +155,31 @@ func (h *ToolHandler) runPageIssuesChecks(categories map[string]bool, limit int,
 
 	for _, c := range checkers {
 		wg.Add(1)
-		go func(c pageIssuesChecker) {
+		util.SafeGo(func() {
 			defer wg.Done()
 			// Buffered so the inner goroutine can send without blocking if timeout fires first.
 			done := make(chan checkResult, 1)
-			go func() {
+			util.SafeGo(func() {
 				issues, err := c.fn(limit)
 				cr := checkResult{name: c.name, issues: issues}
 				if err != nil {
 					cr.err = err.Error()
 				}
 				done <- cr
-			}()
+			})
 			select {
 			case r := <-done:
 				results <- r
 			case <-time.After(pageIssuesCheckTimeout):
 				results <- checkResult{name: c.name, err: "timeout"}
 			}
-		}(c)
+		})
 	}
 
-	go func() {
+	util.SafeGo(func() {
 		wg.Wait()
 		close(results)
-	}()
+	})
 
 	completed := make([]string, 0, len(checkers))
 	skipped := make([]string, 0)

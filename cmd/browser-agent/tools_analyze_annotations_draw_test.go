@@ -229,7 +229,7 @@ func TestToolGetDrawSession_HydratesStoreForGenerators(t *testing.T) {
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
 	t.Cleanup(func() { h.annotationStore.Close() })
 
-	t.Setenv("GASOLINE_STATE_DIR", t.TempDir())
+	t.Setenv("KABOOM_STATE_DIR", t.TempDir())
 	dir, err := screenshotsDir()
 	if err != nil {
 		t.Fatalf("screenshotsDir: %v", err)

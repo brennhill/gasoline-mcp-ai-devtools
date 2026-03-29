@@ -4,6 +4,7 @@
  */
 import { scaleTimeout } from '../lib/timeouts.js';
 import { delay } from '../lib/timeout-utils.js';
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/storage-utils.js';
 // =============================================================================
@@ -15,7 +16,7 @@ import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/s
 export async function pingContentScript(tabId, timeoutMs = scaleTimeout(500)) {
     try {
         const response = (await Promise.race([
-            chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }),
+            chrome.tabs.sendMessage(tabId, { type: 'kaboom_ping' }),
             new Promise((_, reject) => {
                 setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs);
             })
@@ -82,7 +83,7 @@ export async function loadSavedSettings() {
         return result;
     }
     catch {
-        console.warn('[Gasoline] Could not load saved settings - using defaults');
+        console.warn(`${KABOOM_LOG_PREFIX} Could not load saved settings - using defaults`);
         return {};
     }
 }
@@ -95,7 +96,7 @@ export async function loadAiWebPilotState(logFn) {
     const wasLoaded = aiEnabled !== false;
     const loadTime = performance.now() - startTime;
     if (logFn) {
-        logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);
+        logFn(`${KABOOM_LOG_PREFIX} AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);
     }
     return wasLoaded;
 }
@@ -159,8 +160,8 @@ async function createTerminalWorkspaceGroup(tabId) {
         const groupId = await chrome.tabs.group({ tabIds: [tabId] });
         const color = chrome.tabGroups.Color?.ORANGE;
         const update = color
-            ? { title: 'STRUM', color, collapsed: false }
-            : { title: 'STRUM', collapsed: false };
+            ? { title: 'Kaboom', color, collapsed: false }
+            : { title: 'Kaboom', collapsed: false };
         await chrome.tabGroups.update(groupId, update);
         return groupId;
     }
@@ -218,8 +219,8 @@ export function clearTrackedTab() {
 export async function resolveTerminalWorkspaceTarget(requestTabId) {
     const result = (await getLocals(TERMINAL_WORKSPACE_STORAGE_KEYS));
     const trackedTabId = typeof result.trackedTabId === 'number' ? result.trackedTabId : null;
-    const storedMainTabId = typeof result.gasoline_terminal_workspace_main_tab_id === 'number'
-        ? result.gasoline_terminal_workspace_main_tab_id
+    const storedMainTabId = typeof result.kaboom_terminal_workspace_main_tab_id === 'number'
+        ? result.kaboom_terminal_workspace_main_tab_id
         : null;
     const preferredMainTabId = trackedTabId ?? storedMainTabId ?? requestTabId ?? null;
     const requestTab = await safeGetTab(requestTabId);
@@ -305,13 +306,13 @@ export async function captureVisibleTabSafe(tabId, windowId, options) {
     if (!wasActive) {
         await chrome.tabs.update(tabId, { active: true });
     }
-    // Hide Gasoline UI overlay so it doesn't appear in screenshots.
-    await setGasolineOverlayVisibility(tabId, false);
+    // Hide Kaboom UI overlay so it doesn't appear in screenshots.
+    await setKaboomOverlayVisibility(tabId, false);
     try {
         return await chrome.tabs.captureVisibleTab(windowId, options);
     }
     finally {
-        await setGasolineOverlayVisibility(tabId, true);
+        await setKaboomOverlayVisibility(tabId, true);
         if (!wasActive && activeTab?.id) {
             await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
                 /* original tab may have been closed during capture */
@@ -320,17 +321,17 @@ export async function captureVisibleTabSafe(tabId, windowId, options) {
     }
 }
 /**
- * Toggles visibility of all Gasoline UI overlays (hover launcher, draw mode)
+ * Toggles visibility of all Kaboom UI overlays (hover launcher, draw mode)
  * in the target tab. Uses executeScript for speed — no message round-trip needed.
  */
-export async function setGasolineOverlayVisibility(tabId, visible) {
+export async function setKaboomOverlayVisibility(tabId, visible) {
     try {
         await chrome.scripting.executeScript({
             target: { tabId },
             func: (show) => {
                 const ids = [
-                    'gasoline-tracked-hover-launcher',
-                    'gasoline-draw-toolbar'
+                    'kaboom-tracked-hover-launcher',
+                    'kaboom-draw-toolbar'
                 ];
                 for (const id of ids) {
                     const el = document.getElementById(id);
@@ -349,13 +350,13 @@ export async function setGasolineOverlayVisibility(tabId, visible) {
 // TAB TOAST
 // =============================================================================
 /**
- * Send a gasoline_action_toast message to a tab.
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(tabId, text, detail = '', state = 'success', duration_ms = 3000) {
     chrome.tabs
         .sendMessage(tabId, {
-        type: 'gasoline_action_toast',
+        type: 'kaboom_action_toast',
         text,
         detail,
         state,

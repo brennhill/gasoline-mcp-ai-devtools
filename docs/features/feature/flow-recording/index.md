@@ -4,18 +4,26 @@ feature_id: feature-flow-recording
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 code_paths:
   - src/background/recording.ts
+  - src/background/recording-capture.ts
   - src/background/recording-listeners.ts
   - src/background/keyboard-shortcuts.ts
   - src/background/context-menus.ts
   - src/background/recording-utils.ts
   - src/background/draw-mode-toggle.ts
+  - src/offscreen/recording-worker.ts
   - src/popup/action-recording.ts
+  - src/popup/recording.ts
+  - src/popup/recording-io.ts
+  - src/lib/brand.ts
   - src/lib/daemon-http.ts
 test_paths:
   - tests/extension/recording.test.js
+  - tests/extension/recording-listeners-target-tab.test.js
+  - tests/extension/recording-capture-branding.test.js
+  - tests/extension/recording-log-branding.test.js
   - tests/extension/recording-shortcut-command.test.js
   - tests/extension/tracked-hover-launcher.test.js
 last_verified_version: 0.7.12
@@ -48,11 +56,19 @@ last_verified_date: 2026-03-05
 
 - Core recording lifecycle and listener wiring:
   - `src/background/recording.ts`
+  - `src/background/recording-capture.ts`
   - `src/background/recording-listeners.ts`
   - `src/background/keyboard-shortcuts.ts`
   - `src/background/context-menus.ts`
   - `src/background/recording-utils.ts`
+  - `src/offscreen/recording-worker.ts`
+  - `src/popup/recording.ts`
+  - `src/popup/recording-io.ts`
+  - `src/lib/brand.ts`
 - Core tests:
   - `tests/extension/recording.test.js`
+  - `tests/extension/recording-listeners-target-tab.test.js`
+  - `tests/extension/recording-capture-branding.test.js`
+  - `tests/extension/recording-log-branding.test.js`
   - `tests/extension/recording-shortcut-command.test.js`
   - `tests/extension/tracked-hover-launcher.test.js`

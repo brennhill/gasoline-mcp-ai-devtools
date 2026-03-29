@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-// AuthMiddleware returns a middleware function that checks the X-Gasoline-Key header.
+// AuthMiddleware returns a middleware function that checks the X-Kaboom-Key header.
 // If expectedKey is empty, no authentication is required (pass-through).
 // If expectedKey is set, requests must include the correct key or receive 401.
 // Key comparison uses crypto/subtle.ConstantTimeCompare to prevent timing attacks.
@@ -23,8 +23,8 @@ func AuthMiddleware(expectedKey string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Check the X-Gasoline-Key header
-			providedKey := r.Header.Get("X-Gasoline-Key")
+			// Check the X-Kaboom-Key header
+			providedKey := r.Header.Get("X-Kaboom-Key")
 
 			// Use constant-time comparison to prevent timing attacks
 			expectedBytes := []byte(expectedKey)

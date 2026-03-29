@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 func (h *ToolHandler) waitForCommandWithConnectivity(correlationID string, timeout time.Duration) (*queries.CommandResult, bool, bool, int64) {
@@ -98,7 +98,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	// Here we only do an instant check to catch disconnections that occurred after
 	// requireExtension passed but before we reached this point.
 	if !h.capture.IsExtensionConnected() {
-		return fail(req, ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())
+		return fail(req, ErrNoData, "Extension is not connected", "Ensure the Kaboom extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())
 	}
 
 	// Determine wait budget from timeout_ms or defaults.

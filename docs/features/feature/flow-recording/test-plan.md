@@ -131,7 +131,7 @@ last_verified_date: 2026-03-05
 
 **Framework:** Bash scripts
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-18-recording.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-18-recording.sh`
 
 #### 7 Tests Implemented:
 
@@ -168,7 +168,7 @@ The cat-18 tests focus on **API contract (start/stop/list)**. They don't test th
 | GH-5 | Self-healing on moved selector | HIGH | Element moved, playback uses self-healing |
 | GH-6 | Log diffing identifies changes | HIGH | Compare original vs replay, detect new errors |
 | GH-7 | Non-blocking error during playback | MEDIUM | One action fails, others continue |
-| GH-8 | Storage location (~/.gasoline/recordings/) | MEDIUM | Verify files created in correct path |
+| GH-8 | Storage location (~/.kaboom/recordings/) | MEDIUM | Verify files created in correct path |
 | GH-9 | Sensitive data handling (password recording toggle) | MEDIUM | Verify credentials masked if disabled |
 | GH-10 | Concurrent recordings (only 1 at a time) | MEDIUM | Start 2 recordings, verify second fails/queued |
 
@@ -184,7 +184,7 @@ The cat-18 tests focus on **API contract (start/stop/list)**. They don't test th
 18.10 - Record type action → text value captured
 18.11 - Screenshot captured after navigation (page-load issue type)
 18.12 - Screenshot captured on error (error issue type)
-18.13 - File storage in ~/.gasoline/recordings/{recording_id}/
+18.13 - File storage in ~/.kaboom/recordings/{recording_id}/
 18.14 - Sensitive data: password not recorded when toggle disabled
 18.15 - Concurrent recording attempt blocked (only 1 active)
 ```
@@ -251,7 +251,7 @@ The cat-18 tests focus on **API contract (start/stop/list)**. They don't test th
 ## Known Limitations (v6.0 MVP)
 
 1. **No video replay** — Screenshots + logs sufficient
-2. **No auto-apply fixes** — Gasoline proposes, developer reviews
+2. **No auto-apply fixes** — Kaboom proposes, developer reviews
 3. **No multi-user sharing** — One recording at a time
 4. **No cloud storage** — Local disk only
 5. **No gen variations** — Phase 2 feature

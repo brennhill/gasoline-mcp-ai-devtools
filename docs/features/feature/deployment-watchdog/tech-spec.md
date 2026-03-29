@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 
 Deployment Watchdog is a **time-bounded monitoring session** implemented as a new action under the existing `configure` MCP tool and a new mode under the `observe` tool. It captures a pre-deployment baseline, then continuously compares incoming telemetry against that baseline for a configurable duration (1-60 minutes). If regressions are detected, alerts are surfaced via the existing `observe({what: "changes"})` polling mechanism.
 
-The watchdog is server-side state (in-memory session) with no extension changes required. It composes three existing Gasoline primitives: session snapshots (`diff_sessions`), behavioral baselines (`save_baseline`/`compare_baseline`), and push regression alerts (`observe({what: "changes"})`).
+The watchdog is server-side state (in-memory session) with no extension changes required. It composes three existing Kaboom primitives: session snapshots (`diff_sessions`), behavioral baselines (`save_baseline`/`compare_baseline`), and push regression alerts (`observe({what: "changes"})`).
 
 ## Key Components
 

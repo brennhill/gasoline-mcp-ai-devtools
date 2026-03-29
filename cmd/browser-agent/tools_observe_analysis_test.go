@@ -8,7 +8,7 @@ package main
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/a11ysummary"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/a11ysummary"
 )
 
 // ============================================

@@ -143,7 +143,7 @@ run_test_6_3() {
     fi
 
     # Verify PID file is cleaned up
-    local pid_file="$HOME/.gasoline-${PORT}.pid"
+    local pid_file="$HOME/.kaboom-${PORT}.pid"
     if [ -f "$pid_file" ]; then
         fail "PID file $pid_file still exists after --stop (stale state)."
         rm -f "$pid_file"

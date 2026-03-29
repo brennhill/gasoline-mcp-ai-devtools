@@ -68,7 +68,7 @@ Created comprehensive docs in docs/features/feature/test-generation/:
 ## Validation Status
 
 Implementation complete and tested (77/77 tests passing).
-Ready for hands-on validation using ~/dev/gasoline-demos (34 intentional bugs).
+Ready for hands-on validation using ~/dev/kaboom-demos (34 intentional bugs).
 
 See validation-guide.md for step-by-step validation plan (~2 hours).
 

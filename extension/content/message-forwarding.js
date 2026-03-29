@@ -2,13 +2,14 @@
  * Purpose: Forwards window.postMessage events from the inject context to the background script via chrome.runtime.sendMessage.
  * Docs: docs/features/feature/observe/index.md
  */
+import { getReloadedExtensionWarning } from '../lib/brand.js';
 // Dispatch table: page postMessage type -> background message type
 export const MESSAGE_MAP = {
-    gasoline_log: 'log',
-    gasoline_ws: 'ws_event',
-    gasoline_network_body: 'network_body',
-    gasoline_enhanced_action: 'enhanced_action',
-    gasoline_performance_snapshot: 'performance_snapshot'
+    kaboom_log: 'log',
+    kaboom_ws: 'ws_event',
+    kaboom_network_body: 'network_body',
+    kaboom_enhanced_action: 'enhanced_action',
+    kaboom_performance_snapshot: 'performance_snapshot'
 };
 // Track whether the extension context is still valid
 let contextValid = true;
@@ -25,9 +26,7 @@ export function safeSendMessage(msg) {
     catch (e) {
         if (e instanceof Error && e.message?.includes('Extension context invalidated')) {
             contextValid = false;
-            console.warn('[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
-                'and this page still has the old content script. A page refresh will ' +
-                'reconnect capture automatically.');
+            console.warn(getReloadedExtensionWarning());
         }
     }
 }

@@ -26,7 +26,7 @@ func isValidExtensionID(id string) bool {
 }
 
 // isExtensionOrigin checks if origin matches a browser extension scheme.
-// When GASOLINE_EXTENSION_ID or GASOLINE_FIREFOX_EXTENSION_ID env var is set,
+// When KABOOM_EXTENSION_ID or KABOOM_FIREFOX_EXTENSION_ID env var is set,
 // only that specific ID is allowed. Otherwise any valid extension ID is accepted.
 func isExtensionOrigin(origin string) (matched bool, allowed bool) {
 	type extCheck struct {
@@ -34,8 +34,8 @@ func isExtensionOrigin(origin string) (matched bool, allowed bool) {
 		envVar string
 	}
 	checks := []extCheck{
-		{"chrome-extension://", "GASOLINE_EXTENSION_ID"},
-		{"moz-extension://", "GASOLINE_FIREFOX_EXTENSION_ID"},
+		{"chrome-extension://", "KABOOM_EXTENSION_ID"},
+		{"moz-extension://", "KABOOM_FIREFOX_EXTENSION_ID"},
 	}
 	for _, c := range checks {
 		if strings.HasPrefix(origin, c.prefix) {
@@ -123,7 +123,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key, X-Gasoline-Client, X-Gasoline-Extension-Version")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Kaboom-Key, X-Kaboom-Client, X-Kaboom-Extension-Version")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
@@ -134,21 +134,21 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// extensionOnly wraps a handler to require the X-Gasoline-Client header
-// from the Gasoline browser extension. Accepts:
-//   - "gasoline-extension" (exact match)
-//   - "gasoline-extension/{version}" (e.g., gasoline-extension/6.0.3)
-//   - "gasoline-extension-offscreen" (offscreen recording worker)
+// extensionOnly wraps a handler to require the X-Kaboom-Client header
+// from the Kaboom browser extension. Accepts:
+//   - "kaboom-extension" (exact match)
+//   - "kaboom-extension/{version}" (e.g., kaboom-extension/6.0.3)
+//   - "kaboom-extension-offscreen" (offscreen recording worker)
 //
-// Rejects with 403 if missing or invalid. This ensures only the Gasoline
+// Rejects with 403 if missing or invalid. This ensures only the Kaboom
 // browser extension can call extension-facing endpoints.
 func extensionOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		client := r.Header.Get("X-Gasoline-Client")
-		if client != "gasoline-extension" &&
-			client != "gasoline-extension-offscreen" &&
-			!strings.HasPrefix(client, "gasoline-extension/") {
-			http.Error(w, `{"error":"forbidden: missing or invalid X-Gasoline-Client header"}`, http.StatusForbidden)
+		client := r.Header.Get("X-Kaboom-Client")
+		if client != "kaboom-extension" &&
+			client != "kaboom-extension-offscreen" &&
+			!strings.HasPrefix(client, "kaboom-extension/") {
+			http.Error(w, `{"error":"forbidden: missing or invalid X-Kaboom-Client header"}`, http.StatusForbidden)
 			return
 		}
 		next(w, r)

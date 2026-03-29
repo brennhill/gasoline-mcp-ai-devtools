@@ -280,7 +280,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
     // MAIN or AUTO: try content script (MAIN world) first
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'gasoline_execute_query',
+            type: 'kaboom_execute_query',
             params: queryParams
         }));
         // Auto-fallback: split by error type

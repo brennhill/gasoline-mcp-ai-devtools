@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
-	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/noise"
+	cfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/configure"
 )
 
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

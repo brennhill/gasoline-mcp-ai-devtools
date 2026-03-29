@@ -13,7 +13,7 @@ begin_category "11" "Data Pipeline" "31"
 ensure_daemon
 
 # ── Helpers ──────────────────────────────────────────────
-# POST to extension-protected endpoint (requires X-Gasoline-Client header)
+# POST to extension-protected endpoint (requires X-Kaboom-Client header)
 post_extension() {
     local endpoint="$1"
     local payload="$2"
@@ -21,20 +21,20 @@ post_extension() {
     LAST_HTTP_STATUS=$(curl -s -o "$response_file" -w "%{http_code}" \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         "http://localhost:${PORT}${endpoint}" \
         -d "$payload" 2>/dev/null)
     LAST_HTTP_BODY=$(cat "$response_file" 2>/dev/null)
 }
 
-# POST to /logs endpoint (requires X-Gasoline-Client header)
+# POST to /logs endpoint (requires X-Kaboom-Client header)
 post_logs() {
     local payload="$1"
     local response_file="$TEMP_DIR/http_post_${MCP_ID}.txt"
     LAST_HTTP_STATUS=$(curl -s -o "$response_file" -w "%{http_code}" \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" \
         -d "$payload" 2>/dev/null)
     LAST_HTTP_BODY=$(cat "$response_file" 2>/dev/null)
@@ -449,7 +449,7 @@ run_test_11_14() {
 
     LAST_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" \
         -d @"$payload_file" 2>/dev/null)
     if [ "$LAST_HTTP_STATUS" != "200" ]; then
@@ -697,9 +697,9 @@ run_test_11_22
 # GROUP D: Error Handling & Security (7 tests)
 ###########################################################
 
-# ── 11.23 — No X-Gasoline-Client header → 403 ──────────
-begin_test "11.23" "No X-Gasoline-Client header returns 403" \
-    "POST to /network-bodies without X-Gasoline-Client header, verify rejection" \
+# ── 11.23 — No X-Kaboom-Client header → 403 ──────────
+begin_test "11.23" "No X-Kaboom-Client header returns 403" \
+    "POST to /network-bodies without X-Kaboom-Client header, verify rejection" \
     "Security middleware must block unauthorized access to extension endpoints."
 run_test_11_23() {
     post_raw "http://localhost:${PORT}/network-bodies" '{"bodies":[]}'
@@ -711,12 +711,12 @@ run_test_11_23() {
 }
 run_test_11_23
 
-# ── 11.24 — Invalid X-Gasoline-Client → 403 ────────────
-begin_test "11.24" "Invalid X-Gasoline-Client header returns 403" \
+# ── 11.24 — Invalid X-Kaboom-Client → 403 ────────────
+begin_test "11.24" "Invalid X-Kaboom-Client header returns 403" \
     "POST with header 'evil-client/1.0', verify rejection" \
-    "Only 'gasoline-extension' prefix should be accepted."
+    "Only 'kaboom-extension' prefix should be accepted."
 run_test_11_24() {
-    post_raw "http://localhost:${PORT}/enhanced-actions" '{"actions":[]}' "X-Gasoline-Client: evil-client/1.0"
+    post_raw "http://localhost:${PORT}/enhanced-actions" '{"actions":[]}' "X-Kaboom-Client: evil-client/1.0"
     if [ "$LAST_HTTP_STATUS" = "403" ]; then
         pass "POST /enhanced-actions with invalid header returned HTTP 403. Security enforced."
     else
@@ -760,7 +760,7 @@ begin_test "11.27" "Empty body to /logs does not crash" \
 run_test_11_27() {
     LAST_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" 2>/dev/null)
     if [ "$LAST_HTTP_STATUS" = "400" ]; then
         pass "Empty body POST to /logs returned HTTP 400 (Bad Request). Handled gracefully."

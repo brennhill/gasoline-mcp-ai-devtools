@@ -6,7 +6,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Gasoline System Architecture
+# Kaboom System Architecture
 
 ## C4 Level 1: System Context
 
@@ -18,7 +18,7 @@ graph TB
         Browser["🌐 Web Browser<br/><br/>Chrome or Brave<br/>Renders web application"]
     end
 
-    subgraph Gasoline["⚙️ Gasoline MCP System"]
+    subgraph Kaboom["⚙️ Kaboom MCP System"]
         Core["Browser Observability Platform<br/><br/>• Captures console logs, network traffic, WebSocket events<br/>• Provides async browser control via MCP<br/>• Zero dependencies, localhost-only"]
     end
 
@@ -46,7 +46,7 @@ graph TB
         Bridge["Bridge Process<br/><br/>Go Binary<br/>Forwards stdio ↔ HTTP"]
     end
 
-    subgraph Server["Gasoline Server (localhost:7890)"]
+    subgraph Server["Kaboom Server (localhost:7890)"]
         HTTP["HTTP Server<br/><br/>Go net/http<br/>Receives telemetry,<br/>serves queries"]
 
         Queue[("Async Queue<br/><br/>In-Memory<br/>Max 5 pending,<br/>30s timeout")]
@@ -95,7 +95,7 @@ flowchart TD
         WS[WebSocket]
     end
 
-    subgraph Extension["Gasoline Extension"]
+    subgraph Extension["Kaboom Extension"]
         Inject[inject.js<br/>Injected into page]
         Content[content.js<br/>Content script]
         Background[background.js<br/>Service worker]
@@ -184,7 +184,7 @@ graph TB
         Claude[Claude Code<br/>or Cursor/Copilot/Windsurf]
     end
 
-    subgraph "Gasoline Processes"
+    subgraph "Kaboom Processes"
         Bridge[Bridge Process<br/>PID 12345<br/>stdio ↔ HTTP forwarder]
         Server[HTTP Server<br/>PID 12346<br/>Persistent daemon on :7890]
     end
@@ -246,9 +246,9 @@ graph TD
         Background -->|localhost POST| Server[HTTP Server]
     end
 
-    Server -->|"Customer controlled<br/>--log-file flag"| LocalDisk["💾 Local Disk<br/><br/>~/gasoline-logs.jsonl<br/>Customer's machine"]
+    Server -->|"Customer controlled<br/>--log-file flag"| LocalDisk["💾 Local Disk<br/><br/>~/kaboom-logs.jsonl<br/>Customer's machine"]
 
-    Server -.->|"❌ Never reaches"| Cloud["☁️ Gasoline Cloud<br/><br/>No SaaS service<br/>No external APIs<br/>No telemetry"]
+    Server -.->|"❌ Never reaches"| Cloud["☁️ Kaboom Cloud<br/><br/>No SaaS service<br/>No external APIs<br/>No telemetry"]
 
     Server -.->|"🔮 Future: Optional"| DistStorage["🗄️ Distributed Storage<br/><br/>Customer's own infrastructure<br/>(S3, Postgres, etc.)<br/>Customer controls access"]
 
@@ -261,7 +261,7 @@ graph TD
     style DistStorage fill:#58a6ff,color:#fff,stroke:#1f6feb,stroke-width:2px
     style Server fill:#fb923c,color:#fff
 
-    note1["Key Security Points:<br/>✅ All data stays on customer's infrastructure<br/>✅ Customer chooses storage location<br/>✅ Zero external dependencies<br/>❌ Never sent to Gasoline's servers"]
+    note1["Key Security Points:<br/>✅ All data stays on customer's infrastructure<br/>✅ Customer chooses storage location<br/>✅ Zero external dependencies<br/>❌ Never sent to Kaboom's servers"]
     Server -.-> note1
 ```
 
@@ -271,7 +271,7 @@ graph TD
 graph TB
     subgraph "Developer Machine"
         subgraph "Installation"
-            NPM[npm install<br/>gasoline-mcp@5.4.0]
+            NPM[npm install<br/>kaboom-mcp@5.4.0]
             Download[Downloads platform binary<br/>~7MB arm64/x64]
             Place[Places in ~/.npm/_npx/]
         end
@@ -282,7 +282,7 @@ graph TB
         end
 
         subgraph "Runtime"
-            Start[npx gasoline-mcp<br/>--port 7890]
+            Start[npx kaboom-mcp<br/>--port 7890]
             Fork[Spawns HTTP server daemon]
             MCPConfig[MCP config launches<br/>bridge on demand]
         end

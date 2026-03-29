@@ -57,6 +57,14 @@ function fireWindowMessage(data) {
   }
 }
 
+async function importContentHandlers() {
+  return import(`../../extension/content/message-handlers.js?t=${Date.now()}_${Math.random()}`)
+}
+
+async function importScriptInjection() {
+  return import('../../extension/content/script-injection.js')
+}
+
 // =============================================================================
 // Fix 1: requestId correlation — forwardInjectQuery
 // =============================================================================
@@ -68,17 +76,7 @@ describe('forwardInjectQuery — requestId correlation', () => {
     mock.reset()
     resetWindow()
 
-    // Mock getPageNonce and other deps
-    mock.module('../../extension/content/script-injection.js', {
-      namedExports: {
-        isInjectScriptLoaded: () => true,
-        getPageNonce: () => 'test-nonce-abc',
-        ensureInjectBridgeReady: () => Promise.resolve(true),
-        isInjectBridgeReady: () => true
-      }
-    })
-
-    const mod = await import('../../extension/content/message-handlers.js')
+    const mod = await importContentHandlers()
     handleComputedStylesQuery = mod.handleComputedStylesQuery
   })
 
@@ -87,13 +85,13 @@ describe('forwardInjectQuery — requestId correlation', () => {
       handleComputedStylesQuery({ selector: 'div' }, resolve)
 
       // Find the requestId from the posted message
-      const posted = postedMessages.find((m) => m.type === 'gasoline_computed_styles_query')
+      const posted = postedMessages.find((m) => m.type === 'kaboom_computed_styles_query')
       assert.ok(posted, 'should have posted a query message')
       const reqId = posted.requestId
 
       // Fire response with matching requestId
       fireWindowMessage({
-        type: 'gasoline_computed_styles_response',
+        type: 'kaboom_computed_styles_response',
         requestId: reqId,
         result: { elements: ['div1'], count: 1 }
       })
@@ -114,18 +112,18 @@ describe('forwardInjectQuery — requestId correlation', () => {
     })
 
     // Find posted messages — there should be two with different requestIds
-    const posted = postedMessages.filter((m) => m.type === 'gasoline_computed_styles_query')
+    const posted = postedMessages.filter((m) => m.type === 'kaboom_computed_styles_query')
     assert.strictEqual(posted.length, 2, 'should have posted two query messages')
     assert.notStrictEqual(posted[0].requestId, posted[1].requestId, 'requestIds should differ')
 
     // Fire responses in reverse order
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: posted[1].requestId,
       result: { elements: ['second-result'], count: 1 }
     })
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: posted[0].requestId,
       result: { elements: ['first-result'], count: 1 }
     })
@@ -148,12 +146,12 @@ describe('forwardInjectQuery — requestId correlation', () => {
       })
     })
 
-    const posted = postedMessages.find((m) => m.type === 'gasoline_computed_styles_query')
+    const posted = postedMessages.find((m) => m.type === 'kaboom_computed_styles_query')
     const correctId = posted.requestId
 
     // Fire response with wrong requestId
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: correctId + 999,
       result: { elements: ['wrong'], count: 1 }
     })
@@ -164,7 +162,7 @@ describe('forwardInjectQuery — requestId correlation', () => {
 
     // Now fire correct one
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: correctId,
       result: { elements: ['correct'], count: 1 }
     })
@@ -185,16 +183,7 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
     mock.reset()
     resetWindow()
 
-    mock.module('../../extension/content/script-injection.js', {
-      namedExports: {
-        isInjectScriptLoaded: () => true,
-        getPageNonce: () => 'test-nonce-abc',
-        ensureInjectBridgeReady: () => Promise.resolve(true),
-        isInjectBridgeReady: () => true
-      }
-    })
-
-    const mod = await import('../../extension/content/message-handlers.js')
+    const mod = await importContentHandlers()
     handleGetNetworkWaterfall = mod.handleGetNetworkWaterfall
   })
 
@@ -202,11 +191,11 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
     const result = await new Promise((resolve) => {
       handleGetNetworkWaterfall(resolve)
 
-      const posted = postedMessages.find((m) => m.type === 'gasoline_get_waterfall')
+      const posted = postedMessages.find((m) => m.type === 'kaboom_get_waterfall')
       assert.ok(posted, 'should have posted a waterfall query')
 
       fireWindowMessage({
-        type: 'gasoline_waterfall_response',
+        type: 'kaboom_waterfall_response',
         requestId: posted.requestId,
         entries: [{ url: '/api/data', status: 200 }]
       })
@@ -223,18 +212,18 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
       handleGetNetworkWaterfall(resolve)
     })
 
-    const posted = postedMessages.filter((m) => m.type === 'gasoline_get_waterfall')
+    const posted = postedMessages.filter((m) => m.type === 'kaboom_get_waterfall')
     assert.strictEqual(posted.length, 2)
     assert.notStrictEqual(posted[0].requestId, posted[1].requestId)
 
     // Fire in reverse order
     fireWindowMessage({
-      type: 'gasoline_waterfall_response',
+      type: 'kaboom_waterfall_response',
       requestId: posted[1].requestId,
       entries: [{ url: '/second' }]
     })
     fireWindowMessage({
-      type: 'gasoline_waterfall_response',
+      type: 'kaboom_waterfall_response',
       requestId: posted[0].requestId,
       entries: [{ url: '/first' }]
     })
@@ -254,11 +243,11 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
       })
     })
 
-    const posted = postedMessages.find((m) => m.type === 'gasoline_get_waterfall')
+    const posted = postedMessages.find((m) => m.type === 'kaboom_get_waterfall')
 
     // Wrong requestId
     fireWindowMessage({
-      type: 'gasoline_waterfall_response',
+      type: 'kaboom_waterfall_response',
       requestId: posted.requestId + 999,
       entries: [{ url: '/wrong' }]
     })
@@ -268,7 +257,7 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
 
     // Correct requestId
     fireWindowMessage({
-      type: 'gasoline_waterfall_response',
+      type: 'kaboom_waterfall_response',
       requestId: posted.requestId,
       entries: [{ url: '/correct' }]
     })
@@ -284,34 +273,27 @@ describe('handleGetNetworkWaterfall — requestId correlation', () => {
 
 describe('forwardInjectQuery — nonce validation', () => {
   let handleComputedStylesQuery
+  let getPageNonce
 
   beforeEach(async () => {
     mock.reset()
     resetWindow()
 
-    mock.module('../../extension/content/script-injection.js', {
-      namedExports: {
-        isInjectScriptLoaded: () => true,
-        getPageNonce: () => 'test-nonce-abc',
-        ensureInjectBridgeReady: () => Promise.resolve(true),
-        isInjectBridgeReady: () => true
-      }
-    })
-
-    const mod = await import('../../extension/content/message-handlers.js')
+    const mod = await importContentHandlers()
     handleComputedStylesQuery = mod.handleComputedStylesQuery
+    ;({ getPageNonce } = await importScriptInjection())
   })
 
   test('response with correct nonce is accepted', async () => {
     const result = await new Promise((resolve) => {
       handleComputedStylesQuery({ selector: 'div' }, resolve)
 
-      const posted = postedMessages.find((m) => m.type === 'gasoline_computed_styles_query')
+      const posted = postedMessages.find((m) => m.type === 'kaboom_computed_styles_query')
 
       fireWindowMessage({
-        type: 'gasoline_computed_styles_response',
+        type: 'kaboom_computed_styles_response',
         requestId: posted.requestId,
-        _nonce: 'test-nonce-abc',
+        _nonce: getPageNonce(),
         result: { elements: ['ok'], count: 1 }
       })
     })
@@ -329,11 +311,11 @@ describe('forwardInjectQuery — nonce validation', () => {
       })
     })
 
-    const posted = postedMessages.find((m) => m.type === 'gasoline_computed_styles_query')
+    const posted = postedMessages.find((m) => m.type === 'kaboom_computed_styles_query')
 
     // Fire response with wrong nonce
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: posted.requestId,
       _nonce: 'wrong-nonce',
       result: { elements: ['spoofed'], count: 1 }
@@ -344,9 +326,9 @@ describe('forwardInjectQuery — nonce validation', () => {
 
     // Now fire with correct nonce
     fireWindowMessage({
-      type: 'gasoline_computed_styles_response',
+      type: 'kaboom_computed_styles_response',
       requestId: posted.requestId,
-      _nonce: 'test-nonce-abc',
+      _nonce: getPageNonce(),
       result: { elements: ['legit'], count: 1 }
     })
 
@@ -358,11 +340,11 @@ describe('forwardInjectQuery — nonce validation', () => {
     const result = await new Promise((resolve) => {
       handleComputedStylesQuery({ selector: 'div' }, resolve)
 
-      const posted = postedMessages.find((m) => m.type === 'gasoline_computed_styles_query')
+      const posted = postedMessages.find((m) => m.type === 'kaboom_computed_styles_query')
 
       // No _nonce field — backwards compat for migration period
       fireWindowMessage({
-        type: 'gasoline_computed_styles_response',
+        type: 'kaboom_computed_styles_response',
         requestId: posted.requestId,
         result: { elements: ['no-nonce'], count: 1 }
       })

@@ -83,12 +83,12 @@ export declare function captureVisibleTabSafe(tabId: number, windowId: number, o
     quality?: number;
 }): Promise<string>;
 /**
- * Toggles visibility of all Gasoline UI overlays (hover launcher, draw mode)
+ * Toggles visibility of all Kaboom UI overlays (hover launcher, draw mode)
  * in the target tab. Uses executeScript for speed — no message round-trip needed.
  */
-export declare function setGasolineOverlayVisibility(tabId: number, visible: boolean): Promise<void>;
+export declare function setKaboomOverlayVisibility(tabId: number, visible: boolean): Promise<void>;
 /**
- * Send a gasoline_action_toast message to a tab.
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export declare function sendTabToast(tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error' | 'audio', duration_ms?: number): void;

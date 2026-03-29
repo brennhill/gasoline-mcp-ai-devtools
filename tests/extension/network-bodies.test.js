@@ -65,7 +65,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(bodyEvent, 'Expected network body event')
     const payload = bodyEvent.arguments[0].payload
 
@@ -109,7 +109,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const bodyEvent = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'gasoline_network_body'
+      return msg.type === 'kaboom_network_body'
     })
 
     assert.ok(bodyEvent, 'Expected network body event')
@@ -139,7 +139,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.ok(bodyEvent, 'Expected network body event')
     const payload = bodyEvent.arguments[0].payload
@@ -201,9 +201,9 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
-    assert.strictEqual(bodyEvent.arguments[0].type, 'gasoline_network_body')
+    assert.strictEqual(bodyEvent.arguments[0].type, 'kaboom_network_body')
     assert.strictEqual(bodyEvent.arguments[0].payload.content_type, 'text/html')
     assert.strictEqual(typeof bodyEvent.arguments[0].payload.method, 'string')
     assert.strictEqual(typeof bodyEvent.arguments[0].payload.url, 'string')
@@ -221,7 +221,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.method, 'PUT')
   })
@@ -238,7 +238,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.method, 'GET')
   })
@@ -256,7 +256,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.url, '/api/data')
   })
@@ -278,7 +278,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       await new Promise((r) => setTimeout(r, 10))
 
       const calls = globalThis.window.postMessage.mock.calls
-      const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+      const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
       if (bodyEvent) {
         assert.ok(
@@ -301,7 +301,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.ok(!bodyEvent, 'Should not capture requests to gasoline server')
   })
@@ -323,7 +323,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await new Promise((r) => setTimeout(r, 30))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
 
     assert.ok(bodyEvent.arguments[0].payload.duration >= 15, 'Expected duration >= 15ms')
   })
@@ -677,7 +677,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(bodyEvent, 'Expected GASOLINE_NETWORK_BODY event from XHR')
     const payload = bodyEvent.arguments[0].payload
 
@@ -711,7 +711,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(bodyEvent, 'Expected GASOLINE_NETWORK_BODY event')
     assert.strictEqual(bodyEvent.arguments[0].payload.method, 'GET')
     assert.strictEqual(bodyEvent.arguments[0].payload.response_body, '{"items":[1,2,3]}')
@@ -732,7 +732,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(!bodyEvent, 'Should not capture gasoline server XHR')
   })
 
@@ -753,7 +753,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(!bodyEvent, 'Should not capture binary content type XHR')
   })
 
@@ -773,7 +773,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(!bodyEvent, 'Should not capture arraybuffer responseType')
   })
 
@@ -794,7 +794,7 @@ describe('Network Body Capture - XHR Wrapper', () => {
     await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find((c) => c.arguments[0].type === 'gasoline_network_body')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'kaboom_network_body')
     assert.ok(bodyEvent, 'Expected network body event for auth endpoint')
     const payload = bodyEvent.arguments[0].payload
     assert.strictEqual(payload.request_body, '[REDACTED: auth endpoint]')

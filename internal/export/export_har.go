@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // ============================================
@@ -161,7 +161,7 @@ func buildHARLog(entries []HAREntry, creatorVersion string) HARLog {
 	return HARLog{
 		Log: HARLogInner{
 			Version: "1.2",
-			Creator: HARCreator{Name: "Gasoline Agentic Browser", Version: creatorVersion},
+			Creator: HARCreator{Name: "Kaboom Agentic Browser", Version: creatorVersion},
 			Entries: entries,
 		},
 	}

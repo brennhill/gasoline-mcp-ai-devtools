@@ -248,7 +248,7 @@ describe('message routing', () => {
     await new Promise((resolve) => setTimeout(resolve, 10))
   })
 
-  test('open_terminal_panel creates a STRUM workspace group around the tracked tab and opens there', async () => {
+  test('open_terminal_panel creates a Kaboom workspace group around the tracked tab and opens there', async () => {
     chrome.storage.local.get = mock.fn((keys, callback) => {
       const keyList = Array.isArray(keys) ? keys : [keys]
       const result = {}
@@ -297,7 +297,7 @@ describe('message routing', () => {
     assert.strictEqual(chrome.tabGroups.update.mock.calls.length, 1, 'workspace group should be named and styled')
     assert.strictEqual(chrome.tabGroups.update.mock.calls[0].arguments[0], 77)
     assert.deepStrictEqual(chrome.tabGroups.update.mock.calls[0].arguments[1], {
-      title: 'STRUM',
+      title: 'Kaboom',
       color: 'orange',
       collapsed: false
     })
@@ -311,14 +311,14 @@ describe('message routing', () => {
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
   })
 
-  test('open_terminal_panel keeps the current tab when it already belongs to the STRUM workspace group', async () => {
+  test('open_terminal_panel keeps the current tab when it already belongs to the Kaboom workspace group', async () => {
     chrome.storage.local.get = mock.fn((keys, callback) => {
       const keyList = Array.isArray(keys) ? keys : [keys]
       const result = {}
       for (const key of keyList) {
         if (key === 'trackedTabId') result[key] = 42
-        else if (key === 'gasoline_terminal_workspace_group_id') result[key] = 77
-        else if (key === 'gasoline_terminal_workspace_main_tab_id') result[key] = 42
+        else if (key === 'kaboom_terminal_workspace_group_id') result[key] = 77
+        else if (key === 'kaboom_terminal_workspace_main_tab_id') result[key] = 42
         else result[key] = undefined
       }
       callback?.(result)
@@ -396,7 +396,7 @@ describe('state snapshots', () => {
   beforeEach(() => {
     // Reset storage mock to return empty snapshots
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: {} }
+      const result = { kaboom_state_snapshots: {} }
       callback?.(result)
       return Promise.resolve(result)
     })
@@ -409,12 +409,12 @@ describe('state snapshots', () => {
   test('save and load roundtrip', async () => {
     const stored = {}
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: stored }
+      const result = { kaboom_state_snapshots: stored }
       callback?.(result)
       return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
-      Object.assign(stored, data.gasoline_state_snapshots)
+      Object.assign(stored, data.kaboom_state_snapshots)
       callback?.()
       return Promise.resolve()
     })
@@ -425,7 +425,7 @@ describe('state snapshots', () => {
     assert.strictEqual(result.snapshot_name, 'test-snap')
 
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: stored }
+      const result = { kaboom_state_snapshots: stored }
       callback?.(result)
       return Promise.resolve(result)
     })
@@ -443,7 +443,7 @@ describe('state snapshots', () => {
   test('list returns array of snapshot metadata', async () => {
     chrome.storage.local.get = mock.fn((_keys, callback) => {
       const result = {
-        gasoline_state_snapshots: {
+        kaboom_state_snapshots: {
           snap1: { name: 'snap1', url: 'https://a.com', timestamp: '2024-01-01T00:00:00Z', size_bytes: 100 },
           snap2: { name: 'snap2', url: 'https://b.com', timestamp: '2024-01-02T00:00:00Z', size_bytes: 200 }
         }
@@ -463,12 +463,12 @@ describe('state snapshots', () => {
       snap1: { name: 'snap1', url: 'https://a.com' }
     }
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: { ...stored } }
+      const result = { kaboom_state_snapshots: { ...stored } }
       callback?.(result)
       return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
-      Object.assign(stored, data.gasoline_state_snapshots)
+      Object.assign(stored, data.kaboom_state_snapshots)
       callback?.()
       return Promise.resolve()
     })

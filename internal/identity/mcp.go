@@ -5,11 +5,11 @@ package identity
 
 const (
 	// MCPServerName is the canonical MCP server identity shown to clients and LLMs.
-	MCPServerName = "gasoline-browser-devtools"
+	MCPServerName = "kaboom-browser-devtools"
 )
 
 // LegacyMCPServerNames lists historical server names kept for backward compatibility.
 var LegacyMCPServerNames = []string{
-	"gasoline-agentic-browser",
-	"gasoline",
+	"kaboom-agentic-browser",
+	"kaboom",
 }

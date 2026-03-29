@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 func decodeJSONMap(t *testing.T, body []byte) map[string]any {
@@ -50,8 +50,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 		t.Fatalf("GET / status = %d, want %d", rootRR.Code, http.StatusOK)
 	}
 	rootBody := decodeJSONMap(t, rootRR.Body.Bytes())
-	if rootBody["name"] != "gasoline-browser-devtools" {
-		t.Fatalf("root name = %v, want gasoline-browser-devtools", rootBody["name"])
+	if rootBody["name"] != "kaboom-browser-devtools" {
+		t.Fatalf("root name = %v, want kaboom-browser-devtools", rootBody["name"])
 	}
 
 	// Browsers (no Accept: application/json) get the HTML dashboard
@@ -82,8 +82,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	if healthBody["status"] != "ok" {
 		t.Fatalf("health status = %v, want ok", healthBody["status"])
 	}
-	if healthBody["service-name"] != "gasoline-browser-devtools" {
-		t.Fatalf("health service-name = %v, want gasoline-browser-devtools", healthBody["service-name"])
+	if healthBody["service-name"] != "kaboom-browser-devtools" {
+		t.Fatalf("health service-name = %v, want kaboom-browser-devtools", healthBody["service-name"])
 	}
 
 	healthBadReq := localRequest(http.MethodPost, "/health", nil)
@@ -194,7 +194,7 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	}
 
 	shutdownBadReq := localRequest(http.MethodGet, "/shutdown", nil)
-	shutdownBadReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	shutdownBadReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	shutdownBadRR := httptest.NewRecorder()
 	mux.ServeHTTP(shutdownBadRR, shutdownBadReq)
 	if shutdownBadRR.Code != http.StatusMethodNotAllowed {
@@ -269,7 +269,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 
 	// GET /logs returns 405 (reads go through /telemetry?type=logs)
 	getReq := localRequest(http.MethodGet, "/logs", nil)
-	getReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	getReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	getRR := httptest.NewRecorder()
 	mux.ServeHTTP(getRR, getReq)
 	if getRR.Code != http.StatusMethodNotAllowed {
@@ -277,7 +277,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	}
 
 	badJSONReq := localRequest(http.MethodPost, "/logs", bytes.NewBufferString("{"))
-	badJSONReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	badJSONReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	badJSONRR := httptest.NewRecorder()
 	mux.ServeHTTP(badJSONRR, badJSONReq)
 	if badJSONRR.Code != http.StatusBadRequest {
@@ -285,7 +285,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	}
 
 	missingEntriesReq := localRequest(http.MethodPost, "/logs", bytes.NewBufferString(`{"foo":"bar"}`))
-	missingEntriesReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	missingEntriesReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	missingEntriesRR := httptest.NewRecorder()
 	mux.ServeHTTP(missingEntriesRR, missingEntriesReq)
 	if missingEntriesRR.Code != http.StatusBadRequest {
@@ -293,7 +293,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	}
 
 	validReq := localRequest(http.MethodPost, "/logs", bytes.NewBufferString(`{"entries":[{"level":"error","message":"boom"},{"level":"invalid","message":"skip"}]}`))
-	validReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	validReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	validRR := httptest.NewRecorder()
 	mux.ServeHTTP(validRR, validReq)
 	if validRR.Code != http.StatusOK {
@@ -305,7 +305,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	}
 
 	deleteReq := localRequest(http.MethodDelete, "/logs", nil)
-	deleteReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	deleteReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	deleteRR := httptest.NewRecorder()
 	mux.ServeHTTP(deleteRR, deleteReq)
 	if deleteRR.Code != http.StatusOK {
@@ -313,7 +313,7 @@ func TestLogsEndpointValidationAndMethods(t *testing.T) {
 	}
 
 	putReq := localRequest(http.MethodPut, "/logs", nil)
-	putReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	putReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	putRR := httptest.NewRecorder()
 	mux.ServeHTTP(putRR, putReq)
 	if putRR.Code != http.StatusMethodNotAllowed {
@@ -339,7 +339,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	})
 
 	methodReq := localRequest(http.MethodGet, "/screenshots", nil)
-	methodReq.Header.Set("X-Gasoline-Client", "gasoline-extension")
+	methodReq.Header.Set("X-Kaboom-Client", "kaboom-extension")
 	methodRR := httptest.NewRecorder()
 	mux.ServeHTTP(methodRR, methodReq)
 	if methodRR.Code != http.StatusMethodNotAllowed {
@@ -348,7 +348,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 
 	// Each POST uses a unique versioned client ID to avoid rate limiting (1 screenshot/sec/client).
 	invalidJSONReq := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString("{"))
-	invalidJSONReq.Header.Set("X-Gasoline-Client", "gasoline-extension/test-1")
+	invalidJSONReq.Header.Set("X-Kaboom-Client", "kaboom-extension/test-1")
 	invalidJSONRR := httptest.NewRecorder()
 	mux.ServeHTTP(invalidJSONRR, invalidJSONReq)
 	if invalidJSONRR.Code != http.StatusBadRequest {
@@ -356,7 +356,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	}
 
 	missingDataReq := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(`{"url":"https://example.test"}`))
-	missingDataReq.Header.Set("X-Gasoline-Client", "gasoline-extension/test-2")
+	missingDataReq.Header.Set("X-Kaboom-Client", "kaboom-extension/test-2")
 	missingDataRR := httptest.NewRecorder()
 	mux.ServeHTTP(missingDataRR, missingDataReq)
 	if missingDataRR.Code != http.StatusBadRequest {
@@ -364,7 +364,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	}
 
 	badFormatReq := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(`{"data_url":"not-a-data-url"}`))
-	badFormatReq.Header.Set("X-Gasoline-Client", "gasoline-extension/test-3")
+	badFormatReq.Header.Set("X-Kaboom-Client", "kaboom-extension/test-3")
 	badFormatRR := httptest.NewRecorder()
 	mux.ServeHTTP(badFormatRR, badFormatReq)
 	if badFormatRR.Code != http.StatusBadRequest {
@@ -372,7 +372,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	}
 
 	badBase64Req := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(`{"data_url":"data:image/jpeg;base64,%%%INVALID%%%"}`))
-	badBase64Req.Header.Set("X-Gasoline-Client", "gasoline-extension/test-4")
+	badBase64Req.Header.Set("X-Kaboom-Client", "kaboom-extension/test-4")
 	badBase64RR := httptest.NewRecorder()
 	mux.ServeHTTP(badBase64RR, badBase64Req)
 	if badBase64RR.Code != http.StatusBadRequest {
@@ -383,7 +383,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	dataURL := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(rawImage)
 	validBody := `{"data_url":"` + dataURL + `","url":"https://example.test/page","correlation_id":"corr-1","query_id":"query-1"}`
 	validReq := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(validBody))
-	validReq.Header.Set("X-Gasoline-Client", "gasoline-extension/test-5")
+	validReq.Header.Set("X-Kaboom-Client", "kaboom-extension/test-5")
 	validRR := httptest.NewRecorder()
 	mux.ServeHTTP(validRR, validReq)
 	if validRR.Code != http.StatusOK {
@@ -403,7 +403,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	}
 
 	rlReq1 := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(validBody))
-	rlReq1.Header.Set("X-Gasoline-Client", "gasoline-extension/rl-client")
+	rlReq1.Header.Set("X-Kaboom-Client", "kaboom-extension/rl-client")
 	rlRR1 := httptest.NewRecorder()
 	mux.ServeHTTP(rlRR1, rlReq1)
 	if rlRR1.Code != http.StatusOK {
@@ -411,7 +411,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	}
 
 	rlReq2 := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(validBody))
-	rlReq2.Header.Set("X-Gasoline-Client", "gasoline-extension/rl-client")
+	rlReq2.Header.Set("X-Kaboom-Client", "kaboom-extension/rl-client")
 	rlRR2 := httptest.NewRecorder()
 	mux.ServeHTTP(rlRR2, rlReq2)
 	if rlRR2.Code != http.StatusTooManyRequests {
@@ -427,7 +427,7 @@ func TestHandleScreenshotRoutes(t *testing.T) {
 	screenshotRateMu.Unlock()
 
 	capReq := localRequest(http.MethodPost, "/screenshots", bytes.NewBufferString(validBody))
-	capReq.Header.Set("X-Gasoline-Client", "gasoline-extension/brand-new-client")
+	capReq.Header.Set("X-Kaboom-Client", "kaboom-extension/brand-new-client")
 	capRR := httptest.NewRecorder()
 	mux.ServeHTTP(capRR, capReq)
 	if capRR.Code != http.StatusServiceUnavailable {

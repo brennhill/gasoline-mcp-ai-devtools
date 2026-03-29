@@ -2,7 +2,7 @@
 // Why: Separates network diff classification from console and WebSocket helpers.
 package checkpoint
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 func classifyNetworkBody(diff *NetworkDiff, body capture.NetworkBody, known map[string]endpointState) {
 	path := capture.ExtractURLPath(body.URL)

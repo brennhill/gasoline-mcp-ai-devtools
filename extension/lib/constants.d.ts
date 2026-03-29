@@ -75,7 +75,7 @@ export declare const SettingName: {
 };
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
 export declare const RuntimeMessageName: {
-    readonly SHOW_TRACKED_HOVER_LAUNCHER: "gasoline_show_tracked_hover_launcher";
+    readonly SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher";
 };
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
@@ -108,21 +108,21 @@ export declare const StorageKey: {
     readonly NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled";
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
-    readonly ACTION_RECORDING: "gasoline_action_recording";
-    readonly RECORDING: "gasoline_recording";
-    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
-    readonly PENDING_RECORDING: "gasoline_pending_recording";
-    readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
-    readonly MIC_GRANTED: "gasoline_mic_granted";
-    readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
-    readonly TERMINAL_CONFIG: "gasoline_terminal_config";
-    readonly TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command";
-    readonly TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root";
-    readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
-    readonly TERMINAL_SESSION: "gasoline_terminal_session";
-    readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
-    readonly TERMINAL_WORKSPACE_GROUP_ID: "gasoline_terminal_workspace_group_id";
-    readonly TERMINAL_WORKSPACE_MAIN_TAB_ID: "gasoline_terminal_workspace_main_tab_id";
-    readonly CLOAKED_DOMAINS: "gasoline_cloaked_domains";
+    readonly ACTION_RECORDING: "kaboom_action_recording";
+    readonly RECORDING: "kaboom_recording";
+    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden";
+    readonly PENDING_RECORDING: "kaboom_pending_recording";
+    readonly PENDING_MIC_RECORDING: "kaboom_pending_mic_recording";
+    readonly MIC_GRANTED: "kaboom_mic_granted";
+    readonly RECORD_AUDIO_PREF: "kaboom_record_audio_pref";
+    readonly TERMINAL_CONFIG: "kaboom_terminal_config";
+    readonly TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command";
+    readonly TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root";
+    readonly POPUP_LAST_STATUS: "kaboom_popup_last_status";
+    readonly TERMINAL_SESSION: "kaboom_terminal_session";
+    readonly TERMINAL_UI_STATE: "kaboom_terminal_ui_state";
+    readonly TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id";
+    readonly TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id";
+    readonly CLOAKED_DOMAINS: "kaboom_cloaked_domains";
 };
 //# sourceMappingURL=constants.d.ts.map

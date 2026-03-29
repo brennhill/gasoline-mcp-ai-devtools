@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRootDirFallsBackToHomeDotGasoline(t *testing.T) {
+func TestRootDirFallsBackToHomeDotKaboom(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
@@ -21,7 +21,7 @@ func TestRootDirFallsBackToHomeDotGasoline(t *testing.T) {
 		t.Fatalf("RootDir() error = %v", err)
 	}
 
-	want := filepath.Join(home, ".gasoline")
+	want := filepath.Join(home, ".kaboom")
 	if got != want {
 		t.Fatalf("RootDir() = %q, want %q", got, want)
 	}

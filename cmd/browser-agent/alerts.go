@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/streaming"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // ============================================

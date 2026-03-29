@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
@@ -117,7 +117,7 @@ func tryConnectToExisting(state *daemonState, port int) bool {
 		state.markReady()
 		return true
 	}
-	if isGasolineService(serviceName) {
+	if isKaboomService(serviceName) {
 		// Version mismatch — stop old server, let caller spawn new one.
 		if !stopServerForUpgrade(port) {
 			state.markFailed(fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion))
@@ -125,12 +125,12 @@ func tryConnectToExisting(state *daemonState, port int) bool {
 		}
 		return false // port freed, caller should spawn
 	}
-	// Non-gasoline service occupies the port.
+	// Non-kaboom service occupies the port.
 	if serviceName == "" {
 		serviceName = "unknown"
 	}
 	telemetry.BeaconError("bridge_port_blocked", map[string]string{"port": fmt.Sprintf("%d", port)})
-	state.markFailed(fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName))
+	state.markFailed(fmt.Sprintf("port %d is occupied by non-kaboom service %q", port, serviceName))
 	return true // fatally blocked
 }
 

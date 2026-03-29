@@ -248,8 +248,8 @@ Each of the 88 feature tech specs should now include:
 - ✅ `docs/architecture/diagrams/README.md` - Added new diagrams to navigation
 
 **Memory Files:**
-- ✅ `/Users/brenn/.claude/projects/-Users-brenn-dev-gasoline/memory/MEMORY.md` - Updated
-- ✅ `/Users/brenn/.claude/projects/-Users-brenn-dev-gasoline/memory/diagram-inventory.md` - Created
+- ✅ `/Users/brenn/.claude/projects/-Users-brenn-dev-kaboom/memory/MEMORY.md` - Updated
+- ✅ `/Users/brenn/.claude/projects/-Users-brenn-dev-kaboom/memory/diagram-inventory.md` - Created
 
 **Audit Files:**
 - ✅ `docs/audit/frontmatter-and-diagram-audit.md` - Created

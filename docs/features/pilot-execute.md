@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: execute_javascript
 
 **Branch:** `feature/pilot-execute`
-**Worktree:** `../gasoline-pilot-execute`
+**Worktree:** `../kaboom-pilot-execute`
 **Priority:** P4 Phase 2 (parallel — requires Phase 1 complete)
 **Dependency:** Merge `feature/pilot-toggle` first
 
@@ -152,7 +152,7 @@ function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) {
 
 **File:** `extension/background.js`
 
-Handle `GASOLINE_EXECUTE_JS`:
+Handle `KABOOM_EXECUTE_JS`:
 - Check `isAiWebPilotEnabled()`
 - Generate unique `request_id`
 - Forward to content script → inject.js
@@ -161,7 +161,7 @@ Handle `GASOLINE_EXECUTE_JS`:
 
 **File:** `extension/content.js`
 
-Forward `GASOLINE_EXECUTE_JS` to page, return response.
+Forward `KABOOM_EXECUTE_JS` to page, return response.
 
 ### 3. MCP Tool Handler
 
@@ -218,7 +218,7 @@ go test -v ./cmd/browser-agent/ -run ExecuteJavaScript
 
 ## Security Notes
 
-- Localhost-only (Gasoline binds to 127.0.0.1)
+- Localhost-only (Kaboom binds to 127.0.0.1)
 - Human opt-in required (AI Web Pilot toggle)
 - No sandboxing — runs with full page privileges
 - User responsibility for side effects
@@ -230,7 +230,7 @@ go test -v ./cmd/browser-agent/ -run ExecuteJavaScript
 | File | Change |
 |------|--------|
 | `extension/inject.js` | `executeJavaScript()`, `safeSerializeForExecute()` |
-| `extension/background.js` | Route GASOLINE_EXECUTE_JS |
+| `extension/background.js` | Route KABOOM_EXECUTE_JS |
 | `extension/content.js` | Forward execute message |
 | `cmd/browser-agent/pilot.go` | `handleExecuteJavaScript()` |
 | `extension-tests/pilot-execute.test.js` | New file |

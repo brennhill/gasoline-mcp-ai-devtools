@@ -1,5 +1,5 @@
 /**
- * Purpose: Replaces the page favicon with the Gasoline flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
+ * Purpose: Replaces the page favicon with the Kaboom flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 /**

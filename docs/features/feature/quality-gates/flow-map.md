@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map
 feature_id: feature-quality-gates
-last_reviewed: 2026-03-06
+last_reviewed: 2026-03-28
 ---
 
 # Quality Gates Flow Map
@@ -13,7 +13,7 @@ AI or user calls configure(what="setup_quality_gates")
   -> toolConfigureSetupQualityGates()
   -> resolve project dir from server.GetActiveCodebase()
   -> validate target_dir is within project (security)
-  -> if .gasoline.json missing: write default config
+  -> if .kaboom.json missing: write default config
   -> read code_standards path from config (existing or default)
   -> if default standards file missing: write starter content
   -> return config_path, standards_path, defaults, suggestions
@@ -24,8 +24,8 @@ AI or user calls configure(what="setup_quality_gates")
 ```
 AI calls Edit/Write tool
   -> Claude Code PostToolUse hook fires
-  -> gasoline-hooks quality-gate reads JSON from stdin:
-     1. Finds .gasoline.json (walks up from edited file)
+  -> kaboom-hooks quality-gate reads JSON from stdin:
+     1. Finds .kaboom.json (walks up from edited file)
      2. Reads code_standards doc
      3. Checks file size vs limit
      4. Detects patterns in new code, searches codebase for existing usage
@@ -38,14 +38,14 @@ AI calls Edit/Write tool
 ## Binary Architecture
 
 ```
-gasoline-hooks (standalone, cmd/hooks/)
+kaboom-hooks (standalone, cmd/hooks/)
   ├── quality-gate     -> internal/hook/quality_gate.go
   └── compress-output  -> internal/hook/compress_output.go
 
-gasoline (MCP server, cmd/dev-console/)
+kaboom-agentic-browser (MCP server, cmd/browser-agent/)
   └── configure(what="setup_quality_gates")
-      -> writes .gasoline.json, gasoline-code-standards.md
-      -> installs hooks into .claude/settings.json (references gasoline-hooks)
+      -> writes .kaboom.json, kaboom-code-standards.md
+      -> installs hooks into .claude/settings.json (references kaboom-hooks, recognizes prior managed hook entries)
 ```
 
 ## Code Paths
@@ -54,8 +54,8 @@ gasoline (MCP server, cmd/dev-console/)
 |-----------|------|
 | Hooks binary | `cmd/hooks/main.go` |
 | Hooks binary tests | `cmd/hooks/main_test.go` |
-| Setup handler | `cmd/dev-console/tools_configure_quality_gates.go` |
-| Setup tests | `cmd/dev-console/tools_configure_quality_gates_test.go` |
+| Setup handler | `cmd/browser-agent/tools_configure_quality_gates.go` |
+| Setup tests | `cmd/browser-agent/tools_configure_quality_gates_test.go` |
 | Quality gate logic | `internal/hook/quality_gate.go` |
 | Convention detection | `internal/hook/convention_detect.go` |
 | Output compression | `internal/hook/compress_output.go` |

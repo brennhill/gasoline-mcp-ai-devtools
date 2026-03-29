@@ -1,7 +1,7 @@
 ---
 title: "Token Efficiency — Why Your MCP Tools' Footprint Matters"
-description: "Gasoline loads in ~9,750 tokens — less than most MCP tools use on a single schema. See baseline metrics, per-workflow costs, and optimization tips."
-keywords: "MCP token usage, token efficiency, AI context window, MCP browser tools comparison, gasoline token cost"
+description: "Kaboom loads in ~9,750 tokens — less than most MCP tools use on a single schema. See baseline metrics, per-workflow costs, and optimization tips."
+keywords: "MCP token usage, token efficiency, AI context window, MCP browser tools comparison, kaboom token cost"
 permalink: /token-efficiency/
 toc: true
 toc_sticky: true
@@ -13,13 +13,13 @@ last_reviewed: 2026-03-06
 
 Every token your MCP tools consume is a token your AI agent can't use for reasoning, code generation, or understanding your codebase. Most developers don't think about this — but when an MCP server eats 30,000+ tokens just to register its tools, you've lost a meaningful chunk of your context window before anything happens.
 
-Gasoline was designed from the ground up to minimize its token footprint while maximizing the data your agent can access.
+Kaboom was designed from the ground up to minimize its token footprint while maximizing the data your agent can access.
 
 ---
 
-## Baseline: What Gasoline Costs on Init
+## Baseline: What Kaboom Costs on Init
 
-When your AI agent connects to Gasoline, it loads server instructions and five tool schemas. That's it — resources are lazy-loaded and don't consume tokens until explicitly read.
+When your AI agent connects to Kaboom, it loads server instructions and five tool schemas. That's it — resources are lazy-loaded and don't consume tokens until explicitly read.
 
 | Component | Chars | ~Tokens |
 |---|---:|---:|
@@ -35,9 +35,9 @@ When your AI agent connects to Gasoline, it loads server instructions and five t
 
 ### Why five tools instead of thirty?
 
-Most MCP browser tools register 15–30 individual tools: one for screenshots, one for console logs, one for clicking, one for typing, one for network requests, and so on. Each tool schema costs ~1,000–2,000 tokens. Twenty tools at 1,500 tokens each = **30,000 tokens** — three times Gasoline's total — just for the schemas.
+Most MCP browser tools register 15–30 individual tools: one for screenshots, one for console logs, one for clicking, one for typing, one for network requests, and so on. Each tool schema costs ~1,000–2,000 tokens. Twenty tools at 1,500 tokens each = **30,000 tokens** — three times Kaboom's total — just for the schemas.
 
-Gasoline uses a **five-tool architecture** where each tool dispatches on a `what` parameter. This isn't a limitation — it's a deliberate design choice. The `what` parameter's enum values tell the AI exactly what's available, and the conditional schema descriptions guide parameter usage. The result: full capability at one-third the token cost.
+Kaboom uses a **five-tool architecture** where each tool dispatches on a `what` parameter. This isn't a limitation — it's a deliberate design choice. The `what` parameter's enum values tell the AI exactly what's available, and the conditional schema descriptions guide parameter usage. The result: full capability at one-third the token cost.
 
 ---
 
@@ -140,7 +140,7 @@ Claude's context window — whether 100K or 200K tokens — must fit your codeba
 
 ### 2. Speed scales with tokens
 
-More output tokens = longer response times. Compact responses from Gasoline mean your agent thinks faster and iterates quicker.
+More output tokens = longer response times. Compact responses from Kaboom mean your agent thinks faster and iterates quicker.
 
 ### 3. Cost scales with tokens
 
@@ -167,9 +167,9 @@ AI agents perform better with more available context. When tools consume less, t
 
 ---
 
-## How Gasoline Compares on Token Cost
+## How Kaboom Compares on Token Cost
 
-| | Gasoline | Typical 20-tool MCP Server |
+| | Kaboom | Typical 20-tool MCP Server |
 |---|---:|---:|
 | **Init (schemas)** | ~9,750 | ~30,000+ |
 | **5-call debug cycle** | ~11,000–13,000 | ~15,000–25,000 |

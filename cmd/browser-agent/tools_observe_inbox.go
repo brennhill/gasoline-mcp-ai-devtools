@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
 // toolObserveInbox drains the push inbox and returns pending events.

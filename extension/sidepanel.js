@@ -1,5 +1,5 @@
 /**
- * Purpose: Side panel host for the Gasoline terminal.
+ * Purpose: Side panel host for the Kaboom terminal.
  * Why: Removes the terminal from page context so CSP on arbitrary sites cannot
  * interfere with the xterm host, while keeping the session and reconnect model intact.
  * Docs: docs/features/feature/terminal/index.md
@@ -242,7 +242,7 @@ function notifyIframe(command, data = {}) {
     state.iframeEl.contentWindow.postMessage({ command, ...data }, '*');
 }
 function handleIframeMessage(event) {
-    if (!event.data || event.data.source !== 'gasoline-terminal')
+    if (!event.data || event.data.source !== 'kaboom-terminal')
         return;
     try {
         const termOrigin = getTerminalServerUrl(state.serverUrl);
@@ -303,7 +303,7 @@ function createTerminalHeader() {
         flexShrink: '0'
     });
     statusDotEl = document.createElement('span');
-    statusDotEl.className = 'gasoline-terminal-status-dot';
+    statusDotEl.className = 'kaboom-terminal-status-dot';
     Object.assign(statusDotEl.style, {
         width: '8px',
         height: '8px',
@@ -313,7 +313,7 @@ function createTerminalHeader() {
         transition: 'background 200ms ease'
     });
     const titleSpan = document.createElement('span');
-    titleSpan.textContent = 'STRUM Terminal';
+    titleSpan.textContent = 'Kaboom Terminal';
     Object.assign(titleSpan.style, {
         color: '#d8dee9',
         fontSize: '12px',
@@ -641,7 +641,7 @@ async function bootTerminalPanel(forceFresh = false) {
         else if (terminalBodyEl) {
             terminalBodyEl.replaceChildren();
             const fallback = document.createElement('div');
-            fallback.textContent = 'Terminal unavailable. Start the STRUM daemon and reopen the panel.';
+            fallback.textContent = 'Terminal unavailable. Start the Kaboom daemon and reopen the panel.';
             Object.assign(fallback.style, {
                 color: '#fca5a5',
                 padding: '16px',

@@ -166,7 +166,7 @@ func TestSaveSARIFToFile_PathGuardsAndWrite(t *testing.T) {
 	}
 
 	// Allowed: under temp directory
-	tmpPath := filepath.Join(os.TempDir(), "gasoline-test", "audit.sarif")
+	tmpPath := filepath.Join(os.TempDir(), "kaboom-test", "audit.sarif")
 	if err := saveSARIFToFile(log, tmpPath); err != nil {
 		t.Fatalf("save under temp should succeed: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestSaveSARIFToFile_PathGuardsAndWrite(t *testing.T) {
 		t.Fatalf("filepath.Abs(.) error = %v", err)
 	}
 	volume := filepath.VolumeName(absCwd)
-	outside := filepath.Join(volume+string(os.PathSeparator), "gasoline-outside", "audit.sarif")
+	outside := filepath.Join(volume+string(os.PathSeparator), "kaboom-outside", "audit.sarif")
 	if strings.HasPrefix(outside, absCwd+string(os.PathSeparator)) || strings.HasPrefix(outside, os.TempDir()+string(os.PathSeparator)) {
 		t.Fatalf("test path %q unexpectedly falls under cwd/temp", outside)
 	}

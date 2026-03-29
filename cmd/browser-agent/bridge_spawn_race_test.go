@@ -43,7 +43,7 @@ func TestTryConnectToExisting_NoServer(t *testing.T) {
 }
 
 func TestTryConnectToExisting_CompatibleServer(t *testing.T) {
-	ln, port := startHealthServer(t, http.StatusOK, healthJSON(version, "gasoline"))
+	ln, port := startHealthServer(t, http.StatusOK, healthJSON(version, "kaboom"))
 	defer ln.Close()
 
 	state := &daemonState{
@@ -61,7 +61,7 @@ func TestTryConnectToExisting_CompatibleServer(t *testing.T) {
 	}
 }
 
-func TestTryConnectToExisting_NonGasolineService(t *testing.T) {
+func TestTryConnectToExisting_NonKaboomService(t *testing.T) {
 	ln, port := startHealthServer(t, http.StatusOK, healthJSON("1.0.0", "some-other-service"))
 	defer ln.Close()
 
@@ -76,13 +76,13 @@ func TestTryConnectToExisting_NonGasolineService(t *testing.T) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 	if state.ready {
-		t.Fatal("state.ready should be false when non-gasoline service occupies port")
+		t.Fatal("state.ready should be false when non-kaboom service occupies port")
 	}
 	if !state.failed {
-		t.Fatal("state.failed should be true when non-gasoline service occupies port")
+		t.Fatal("state.failed should be true when non-kaboom service occupies port")
 	}
-	if !strings.Contains(state.err, "non-gasoline") {
-		t.Fatalf("state.err = %q, want mention of non-gasoline", state.err)
+	if !strings.Contains(state.err, "non-kaboom") {
+		t.Fatalf("state.err = %q, want mention of non-kaboom", state.err)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
 	// Launch server after 200ms.
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		startHealthServerOnPort(t, port, http.StatusOK, healthJSON(version, "gasoline"))
+		startHealthServerOnPort(t, port, http.StatusOK, healthJSON(version, "kaboom"))
 	}()
 
 	state := &daemonState{

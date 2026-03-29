@@ -46,7 +46,7 @@ type PollingLogEntry struct {
 	Method       string    `json:"method"`   // "GET" or "POST"
 	ExtSessionID string    `json:"ext_session_id,omitempty"`
 	PilotEnabled *bool     `json:"pilot_enabled,omitempty"` // Only for POST /settings
-	PilotHeader  string    `json:"pilot_header,omitempty"`  // Only for GET with X-Gasoline-Pilot header
+	PilotHeader  string    `json:"pilot_header,omitempty"`  // Only for GET with X-Kaboom-Pilot header
 	QueryCount   int       `json:"query_count,omitempty"`   // Number of pending queries returned
 }
 

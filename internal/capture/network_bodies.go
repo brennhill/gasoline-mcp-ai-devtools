@@ -7,7 +7,7 @@ package capture
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // detectAndSetBinaryFormat infers payload format only when not already set.

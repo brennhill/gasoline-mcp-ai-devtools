@@ -5,8 +5,8 @@ package configure
 import (
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/schema"
 )
 
 func TestToolModeSpecs_AllToolsPresent(t *testing.T) {

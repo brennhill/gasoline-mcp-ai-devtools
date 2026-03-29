@@ -61,7 +61,7 @@ run_test_24_1() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
         -d '{"file_path":"/tmp/test.txt","browser_pid":1234}' \
         "http://localhost:${PORT}/api/os-automation/inject" 2>/dev/null)
@@ -166,7 +166,7 @@ begin_test "24.6" "File not found returns invalid_param" \
     "interact(upload) with nonexistent file should return isError with invalid_param" \
     "Graceful error for missing files."
 run_test_24_6() {
-    RESPONSE=$(call_tool "interact" '{"action":"upload","file_path":"/tmp/gasoline-uat-nonexistent-file-99999.txt","selector":"#file"}')
+    RESPONSE=$(call_tool "interact" '{"action":"upload","file_path":"/tmp/kaboom-uat-nonexistent-file-99999.txt","selector":"#file"}')
     if ! check_is_error "$RESPONSE"; then
         fail "Expected isError for nonexistent file."
         return
@@ -304,7 +304,7 @@ run_test_24_12() {
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d '{"file_path":"'"$TEMP_DIR/test-file.txt"'"}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
@@ -348,7 +348,7 @@ run_test_24_13() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
         -d '{}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
@@ -370,9 +370,9 @@ run_test_24_14() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
-        -d '{"file_path":"/tmp/gasoline-uat-nonexistent-file-99999.txt"}' \
+        -d '{"file_path":"/tmp/kaboom-uat-nonexistent-file-99999.txt"}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
 
     if [ "$status" = "404" ]; then
@@ -392,7 +392,7 @@ run_test_24_15() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
         -d '{}' \
         "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
@@ -410,14 +410,14 @@ begin_test "24.16" "Stage 1 base64 text roundtrip" \
     "POST /api/file/read with known text content, decode base64, verify match" \
     "Proves file data flows end-to-end through Stage 1."
 run_test_24_16() {
-    local test_content="Gasoline upload roundtrip test $(date +%s)"
+    local test_content="Kaboom upload roundtrip test $(date +%s)"
     echo -n "$test_content" > "$TEMP_DIR/roundtrip.txt"
 
     local body status
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d '{"file_path":"'"$TEMP_DIR/roundtrip.txt"'"}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
@@ -454,7 +454,7 @@ run_test_24_17() {
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d '{"file_path":"'"$TEMP_DIR/test-file.png"'"}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
@@ -491,7 +491,7 @@ run_test_24_18() {
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d '{"file_path":"'"$TEMP_DIR/exact-1024.bin"'"}' \
         "http://localhost:${PORT}/api/file/read" 2>/dev/null)
@@ -564,7 +564,7 @@ run_test_24_19() {
     fi
 
     # Create test file
-    local test_content="Gasoline E2E upload test $(date +%s)"
+    local test_content="Kaboom E2E upload test $(date +%s)"
     echo -n "$test_content" > "$TEMP_DIR/e2e-upload.txt"
     local original_md5
     original_md5=$(md5sum "$TEMP_DIR/e2e-upload.txt" 2>/dev/null | awk '{print $1}' || md5 -q "$TEMP_DIR/e2e-upload.txt" 2>/dev/null)
@@ -575,7 +575,7 @@ run_test_24_19() {
     submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d '{
             "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
@@ -584,7 +584,7 @@ run_test_24_19() {
             "file_input_name": "Filedata",
             "csrf_token": "'"$csrf_token"'",
             "cookies": "'"$cookie_header"'",
-            "fields": {"title": "E2E Test Upload", "tags": "gasoline,test"}
+            "fields": {"title": "E2E Test Upload", "tags": "kaboom,test"}
         }' \
         "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
 
@@ -651,7 +651,7 @@ run_test_24_20() {
     submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -d '{
             "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
             "file_path": "'"$TEMP_DIR/no-cookie.txt"'",
@@ -710,7 +710,7 @@ run_test_24_21() {
     submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -d '{
             "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
             "file_path": "'"$TEMP_DIR/bad-csrf.txt"'",
@@ -751,7 +751,7 @@ run_test_24_22() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
         -d '{"file_path":"'"$TEMP_DIR/stage4-test.txt"'","browser_pid":1234}' \
         "http://localhost:${PORT}/api/os-automation/inject" 2>/dev/null)

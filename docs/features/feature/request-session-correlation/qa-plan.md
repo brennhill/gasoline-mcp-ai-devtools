@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Session ID Generation & Persistence
 #### Setup:
-- Fresh browser session, Gasoline extension installed
+- Fresh browser session, Kaboom extension installed
 
 #### Steps:
 1. Load first page

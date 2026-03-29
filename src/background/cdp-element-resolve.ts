@@ -37,7 +37,7 @@ function cdpResolveAndPrepare(
 
   // Try element_id first
   if (elementIdStr) {
-    el = root.querySelector(`[data-gasoline-eid="${elementIdStr}"]`)
+    el = root.querySelector(`[data-kaboom-eid="${elementIdStr}"]`)
   }
 
   // Resolve selector (CSS or semantic)
@@ -105,7 +105,7 @@ function cdpResolveAndPrepare(
     tag: el.tagName.toLowerCase(),
     text_preview: (el.textContent || '').trim().substring(0, 80),
     selector: selectorStr,
-    element_id: el.getAttribute('data-gasoline-eid') || undefined,
+    element_id: el.getAttribute('data-kaboom-eid') || undefined,
     aria_label: el.getAttribute('aria-label') || undefined,
     role: el.getAttribute('role') || undefined,
     bbox: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }

@@ -22,13 +22,13 @@ last_verified_date: 2026-03-05
 
 AI coding agents using vision models (GPT-4o, Claude, Gemini) can see a screenshot but cannot reliably determine which elements are interactive, what their selectors are, or how to target them programmatically. A raw screenshot is visually informative but operationally useless -- the AI sees a button but has no way to click it.
 
-Today, Gasoline's `observe({what: "page"})` returns structured metadata (headings, form count, interactive element count) but no visual representation. The `observe({what: "accessibility"})` mode returns an accessibility tree but without visual spatial context. Neither helps a vision model correlate what it sees in a screenshot with how to act on it.
+Today, Kaboom's `observe({what: "page"})` returns structured metadata (headings, form count, interactive element count) but no visual representation. The `observe({what: "accessibility"})` mode returns an accessibility tree but without visual spatial context. Neither helps a vision model correlate what it sees in a screenshot with how to act on it.
 
 This gap is critical for AI web agents. To autonomously navigate, test, or debug a web application, an agent must bridge visual perception ("I see a blue button labeled Submit in the lower right") with programmatic action (`document.querySelector('button[type="submit"]')`). Annotated screenshots create that bridge.
 
 ## Solution
 
-Extend the existing `observe({what: "page"})` mode with an `annotate_screenshot` boolean option. When enabled, Gasoline:
+Extend the existing `observe({what: "page"})` mode with an `annotate_screenshot` boolean option. When enabled, Kaboom:
 
 1. **Discovers interactive elements** in the viewport using the extension's inject.js (running in page context).
 2. **Assigns each element a numeric label** (1, 2, 3...) and collects its bounding box, best-available selector, accessible name, element type, and visible text.
@@ -42,7 +42,7 @@ The AI receives both the visual (annotated image) and the structured data (annot
 
 - As an AI coding agent, I want to see a screenshot with numbered interactive elements so that I can identify which element to interact with and immediately know its selector.
 - As an AI coding agent, I want annotation metadata alongside the image so that I can map a visual label number to a CSS selector, ARIA role, or accessible name without additional tool calls.
-- As a developer using Gasoline, I want to ask the AI "what do you see on this page?" and receive a response that references specific labeled elements, not vague descriptions like "the button near the top."
+- As a developer using Kaboom, I want to ask the AI "what do you see on this page?" and receive a response that references specific labeled elements, not vague descriptions like "the button near the top."
 - As an AI coding agent performing E2E testing, I want annotated screenshots at each test step so that I can visually verify the page state and identify the next interaction target in a single observation.
 
 ## MCP Interface

@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 
 # Product Spec: In-Browser Agent Panel (Redaction-First)
 
-User-facing requirements and boundaries for turning Gasoline into an in-browser agent experience without weakening core reliability or data safety.
+User-facing requirements and boundaries for turning Kaboom into an in-browser agent experience without weakening core reliability or data safety.
 
 - See also: [Tech Spec](tech-spec.md)
 - See also: [Runtime Spec (Go Orchestrator)](runtime-spec-go-orchestrator.md)
@@ -32,11 +32,11 @@ At the same time, automatically piping browser context to an agent increases ris
 
 Add an in-browser Agent Panel that:
 
-1. Uses existing Gasoline capabilities (`observe`, `analyze`, `interact`, `generate`) as the execution core.
+1. Uses existing Kaboom capabilities (`observe`, `analyze`, `interact`, `generate`) as the execution core.
 2. Adds optional event-driven context piping for common debugging triggers.
 3. Enforces mandatory redaction before any data is shown, stored, or sent to an agent model.
 
-This keeps Gasoline's deterministic core unchanged while improving day-to-day agent workflow.
+This keeps Kaboom's deterministic core unchanged while improving day-to-day agent workflow.
 
 ## User Stories
 
@@ -103,7 +103,7 @@ The panel is a client over the existing MCP tool surface.
 
 ## Non-Goals
 
-- This feature does NOT make Gasoline autonomous by default.
+- This feature does NOT make Kaboom autonomous by default.
 - This feature does NOT send data to a cloud model unless the user configures a provider.
 - This feature does NOT bypass extension/browser permission boundaries.
 - This feature does NOT remove existing external MCP workflows.

@@ -32,7 +32,7 @@ run_test_14_1() {
 
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"ext-startup-test",
@@ -65,7 +65,7 @@ run_test_14_2() {
     # First sync: pilot OFF
     local response1
     response1=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-toggle-test-1","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -73,7 +73,7 @@ run_test_14_2() {
     # Second sync: pilot ON
     local response2
     response2=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-toggle-test-1","settings":{"pilot_enabled":true}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -95,7 +95,7 @@ run_test_14_3() {
     # Tab not tracked
     local response1
     response1=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-tracking-test","settings":{"tracking_enabled":false,"tracked_tab_id":0}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -103,7 +103,7 @@ run_test_14_3() {
     # Tab is now tracked
     local response2
     response2=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-tracking-test","settings":{"tracking_enabled":true,"tracked_tab_id":42,"tracked_tab_url":"https://example.com"}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -125,7 +125,7 @@ run_test_14_4() {
     # Old extension version
     local response_old
     response_old=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.7.0" \
+        -H "X-Kaboom-Client: kaboom-extension/5.7.0" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-old-version","extension_version":"5.7.0","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -133,7 +133,7 @@ run_test_14_4() {
     # Future extension version
     local response_new
     response_new=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.9.0" \
+        -H "X-Kaboom-Client: kaboom-extension/5.9.0" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"ext-new-version","extension_version":"5.9.0","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -154,7 +154,7 @@ begin_test "14.5" "Extension sends command results in correct format" \
 run_test_14_5() {
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -H "X-Kaboom-Client: kaboom-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"ext-cmd-result-test",

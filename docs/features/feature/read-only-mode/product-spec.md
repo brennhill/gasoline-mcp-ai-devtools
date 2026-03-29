@@ -29,7 +29,7 @@ Add read-only mode as a server-wide configuration flag. When enabled, all mutati
 - Allow analyze tool (`what:"dom"` in read-only) and safe configure actions (for example `health`) — no state changes
 - Clear error messages when mutation attempted: "Read-only mode enabled, mutation tools disabled"
 - Server-level enforcement (not client-side) — cannot be bypassed
-- Configuration via CLI flag: --read-only or environment variable GASOLINE_READ_ONLY=true
+- Configuration via CLI flag: --read-only or environment variable KABOOM_READ_ONLY=true
 - Status visible via configure({action: "health"})
 
 ## Out of Scope
@@ -47,7 +47,7 @@ Add read-only mode as a server-wide configuration flag. When enabled, all mutati
 
 ## User Workflow
 
-1. SRE starts Gasoline in read-only mode: `gasoline --read-only`
+1. SRE starts Kaboom in read-only mode: `kaboom --read-only`
 2. Agent connects, attempts to analyze production issue
 3. Agent uses `observe({what: "errors"})` — succeeds
 4. Agent tries `interact({action: "execute_js"})` — fails with "Read-only mode enabled"
@@ -58,9 +58,9 @@ Add read-only mode as a server-wide configuration flag. When enabled, all mutati
 
 ### Server start in read-only mode:
 ```bash
-gasoline --read-only --port 7890
+kaboom --read-only --port 7890
 # or
-GASOLINE_READ_ONLY=true gasoline
+KABOOM_READ_ONLY=true kaboom
 ```
 
 ## Check read-only status:

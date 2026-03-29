@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func contentLengthFrame(payload string) string {
@@ -214,7 +214,7 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}`,
-		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`,
 		`{"jsonrpc":"2.0","id":6,"method":"unknown/method","params":{}}`,
 		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`,
 	}, "\n") + "\n"
@@ -314,8 +314,8 @@ func TestBridgeFastPathResourcesReadCanonicalizesPlaybookAliases(t *testing.T) {
 	resetFastPathResourceReadCounters()
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/security"}}`,
-		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/security_audit/quick"}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"kaboom://playbook/security"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"kaboom://playbook/security_audit/quick"}}`,
 	}, "\n") + "\n"
 
 	output := captureBridgeIO(t, input, func() {
@@ -339,8 +339,8 @@ func TestBridgeFastPathResourcesReadCanonicalizesPlaybookAliases(t *testing.T) {
 			t.Fatalf("response[%d] contents = %v, want one content", i, result["contents"])
 		}
 		content, _ := contents[0].(map[string]any)
-		if content["uri"] != "gasoline://playbook/security/quick" {
-			t.Fatalf("response[%d] content uri = %v, want gasoline://playbook/security/quick", i, content["uri"])
+		if content["uri"] != "kaboom://playbook/security/quick" {
+			t.Fatalf("response[%d] content uri = %v, want kaboom://playbook/security/quick", i, content["uri"])
 		}
 	}
 
@@ -355,7 +355,7 @@ func TestBridgeFastPathResourcesReadFailureTelemetry(t *testing.T) {
 	resetFastPathResourceReadCounters()
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"kaboom://playbook/nonexistent/quick"}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":[]}`,
 	}, "\n") + "\n"
 
@@ -386,8 +386,8 @@ func TestBridgeFastPathResourcesReadTelemetryPersistsToStateLogs(t *testing.T) {
 
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
-		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"kaboom://playbook/nonexistent/quick"}}`,
 	}, "\n") + "\n"
 
 	_ = captureBridgeIO(t, input, func() {
@@ -438,8 +438,8 @@ func TestBridgeFastPathResourcesReadTelemetry(t *testing.T) {
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
-		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
-		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"gasoline://playbook/not-a-thing/quick"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"kaboom://playbook/not-a-thing/quick"}}`,
 	}, "\n") + "\n"
 
 	output := captureBridgeIO(t, input, func() {
@@ -644,7 +644,7 @@ func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-browser-devtools","version":"1.0.0"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"kaboom-browser-devtools","version":"1.0.0"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -695,7 +695,7 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-browser-devtools","version":"`+healthVersion+`"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"kaboom-browser-devtools","version":"`+healthVersion+`"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -710,14 +710,14 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	})
 
 	compatible, gotVersion, gotService := runningServerVersionCompatible(port)
-	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline-browser-devtools" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline-browser-devtools")
+	if !compatible || gotVersion != "9.9.9" || gotService != "kaboom-browser-devtools" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "kaboom-browser-devtools")
 	}
 
 	healthVersion = "1.0.0"
 	compatible, gotVersion, gotService = runningServerVersionCompatible(port)
-	if compatible || gotVersion != "1.0.0" || gotService != "gasoline-browser-devtools" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline-browser-devtools")
+	if compatible || gotVersion != "1.0.0" || gotService != "kaboom-browser-devtools" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "kaboom-browser-devtools")
 	}
 }
 

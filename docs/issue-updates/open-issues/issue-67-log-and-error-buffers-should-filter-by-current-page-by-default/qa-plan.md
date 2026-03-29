@@ -1,7 +1,7 @@
 # QA Plan: Issue #67
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/67
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/67
 - Title: Log and error buffers should filter by current page by default
 
 ## QA Goal

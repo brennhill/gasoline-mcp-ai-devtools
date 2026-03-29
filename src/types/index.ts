@@ -5,7 +5,7 @@
  */
 
 /**
- * @fileoverview Type Index - Barrel export for all Gasoline Extension types
+ * @fileoverview Type Index - Barrel export for all Kaboom Extension types
  *
  * This is the single entry point for importing types in the extension.
  * Usage: import type { LogEntry, BackgroundMessage } from './types.js';
