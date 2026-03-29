@@ -27,6 +27,7 @@ import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
+import { setGasolineOverlayVisibility } from './tab-state.js'
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
 import { resolveTerminalWorkspaceTarget } from './tab-state.js'
 
@@ -535,10 +536,13 @@ async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, send
   }
   try {
     const tab = await chrome.tabs.get(tabId)
+    await setGasolineOverlayVisibility(tabId, false)
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' })
+    await setGasolineOverlayVisibility(tabId, true)
     sendResponse({ dataUrl })
   } catch (err) {
     console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err))
+    await setGasolineOverlayVisibility(tabId, true).catch(() => {})
     sendResponse({ dataUrl: '' })
   }
 }
