@@ -148,7 +148,7 @@ describe('Local Storage (async)', () => {
 
   test('getLocal should retrieve value from local storage', async () => {
     const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys) => {
+    chromeMock.storage.local.get = mock.fn(() => {
       return Promise.resolve({ serverUrl: 'http://localhost:3333' })
     })
     const value = await mod.getLocal('serverUrl')
@@ -157,7 +157,7 @@ describe('Local Storage (async)', () => {
 
   test('getLocal should return undefined for missing key', async () => {
     const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys) => {
+    chromeMock.storage.local.get = mock.fn(() => {
       return Promise.resolve({})
     })
     const value = await mod.getLocal('nope')
@@ -166,7 +166,7 @@ describe('Local Storage (async)', () => {
 
   test('getLocals should retrieve multiple values', async () => {
     const mod = await loadModule()
-    chromeMock.storage.local.get = mock.fn((keys) => {
+    chromeMock.storage.local.get = mock.fn(() => {
       return Promise.resolve({ a: 1, b: 2 })
     })
     const result = await mod.getLocals(['a', 'b'])
@@ -274,7 +274,7 @@ describe('Session Storage (async)', () => {
 
   test('getSession should retrieve value from session storage', async () => {
     const mod = await loadModule()
-    chromeMock.storage.session.get = mock.fn((keys) => {
+    chromeMock.storage.session.get = mock.fn(() => {
       return Promise.resolve({ myKey: 42 })
     })
     const value = await mod.getSession('myKey')
@@ -283,7 +283,7 @@ describe('Session Storage (async)', () => {
 
   test('getSession should return undefined for missing key', async () => {
     const mod = await loadModule()
-    chromeMock.storage.session.get = mock.fn((keys) => {
+    chromeMock.storage.session.get = mock.fn(() => {
       return Promise.resolve({})
     })
     const value = await mod.getSession('missing')
@@ -513,12 +513,12 @@ describe('Data Serialization', () => {
       nullVal: null
     }
 
-    let stored = {}
+    const stored = {}
     chromeMock.storage.local.set = mock.fn((data) => {
       Object.assign(stored, data)
       return Promise.resolve()
     })
-    chromeMock.storage.local.get = mock.fn((keys) => {
+    chromeMock.storage.local.get = mock.fn(() => {
       return Promise.resolve(stored)
     })
 
@@ -529,12 +529,12 @@ describe('Data Serialization', () => {
 
   test('should handle boolean values via session storage', async () => {
     const mod = await loadModule()
-    let stored = {}
+    const stored = {}
     chromeMock.storage.session.set = mock.fn((data) => {
       Object.assign(stored, data)
       return Promise.resolve()
     })
-    chromeMock.storage.session.get = mock.fn((keys) => {
+    chromeMock.storage.session.get = mock.fn(() => {
       return Promise.resolve(stored)
     })
 
@@ -545,12 +545,12 @@ describe('Data Serialization', () => {
 
   test('should handle numeric values including zero via session storage', async () => {
     const mod = await loadModule()
-    let stored = {}
+    const stored = {}
     chromeMock.storage.session.set = mock.fn((data) => {
       Object.assign(stored, data)
       return Promise.resolve()
     })
-    chromeMock.storage.session.get = mock.fn((keys) => {
+    chromeMock.storage.session.get = mock.fn(() => {
       return Promise.resolve(stored)
     })
 

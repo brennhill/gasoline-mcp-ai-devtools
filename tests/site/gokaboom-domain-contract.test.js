@@ -148,7 +148,7 @@ describe('gokaboom domain contracts', () => {
 
     for (const file of files) {
       const source = read(file)
-      assert.match(source, /KaBOOM|kaboom-agentic-browser|\"kaboom\"/)
+      assert.match(source, /KaBOOM|kaboom-agentic-browser|"kaboom"/)
       assert.doesNotMatch(
         source,
         /STRUM|Gasoline|cookwithgasoline|getstrum|gasoline-mcp|gasoline-agentic-browser|\.gasoline/
@@ -408,7 +408,7 @@ describe('gokaboom domain contracts', () => {
 
     for (const file of files) {
       const source = read(file)
-      assert.match(source, /KaBOOM|Kaboom|kaboom-agentic-browser|Kaboom-Browser-AI-Devtools-MCP|\.kaboom|\"kaboom\"/i)
+      assert.match(source, /KaBOOM|Kaboom|kaboom-agentic-browser|Kaboom-Browser-AI-Devtools-MCP|\.kaboom|"kaboom"/i)
       assert.doesNotMatch(
         source,
         /STRUM|Gasoline|cookwithgasoline|getstrum|gasoline-mcp|gasoline-agentic-browser-devtools-mcp|gasolineAgenticDevtoolExtension|\.gasoline/
@@ -468,7 +468,7 @@ describe('gokaboom domain contracts', () => {
 
     for (const file of files) {
       const source = read(file)
-      assert.match(source, /KaBOOM|Kaboom|kaboom-agentic-browser|\"kaboom\"|\.kaboom/i)
+      assert.match(source, /KaBOOM|Kaboom|kaboom-agentic-browser|"kaboom"|\.kaboom/i)
       assert.doesNotMatch(source, /\bgasoline\b|Gasoline|gasoline-mcp|gasoline-agentic-browser|\.gasoline/)
     }
   })

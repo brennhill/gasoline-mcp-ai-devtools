@@ -74,7 +74,6 @@ let chromeMock = createChromeMock()
 globalThis.chrome = chromeMock
 
 // Mock fetch globally
-let fetchCalls = []
 globalThis.fetch = mock.fn(() =>
   Promise.resolve({ ok: true, status: 200 })
 )

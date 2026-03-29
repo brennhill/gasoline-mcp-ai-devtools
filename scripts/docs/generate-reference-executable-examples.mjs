@@ -195,7 +195,7 @@ function expectedShape(tool, mode) {
 
 function failureExample(tool, mode, baseArgs) {
   const failureArgs = { ...baseArgs }
-  let fix = 'Use the documented parameter types for this mode.'
+  let fix
 
   if ('limit' in failureArgs) {
     failureArgs.limit = '100'
