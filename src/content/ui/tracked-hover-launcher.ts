@@ -447,7 +447,8 @@ function createLauncherUi(): HTMLDivElement {
     gap: '8px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     opacity: '0.65',
-    transition: 'opacity 200ms ease'
+    transition: 'opacity 200ms ease',
+    pointerEvents: 'none' // Only the toggle circle is interactive when collapsed
   })
 
   const panel = document.createElement('div')
@@ -620,7 +621,8 @@ function createLauncherUi(): HTMLDivElement {
     padding: '0',
     boxShadow: '0 8px 24px rgba(15, 23, 42, 0.25)',
     transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    pointerEvents: 'auto' // Always interactive, even when root is pointer-events:none
   })
   toggle.addEventListener('mouseenter', () => {
     toggle.style.transform = 'translateY(-1px)'
@@ -644,14 +646,24 @@ function createLauncherUi(): HTMLDivElement {
 
   toggleEl = toggle
 
-  root.addEventListener('mouseenter', () => {
+  // Hover trigger on the toggle circle only — not the full root container.
+  // The root spans the panel width even when collapsed, which would intercept
+  // page interactions in the invisible panel region.
+  toggle.addEventListener('mouseenter', () => {
     root.style.opacity = '1'
+    root.style.pointerEvents = 'auto'
     clearHideTimer()
     setPanelOpen(true)
   })
 
+  // Leave handler stays on root so the panel remains open while mousing across buttons.
   root.addEventListener('mouseleave', () => {
-    if (!panelPinned && !settingsMenuOpen) root.style.opacity = '0.65'
+    if (!panelPinned && !settingsMenuOpen) {
+      root.style.opacity = '0.65'
+      root.style.pointerEvents = 'none'
+      // Re-enable pointer events on toggle so it remains hoverable
+      toggle.style.pointerEvents = 'auto'
+    }
     if (panelPinned || settingsMenuOpen) return
     clearHideTimer()
     hideTimer = setTimeout(() => {

@@ -2492,7 +2492,9 @@
       gap: "8px",
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       opacity: "0.65",
-      transition: "opacity 200ms ease"
+      transition: "opacity 200ms ease",
+      pointerEvents: "none"
+      // Only the toggle circle is interactive when collapsed
     });
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
@@ -2644,7 +2646,9 @@
       padding: "0",
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
       transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease",
-      overflow: "hidden"
+      overflow: "hidden",
+      pointerEvents: "auto"
+      // Always interactive, even when root is pointer-events:none
     });
     toggle.addEventListener("mouseenter", () => {
       toggle.style.transform = "translateY(-1px)";
@@ -2666,14 +2670,18 @@
         setSettingsMenuOpen(false);
     });
     toggleEl = toggle;
-    root.addEventListener("mouseenter", () => {
+    toggle.addEventListener("mouseenter", () => {
       root.style.opacity = "1";
+      root.style.pointerEvents = "auto";
       clearHideTimer();
       setPanelOpen(true);
     });
     root.addEventListener("mouseleave", () => {
-      if (!panelPinned && !settingsMenuOpen)
+      if (!panelPinned && !settingsMenuOpen) {
         root.style.opacity = "0.65";
+        root.style.pointerEvents = "none";
+        toggle.style.pointerEvents = "auto";
+      }
       if (panelPinned || settingsMenuOpen)
         return;
       clearHideTimer();
