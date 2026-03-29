@@ -265,10 +265,10 @@ Files with too many lines of code (limit: 600 lines)
 **cmd/browser-agent/tools_interact_rich_test.go** (1 issues)
 - Line 453: Method TestRichAction_DomSummaryPassthrough has 51 lines of code (limit is 50)
 
-**cmd/gasoline-cmd/commands/configure.go** (1 issues)
+**cmd/kaboom-cmd/commands/configure.go** (1 issues)
 - Line 8: Method ConfigureArgs has 64 lines of code (limit is 50)
 
-**cmd/gasoline-cmd/commands/interact.go** (1 issues)
+**cmd/kaboom-cmd/commands/interact.go** (1 issues)
 - Line 28: Method InteractArgs has 80 lines of code (limit is 50)
 
 **internal/ai/ai_noise.go** (1 issues)

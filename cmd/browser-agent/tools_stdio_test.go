@@ -29,7 +29,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // captureStdout runs fn while capturing stdout output.
@@ -77,7 +77,7 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 	t.Helper()
 
 	// Create server with temp log file
-	server, err := NewServer(t.TempDir()+"/test-gasoline-stdio.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-kaboom-stdio.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestToolHandler_StderrAllowed(t *testing.T) {
 	// because MCP clients only parse stdout for JSON-RPC messages.
 	//
 	// The safeMarshal function writes errors to stderr:
-	//   fmt.Fprintf(os.Stderr, "[gasoline] JSON marshal error: %v\n", err)
+	//   fmt.Fprintf(os.Stderr, "[Kaboom] JSON marshal error: %v\n", err)
 	//
 	// This is CORRECT behavior - stderr doesn't pollute MCP protocol.
 	t.Log("stderr output is intentionally allowed - it doesn't affect MCP JSON-RPC")

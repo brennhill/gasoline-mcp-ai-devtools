@@ -33,7 +33,7 @@ last_verified_date: 2026-03-05
 - **Test:** User rules survive session restart
   - **Given:** User adds custom rule, daemon is killed and restarted
   - **When:** User calls `list` again
-  - **Then:** Custom rule still present (persisted to ~/.gasoline/noise/rules.json)
+  - **Then:** Custom rule still present (persisted to ~/.kaboom/noise/rules.json)
 
 - **Test:** Framework detection activates framework rules
   - **Given:** Network requests contain `/@vite/client` or `_next/static` signatures
@@ -92,7 +92,7 @@ last_verified_date: 2026-03-05
   - **Then:** Rules file reset to empty; only built-ins present after restart
 
 - **Test:** Corrupted persisted rules file handled gracefully
-  - **Given:** Manually corrupt ~/.gasoline/noise/rules.json with invalid JSON
+  - **Given:** Manually corrupt ~/.kaboom/noise/rules.json with invalid JSON
   - **When:** Daemon starts
   - **Then:** Server starts successfully, skips corrupted file, uses only built-ins
 
@@ -129,7 +129,7 @@ last_verified_date: 2026-03-05
 9. `TestMaxRulesEnforced` — 100 rule limit
 10. `TestInvalidRegexSkipped` — No panic on [invalid regex
 11. `TestFrameworkDetection` — React/Next.js/Vite signature detection
-12. `TestPersistenceRoundTrip` — Rules saved and loaded from ~/.gasoline/noise/rules.json
+12. `TestPersistenceRoundTrip` — Rules saved and loaded from ~/.kaboom/noise/rules.json
 
 ### Integration Tests
 
@@ -174,14 +174,14 @@ last_verified_date: 2026-03-05
 
 **Framework:** Bash scripts (see cat-20-noise-persistence.sh)
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-20-noise-persistence.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-20-noise-persistence.sh`
 
 #### 10 Tests Implemented:
 
 | Cat | Test | File | Line | Scenario |
 |-----|------|------|------|----------|
 | 20.1 | configure/add creates rule with user_N ID | cat-20 | 24-46 | Rules assignable IDs and persisted |
-| 20.2 | Rules persisted to .gasoline/noise/rules.json | cat-20 | 49-63 | File creation and valid JSON |
+| 20.2 | Rules persisted to .kaboom/noise/rules.json | cat-20 | 49-63 | File creation and valid JSON |
 | 20.3 | Persisted file schema correct (version, next_user_id, rules) | cat-20 | 66-82 | File structure validates |
 | 20.4 | No built-in rules in persisted file | cat-20 | 85-98 | Built-ins always fresh from code |
 | 20.5 | Rules survive server restart | cat-20 | 101-126 | Rules reloaded on cold start |

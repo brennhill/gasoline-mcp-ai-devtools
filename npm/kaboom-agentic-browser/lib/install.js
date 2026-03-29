@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Install logic for Gasoline MCP CLI
+ * Install logic for the Kaboom MCP CLI
  * Handles installation to all detected AI assistant clients
  */
 
@@ -18,7 +18,6 @@ const {
   getValidAliases,
   readConfigFile,
   writeConfigFile,
-  mergeGassolineConfig,
   resolveManagedBinaryPath,
 } = require('./config');
 
@@ -30,8 +29,8 @@ const LEGACY_INSTALL_SERVER_NAMES = [
 ];
 
 /**
- * Generate default MCP config for gasoline
- * @returns {Object} Default gasoline MCP config
+ * Generate default MCP config for Kaboom
+ * @returns {Object} Default Kaboom MCP config
  */
 function generateDefaultConfig(options = {}) {
   const { binaryCommand = resolveManagedBinaryPath() } = options;
@@ -48,7 +47,7 @@ function generateDefaultConfig(options = {}) {
 /**
  * Build the MCP entry JSON string for CLI-based install
  * @param {Object} [envVars] Optional env vars
- * @returns {string} JSON string of the gasoline MCP entry
+ * @returns {string} JSON string of the Kaboom MCP entry
  */
 function buildMcpEntry(envVars = {}, options = {}) {
   const { binaryCommand = resolveManagedBinaryPath() } = options;
@@ -135,13 +134,13 @@ function installViaFile(def, options) {
   const configKey = def.configKey || 'mcpServers';
 
   // Build entry in the right format for this client
-  let gasolineEntry;
+  let kaboomEntry;
   if (def.buildEntry) {
-    gasolineEntry = def.buildEntry(envVars, binaryCommand);
+    kaboomEntry = def.buildEntry(envVars, binaryCommand);
   } else {
-    gasolineEntry = { command: binaryCommand, args: [] };
+    kaboomEntry = { command: binaryCommand, args: [] };
     if (envVars && Object.keys(envVars).length > 0) {
-      gasolineEntry.env = envVars;
+      kaboomEntry.env = envVars;
     }
   }
 
@@ -156,14 +155,14 @@ function installViaFile(def, options) {
     isNew = true;
   }
 
-  // Merge gasoline entry under the correct key
+  // Merge Kaboom entry under the correct key
   if (!configData[configKey]) configData[configKey] = {};
   for (const legacyName of LEGACY_INSTALL_SERVER_NAMES) {
     if (legacyName !== MCP_SERVER_NAME) {
       delete configData[configKey][legacyName];
     }
   }
-  configData[configKey][MCP_SERVER_NAME] = gasolineEntry;
+  configData[configKey][MCP_SERVER_NAME] = kaboomEntry;
 
   const skipValidation = configKey !== 'mcpServers';
   writeConfigFile(cfgPath, configData, dryRun, { skipValidation });

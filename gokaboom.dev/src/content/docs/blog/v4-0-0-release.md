@@ -1,5 +1,5 @@
 ---
-title: .gasoline v4.0.0 Released"
+title: KaBOOM v4.0.0 Released"
 description: "Refinement phase - polishing the core, adding developer experience features"
 date: 2025-12-22T21:15:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v4']
 
 ## What's New in v4.0.0
 
-STRUM v4.0.0 is the refinement phase. The core architecture from v3 works well—this version focuses on making it robust and adding missing developer-focused features.
+Kaboom v4.0.0 is the refinement phase. The core architecture from v3 works well—this version focuses on making it robust and adding missing developer-focused features.
 
 ### Major Features
 
@@ -55,4 +55,4 @@ STRUM v4.0.0 is the refinement phase. The core architecture from v3 works well�
 
 Next: Production-grade recording system, broader browser support research, performance benchmarking.
 
-See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
+See [GitHub](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP for source.

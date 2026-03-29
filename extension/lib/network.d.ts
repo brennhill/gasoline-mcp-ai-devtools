@@ -111,7 +111,7 @@ export declare function isNetworkBodyCaptureEnabled(): boolean;
  */
 export declare function setServerUrl(url: string): void;
 /**
- * Check if a URL should be captured (not gasoline server or extension)
+ * Check if a URL should be captured (not kaboom server or extension)
  * @param url - The URL to check
  * @returns True if the URL should be captured
  */
@@ -164,7 +164,7 @@ export declare function unwrapXHR(): void;
 /**
  * Adopt network bodies buffered by the early-patch script (fetch + XHR).
  * Mirrors adoptEarlyConnections() in websocket.ts: reads from
- * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * window.__KABOOM_EARLY_BODIES__, posts each as KABOOM_NETWORK_BODY
  * to the content script, then cleans up globals.
  * Called once during Phase 2 installation.
  */

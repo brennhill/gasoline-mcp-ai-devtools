@@ -3,7 +3,7 @@ name: regression-test
 description: Use when user has fixed a bug and needs a test that proves it stays fixed, or when a failure needs to be captured as a reproducible test case.
 ---
 
-# Gasoline Regression Test
+# Kaboom Regression Test
 
 Use this skill after a bug is confirmed and should never reappear.
 

@@ -138,7 +138,7 @@ Every error the user might encounter, with exact text and resolution:
 |-------|---------|------------|
 | Click failed | `"Escalation failed: could not click file input '{selector}'. Verify the element exists, is visible, and is type='file'."` | Check selector, page state |
 | Daemon unreachable | `"Escalation failed: cannot reach daemon at {url}/api/os-automation/inject. Error: {fetch_error}"` | Verify daemon is running |
-| Stage 4 disabled | `"Escalation failed: OS automation disabled on daemon. Restart with: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads"` | Restart daemon with flag |
+| Stage 4 disabled | `"Escalation failed: OS automation disabled on daemon. Restart with: kaboom-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads"` | Restart daemon with flag |
 | OS automation failed (macOS) | `"Stage 4 AppleScript failed: {error}. Grant Accessibility: System Settings → Privacy & Security → Accessibility → enable {terminal_app}."` | Grant macOS Accessibility |
 | OS automation failed (Linux) | `"Stage 4 xdotool failed: {error}. Install: sudo apt install xdotool (Debian/Ubuntu) or sudo dnf install xdotool (Fedora). Ensure X11/Wayland session is active."` | Install xdotool |
 | OS automation failed (Windows) | `"Stage 4 SendKeys failed: {error}. Run terminal as Administrator. Ensure Chrome file dialog is visible."` | Elevate privileges |
@@ -151,8 +151,8 @@ Every error the user might encounter, with exact text and resolution:
 
 | Error | Message | Resolution |
 |-------|---------|------------|
-| `--upload-dir` not set | `"Stages 2-4 require --upload-dir. Restart: gasoline-mcp --daemon --upload-dir=/path/to/uploads"` | Restart with flag |
-| `--enable-os-upload-automation` not set | `"OS-level upload automation is disabled. Restart: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads"` | Restart with flag |
+| `--upload-dir` not set | `"Stages 2-4 require --upload-dir. Restart: kaboom-mcp --daemon --upload-dir=/path/to/uploads"` | Restart with flag |
+| `--enable-os-upload-automation` not set | `"OS-level upload automation is disabled. Restart: kaboom-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads"` | Restart with flag |
 | Path not in upload-dir | `"File path not within --upload-dir ({upload_dir}). Move the file to {upload_dir} and retry."` | Move file |
 | Path on denylist | `"File path is not allowed: {path} matches sensitive pattern '{pattern}'."` | Use a different file |
 | macOS Accessibility denied | `"AppleScript failed: {osascript_error}. Fix: System Settings → Privacy & Security → Accessibility → enable {TERM_PROGRAM or 'your terminal'}."` | Grant permission |

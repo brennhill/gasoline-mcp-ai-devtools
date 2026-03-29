@@ -56,11 +56,11 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	// File I/O outside lock.
 	if len(plan.entriesToSave) > 0 {
 		if err := s.saveEntriesCopy(plan.entriesToSave); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[Kaboom] Error saving entries: %v\n", err)
 		}
 	} else {
 		if err := s.appendToFile(plan.appendOnly); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[Kaboom] Error saving entries: %v\n", err)
 		}
 	}
 
@@ -85,7 +85,7 @@ func (s *Server) clearEntries() {
 	// #nosec G306 -- log files are owner-only (0600) for privacy
 	if logFile != "" {
 		if err := os.WriteFile(logFile, []byte{}, 0600); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[Kaboom] Error clearing log file: %v\n", err)
 		}
 	}
 }

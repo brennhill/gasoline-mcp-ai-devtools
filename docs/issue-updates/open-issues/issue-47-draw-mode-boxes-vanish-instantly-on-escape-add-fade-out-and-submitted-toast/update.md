@@ -1,12 +1,12 @@
 # Product Update: Issue #47
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/47
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/47
 - Title: Draw mode: boxes vanish instantly on Escape — add fade-out and 'submitted' toast
 - Last Updated: 2026-02-14T18:56:16Z
 
 ## Change Summary
-This update resolves or advances Issue #47 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #47 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Draw mode: boxes vanish instantly on Escape — add fade-out and 'submitted' toast

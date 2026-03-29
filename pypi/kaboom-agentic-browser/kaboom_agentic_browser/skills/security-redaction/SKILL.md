@@ -3,7 +3,7 @@ name: security-redaction
 description: Use when user asks to check for leaked secrets, exposed tokens, or sensitive data in logs, error output, diagnostics, or debug responses.
 ---
 
-# Gasoline Security Redaction
+# Kaboom Security Redaction
 
 Use this skill to validate that sensitive data is redacted everywhere.
 

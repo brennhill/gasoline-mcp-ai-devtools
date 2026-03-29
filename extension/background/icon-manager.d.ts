@@ -28,7 +28,7 @@ export declare function updateAllTabIcons(enabled: boolean): Promise<void>
 export declare function initializeIconState(pilotEnabled: boolean): Promise<void>
 
 /**
- * Clean up when Gasoline is disabled
+ * Clean up when Kaboom is disabled
  */
 export declare function cleanup(): void
 

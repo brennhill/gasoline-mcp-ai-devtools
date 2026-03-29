@@ -3,7 +3,7 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 // SnapshotResponse is the aggregated state returned by GET /snapshot.
 type SnapshotResponse struct {

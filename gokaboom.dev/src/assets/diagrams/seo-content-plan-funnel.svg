@@ -28,7 +28,7 @@
   <!-- Level 2: Blog Post -->
   <polygon class="funnel-level" points="120,160 780,160 750,220 150,220"/>
   <text class="funnel-text" x="450" y="180">📝 Blog Post</text>
-  <text class="funnel-detail" x="450" y="198">(cookwithgasoline.com — Primary SEO target)</text>
+  <text class="funnel-detail" x="450" y="198">(gokaboom.dev — Primary SEO target)</text>
   <text class="label" x="450" y="213">"Get found"</text>
 
   <!-- Arrow 2 -->

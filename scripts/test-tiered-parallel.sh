@@ -7,7 +7,7 @@ TEST_DIR="$SCRIPT_DIR/tests"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════════════════════╗"
-echo "║         GASOLINE UAT TIERED TEST SUITE — ALL TIERS IN PARALLEL                ║"
+echo "║          KABOOM UAT TIERED TEST SUITE — ALL TIERS IN PARALLEL                 ║"
 echo "║                                                                                ║"
 echo "║ Tier 1 (1 min):   Protocol + Basic Tools        ▶ STARTS NOW                  ║"
 echo "║ Tier 2 (5 min):   Extended Coverage             ▶ STARTS NOW                  ║"
@@ -17,7 +17,7 @@ echo "║ Results appear incrementally as each tier completes                   
 echo "╚════════════════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-RESULTS_DIR="/tmp/gasoline-uat-tiered-$(date +%s)"
+RESULTS_DIR="/tmp/kaboom-uat-tiered-$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 
 echo "📊 Results: $RESULTS_DIR"

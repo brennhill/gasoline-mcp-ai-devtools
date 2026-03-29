@@ -17,7 +17,7 @@ last_verified_date: 2026-03-05
 
 **Unit tests:** Read-only flag enforcement
 - [ ] Test server starts with --read-only flag, config.ReadOnlyMode = true
-- [ ] Test GASOLINE_READ_ONLY=true env var sets read-only mode
+- [ ] Test KABOOM_READ_ONLY=true env var sets read-only mode
 - [ ] Test interact tool returns error when read-only enabled
 - [ ] Test observe tool works normally when read-only enabled
 - [ ] Test generate tool works normally when read-only enabled
@@ -30,7 +30,7 @@ last_verified_date: 2026-03-05
 - [ ] Test configure health returns correct read_only_mode status
 
 **Edge case tests:** Error handling
-- [ ] Test CLI flag overrides env var (--read-only=false with GASOLINE_READ_ONLY=true)
+- [ ] Test CLI flag overrides env var (--read-only=false with KABOOM_READ_ONLY=true)
 - [ ] Test all interact actions blocked in read-only mode
 - [ ] Test all mutation configure actions blocked
 - [ ] Test error message clarity (includes actionable guidance)
@@ -52,7 +52,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Production Observation (Happy Path)
 1. Setup:
-   - Start Gasoline in read-only mode: `gasoline --read-only`
+   - Start Kaboom in read-only mode: `kaboom --read-only`
    - Open production web app in browser with extension
 2. Steps:
    - [ ] Connect agent (Claude Code or Cursor)
@@ -79,7 +79,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 3: Normal Mode (Mutations Allowed)
 1. Setup:
-   - Start Gasoline without --read-only flag: `gasoline`
+   - Start Kaboom without --read-only flag: `kaboom`
 2. Steps:
    - [ ] Check status: `configure({action: "health"})` — verify read_only_mode: false
    - [ ] Attempt execute_js: `interact({action: "execute_js", code: "console.log('test')"})`
@@ -90,8 +90,8 @@ last_verified_date: 2026-03-05
 
 ### Scenario 4: CLI Flag vs Environment Variable
 1. Setup:
-   - Set env var: `export GASOLINE_READ_ONLY=true`
-   - Start with flag: `gasoline --read-only=false`
+   - Set env var: `export KABOOM_READ_ONLY=true`
+   - Start with flag: `kaboom --read-only=false`
 2. Steps:
    - [ ] Check health response: verify read_only_mode based on CLI flag (false)
    - [ ] Attempt mutation: succeeds (CLI flag overrides env var)

@@ -13,7 +13,7 @@ If your team repeats the same 20 clicks every day, you need a macro.
 
 **Quality Assurance (QA)** means checking that software works as expected. https://en.wikipedia.org/wiki/Software_quality_assurance
 
-With *.gasoline Agentic Devtools**, you can save repeatable browser flows and replay them safely.
+With *KaBOOM Agentic Devtools**, you can save repeatable browser flows and replay them safely.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ With *.gasoline Agentic Devtools**, you can save repeatable browser flows and re
 
 You want to stop rewriting routine test steps for every run.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Build the flow as batch steps
 
@@ -85,4 +85,4 @@ configure({
 
 ## Why This Feels Great
 
-You are turning repeated effort into reusable assets. *.gasoline Agentic Devtools** helps your team scale good QA habits with less stress.
+You are turning repeated effort into reusable assets. *KaBOOM Agentic Devtools** helps your team scale good QA habits with less stress.

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // queueRecordStart creates the pending query and returns the response for a screen_recording_start action.
@@ -41,8 +41,8 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		"audio":                 audio,
 		"path":                  videoPath,
 		"requires_user_gesture": true,
-		"user_prompt":           "Prompt the user to open the Gasoline popup and click Approve to grant recording permission for the target tab.",
-		"message":               "Recording start queued. Prompt user to open the Gasoline popup and click Approve, then use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
+		"user_prompt":           "Prompt the user to open the Kaboom popup and click Approve to grant recording permission for the target tab.",
+		"message":               "Recording start queued. Prompt user to open the Kaboom popup and click Approve, then use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
 	})
 }
 
@@ -108,7 +108,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	if recordingState.State != recordingStateRecording {
 		retry := "Run interact(action:'screen_recording_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
 		if recordingState.State == recordingStateAwaitingGesture {
-			retry = "Recording start is still awaiting user gesture. Ask the user to open the Gasoline popup and click Approve, then retry stop after start reports status 'recording'."
+			retry = "Recording start is still awaiting user gesture. Ask the user to open the Kaboom popup and click Approve, then retry stop after start reports status 'recording'."
 		}
 		if recordingState.State == recordingStateStopping {
 			retry = "A previous screen_recording_stop is still in progress. Poll observe(what:'command_result') for the stop correlation_id and wait for a terminal status."

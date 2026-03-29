@@ -18,9 +18,9 @@ last_reviewed: 2026-03-06
 
 ## Problem
 
-Gasoline captures Web Vitals and navigation timing passively, but cannot produce a detailed performance trace — the kind of data you get from Chrome DevTools Performance panel. A trace reveals exactly what's happening on the main thread: long tasks, layout thrashing, forced reflows, script evaluation bottlenecks, and rendering pipeline stalls.
+Kaboom captures Web Vitals and navigation timing passively, but cannot produce a detailed performance trace — the kind of data you get from Chrome DevTools Performance panel. A trace reveals exactly what's happening on the main thread: long tasks, layout thrashing, forced reflows, script evaluation bottlenecks, and rendering pipeline stalls.
 
-Chrome DevTools MCP exposes this as `performance_start_trace` / `performance_stop_trace` / `performance_analyze_insight`. This is a gap for Gasoline users who need deep performance debugging without installing a second MCP server.
+Chrome DevTools MCP exposes this as `performance_start_trace` / `performance_stop_trace` / `performance_analyze_insight`. This is a gap for Kaboom users who need deep performance debugging without installing a second MCP server.
 
 ## Solution
 
@@ -30,7 +30,7 @@ Add `analyze(what="performance_trace")` with an `action` parameter to control th
 - `action="stop"` — Stop recording and return structured insights
 - `action="analyze"` — Drill into a specific insight from the trace results
 
-This keeps the entire workflow within a single `what` mode, consistent with Gasoline's dispatch architecture.
+This keeps the entire workflow within a single `what` mode, consistent with Kaboom's dispatch architecture.
 
 ## MCP Interface
 
@@ -188,4 +188,4 @@ Uses the existing `chrome.debugger` infrastructure from `cdp-dispatch.ts`:
 
 ## Competitive Context
 
-Chrome DevTools MCP exposes this as three separate tools (`performance_start_trace`, `performance_stop_trace`, `performance_analyze_insight`). Gasoline consolidates into a single `what` mode with `action` dispatch — consistent architecture, fewer init tokens.
+Chrome DevTools MCP exposes this as three separate tools (`performance_start_trace`, `performance_stop_trace`, `performance_analyze_insight`). Kaboom consolidates into a single `what` mode with `action` dispatch — consistent architecture, fewer init tokens.

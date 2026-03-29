@@ -11,12 +11,12 @@ import (
 func TestQuickstartContent_IncludesInteractFailureRecoveryExamples(t *testing.T) {
 	t.Parallel()
 
-	uri, text, ok := resolveResourceContent("gasoline://quickstart")
+	uri, text, ok := resolveResourceContent("kaboom://quickstart")
 	if !ok {
-		t.Fatal("resolveResourceContent(gasoline://quickstart) should succeed")
+		t.Fatal("resolveResourceContent(kaboom://quickstart) should succeed")
 	}
-	if uri != "gasoline://quickstart" {
-		t.Fatalf("canonical uri = %q, want gasoline://quickstart", uri)
+	if uri != "kaboom://quickstart" {
+		t.Fatalf("canonical uri = %q, want kaboom://quickstart", uri)
 	}
 
 	requiredTokens := []string{

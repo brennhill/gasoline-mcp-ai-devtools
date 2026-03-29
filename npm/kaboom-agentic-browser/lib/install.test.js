@@ -30,7 +30,7 @@ test('npm wrapper readme and launcher copy use kaboom branding', () => {
   const launcher = fs.readFileSync(path.join(__dirname, '..', 'bin', 'kaboom-agentic-browser'), 'utf8');
   const cli = fs.readFileSync(path.join(__dirname, 'cli.js'), 'utf8');
 
-  assert.match(readme, /^# kaboom-mcp$/m);
+  assert.match(readme, /^# kaboom-agentic-browser$/m);
   assert.match(launcher, /Kaboom Agentic Browser server/);
   assert.match(launcher, /npm install -g kaboom-agentic-browser@latest/);
   assert.match(cli, /Kaboom Agentic Browser/);
@@ -75,7 +75,7 @@ test('buildMcpEntry honors binaryCommand override', () => {
 // --- installToClient: file-type ---
 
 test('installToClient creates new config for file-type client', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   const def = {
@@ -99,7 +99,7 @@ test('installToClient creates new config for file-type client', () => {
 });
 
 test('installToClient merges into existing file-type config', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   // Pre-existing config with another server
@@ -127,7 +127,7 @@ test('installToClient merges into existing file-type config', () => {
 });
 
 test('installToClient removes gasoline and strum MCP entries before writing kaboom config', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -163,7 +163,7 @@ test('installToClient removes gasoline and strum MCP entries before writing kabo
 });
 
 test('installToClient dry-run does not write file', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   const def = {
@@ -182,7 +182,7 @@ test('installToClient dry-run does not write file', () => {
 });
 
 test('installToClient adds env vars to file-type config', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   const def = {
@@ -220,7 +220,7 @@ test('installToClient handles CLI type with dry-run', () => {
 // --- executeInstall ---
 
 test('executeInstall installs to detected file-type clients', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cursorDir = path.join(tmp, '.cursor');
   fs.mkdirSync(cursorDir);
 
@@ -260,7 +260,7 @@ test('executeInstall reports when no clients detected', () => {
 // --- targeted install ---
 
 test('executeInstall with targetTool installs to specific client', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const geminiDir = path.join(tmp, '.gemini');
 
   // Monkey-patch os.homedir for this test via _clientOverrides won't work here
@@ -306,7 +306,7 @@ test('executeInstall with invalid targetTool returns error', () => {
 // --- OpenCode format install ---
 
 test('installToClient creates OpenCode-format config with mcp key', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const binaryCommand = '/tmp/kaboom-bin';
 
   const def = {
@@ -339,7 +339,7 @@ test('installToClient creates OpenCode-format config with mcp key', () => {
 });
 
 test('installToClient merges OpenCode config preserving existing entries', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cfgPath = path.join(tmp, 'opencode.json');
   const binaryCommand = '/tmp/kaboom-bin';
 
@@ -373,7 +373,7 @@ test('installToClient merges OpenCode config preserving existing entries', () =>
 // --- Zed format install ---
 
 test('installToClient creates Zed-format config with context_servers key', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const binaryCommand = '/tmp/kaboom-bin';
 
   const def = {
@@ -404,7 +404,7 @@ test('installToClient creates Zed-format config with context_servers key', () =>
 });
 
 test('executeInstall dry-run reports all detected clients without writing', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-install-'));
   const cursorDir = path.join(tmp, '.cursor');
   fs.mkdirSync(cursorDir);
 
@@ -430,7 +430,7 @@ test('executeInstall dry-run reports all detected clients without writing', () =
 });
 
 test('installBundledSkills removes managed gasoline and strum legacy skill files before writing kaboom skill', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-skills-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-skills-'));
   const skillsDir = path.join(tmp, 'bundled');
   const claudeRoot = path.join(tmp, 'claude-skills');
 
@@ -454,9 +454,9 @@ test('installBundledSkills removes managed gasoline and strum legacy skill files
     'utf8'
   );
 
-  const originalClaudeDir = process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+  const originalClaudeDir = process.env.KABOOM_CLAUDE_SKILLS_DIR;
   try {
-    process.env.GASOLINE_CLAUDE_SKILLS_DIR = claudeRoot;
+    process.env.KABOOM_CLAUDE_SKILLS_DIR = claudeRoot;
     const result = await installBundledSkills({
       agents: ['claude'],
       scope: 'global',
@@ -472,9 +472,9 @@ test('installBundledSkills removes managed gasoline and strum legacy skill files
     assert.match(installedSkill, /Kaboom skill body/);
   } finally {
     if (originalClaudeDir === undefined) {
-      delete process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+      delete process.env.KABOOM_CLAUDE_SKILLS_DIR;
     } else {
-      process.env.GASOLINE_CLAUDE_SKILLS_DIR = originalClaudeDir;
+      process.env.KABOOM_CLAUDE_SKILLS_DIR = originalClaudeDir;
     }
     fs.rmSync(tmp, { recursive: true, force: true });
   }

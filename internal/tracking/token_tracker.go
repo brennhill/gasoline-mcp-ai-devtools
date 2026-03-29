@@ -151,7 +151,7 @@ func (t *TokenTracker) GetSessionSummary() string {
 
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "Gasoline saved ~%s tokens this session (%.0f%% compression across %d compressions)\n",
+	fmt.Fprintf(&sb, "Kaboom saved ~%s tokens this session (%.0f%% compression across %d compressions)\n",
 		formatNumber(stats.TotalTokensSaved),
 		stats.CompressionPct,
 		stats.TotalCompressions,

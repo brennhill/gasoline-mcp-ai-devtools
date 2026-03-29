@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.2.0 Released"
+title: KaBOOM v5.2.0 Released"
 description: "Improved error handling and network inspection"
 date: 2026-01-10T20:15:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.2.0
 
-STRUM v5.2.0 improves error handling, network inspection, and adds better filtering options for high-volume environments.
+Kaboom v5.2.0 improves error handling, network inspection, and adds better filtering options for high-volume environments.
 
 ### Features
 
@@ -30,9 +30,9 @@ STRUM v5.2.0 improves error handling, network inspection, and adds better filter
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.2.0
+npm install -g kaboom-agentic-browser@5.2.0
 ```
 
 ## Full Changelog
 
-[v5.2.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.2.0)
+[v5.2.0 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.2.0)

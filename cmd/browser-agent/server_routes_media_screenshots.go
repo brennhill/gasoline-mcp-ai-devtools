@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // checkScreenshotRateLimit enforces per-client screenshot rate limiting.
@@ -71,7 +71,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 		return
 	}
 
-	if status, msg := checkScreenshotRateLimit(r.Header.Get("X-Gasoline-Client")); status != 0 {
+	if status, msg := checkScreenshotRateLimit(r.Header.Get("X-Kaboom-Client")); status != 0 {
 		jsonResponse(w, status, map[string]string{"error": msg})
 		return
 	}

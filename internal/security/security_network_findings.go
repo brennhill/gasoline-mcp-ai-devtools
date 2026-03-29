@@ -2,7 +2,7 @@
 // Why: Separates network-level security analysis from credential scanning and header checks.
 package security
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 func (s *SecurityScanner) checkNetworkSecurity(entries []capture.NetworkWaterfallEntry, pageURLs []string) []SecurityFinding {
 	var findings []SecurityFinding

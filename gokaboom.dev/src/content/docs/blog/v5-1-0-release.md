@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.1.0: Single-Tab Tracking Isolation"
+title: KaBOOM v5.1.0: Single-Tab Tracking Isolation"
 description: "v5.1.0 fixes a critical privacy vulnerability where all browser tabs were captured regardless of tracking state. Plus network schema improvements and PyPI distribution."
 date: 2026-01-28T20:25:00Z
 authors:
@@ -13,7 +13,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['--releases', 'releases', 'security', 'privacy', 'blog', 'v5', 'release']
 ---
 
-STRUM v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
+Kaboom v5.1.0 is a security-focused release that fixes a critical privacy vulnerability in how the extension captures browser telemetry. If you're running any previous version, upgrade immediately.
 
 ## The Problem: All Tabs Were Captured
 
@@ -36,7 +36,7 @@ The button has been renamed from "Track This Page" to **"Track This Tab"** to re
 
 When no tab is tracked, the MCP server now prepends a warning to all `observe()` responses:
 
-> WARNING: No tab is being tracked. Data capture is disabled. Ask the user to click 'Track This Tab' in the.gasoline extension popup.
+> WARNING: No tab is being tracked. Data capture is disabled. Ask the user to click 'Track This Tab' in the KaBOOM extension popup.
 
 This prevents the AI assistant from silently operating on stale or missing data.
 
@@ -53,18 +53,18 @@ These changes help LLMs interpret network data without guessing units.
 
 ## PyPI Distribution
 
-STRUM is now available on PyPI alongside NPM:
+Kaboom is now available on PyPI alongside NPM:
 
 ```bash
-pip install gasoline-mcp
-gasoline-mcp
+pip install kaboom-agentic-browser
+kaboom-agentic-browser
 ```
 
 Same binary, same behavior. Platform-specific wheels for macOS (arm64, x64), Linux (arm64, x64), and Windows (x64).
 
 ## Known Issues
 
-Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/KNOWN-ISSUES.md) for details:
+Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/blob/stable/KNOWN-ISSUES.md) for details:
 
 - `query_dom` not yet implemented
 - Accessibility audit runtime error
@@ -75,7 +75,7 @@ Five issues are deferred to v5.2. See [KNOWN-ISSUES.md](https://github.com/brenn
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.1.0
+npx kaboom-agentic-browser@5.1.0
 ```
 
 Or update your `.mcp.json`:
@@ -83,10 +83,10 @@ Or update your `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "kaboom": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@5.1.0", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser@5.1.0", "--port", "7890", "--persist"]
     }
   }
 }
@@ -94,4 +94,4 @@ Or update your `.mcp.json`:
 
 ## Full Changelog
 
-[GitHub Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.1.0) · [CHANGELOG.md](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/stable/CHANGELOG.md)
+[GitHub Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.1.0) · [CHANGELOG.md](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/blob/stable/CHANGELOG.md)

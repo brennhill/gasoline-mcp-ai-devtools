@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // WorkflowStep records a single step's outcome within a workflow trace.

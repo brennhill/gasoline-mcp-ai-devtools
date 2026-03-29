@@ -19,8 +19,8 @@ test_paths:
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
 | **Status**    | implemented                             |
-| **Binary**    | gasoline-hooks                          |
-| **Command**   | `gasoline-hooks blast-radius`           |
+| **Binary**    | kaboom-hooks                          |
+| **Command**   | `kaboom-hooks blast-radius`           |
 | **Hook**      | PostToolUse on Edit, Write              |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |
 
@@ -38,6 +38,6 @@ When the AI edits a file, blast-radius scans the project for files that import o
 ```json
 {
   "matcher": "Edit|Write",
-  "hooks": [{"type": "command", "command": "gasoline-hooks blast-radius", "timeout": 10}]
+  "hooks": [{"type": "command", "command": "kaboom-hooks blast-radius", "timeout": 10}]
 }
 ```

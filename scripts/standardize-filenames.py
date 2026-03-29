@@ -34,7 +34,7 @@ STANDARD_RENAMES = {
     # Review files
     'REVIEW.md': 'review.md',
     'BEHAVIORAL_BASELINES_REVIEW.md': 'behavioral-baselines-review.md',
-    'GASOLINE_CI_REVIEW.md': 'gasoline-ci-review.md',
+    'KABOOM_CI_REVIEW.md': 'kaboom-ci-review.md',
     'INTERCEPTION_DEFERRAL_REVIEW.md': 'interception-deferral-review.md',
     'MCP_TOOL_DESCRIPTIONS_REVIEW.md': 'mcp-tool-descriptions-review.md',
     'NOISE_FILTERING_REVIEW.md': 'noise-filtering-review.md',
@@ -205,7 +205,7 @@ def update_all_references(files_to_rename, root_dir):
 
 def main():
     """Scan, rename, and update references for markdown files."""
-    root_dir = '/Users/brenn/dev/gasoline'
+    root_dir = '/Users/brenn/dev/kaboom'
 
     print("🔍 Scanning for files to rename...")
     files_to_rename = find_all_markdown_files(root_dir)

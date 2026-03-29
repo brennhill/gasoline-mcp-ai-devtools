@@ -3,7 +3,7 @@ name: release-readiness
 description: Use when user asks if a release is ready to ship, needs a go/no-go decision, or wants to run quality gates before deploying.
 ---
 
-# Gasoline Release Readiness
+# Kaboom Release Readiness
 
 Use this skill before UAT and before shipping.
 

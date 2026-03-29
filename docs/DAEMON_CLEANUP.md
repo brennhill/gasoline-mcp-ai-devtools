@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 ## Overview
 
-Gasoline is a persistent daemon server. To ensure clean upgrades and prevent version conflicts, we've implemented comprehensive daemon cleanup and version validation.
+Kaboom is a persistent daemon server. To ensure clean upgrades and prevent version conflicts, we've implemented comprehensive daemon cleanup and version validation.
 
 ## Issues Fixed (Feb 10, 2026)
 
@@ -16,16 +16,16 @@ Gasoline is a persistent daemon server. To ensure clean upgrades and prevent ver
 
 **Problem:** The npm package's `optionalDependencies` were hard-coded to v5.8.2 instead of v6.0.0, causing users to receive the old binary even after upgrading.
 
-**File:** `npm/gasoline-mcp/package.json`
+**File:** `npm/kaboom-mcp/package.json`
 
 **Fix:** Updated all optionalDependencies to `6.0.0`:
 ```json
 "optionalDependencies": {
-  "@brennhill/gasoline-darwin-arm64": "6.0.0",
-  "@brennhill/gasoline-darwin-x64": "6.0.0",
-  "@brennhill/gasoline-linux-arm64": "6.0.0",
-  "@brennhill/gasoline-linux-x64": "6.0.0",
-  "@brennhill/gasoline-win32-x64": "6.0.0"
+  "@brennhill/kaboom-darwin-arm64": "6.0.0",
+  "@brennhill/kaboom-darwin-x64": "6.0.0",
+  "@brennhill/kaboom-linux-arm64": "6.0.0",
+  "@brennhill/kaboom-linux-x64": "6.0.0",
+  "@brennhill/kaboom-win32-x64": "6.0.0"
 }
 ```
 
@@ -33,9 +33,9 @@ Gasoline is a persistent daemon server. To ensure clean upgrades and prevent ver
 
 **Problem:** The `preinstall` hook only tried to uninstall the old npm package but didn't kill the running daemon, leaving old processes alive.
 
-**Fix:** Enhanced `preinstall` hook to kill all running gasoline processes:
+**Fix:** Enhanced `preinstall` hook to kill all running kaboom processes:
 ```json
-"preinstall": "node -e \"const cp = require('child_process'); try { cp.execSync('npm uninstall -g gasoline-mcp', {stdio:'ignore'}); } catch(e) {} try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM gasoline.exe 2>nul || true' : 'pkill -9 gasoline 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\""
+"preinstall": "node -e \"const cp = require('child_process'); try { cp.execSync('npm uninstall -g kaboom-mcp', {stdio:'ignore'}); } catch(e) {} try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM kaboom.exe 2>nul || true' : 'pkill -9 kaboom 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\""
 ```
 
 Also updated `preuninstall` to use the same cross-platform cleanup.
@@ -53,13 +53,13 @@ Also updated `preuninstall` to use the same cross-platform cleanup.
 
 ### Option 1: Automatic Cleanup During Install (Recommended)
 
-When you run `npm install -g gasoline-mcp`, the `preinstall` hook automatically:
+When you run `npm install -g kaboom-mcp`, the `preinstall` hook automatically:
 - Uninstalls old global version
 - Kills all running daemons
 - Cleans up stale PID files
 
 ```bash
-npm install -g gasoline-mcp@latest
+npm install -g kaboom-mcp@latest
 ```
 
 No additional action needed!
@@ -70,7 +70,7 @@ If you want to ensure daemons are cleaned up before installing:
 
 ```bash
 # Using the Go binary
-gasoline --force
+kaboom --force
 
 # Or using the shell script
 ./scripts/clean-old-daemons.sh
@@ -81,7 +81,7 @@ gasoline --force
 To stop only the server on a specific port:
 
 ```bash
-gasoline --stop --port 7890
+kaboom --stop --port 7890
 ```
 
 ## Version Synchronization
@@ -105,15 +105,15 @@ Since npm's `package.json` doesn't support variable interpolution, we use:
 
 ### How It Works
 
-**File:** `npm/gasoline-mcp/lib/validate-versions.js`
+**File:** `npm/kaboom-mcp/lib/validate-versions.js`
 
 This script checks that all optionalDependencies match the main package version. If they don't match:
 
 ```
 ❌ Version mismatch in optionalDependencies:
 
-  @brennhill/gasoline-darwin-arm64: "5.8.2" (expected "6.0.0")
-  @brennhill/gasoline-darwin-x64: "5.8.2" (expected "6.0.0")
+  @brennhill/kaboom-darwin-arm64: "5.8.2" (expected "6.0.0")
+  @brennhill/kaboom-darwin-x64: "5.8.2" (expected "6.0.0")
   ...
 
 Fix by running: make sync-version
@@ -127,8 +127,8 @@ Fix by running: make sync-version
 
 The `--force` flag invokes `runForceCleanup()` which:
 
-1. **Finds all gasoline processes** using:
-   - `lsof -c gasoline` (Unix-like systems)
+1. **Finds all kaboom processes** using:
+   - `lsof -c kaboom` (Unix-like systems)
    - `taskkill` (Windows)
 
 2. **Kills them gracefully:**
@@ -143,7 +143,7 @@ The `--force` flag invokes `runForceCleanup()` which:
 ### Package Hooks
 
 **Files:**
-- `npm/gasoline-mcp/package.json` - preinstall/preuninstall scripts
+- `npm/kaboom-mcp/package.json` - preinstall/preuninstall scripts
 
 **preinstall:**
 - Runs before npm install
@@ -183,10 +183,10 @@ Should output:
 
 ```bash
 # Start a daemon
-gasoline
+kaboom
 
 # In another terminal, force cleanup
-gasoline --force
+kaboom --force
 
 # Verify it's gone
 lsof -ti :7890  # Should return nothing
@@ -196,16 +196,16 @@ lsof -ti :7890  # Should return nothing
 
 ```bash
 # Simulate old version
-npm install -g gasoline-mcp@5.8.2
+npm install -g kaboom-mcp@5.8.2
 
 # Verify 5.8.2 is running
-gasoline --version  # Should show 5.8.2
+kaboom --version  # Should show 5.8.2
 
 # Upgrade to 6.0.0
-npm install -g gasoline-mcp@latest
+npm install -g kaboom-mcp@latest
 
 # Verify 6.0.0 is running and daemon was cleaned up
-gasoline --version  # Should show 6.0.0
+kaboom --version  # Should show 6.0.0
 ```
 
 ## Troubleshooting
@@ -216,42 +216,42 @@ This shouldn't happen anymore, but if it does:
 
 1. **Force cleanup:**
    ```bash
-   gasoline --force
+   kaboom --force
    ```
 
 2. **Uninstall completely:**
    ```bash
-   npm uninstall -g gasoline-mcp
+   npm uninstall -g kaboom-mcp
    ```
 
 3. **Reinstall:**
    ```bash
-   npm install -g gasoline-mcp@latest
+   npm install -g kaboom-mcp@latest
    ```
 
-### "Multiple gasoline processes still running"
+### "Multiple kaboom processes still running"
 
 Check for zombie processes:
 
 ```bash
-# Find all gasoline processes
-ps aux | grep gasoline
+# Find all kaboom processes
+ps aux | grep kaboom
 
 # Kill everything
-gasoline --force
+kaboom --force
 
 # Or manually
-pkill -9 gasoline
+pkill -9 kaboom
 ```
 
 ### "PID file stale, can't start new daemon"
 
 ```bash
 # Clean up stale PID files
-rm -f ~/.gasoline-*.pid
+rm -f ~/.kaboom-*.pid
 
 # Then start fresh
-gasoline
+kaboom
 ```
 
 ## Release Checklist
@@ -279,15 +279,15 @@ Before releasing a new version:
 6. **Push and release**
 
 The sync-version Makefile target will automatically update:
-- `npm/gasoline-mcp/package.json` - optionalDependencies
+- `npm/kaboom-mcp/package.json` - optionalDependencies
 - `npm/*/package.json` - all platform packages
 - `pypi/*/pyproject.toml` - all PyPI packages
 - And more (see Makefile sync-version target)
 
 ## Related Files
 
-- `npm/gasoline-mcp/package.json` - Main package with daemon cleanup hooks
-- `npm/gasoline-mcp/lib/validate-versions.js` - Version validation script
+- `npm/kaboom-mcp/package.json` - Main package with daemon cleanup hooks
+- `npm/kaboom-mcp/lib/validate-versions.js` - Version validation script
 - `cmd/browser-agent/main.go` - `--force` flag definition
 - `cmd/browser-agent/main_connection.go` - `runForceCleanup()` implementation
 - `scripts/clean-old-daemons.sh` - User-friendly cleanup script

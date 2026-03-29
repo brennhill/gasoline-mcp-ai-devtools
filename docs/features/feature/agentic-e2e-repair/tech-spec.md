@@ -14,9 +14,9 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Gasoline MCP tools to diagnose and fix broken end-to-end tests. It adds no new MCP tools or modes. The agent follows a structured diagnosis-and-repair loop using `observe`, `configure`, `generate`, and `interact` tools in a specific sequence.
+Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Kaboom MCP tools to diagnose and fix broken end-to-end tests. It adds no new MCP tools or modes. The agent follows a structured diagnosis-and-repair loop using `observe`, `configure`, `generate`, and `interact` tools in a specific sequence.
 
-The workflow assumes an E2E test has failed and the agent has access to test runner output. The agent re-runs the failing test with Gasoline capturing browser telemetry, diagnoses the root cause category, generates a corrected test file, verifies the fix, and reports the change.
+The workflow assumes an E2E test has failed and the agent has access to test runner output. The agent re-runs the failing test with Kaboom capturing browser telemetry, diagnoses the root cause category, generates a corrected test file, verifies the fix, and reports the change.
 
 ## Key Components
 
@@ -31,21 +31,21 @@ The agent learns that an E2E test failed through one of three mechanisms:
 The agent extracts: test file path, test name, error message, and optionally the stack trace.
 
 ### Phase 2: Re-run with Capture
-The agent re-runs the failing test with Gasoline capturing browser telemetry. Two strategies:
+The agent re-runs the failing test with Kaboom capturing browser telemetry. Two strategies:
 
 #### Strategy A: Agent invokes test runner directly
 ```
 bash: npx playwright test tests/checkout.spec.js --headed
 ```
-The `--headed` flag ensures the test runs in a visible browser window that the Gasoline extension can track.
+The `--headed` flag ensures the test runs in a visible browser window that the Kaboom extension can track.
 
 #### Strategy B: Agent navigates manually and simulates the test flow
-If test runner integration is difficult, the agent reads the test source code, navigates to the tested URL via `interact({action: "navigate"})`, and executes the test steps manually via `interact({action: "execute_js"})`. Gasoline captures telemetry as the agent drives the browser.
+If test runner integration is difficult, the agent reads the test source code, navigates to the tested URL via `interact({action: "navigate"})`, and executes the test steps manually via `interact({action: "execute_js"})`. Kaboom captures telemetry as the agent drives the browser.
 
-During this phase, Gasoline passively captures: console errors, network requests/responses, DOM state snapshots, WebSocket events, performance timing.
+During this phase, Kaboom passively captures: console errors, network requests/responses, DOM state snapshots, WebSocket events, performance timing.
 
 ### Phase 3: Observe
-The agent uses Gasoline's `observe` tool to inspect what the browser saw:
+The agent uses Kaboom's `observe` tool to inspect what the browser saw:
 
 ```
 observe({what: "errors"})
@@ -150,13 +150,13 @@ For batch repairs (multiple tests broken by same root cause), agent reports once
 Test fails (test runner output or human notification)
   |
   v
-Agent re-runs test with Gasoline capture
+Agent re-runs test with Kaboom capture
   -> bash: npx playwright test --headed
   OR
   -> interact({action: "navigate"}) + execute_js
   |
   v
-Gasoline captures telemetry
+Kaboom captures telemetry
   -> Console errors, network, DOM, WebSocket, performance
   |
   v
@@ -190,7 +190,7 @@ Agent reports outcome
 
 ## Implementation Strategy
 
-**No Gasoline changes required.** This feature is entirely agent-side logic. Implementation:
+**No Kaboom changes required.** This feature is entirely agent-side logic. Implementation:
 
 1. **Skill definition file** (if using Claude Code skills): Encodes the seven-phase workflow, diagnosis heuristics, and circuit breaker rules.
 2. **Agent prompt enhancement**: Instructions for agent on how to diagnose and repair E2E test failures.
@@ -202,7 +202,7 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 ### Edge Cases
 
-- **No Gasoline data captured**: Extension not connected or not tracking the test browser tab. Agent cannot diagnose without observations. Reports "insufficient data" and suggests re-running with Gasoline capture enabled.
+- **No Kaboom data captured**: Extension not connected or not tracking the test browser tab. Agent cannot diagnose without observations. Reports "insufficient data" and suggests re-running with Kaboom capture enabled.
 
 - **Test fails with no browser errors and no network failures**: Agent queries DOM to check selector validity. If selectors valid and API responses correct, classifies as potential timing issue and examines wait conditions.
 
@@ -210,9 +210,9 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 - **Test framework not recognized**: Agent observes browser state but generates generic JavaScript fixes rather than framework-specific ones. `generate({format: "test"})` handles framework detection.
 
-- **Extension disconnected during test run**: Observation data partial or missing. Agent falls back to test runner output only and reports Gasoline capture was incomplete.
+- **Extension disconnected during test run**: Observation data partial or missing. Agent falls back to test runner output only and reports Kaboom capture was incomplete.
 
-- **Buffer overflow during long test suite**: Gasoline's ring buffers evict oldest entries. Agent clears buffers between test runs using `configure({action: "clear"})` to ensure relevant data available.
+- **Buffer overflow during long test suite**: Kaboom's ring buffers evict oldest entries. Agent clears buffers between test runs using `configure({action: "clear"})` to ensure relevant data available.
 
 - **Test was already flaky before agent's change**: Agent runs test at least twice after fixing. If passes intermittently, classifies as flake and reports rather than claiming fix.
 
@@ -222,12 +222,12 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 ### Assumptions
 
-- A1: Gasoline server running and extension tracking the tab where E2E test executes.
+- A1: Kaboom server running and extension tracking the tab where E2E test executes.
 - A2: Test runner produces machine-readable output agent can parse to identify which test failed with what error.
 - A3: Network body capture enabled for test run (required for API contract drift detection).
 - A4: Test repository accessible to agent for reading test source and writing fixes.
 - A5: Agent has context on project's test framework (Playwright, Cypress, etc.) to generate framework-appropriate fixes.
-- A6: Application under test runs on localhost or URL accessible from Gasoline-instrumented browser.
+- A6: Application under test runs on localhost or URL accessible from Kaboom-instrumented browser.
 
 ## Risks & Mitigations
 
@@ -249,7 +249,7 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 ### Risk 5: Sensitive data in test fixtures
 - **Description**: Agent generates fixtures containing real user data from observed API responses.
-- **Mitigation**: Gasoline strips auth headers and redacts sensitive fields. Agent applies additional redaction when generating fixtures (emails, tokens, passwords replaced with placeholder values).
+- **Mitigation**: Kaboom strips auth headers and redacts sensitive fields. Agent applies additional redaction when generating fixtures (emails, tokens, passwords replaced with placeholder values).
 
 ## Dependencies
 
@@ -265,14 +265,14 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 - DOM Fingerprinting feature (in-progress, enhances selector drift detection but not strictly required)
 
 ### Depended on by:
-- Gasoline CI integration (runs this workflow in CI pipelines)
+- Kaboom CI integration (runs this workflow in CI pipelines)
 - Self-Healing Tests (may invoke E2E Repair as sub-workflow for individual test fixes)
 
 ## Performance Considerations
 
-Per-operation Gasoline overhead is minimal:
+Per-operation Kaboom overhead is minimal:
 
-| Operation | Gasoline overhead | Notes |
+| Operation | Kaboom overhead | Notes |
 |-----------|------------------|-------|
 | Test re-run observation | < 50ms startup | Actual test duration depends on test complexity |
 | Observe errors/network | < 10ms per call | Reading from buffers |
@@ -281,7 +281,7 @@ Per-operation Gasoline overhead is minimal:
 | Generate test fix | < 300ms | Test code generation |
 | Full workflow | < 5 minutes | Includes test re-runs (2-3x) |
 
-Dominant costs are test execution time (outside Gasoline control) and agent reasoning time.
+Dominant costs are test execution time (outside Kaboom control) and agent reasoning time.
 
 ## Security Considerations
 
@@ -295,4 +295,4 @@ Dominant costs are test execution time (outside Gasoline control) and agent reas
 
 **Circuit breaker**: Agent stops after 3 failed fix attempts to prevent infinite fix-break loops.
 
-**Audit trail**: All Gasoline tool calls logged via enterprise audit feature. Agent's diagnostic reasoning included in commit message or PR description for traceability.
+**Audit trail**: All Kaboom tool calls logged via enterprise audit feature. Agent's diagnostic reasoning included in commit message or PR description for traceability.

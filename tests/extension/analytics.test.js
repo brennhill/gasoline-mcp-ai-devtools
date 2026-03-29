@@ -240,7 +240,7 @@ describe('generateFingerprint (via initAnalytics + handleAnalyticsAlarm)', () =>
     await mod.handleAnalyticsAlarm()
 
     // Check what was stored in the mock storage
-    const fingerprint = chromeMock._store['gasoline_analytics_fingerprint']
+    const fingerprint = chromeMock._store['kaboom_analytics_fingerprint']
     assert.ok(fingerprint, 'fingerprint should have been stored')
     assert.strictEqual(typeof fingerprint, 'string')
 
@@ -252,12 +252,12 @@ describe('generateFingerprint (via initAnalytics + handleAnalyticsAlarm)', () =>
   test('fingerprint is reused on subsequent calls', async () => {
     const mod = await loadModule()
     // Pre-set a fingerprint in storage
-    chromeMock._store['gasoline_analytics_fingerprint'] = 'existing-fp-1234'
+    chromeMock._store['kaboom_analytics_fingerprint'] = 'existing-fp-1234'
     mod.trackCommandUsage('a11y')
     await mod.handleAnalyticsAlarm()
 
     // Should not have overwritten the existing fingerprint
-    assert.strictEqual(chromeMock._store['gasoline_analytics_fingerprint'], 'existing-fp-1234')
+    assert.strictEqual(chromeMock._store['kaboom_analytics_fingerprint'], 'existing-fp-1234')
   })
 })
 
@@ -286,7 +286,7 @@ describe('initAnalytics', () => {
     const mod = await loadModule()
     await mod.initAnalytics()
 
-    const firstSeen = chromeMock._store['gasoline_analytics_first_seen']
+    const firstSeen = chromeMock._store['kaboom_analytics_first_seen']
     assert.ok(firstSeen, 'first_seen_date should be set')
     // Should be YYYY-MM-DD format
     assert.match(firstSeen, /^\d{4}-\d{2}-\d{2}$/)
@@ -294,10 +294,10 @@ describe('initAnalytics', () => {
 
   test('does not overwrite existing first_seen_date', async () => {
     const mod = await loadModule()
-    chromeMock._store['gasoline_analytics_first_seen'] = '2025-01-01'
+    chromeMock._store['kaboom_analytics_first_seen'] = '2025-01-01'
     await mod.initAnalytics()
 
-    assert.strictEqual(chromeMock._store['gasoline_analytics_first_seen'], '2025-01-01')
+    assert.strictEqual(chromeMock._store['kaboom_analytics_first_seen'], '2025-01-01')
   })
 
   test('returns early when chrome is undefined', async () => {
@@ -369,7 +369,7 @@ describe('handleAnalyticsAlarm', () => {
 
     // Force a fresh scenario: clear last_ping so sendPing proceeds,
     // and call a command that sets a flag (may already be set from prior tests).
-    delete chromeMock._store['gasoline_analytics_last_ping']
+    delete chromeMock._store['kaboom_analytics_last_ping']
 
     // handleAnalyticsAlarm calls persistFlags then sendPing.
     // If flags are not dirty, persistFlags is a no-op but sendPing still runs
@@ -398,7 +398,7 @@ describe('handleAnalyticsAlarm', () => {
     mod.trackCommandUsage('screenshot')
     await mod.handleAnalyticsAlarm()
 
-    const lastPing = chromeMock._store['gasoline_analytics_last_ping']
+    const lastPing = chromeMock._store['kaboom_analytics_last_ping']
     assert.ok(lastPing, 'last_ping_date should be set')
     assert.match(lastPing, /^\d{4}-\d{2}-\d{2}$/)
   })
@@ -411,7 +411,7 @@ describe('handleAnalyticsAlarm', () => {
     mod.trackCommandUsage('screenshot')
 
     // Clear any prior last_ping
-    delete chromeMock._store['gasoline_analytics_last_ping']
+    delete chromeMock._store['kaboom_analytics_last_ping']
 
     await mod.handleAnalyticsAlarm()
 
@@ -431,7 +431,7 @@ describe('handleAnalyticsAlarm', () => {
     mod.trackCommandUsage('execute')
 
     // Clear last ping to force sendPing to proceed
-    delete chromeMock._store['gasoline_analytics_last_ping']
+    delete chromeMock._store['kaboom_analytics_last_ping']
 
     await assert.doesNotReject(async () => {
       await mod.handleAnalyticsAlarm()

@@ -5,7 +5,7 @@
 /**
  * @fileoverview Cache Limits and Memory Management
  *
- * Implements rate limiting and DoS protection for Gasoline:
+ * Implements rate limiting and DoS protection for Kaboom:
  *
  * RATE LIMITING:
  * - Screenshot rate limit: 1 per 5 seconds per tab

@@ -20,7 +20,7 @@ When a user discovers a bug or wants to demonstrate a flow, they need a way to *
 Users need two very different export formats:
 
 1. **Playwright script** — for CI, automated testing, and developers who want deterministic replay in a test runner.
-2. **Natural language script** — for demos, bug reports, and AI-powered replay via the Gasoline Pilot.
+2. **Natural language script** — for demos, bug reports, and AI-powered replay via the Kaboom Pilot.
 
 The Playwright format already exists in the TypeScript extension (`reproduction.ts`) but is **not available on the server side** where the MCP generate tool runs. The natural language format does not exist anywhere.
 
@@ -31,9 +31,9 @@ The Playwright format already exists in the TypeScript extension (`reproduction.
 Implement `generate({format: "reproduction"})` to produce scripts from captured `EnhancedAction` data in two output formats:
 
 - **`playwright`** — Playwright test code using multi-strategy selectors (testId > role > ariaLabel > text > id > cssPath)
-- **`gasoline`** — Human-readable natural language steps that describe what to do, usable as instructions for the AI Pilot or as documentation
+- **`kaboom`** — Human-readable natural language steps that describe what to do, usable as instructions for the AI Pilot or as documentation
 
-### Gasoline Format Example
+### Kaboom Format Example
 
 ```
 # Reproduction: User checkout flow
@@ -74,7 +74,7 @@ test('reproduction: captured user actions', async ({ page }) => {
 
 ```
 1. Developer reproduces a bug in the browser
-2. LLM calls: generate({format: "reproduction", output_format: "gasoline"})
+2. LLM calls: generate({format: "reproduction", output_format: "kaboom"})
 3. Gets human-readable steps
 4. Pastes into bug report / Slack / PR description
 5. Anyone can read and manually follow the steps
@@ -84,7 +84,7 @@ test('reproduction: captured user actions', async ({ page }) => {
 
 ```
 1. User records a flow (captured as EnhancedActions)
-2. LLM calls: generate({format: "reproduction", output_format: "gasoline"})
+2. LLM calls: generate({format: "reproduction", output_format: "kaboom"})
 3. Gets natural language steps
 4. LLM feeds steps to the Pilot via interact() tool
 5. Pilot re-executes the flow using semantic selectors
@@ -103,7 +103,7 @@ test('reproduction: captured user actions', async ({ page }) => {
 
 ```
 1. User performs a demo flow (1000 action buffer captures it)
-2. LLM calls: generate({format: "reproduction", output_format: "gasoline"})
+2. LLM calls: generate({format: "reproduction", output_format: "kaboom"})
 3. Gets natural language steps for the demo
 4. Steps can be replayed later via Pilot for live demos
 ```
@@ -117,7 +117,7 @@ test('reproduction: captured user actions', async ({ page }) => {
 ```javascript
 generate({
   format: "reproduction",
-  output_format: "gasoline",  // "gasoline" (default) | "playwright"
+  output_format: "kaboom",  // "kaboom" (default) | "playwright"
   last_n: 20,                 // Optional: only last N actions
   base_url: "http://localhost:3000",  // Optional: rewrite URLs
   include_screenshots: false,  // Optional: insert screenshot steps (playwright only)
@@ -130,7 +130,7 @@ generate({
 ```json
 {
   "script": "# Reproduction: captured user actions\n...",
-  "format": "gasoline",
+  "format": "kaboom",
   "action_count": 8,
   "duration_ms": 45200,
   "start_url": "https://shop.example.com/products",
@@ -145,13 +145,13 @@ generate({
 
 ---
 
-## Gasoline Script Format Specification
+## Kaboom Script Format Specification
 
-The Gasoline format is a numbered list of human-readable steps. Each step maps to one `EnhancedAction`.
+The Kaboom format is a numbered list of human-readable steps. Each step maps to one `EnhancedAction`.
 
 ### Action Type Mapping
 
-| Action Type | Gasoline Format | Example |
+| Action Type | Kaboom Format | Example |
 |-------------|----------------|---------|
 | `navigate` | `Navigate to: {url}` | `Navigate to: https://example.com/login` |
 | `click` | `Click: {element description}` | `Click: "Submit" button` |
@@ -190,9 +190,9 @@ Every script starts with a metadata header:
 
 ### Functional
 - [ ] `generate({format: "reproduction"})` returns a non-empty script
-- [ ] Default `output_format` is `"gasoline"` (natural language)
+- [ ] Default `output_format` is `"kaboom"` (natural language)
 - [ ] Playwright format uses multi-strategy selectors (testId > role > ariaLabel > text > id > cssPath)
-- [ ] Gasoline format uses human-readable element descriptions
+- [ ] Kaboom format uses human-readable element descriptions
 - [ ] `last_n` parameter filters to last N actions
 - [ ] `base_url` parameter rewrites URLs in both formats
 - [ ] `error_message` adds context annotation
@@ -218,7 +218,7 @@ Every script starts with a metadata header:
 ## Success Criteria
 
 - `generate({format: "reproduction"})` returns useful, human-readable output
-- Gasoline format can be copy-pasted into a bug report and understood by anyone
-- Gasoline format can be fed to Claude + Pilot for AI replay
+- Kaboom format can be copy-pasted into a bug report and understood by anyone
+- Kaboom format can be fed to Claude + Pilot for AI replay
 - Playwright format produces valid, runnable Playwright tests
 - Both formats use the best available selector for each action

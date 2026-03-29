@@ -1,5 +1,5 @@
 {
-  "description": "U2 Discovery: quality gate detects file size and project threshold (800 LOC limit in .gasoline.json)",
+  "description": "U2 Discovery: quality gate detects file size and project threshold (800 LOC limit in .kaboom.json)",
   "hook": "quality-gate",
   "project_root": "REPO_ROOT",
   "input": {

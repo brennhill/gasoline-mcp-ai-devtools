@@ -34,7 +34,7 @@ This matters because deployment regressions often emerge minutes after deploy (n
 
 Deployment Watchdog is a **time-bounded monitoring session** that the AI starts after a deployment. It captures a pre-deployment baseline, then continuously compares incoming telemetry against that baseline for a configurable duration. If a regression is detected (new errors, performance degradation, network failures), the watchdog surfaces an alert that the AI receives through the existing changes polling mechanism.
 
-The watchdog composes three existing Gasoline primitives:
+The watchdog composes three existing Kaboom primitives:
 
 1. **Session snapshots** (`diff_sessions`) -- for baseline capture and point-in-time comparison.
 2. **Behavioral baselines** -- for structured behavioral fingerprinting (API shapes, error fingerprints, timing tolerances).
@@ -49,7 +49,7 @@ The watchdog adds a **temporal dimension** that none of these primitives provide
 - As an AI coding agent, I want the watchdog to run for a defined soak period so that I can confidently declare the deployment healthy if no alerts fire.
 - As an AI coding agent, I want to receive regression alerts through the same polling mechanism I already use (`observe({what: "changes"})`) so that I do not need to learn a new observation pattern.
 - As an AI coding agent, I want to see a deployment summary when the watchdog completes so that I can report the outcome to the developer.
-- As a developer using Gasoline, I want the AI to catch deployment regressions within minutes so that I can decide to roll back before users are impacted.
+- As a developer using Kaboom, I want the AI to catch deployment regressions within minutes so that I can decide to roll back before users are impacted.
 
 ## MCP Interface
 
@@ -455,7 +455,7 @@ The watchdog automatically saves its baseline as a named snapshot (`wd-baseline-
 
 ## Non-Goals
 
-- This feature does NOT execute rollbacks. Gasoline is an observation layer. The AI decides whether to rollback and uses whatever deployment mechanism is available (CI/CD API, Git revert, etc.). Gasoline tells the AI what it sees; the AI decides what to do.
+- This feature does NOT execute rollbacks. Kaboom is an observation layer. The AI decides whether to rollback and uses whatever deployment mechanism is available (CI/CD API, Git revert, etc.). Kaboom tells the AI what it sees; the AI decides what to do.
 
 - This feature does NOT integrate with external monitoring systems (Datadog, Sentry, PagerDuty). It monitors what the browser extension captures. External integration is out of scope.
 
@@ -463,9 +463,9 @@ The watchdog automatically saves its baseline as a named snapshot (`wd-baseline-
 
 - This feature does NOT perform synthetic load testing or traffic generation. It passively monitors real browser telemetry. The developer (or AI via the `interact` tool) must navigate the application to generate telemetry.
 
-- This feature does NOT support multi-tab watchdog sessions. It monitors the active tracked tab. Monitoring multiple deployment environments simultaneously (staging + production) would require multiple Gasoline server instances.
+- This feature does NOT support multi-tab watchdog sessions. It monitors the active tracked tab. Monitoring multiple deployment environments simultaneously (staging + production) would require multiple Kaboom server instances.
 
-- Out of scope: authorization tiers for rollback decisions. The original agentic CI/CD spec proposed human-approval gates for production rollbacks. This is the responsibility of the rollback mechanism, not Gasoline's observation layer.
+- Out of scope: authorization tiers for rollback decisions. The original agentic CI/CD spec proposed human-approval gates for production rollbacks. This is the responsibility of the rollback mechanism, not Kaboom's observation layer.
 
 ## Performance SLOs
 
@@ -537,7 +537,7 @@ The 30-second check interval ensures the watchdog never contributes to CPU conte
 - A3: The browser tab remains open and navigable during the monitoring period (the watchdog passively observes; it does not drive the browser).
 - A4: The server remains running for the full duration of the watchdog session.
 - A5: At least one page load or navigation occurs after the deployment completes, generating fresh telemetry for comparison.
-- A6: The Gasoline server's ring buffers are not full-flushed between baseline capture and regression checks (i.e., the monitoring period is short enough that telemetry is retained).
+- A6: The Kaboom server's ring buffers are not full-flushed between baseline capture and regression checks (i.e., the monitoring period is short enough that telemetry is retained).
 
 ## Open Items
 

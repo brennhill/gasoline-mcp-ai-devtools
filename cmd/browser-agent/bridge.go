@@ -17,14 +17,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/schema"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
-// isGasolineService accepts canonical and legacy server names for compatibility.
-func isGasolineService(name string) bool {
+// isKaboomService accepts canonical and legacy server names for compatibility.
+func isKaboomService(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
 	if n == mcpServerName {
 		return true
@@ -51,7 +51,7 @@ var mcpStdoutMu sync.Mutex
 func (s *daemonState) buildDaemonCmd() (*exec.Cmd, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("find executable: %w. Verify gasoline is installed correctly", err)
+		return nil, fmt.Errorf("find executable: %w. Verify kaboom is installed correctly", err)
 	}
 
 	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}

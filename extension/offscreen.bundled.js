@@ -29,6 +29,9 @@
     };
   }
 
+  // extension/lib/brand.js
+  var KABOOM_RECORDING_LOG_PREFIX = "[Kaboom REC]";
+
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
   var defaultState = {
@@ -46,7 +49,7 @@
     totalBytes: 0
   };
   var state = { ...defaultState };
-  var LOG = "[Gasoline REC offscreen]";
+  var LOG = `${KABOOM_RECORDING_LOG_PREFIX} offscreen`;
   async function handleStartRecording(msg) {
     console.log(LOG, "handleStartRecording", {
       name: msg.name,

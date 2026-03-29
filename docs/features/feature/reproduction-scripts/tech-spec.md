@@ -13,7 +13,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Replace the `toolGetReproductionScript()` stub in [tools_generate.go](cmd/browser-agent/tools_generate.go) with a complete implementation that generates reproduction scripts from captured `EnhancedAction` data. Two output formats: Playwright (test code) and Gasoline (natural language).
+Replace the `toolGetReproductionScript()` stub in [tools_generate.go](cmd/browser-agent/tools_generate.go) with a complete implementation that generates reproduction scripts from captured `EnhancedAction` data. Two output formats: Playwright (test code) and Kaboom (natural language).
 
 All logic lives in a single new file: `cmd/browser-agent/reproduction.go` (~250 LOC).
 
@@ -37,8 +37,8 @@ sequenceDiagram
     Script->>Capture: GetAllEnhancedActions()
     Capture-->>Script: []EnhancedAction
 
-    alt output_format = "gasoline"
-        Script->>Script: generateGasolineScript(actions, opts)
+    alt output_format = "kaboom"
+        Script->>Script: generateKaboomScript(actions, opts)
         Script-->>Generate: Natural language steps
     else output_format = "playwright"
         Script->>Script: generateReproPlaywrightScript(actions, opts)
@@ -75,7 +75,7 @@ The generation code reads from this map to produce the best possible description
 
 ```go
 // reproduction.go — Reproduction script generation from captured actions.
-// Generates Playwright tests or Gasoline natural language scripts.
+// Generates Playwright tests or Kaboom natural language scripts.
 package main
 ```
 
@@ -88,7 +88,7 @@ Replaces the stub. Parses parameters, fetches actions, dispatches to format-spec
 ```go
 type ReproductionParams struct {
     Format            string `json:"format"`             // always "reproduction"
-    OutputFormat      string `json:"output_format"`      // "gasoline" (default) | "playwright"
+    OutputFormat      string `json:"output_format"`      // "kaboom" (default) | "playwright"
     LastN             int    `json:"last_n"`             // optional: filter to last N actions
     BaseURL           string `json:"base_url"`           // optional: rewrite origins
     IncludeScreenshots bool  `json:"include_screenshots"` // optional: screenshot steps (playwright)
@@ -117,16 +117,16 @@ type ReproductionMeta struct {
 2. Call `h.capture.GetAllEnhancedActions()`
 3. If no actions → return structured error `no_actions_captured`
 4. Apply `last_n` filter (slice from end)
-5. Dispatch to `generateGasolineScript()` or `generateReproPlaywrightScript()`
+5. Dispatch to `generateKaboomScript()` or `generateReproPlaywrightScript()`
 6. Compute metadata (duration, selectors used, counts)
 7. Return `ReproductionResult`
 
-#### 2. `generateGasolineScript()` — Natural Language
+#### 2. `generateKaboomScript()` — Natural Language
 
 Converts actions to numbered human-readable steps.
 
 ```go
-func generateGasolineScript(actions []capture.EnhancedAction, opts ReproductionParams) string
+func generateKaboomScript(actions []capture.EnhancedAction, opts ReproductionParams) string
 ```
 
 ##### Algorithm:
@@ -222,7 +222,7 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 ### E3: Redacted Input Values
 
 **Trigger:** `action.Value == "[redacted]"` (sensitive field like password).
-**Resolution:** Gasoline: `Type "[user-provided]" into: Password field`. Playwright: `await page.{locator}.fill('[user-provided]');`.
+**Resolution:** Kaboom: `Type "[user-provided]" into: Password field`. Playwright: `await page.{locator}.fill('[user-provided]');`.
 
 ### E4: Very Long Scripts (1000 actions)
 
@@ -237,7 +237,7 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 ### E6: Special Characters in Values
 
 **Trigger:** User typed text containing quotes, backslashes, newlines.
-**Resolution:** Escape for Playwright (`'` → `\'`, `\n` → `\\n`). Gasoline uses double-quoted values which handle most cases naturally; newlines rendered as `\n`.
+**Resolution:** Escape for Playwright (`'` → `\'`, `\n` → `\\n`). Kaboom uses double-quoted values which handle most cases naturally; newlines rendered as `\n`.
 
 ### E7: Navigate Actions with No URL
 
@@ -247,7 +247,7 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 ### E8: Mixed Human and AI Actions
 
 **Trigger:** Buffer contains both `Source: "human"` and `Source: "ai"` actions.
-**Resolution:** Include all actions. AI actions annotated with `(AI)` prefix in Gasoline format: `3. (AI) Click: "Submit" button`. No annotation in Playwright.
+**Resolution:** Include all actions. AI actions annotated with `(AI)` prefix in Kaboom format: `3. (AI) Click: "Submit" button`. No annotation in Playwright.
 
 ---
 
@@ -291,12 +291,12 @@ func selectorRole(selectors map[string]any) (role, name string) {
 
 ### Unit Tests (`reproduction_test.go`)
 
-1. **TestReproduction_Gasoline_BasicFlow** — navigate + click + type → verify natural language output
-2. **TestReproduction_Gasoline_AllActionTypes** — one of each type → verify format for every action
-3. **TestReproduction_Gasoline_ElementDescriptionPriority** — verify selector priority chain (text+role > ariaLabel > testId > etc.)
-4. **TestReproduction_Gasoline_TimingPauses** — actions > 2s apart → verify `[Ns pause]` inserted
-5. **TestReproduction_Gasoline_RedactedValues** — password input → `[user-provided]`
-6. **TestReproduction_Gasoline_AIActions** — Source="ai" → `(AI)` prefix
+1. **TestReproduction_Kaboom_BasicFlow** — navigate + click + type → verify natural language output
+2. **TestReproduction_Kaboom_AllActionTypes** — one of each type → verify format for every action
+3. **TestReproduction_Kaboom_ElementDescriptionPriority** — verify selector priority chain (text+role > ariaLabel > testId > etc.)
+4. **TestReproduction_Kaboom_TimingPauses** — actions > 2s apart → verify `[Ns pause]` inserted
+5. **TestReproduction_Kaboom_RedactedValues** — password input → `[user-provided]`
+6. **TestReproduction_Kaboom_AIActions** — Source="ai" → `(AI)` prefix
 7. **TestReproduction_Playwright_BasicFlow** — verify valid Playwright test output
 8. **TestReproduction_Playwright_LocatorPriority** — testId > role > ariaLabel > text > id > cssPath
 9. **TestReproduction_Playwright_URLRewriting** — base_url rewrites origins
@@ -304,7 +304,7 @@ func selectorRole(selectors map[string]any) (role, name string) {
 11. **TestReproduction_EmptyActions** — returns error
 12. **TestReproduction_LastN** — filter to last N actions
 13. **TestReproduction_OutputCap** — 1000 actions doesn't exceed 200KB
-14. **TestReproduction_DefaultFormat** — empty output_format defaults to "gasoline"
+14. **TestReproduction_DefaultFormat** — empty output_format defaults to "kaboom"
 
 ### Integration Test
 
@@ -325,7 +325,7 @@ Run via existing `go test ./cmd/browser-agent/...` — the generate tool dispatc
 ## Implementation Order
 
 1. Write `reproduction_test.go` with tests for both formats (TDD)
-2. Write `reproduction.go` — types, helpers, `generateGasolineScript()`, `generateReproPlaywrightScript()`
+2. Write `reproduction.go` — types, helpers, `generateKaboomScript()`, `generateReproPlaywrightScript()`
 3. Update `toolGetReproductionScript()` in `tools_generate.go` to call new code
 4. Run tests: `go test ./cmd/browser-agent/... -run TestReproduction`
 5. Run full suite: `go test ./... -timeout 120s`

@@ -4,7 +4,7 @@
 // Docs: docs/DEVELOPMENT.md
 
 /**
- * Comprehensive version bump script for Gasoline Agentic Browser
+ * Comprehensive version bump script for Kaboom Agentic Browser
  *
  * Usage: node scripts/bump-version.js <new-version>
  * Example: node scripts/bump-version.js 6.1.0
@@ -68,7 +68,7 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
     'coverage',
     '.claude',
     '.venv-build',
-    '.gasoline',
+    '.kaboom',
     '.worktrees'
   ])
   const ext = new Set(['.js', '.json', '.go', '.ts', '.md', '.py', '.toml', '.sh', '.yaml', '.yml'])
@@ -112,8 +112,8 @@ const CRITICAL_FILES = [
   'server/package.json',
   'cmd/browser-agent/openapi.json',
   'docs/core/async-command-api.yaml',
-  'packages/gasoline-playwright/package.json',
-  'packages/gasoline-ci/package.json',
+  'packages/kaboom-playwright/package.json',
+  'packages/kaboom-ci/package.json',
   'pypi/create-platform-packages.sh'
 ]
 
@@ -149,9 +149,9 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`const version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const version = "${newVersion}"`
     )
-    // Go User-Agent: "Gasoline/6.0.3 ..."
+    // Go User-Agent: "Kaboom/6.0.3 ..."
 
-    updated = updated.replace(new RegExp(`Gasoline/${oldVersion.replace(/\./g, '\\.')}`, 'g'), `Gasoline/${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
+    updated = updated.replace(new RegExp(`Kaboom/${oldVersion.replace(/\./g, '\\.')}`, 'g'), `Kaboom/${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.js') || filePath.endsWith('.ts')) {
     // JavaScript/TypeScript: version: '6.0.1' or version: "6.0.1"
     updated = updated.replace(
@@ -234,7 +234,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
 async function main() {
   const newVersion = process.argv[2]
 
-  log('cyan', '=>', 'Gasoline Agentic Browser Version Bump Script')
+  log('cyan', '=>', 'Kaboom Agentic Browser Version Bump Script')
   log('cyan', '=>', '')
 
   // Step 1: Get current version
@@ -326,7 +326,7 @@ async function main() {
 
   // Step 5b: Normalize the main PyPI pyproject structure defensively.
   const normalizeResult = normalizeMainPyprojectFile(
-    path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml'),
+    path.join(ROOT, 'pypi', 'kaboom-agentic-browser', 'pyproject.toml'),
     {
       write: true
     }
@@ -339,7 +339,7 @@ async function main() {
     log('yellow', '⚠', `Normalized ${normalizedRelPath} (moved dependencies under [project])`)
   }
 
-  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml')
+  const mainPyprojectPath = path.join(ROOT, 'pypi', 'kaboom-agentic-browser', 'pyproject.toml')
   const mainPyprojectContent = fs.readFileSync(mainPyprojectPath, 'utf8')
   const metadataValidation = validateMainPyprojectContent(mainPyprojectContent, { expectedVersion: newVersion })
   if (!metadataValidation.valid) {

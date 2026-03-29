@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.7.0 Released"
+title: KaBOOM v5.7.0 Released"
 description: "New graceful shutdown, PID file management, and sync protocol for better extension connectivity"
 date: 2026-02-05T20:33:00Z
 authors: [brennhill]
@@ -18,12 +18,12 @@ This release focuses on reliability and developer experience improvements, with 
 Stop running servers cleanly with the new `--stop` flag:
 
 ```bash
-gasoline-mcp --stop                # Stop server on default port (7890)
-gasoline-mcp --stop --port 8080    # Stop server on specific port
+kaboom-agentic-browser --stop                # Stop server on default port (7890)
+kaboom-agentic-browser --stop --port 8080    # Stop server on specific port
 ```
 
 The shutdown uses a hybrid approach for maximum reliability:
-1. **PID file** (fast) - Reads process ID from `~/.gasoline-{port}.pid`
+1. **PID file** (fast) - Reads process ID from `~/.kaboom-{port}.pid`
 2. **HTTP endpoint** (graceful) - Sends shutdown request to `/shutdown`
 3. **lsof fallback** - Finds process by port if other methods fail
 
@@ -48,15 +48,15 @@ The `--persist` flag has been removed. The server now always runs as a backgroun
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.7.0
+npx kaboom-agentic-browser@5.7.0
 ```
 
 Or if you've installed globally:
 
 ```bash
-npm install -g gasoline-mcp@5.7.0
+npm install -g kaboom-agentic-browser@5.7.0
 ```
 
 ## Full Changelog
 
-See the complete list of changes on [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.0).
+See the complete list of changes on [GitHub](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.7.0).

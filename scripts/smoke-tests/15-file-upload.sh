@@ -6,9 +6,9 @@
 set -eo pipefail
 
 # Temp directory for all upload tests — must be inside the daemon's default
-# Stage 4 upload-dir (~/gasoline-upload-dir) when bootstrap enables OS upload
+# Stage 4 upload-dir (~/kaboom-upload-dir) when bootstrap enables OS upload
 # automation without an explicit --upload-dir flag.
-UPLOAD_TEST_DIR="${HOME}/gasoline-upload-dir/smoke-upload-$$"
+UPLOAD_TEST_DIR="${HOME}/kaboom-upload-dir/smoke-upload-$$"
 mkdir -p "$UPLOAD_TEST_DIR"
 
 # ── MD5 helper: works on both macOS (md5) and Linux (md5sum) ──
@@ -426,7 +426,7 @@ begin_test "15.2" "[DAEMON ONLY] Upload works without any flag (queues successfu
 
 run_test_15_2() {
     local response
-    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/nonexistent-gasoline-test.txt"}')
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/nonexistent-kaboom-test.txt"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
@@ -512,7 +512,7 @@ begin_test "15.6" "[DAEMON ONLY] Nonexistent file rejected with clear error" \
 
 run_test_15_6() {
     local response
-    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/gasoline-nonexistent-file-12345.txt"}')
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/kaboom-nonexistent-file-12345.txt"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
@@ -555,7 +555,7 @@ begin_test "15.8" "[DAEMON ONLY] Local queue acceptance (no server delivery)" \
 run_test_15_8() {
     # Create a temp file for the upload test
     local test_file="$UPLOAD_TEST_DIR/upload-test.txt"
-    echo "Gasoline upload smoke test content" > "$test_file"
+    echo "Kaboom upload smoke test content" > "$test_file"
 
     local response
     response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
@@ -632,7 +632,7 @@ run_test_15_10() {
     fi
 
     # Create test file with known content
-    local test_content="Gasoline upload E2E $(date +%s)"
+    local test_content="Kaboom upload E2E $(date +%s)"
     local test_file="$UPLOAD_TEST_DIR/upload-15-10.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
@@ -705,7 +705,7 @@ run_test_15_11() {
 
     # Create a test file
     local test_file="$UPLOAD_TEST_DIR/e2e-upload.txt"
-    echo "Gasoline E2E upload content" > "$test_file"
+    echo "Kaboom E2E upload content" > "$test_file"
 
     # Upload and poll for completion
     _upload_and_poll "15.11" "$test_file"
@@ -741,7 +741,7 @@ run_test_15_12() {
         return
     fi
 
-    local test_content="Gasoline full verification $(date +%s)"
+    local test_content="Kaboom full verification $(date +%s)"
     local test_file="$UPLOAD_TEST_DIR/upload-15-12.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
@@ -770,7 +770,7 @@ run_test_15_12() {
     esac
 
     # Fill form fields (title + tags) via execute_js
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill form fields","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test Upload\"; document.querySelector(\"input[name=tags]\").value=\"smoke,gasoline\"; \"fields_set\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill form fields","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test Upload\"; document.querySelector(\"input[name=tags]\").value=\"smoke,kaboom\"; \"fields_set\""}'
     sleep 0.5
 
     # Submit form
@@ -840,7 +840,7 @@ run_test_15_14() {
     interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Attempt upload form without session\"}"
     sleep 1
 
-    # Verify 401 is visible in the browser via execute_js (dogfood — use Gasoline, not curl)
+    # Verify 401 is visible in the browser via execute_js (dogfood — use Kaboom, not curl)
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check 401 page content","script":"document.body.innerText"}'
 
     log_diagnostic "15.14" "401 page content" "$INTERACT_RESULT" ""
@@ -1090,7 +1090,7 @@ run_test_15_16() {
     fi
 
     # Create test file with known content
-    local test_content="Gasoline Stage 4 E2E $(date +%s)"
+    local test_content="Kaboom Stage 4 E2E $(date +%s)"
     local test_file="$UPLOAD_TEST_DIR/upload-15-16.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5

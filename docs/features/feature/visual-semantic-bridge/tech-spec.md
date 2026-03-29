@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-The Visual-Semantic Bridge extends Gasoline's DOM observation pipeline to enrich raw HTML with three layers of metadata:
+The Visual-Semantic Bridge extends Kaboom's DOM observation pipeline to enrich raw HTML with three layers of metadata:
 
 1. **Computed Layout Layer** — Uses browser APIs to calculate visibility, bounding boxes, occlusion
 2. **Semantic Identifier Layer** — Generates and injects unique, stable test-IDs into the DOM
@@ -56,7 +56,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 #### Approach:
 - Scan the DOM for interactive elements (role="button", `<button>`, `<a>`, `<input>`, focusable=true)
 - For each element, generate a semantic ID based on its role + content
-- Format: `data-gasoline-id="[type]-[hash]"` where:
+- Format: `data-kaboom-id="[type]-[hash]"` where:
   - `type` = element type (btn, link, input, checkbox, radio, etc.)
   - `hash` = 4-char alphanumeric hash of a stable identifier (text content, aria-label, aria-labelledby, name attribute)
 
@@ -65,7 +65,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 2. Extract stable label from: text content, `aria-label`, `aria-labelledby`, `title`, `placeholder`, `name`, `id`
 3. Normalize label: lowercase, trim whitespace, remove punctuation
 4. Hash via simple checksum (not cryptographic; we just need uniqueness)
-5. Inject `data-gasoline-id` attribute into the element
+5. Inject `data-kaboom-id` attribute into the element
 6. Store mapping in memory for later retrieval
 
 #### Uniqueness guarantees:
@@ -121,7 +121,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
    - If decorative (svg, img, span with no text): strip
    - If container (div, section): keep if has interactive children or meaningful text
 3. Collapse deep nesting: if a container only has one meaningful child, flatten one level
-4. Output pruned tree with all annotations (gasoline_id, visibility, bounding_box, etc.)
+4. Output pruned tree with all annotations (kaboom_id, visibility, bounding_box, etc.)
 
 #### Size reduction targets:
 - Typical unpruned DOM: 500+ lines of HTML
@@ -143,7 +143,7 @@ Background: Extract DOM tree
   ↓
 Layout Calculator: Walk DOM, compute visibility/bounding boxes for each element
   ↓
-Semantic ID Generator: Assign data-gasoline-id to interactive elements
+Semantic ID Generator: Assign data-kaboom-id to interactive elements
   ↓
 Component Mapper: Link elements back to React/Vue components (if available)
   ↓
@@ -155,7 +155,7 @@ Return enriched DOM to AI
 ### On User Action (AI clicks button)
 
 ```
-AI: interact({action: 'execute_js', script: 'document.querySelector("[data-gasoline-id=\'btn-submit\']").click()'})
+AI: interact({action: 'execute_js', script: 'document.querySelector("[data-kaboom-id=\'btn-submit\']").click()'})
   ↓
 Extension injects click event
   ↓
@@ -177,7 +177,7 @@ AI observes: "Button was visible before, now the form is gone—success!"
 - Measure performance: ensure <50ms for 1000-element page
 
 ### Phase 2: Semantic Identifier Generator (Week 1-2, parallel)
-- Implement `generateGasolineId()` with collision detection
+- Implement `generateKaboomId()` with collision detection
 - Inject into DOM via `setAttribute()` (non-destructive)
 - Store mappings in WeakMap
 - Test stability: reload page, verify same IDs
@@ -206,7 +206,7 @@ AI observes: "Button was visible before, now the form is gone—success!"
 | Case | Description | Handling |
 |------|-------------|----------|
 | **Shadows DOM** | Elements hidden in Shadow DOM | Use `composedPath()` to walk through shadow boundaries |
-| **iframes** | Elements inside `<iframe>` | Gasoline can't access cross-origin iframes; skip them. Same-origin iframes: recursive walk |
+| **iframes** | Elements inside `<iframe>` | Kaboom can't access cross-origin iframes; skip them. Same-origin iframes: recursive walk |
 | **Dynamic content** | Elements added after initial page load | Layout Calculator re-runs on every `observe()` call; captures latest state |
 | **Fixed/Sticky overlays** | Modals, toasts, notifications that float over content | Hit-test algorithm detects these as "covered_by" correctly |
 | **Virtualized lists** | React Window, windowed tables (elements only rendered when in viewport) | Only see elements currently in DOM; off-screen entries are genuinely absent |
@@ -249,7 +249,7 @@ AI observes: "Button was visible before, now the form is gone—success!"
 - **Vue DevTools Protocol** — Hook into Vue 3's `__VUE_DEVTOOLS_GLOBAL_HOOK__` (Vue 2.7+, Vue 3+)
 
 ### No External Dependencies
-- Do not add npm packages (matches Gasoline's zero-deps philosophy)
+- Do not add npm packages (matches Kaboom's zero-deps philosophy)
 - Use only browser APIs and stdlib
 
 ## Performance Considerations
@@ -281,7 +281,7 @@ AI observes: "Button was visible before, now the form is gone—success!"
 - **Bounding boxes** — Safe (layout info, not sensitive)
 
 ### Injection Risks
-- **HTML injection via data-gasoline-id** — Mitigated by using `setAttribute()` (not `innerHTML`)
+- **HTML injection via data-kaboom-id** — Mitigated by using `setAttribute()` (not `innerHTML`)
 - **XSS via component mapping** — Component names are read-only from DevTools hooks (no user input)
 
 ### Privacy Impact

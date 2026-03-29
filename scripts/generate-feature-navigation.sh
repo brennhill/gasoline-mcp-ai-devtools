@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DOCS_DIR="/Users/brenn/dev/gasoline"
+DOCS_DIR="/Users/brenn/dev/kaboom"
 FEATURES_DIR="${DOCS_DIR}/docs/features/feature"
 OUTPUT_FILE="${DOCS_DIR}/docs/features/FEATURE-NAVIGATION.md"
 

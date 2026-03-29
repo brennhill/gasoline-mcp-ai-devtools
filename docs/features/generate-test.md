@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 
 You fixed a bug. You manually verified it works. But without a regression test, it'll break again next sprint. Writing that test is tedious — you have to remember what you clicked, what API calls fired, and what the responses looked like.
 
-Meanwhile, Gasoline already captured all of it.
+Meanwhile, Kaboom already captured all of it.
 
 ## The Solution
 
@@ -25,7 +25,7 @@ Meanwhile, Gasoline already captured all of it.
 ```
 You click around your app fixing a bug
          ↓
-Gasoline captures actions + network + console
+Kaboom captures actions + network + console
          ↓
 AI calls generate_test
          ↓
@@ -36,7 +36,7 @@ Playwright test with assertions, ready for CI
 
 Most record-and-replay tools produce fragile scripts that just click buttons. `generate_test` produces a **regression test**:
 
-| Replay Script | Gasoline `generate_test` |
+| Replay Script | Kaboom `generate_test` |
 |---------------|--------------------------|
 | Clicks buttons | Clicks buttons |
 | No network assertions | Asserts API status codes |
@@ -94,7 +94,7 @@ Passwords are automatically redacted. Selectors prefer `data-testid` and ARIA ro
 
 ### 1. Session Timeline
 
-Gasoline correlates three data sources into a unified timeline:
+Kaboom correlates three data sources into a unified timeline:
 
 - **User actions** — clicks, inputs, keypresses, navigation, scrolls
 - **Network requests** — URL, method, status, response body, timing
@@ -104,7 +104,7 @@ Each network request is attributed to the preceding user action that triggered i
 
 ### 2. Response Shape Extraction
 
-For JSON API responses, Gasoline extracts the *structural type signature* — field names and types, never values:
+For JSON API responses, Kaboom extracts the *structural type signature* — field names and types, never values:
 
 ```
 Response: {"id": 42, "name": "Project", "tasks": [{"title": "Todo"}]}
@@ -126,7 +126,7 @@ This means your test asserts the API contract, not specific data that changes be
 
 ### 4. Selector Priority
 
-Gasoline computes multiple selector strategies for every interaction and picks the most resilient:
+Kaboom computes multiple selector strategies for every interaction and picks the most resilient:
 
 1. `data-testid` — `getByTestId('submit-btn')`
 2. ARIA role + name — `getByRole('button', { name: 'Submit' })`
@@ -210,8 +210,8 @@ The `base_url` parameter rewrites captured URLs (e.g., from `https://staging.exa
 
 ## Getting Started
 
-1. Install [Gasoline](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp) (extension + server)
-2. Use your app normally — Gasoline captures actions in the background
+1. Install [Kaboom](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp) (extension + server)
+2. Use your app normally — Kaboom captures actions in the background
 3. Ask your AI assistant: *"Generate a regression test from my session"*
 4. Save the output as a `.spec.ts` file and run with `npx playwright test`
 

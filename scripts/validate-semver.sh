@@ -1,5 +1,5 @@
 #!/bin/bash
-# Validate strict semver versioning across Gasoline
+# Validate strict semver versioning across Kaboom
 # Ensures all version strings are X.Y.Z format (no pre-release, no build metadata)
 # Run: ./scripts/validate-semver.sh
 

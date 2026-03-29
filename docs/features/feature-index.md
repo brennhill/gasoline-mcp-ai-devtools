@@ -13,7 +13,7 @@ last_verified_date: 2026-03-05
 
 # Feature Index
 
-> **For LLM agents:** This is the canonical index of all Gasoline features. Use the `status` column to determine what is implemented vs. planned. Use the `tool` and `mode` columns to find the correct MCP interface.
+> **For LLM agents:** This is the canonical index of all Kaboom features. Use the `status` column to determine what is implemented vs. planned. Use the `tool` and `mode` columns to find the correct MCP interface.
 
 ## Status Legend
 
@@ -48,7 +48,7 @@ last_verified_date: 2026-03-05
 | Enterprise Audit | shipped | analyze | security_audit | 5.0.0 | [feature/enterprise-audit](feature/enterprise-audit/) |
 | Error Clustering | shipped | analyze | error_clusters | 5.0.0 | [feature/error-clustering](feature/error-clustering/) |
 | Framework Selector Resilience | shipped | analyze, interact | page_structure, navigate/click/type/list_interactive/wait_for | 0.7.12 | [feature/framework-selector-resilience](feature/framework-selector-resilience/) |
-| Gasoline CI | proposed | observe, generate | CI integration | — | [feature/gasoline-ci](feature/gasoline-ci/) |
+| Kaboom CI | proposed | observe, generate | CI integration | — | [feature/kaboom-ci](feature/kaboom-ci/) |
 | HAR Export | deprecated | — | — | 5.0.0 | [feature/har-export](feature/har-export/) |
 | In-Browser Agent Panel | proposed | observe, analyze, interact, configure | agent_panel, agent_watch (proposed) | — | [feature/in-browser-agent-panel](feature/in-browser-agent-panel/) |
 | Interception Deferral | in-progress | observe, configure | (network buffering) | — | [feature/interception-deferral](feature/interception-deferral/) |

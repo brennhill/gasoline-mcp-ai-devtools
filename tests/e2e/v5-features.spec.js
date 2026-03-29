@@ -21,7 +21,7 @@ test.describe('v5: Multi-Strategy Selectors', () => {
 
     const selectors = await page.evaluate(() => {
       const el = document.querySelector('[data-testid="email-input"]')
-      return window.__gasoline.getSelectors(el)
+      return window.__kaboom.getSelectors(el)
     })
 
     expect(selectors.testId).toBe('email-input')
@@ -36,7 +36,7 @@ test.describe('v5: Multi-Strategy Selectors', () => {
 
     const selectors = await page.evaluate(() => {
       const el = document.querySelector('[data-testid="login-btn"]')
-      return window.__gasoline.getSelectors(el)
+      return window.__kaboom.getSelectors(el)
     })
 
     expect(selectors.testId).toBe('login-btn')
@@ -52,7 +52,7 @@ test.describe('v5: Multi-Strategy Selectors', () => {
 
     const selectors = await page.evaluate(() => {
       const el = document.querySelector('[data-cy="action-btn"]')
-      return window.__gasoline.getSelectors(el)
+      return window.__kaboom.getSelectors(el)
     })
 
     expect(selectors.testId).toBe('action-btn')
@@ -64,7 +64,7 @@ test.describe('v5: Multi-Strategy Selectors', () => {
 
     const selectors = await page.evaluate(() => {
       const el = document.querySelector('#nav-profile')
-      return window.__gasoline.getSelectors(el)
+      return window.__kaboom.getSelectors(el)
     })
 
     expect(selectors.id).toBe('nav-profile')
@@ -76,7 +76,7 @@ test.describe('v5: Multi-Strategy Selectors', () => {
 
     const selectors = await page.evaluate(() => {
       const el = document.querySelector('[aria-label="Settings page"]')
-      return window.__gasoline.getSelectors(el)
+      return window.__kaboom.getSelectors(el)
     })
 
     expect(selectors.ariaLabel).toBe('Settings page')
@@ -89,9 +89,9 @@ test.describe('v5: Enhanced Action Recording', () => {
     await page.waitForTimeout(1000)
 
     const action = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const el = document.querySelector('[data-testid="login-btn"]')
-      return window.__gasoline.recordAction('click', el)
+      return window.__kaboom.recordAction('click', el)
     })
 
     expect(action.type).toBe('click')
@@ -106,9 +106,9 @@ test.describe('v5: Enhanced Action Recording', () => {
     await page.waitForTimeout(1000)
 
     const action = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const el = document.querySelector('[data-testid="email-input"]')
-      return window.__gasoline.recordAction('input', el, { value: 'test@example.com' })
+      return window.__kaboom.recordAction('input', el, { value: 'test@example.com' })
     })
 
     expect(action.type).toBe('input')
@@ -121,9 +121,9 @@ test.describe('v5: Enhanced Action Recording', () => {
     await page.waitForTimeout(1000)
 
     const action = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const el = document.querySelector('[data-testid="password-input"]')
-      return window.__gasoline.recordAction('input', el, { value: 'supersecret' })
+      return window.__kaboom.recordAction('input', el, { value: 'supersecret' })
     })
 
     expect(action.value).toBe('[redacted]')
@@ -134,15 +134,15 @@ test.describe('v5: Enhanced Action Recording', () => {
     await page.waitForTimeout(1000)
 
     const bufferSize = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
       const input = document.querySelector('[data-testid="email-input"]')
 
-      window.__gasoline.recordAction('click', btn)
-      window.__gasoline.recordAction('input', input, { value: 'test@test.com' })
-      window.__gasoline.recordAction('click', btn)
+      window.__kaboom.recordAction('click', btn)
+      window.__kaboom.recordAction('input', input, { value: 'test@test.com' })
+      window.__kaboom.recordAction('click', btn)
 
-      return window.__gasoline.getEnhancedActions().length
+      return window.__kaboom.getEnhancedActions().length
     })
 
     expect(bufferSize).toBe(3)
@@ -153,14 +153,14 @@ test.describe('v5: Enhanced Action Recording', () => {
     await page.waitForTimeout(1000)
 
     const bufferSize = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
 
       for (let i = 0; i < 60; i++) {
-        window.__gasoline.recordAction('click', btn)
+        window.__kaboom.recordAction('click', btn)
       }
 
-      return window.__gasoline.getEnhancedActions().length
+      return window.__kaboom.getEnhancedActions().length
     })
 
     expect(bufferSize).toBeLessThanOrEqual(50)
@@ -173,14 +173,14 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
       const emailInput = document.querySelector('[data-testid="email-input"]')
 
-      window.__gasoline.recordAction('input', emailInput, { value: 'user@test.com' })
-      window.__gasoline.recordAction('click', btn)
+      window.__kaboom.recordAction('input', emailInput, { value: 'user@test.com' })
+      window.__kaboom.recordAction('click', btn)
 
-      return window.__gasoline.generateScript(null, { errorMessage: 'Login failed' })
+      return window.__kaboom.generateScript(null, { errorMessage: 'Login failed' })
     })
 
     expect(script).toContain("import { test, expect } from '@playwright/test'")
@@ -199,10 +199,10 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
-      window.__gasoline.recordAction('click', btn)
-      return window.__gasoline.generateScript()
+      window.__kaboom.recordAction('click', btn)
+      return window.__kaboom.generateScript()
     })
 
     expect(script).toContain("getByTestId('login-btn')")
@@ -213,10 +213,10 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const pw = document.querySelector('[data-testid="password-input"]')
-      window.__gasoline.recordAction('input', pw, { value: 'secret123' })
-      return window.__gasoline.generateScript()
+      window.__kaboom.recordAction('input', pw, { value: 'secret123' })
+      return window.__kaboom.generateScript()
     })
 
     expect(script).not.toContain('secret123')
@@ -228,10 +228,10 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const select = document.querySelector('[data-testid="country-select"]')
-      window.__gasoline.recordAction('select', select, { selectedValue: 'us', selectedText: 'United States' })
-      return window.__gasoline.generateScript()
+      window.__kaboom.recordAction('select', select, { selectedValue: 'us', selectedText: 'United States' })
+      return window.__kaboom.generateScript()
     })
 
     expect(script).toContain("selectOption('us')")
@@ -242,11 +242,11 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const input = document.querySelector('[data-testid="email-input"]')
-      window.__gasoline.recordAction('input', input, { value: 'test@test.com' })
-      window.__gasoline.recordAction('keypress', input, { key: 'Enter' })
-      return window.__gasoline.generateScript()
+      window.__kaboom.recordAction('input', input, { value: 'test@test.com' })
+      window.__kaboom.recordAction('keypress', input, { key: 'Enter' })
+      return window.__kaboom.generateScript()
     })
 
     expect(script).toContain("keyboard.press('Enter')")
@@ -257,10 +257,10 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
-      window.__gasoline.recordAction('click', btn)
-      return window.__gasoline.generateScript(null, { baseUrl: 'http://localhost:4000' })
+      window.__kaboom.recordAction('click', btn)
+      return window.__kaboom.generateScript(null, { baseUrl: 'http://localhost:4000' })
     })
 
     expect(script).toContain('localhost:4000')
@@ -271,8 +271,8 @@ test.describe('v5: Playwright Script Generation', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
-      return window.__gasoline.generateScript()
+      window.__kaboom.clearEnhancedActions()
+      return window.__kaboom.generateScript()
     })
 
     expect(script).toContain("import { test, expect } from '@playwright/test'")
@@ -296,7 +296,7 @@ test.describe('v5: AI Context Enrichment', () => {
         lineno: 42,
         _enrichments: []
       }
-      return await window.__gasoline.enrichError(error)
+      return await window.__kaboom.enrichError(error)
     })
 
     expect(enriched._aiContext).toBeDefined()
@@ -310,7 +310,7 @@ test.describe('v5: AI Context Enrichment', () => {
     await page.waitForTimeout(1000)
 
     const enriched = await page.evaluate(async () => {
-      window.__gasoline.setStateSnapshot(true)
+      window.__kaboom.setStateSnapshot(true)
       const error = {
         type: 'exception',
         level: 'error',
@@ -318,8 +318,8 @@ test.describe('v5: AI Context Enrichment', () => {
         stack: 'Error: auth failed\n    at fn (http://localhost:3000/main.js:10:5)',
         _enrichments: []
       }
-      const result = await window.__gasoline.enrichError(error)
-      window.__gasoline.setStateSnapshot(false)
+      const result = await window.__kaboom.enrichError(error)
+      window.__kaboom.setStateSnapshot(false)
       return result
     })
 
@@ -335,7 +335,7 @@ test.describe('v5: AI Context Enrichment', () => {
     await page.waitForTimeout(1000)
 
     const enriched = await page.evaluate(async () => {
-      window.__gasoline.setAiContext(false)
+      window.__kaboom.setAiContext(false)
       const error = {
         type: 'exception',
         level: 'error',
@@ -343,8 +343,8 @@ test.describe('v5: AI Context Enrichment', () => {
         stack: 'Error: test',
         _enrichments: []
       }
-      const result = await window.__gasoline.enrichError(error)
-      window.__gasoline.setAiContext(true) // Re-enable
+      const result = await window.__kaboom.enrichError(error)
+      window.__kaboom.setAiContext(true) // Re-enable
       return result
     })
 
@@ -367,7 +367,7 @@ test.describe('v5: AI Context Enrichment', () => {
         stack: 'Error: Button click error\n    at handleClick (app.js:10:5)',
         _enrichments: []
       }
-      return await window.__gasoline.enrichError(error)
+      return await window.__kaboom.enrichError(error)
     })
 
     expect(enriched._aiContext).toBeDefined()
@@ -392,7 +392,7 @@ test.describe('v5: AI Context Enrichment', () => {
         stack: 'Error: timeout\n    at fn (http://localhost:3000/main.js:10:5)',
         _enrichments: []
       }
-      await window.__gasoline.enrichError(error)
+      await window.__kaboom.enrichError(error)
       return Date.now() - start
     })
 
@@ -406,7 +406,7 @@ test.describe('v5: Full Integration Flow', () => {
     await page.waitForTimeout(1000)
 
     // Clear the buffer first
-    await page.evaluate(() => window.__gasoline.clearEnhancedActions())
+    await page.evaluate(() => window.__kaboom.clearEnhancedActions())
 
     // Record a series of user actions programmatically
     const script = await page.evaluate(() => {
@@ -414,11 +414,11 @@ test.describe('v5: Full Integration Flow', () => {
       const password = document.querySelector('[data-testid="password-input"]')
       const loginBtn = document.querySelector('[data-testid="login-btn"]')
 
-      window.__gasoline.recordAction('input', email, { value: 'user@example.com' })
-      window.__gasoline.recordAction('input', password, { value: 'secret' })
-      window.__gasoline.recordAction('click', loginBtn)
+      window.__kaboom.recordAction('input', email, { value: 'user@example.com' })
+      window.__kaboom.recordAction('input', password, { value: 'secret' })
+      window.__kaboom.recordAction('click', loginBtn)
 
-      return window.__gasoline.generateScript(null, {
+      return window.__kaboom.generateScript(null, {
         errorMessage: "Cannot read properties of undefined (reading 'user')"
       })
     })
@@ -440,19 +440,19 @@ test.describe('v5: Full Integration Flow', () => {
     await page.waitForTimeout(1000)
 
     const script = await page.evaluate(() => {
-      window.__gasoline.clearEnhancedActions()
+      window.__kaboom.clearEnhancedActions()
       const btn = document.querySelector('[data-testid="login-btn"]')
       const email = document.querySelector('[data-testid="email-input"]')
 
       // Record 5 actions
-      window.__gasoline.recordAction('input', email, { value: 'a@b.com' })
-      window.__gasoline.recordAction('click', btn)
-      window.__gasoline.recordAction('input', email, { value: 'c@d.com' })
-      window.__gasoline.recordAction('click', btn)
-      window.__gasoline.recordAction('click', btn)
+      window.__kaboom.recordAction('input', email, { value: 'a@b.com' })
+      window.__kaboom.recordAction('click', btn)
+      window.__kaboom.recordAction('input', email, { value: 'c@d.com' })
+      window.__kaboom.recordAction('click', btn)
+      window.__kaboom.recordAction('click', btn)
 
       // Only get last 2
-      return window.__gasoline.generateScript(null, { lastNActions: 2 })
+      return window.__kaboom.generateScript(null, { lastNActions: 2 })
     })
 
     // Should only have the last 2 actions

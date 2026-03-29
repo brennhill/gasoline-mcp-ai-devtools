@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // doctorCheck represents a single diagnostic check result.
@@ -65,7 +65,7 @@ func runDoctorChecks(cap *capture.Store) []doctorCheck {
 		checks = append(checks, doctorCheck{
 			Name: "extension_connected", Status: "fail",
 			Detail: "Extension is not connected",
-			Fix:    "Open the Gasoline extension popup and verify it shows 'Connected'. If not, click the extension icon or reload the page.",
+			Fix:    "Open the Kaboom extension popup and verify it shows 'Connected'. If not, click the extension icon or reload the page.",
 		})
 	}
 

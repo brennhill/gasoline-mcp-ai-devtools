@@ -168,7 +168,7 @@ func (s *Server) appendToFile(entries []LogEntry) error {
 
 		// Alert to stderr (but don't spam)
 		if dropped%1000 == 1 { // Alert on 1st, 1001st, 2001st, etc.
-			stderrf("[gasoline] WARNING: Log buffer full, %d logs dropped\n", dropped)
+			stderrf("[Kaboom] WARNING: Log buffer full, %d logs dropped\n", dropped)
 		}
 
 		return fmt.Errorf("log buffer full (%d total drops)", dropped)

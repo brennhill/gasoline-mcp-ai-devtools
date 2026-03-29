@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 func (s *SecurityScanner) runSecurityChecks(checkSet map[string]bool, bodies []capture.NetworkBody, input SecurityScanInput) []SecurityFinding {

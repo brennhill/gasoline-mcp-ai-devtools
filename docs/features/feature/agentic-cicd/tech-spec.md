@@ -24,18 +24,18 @@ last_verified_date: 2026-03-05
 
 ## Important: Architecture Clarification
 
-**Phase 8 features are NOT Gasoline MCP tools.** They are:
+**Phase 8 features are NOT Kaboom MCP tools.** They are:
 
-1. **Claude Code skills** — Workflow definitions that orchestrate existing Gasoline tools
+1. **Claude Code skills** — Workflow definitions that orchestrate existing Kaboom tools
 2. **CI integration scripts** — GitHub Actions / GitLab CI that spawn agents
 3. **Webhook handlers** — Receive events and dispatch agents
 
-Gasoline provides the **observation primitives**. Phase 8 composes them into autonomous workflows.
+Kaboom provides the **observation primitives**. Phase 8 composes them into autonomous workflows.
 
 | Layer | Responsibility | Implementation |
 |-------|----------------|----------------|
-| Gasoline | Observe browser state | MCP tools (existing) |
-| CI Infrastructure | Run tests with capture | `/snapshot`, `/clear`, `gasoline-ci.js` |
+| Kaboom | Observe browser state | MCP tools (existing) |
+| CI Infrastructure | Run tests with capture | `/snapshot`, `/clear`, `kaboom-ci.js` |
 | Claude Code Skills | Orchestrate diagnosis + fix | `.claude/skills/*.md` |
 | CI Integration | Trigger skills on failure | GitHub Actions, webhooks |
 
@@ -45,7 +45,7 @@ Gasoline provides the **observation primitives**. Phase 8 composes them into aut
 
 Phase 8 features enable AI to **close the feedback loop autonomously**. Unlike traditional observability tools that surface problems for humans to fix, these features let AI agents observe, diagnose, and repair issues without human intervention.
 
-This is the key differentiator: Gasoline doesn't just tell you what's wrong — it enables AI to fix it.
+This is the key differentiator: Kaboom doesn't just tell you what's wrong — it enables AI to fix it.
 
 ## Thesis
 
@@ -60,7 +60,7 @@ Human notices bug → Human describes to AI → AI suggests fix → Human applie
 
 ### Agentic flow:
 ```
-AI observes via Gasoline → AI diagnoses root cause → AI implements fix → AI verifies fix worked
+AI observes via Kaboom → AI diagnoses root cause → AI implements fix → AI verifies fix worked
 ```
 
 ## Features
@@ -72,33 +72,33 @@ AI observes via Gasoline → AI diagnoses root cause → AI implements fix → A
 - Stale selectors (UI changed)
 - Contract changes (API responses evolved)
 
-**Solution:** AI agent observes test failure, uses Gasoline to capture browser state during failure, diagnoses root cause, and fixes the test or underlying code.
+**Solution:** AI agent observes test failure, uses Kaboom to capture browser state during failure, diagnoses root cause, and fixes the test or underlying code.
 
-**Implementation:** Claude Code skill, NOT a Gasoline tool.
+**Implementation:** Claude Code skill, NOT a Kaboom tool.
 
 #### Prerequisites:
 - ✅ Tab targeting (Phase 0) — completed
 - ✅ Verification loop (`verify_fix`) — completed
-- ⚠️ Gasoline CI infrastructure — required for headless capture
+- ⚠️ Kaboom CI infrastructure — required for headless capture
 
 #### CI Dependency Check:
 
-The skill must verify Gasoline is running before attempting diagnosis:
+The skill must verify Kaboom is running before attempting diagnosis:
 
 ```yaml
 # In skill definition
 preconditions:
   - check: http://127.0.0.1:7890/health
     expect: status 200
-    on_fail: "Gasoline server not running. Start with: npx gasoline-mcp"
+    on_fail: "Kaboom server not running. Start with: npx kaboom-mcp"
 ```
 
 ## Workflow:
 ```
 1. CI runs tests, one fails
 2. Agent receives failure notification (webhook or poll)
-3. Agent checks Gasoline is running (GET /health)
-4. Agent re-runs failing test with Gasoline capture enabled
+3. Agent checks Kaboom is running (GET /health)
+4. Agent re-runs failing test with Kaboom capture enabled
 5. Agent calls /snapshot to get browser state at failure
 6. Agent observes: console errors, network requests, DOM state
 7. Agent diagnoses: "Selector '.submit-btn' not found, button now has class '.btn-submit'"
@@ -108,7 +108,7 @@ preconditions:
 11. Agent commits fix with explanation
 ```
 
-## Gasoline tools used:
+## Kaboom tools used:
 - `GET /snapshot` — All browser state at failure point (CI endpoint)
 - `observe {what: "errors"}` — Console errors during test
 - `observe {what: "network"}` — API responses
@@ -116,7 +116,7 @@ preconditions:
 - `verify_fix` — Before/after comparison to confirm fix worked
 - `analyze {target: "changes"}` — What changed since last passing run
 
-**Key insight:** Gasoline's DOM observation and network capture give AI the same visibility a developer would have in DevTools, but programmatically accessible.
+**Key insight:** Kaboom's DOM observation and network capture give AI the same visibility a developer would have in DevTools, but programmatically accessible.
 
 ## Edge Cases:
 
@@ -156,12 +156,12 @@ preconditions:
 8. Agent verifies all affected tests pass
 ```
 
-#### Gasoline tools used:
+#### Kaboom tools used:
 - `observe {what: "network"}` — Actual API response
 - `analyze {target: "api"}` — Inferred API schema from traffic
 - `validate_api` — Compare expected vs actual contract
 
-**Key insight:** Gasoline's API schema inference from observed traffic means AI knows what the API *actually* returns, not what documentation *claims* it returns.
+**Key insight:** Kaboom's API schema inference from observed traffic means AI knows what the API *actually* returns, not what documentation *claims* it returns.
 
 ---
 
@@ -187,7 +187,7 @@ preconditions:
 8. Agent comments on PR with fix, or pushes fix commit
 ```
 
-#### Gasoline tools used:
+#### Kaboom tools used:
 - `browser_action {action: "navigate", url: "..."}` — Open preview
 - `execute_javascript` — Interact with page
 - `observe {what: "errors"}` — Runtime errors
@@ -221,7 +221,7 @@ preconditions:
 9. Agent notifies: Posts to Slack with diagnosis
 ```
 
-#### Gasoline tools used:
+#### Kaboom tools used:
 - `diff_sessions` — Compare before/after state
 - `observe {what: "errors"}` — New errors post-deploy
 - `analyze {target: "performance"}` — Performance regressions
@@ -240,23 +240,23 @@ preconditions:
 | 35. PR Preview Exploration | Tab targeting (0), Browser actions |
 | 36. Deployment Watchdog | Session comparison (4), Context streaming (5) |
 
-Phase 8 features are **high-level orchestrations** built on Phase 0-7 primitives. They don't require new Gasoline capture mechanisms — they compose existing tools into autonomous workflows.
+Phase 8 features are **high-level orchestrations** built on Phase 0-7 primitives. They don't require new Kaboom capture mechanisms — they compose existing tools into autonomous workflows.
 
 ## Implementation Notes
 
-### Not Gasoline features — Agent patterns
+### Not Kaboom features — Agent patterns
 
-These features aren't MCP tools. They're **agent behavior patterns** that use existing Gasoline tools. Implementation lives in:
+These features aren't MCP tools. They're **agent behavior patterns** that use existing Kaboom tools. Implementation lives in:
 
 1. **Claude Code skills** — `/self-heal`, `/watch-deploy`
 2. **CI integration scripts** — GitHub Actions that spawn agents
 3. **Webhook handlers** — Receive events, dispatch agents
 
-### Gasoline's role
+### Kaboom's role
 
-Gasoline provides the **observation layer** that makes these workflows possible:
+Kaboom provides the **observation layer** that makes these workflows possible:
 
-| Without Gasoline | With Gasoline |
+| Without Kaboom | With Kaboom |
 |------------------|---------------|
 | AI sees: "Test failed" | AI sees: Console error, network 404, DOM state |
 | AI guesses at cause | AI diagnoses from evidence |
@@ -273,7 +273,7 @@ triggers:
 workflow:
   - run_test_with_capture:
       test: ${{ trigger.test_name }}
-      gasoline: true
+      kaboom: true
   - observe_failure:
       tools: [errors, network, dom]
   - diagnose:
@@ -317,9 +317,9 @@ workflow:
 | Sentry | Errors only | Stack trace | ❌ |
 | Datadog | Metrics | Anomaly detection | ❌ |
 | LaunchDarkly | Feature flags | ❌ | Rollback only |
-| **Gasoline + AI** | Full browser state | AI reasoning | AI implements fix |
+| **Kaboom + AI** | Full browser state | AI reasoning | AI implements fix |
 
-No existing tool combines deep browser observation with AI-driven repair. This is Gasoline's moat.
+No existing tool combines deep browser observation with AI-driven repair. This is Kaboom's moat.
 
 ## Timeline
 

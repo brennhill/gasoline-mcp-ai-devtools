@@ -1,5 +1,5 @@
 // session_store.go — Shared session state for all hooks.
-// Manages append-only JSONL session log in ~/.gasoline/sessions/<session-id>/.
+// Manages append-only JSONL session log in ~/.kaboom/sessions/<session-id>/.
 // All hooks import this package for cross-hook session awareness.
 
 package hook
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	sessionBaseDir     = ".gasoline/sessions"
+	sessionBaseDir     = ".kaboom/sessions"
 	touchesFile        = "touches.jsonl"
 	metaFile           = "meta.json"
 	staleSessionAge    = 8 * time.Hour

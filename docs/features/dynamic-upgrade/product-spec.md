@@ -10,11 +10,11 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-When users install a new gasoline binary (npm, pip, or manual copy), the old daemon keeps running because the installer didn't kill it or the user doesn't know how to restart. The existing version mismatch recovery only triggers when a **new bridge process** connects. If no new bridge connects, the old daemon runs indefinitely.
+When users install a new kaboom binary (npm, pip, or manual copy), the old daemon keeps running because the installer didn't kill it or the user doesn't know how to restart. The existing version mismatch recovery only triggers when a **new bridge process** connects. If no new bridge connects, the old daemon runs indefinitely.
 
 ## User Stories
 
-1. **As a user upgrading gasoline-mcp**, I want the daemon to detect the new binary on disk and auto-restart, so I always get the latest version without manual intervention.
+1. **As a user upgrading kaboom-mcp**, I want the daemon to detect the new binary on disk and auto-restart, so I always get the latest version without manual intervention.
 
 2. **As a user**, I want to see a notice in tool responses when an upgrade is detected, so I know a restart is imminent.
 
@@ -31,7 +31,7 @@ When users install a new gasoline binary (npm, pip, or manual copy), the old dae
 
 2. **Version Verification**
    - Runs `<binary> --version` with 5-second timeout
-   - Parses output matching "gasoline v0.8.1" or bare "0.8.1"
+   - Parses output matching "kaboom v0.8.1" or bare "0.8.1"
    - Only triggers upgrade for strictly newer semver (not same, not older)
 
 3. **Graceful Shutdown**
@@ -45,7 +45,7 @@ When users install a new gasoline binary (npm, pip, or manual copy), the old dae
    - Health endpoint reports `upgrade_pending` when detected
 
 5. **Upgrade Marker**
-   - Before shutdown, writes `~/.gasoline/run/last-upgrade.json`
+   - Before shutdown, writes `~/.kaboom/run/last-upgrade.json`
    - New daemon reads and clears the marker on startup
    - Marker contains `from_version`, `to_version`, `timestamp`
 
@@ -59,7 +59,7 @@ When users install a new gasoline binary (npm, pip, or manual copy), the old dae
 
 ## Configuration
 
-- `GASOLINE_NO_AUTO_UPGRADE=1` disables the watcher entirely
+- `KABOOM_NO_AUTO_UPGRADE=1` disables the watcher entirely
 
 ## Edge Cases
 

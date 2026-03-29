@@ -16,9 +16,9 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Currently, Gasoline's smoke tests and integration tests rely heavily on external websites like `example.com`. While this proves the tool works on the open web, it introduces severe reliability issues: external sites change their DOM, experience downtime, or throttle requests, leading to flaky tests. Furthermore, we cannot reliably trigger edge cases like specific Web Vitals regressions, complex accessibility violations, or React-specific event traps on generic external sites.
+Currently, Kaboom's smoke tests and integration tests rely heavily on external websites like `example.com`. While this proves the tool works on the open web, it introduces severe reliability issues: external sites change their DOM, experience downtime, or throttle requests, leading to flaky tests. Furthermore, we cannot reliably trigger edge cases like specific Web Vitals regressions, complex accessibility violations, or React-specific event traps on generic external sites.
 
-The goal is to build a deterministic, self-hosted test harness served from `tests/pages/` that contains a suite of deliberately vulnerable, noisy, and complex web pages. This will serve as the definitive proving ground for every single tool and capability in the Gasoline MCP suite.
+The goal is to build a deterministic, self-hosted test harness served from `tests/pages/` that contains a suite of deliberately vulnerable, noisy, and complex web pages. This will serve as the definitive proving ground for every single tool and capability in the Kaboom MCP suite.
 
 External sites (like Binance, X/Twitter, or LinkedIn) should be the exception, reserved strictly for testing advanced anti-bot evasion or cross-origin restrictions in real-world scenarios.
 
@@ -26,7 +26,7 @@ External sites (like Binance, X/Twitter, or LinkedIn) should be the exception, r
 
 ## Opportunity & Business Value
 
-1. **Zero Flakiness:** Tests become 100% deterministic. If a test fails, it is guaranteed to be a regression in Gasoline, not a change in a third-party website.
+1. **Zero Flakiness:** Tests become 100% deterministic. If a test fails, it is guaranteed to be a regression in Kaboom, not a change in a third-party website.
 2. **Offline Capable:** CI pipelines and local development won't require external network access for the core test suite.
 3. **Edge Case Validation:** We can explicitly program pages to fail in specific ways (e.g., a button that only appears after 3 seconds, a script that throws an `UnhandledPromiseRejection` on click, a massive CLS shift).
 4. **LLM Training Ground:** These pages will serve as perfect examples of "what bad looks like" for LLMs to practice diagnosing and fixing using the MCP tools.
@@ -85,7 +85,7 @@ Implemented as:
 ### Refactoring `smoke-test.sh`
 The existing smoke tests will be updated to point to `http://localhost:8080/interact.html` (or similar) instead of `https://example.com`. 
 
-The test validations will be tightened. Instead of checking if `example.com` loaded, we will assert that Gasoline specifically caught the 800ms long task on `performance.html` or successfully navigated the React event trap on `interact.html`.
+The test validations will be tightened. Instead of checking if `example.com` loaded, we will assert that Kaboom specifically caught the 800ms long task on `performance.html` or successfully navigated the React event trap on `interact.html`.
 
 Implemented migration strategy:
 * `scripts/smoke-tests/framework-smoke.sh` now starts the local harness automatically.

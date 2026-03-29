@@ -10,7 +10,7 @@ authors = [
 
 [project.urls]
 Homepage = "https://gokaboom.dev"
-Repository = "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp"
+Repository = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

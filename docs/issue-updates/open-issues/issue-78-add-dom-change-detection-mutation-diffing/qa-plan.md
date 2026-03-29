@@ -1,7 +1,7 @@
 # QA Plan: Issue #78
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/78
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/78
 - Title: Add DOM change detection / mutation diffing
 
 ## QA Goal

@@ -49,7 +49,7 @@ configure({action: "clear"})
 1. ❌ **Reload extension** - Loses all state, breaks workflows
 2. ❌ **Refresh page** - Not always possible (loses app state)
 3. ❌ **Live with stale data** - Confuses AI, wastes tokens
-4. ❌ **Restart Gasoline server** - Nuclear option, loses everything
+4. ❌ **Restart Kaboom server** - Nuclear option, loses everything
 
 ---
 

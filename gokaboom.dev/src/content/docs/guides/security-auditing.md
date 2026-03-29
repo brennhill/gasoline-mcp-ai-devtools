@@ -1,12 +1,12 @@
 ---
 title: "Security Auditing & Hardening"
-description: "Use.gasoline's security tools to audit credentials, PII, headers, cookies, third-party scripts, and transport security. Generate CSP headers and SRI hashes. Track security regressions."
+description: "Use KaBOOM's security tools to audit credentials, PII, headers, cookies, third-party scripts, and transport security. Generate CSP headers and SRI hashes. Track security regressions."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'security', 'auditing']
 ---
 
-STRUM turns your AI assistant into a security auditor. Six check categories scan live browser traffic for vulnerabilities, two generators produce security artifacts, and recording comparison catches regressions before they ship.
+KaBOOM turns your AI assistant into a security auditor. Six check categories scan live browser traffic for vulnerabilities, two generators produce security artifacts, and recording comparison catches regressions before they ship.
 
 ## Full Security Audit
 
@@ -316,7 +316,7 @@ configure({action: "log_diff", original_id: "rec-secured", replay_id: "rec-post-
 
 ## Automatic Credential Redaction
 
-Independent of auditing,.gasoline automatically protects against accidental data exposure:
+Independent of auditing, KaBOOM automatically protects against accidental data exposure:
 
 **Extension layer** (before data leaves the browser):
 - Strips `Authorization`, `Cookie`, `Set-Cookie` headers

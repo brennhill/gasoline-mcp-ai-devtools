@@ -51,8 +51,8 @@ test('bash installer uses staged extension promotion and supports strict checksu
   )
   assert.match(
     script,
-    /STRICT_CHECKSUM="\$\{GASOLINE_INSTALL_STRICT:-0\}"/,
-    'install.sh should expose strict checksum mode via GASOLINE_INSTALL_STRICT'
+    /STRICT_CHECKSUM="\$\{KABOOM_INSTALL_STRICT:-0\}"/,
+    'install.sh should expose strict checksum mode via KABOOM_INSTALL_STRICT'
   )
   assert.match(
     script,
@@ -61,7 +61,7 @@ test('bash installer uses staged extension promotion and supports strict checksu
   )
   assert.match(
     script,
-    /EXT_DIR="\$\{GASOLINE_EXTENSION_DIR:-\$HOME\/GasolineAgenticDevtoolExtension\}"/,
+    /EXT_DIR="\$\{KABOOM_EXTENSION_DIR:-\$HOME\/KaboomAgenticDevtoolExtension\}"/,
     'install.sh should default extension install location to a visible home-directory folder'
   )
 })
@@ -96,7 +96,7 @@ test('powershell installer uses unique temp paths, staged promotion, and strict 
   )
   assert.match(
     script,
-    /gasoline-ext-\$TEMP_TOKEN\.zip/,
+    /kaboom-ext-\$TEMP_TOKEN\.zip/,
     'install.ps1 should use unique extension zip temp path'
   )
   assert.match(
@@ -106,12 +106,12 @@ test('powershell installer uses unique temp paths, staged promotion, and strict 
   )
   assert.match(
     script,
-    /\$STRICT_CHECKSUM = \$env:GASOLINE_INSTALL_STRICT -eq "1"/,
-    'install.ps1 should support strict checksum mode via GASOLINE_INSTALL_STRICT'
+    /\$STRICT_CHECKSUM = \$env:KABOOM_INSTALL_STRICT -eq "1"/,
+    'install.ps1 should support strict checksum mode via KABOOM_INSTALL_STRICT'
   )
   assert.match(
     script,
-    /\$EXT_DIR = if \(\$env:GASOLINE_EXTENSION_DIR\) \{ \$env:GASOLINE_EXTENSION_DIR \} else \{ Join-Path \$HOME "GasolineAgenticDevtoolExtension" \}/,
+    /\$EXT_DIR = if \(\$env:KABOOM_EXTENSION_DIR\) \{ \$env:KABOOM_EXTENSION_DIR \} else \{ Join-Path \$HOME "KaboomAgenticDevtoolExtension" \}/,
     'install.ps1 should default extension install location to a visible home-directory folder'
   )
 })
@@ -121,7 +121,7 @@ test('powershell installer force-stops stale server and prints manual recovery w
 
   assert.match(
     script,
-    /Stop-GasolineServerProcesses/,
+    /Stop-KaboomServerProcesses/,
     'install.ps1 must include explicit server stop logic before binary replacement'
   )
   assert.match(
@@ -136,7 +136,7 @@ test('powershell installer force-stops stale server and prints manual recovery w
   )
   assert.match(
     script,
-    /Get-Process gasoline -ErrorAction SilentlyContinue \| Stop-Process -Force/,
+    /Get-Process kaboom-agentic-browser -ErrorAction SilentlyContinue \| Stop-Process -Force/,
     'install.ps1 must provide manual process kill instructions'
   )
 })
@@ -146,7 +146,7 @@ test('node installer checklist defaults to visible extension path and supports e
 
   assert.match(
     script,
-    /const extensionDir = process\.env\.GASOLINE_EXTENSION_DIR \|\| path\.join\(os\.homedir\(\), 'GasolineAgenticDevtoolExtension'\)/,
-    'server install script should print visible extension directory by default and respect GASOLINE_EXTENSION_DIR override'
+    /const extensionDir = process\.env\.KABOOM_EXTENSION_DIR \|\| path\.join\(os\.homedir\(\), 'KaboomAgenticDevtoolExtension'\)/,
+    'server install script should print visible extension directory by default and respect KABOOM_EXTENSION_DIR override'
   )
 })

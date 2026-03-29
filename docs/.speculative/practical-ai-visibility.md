@@ -92,7 +92,7 @@ function handleUserAction(action) {
 
 ## Priority 3: Event Type Expansion
 
-**Problem:** Gasoline currently captures limited event types (logs, network, WebSocket).
+**Problem:** Kaboom currently captures limited event types (logs, network, WebSocket).
 
 **Solution:** Add more event types to capture fuller picture.
 
@@ -388,9 +388,9 @@ class NetworkTracker {
 
 ---
 
-## Integration with Gasoline
+## Integration with Kaboom
 
-These improvements can be integrated into Gasoline's existing architecture:
+These improvements can be integrated into Kaboom's existing architecture:
 
 1. **inject.js** — Add event capture for user actions, DOM mutations, state changes
 2. **content.js** — Forward new event types to background

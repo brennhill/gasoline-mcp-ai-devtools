@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Timeout Reference
 
-All timeouts in the Gasoline MCP stack, organized by layer. Understanding the timeout hierarchy is critical — an outer timeout shorter than an inner wait causes EOF/connection-reset errors.
+All timeouts in the Kaboom MCP stack, organized by layer. Understanding the timeout hierarchy is critical — an outer timeout shorter than an inner wait causes EOF/connection-reset errors.
 
 ## HTTP Server (`cmd/browser-agent/main_connection_mcp.go`)
 

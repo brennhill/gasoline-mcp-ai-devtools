@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Noise Factory — Gasoline Test Harness</title>
-  <link rel="stylesheet" href="gasoline.css">
+  <title>Noise Factory — Kaboom Test Harness</title>
+  <link rel="stylesheet" href="kaboom.css">
 </head>
 <body>
 
@@ -26,7 +26,7 @@
       <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
       <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
     </svg>
-    <span class="gh-wordmark">Gasoline</span>
+    <span class="gh-wordmark">Kaboom</span>
   </a>
   <span class="gh-badge gh-badge-red">Noise Factory</span>
   <nav class="gh-nav">
@@ -82,7 +82,7 @@
     </div>
     <div class="gh-section-body">
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
-        100 messages fired on load (log / warn / error mix). Gasoline's console
+        100 messages fired on load (log / warn / error mix). Kaboom's console
         monkey-patch captures them all for <code>observe(logs)</code> and
         <code>observe(errors)</code>.
       </p>
@@ -128,7 +128,7 @@
     <div class="gh-section-body">
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
         Auto-connects to <code>ws://{host}/tests/ws</code> on load.
-        Gasoline's early-patch intercepts the <code>WebSocket</code> constructor.
+        Kaboom's early-patch intercepts the <code>WebSocket</code> constructor.
         Connection state and messages are visible in <code>observe(websocket_status)</code>.
       </p>
       <div class="btn-row">
@@ -323,7 +323,7 @@ function wsConnect() {
   ws.onopen = function() {
     setWsStatus('Connected', 'var(--green)');
     appendLog(wslog, 'Connected — ws://' + host + '/tests/ws', 'ws');
-    ws.send(JSON.stringify({ hello: 'gasoline-harness', ts: Date.now() }));
+    ws.send(JSON.stringify({ hello: 'kaboom-harness', ts: Date.now() }));
   };
   ws.onmessage = function(e) {
     appendLog(wslog, 'recv: ' + e.data.slice(0, 120), 'ws');
@@ -334,7 +334,7 @@ function wsConnect() {
   };
   ws.onerror = function() {
     setWsStatus('Error', 'var(--red)');
-    appendLog(wslog, 'WebSocket error — is the Gasoline daemon running on ' + host + '?', 'error');
+    appendLog(wslog, 'WebSocket error — is the Kaboom daemon running on ' + host + '?', 'error');
   };
 }
 

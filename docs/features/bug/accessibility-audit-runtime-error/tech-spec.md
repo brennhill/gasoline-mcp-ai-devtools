@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Gasoline's accessibility audit uses the same request/response pattern as DOM queries:
+Kaboom's accessibility audit uses the same request/response pattern as DOM queries:
 1. MCP tool creates a pending query in the server
 2. Extension polls for pending queries
 3. Background service worker receives accessibility query

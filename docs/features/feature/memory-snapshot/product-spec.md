@@ -18,7 +18,7 @@ last_reviewed: 2026-03-06
 
 ## Problem
 
-Memory leaks are one of the hardest bugs for AI agents to diagnose. Gasoline currently has no visibility into JavaScript heap state — the agent can observe symptoms (growing memory in task manager, degraded performance over time) but cannot identify which objects are leaking, what's retaining them, or how large the retained trees are.
+Memory leaks are one of the hardest bugs for AI agents to diagnose. Kaboom currently has no visibility into JavaScript heap state — the agent can observe symptoms (growing memory in task manager, degraded performance over time) but cannot identify which objects are leaking, what's retaining them, or how large the retained trees are.
 
 Chrome DevTools MCP exposes `take_memory_snapshot` which captures a `.heapsnapshot` file. However, raw heap snapshots are 50-500MB and incomprehensible without Chrome DevTools' heap snapshot viewer. An AI agent needs structured, actionable data — not a raw binary dump.
 
@@ -28,7 +28,7 @@ Add `analyze(what="memory_snapshot")` which captures a heap snapshot via CDP's `
 
 The key design principle: **capture once, analyze many ways.** The snapshot is captured via CDP and cached by `snapshot_id`. The AI starts with a token-efficient summary and can run targeted analysis queries against the same cached snapshot — all computed server-side in Go, returning only conclusions, not raw data.
 
-This is where Gasoline's architecture pays off. Graph traversal, aggregation, diffing, and pattern matching are O(n) in Go but would consume the LLM's entire context window if done via raw data. **Everything the LLM would do by scanning rows of data, the daemon does in a single pass and returns just the conclusion.**
+This is where Kaboom's architecture pays off. Graph traversal, aggregation, diffing, and pattern matching are O(n) in Go but would consume the LLM's entire context window if done via raw data. **Everything the LLM would do by scanning rows of data, the daemon does in a single pass and returns just the conclusion.**
 
 ## MCP Interface
 
@@ -306,7 +306,7 @@ All analysis modes are single-pass or bounded-depth graph traversals. Even on a 
 | Raw `.heapsnapshot` in context | Impossible (50-500MB) |
 | Chrome DevTools MCP (file path only) | N/A (agent can't read the file) |
 | `detail="full"` in context | ~50,000-500,000 (often exceeds context window) |
-| **Gasoline targeted modes** (5 queries) | **~15,000-20,000** |
+| **Kaboom targeted modes** (5 queries) | **~15,000-20,000** |
 
 The targeted mode approach uses **10-30x fewer tokens** than dumping the full graph, while providing more actionable information because the analysis is already done.
 
@@ -348,7 +348,7 @@ The targeted mode approach uses **10-30x fewer tokens** than dumping the full gr
 
 Chrome DevTools MCP's `take_memory_snapshot` saves a raw `.heapsnapshot` file -- useful for manual inspection in DevTools but not directly actionable by an AI agent (binary format, 50-500MB, no analysis).
 
-Gasoline's `analyze(what="memory_snapshot")` is a strict improvement:
+Kaboom's `analyze(what="memory_snapshot")` is a strict improvement:
 - **Default:** Returns analyzed, token-efficient summary (~3-5KB) with leak indicators and actionable suggestions
 - **Targeted analysis:** 7 server-side analysis modes that run graph traversals in Go and return only conclusions -- the LLM gets answers, not data to process
 - **Snapshot comparison:** Built-in two-snapshot diffing for leak detection workflows

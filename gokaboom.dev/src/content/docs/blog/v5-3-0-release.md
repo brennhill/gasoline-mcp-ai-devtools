@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.3.0 Released"
+title: KaBOOM v5.3.0 Released"
 description: "WebSocket inspection and improved performance"
 date: 2026-01-13T19:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.3.0
 
-STRUM v5.3.0 adds comprehensive WebSocket inspection and significant performance improvements.
+Kaboom v5.3.0 adds comprehensive WebSocket inspection and significant performance improvements.
 
 ### Features
 
@@ -35,9 +35,9 @@ STRUM v5.3.0 adds comprehensive WebSocket inspection and significant performance
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.3.0
+npm install -g kaboom-agentic-browser@5.3.0
 ```
 
 ## Full Changelog
 
-[v5.3.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.3.0)
+[v5.3.0 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.3.0)

@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 echo "════════════════════════════════════════════════════════════════"
@@ -231,12 +231,12 @@ echo "━━━ LEVEL 7: Smoke Test ━━━"
 echo ""
 
 echo "→ Building command binary..."
-if go build -o /tmp/gasoline-test "$CMD_PKG" > /dev/null 2>&1; then
+if go build -o /tmp/kaboom-test "$CMD_PKG" > /dev/null 2>&1; then
     echo "✅ Binary builds successfully"
 
     echo ""
     echo "→ Testing --help flag..."
-    if /tmp/gasoline-test --help > /dev/null 2>&1; then
+    if /tmp/kaboom-test --help > /dev/null 2>&1; then
         echo "✅ Binary runs and shows help"
     else
         echo "❌ Binary help flag failed"
@@ -245,14 +245,14 @@ if go build -o /tmp/gasoline-test "$CMD_PKG" > /dev/null 2>&1; then
 
     echo ""
     echo "→ Testing --version flag..."
-    if /tmp/gasoline-test --version > /dev/null 2>&1; then
+    if /tmp/kaboom-test --version > /dev/null 2>&1; then
         echo "✅ Version flag works"
     else
         echo "❌ Version flag failed"
         FAILED=1
     fi
 
-    rm -f /tmp/gasoline-test
+    rm -f /tmp/kaboom-test
 else
     echo "❌ Binary build failed"
     FAILED=1

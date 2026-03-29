@@ -7,8 +7,8 @@
   role="img"
   aria-labelledby="title desc"
 >
-  <title id="title">Gasoline agent overlay tool palette</title>
-  <desc id="desc">A white-background preview of the Gasoline overlay with tool buttons and a flame badge.</desc>
+  <title id="title">KaBOOM agent overlay tool palette</title>
+  <desc id="desc">A white-background preview of the KaBOOM overlay with tool buttons and a flame badge.</desc>
 
   <defs>
     <filter id="shadow" x="90" y="78" width="1040" height="208" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">

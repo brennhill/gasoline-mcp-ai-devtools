@@ -15,8 +15,10 @@ Notable coverage:
 
 - Extension staging integrity checks and source-zip fallback for incomplete release extension artifacts.
 - Installer extension refresh now stages + validates + promotes atomically, with rollback to previous extension state on promotion failure.
-- npm wrapper install/update/uninstall now converge on `kaboom-browser-devtools` and aggressively remove managed `gasoline-*` and `strum-*` entries.
-- Strict checksum mode (`GASOLINE_INSTALL_STRICT=1`) enforces fail-closed binary verification.
-- Installer defaults unpacked extension output to `~/GasolineAgenticDevtoolExtension` (overridable via `GASOLINE_EXTENSION_DIR`) so users can select it in Chrome without enabling hidden files.
+- npm wrapper install/update/uninstall now converge on `kaboom-browser-devtools` and aggressively remove managed `kaboom-*`, `gasoline-*`, and `strum-*` entries.
+- npm wrapper config/doctor helpers now share the same legacy-key list so old `kaboom-*`, `gasoline-*`, and `strum-*` entries are removed during writes and surfaced as non-OK during diagnostics.
+- Strict checksum mode (`KABOOM_INSTALL_STRICT=1`) enforces fail-closed binary verification.
+- Server postinstall validates `/health` against `kaboom-browser-devtools` before reusing an occupied port.
+- Installer defaults unpacked extension output to `~/KaboomAgenticDevtoolExtension` (overridable via `KABOOM_EXTENSION_DIR`) so users can select it in Chrome without enabling hidden files.
 - CRX fallback packaging in `scripts/build-crx.js` archives the full `extension/` directory to prevent missing MV3 module imports.
 - Startup integrity regression checks assert manifest file paths and service worker import graph resolve before release.

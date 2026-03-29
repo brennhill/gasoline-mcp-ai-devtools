@@ -181,7 +181,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
         }
     };
     executeWithTimeoutProtection().catch((err) => {
-        console.error('[Gasoline] Unexpected error in executeJavaScript:', err);
+        console.error('[Kaboom] Unexpected error in executeJavaScript:', err);
         deferred.resolve({
             success: false,
             error: 'execution_error',

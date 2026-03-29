@@ -157,7 +157,7 @@ observe({ what: "performance" })
 }
 ```
 
-No Gasoline-specific API. Standard browser API. The extension just makes it accessible.
+No Kaboom-specific API. Standard browser API. The extension just makes it accessible.
 
 ## Extension Architecture
 

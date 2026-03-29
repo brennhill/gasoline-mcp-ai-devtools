@@ -15,8 +15,8 @@ This guide provides step-by-step instructions for human testers to verify the te
 **Estimated Time:** 60-90 minutes
 
 ### Required Setup:
-- Gasoline extension installed and connected
-- Gasoline server running
+- Kaboom extension installed and connected
+- Kaboom server running
 - Claude or MCP-compatible AI client
 - A web application with forms/interactions for testing
 - Playwright installed (`npm init playwright@latest`)
@@ -27,7 +27,7 @@ This guide provides step-by-step instructions for human testers to verify the te
 
 ### Environment Checklist
 
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and shows "Connected" in popup
 - [ ] AI Web Pilot toggle is ON
 - [ ] MCP client (Claude Desktop, Cursor, etc.) connected
@@ -52,7 +52,7 @@ You need a simple web application with:
 #### Steps:
 1. Navigate to a page with a form
 2. Trigger a validation error (e.g., submit empty form)
-3. Confirm error appears in Gasoline capture (`observe {what: "errors"}`)
+3. Confirm error appears in Kaboom capture (`observe {what: "errors"}`)
 4. Ask AI: "Generate a test that reproduces the validation error I just triggered"
 
 #### Expected AI Actions:
@@ -236,7 +236,7 @@ You need a simple web application with:
 **Objective:** Handle case when no errors captured
 
 #### Steps:
-1. Clear Gasoline state or use fresh session
+1. Clear Kaboom state or use fresh session
 2. Ask AI: "Generate a test for the error I triggered"
 
 #### Verification:

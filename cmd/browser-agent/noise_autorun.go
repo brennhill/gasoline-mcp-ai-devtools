@@ -1,4 +1,4 @@
-// Purpose: Debounces and triggers automatic noise detection on navigation events when GASOLINE_NOISE_AUTORUN is enabled.
+// Purpose: Debounces and triggers automatic noise detection on navigation events when KABOOM_NOISE_AUTORUN is enabled.
 // Why: Coalesces rapid SPA route changes into a single noise-detection pass to avoid redundant analysis.
 // Docs: docs/features/feature/noise-filtering/index.md
 
@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/noise"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // noiseAutoDetectInterval is the minimum time between automatic noise detection runs.
@@ -26,7 +26,7 @@ const noiseFirstConnectTestDelay = 10 * time.Millisecond
 
 // noiseAutoDetectEnvVar gates navigation-triggered noise auto-detection.
 // Default is off; set to 1/true/on/yes to enable.
-const noiseAutoDetectEnvVar = "GASOLINE_NOISE_AUTORUN"
+const noiseAutoDetectEnvVar = "KABOOM_NOISE_AUTORUN"
 
 func noiseFirstConnectDelay() time.Duration {
 	if strings.HasSuffix(os.Args[0], ".test") {
@@ -123,7 +123,7 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 		runner.schedule()
 	})
 
-	stderrf("[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
+	stderrf("[Kaboom] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
 }
 
 // wireNoiseFirstConnect sets up a lifecycle callback to run noise auto-detection
@@ -160,7 +160,7 @@ func wireNoiseFirstConnect(h *ToolHandler) {
 					return
 				}
 				h.runNoiseAutoDetect()
-				stderrf("[gasoline] noise auto-detect: ran on first extension connection\n")
+				stderrf("[Kaboom] noise auto-detect: ran on first extension connection\n")
 			})
 		})
 	})
@@ -204,6 +204,6 @@ func (h *ToolHandler) runNoiseAutoDetect() {
 		if len(toApply) > 0 {
 			_ = h.noiseConfig.AddRules(toApply)
 		}
-		stderrf("[gasoline] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), len(toApply))
+		stderrf("[Kaboom] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), len(toApply))
 	}
 }

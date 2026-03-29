@@ -3,7 +3,7 @@
 set -euo pipefail
 
 VERSION=$(tr -d '[:space:]' < VERSION)
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -42,8 +42,8 @@ check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
 check_version "npm/kaboom-agentic-browser/package.json" '"version":'
-check_version "packages/gasoline-ci/package.json" '"version":'
-check_version "packages/gasoline-playwright/package.json" '"version":'
+check_version "packages/kaboom-ci/package.json" '"version":'
+check_version "packages/kaboom-playwright/package.json" '"version":'
 
 # Makefile version source sanity check.
 if grep -q '^VERSION :=' Makefile; then

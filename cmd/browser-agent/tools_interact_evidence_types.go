@@ -12,8 +12,8 @@ const (
 )
 
 const (
-	evidenceRetryEnv       = "GASOLINE_EVIDENCE_RETRY_COUNT"
-	evidenceMaxCapturesEnv = "GASOLINE_EVIDENCE_MAX_CAPTURES_PER_COMMAND"
+	evidenceRetryEnv       = "KABOOM_EVIDENCE_RETRY_COUNT"
+	evidenceMaxCapturesEnv = "KABOOM_EVIDENCE_MAX_CAPTURES_PER_COMMAND"
 )
 
 type evidenceShot struct {

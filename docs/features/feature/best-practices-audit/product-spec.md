@@ -32,13 +32,13 @@ This matters for AI coding agents because:
 
 4. **No actionable output.** Raw console logs and header lists do not tell the agent what to fix. A best practices audit pairs each failing check with a specific remediation recommendation that the agent can act on immediately.
 
-This feature is inspired by Lighthouse's best practices category, adapted for Gasoline's architecture: instead of running a synthetic page load, it analyzes data already captured during real browsing sessions.
+This feature is inspired by Lighthouse's best practices category, adapted for Kaboom's architecture: instead of running a synthetic page load, it analyzes data already captured during real browsing sessions.
 
 ## Solution
 
-A new `generate` mode (`best_practices_audit`) that aggregates data from Gasoline's existing capture buffers -- console logs, network bodies (with response headers), network waterfall entries, and page URLs -- and runs a series of best practices checks against them. Each check produces a pass/fail/warning verdict with a description, evidence, and remediation. The output is a structured JSON report designed for LLM consumption.
+A new `generate` mode (`best_practices_audit`) that aggregates data from Kaboom's existing capture buffers -- console logs, network bodies (with response headers), network waterfall entries, and page URLs -- and runs a series of best practices checks against them. Each check produces a pass/fail/warning verdict with a description, evidence, and remediation. The output is a structured JSON report designed for LLM consumption.
 
-The audit composes data that Gasoline already captures. Most checks require no new extension-side collection:
+The audit composes data that Kaboom already captures. Most checks require no new extension-side collection:
 
 ### Already captured (server-side analysis only):
 - Console error and warning counts (log buffer)
@@ -59,7 +59,7 @@ For document metadata, the audit leverages the existing `analyze({what: "dom"})`
 - As an AI coding agent, I want to run a single best practices audit so that I get a complete checklist of what the application does well and what needs fixing, without making multiple observe calls.
 - As an AI coding agent, I want each failing check to include a specific remediation so that I can generate a fix immediately.
 - As an AI coding agent, I want pass/fail verdicts so that I can quickly skip passing checks and focus on failures.
-- As a developer using Gasoline, I want the AI to proactively identify best practices violations so that I catch issues before they reach production.
+- As a developer using Kaboom, I want the AI to proactively identify best practices violations so that I catch issues before they reach production.
 - As an AI coding agent, I want a summary score so that I can report "your app passes 14/16 best practices checks" in a PR summary or deployment review.
 
 ## MCP Interface
@@ -309,7 +309,7 @@ The audit runs the following checks, organized by category:
 
 ## Data Sources and Reuse
 
-A key design principle: the best practices audit does NOT run its own data collection. It reads from existing Gasoline buffers and leverages existing capture infrastructure.
+A key design principle: the best practices audit does NOT run its own data collection. It reads from existing Kaboom buffers and leverages existing capture infrastructure.
 
 | Data Needed | Source | Already Captured? |
 |-------------|--------|-------------------|
@@ -365,7 +365,7 @@ No new extension-side code is needed for this check.
 
 ## Non-Goals
 
-- This feature does NOT run a Lighthouse audit or invoke Lighthouse in any way. It is inspired by Lighthouse's best practices category but operates entirely on Gasoline's own captured data. There is no headless browser invocation, no page load simulation, and no dependency on the Lighthouse npm package.
+- This feature does NOT run a Lighthouse audit or invoke Lighthouse in any way. It is inspired by Lighthouse's best practices category but operates entirely on Kaboom's own captured data. There is no headless browser invocation, no page load simulation, and no dependency on the Lighthouse npm package.
 
 - This feature does NOT duplicate the security audit (`observe({what: "security_audit"})`). The security audit focuses on vulnerability detection (credentials in URLs, PII leakage, cookie flags). The best practices audit focuses on compliance with web standards and development hygiene. There is intentional overlap on security headers -- both check for their presence -- but the best practices audit provides a pass/fail verdict while the security audit provides vulnerability findings.
 
@@ -393,7 +393,7 @@ The audit handler performs in-memory iteration over existing buffers with O(n) c
 
 - **No new data capture.** The audit reads only from existing buffers (log entries, network bodies, network waterfall). It does not capture new data or expand the attack surface.
 
-- **No sensitive data in output.** Evidence strings reference URLs and header values, which are already visible in other Gasoline outputs. No request/response bodies are included in the audit output.
+- **No sensitive data in output.** Evidence strings reference URLs and header values, which are already visible in other Kaboom outputs. No request/response bodies are included in the audit output.
 
 - **DOM query for metadata.** The metadata query reads `<head>` content and the `<html lang>` attribute. This is non-sensitive structural information. The DOM query is executed through the existing `analyze({what: "dom"})` infrastructure with the same timeout and security constraints.
 

@@ -4,7 +4,7 @@
 
 ## 1. Motivation
 
-AI coding agents using Gasoline's MCP tools follow a predictable pattern when working with a web page:
+AI coding agents using Kaboom's MCP tools follow a predictable pattern when working with a web page:
 
 1. Navigate to a URL
 2. Understand what is on the page (structure, interactive elements, content)

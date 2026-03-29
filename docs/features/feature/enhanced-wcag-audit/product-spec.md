@@ -45,7 +45,7 @@ The existing behavior is fully preserved. Calling `observe {what: "accessibility
 - As an AI coding agent, I want to audit a page against WCAG AA specifically so that I can focus fixes on the conformance level the project targets.
 - As an AI coding agent, I want remediation guidance with each violation so that I can generate fix code without researching WCAG success criteria separately.
 - As an AI coding agent, I want violations grouped by WCAG criterion so that I can batch related fixes (e.g., fix all contrast issues together).
-- As a developer using Gasoline, I want to run `observe {what: "accessibility", wcag_level: "AAA", detailed: true}` and get a comprehensive compliance report I can hand to my AI assistant for remediation.
+- As a developer using Kaboom, I want to run `observe {what: "accessibility", wcag_level: "AAA", detailed: true}` and get a comprehensive compliance report I can hand to my AI assistant for remediation.
 - As an AI coding agent, I want severity levels and effort estimates so that I can prioritize fixes by impact and suggest a remediation order to the developer.
 
 ## MCP Interface
@@ -247,8 +247,8 @@ Response is identical to current behavior. No breaking changes.
 - This feature does NOT add a new MCP tool. It extends the existing `observe` tool's `accessibility` mode.
 - This feature does NOT support custom WCAG success criteria. It uses the standard WCAG 2.1 taxonomy.
 - Out of scope: WCAG 2.2 criteria (can be added later as axe-core updates).
-- Out of scope: PDF accessibility auditing (Gasoline operates on rendered DOM only).
-- Out of scope: multi-page / site-wide crawling (Gasoline audits the current page/scope).
+- Out of scope: PDF accessibility auditing (Kaboom operates on rendered DOM only).
+- Out of scope: multi-page / site-wide crawling (Kaboom audits the current page/scope).
 
 ## Performance SLOs
 
@@ -266,7 +266,7 @@ Response is identical to current behavior. No breaking changes.
 - **Data captured:** DOM structure, computed styles, ARIA attributes, heading text, form field names, CSS selectors. All data already accessible to the existing accessibility audit.
 - **Data NOT captured:** Form field values, user input, authentication state. No new sensitive data surfaces.
 - **Redaction:** HTML snippets are truncated to `DOM_QUERY_MAX_HTML` (200 chars). No expansion of existing truncation limits.
-- **Privacy implications:** None beyond existing audit. All processing happens locally in the browser; results are sent only to the localhost Gasoline server.
+- **Privacy implications:** None beyond existing audit. All processing happens locally in the browser; results are sent only to the localhost Kaboom server.
 - **Attack surface:** No change. No new endpoints, no new extension permissions, no new external requests. The enhanced checks use the same axe-core injection path and the same `/a11y-result` POST endpoint.
 - **axe-core version:** Uses the already-bundled axe-core (4.8.4). No new third-party dependencies.
 

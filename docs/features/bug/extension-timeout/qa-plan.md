@@ -67,7 +67,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: 50 Consecutive DOM Queries
 1. Setup:
-   - Start Gasoline server: `./dist/gasoline`
+   - Start Kaboom server: `./dist/kaboom`
    - Load Chrome with extension, open DevTools
    - Navigate to complex page (e.g., GitHub.com)
    - Track the tab
@@ -102,7 +102,7 @@ last_verified_date: 2026-03-05
 1. Setup:
    - Start operations sequence
    - Navigate to chrome://extensions
-   - Locate Gasoline extension, click "background page" to open service worker DevTools
+   - Locate Kaboom extension, click "background page" to open service worker DevTools
 2. Steps:
    - [ ] Start 20 DOM query sequence
    - [ ] After operation 10, manually restart service worker (close and reopen background page)

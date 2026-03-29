@@ -115,7 +115,7 @@ func TestCheckForUpgrade_DetectsNewer(t *testing.T) {
 	t.Parallel()
 	// Create a script that reports a newer version
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.8.0'\n"), 0o755); err != nil {
+	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'kaboom v0.8.0'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -133,7 +133,7 @@ func TestCheckForUpgrade_DetectsNewer(t *testing.T) {
 func TestCheckForUpgrade_IgnoresOlder(t *testing.T) {
 	t.Parallel()
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.7.4'\n"), 0o755); err != nil {
+	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'kaboom v0.7.4'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +147,7 @@ func TestCheckForUpgrade_IgnoresOlder(t *testing.T) {
 func TestCheckForUpgrade_IgnoresSame(t *testing.T) {
 	t.Parallel()
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.7.5'\n"), 0o755); err != nil {
+	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'kaboom v0.7.5'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -226,7 +226,7 @@ func TestStartBinaryWatcher_ContextCancellation(t *testing.T) {
 }
 
 func TestStartBinaryWatcher_DisabledByEnvVar(t *testing.T) {
-	t.Setenv("GASOLINE_NO_AUTO_UPGRADE", "1")
+	t.Setenv("KABOOM_NO_AUTO_UPGRADE", "1")
 
 	s := startBinaryWatcher(context.Background(), "0.7.5", func(string) {}, func() {})
 	if s != nil {
@@ -238,7 +238,7 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 	t.Parallel()
 
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
-	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.7.5'\n"), 0o755); err != nil {
+	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'kaboom v0.7.5'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -289,7 +289,7 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 	}
 
 	// Now replace binary with newer version
-	updatedScript := []byte("#!/bin/sh\n# upgraded build marker\necho 'gasoline v0.8.0'\n")
+	updatedScript := []byte("#!/bin/sh\n# upgraded build marker\necho 'kaboom v0.8.0'\n")
 	if err := os.WriteFile(tmp, updatedScript, 0o755); err != nil {
 		t.Fatal(err)
 	}

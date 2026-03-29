@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -279,7 +279,7 @@ func TestRunA11yAndExportSARIF_ReusesAnalyzePayload(t *testing.T) {
 	})
 
 	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	syncReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), syncReq)
 
 	var a11yQueryCount int32

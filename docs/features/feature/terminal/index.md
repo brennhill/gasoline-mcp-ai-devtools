@@ -6,6 +6,7 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-28
 code_paths:
+  - src/lib/brand.ts
   - cmd/browser-agent/terminal_handlers.go
   - cmd/browser-agent/terminal_server.go
   - cmd/browser-agent/terminal_assets/terminal.html
@@ -14,6 +15,7 @@ code_paths:
   - src/content/ui/terminal-panel-bridge.ts
   - src/content/ui/terminal-widget-session.ts
   - src/content/ui/terminal-widget-types.ts
+  - src/content/ui/terminal-widget-ui.ts
   - src/content/ui/tracked-hover-launcher.ts
   - src/background/message-handlers.ts
   - src/types/runtime-messages.ts
@@ -21,8 +23,11 @@ code_paths:
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
+  - tests/extension/brand-metadata.test.js
   - cmd/browser-agent/terminal_handlers_test.go
   - tests/extension/sidepanel-terminal.test.js
+  - tests/extension/terminal-widget-session-branding.test.js
+  - tests/extension/terminal-widget-ui-branding.test.js
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/message-handlers.test.js
   - internal/pty/manager_test.go
@@ -47,6 +52,8 @@ last_verified_date: 2026-03-28
 - Header power control (`⏻`) closes the side panel and ends the PTY session
 - Header minimize control hides the side panel while preserving the current PTY session
 - The current side panel rollout is terminal-only; xterm fills the available panel height
+- Terminal startup failure guidance now consistently points users at the Kaboom daemon command: `npx kaboom-agentic-browser`
+- Any legacy or fallback terminal shell that still mounts from content-script code now uses `Kaboom Terminal` so mixed-brand terminal chrome does not reappear.
 - Annotation auto-send now uses a typing-aware write queue: if the user is active in terminal, writes wait until ~1.5s idle
 - Queued submit is reconnect-safe: if WS drops before Enter, submit waits until connection is back
 - WebSocket frame writes are serialized per-connection to prevent concurrent writer frame interleaving
@@ -283,15 +290,15 @@ The side panel host communicates with the terminal iframe via `postMessage`:
 
 | Direction | Message | Purpose |
 |-----------|---------|---------|
-| Parent → Iframe | `{target: 'gasoline-terminal', command: 'focus'}` | Focus the xterm.js instance |
-| Parent → Iframe | `{target: 'gasoline-terminal', command: 'resize'}` | Refit terminal after panel resize |
-| Parent → Iframe | `{target: 'gasoline-terminal', command: 'redraw'}` | Soft redraw xterm canvas without iframe/session reload |
-| Parent → Iframe | `{target: 'gasoline-terminal', command: 'write', text: '...'}` | Write text to PTY stdin |
-| Iframe → Parent | `{source: 'gasoline-terminal', event: 'connected'}` | WebSocket connected |
-| Iframe → Parent | `{source: 'gasoline-terminal', event: 'disconnected'}` | WebSocket disconnected |
-| Iframe → Parent | `{source: 'gasoline-terminal', event: 'exited'}` | PTY process exited |
-| Iframe → Parent | `{source: 'gasoline-terminal', event: 'focus', data: { focused }}` | xterm focus/blur state updates |
-| Iframe → Parent | `{source: 'gasoline-terminal', event: 'typing', data: { at }}` | Throttled typing heartbeat timestamp |
+| Parent → Iframe | `{target: 'kaboom-terminal', command: 'focus'}` | Focus the xterm.js instance |
+| Parent → Iframe | `{target: 'kaboom-terminal', command: 'resize'}` | Refit terminal after panel resize |
+| Parent → Iframe | `{target: 'kaboom-terminal', command: 'redraw'}` | Soft redraw xterm canvas without iframe/session reload |
+| Parent → Iframe | `{target: 'kaboom-terminal', command: 'write', text: '...'}` | Write text to PTY stdin |
+| Iframe → Parent | `{source: 'kaboom-terminal', event: 'connected'}` | WebSocket connected |
+| Iframe → Parent | `{source: 'kaboom-terminal', event: 'disconnected'}` | WebSocket disconnected |
+| Iframe → Parent | `{source: 'kaboom-terminal', event: 'exited'}` | PTY process exited |
+| Iframe → Parent | `{source: 'kaboom-terminal', event: 'focus', data: { focused }}` | xterm focus/blur state updates |
+| Iframe → Parent | `{source: 'kaboom-terminal', event: 'typing', data: { at }}` | Throttled typing heartbeat timestamp |
 
 Origin validation: parent only accepts messages from the terminal server origin. Iframe sends to `*` (since it doesn't know the parent's origin in advance).
 

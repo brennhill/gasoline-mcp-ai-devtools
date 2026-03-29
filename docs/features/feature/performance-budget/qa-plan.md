@@ -192,7 +192,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page loaded (preferably one where you can control load time, e.g., by adding network throttling or heavy resources)
 - [ ] Page has been loaded at least 3 times to build a baseline

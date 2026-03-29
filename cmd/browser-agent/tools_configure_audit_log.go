@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
-	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
+	cfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/configure"
 )
 
 func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

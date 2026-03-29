@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interaction Gauntlet — Gasoline Test Harness</title>
-  <link rel="stylesheet" href="gasoline.css">
+  <title>Interaction Gauntlet — Kaboom Test Harness</title>
+  <link rel="stylesheet" href="kaboom.css">
 </head>
 <body>
 
@@ -26,7 +26,7 @@
       <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
       <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
     </svg>
-    <span class="gh-wordmark">Gasoline</span>
+    <span class="gh-wordmark">Kaboom</span>
   </a>
   <span class="gh-badge gh-badge-harness">Interaction Gauntlet</span>
   <nav class="gh-nav">
@@ -196,7 +196,7 @@
       <div class="gh-form-grid">
         <div>
           <label>localStorage key</label>
-          <input type="text" id="ls-key" value="gasoline_test_key">
+          <input type="text" id="ls-key" value="kaboom_test_key">
         </div>
         <div>
           <label>value</label>
@@ -353,8 +353,8 @@ function toggleHoneypot()  {
   var hp = document.getElementById('honeypot-overlay');
   hp.style.display = hp.style.display === 'none' ? 'block' : 'none';
 }
-function triggerAlert()    { window.alert('Gasoline alert() test — use confirm_top_dialog to dismiss'); }
-function triggerConfirm()  { window.confirm('Gasoline confirm() test — confirm or cancel'); }
+function triggerAlert()    { window.alert('Kaboom alert() test — use confirm_top_dialog to dismiss'); }
+function triggerConfirm()  { window.confirm('Kaboom confirm() test — confirm or cancel'); }
 
 document.getElementById('real-target-btn').addEventListener('click', () => {
   console.log('real-target-btn clicked');

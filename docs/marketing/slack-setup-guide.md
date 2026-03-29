@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Slack Community Setup Guide for Gasoline MCP
+# Slack Community Setup Guide for Kaboom MCP
 
-This guide will help you set up a Slack workspace for Gasoline MCP users and contributors.
+This guide will help you set up a Slack workspace for Kaboom MCP users and contributors.
 
 ---
 
@@ -45,25 +45,25 @@ Since you've already created a Slack server, here's what to focus on:
 ### #welcome Channel Message
 
 ```
-👋 Welcome to Gasoline MCP!
+👋 Welcome to Kaboom MCP!
 
-Gasoline MCP is a browser observability tool for AI coding agents. 
+Kaboom MCP is a browser observability tool for AI coding agents. 
 It gives your AI assistant real-time visibility into browser activity.
 
 🚀 Get Started:
-• Documentation: https://cookwithgasoline.com
-• Quick Start: https://cookwithgasoline.com/getting-started/
-• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• Documentation: https://gokaboom.dev
+• Quick Start: https://gokaboom.dev/getting-started/
+• GitHub: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 
 ❓ Need Help?
 • Ask in #help
-• Check the docs: https://cookwithgasoline.com/docs/
+• Check the docs: https://gokaboom.dev/docs/
 • Report bugs in #bugs
 
 💬 Join the Conversation:
 • Introduce yourself in #general
 • Share your projects in #showcase
-• Follow @gasolinedev on Twitter
+• Follow @kaboomdev on Twitter
 
 📢 Stay Updated:
 • Watch #announcements for updates
@@ -80,11 +80,11 @@ Set channel topics for clarity:
 
 | Channel | Topic |
 |---------|--------|
-| `#general` | General discussion about Gasoline MCP |
+| `#general` | General discussion about Kaboom MCP |
 | `#welcome` | New member introductions and getting started |
 | `#announcements` | Official updates, releases, news |
 | `#help` | Support and troubleshooting questions |
-| `#showcase` | Share projects built with Gasoline |
+| `#showcase` | Share projects built with Kaboom |
 | `#bugs` | Bug reports and issues |
 | `#features` | Feature requests and ideas |
 | `#development` | Contributor discussion and PRs |
@@ -104,7 +104,7 @@ Set channel topics for clarity:
 
 1. Go to [Slack App Directory](https://slack.com/apps)
 2. Install "GitHub" app
-3. Connect to your repo: brennhill/gasoline-agentic-browser-devtools-mcp
+3. Connect to your repo: brennhill/kaboom-agentic-browser-devtools-mcp
 4. Configure which channels receive notifications
 
 ---
@@ -140,7 +140,7 @@ Set channel topics for clarity:
 
 ### Where to Share
 
-- cookwithgasoline.com (header/footer)
+- gokaboom.dev (header/footer)
 - README.md
 - Twitter/X bio
 - LinkedIn profile
@@ -208,7 +208,7 @@ Track:
 1. **Set up #welcome channel** - Add welcome message
 2. **Set channel topics** - Add topics to all channels
 3. **Create invite link** - Make it easy to join
-4. **Add to website** - Put invite link on cookwithgasoline.com
+4. **Add to website** - Put invite link on gokaboom.dev
 5. **Post on social media** - Announce Slack community
 
 ---

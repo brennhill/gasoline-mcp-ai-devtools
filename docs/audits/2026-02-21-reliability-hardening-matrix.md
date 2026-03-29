@@ -45,13 +45,13 @@ Prevent silent failures and transport instability by hardening all known failure
 - Recovery: remove stale metadata and continue startup.
 - Test: stale PID cleanup unit/integration tests.
 
-4. `LIFECYCLE-04` Port occupied by non-Gasoline process.
+4. `LIFECYCLE-04` Port occupied by non-Kaboom process.
 - Trigger: shared port collision.
 - Symptom: daemon fails to start; unclear error.
 - Prevention: explicit service-name detection.
 - Detection: health metadata + process lookup.
-- Recovery: return specific non-gasoline conflict error.
-- Test: non-gasoline port conflict test.
+- Recovery: return specific non-kaboom conflict error.
+- Test: non-kaboom port conflict test.
 
 5. `LIFECYCLE-05` Daemon process alive but unhealthy/deaf.
 - Trigger: partial deadlock/frozen server.

@@ -9,7 +9,7 @@ import assert from 'node:assert'
 import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 
 // Define esbuild constant not available in Node test env
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 // Store original
 let originalWindow

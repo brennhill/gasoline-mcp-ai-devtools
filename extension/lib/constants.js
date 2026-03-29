@@ -2,7 +2,7 @@
  * Purpose: Shared constants (server defaults, serialization limits, buffer sizes, storage keys, feature toggles) used across all extension modules.
  */
 /**
- * @fileoverview Shared constants for the Gasoline extension capture modules.
+ * @fileoverview Shared constants for the Kaboom extension capture modules.
  */
 import { scaleTimeout } from './timeouts.js';
 // Chrome DevTools Protocol version used for debugger.attach calls

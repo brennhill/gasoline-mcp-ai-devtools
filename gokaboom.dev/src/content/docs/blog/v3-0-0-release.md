@@ -1,5 +1,5 @@
 ---
-title: .gasoline v3.0.0 Released"
+title: KaBOOM v3.0.0 Released"
 description: "MCP stdio server - proper bidirectional protocol implementation"
 date: 2025-12-19T01:23:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v3']
 
 ## What's New in v3.0.0
 
-STRUM v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
+Kaboom v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. This was the breakthrough version.
 
 ### Major Changes
 
@@ -54,4 +54,4 @@ STRUM v3.0.0 replaces the HTTP polling disaster with a proper MCP stdio server. 
 
 **Milestone:** This was the version that proved the concept could work. Everything from here builds on this foundation.
 
-See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
+See [GitHub](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP for source.

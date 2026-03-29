@@ -3,7 +3,7 @@ name: ux-audit
 description: Use when user asks to review UX quality, check accessibility compliance, audit visual hierarchy, or evaluate information architecture on a page.
 ---
 
-# Gasoline UX Audit
+# Kaboom UX Audit
 
 Use this skill to evaluate usability quality, not just functional correctness.
 

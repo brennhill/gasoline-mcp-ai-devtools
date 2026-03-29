@@ -1,6 +1,6 @@
 ---
 title: Run a Product Demo with AI
-description: Use.gasoline's subtitle narration and browser control to deliver polished, narrated product demos — no slides, no scripts, just live software.
+description: Use KaBOOM's subtitle narration and browser control to deliver polished, narrated product demos — no slides, no scripts, just live software.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'product', 'demos']
@@ -12,7 +12,7 @@ Product demos are high-stakes. You're tabbing between slides and your app, fumbl
 
 What if your AI could drive the browser while narrating every step — like closed captions for a live demo?
 
-That's exactly what.gasoline does. Your AI reads a natural language script, controls the browser with `interact`, and overlays narration text as subtitles. You sit back and talk to the audience.
+That's exactly what KaBOOM does. Your AI reads a natural language script, controls the browser with `interact`, and overlays narration text as subtitles. You sit back and talk to the audience.
 
 ## Prep: Dial in the Demo Settings
 
@@ -20,7 +20,7 @@ Before the demo, configure the extension for a clean presentation:
 
 **Turn off Action Toasts** — These are the blue/green notification banners that appear when the AI performs actions. Great for development, distracting during a demo.
 
-1. Click the.gasoline extension icon in your toolbar
+1. Click the KaBOOM extension icon in your toolbar
 2. Uncheck **Action Toasts**
 
 <!-- Screenshot: Extension popup with Action Toasts toggle unchecked -->
@@ -84,7 +84,7 @@ Every `interact` action accepts a `subtitle` parameter — narration is composab
 
 **It's live software.** The audience watches real interactions with real data. No mocked screenshots, no "imagine this works" hand-waving.
 
-**It's resilient.**.gasoline uses semantic selectors — `text=New Project`, `placeholder=Email`, `aria-label=Close` — not brittle CSS paths. If your designer moves a button, the demo still works.
+**It's resilient.** KaBOOM uses semantic selectors — `text=New Project`, `placeholder=Email`, `aria-label=Close` — not brittle CSS paths. If your designer moves a button, the demo still works.
 
 **It's repeatable.** Save the script, run it again tomorrow. Same demo, same timing, same narration. Hand it to a colleague and they run the same polished demo.
 
@@ -135,7 +135,7 @@ interact({action: "subtitle", text: ""})
 
 Before you go live:
 
-- [ ].gasoline server running (`npx gasoline-mcp`)
+- [ ] KaBOOM server running (`npx kaboom-agentic-browser`)
 - [ ] Extension connected (green icon)
 - [ ] AI Web Pilot enabled (extension popup toggle)
 - [ ] Action Toasts **off**

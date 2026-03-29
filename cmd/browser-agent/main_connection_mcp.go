@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // runMCPMode runs the server in MCP mode:
@@ -53,8 +53,8 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	termMux := setupTerminalMux(server, server.ptyManager, cap)
 	termSrv, termDone, termErr := startTerminalServer(server, termPort, termMux)
 	if termErr != nil {
-		stderrf("[gasoline] WARNING: terminal server failed to start on port %d: %v\n", termPort, termErr)
-		stderrf("[gasoline] Terminal features are unavailable. Free port %d or use a different base port.\n", termPort)
+		stderrf("[Kaboom] WARNING: terminal server failed to start on port %d: %v\n", termPort, termErr)
+		stderrf("[Kaboom] Terminal features are unavailable. Free port %d or use a different base port.\n", termPort)
 		server.logLifecycle("terminal_server_bind_failed", termPort, map[string]any{
 			"error":     termErr.Error(),
 			"term_port": termPort,
@@ -65,7 +65,7 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 		// Monitor terminal server — log if it dies, but do NOT bring down main daemon.
 		util.SafeGo(func() {
 			<-termDone
-			stderrf("[gasoline] terminal server on port %d exited unexpectedly\n", termPort)
+			stderrf("[Kaboom] terminal server on port %d exited unexpectedly\n", termPort)
 			server.logLifecycle("terminal_server_died", termPort, nil)
 			server.setTerminalPort(0) // Mark as unavailable
 		})

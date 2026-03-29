@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
 // extractResponseData parses the JSON payload from an MCPToolResult's text content.
@@ -41,7 +41,7 @@ func extractResponseData(t *testing.T, resp JSONRPCResponse) map[string]any {
 func simulateExtensionConnection(t *testing.T, env *interactHelpersTestEnv) {
 	t.Helper()
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
 }
 

@@ -38,7 +38,7 @@ The `/sync` endpoint consolidates multiple polling loops into a single bidirecti
 ```typescript
 POST /sync
 Content-Type: application/json
-X-Gasoline-Extension-Version: 5.6.0
+X-Kaboom-Extension-Version: 5.6.0
 
 {
   // Session identification

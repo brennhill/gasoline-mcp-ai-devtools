@@ -22,7 +22,7 @@
   if (CLOAKED_DOMAINS.some((d) => host === d || host.endsWith('.' + d))) return
 
   // Guard: only install once (extension reloads, multiple frames)
-  if (window.__GASOLINE_ORIGINAL_WS__ || window.__GASOLINE_ORIGINAL_FETCH__ || window.__GASOLINE_EARLY_BODIES__) return
+  if (window.__KABOOM_ORIGINAL_WS__ || window.__KABOOM_ORIGINAL_FETCH__ || window.__KABOOM_EARLY_BODIES__) return
 
   // =========================================================================
   // SHARED: Early body buffer (used by fetch + XHR patches)
@@ -35,7 +35,7 @@
   const TEXT_CONTENT_RE = /^(text\/|application\/json|application\/.*\+json|application\/xml|application\/.*\+xml)/i
 
   const earlyBodies: EarlyNetworkBody[] = []
-  window.__GASOLINE_EARLY_BODIES__ = earlyBodies
+  window.__KABOOM_EARLY_BODIES__ = earlyBodies
 
   /** Push a body entry with FIFO eviction */
   function pushBody(entry: EarlyNetworkBody): void {
@@ -53,11 +53,11 @@
     const OriginalWS = window.WebSocket
 
     // Store original for inject script to retrieve
-    window.__GASOLINE_ORIGINAL_WS__ = OriginalWS
+    window.__KABOOM_ORIGINAL_WS__ = OriginalWS
 
     // Buffer for early connections
     const earlyConnections: EarlyWsConnection[] = []
-    window.__GASOLINE_EARLY_WS__ = earlyConnections
+    window.__KABOOM_EARLY_WS__ = earlyConnections
 
     // Thin wrapper: creates real WebSocket + buffers lifecycle events
     function EarlyWebSocket(this: unknown, url: string | URL, protocols?: string | string[]): WebSocket {
@@ -104,7 +104,7 @@
     const OriginalFetch = window.fetch
 
     // Store original for Phase 2 adoption
-    window.__GASOLINE_ORIGINAL_FETCH__ = OriginalFetch
+    window.__KABOOM_ORIGINAL_FETCH__ = OriginalFetch
 
     window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
       // Determine URL and method
@@ -178,20 +178,20 @@
     const OriginalSend = XMLHttpRequest.prototype.send
 
     // Store originals for Phase 2 adoption
-    window.__GASOLINE_ORIGINAL_XHR_OPEN__ = OriginalOpen
-    window.__GASOLINE_ORIGINAL_XHR_SEND__ = OriginalSend
+    window.__KABOOM_ORIGINAL_XHR_OPEN__ = OriginalOpen
+    window.__KABOOM_ORIGINAL_XHR_SEND__ = OriginalSend
 
     XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
-      ;(this as XMLHttpRequest & { __gasolineEarlyMethod: string }).__gasolineEarlyMethod = method
-      ;(this as XMLHttpRequest & { __gasolineEarlyUrl: string }).__gasolineEarlyUrl =
+      ;(this as XMLHttpRequest & { __kaboomEarlyMethod: string }).__kaboomEarlyMethod = method
+      ;(this as XMLHttpRequest & { __kaboomEarlyUrl: string }).__kaboomEarlyUrl =
         typeof url === 'string' ? url : url.toString()
       return OriginalOpen.apply(this, [method, url, ...rest] as Parameters<typeof XMLHttpRequest.prototype.open>)
     }
 
     XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-      const xhrUrl: string = (this as XMLHttpRequest & { __gasolineEarlyUrl?: string }).__gasolineEarlyUrl || ''
+      const xhrUrl: string = (this as XMLHttpRequest & { __kaboomEarlyUrl?: string }).__kaboomEarlyUrl || ''
       const xhrMethod: string =
-        (this as XMLHttpRequest & { __gasolineEarlyMethod?: string }).__gasolineEarlyMethod || 'GET'
+        (this as XMLHttpRequest & { __kaboomEarlyMethod?: string }).__kaboomEarlyMethod || 'GET'
 
       this.addEventListener('load', function (this: XMLHttpRequest) {
         try {
@@ -237,33 +237,33 @@
   // =========================================================================
 
   setTimeout(() => {
-    // Phase 2 deletes __GASOLINE_EARLY_BODIES__ on adoption — if it still
+    // Phase 2 deletes __KABOOM_EARLY_BODIES__ on adoption — if it still
     // exists, Phase 2 never ran and we must clean up.
-    if (window.__GASOLINE_EARLY_BODIES__) {
-      delete window.__GASOLINE_EARLY_BODIES__
+    if (window.__KABOOM_EARLY_BODIES__) {
+      delete window.__KABOOM_EARLY_BODIES__
 
       // Restore fetch
-      if (window.__GASOLINE_ORIGINAL_FETCH__) {
-        window.fetch = window.__GASOLINE_ORIGINAL_FETCH__
-        delete window.__GASOLINE_ORIGINAL_FETCH__
+      if (window.__KABOOM_ORIGINAL_FETCH__) {
+        window.fetch = window.__KABOOM_ORIGINAL_FETCH__
+        delete window.__KABOOM_ORIGINAL_FETCH__
       }
 
       // Restore XHR
-      if (window.__GASOLINE_ORIGINAL_XHR_OPEN__) {
-        XMLHttpRequest.prototype.open = window.__GASOLINE_ORIGINAL_XHR_OPEN__
-        delete window.__GASOLINE_ORIGINAL_XHR_OPEN__
+      if (window.__KABOOM_ORIGINAL_XHR_OPEN__) {
+        XMLHttpRequest.prototype.open = window.__KABOOM_ORIGINAL_XHR_OPEN__
+        delete window.__KABOOM_ORIGINAL_XHR_OPEN__
       }
-      if (window.__GASOLINE_ORIGINAL_XHR_SEND__) {
-        XMLHttpRequest.prototype.send = window.__GASOLINE_ORIGINAL_XHR_SEND__
-        delete window.__GASOLINE_ORIGINAL_XHR_SEND__
+      if (window.__KABOOM_ORIGINAL_XHR_SEND__) {
+        XMLHttpRequest.prototype.send = window.__KABOOM_ORIGINAL_XHR_SEND__
+        delete window.__KABOOM_ORIGINAL_XHR_SEND__
       }
 
       // Restore WebSocket
-      if (window.__GASOLINE_ORIGINAL_WS__) {
-        window.WebSocket = window.__GASOLINE_ORIGINAL_WS__
-        delete window.__GASOLINE_ORIGINAL_WS__
+      if (window.__KABOOM_ORIGINAL_WS__) {
+        window.WebSocket = window.__KABOOM_ORIGINAL_WS__
+        delete window.__KABOOM_ORIGINAL_WS__
       }
-      delete window.__GASOLINE_EARLY_WS__
+      delete window.__KABOOM_EARLY_WS__
     }
   }, 30_000)
 })()

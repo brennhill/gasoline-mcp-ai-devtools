@@ -3,7 +3,7 @@ name: debug-triage
 description: Use when user reports a broken page, unexpected behavior, or error and needs fast root-cause identification across multiple signal sources.
 ---
 
-# Gasoline Debug Triage
+# Kaboom Debug Triage
 
 Use this skill when a feature is broken and the user needs root cause with proof.
 

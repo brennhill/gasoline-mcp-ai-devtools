@@ -17,7 +17,7 @@ last-verified: 2026-01-31
 
 ## Initial Problem Statement
 
-**User Goal:** Build v6 of Gasoline MCP with QA features using LLMs for writing and debugging code. The goal is to give an LLM the ability to create and run its own regression tests to detect errors.
+**User Goal:** Build v6 of Kaboom MCP with QA features using LLMs for writing and debugging code. The goal is to give an LLM the ability to create and run its own regression tests to detect errors.
 
 **Key Question:** How does this work ideally?
 
@@ -27,7 +27,7 @@ last-verified: 2026-01-31
 
 ### 1.1 Tool Mapping Strategy
 
-**Constraint:** Gasoline MCP has exactly 5 MCP tools (no 6th tool):
+**Constraint:** Kaboom MCP has exactly 5 MCP tools (no 6th tool):
 - observe
 - generate
 - configure
@@ -60,16 +60,16 @@ last-verified: 2026-01-31
 - TAP (Test Anything Protocol) exists but is dated
 - Supporting all frameworks is impossible
 
-**Decision:** Use Playwright as Gasoline MCP's built-in test runner
+**Decision:** Use Playwright as Kaboom MCP's built-in test runner
 
 **Why:**
-- Gasoline MCP already controls browser (extension + MCP)
+- Kaboom MCP already controls browser (extension + MCP)
 - LLMs are trained on Playwright
 - One implementation, no adapters
 - Works with ANY website regardless of underlying framework
 - Full control (screenshots, traces, timing)
 
-**Innovation:** Gasoline MCP Test Format (GTF) - Simple JSON for LLMs
+**Innovation:** Kaboom MCP Test Format (GTF) - Simple JSON for LLMs
 
 ```json
 {
@@ -140,7 +140,7 @@ last-verified: 2026-01-31
 }
 ```
 
-**Gasoline MCP injects into tool descriptions:**
+**Kaboom MCP injects into tool descriptions:**
 ```
 Tool: generate_test_case
 Integrity: "Generated tests must have specific assertions. Generic assertions like 'page loads' are not useful. Capture actual bug or behavior you observed."
@@ -174,9 +174,9 @@ Integrity: "Generated tests must have specific assertions. Generic assertions li
 
 ---
 
-### 2.3 The Gasoline MCP Advantage
+### 2.3 The Kaboom MCP Advantage
 
-Gasoline MCP provides:
+Kaboom MCP provides:
 1. **Observation capabilities** - See what's happening
 2. **Action capabilities** - Try things, explore
 3. **Comparison capabilities** - Notice differences
@@ -239,7 +239,7 @@ type ServiceDependency struct {
 #### Layer 3: Contract Persistence (Not Test Cases)
 
 ```json
-// .gasoline/contracts/auth-service.json
+// .kaboom/contracts/auth-service.json
 {
   "contracts": [
     {
@@ -348,7 +348,7 @@ LLM: "I see you've tried selector updates 3 times, all failed.
 ```
 
 ```json
-// .gasoline/edge-cases.json
+// .kaboom/edge-cases.json
 {
   "edge_cases": [
     {
@@ -442,7 +442,7 @@ LLM: "I see you've tried selector updates 3 times, all failed.
    "New user must enter valid email, password (8+ chars), and confirm password.
     Form should show inline errors for invalid input."
 
-2. LLM uses Gasoline MCP to explore:
+2. LLM uses Kaboom MCP to explore:
    - Goto /signup
    - Try: email = "invalid" → Expect error message
    - Try: password = "short" → Expect error message
@@ -480,7 +480,7 @@ Total time: 3 minutes, fully autonomous
 
 **Setup:**
 - User encounters error in production
-- User enables Gasoline MCP recorder
+- User enables Kaboom MCP recorder
 - User reproduces error
 - User: "Fix this error - here's what happened"
 
@@ -799,9 +799,9 @@ After specs are complete and reviewed:
 5. **Project-specific customization matters** - Edge cases vary by project
 6. **Simplicity wins** - Prompts over complex rules, JSON over verbose schemas
 
-### Gasoline MCP's Role
+### Kaboom MCP's Role
 
-Gasoline MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
+Kaboom MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
 
 Not: "Make LLMs write better tests"
 
@@ -1007,9 +1007,9 @@ Demo specs → Feature specs → Implementation → Demo execution (final QA)
 6. **Simplicity wins** - Prompts over complex rules, JSON over verbose schemas
 7. **Demo is final QA** - AI-Native TDD: Product flow tests, not unit tests
 
-### Gasoline MCP's Role
+### Kaboom MCP's Role
 
-Gasoline MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
+Kaboom MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
 
 Not: "Make LLMs write better tests"
 
@@ -1046,13 +1046,13 @@ Write unit tests → Write code → Run tests → Repeat
 After finalizing AI-native philosophy, we created two comprehensive demos:
 
 **Demo 1: ShopBroken** (Bug Fix Validation)
-- Location: `/Users/brenn/dev/gasoline-demos/Shop`
+- Location: `/Users/brenn/dev/kaboom-demos/Shop`
 - Starting state: 34 known bugs
-- Goal: Use Gasoline MCP to find and fix all bugs
+- Goal: Use Kaboom MCP to find and fix all bugs
 - Status: Existing demo, documented in UAT-README.md
 
 **Demo 2: BuildFeatures** (Feature Implementation with Checkpoint Validation)
-- Location: `/Users/brenn/dev/gasoline-demos/buildfeatures`
+- Location: `/Users/brenn/dev/kaboom-demos/buildfeatures`
 - Starting state: Fully functional (all bugs from Demo 1 fixed)
 - Goal: Add new features while preserving existing functionality
 - Status: New demo created with comprehensive specs
@@ -1067,7 +1067,7 @@ After finalizing AI-native philosophy, we created two comprehensive demos:
 - Infer whether changes are expected (per spec) or unexpected (bugs)
 
 **Key Innovation:**
-The demo tests Gasoline MCP's ability to distinguish between:
+The demo tests Kaboom MCP's ability to distinguish between:
 - **Expected changes** (per specification) → Accept, update checkpoint
 - **Unexpected changes** (bugs) → Flag as bug, suggest fix
 
@@ -1078,7 +1078,7 @@ This is the "holy grail" of AI testing!
 **Phase 1: Record Checkpoints (Baseline)**
 - Record 4 happy paths: Login, Add to Cart, Checkout, Payment
 - Capture actions, DOM state, network requests, console logs, screenshots
-- Save to `.gasoline/checkpoints/`
+- Save to `.kaboom/checkpoints/`
 
 **Phase 2: Implement Features**
 **Feature 1: Product Reviews (Non-Breaking Change)**
@@ -1112,7 +1112,7 @@ This is the "holy grail" of AI testing!
 - [ ] Total time: < 5 minutes
 - [ ] Fully autonomous (no human intervention after spec provided)
 
-#### 10.2.3 Gasoline MCP Capabilities Demonstrated
+#### 10.2.3 Kaboom MCP Capabilities Demonstrated
 
 | Tool | Mode | Purpose |
 |------|------|---------|
@@ -1131,10 +1131,10 @@ This is the "holy grail" of AI testing!
    - AI-Native: "Replay happy paths, understand what changed"
 
 2. **Demonstrates Intelligent Inference**
-   - Core capability: Can Gasoline MCP tell if a change is expected (per spec) or unexpected (a bug)?
+   - Core capability: Can Kaboom MCP tell if a change is expected (per spec) or unexpected (a bug)?
    - This is the "holy grail" of AI testing
 
-3. **Validates Gasoline MCP v6.0 Core Capabilities**
+3. **Validates Kaboom MCP v6.0 Core Capabilities**
    - All 7 modes demonstrated
    - Integration of capabilities shown
    - End-to-end workflow validated
@@ -1153,10 +1153,10 @@ This is the "holy grail" of AI testing!
 
 #### BuildFeatures Demo Structure
 ```
-/Users/brenn/dev/gasoline-demos/buildfeatures/
+/Users/brenn/dev/kaboom-demos/buildfeatures/
 ├── README.md                        ← Comprehensive demo documentation
 ├── demo-spec.md                    ← Detailed feature implementation spec
-├── .gasoline/
+├── .kaboom/
 │   └── checkpoints/
 │       └── .gitkeep               ← Checkpoints stored here
 ├── frontend/                       ← Copied from Shop (all bugs fixed)
@@ -1170,7 +1170,7 @@ This is the "holy grail" of AI testing!
    - Demo purpose and workflow
    - Detailed 4-phase walkthrough
    - Success criteria
-   - Gasoline MCP capabilities demonstrated
+   - Kaboom MCP capabilities demonstrated
    - Why this matters (for developers, AI, product teams)
 
 2. **demo-spec.md** (~600 lines)
@@ -1178,14 +1178,14 @@ This is the "holy grail" of AI testing!
    - Checkpoint recording requirements (4 checkpoints)
    - Validation requirements (4 phases)
    - Success criteria checklist
-   - Gasoline MCP capabilities used
+   - Kaboom MCP capabilities used
    - Expected output for each phase
    - Notes for LLM (key insights, common pitfalls)
 
 ### 10.4 Next Steps
 
 1. **Demo 1 Spec**: Create bug fix validation spec for ShopBroken
-   - Document how to use Gasoline MCP to find and fix 34 bugs
+   - Document how to use Kaboom MCP to find and fix 34 bugs
    - Validate with checkpoint replay
 
 2. **Feature Specs**: Write contract tests for v6.0 capabilities
@@ -1215,9 +1215,9 @@ This is the "holy grail" of AI testing!
 7. **Demo is final QA** - AI-Native TDD: Product flow tests, not unit tests
 8. **Checkpoint-based validation** - Record happy paths, replay to validate, infer expected vs unexpected
 
-### Gasoline MCP's Role
+### Kaboom MCP's Role
 
-Gasoline MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
+Kaboom MCP is a **toolkit for AI to be "eyes, ears, hands"** for building/repairing software.
 
 Not: "Make LLMs write better tests"
 
@@ -1268,7 +1268,7 @@ Record checkpoints → Implement changes → Replay checkpoints → Compare stat
 
 The 66 bugs we added to ShopBroken reveal critical gaps in current observability tools:
 
-| Bug Category | Count | Traditional Tools | Gasoline MCP v6 | Detection Tool Needed |
+| Bug Category | Count | Traditional Tools | Kaboom MCP v6 | Detection Tool Needed |
 |-------------|-------|-----------------|-------------------|---------------------|
 | Memory Leaks | 29 | ❌ Cannot detect | ❌ Cannot detect | `observe:memory` (heap snapshots over time) |
 | Race Conditions | 15 | ❌ Cannot detect | ❌ Cannot detect | `observe:timeline` + `network_waterfall` |
@@ -2089,7 +2089,7 @@ Explore → Observe → Infer → Act → Validate
   },
   "ai_analysis": {
     "feature_spec": { /* read from PR description or linked issue */ },
-    "baseline_checkpoints": { /* load from .gasoline/checkpoints/ */ },
+    "baseline_checkpoints": { /* load from .kaboom/checkpoints/ */ },
     "validation_scope": "full_regression + new_feature"
   }
 }
@@ -2113,7 +2113,7 @@ Explore → Observe → Infer → Act → Validate
 
 4. **Generate PR comment (EARS + EYES):**
    ```markdown
-   ## 🤖️ Gasoline MCP AI Review
+   ## 🤖️ Kaboom MCP AI Review
        
        ### ✅ Regression Tests
        - [x] Product grid: No changes
@@ -2146,8 +2146,8 @@ Explore → Observe → Infer → Act → Validate
 
 **Workflow:**
 ```yaml
-# .github/workflows/gasoline-ai-review.yml
-name: Gasoline MCP AI Review
+# .github/workflows/kaboom-ai-review.yml
+name: Kaboom MCP AI Review
 on: [pull_request]
 jobs:
   ai-review:
@@ -2155,12 +2155,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Run Gasoline MCP AI Review
-        uses: gasoline-mcp/actions/ai-review@v1
+      - name: Run Kaboom MCP AI Review
+        uses: kaboom-mcp/actions/ai-review@v1
         with:
           pr_number: ${{ github.event.pull_request.number }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          gasoline_api_key: ${{ secrets.GASOLINE_API_KEY }}
+          kaboom_api_key: ${{ secrets.GASOLINE_API_KEY }}
         env:
           GASOLINE_SERVER: http://localhost:7890
 ```
@@ -2259,9 +2259,9 @@ jobs:
 7. **Predictive capabilities reduce bugs** - Fix before they happen
 8. **Integration with existing workflows enables adoption** - PR, CI/CD
 
-### Gasoline MCP's Role
+### Kaboom MCP's Role
 
-Gasoline MCP provides the **360 observability platform** for AI to autonomously develop, test, and maintain software.
+Kaboom MCP provides the **360 observability platform** for AI to autonomously develop, test, and maintain software.
 
 Not: "Tool for debugging"
 

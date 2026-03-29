@@ -90,7 +90,7 @@ observe({what: "logs", min_level: "warn", limit: 50})
 
 ### `extension_logs`
 
-Internal.gasoline extension debug logs. **Not** browser console output — use `logs` for that. Only useful for troubleshooting the.gasoline extension itself.
+Internal KaBOOM extension debug logs. **Not** browser console output — use `logs` for that. Only useful for troubleshooting the KaBOOM extension itself.
 
 ```js
 observe({what: "extension_logs"})
@@ -420,7 +420,7 @@ observe({what: "page_inventory", visible_only: true})
 
 ### `transients`
 
-Capture transient UI elements — toasts, alerts, snackbars, and notifications that appear briefly and disappear..gasoline intercepts these before they vanish.
+Capture transient UI elements — toasts, alerts, snackbars, and notifications that appear briefly and disappear. KaBOOM intercepts these before they vanish.
 
 ```js
 observe({what: "transients"})

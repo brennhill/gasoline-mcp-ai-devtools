@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // HandleNetworkBodies handles POST /network-bodies from the extension.
@@ -25,7 +25,7 @@ func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 		Bodies []NetworkBody `json:"bodies"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleNetworkBodies: Invalid JSON - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleNetworkBodies: Invalid JSON - %v\n", err)
 		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
@@ -45,7 +45,7 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	var payload NetworkWaterfallPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleNetworkWaterfall: Invalid JSON - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleNetworkWaterfall: Invalid JSON - %v\n", err)
 		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
@@ -75,7 +75,7 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleQueryResult: Invalid JSON - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleQueryResult: Invalid JSON - %v\n", err)
 		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
@@ -112,7 +112,7 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 		Actions []EnhancedAction `json:"actions"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleEnhancedActions: Invalid JSON - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleEnhancedActions: Invalid JSON - %v\n", err)
 		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
@@ -152,12 +152,12 @@ func (c *Capture) handleStorageGet(w http.ResponseWriter) {
 func (c *Capture) handleStorageDelete(w http.ResponseWriter, r *http.Request) {
 	recordingID := r.URL.Query().Get("recording_id")
 	if recordingID == "" {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Missing recording_id query parameter\n")
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleRecordingStorage: Missing recording_id query parameter\n")
 		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing recording_id query parameter"})
 		return
 	}
 	if err := c.DeleteRecording(recordingID); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to delete recording %s - %v\n", recordingID, err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleRecordingStorage: Failed to delete recording %s - %v\n", recordingID, err)
 		util.JSONResponse(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
@@ -166,13 +166,13 @@ func (c *Capture) handleStorageDelete(w http.ResponseWriter, r *http.Request) {
 
 func (c *Capture) handleStorageRecalculate(w http.ResponseWriter) {
 	if err := c.RecalculateStorageUsed(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to recalculate storage - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleRecordingStorage: Failed to recalculate storage - %v\n", err)
 		util.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	info, err := c.GetStorageInfo()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to get storage info - %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] HandleRecordingStorage: Failed to get storage info - %v\n", err)
 		util.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}

@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-Single Gasoline server instance shared across multiple projects (or multiple agents working on different tabs) risks data leakage. Logs, network events, and captured telemetry from Project A should not be visible to Project B. Organizations need isolated capture contexts on one server.
+Single Kaboom server instance shared across multiple projects (or multiple agents working on different tabs) risks data leakage. Logs, network events, and captured telemetry from Project A should not be visible to Project B. Organizations need isolated capture contexts on one server.
 
 ## Solution
 
@@ -23,7 +23,7 @@ Add project isolation via project keys. Each client connects with a unique proje
 
 ## Requirements
 
-- Client specifies project_key on connection (MCP init param or HTTP header X-Gasoline-Project)
+- Client specifies project_key on connection (MCP init param or HTTP header X-Kaboom-Project)
 - Server creates separate buffers per project: logs, network, websocket, vitals, queries
 - Cross-project data access forbidden (client can only see own project's data)
 - Default project: if no key specified, use "default" (backwards compatible)
@@ -50,7 +50,7 @@ Add project isolation via project keys. Each client connects with a unique proje
 
 1. Agent A connects: `mcp connect --init-param project_key=projectA`
 2. Agent B connects: `mcp connect --init-param project_key=projectB`
-3. Extension sends telemetry with header: `X-Gasoline-Project: projectA`
+3. Extension sends telemetry with header: `X-Kaboom-Project: projectA`
 4. Agent A observes logs: sees only projectA logs
 5. Agent B observes logs: sees only projectB logs
 6. After 1 hour inactivity, projectA buffer expires, memory freed
@@ -72,7 +72,7 @@ Add project isolation via project keys. Each client connects with a unique proje
 ### Extension HTTP request with project:
 ```http
 POST /logs HTTP/1.1
-X-Gasoline-Project: myapp-staging
+X-Kaboom-Project: myapp-staging
 Content-Type: application/json
 
 {"level": "error", "message": "..."}

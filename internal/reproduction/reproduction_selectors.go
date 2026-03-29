@@ -5,7 +5,7 @@ package reproduction
 import (
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 type elementCandidate struct {

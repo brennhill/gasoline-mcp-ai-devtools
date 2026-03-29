@@ -28,7 +28,7 @@ import { errorMessage } from '../lib/error-utils.js'
 /**
  * Valid setting names from content script — imported from canonical constants.
  */
-const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS
+export const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS
 
 const VALID_STATE_ACTIONS = new Set<StateAction>(['capture', 'restore'])
 
@@ -36,7 +36,7 @@ const VALID_STATE_ACTIONS = new Set<StateAction>(['capture', 'restore'])
  * Setting message from content script
  */
 export interface SettingMessageData {
-  type: 'gasoline_setting'
+  type: 'kaboom_setting'
   setting: string
   enabled?: boolean
   mode?: string
@@ -47,7 +47,7 @@ export interface SettingMessageData {
  * State command message from content script
  */
 export interface StateCommandMessageData {
-  type: 'gasoline_state_command'
+  type: 'kaboom_state_command'
   messageId: string
   action: StateAction
   state?: BrowserStateSnapshot
@@ -56,14 +56,14 @@ export interface StateCommandMessageData {
 
 export function isValidSettingPayload(data: SettingMessageData): boolean {
   if (!VALID_SETTINGS.has(data.setting)) {
-    console.warn('[Gasoline] Invalid setting:', data.setting)
+    console.warn('[Kaboom] Invalid setting:', data.setting)
     return false
   }
   if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE) return typeof data.mode === 'string'
   if (data.setting === SettingName.SERVER_URL) return typeof data.url === 'string'
   // Boolean settings
   if (typeof data.enabled !== 'boolean') {
-    console.warn('[Gasoline] Invalid enabled value type')
+    console.warn('[Kaboom] Invalid enabled value type')
     return false
   }
   return true
@@ -106,10 +106,10 @@ export function handleStateCommand(
 
   // Validate action
   if (!VALID_STATE_ACTIONS.has(action)) {
-    console.warn('[Gasoline] Invalid state action:', action)
+    console.warn('[Kaboom] Invalid state action:', action)
     window.postMessage(
       {
-        type: 'gasoline_state_response',
+        type: 'kaboom_state_response',
         messageId,
         result: { error: `Invalid action: ${action}` }
       },
@@ -120,10 +120,10 @@ export function handleStateCommand(
 
   // Validate state object for restore action
   if (action === 'restore' && (!state || typeof state !== 'object')) {
-    console.warn('[Gasoline] Invalid state object for restore')
+    console.warn('[Kaboom] Invalid state object for restore')
     window.postMessage(
       {
-        type: 'gasoline_state_response',
+        type: 'kaboom_state_response',
         messageId,
         result: { error: 'Invalid state object' }
       },
@@ -150,7 +150,7 @@ export function handleStateCommand(
   // Send response back to content script
   window.postMessage(
     {
-      type: 'gasoline_state_response',
+      type: 'kaboom_state_response',
       messageId,
       result
     },

@@ -1,6 +1,6 @@
 ---
 title: API and Tool Reference
-description: Readthedocs-style entry point for.gasoline MCP tool APIs, request shapes, and common usage patterns.
+description: Readthedocs-style entry point for KaBOOM MCP tool APIs, request shapes, and common usage patterns.
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['reference']
@@ -20,7 +20,7 @@ Use this page as the structured starting point for all MCP tool docs.
 
 ## Common Parameters
 
-These parameters appear repeatedly across.gasoline tools:
+These parameters appear repeatedly across KaBOOM tools:
 
 | Parameter | Purpose |
 | --- | --- |
@@ -45,8 +45,8 @@ These parameters appear repeatedly across.gasoline tools:
 
 Each docs, blog, and articles route has a markdown endpoint:
 
-- HTML: `https://cookwithgasoline.com/guides/debug-webapps/`
-- Markdown: `https://cookwithgasoline.com/guides/debug-webapps.md`
+- HTML: `https://gokaboom.dev/guides/debug-webapps/`
+- Markdown: `https://gokaboom.dev/guides/debug-webapps.md`
 
 Catalogs:
 

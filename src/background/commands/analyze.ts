@@ -9,6 +9,7 @@
 
 import { registerCommand, type CommandContext } from './registry.js'
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
+import { KABOOM_LOG_PREFIX } from '../../lib/brand.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { domFrameProbe } from '../dom-frame-probe.js'
 import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js'
@@ -389,7 +390,7 @@ registerCommand('dom', async (ctx) => {
     ctx.sendResult(result)
   } catch (err) {
     const message = errorMessage(err, 'Failed to execute DOM query')
-    console.error('[Gasoline][DOM] Command failed:', message, (err as Error).stack || err)
+    console.error(`${KABOOM_LOG_PREFIX}[DOM] Command failed:`, message, (err as Error).stack || err)
     const routingError = isFrameRoutingError(message)
     ctx.sendResult({
       error: routingError ? message : 'dom_query_failed',
@@ -412,7 +413,7 @@ registerCommand('a11y', async (ctx) => {
     ctx.sendResult(result)
   } catch (err) {
     const message = errorMessage(err, 'Failed to execute accessibility audit')
-    console.error('[Gasoline][A11Y] Command failed:', message, (err as Error).stack || err)
+    console.error(`${KABOOM_LOG_PREFIX}[A11Y] Command failed:`, message, (err as Error).stack || err)
     const routingError = isFrameRoutingError(message)
     ctx.sendResult({
       error: routingError ? message : 'a11y_audit_failed',
@@ -459,7 +460,7 @@ registerCommand('draw_mode', async (ctx) => {
   if (params.action === 'start') {
     try {
       const result = await chrome.tabs.sendMessage(ctx.tabId, {
-        type: 'gasoline_draw_mode_start',
+        type: 'kaboom_draw_mode_start',
         started_by: 'llm',
         annot_session_name: params.annot_session || '',
         correlation_id: ctx.query.correlation_id || ctx.query.id || ''

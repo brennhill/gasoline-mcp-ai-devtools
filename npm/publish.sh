@@ -28,16 +28,16 @@ mkdir -p \
   npm/win32-x64/bin
 
 # Copy binaries to platform packages
-cp dist/gasoline-darwin-arm64         npm/darwin-arm64/bin/kaboom-agentic-browser
-cp dist/gasoline-darwin-x64           npm/darwin-x64/bin/kaboom-agentic-browser
-cp dist/gasoline-linux-arm64          npm/linux-arm64/bin/kaboom-agentic-browser
-cp dist/gasoline-linux-x64            npm/linux-x64/bin/kaboom-agentic-browser
-cp dist/gasoline-win32-x64.exe        npm/win32-x64/bin/kaboom-agentic-browser.exe
-cp dist/gasoline-hooks-darwin-arm64   npm/darwin-arm64/bin/kaboom-hooks
-cp dist/gasoline-hooks-darwin-x64     npm/darwin-x64/bin/kaboom-hooks
-cp dist/gasoline-hooks-linux-arm64    npm/linux-arm64/bin/kaboom-hooks
-cp dist/gasoline-hooks-linux-x64      npm/linux-x64/bin/kaboom-hooks
-cp dist/gasoline-hooks-win32-x64.exe  npm/win32-x64/bin/kaboom-hooks.exe
+cp dist/kaboom-darwin-arm64         npm/darwin-arm64/bin/kaboom-agentic-browser
+cp dist/kaboom-darwin-x64           npm/darwin-x64/bin/kaboom-agentic-browser
+cp dist/kaboom-linux-arm64          npm/linux-arm64/bin/kaboom-agentic-browser
+cp dist/kaboom-linux-x64            npm/linux-x64/bin/kaboom-agentic-browser
+cp dist/kaboom-win32-x64.exe        npm/win32-x64/bin/kaboom-agentic-browser.exe
+cp dist/kaboom-hooks-darwin-arm64   npm/darwin-arm64/bin/kaboom-hooks
+cp dist/kaboom-hooks-darwin-x64     npm/darwin-x64/bin/kaboom-hooks
+cp dist/kaboom-hooks-linux-arm64    npm/linux-arm64/bin/kaboom-hooks
+cp dist/kaboom-hooks-linux-x64      npm/linux-x64/bin/kaboom-hooks
+cp dist/kaboom-hooks-win32-x64.exe  npm/win32-x64/bin/kaboom-hooks.exe
 
 # Ensure binaries are executable
 chmod +x npm/darwin-arm64/bin/kaboom-agentic-browser

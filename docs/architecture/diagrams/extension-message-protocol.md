@@ -393,8 +393,8 @@ Content-Type: video/webm
 {
   "status": "saved",
   "name": "checkout-bug--2026-02-07-1430",
-  "path": "~/.gasoline/recordings/checkout-bug--2026-02-07-1430.webm",
-  "metadata_path": "~/.gasoline/recordings/checkout-bug--2026-02-07-1430_meta.json",
+  "path": "~/.kaboom/recordings/checkout-bug--2026-02-07-1430.webm",
+  "metadata_path": "~/.kaboom/recordings/checkout-bug--2026-02-07-1430_meta.json",
   "size_bytes": 42000000,
   "duration_seconds": 154
 }

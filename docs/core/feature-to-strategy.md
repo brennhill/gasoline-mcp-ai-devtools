@@ -11,7 +11,7 @@ last_reviewed: 2026-02-16
 ## Strategic Pillars
 
 ### Pillar 1: AI-Native Architecture
-**Goal:** Make Gasoline the default observability tool for AI coding assistants
+**Goal:** Make Kaboom the default observability tool for AI coding assistants
 
 **Features:**
 - MCP protocol integration (all tools)
@@ -21,7 +21,7 @@ last_reviewed: 2026-02-16
 
 **Competitive edge:**
 - Competitors: Traditional DevTools (not AI-aware)
-- Gasoline: Built specifically for AI agent consumption
+- Kaboom: Built specifically for AI agent consumption
 
 ---
 
@@ -36,7 +36,7 @@ last_reviewed: 2026-02-16
 
 **Competitive edge:**
 - Competitors: SaaS observability (Sentry, LogRocket) - data leaves network
-- Gasoline: All data stays on customer infrastructure
+- Kaboom: All data stays on customer infrastructure
 
 ---
 
@@ -51,7 +51,7 @@ last_reviewed: 2026-02-16
 
 **Competitive edge:**
 - Competitors: Playwright (requires test framework integration)
-- Gasoline: Works on production sites, no code changes
+- Kaboom: Works on production sites, no code changes
 
 ---
 
@@ -65,7 +65,7 @@ last_reviewed: 2026-02-16
 
 **Competitive edge:**
 - Competitors: Silent background operation (confusing)
-- Gasoline: Clear visual feedback, peace of mind
+- Kaboom: Clear visual feedback, peace of mind
 
 ---
 
@@ -80,7 +80,7 @@ last_reviewed: 2026-02-16
 
 ---
 
-### Differentiators (Unique to Gasoline)
+### Differentiators (Unique to Kaboom)
 - Correlation ID tracking → Pillar 1
 - Flickering flame favicon → Pillar 4
 - Zero dependencies → Pillar 2
@@ -101,7 +101,7 @@ last_reviewed: 2026-02-16
 
 ## Competitive Positioning
 
-| Feature | Gasoline | Traditional DevTools | SaaS Observability | Playwright |
+| Feature | Kaboom | Traditional DevTools | SaaS Observability | Playwright |
 |---------|----------|---------------------|--------------------|-----------
 | AI-Native | ✅ MCP protocol | ❌ Human-focused UI | ⚠️ API exists | ❌ Test framework |
 | Self-Hosted | ✅ Localhost only | ✅ Browser-local | ❌ Cloud SaaS | ✅ Local test runner |

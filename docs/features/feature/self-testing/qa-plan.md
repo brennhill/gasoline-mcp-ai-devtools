@@ -88,7 +88,7 @@ last_verified_date: 2026-03-05
 - [ ] `/captured/*` endpoints work with no configuration (default limit=100, since=0, format=json)
 - [ ] `/mcp` endpoint uses same tool handling as stdio MCP (no separate configuration)
 - [ ] Playwright harness auto-builds server before running (`make dev`)
-- [ ] Harness cleans up processes on exit (no zombie gasoline servers or browser instances)
+- [ ] Harness cleans up processes on exit (no zombie kaboom servers or browser instances)
 
 ---
 
@@ -164,7 +164,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls and HTTP requests; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test page open (e.g., localhost:3000 or any web page with JS console access)
 - [ ] `curl` or equivalent HTTP client available
@@ -198,7 +198,7 @@ last_verified_date: 2026-03-05
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | UAT-12 | `node scripts/uat-runner.js --phase 1 --json` | Browser launches (if --headed), tests run | JSON output with phase1 results, all tests show status | [ ] |
-| UAT-13 | After harness completes, check for zombie processes | `ps aux \| grep gasoline` | No orphaned gasoline or Chrome processes | [ ] |
+| UAT-13 | After harness completes, check for zombie processes | `ps aux \| grep kaboom` | No orphaned kaboom or Chrome processes | [ ] |
 
 ### Data Leak UAT Verification
 

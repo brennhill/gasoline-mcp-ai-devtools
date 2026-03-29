@@ -1,6 +1,6 @@
 ---
 title: "Annotation-Driven UX Reviews for Engineering Teams"
-description: "Run faster, clearer User Experience reviews with visual annotations and actionable follow-up workflows in.gasoline Agentic Devtools."
+description: "Run faster, clearer User Experience reviews with visual annotations and actionable follow-up workflows in KaBOOM Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [ux, annotations, collaboration, quality]
@@ -13,7 +13,7 @@ A lot of design feedback dies in chat threads.
 
 **User Experience (UX)** means how people feel when using your product. https://www.nngroup.com/articles/definition-user-experience/
 
-Annotation-driven reviews turn vague feedback into concrete, fixable items with *.gasoline Agentic Devtools**.
+Annotation-driven reviews turn vague feedback into concrete, fixable items with **KaBOOM Agentic Devtools**.
 
 <!-- more -->
 
@@ -33,7 +33,7 @@ with:
 
 “On this card, increase contrast and shorten helper text.”
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Start annotation mode
 
@@ -73,4 +73,4 @@ Run this in a 30-minute weekly review with product, design, and engineering. Kee
 
 ## You’re Building Shared Product Language
 
-That is a big-league move. *.gasoline Agentic Devtools** makes UX review concrete, collaborative, and easy to track.
+That is a big-league move. **KaBOOM Agentic Devtools** makes UX review concrete, collaborative, and easy to track.

@@ -20,21 +20,21 @@ last_verified_date: 2026-03-05
 **Objective:** Verify reset_database operation succeeds and leaves database in expected state
 
 #### Setup:
-- Start backend service with /.gasoline/control handler
+- Start backend service with /.kaboom/control handler
 - Pre-populate database with 1250 users, 500 orders
-- Gasoline MCP connected and discovered service
+- Kaboom MCP connected and discovered service
 
 #### Steps:
 1. Call `interact({action: "backend_control", operation: "reset_database", tables: ["users", "orders"]})`
-2. Verify Gasoline creates BEFORE snapshot
-3. Verify Gasoline creates AFTER snapshot
+2. Verify Kaboom creates BEFORE snapshot
+3. Verify Kaboom creates AFTER snapshot
 4. Query backend state: `observe({what: "backend_state", service: "api-server", keys: ["user_count"]})`
 5. Verify user_count is 0 (or seed data only)
 
 #### Expected Result:
 - Operation returns `{status: "success", result: {rows_deleted: 1250}, duration_ms: 350}`
 - BEFORE snapshot checksum != AFTER snapshot checksum
-- Backend state reflected in Gasoline observation
+- Backend state reflected in Kaboom observation
 - Audit log shows operation with before/after hashes
 
 #### Acceptance Criteria:
@@ -61,7 +61,7 @@ last_verified_date: 2026-03-05
 
 #### Expected Result:
 - User created successfully, assigned user_id
-- State observable through Gasoline
+- State observable through Kaboom
 - Data persists through service restart
 - Audit log shows create_test_user operation
 
@@ -79,7 +79,7 @@ last_verified_date: 2026-03-05
 #### Setup:
 - Test user created (from Scenario 2)
 - Frontend loaded on localhost:3000
-- Gasoline has record correlation_id="test-payment-003"
+- Kaboom has record correlation_id="test-payment-003"
 
 #### Steps:
 1. Create BEFORE snapshot: `configure({action: "snapshot", session_action: "create", name: "before_payment"})`
@@ -245,14 +245,14 @@ last_verified_date: 2026-03-05
 ---
 
 ### Scenario 9: Service Discovery & Operation Enumeration
-**Objective:** Verify Gasoline discovers available control operations
+**Objective:** Verify Kaboom discovers available control operations
 
 #### Setup:
-- Backend service with /.gasoline/control handler
-- Gasoline MCP just started
+- Backend service with /.kaboom/control handler
+- Kaboom MCP just started
 
 #### Steps:
-1. Gasoline MCP starts, pings /.gasoline/control?discover=true
+1. Kaboom MCP starts, pings /.kaboom/control?discover=true
 2. Backend returns available operations with schemas
 3. Call `observe({what: "backend_state", service: "api-server"})`
 4. Verify operations list includes reset_database, create_test_user, simulate_*, etc.
@@ -278,7 +278,7 @@ last_verified_date: 2026-03-05
 #### Setup:
 - Backend logging with correlation_id support
 - Frontend with session tracking
-- Gasoline MCP with correlation tracing
+- Kaboom MCP with correlation tracing
 
 #### Steps:
 1. Generate correlation_id: `req-test-flow-10-001`

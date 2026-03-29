@@ -155,7 +155,7 @@ timestamp := entry.Timestamp
 **Decision:** Use extended read lock during cursor operations (Option B).
 
 #### Rationale:
-- **No write concurrency** - Gasoline server is single-threaded for buffer writes
+- **No write concurrency** - Kaboom server is single-threaded for buffer writes
 - **Simple** - No snapshot copy overhead, no algorithm changes
 - **Negligible cost** - 1ms block time for 1000 entries, misses <0.1 logs at 100 logs/sec
 - **Guarantees consistency** - No index shifts during iteration
@@ -774,8 +774,8 @@ func TestForwardPagination(t *testing.T) {
 ### Integration Test
 
 ```bash
-# Terminal 1: Start Gasoline
-./gasoline --port 7890
+# Terminal 1: Start Kaboom
+./kaboom --port 7890
 
 # Terminal 2: Generate continuous logs
 while true; do

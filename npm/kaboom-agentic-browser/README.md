@@ -1,4 +1,4 @@
-# kaboom-mcp
+# kaboom-agentic-browser
 
 **Kaboom Agentic Browser - rapid e2e web development.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
 
@@ -18,10 +18,10 @@ Pick your tool and add the config:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
     }
   }
 }
@@ -32,22 +32,22 @@ Pick your tool and add the config:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
     }
   }
 }
 ```
 
-After adding, restart Claude Code. You should see "gasoline-browser-devtools" listed when you run `/mcp`.
+After adding, restart Claude Code. You should see "kaboom-browser-devtools" listed when you run `/mcp`.
 
-**Architecture note:** Your AI tool spawns a SINGLE Gasoline process that handles both:
+**Architecture note:** Your AI tool spawns a SINGLE Kaboom process that handles both:
 - HTTP server on port 7890 (for browser extension telemetry)
 - stdio MCP protocol (for AI tool commands)
 
-Both interfaces share the same browser state. Do NOT manually start Gasoline — let the MCP system manage it.
+Both interfaces share the same browser state. Do NOT manually start Kaboom — let the MCP system manage it.
 
 </details>
 
@@ -62,10 +62,10 @@ Edit your config file:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
     }
   }
 }
@@ -83,10 +83,10 @@ Go to Settings → MCP Servers → Add Server, or add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
     }
   }
 }
@@ -104,10 +104,10 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
     }
   }
 }
@@ -130,7 +130,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+          "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
         }
       }
     ]
@@ -148,10 +148,10 @@ Add to `~/.config/zed/settings.json`:
 ```json
 {
   "context_servers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": {
         "path": "npx",
-        "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+        "args": ["-y", "kaboom-agentic-browser", "--port", "7890", "--persist"]
       }
     }
   }
@@ -162,15 +162,15 @@ Add to `~/.config/zed/settings.json`:
 
 ### Step 2: Install the Browser Extension
 
-The extension captures logs from your browser and sends them to the local Gasoline server.
+The extension captures logs from your browser and sends them to the local Kaboom server.
 
-1. Download or clone the [Gasoline repository](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
+1. Download or clone the [Kaboom repository](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
 2. Open `chrome://extensions` in Chrome
 3. Enable **Developer mode** (top right toggle)
 4. Click **Load unpacked**
 5. Select the `extension/` folder from the repository
 
-Once installed, you'll see the Gasoline icon in your browser toolbar. Click it to check connection status.
+Once installed, you'll see the Kaboom icon in your browser toolbar. Click it to check connection status.
 
 ### That's It!
 
@@ -193,7 +193,7 @@ Browser → Extension → Local Server (localhost:7890) → Log File → AI read
 ```
 
 1. The extension captures console logs, network errors, and exceptions from your browser
-2. Logs are sent to the Gasoline server running on your machine (localhost only)
+2. Logs are sent to the Kaboom server running on your machine (localhost only)
 3. Your AI assistant reads the logs through the MCP protocol
 4. Everything stays local — no data ever leaves your machine
 
@@ -202,18 +202,18 @@ Browser → Extension → Local Server (localhost:7890) → Log File → AI read
 If your AI tool doesn't support MCP, you can run the server standalone:
 
 ```bash
-npx gasoline-mcp
+npx kaboom-agentic-browser
 ```
 
-This starts an HTTP server on `http://localhost:7890` and writes logs to `~/gasoline-logs.jsonl`. Your AI can read this file directly.
+This starts an HTTP server on `http://localhost:7890` and writes logs to `~/.kaboom/logs/kaboom.jsonl`. Your AI can read this file directly.
 
 ## Options
 
 ```
-gasoline-mcp [options]
+kaboom-agentic-browser [options]
 
   --port <number>        Port to listen on (default: 7890)
-  --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
+  --log-file <path>      Path to log file (default: ~/.kaboom/logs/kaboom.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
   --mcp                  No-op (MCP mode is the default)
   --version              Show version
@@ -222,28 +222,28 @@ gasoline-mcp [options]
 
 ### External Skills Catalog (Optional)
 
-Gasoline ships with bundled skills (including `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`).
+Kaboom ships with bundled skills (including `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`).
 
 `site-audit` provides full menu mapping plus page-by-page and feature-by-feature product analysis with usability findings and reproducibility notes.
 
-- `gasoline-mcp --install` installs bundled skills into detected agent skill directories.
+- `kaboom-agentic-browser --install` installs bundled skills into detected agent skill directories.
 - npm package install also runs the bundled skill installer via postinstall.
-- Set `GASOLINE_SKIP_SKILL_INSTALL=1` to disable automatic skill installation.
+- Set `KABOOM_SKIP_SKILL_INSTALL=1` to disable automatic skill installation.
 
-`gasoline-mcp --install` can install managed skills from a separate GitHub repo (for example `brennhill/gasoline-skills`) instead of only the bundled package copy.
+`kaboom-agentic-browser --install` can install managed skills from a separate GitHub repo (for example `brennhill/kaboom-skills`) instead of only the bundled package copy.
 
 Examples:
 
 ```bash
 # Simple owner/repo source
-gasoline-mcp --install --skills-repo brennhill/gasoline-skills
+kaboom-agentic-browser --install --skills-repo brennhill/kaboom-skills
 
 # GitHub tree URL with subpath (auto-detects ref and path)
-gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp-skills/tree/stable/skills
+kaboom-agentic-browser --install --skills-repo https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP-skills/tree/stable/skills
 
 # Explicit manifest/path controls
-gasoline-mcp --install \
-  --skills-repo brennhill/gasoline-skills \
+kaboom-agentic-browser --install \
+  --skills-repo brennhill/kaboom-skills \
   --skills-ref main \
   --skills-manifest skills/skills.json \
   --skills-path skills
@@ -251,39 +251,39 @@ gasoline-mcp --install \
 
 Environment variable equivalents:
 
-- `GASOLINE_SKILLS_REPO`
-- `GASOLINE_SKILLS_REF`
-- `GASOLINE_SKILLS_MANIFEST_PATH`
-- `GASOLINE_SKILLS_PATH`
-- `GASOLINE_SKILLS_DIR` (local directory override)
-- `GASOLINE_SKILLS_NO_FALLBACK=1` (fail instead of falling back to bundled skills)
+- `KABOOM_SKILLS_REPO`
+- `KABOOM_SKILLS_REF`
+- `KABOOM_SKILLS_MANIFEST_PATH`
+- `KABOOM_SKILLS_PATH`
+- `KABOOM_SKILLS_DIR` (local directory override)
+- `KABOOM_SKILLS_NO_FALLBACK=1` (fail instead of falling back to bundled skills)
 
 ## Troubleshooting
 
-**"gasoline-browser-devtools" not showing up in my AI tool?**
+**"kaboom-browser-devtools" not showing up in my AI tool?**
 
 - Make sure you restarted the AI tool after adding the config
 - Check the config file path is correct for your tool
-- Try running `npx gasoline-mcp --version` to verify the package works
+- Try running `npx kaboom-agentic-browser --version` to verify the package works
 
 **"bind: address already in use" error?**
 
-If MCP fails to start with a port conflict, you likely have a manually-started Gasoline instance running:
+If MCP fails to start with a port conflict, you likely have a manually-started Kaboom instance running:
 
 ```bash
 # Find and kill the conflicting process
-ps aux | grep gasoline | grep -v grep
+ps aux | grep kaboom-agentic-browser | grep -v grep
 kill <PID>
 
 # Or on macOS/Linux:
-pkill -f gasoline
+pkill -f kaboom-agentic-browser
 ```
 
-Then reload your MCP connection. The MCP system will spawn a fresh instance. Remember: do NOT manually start Gasoline when using MCP mode.
+Then reload your MCP connection. The MCP system will spawn a fresh instance. Remember: do NOT manually start Kaboom when using MCP mode.
 
 **Extension shows "Disconnected"?**
 
-- The MCP server starts automatically when your AI tool launches — check if it's running: `ps aux | grep gasoline`
+- The MCP server starts automatically when your AI tool launches — check if it's running: `ps aux | grep kaboom-agentic-browser`
 - Verify the extension's Server URL matches your config (default: `http://localhost:7890`)
 - Try restarting your AI tool to re-initialize the MCP connection
 
@@ -291,7 +291,7 @@ Then reload your MCP connection. The MCP system will spawn a fresh instance. Rem
 
 - Click the extension icon and check the capture level (try "All Logs")
 - Make sure the page was loaded/refreshed after the extension was installed
-- Check `~/gasoline-logs.jsonl` to see if entries are being written
+- Check `~/.kaboom/logs/kaboom.jsonl` to see if entries are being written
 
 ## Supported Platforms
 
@@ -305,5 +305,5 @@ Then reload your MCP connection. The MCP system will spawn a fresh instance. Rem
 
 ## Links
 
-- [Full documentation](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
-- [Report an issue](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
+- [Full documentation](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+- [Report an issue](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues)

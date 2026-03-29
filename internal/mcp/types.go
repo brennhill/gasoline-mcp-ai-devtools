@@ -3,7 +3,7 @@
 
 package mcp
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 
 // JSONRPCVersion is the JSON-RPC protocol version string. Use this constant
 // instead of the magic string "2.0" when constructing JSON-RPC responses.

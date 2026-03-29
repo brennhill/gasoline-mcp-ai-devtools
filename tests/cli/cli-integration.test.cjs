@@ -1,5 +1,5 @@
 /**
- * Integration tests for bin/gasoline-mcp CLI
+ * Integration tests for bin/kaboom-agentic-browser CLI
  * Tests command routing, argument parsing, and end-to-end workflows
  */
 
@@ -11,10 +11,10 @@ const fs = require('fs')
 const _path = require('path')
 const _os = require('os')
 
-// Helper to run gasoline-mcp command
+// Helper to run kaboom-agentic-browser command
 function runCommand(args) {
   try {
-    const cmd = `npm/gasoline-mcp/bin/gasoline-mcp ${args}`.trim()
+    const cmd = `npm/kaboom-agentic-browser/bin/kaboom-agentic-browser ${args}`.trim()
     const output = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     return { success: true, output, exitCode: 0 }
   } catch (e) {
@@ -22,53 +22,56 @@ function runCommand(args) {
   }
 }
 
-test('gasoline-mcp --help shows help message', () => {
+test('kaboom-agentic-browser --help shows help message', () => {
   const result = runCommand('--help')
 
   // Help should always exit 0
   assert.strictEqual(result.exitCode, 0, 'Help should exit with 0')
-  assert.ok(result.output.includes('Gasoline MCP Server') || result.output.includes('Usage'), 'Should show help')
+  assert.ok(
+    result.output.includes('Kaboom Agentic Browser Server') || result.output.includes('Usage'),
+    'Should show help'
+  )
   assert.ok(result.output.includes('--install') || result.output.includes('install'), 'Should mention install command')
 })
 
-test('gasoline-mcp -h shows help message', () => {
+test('kaboom-agentic-browser -h shows help message', () => {
   const result = runCommand('-h')
 
   assert.strictEqual(result.exitCode, 0, 'Short help should exit with 0')
   assert.ok(result.output.length > 0, 'Should show help')
 })
 
-test('gasoline-mcp --config shows configuration', () => {
+test('kaboom-agentic-browser --config shows configuration', () => {
   const result = runCommand('--config')
 
   assert.strictEqual(result.exitCode, 0, 'Config should exit with 0')
   assert.ok(result.output.includes('Configuration') || result.output.includes('mcpServers'), 'Should show config info')
 })
 
-test('gasoline-mcp -c shows configuration', () => {
+test('kaboom-agentic-browser -c shows configuration', () => {
   const result = runCommand('-c')
 
   assert.strictEqual(result.exitCode, 0, 'Short config should exit with 0')
   assert.ok(result.output.length > 0, 'Should show config')
 })
 
-test('gasoline-mcp --doctor runs diagnostics', () => {
+test('kaboom-agentic-browser --doctor runs diagnostics', () => {
   const result = runCommand('--doctor')
 
   assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0')
   assert.ok(result.output.includes('Diagnostic') || result.output.includes('tool'), 'Should show diagnostic info')
 })
 
-test('gasoline-mcp --doctor --verbose runs diagnostics verbosely', () => {
+test('kaboom-agentic-browser --doctor --verbose runs diagnostics verbosely', () => {
   const result = runCommand('--doctor --verbose')
 
   assert.strictEqual(result.exitCode, 0, 'Doctor verbose should exit with 0')
   assert.ok(result.output.length > 0, 'Should show diagnostic info')
 })
 
-test('gasoline-mcp --install --dry-run previews without writing', () => {
+test('kaboom-agentic-browser --install --dry-run previews without writing', () => {
   // Get initial state
-  const candidates = require('../../npm/gasoline-mcp/lib/config').getConfigCandidates()
+  const candidates = require('../../npm/kaboom-agentic-browser/lib/config').getConfigCandidates()
   const initialState = {}
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
@@ -97,7 +100,7 @@ test('gasoline-mcp --install --dry-run previews without writing', () => {
   }
 })
 
-test('gasoline-mcp --env without --install shows error', () => {
+test('kaboom-agentic-browser --env without --install shows error', () => {
   const result = runCommand('--env DEBUG=1')
 
   // Should fail or show error
@@ -107,7 +110,7 @@ test('gasoline-mcp --env without --install shows error', () => {
   )
 })
 
-test('gasoline-mcp with unsupported flag shows error', () => {
+test('kaboom-agentic-browser with unsupported flag shows error', () => {
   const result = runCommand('--for-all')
 
   // Should fail or show error
@@ -117,14 +120,14 @@ test('gasoline-mcp with unsupported flag shows error', () => {
   )
 })
 
-test('gasoline-mcp with invalid flag shows help or error', () => {
+test('kaboom-agentic-browser with invalid flag shows help or error', () => {
   const result = runCommand('--invalid-flag')
 
   // Invalid flag should either show help or run the binary
   assert.ok(result.output.length > 0 || result.error, 'Should show output or error')
 })
 
-test('gasoline-mcp with no args attempts to run binary', () => {
+test('kaboom-agentic-browser with no args attempts to run binary', () => {
   // No args should attempt to run the binary, which may fail if not in PATH
   const result = runCommand('')
 
@@ -133,19 +136,19 @@ test('gasoline-mcp with no args attempts to run binary', () => {
   assert.ok(typeof result.exitCode === 'number', 'Should return exit code')
 })
 
-test('gasoline-mcp --help exits successfully', () => {
+test('kaboom-agentic-browser --help exits successfully', () => {
   const result = runCommand('--help')
 
   assert.strictEqual(result.exitCode, 0, 'Help should exit with 0')
 })
 
-test('gasoline-mcp --config exits successfully', () => {
+test('kaboom-agentic-browser --config exits successfully', () => {
   const result = runCommand('--config')
 
   assert.strictEqual(result.exitCode, 0, 'Config should exit with 0')
 })
 
-test('gasoline-mcp --doctor exits successfully', () => {
+test('kaboom-agentic-browser --doctor exits successfully', () => {
   const result = runCommand('--doctor')
 
   assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0')
@@ -181,14 +184,14 @@ test('CLI outputs use emoji markers for status', () => {
   )
 })
 
-test('gasoline-mcp --install --dry-run handles install flags', () => {
+test('kaboom-agentic-browser --install --dry-run handles install flags', () => {
   const result = runCommand('--install --dry-run --skills-no-fallback')
 
   assert.strictEqual(result.exitCode, 0, 'Dry-run install should exit with 0')
   assert.ok(result.output.length > 0, 'Should produce output')
 })
 
-test('gasoline-mcp command parser handles flag combinations', () => {
+test('kaboom-agentic-browser command parser handles flag combinations', () => {
   // These should all parse correctly even if they might fail
   const testCases = [
     '--install --dry-run',

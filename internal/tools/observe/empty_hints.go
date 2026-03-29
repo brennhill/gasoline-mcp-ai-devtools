@@ -48,7 +48,7 @@ func networkBodiesEmptyHint(waterfallCount int, unfilteredCount int, filters Net
 	}
 
 	// Case 3: No waterfall, no bodies — nothing captured yet
-	return "No network bodies captured. Ensure the Gasoline extension is connected and tracking a tab. " +
+	return "No network bodies captured. Ensure the Kaboom extension is connected and tracking a tab. " +
 		"Bodies are captured for requests made after tracking starts. Check observe({what: \"pilot\"}) for extension status."
 }
 

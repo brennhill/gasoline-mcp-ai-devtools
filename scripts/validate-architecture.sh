@@ -3,10 +3,10 @@
 # Run in CI to catch architecture violations before merge
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/browser-agent}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
-echo "🏗️  Validating Gasoline architecture..."
+echo "🏗️  Validating Kaboom architecture..."
 echo ""
 
 ERRORS=0
@@ -184,13 +184,13 @@ fi
 echo ""
 echo "7️⃣  Running integration tests..."
 
-if go test -v ./internal/capture -run TestAsyncQueueIntegration > /tmp/gasoline-integration-test.log 2>&1; then
+if go test -v ./internal/capture -run TestAsyncQueueIntegration > /tmp/kaboom-integration-test.log 2>&1; then
     echo "   ✅ Integration tests pass"
 else
     echo "   ❌ Integration tests FAILED"
     echo ""
     echo "   Test output:"
-    tail -30 /tmp/gasoline-integration-test.log
+    tail -30 /tmp/kaboom-integration-test.log
     ERRORS=$((ERRORS + 1))
 fi
 

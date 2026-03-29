@@ -10,7 +10,7 @@ canonical: true
 
 # Release Process
 
-Gasoline MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Kaboom MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 
@@ -223,7 +223,7 @@ This validates all 17+ version locations match, including:
 - Go main.go version constant
 - MCP golden test file
 - README badge
-- **optionalDependencies in npm/gasoline-mcp/package.json** (CRITICAL - must match main version)
+- **optionalDependencies in npm/kaboom-mcp/package.json** (CRITICAL - must match main version)
 
 **If validation fails, STOP. Do not proceed with release.**
 
@@ -237,7 +237,7 @@ All locations updated by bump-version:
 | `extension/package.json` | `"version"` |
 | `server/package.json` | `"version"` |
 | `server/scripts/install.js` | `VERSION` constant |
-| `npm/gasoline-mcp/package.json` | `"version"` + `optionalDependencies` ⚠️ |
+| `npm/kaboom-mcp/package.json` | `"version"` + `optionalDependencies` ⚠️ |
 | `npm/darwin-arm64/package.json` | `"version"` |
 | `npm/darwin-x64/package.json` | `"version"` |
 | `npm/linux-arm64/package.json` | `"version"` |
@@ -248,7 +248,7 @@ All locations updated by bump-version:
 | `tests/extension/background.test.js` | Test assertions (2 locations) |
 | `extension/background/index.test.js` | Mock manifest version |
 
-**⚠️ CRITICAL:** `optionalDependencies` in `npm/gasoline-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
+**⚠️ CRITICAL:** `optionalDependencies` in `npm/kaboom-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
 
 ### 3. Merge to `stable`
 
@@ -305,7 +305,7 @@ git push origin UNSTABLE
 
 ### 7. Update Marketing Site
 
-The marketing site is a separate repo at `~/dev/gasoline-site` (Astro).
+The marketing site is a separate repo at `~/dev/kaboom-site` (Astro).
 Blog posts go in `src/content/docs/blog/`. Update version numbers and
 add release blog post there after tagging.
 

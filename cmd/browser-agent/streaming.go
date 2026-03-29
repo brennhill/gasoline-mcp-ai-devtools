@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
+	cfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/configure"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/streaming"
 )
 
 // ============================================

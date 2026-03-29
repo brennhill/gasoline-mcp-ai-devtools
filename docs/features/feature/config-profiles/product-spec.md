@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-Configuring Gasoline for different environments (production, staging, development) requires setting multiple flags (read-only, allowlist, retention, redaction, project expiration). Manually specifying all flags is error-prone. Organizations need pre-tuned configuration bundles that compose best-practice settings for common scenarios.
+Configuring Kaboom for different environments (production, staging, development) requires setting multiple flags (read-only, allowlist, retention, redaction, project expiration). Manually specifying all flags is error-prone. Organizations need pre-tuned configuration bundles that compose best-practice settings for common scenarios.
 
 ## Solution
 
@@ -25,7 +25,7 @@ Add configuration profiles as named bundles of settings. Profiles are YAML files
 
 - Pre-defined profiles: paranoid, restricted, short-lived, development
 - Custom profiles: users can define own YAML profiles
-- Profile loading: --profile=paranoid or GASOLINE_PROFILE=paranoid
+- Profile loading: --profile=paranoid or KABOOM_PROFILE=paranoid
 - Profile composition: profile sets defaults, CLI flags can override
 - Clear documentation of what each profile configures
 - Profile validation: fail fast if profile has invalid settings
@@ -46,7 +46,7 @@ Add configuration profiles as named bundles of settings. Profiles are YAML files
 ## User Workflow
 
 1. User selects appropriate profile for environment
-2. Start server: `gasoline --profile=restricted`
+2. Start server: `kaboom --profile=restricted`
 3. Server loads profile, applies all settings
 4. Agent connects, operates under profile constraints
 5. User can query active profile: `configure({action:"health"})`
@@ -98,15 +98,15 @@ retention_hours: 168  # 1 week
 
 ## Load profile:
 ```bash
-gasoline --profile=restricted
+kaboom --profile=restricted
 # or
-GASOLINE_PROFILE=restricted gasoline
+KABOOM_PROFILE=restricted kaboom
 ```
 
 ## Override profile setting:
 ```bash
 # Load restricted profile but override expiration
-gasoline --profile=restricted --project-expiration-minutes=30
+kaboom --profile=restricted --project-expiration-minutes=30
 ```
 
 ## Query active profile:
@@ -128,4 +128,4 @@ configure({action:"health"})
 
 - Profiles are convenience wrappers around existing flags (no new capabilities)
 - CLI flags always override profile settings (explicit > implicit)
-- Profiles shipped with Gasoline in profiles/ directory
+- Profiles shipped with Kaboom in profiles/ directory

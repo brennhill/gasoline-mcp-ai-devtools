@@ -28,25 +28,25 @@ last_reviewed: 2026-02-16
 ### [0:15-0:30] The Solution
 
 **Visual:**
-- Gasoline logo animation
+- Kaboom logo animation
 - Show WebSocket icon
 - Show "Full Lifecycle Capture" text
 
 **Voiceover:**
-"Gasoline MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant."
+"Kaboom MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant."
 
 ### [0:30-1:00] Demo: Real-Time Chat App
 
 **Visual:**
 - Open a real-time chat application
-- Open Gasoline popup
+- Open Kaboom popup
 - Show WebSocket connection established
 - Type a message
-- Show message captured in Gasoline
+- Show message captured in Kaboom
 - Show response captured
 
 **Voiceover:**
-"Let's look at a real-time chat app. Gasoline captures the WebSocket connection, every message sent and received, and any errors. All in real-time."
+"Let's look at a real-time chat app. Kaboom captures the WebSocket connection, every message sent and received, and any errors. All in real-time."
 
 ### [0:30-0:45] Connection Events
 
@@ -62,7 +62,7 @@ last_reviewed: 2026-02-16
 
 **Visual:**
 - Type "Hello, world!" in chat
-- Show message captured in Gasoline
+- Show message captured in Kaboom
 - Show both sent and received messages
 - Show JSON payload with message content
 
@@ -85,7 +85,7 @@ last_reviewed: 2026-02-16
 **Visual:**
 - Open Claude Code
 - Ask: "Why is my chat not receiving messages?"
-- Show Claude using Gasoline WebSocket tools
+- Show Claude using Kaboom WebSocket tools
 - Show Claude seeing WebSocket error
 - Show Claude diagnosing the issue
 
@@ -102,7 +102,7 @@ last_reviewed: 2026-02-16
 - Show correlation with console logs
 
 **Voiceover:**
-"Gasoline gives you powerful filtering. Filter by direction, time range, or search by content. WebSocket events are automatically correlated with console logs and network requests."
+"Kaboom gives you powerful filtering. Filter by direction, time range, or search by content. WebSocket events are automatically correlated with console logs and network requests."
 
 ### [1:50-2:10] Real-World Use Case
 
@@ -123,41 +123,41 @@ last_reviewed: 2026-02-16
 - Show "Auth Stripping" feature
 
 **Voiceover:**
-"Gasoline keeps your data private. Everything stays on your machine—no cloud, no telemetry. Authorization headers are automatically stripped from captured data."
+"Kaboom keeps your data private. Everything stays on your machine—no cloud, no telemetry. Authorization headers are automatically stripped from captured data."
 
 ### [2:25-2:40] Comparison
 
 **Visual:**
 - Comparison table:
-  - Gasoline: ✅ Full WebSocket capture
+  - Kaboom: ✅ Full WebSocket capture
   - Other tools: ❌ Limited/None
-  - Gasoline: ✅ AI integration
+  - Kaboom: ✅ AI integration
   - Other tools: ❌ No AI access
 
 **Voiceover:**
-"Most browser observability tools either don't capture WebSockets or provide limited visibility. Gasoline gives you complete WebSocket lifecycle capture with full AI integration."
+"Most browser observability tools either don't capture WebSockets or provide limited visibility. Kaboom gives you complete WebSocket lifecycle capture with full AI integration."
 
 ### [2:40-3:00] Getting Started
 
 **Visual:**
-- Show terminal: `npx gasoline-mcp@6.0.0`
+- Show terminal: `npx kaboom-mcp@6.0.0`
 - Show extension download
 - Show WebSocket app
 - Show captured data
 
 **Voiceover:**
-"Get started with `npx gasoline-mcp@6.0.0`, download the extension, and start capturing WebSocket data today. Your AI assistant will thank you."
+"Get started with `npx kaboom-mcp@6.0.0`, download the extension, and start capturing WebSocket data today. Your AI assistant will thank you."
 
 ### [3:00-3:15] Outro
 
 **Visual:**
-- Show cookwithgasoline.com
+- Show gokaboom.dev
 - Show GitHub repo
 - Show Discord link
 - Show related videos
 
 **Voiceover:**
-"Check the links below for documentation and join our Discord community. Subscribe for more videos on Gasoline's unique features."
+"Check the links below for documentation and join our Discord community. Subscribe for more videos on Kaboom's unique features."
 
 ---
 
@@ -185,12 +185,12 @@ last_reviewed: 2026-02-16
 ### Demo Preparation
 1. **Test WebSocket app** - Ensure it works reliably
 2. **Prepare error scenarios** - Have reliable ways to trigger errors
-3. **Test Gasoline capture** - Verify all events are captured
+3. **Test Kaboom capture** - Verify all events are captured
 4. **Prepare AI conversation** - Have a ready debugging scenario
 5. **Check network conditions** - Ensure stable connection
 
 ### Visual Assets Needed
-- Gasoline logo
+- Kaboom logo
 - WebSocket icon
 - Real-time chat app (or similar)
 - Error icons
@@ -209,19 +209,19 @@ last_reviewed: 2026-02-16
 - Browser observability
 - Real-time app debugging
 - AI debugging tools
-- Gasoline MCP WebSocket
+- Kaboom MCP WebSocket
 
 ### Related Videos
-- How Gasoline Captures WebSocket Messages (blog companion)
+- How Kaboom Captures WebSocket Messages (blog companion)
 - Debugging Real-Time Applications with AI
-- Gasoline vs Other Browser Tools
+- Kaboom vs Other Browser Tools
 
 ---
 
 ## Thumbnail Ideas
 
 1. "WebSocket Debugging Made Easy" with WebSocket icon
-2. Split screen: "What DevTools Shows" vs "What Gasoline Shows"
+2. Split screen: "What DevTools Shows" vs "What Kaboom Shows"
 3. "See What Others Can't" with eye icon and WebSocket graphic
 4. "AI + WebSocket = Debugging Superpowers"
 
@@ -232,7 +232,7 @@ last_reviewed: 2026-02-16
 ```
 🔌 WebSocket Capture - See What Other Browser Tools Miss
 
-Chrome DevTools shows WebSocket messages, but that's where it stops. Gasoline MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant.
+Chrome DevTools shows WebSocket messages, but that's where it stops. Kaboom MCP captures the complete WebSocket lifecycle—connections, messages, errors, disconnections—and makes it all available to your AI coding assistant.
 
 In this video, you'll see:
 ✅ Full WebSocket lifecycle capture
@@ -241,14 +241,14 @@ In this video, you'll see:
 ✅ AI-powered debugging
 ✅ Advanced filtering and search
 
-📦 Download: https://cookwithgasoline.com/downloads/
-📖 Docs: https://cookwithgasoline.com/features/#websocket-events
-💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+📦 Download: https://gokaboom.dev/downloads/
+📖 Docs: https://gokaboom.dev/features/#websocket-events
+💻 GitHub: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 💬 Discord: [LINK]
 
 Timestamps:
 0:00 - The Problem with WebSocket Debugging
-0:15 - Gasoline's Solution
+0:15 - Kaboom's Solution
 0:30 - Demo: Real-Time Chat App
 0:45 - Connection Events
 1:00 - Message Events
@@ -261,14 +261,14 @@ Timestamps:
 2:55 - Getting Started
 3:10 - Outro
 
-#GasolineMCP #WebSocket #Debugging #AI #RealTime #DevTools
+#KaboomMCP #WebSocket #Debugging #AI #RealTime #DevTools
 ```
 
 ---
 
 ## Hashtags
 
-#GasolineMCP #WebSocket #Debugging #AI #RealTime #DevTools #BrowserObservability #ClaudeCode #OpenSource #WebDevelopment
+#KaboomMCP #WebSocket #Debugging #AI #RealTime #DevTools #BrowserObservability #ClaudeCode #OpenSource #WebDevelopment
 
 ---
 
@@ -284,7 +284,7 @@ Timestamps:
 "Full lifecycle capture. Real-time tracking. AI-powered debugging. All in one tool."
 
 ### [0:45-0:60] CTA
-"Get Gasoline MCP at cookwithgasoline.com. Link in description."
+"Get Kaboom MCP at gokaboom.dev. Link in description."
 
 ---
 
@@ -297,7 +297,7 @@ Timestamps:
 [Quick screen capture showing WebSocket capture + AI debugging]
 
 ### [0:20-0:30] CTA
-"WebSocket capture with Gasoline MCP. Link in bio."
+"WebSocket capture with Kaboom MCP. Link in bio."
 
 ---
 

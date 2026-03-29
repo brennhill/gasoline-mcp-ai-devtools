@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 func TestInsecureProxyEndpoint_SSRFDenylist(t *testing.T) {
@@ -82,8 +82,8 @@ func TestInsecureProxyEndpoint_StripsCSPHeaders(t *testing.T) {
 	if got := rr.Header().Get("Content-Security-Policy-Report-Only"); got != "" {
 		t.Fatalf("CSP report-only header should be stripped, got %q", got)
 	}
-	if got := rr.Header().Get("X-Gasoline-Proxy-Mode"); got != "insecure_proxy" {
-		t.Fatalf("X-Gasoline-Proxy-Mode = %q, want insecure_proxy", got)
+	if got := rr.Header().Get("X-Kaboom-Proxy-Mode"); got != "insecure_proxy" {
+		t.Fatalf("X-Kaboom-Proxy-Mode = %q, want insecure_proxy", got)
 	}
 	body, _ := io.ReadAll(rr.Body)
 	if !strings.Contains(string(body), "fixture") {

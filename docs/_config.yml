@@ -1,6 +1,6 @@
-title: "Gasoline"
+title: "Kaboom"
 description: "Agentic Browser Devtools - rapid e2e web development. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
-url: "https://cookwithgasoline.com"
+url: "https://gokaboom.dev"
 baseurl: ""
 
 # No theme - using custom layouts
@@ -49,7 +49,7 @@ exclude:
   - generate-test-v2.md
   - generate-test-specification.md
   - competitive-analysis.md
-  - gasoline-ci-specification.md
+  - kaboom-ci-specification.md
   - features/
   - ai-first/
   - agents/

@@ -86,7 +86,7 @@ func TestToolsInteractHardwareClick_Success(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	syncReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), syncReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -133,7 +133,7 @@ func TestToolsInteractClick_CDPEscalationWithXY(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	syncReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), syncReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 
@@ -159,7 +159,7 @@ func TestToolsInteractClick_NoCDPEscalationWithoutXY(t *testing.T) {
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	syncReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), syncReq)
 	cap.SetTrackingStatusForTest(42, "https://example.com")
 

@@ -13,7 +13,7 @@ import (
 
 const (
 	// TargetRepo is the GitHub repository for issue submission.
-	TargetRepo = "brennhill/gasoline-agentic-browser-devtools-mcp"
+	TargetRepo = "brennhill/Kaboom-Browser-AI-Devtools-MCP"
 
 	// TargetRepoURL is the full URL for manual filing.
 	TargetRepoURL = "https://github.com/" + TargetRepo

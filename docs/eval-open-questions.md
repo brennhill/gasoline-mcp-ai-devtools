@@ -6,7 +6,7 @@ Captured during implementation. Review and resolve before merging.
 
 1. **Tier 2 codebase pinning**: The spec says pin chi@v5.1.0 and hono@v4.0.0. Should we vendor these into testdata or clone on-the-fly during CI? Vendoring is faster/deterministic but bloats the repo. Current decision: defer Tier 2 to a follow-up; Tier 1 (unit evals with synthetic fixtures) is built now.
 
-2. **Tier 3 live metrics**: The spec describes writing to `~/.gasoline/sessions/<id>/metrics.jsonl`. Should this be opt-in via `.gasoline.json` (`"eval_metrics": true`) or always-on? Current decision: not implemented yet — needs the daemon integration for aggregation.
+2. **Tier 3 live metrics**: The spec describes writing to `~/.kaboom/sessions/<id>/metrics.jsonl`. Should this be opt-in via `.kaboom.json` (`"eval_metrics": true`) or always-on? Current decision: not implemented yet — needs the daemon integration for aggregation.
 
 3. **Golden file format**: The spec shows `.golden` files alongside `.json` fixtures. Current implementation uses `expect` fields inside the JSON fixture itself (contains/not_contains/has_output). Golden files would be a separate comparison mode for exact output matching. Current decision: JSON-inline expectations are sufficient for now.
 
@@ -28,7 +28,7 @@ Captured during implementation. Review and resolve before merging.
 
 ## Decision Guard
 
-10. **Decision file location**: Spec says `.gasoline/decisions.json`. Should we also check project root `decisions.json`? Current decision: only `.gasoline/decisions.json` for now.
+10. **Decision file location**: Spec says `.kaboom/decisions.json`. Should we also check project root `decisions.json`? Current decision: only `.kaboom/decisions.json` for now.
 
 11. **Regex safety**: User-provided regex patterns in decisions.json could be pathological (ReDoS). Should we add a timeout or complexity limit? Current decision: use regexp.Compile (not MustCompile) and skip invalid patterns with a warning in output.
 

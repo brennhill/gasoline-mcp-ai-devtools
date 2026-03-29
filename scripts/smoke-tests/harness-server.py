@@ -73,7 +73,7 @@ class HarnessHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Gasoline deterministic test harness server")
+    parser = argparse.ArgumentParser(description="Kaboom deterministic test harness server")
     parser.add_argument("--root", required=True, help="Directory to serve")
     parser.add_argument("--port", type=int, default=8787, help="Bind port")
     args = parser.parse_args()

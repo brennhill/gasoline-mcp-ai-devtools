@@ -20,12 +20,12 @@ What user problem does this solve? Why does this matter for AI coding agents?
 
 ## Solution
 
-How does Gasoline solve this? High-level description.
+How does Kaboom solve this? High-level description.
 
 ## User Stories
 
 - As an AI coding agent, I want to [action] so that [outcome].
-- As a developer using Gasoline, I want to [action] so that [outcome].
+- As a developer using Kaboom, I want to [action] so that [outcome].
 
 ## MCP Interface
 

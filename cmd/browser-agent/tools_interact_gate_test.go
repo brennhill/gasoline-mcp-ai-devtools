@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -61,7 +61,7 @@ func newGateTestEnvWithTimeout(t *testing.T, timeout time.Duration) *gateTestEnv
 func (e *gateTestEnv) simulateConnection(t *testing.T) {
 	t.Helper()
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	e.capture.HandleSync(httptest.NewRecorder(), httpReq)
 }
 

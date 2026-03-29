@@ -40,7 +40,7 @@ export function postLog(payload: BridgePayload): void {
 
   window.postMessage(
     {
-      type: 'gasoline_log',
+      type: 'kaboom_log',
       payload: {
         // Enriched fields (these are the source of truth)
         ts: new Date().toISOString(),

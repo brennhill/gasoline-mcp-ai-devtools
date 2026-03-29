@@ -34,14 +34,26 @@ func findMCPConfig() string {
 
 	for _, path := range locations {
 		if _, err := os.Stat(path); err == nil {
-			// Verify it actually contains gasoline config
+			// Verify it actually contains a managed MCP config entry.
 			// #nosec G304 -- paths are from a fixed list of known MCP config locations, not user input
 			data, err := os.ReadFile(path) // nosemgrep: go_filesystem_rule-fileread -- CLI tool reads known MCP config locations
-			if err == nil && (strings.Contains(string(data), "gasoline") || strings.Contains(string(data), "gasoline-mcp")) {
+			if err == nil && containsManagedMCPConfig(string(data)) {
 				return path
 			}
 		}
 	}
 
 	return ""
+}
+
+func containsManagedMCPConfig(data string) bool {
+	return strings.Contains(data, "kaboom-browser-devtools") ||
+		strings.Contains(data, "kaboom-agentic-browser") ||
+		strings.Contains(data, "kaboom") ||
+		strings.Contains(data, "gasoline-browser-devtools") ||
+		strings.Contains(data, "gasoline-agentic-browser") ||
+		strings.Contains(data, "gasoline") ||
+		strings.Contains(data, "strum-browser-devtools") ||
+		strings.Contains(data, "strum-agentic-browser") ||
+		strings.Contains(data, "strum")
 }

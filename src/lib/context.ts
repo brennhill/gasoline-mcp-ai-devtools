@@ -10,6 +10,7 @@
  */
 
 import { MAX_CONTEXT_SIZE, MAX_CONTEXT_VALUE_SIZE } from './constants.js'
+import { KABOOM_LOG_PREFIX } from './brand.js'
 import { safeSerialize } from './serialize.js'
 import type { JsonValue } from '../types/index.js'
 
@@ -34,18 +35,18 @@ export function getContextAnnotations(): Record<string, JsonValue> | null {
  */
 export function setContextAnnotation(key: string, value: unknown): boolean {
   if (typeof key !== 'string' || key.length === 0) {
-    console.warn('[Gasoline] annotate() requires a non-empty string key')
+    console.warn(KABOOM_LOG_PREFIX, 'annotate() requires a non-empty string key')
     return false
   }
 
   if (key.length > 100) {
-    console.warn('[Gasoline] annotate() key must be 100 characters or less')
+    console.warn(KABOOM_LOG_PREFIX, 'annotate() key must be 100 characters or less')
     return false
   }
 
   // Enforce max context keys
   if (!contextAnnotations.has(key) && contextAnnotations.size >= MAX_CONTEXT_SIZE) {
-    console.warn(`[Gasoline] Maximum context annotations (${MAX_CONTEXT_SIZE}) reached`)
+    console.warn(`${KABOOM_LOG_PREFIX} Maximum context annotations (${MAX_CONTEXT_SIZE}) reached`)
     return false
   }
 
@@ -54,7 +55,7 @@ export function setContextAnnotation(key: string, value: unknown): boolean {
   const serializedStr = JSON.stringify(serialized)
 
   if (serializedStr.length > MAX_CONTEXT_VALUE_SIZE) {
-    console.warn(`[Gasoline] Context value for "${key}" exceeds max size, truncating`)
+    console.warn(`${KABOOM_LOG_PREFIX} Context value for "${key}" exceeds max size, truncating`)
     contextAnnotations.set(key, '[Value too large]')
     return false
   }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gasoline Demo - Signal Forge</title>
+  <title>KaBOOM Demo - Signal Forge</title>
   <style>
     :root {
       --bg: #080b12;
@@ -284,7 +284,7 @@
     <header class="top">
       <div class="brand">
         <span class="dot" aria-hidden="true"></span>
-        <span>Gasoline Signal Forge</span>
+        <span>KaBOOM Signal Forge</span>
       </div>
       <nav class="links" aria-label="Signal Forge navigation">
         <a class="chip" href="/">Main Site</a>
@@ -295,7 +295,7 @@
     <section class="hero">
       <h1>Signal Forge</h1>
       <p>
-        A recording-focused demo surface for Gasoline MCP. Use this page to show narration, toasts,
+        A recording-focused demo surface for KaBOOM MCP. Use this page to show narration, toasts,
         deterministic browser automation, and real diagnostics from controlled failure triggers.
       </p>
     </section>
@@ -448,7 +448,7 @@
     document.getElementById('trigger-client-crash').addEventListener('click', function() {
       addEvent('Triggering client crash now.', 'warn');
       setTimeout(function() {
-        window.gasolineRuntime.crash();
+        window.kaboomRuntime.crash();
       }, 20);
     });
 

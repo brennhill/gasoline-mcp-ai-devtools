@@ -59,7 +59,7 @@ Each section provides one runnable baseline call, expected response shape, and o
   ],
   "artifact": {
     "format": "reproduction",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -106,7 +106,7 @@ Fix: Use a valid generate mode value, e.g. `reproduction`.
   ],
   "artifact": {
     "format": "test",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -151,7 +151,7 @@ Fix: Use a valid generate mode value, e.g. `test`.
   ],
   "artifact": {
     "format": "pr_summary",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -197,7 +197,7 @@ Fix: Use a valid generate mode value, e.g. `pr_summary`.
   ],
   "artifact": {
     "format": "har",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -244,7 +244,7 @@ Fix: Use a fully qualified URL string, e.g. `https://example.com`.
   ],
   "artifact": {
     "format": "csp",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -293,7 +293,7 @@ Fix: Use a valid generate mode value, e.g. `csp`.
   ],
   "artifact": {
     "format": "sri",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -342,7 +342,7 @@ Fix: Use a valid generate mode value, e.g. `sri`.
   ],
   "artifact": {
     "format": "sarif",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -388,7 +388,7 @@ Fix: Use a valid generate mode value, e.g. `sarif`.
   ],
   "artifact": {
     "format": "visual_test",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -434,7 +434,7 @@ Fix: Use a valid generate mode value, e.g. `visual_test`.
   ],
   "artifact": {
     "format": "annotation_report",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -480,7 +480,7 @@ Fix: Use a valid generate mode value, e.g. `annotation_report`.
   ],
   "artifact": {
     "format": "annotation_issues",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -526,7 +526,7 @@ Fix: Use a valid generate mode value, e.g. `annotation_issues`.
   ],
   "artifact": {
     "format": "test_from_context",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -573,7 +573,7 @@ Fix: Use a valid generate mode value, e.g. `test_from_context`.
   ],
   "artifact": {
     "format": "test_heal",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```
@@ -624,7 +624,7 @@ Fix: Use a valid generate mode value, e.g. `test_heal`.
   ],
   "artifact": {
     "format": "test_classify",
-    "path": ".gasoline/reports/sample.out"
+    "path": ".kaboom/reports/sample.out"
   }
 }
 ```

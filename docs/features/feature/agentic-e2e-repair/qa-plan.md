@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 # QA Plan: Agentic E2E Repair
 
-> QA plan for the Agentic E2E Repair feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This is a WORKFLOW PATTERN that orchestrates existing Gasoline MCP tools — it does NOT introduce new tools or server features. QA focuses on the correctness and safety of the multi-tool orchestration sequence.
+> QA plan for the Agentic E2E Repair feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This is a WORKFLOW PATTERN that orchestrates existing Kaboom MCP tools — it does NOT introduce new tools or server features. QA focuses on the correctness and safety of the multi-tool orchestration sequence.
 
 ---
 
@@ -72,7 +72,7 @@ last_verified_date: 2026-03-05
 - [ ] Agent may enter an infinite fix-break loop — verify the circuit breaker (3 attempts) is enforced and the agent escalates
 - [ ] Agent may confuse "API returned 500" (true regression) with "API returned 200 with different fields" (contract drift) — verify network_waterfall status codes guide the classification
 - [ ] Agent may generate fixes for a framework it does not recognize — verify the agent checks framework detection before generating code
-- [ ] Agent may not clear Gasoline buffers between test runs — verify `configure({action: "clear"})` is called before re-running tests to avoid stale data
+- [ ] Agent may not clear Kaboom buffers between test runs — verify `configure({action: "clear"})` is called before re-running tests to avoid stale data
 
 ---
 
@@ -153,7 +153,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 
 | # | Edge Case | Input/Scenario | Expected Behavior | Priority |
 |---|-----------|---------------|-------------------|----------|
-| EC-1 | No Gasoline data captured during test run | Extension not connected or server not running | Agent reports "insufficient data"; suggests re-running with Gasoline capture | must |
+| EC-1 | No Kaboom data captured during test run | Extension not connected or server not running | Agent reports "insufficient data"; suggests re-running with Kaboom capture | must |
 | EC-2 | Test fails with no browser errors | No console errors, no network failures | Agent queries DOM for selector validity; if selectors valid, classifies as timing or unknown | must |
 | EC-3 | Multiple root causes in single test | Both selector drift AND API contract change | Agent addresses in dependency order: API contract first, then selectors | should |
 | EC-4 | Unrecognized test framework | Agent cannot detect whether test uses Playwright, Cypress, or Selenium | Generates generic JS fixes; reports framework detection failure | should |
@@ -162,7 +162,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 | EC-7 | Test was already flaky | Test passes intermittently regardless of agent's changes | Agent runs test twice after fix; if inconsistent, classifies as flaky and reports | should |
 | EC-8 | Fix breaks a different test | Agent's fix causes another test to fail | Circuit breaker activates; agent reports regression | must |
 | EC-9 | API returns 500 error (server broken) vs 200 with changed fields | Different HTTP status codes | Agent distinguishes: 500 = true regression (report); 200 with different fields = contract drift (fix test) | must |
-| EC-10 | Parallel test runners posting to same Gasoline | Multiple Playwright workers | Cross-contamination of telemetry; agent may misdiagnose. Notes limitation (OI-8) | should |
+| EC-10 | Parallel test runners posting to same Kaboom | Multiple Playwright workers | Cross-contamination of telemetry; agent may misdiagnose. Notes limitation (OI-8) | should |
 | EC-11 | Agent tries to modify more than 10 files | Batch repair across many test files | Agent should request human approval before modifying more than 10 files (OI-3) | should |
 | EC-12 | Network body capture disabled | Agent tries API contract analysis | Agent detects missing data; suggests enabling body capture via configure({action: "capture", settings: {network_bodies: true}}) | must |
 | EC-13 | Very stale test (months without update) | Many selectors, mocks, and assertions are outdated | Agent addresses one issue at a time; may need multiple repair cycles | should |
@@ -174,7 +174,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 > Step-by-step verification for a human working with an AI assistant. The AI orchestrates the repair workflow using MCP tool calls; the human observes browser behavior and reviews proposed fixes.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web application running (e.g., localhost:3000) with known UI elements
 - [ ] A failing E2E test with known root cause (for controlled verification)
@@ -186,7 +186,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | Human creates a test that uses `.submit-btn` but the page has `.btn-submit` | Test fails with "element not found" | Failing test output available | [ ] |
-| UAT-2 | Human navigates to the page with the mismatched selector | Page loads in Gasoline-tracked browser | Extension captures DOM state | [ ] |
+| UAT-2 | Human navigates to the page with the mismatched selector | Page loads in Kaboom-tracked browser | Extension captures DOM state | [ ] |
 | UAT-3 | `{"tool": "observe", "arguments": {"what": "errors"}}` | No visual change | AI receives any console errors from the test run | [ ] |
 | UAT-4 | `{"tool": "analyze", "arguments": {"what": "dom", "selector": ".submit-btn"}}` | No visual change | AI receives `{ count: 0 }` — selector does not match | [ ] |
 | UAT-5 | `{"tool": "analyze", "arguments": {"what": "dom", "selector": "button"}}` | No visual change | AI receives `{ count: N }` with button elements; can see `.btn-submit` exists | [ ] |
@@ -229,7 +229,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 | DL-UAT-1 | Generated test fix contains no auth tokens | Review generated test code after API contract repair | No Authorization headers, Bearer tokens, or API keys in the generated code | [ ] |
 | DL-UAT-2 | Reproduction script has redacted URLs | Review generated reproduction script | URLs with `?token=` or `?api_key=` have values masked | [ ] |
 | DL-UAT-3 | Agent commit message has no sensitive data | Review proposed commit message/PR description | No raw API responses, passwords, or PII in the text | [ ] |
-| DL-UAT-4 | Browser state snapshots are session-only | Restart Gasoline server, check for persisted snapshots | No snapshot data survives server restart (stored in extension chrome.storage.local, not server disk) | [ ] |
+| DL-UAT-4 | Browser state snapshots are session-only | Restart Kaboom server, check for persisted snapshots | No snapshot data survives server restart (stored in extension chrome.storage.local, not server disk) | [ ] |
 
 ### Regression Checks
 - [ ] All individual MCP tools (observe, generate, configure, interact) work normally outside the repair workflow

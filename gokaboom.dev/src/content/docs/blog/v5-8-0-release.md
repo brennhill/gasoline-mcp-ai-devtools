@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.8.0 Released"
+title: KaBOOM v5.8.0 Released"
 description: "Early-patch WebSocket capture, visual action toasts, and a 106-test UAT suite"
 date: 2026-02-06T22:52:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.8.0
 
-STRUM v5.8.0 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
+Kaboom v5.8.0 solves a long-standing WebSocket capture blind spot: pages that create WebSocket connections before the inject script loads now have those connections captured automatically. This release also adds visual feedback for AI actions and ships a comprehensive 106-test UAT suite.
 
 ### Features
 
@@ -43,9 +43,9 @@ Binary sizes decreased ~4% from v5.7.5. All SLOs continue to pass:
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.8.0
+npx kaboom-agentic-browser@5.8.0
 ```
 
 ## Full Changelog
 
-[v5.7.5...v5.8.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.7.5...v5.8.0)
+[v5.7.5...v5.8.0](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/compare/v5.7.5...v5.8.0)

@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
 // stdioSamplingSender sends sampling/createMessage requests via MCP stdio.

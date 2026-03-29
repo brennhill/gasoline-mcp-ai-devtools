@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-// strumDir is the directory where install_id is persisted. Overridable for tests.
-var strumDir = defaultStrumDir()
+// kaboomDir is the directory where install_id is persisted. Overridable for tests.
+var kaboomDir = defaultKaboomDir()
 
 // cachedInstallID holds the in-memory cached value after first load.
 var cachedInstallID string
@@ -19,16 +19,16 @@ var cachedInstallID string
 // installIDOnce ensures the install ID is loaded/generated exactly once.
 var installIDOnce sync.Once
 
-func defaultStrumDir() string {
+func defaultKaboomDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(os.TempDir(), ".strum")
+		return filepath.Join(os.TempDir(), ".kaboom")
 	}
-	return filepath.Join(home, ".strum")
+	return filepath.Join(home, ".kaboom")
 }
 
 // GetInstallID returns the persistent anonymous install ID.
-// On first call, reads from ~/.strum/install_id or generates a new 12-char hex string.
+// On first call, reads from ~/.kaboom/install_id or generates a new 12-char hex string.
 // Thread-safe via sync.Once. Never returns an error — falls back to a fresh random ID.
 func GetInstallID() string {
 	installIDOnce.Do(func() {
@@ -38,7 +38,7 @@ func GetInstallID() string {
 }
 
 func loadOrGenerateInstallID() string {
-	idPath := filepath.Join(strumDir, "install_id")
+	idPath := filepath.Join(kaboomDir, "install_id")
 
 	// Try to read existing file.
 	data, err := os.ReadFile(idPath)
@@ -50,7 +50,7 @@ func loadOrGenerateInstallID() string {
 	id := generateRandomID()
 
 	// Best-effort persist: create dir and write file.
-	if err := os.MkdirAll(strumDir, 0700); err == nil {
+	if err := os.MkdirAll(kaboomDir, 0700); err == nil {
 		_ = os.WriteFile(idPath, []byte(id), 0600)
 	}
 
@@ -66,14 +66,14 @@ func generateRandomID() string {
 	return hex.EncodeToString(b)
 }
 
-// overrideStrumDir sets a custom directory for testing.
-func overrideStrumDir(dir string) {
-	strumDir = dir
+// overrideKaboomDir sets a custom directory for testing.
+func overrideKaboomDir(dir string) {
+	kaboomDir = dir
 }
 
-// resetStrumDir restores the default strum directory after testing.
-func resetStrumDir() {
-	strumDir = defaultStrumDir()
+// resetKaboomDir restores the default Kaboom directory after testing.
+func resetKaboomDir() {
+	kaboomDir = defaultKaboomDir()
 }
 
 // resetInstallIDState clears the cached install ID and sync.Once for testing.

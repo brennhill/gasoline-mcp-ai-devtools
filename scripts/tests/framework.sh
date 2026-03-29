@@ -1,5 +1,5 @@
 #!/bin/bash
-# framework.sh — Shared test harness for Gasoline MCP UAT.
+# framework.sh — Shared test harness for Kaboom MCP UAT.
 # Sourced by each category file. Provides assertion helpers,
 # MCP request sending, daemon lifecycle, and structured output.
 set -eo pipefail
@@ -55,7 +55,7 @@ framework_cleanup() {
     # Global safety net for stale test binaries/daemons.
     # In parallel UAT, this must be disabled to avoid one category killing
     # daemons owned by other concurrently running categories.
-    if [ "${GASOLINE_TEST_DISABLE_GLOBAL_CLEANER:-0}" != "1" ] && [ -f "$TEST_DAEMON_CLEANER" ]; then
+    if [ "${KABOOM_TEST_DISABLE_GLOBAL_CLEANER:-0}" != "1" ] && [ -f "$TEST_DAEMON_CLEANER" ]; then
         bash "$TEST_DAEMON_CLEANER" --quiet >/dev/null 2>&1 || true
     fi
 }
@@ -69,19 +69,19 @@ init_framework() {
     START_TIME="$(date +%s)"
 
     # Resolve binary: explicit override > local build > PATH
-    if [ -n "${GASOLINE_UAT_WRAPPER:-}" ]; then
-        if [ -x "${GASOLINE_UAT_WRAPPER}" ]; then
-            WRAPPER="${GASOLINE_UAT_WRAPPER}"
+    if [ -n "${KABOOM_UAT_WRAPPER:-}" ]; then
+        if [ -x "${KABOOM_UAT_WRAPPER}" ]; then
+            WRAPPER="${KABOOM_UAT_WRAPPER}"
         else
-            echo "FATAL: GASOLINE_UAT_WRAPPER is not executable: ${GASOLINE_UAT_WRAPPER}" >&2
+            echo "FATAL: KABOOM_UAT_WRAPPER is not executable: ${KABOOM_UAT_WRAPPER}" >&2
             exit 1
         fi
-    elif [ -x "./gasoline-mcp" ]; then
-        WRAPPER="./gasoline-mcp"
-    elif command -v gasoline-mcp >/dev/null 2>&1; then
-        WRAPPER="gasoline-mcp"
+    elif [ -x "./kaboom-agentic-browser" ]; then
+        WRAPPER="./kaboom-agentic-browser"
+    elif command -v kaboom-agentic-browser >/dev/null 2>&1; then
+        WRAPPER="kaboom-agentic-browser"
     else
-        echo "FATAL: gasoline-mcp not found in PATH or current directory" >&2
+        echo "FATAL: kaboom-agentic-browser not found in PATH or current directory" >&2
         exit 1
     fi
 
@@ -103,7 +103,7 @@ init_framework() {
 
     # Default to fail-fast for strictness. Comprehensive parallel runner can opt out
     # to collect full pass/fail evidence across all categories.
-    if [ "${GASOLINE_TEST_FAIL_FAST:-1}" = "0" ]; then
+    if [ "${KABOOM_TEST_FAIL_FAST:-1}" = "0" ]; then
         set +e
     else
         set -e
@@ -415,9 +415,9 @@ wait_for_health() {
 start_daemon() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
-    if [ -n "${GASOLINE_UAT_GOCOVERDIR:-}" ]; then
-        mkdir -p "${GASOLINE_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${GASOLINE_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
+    if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
+        mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
+        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
     else
         nohup "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
     fi
@@ -435,9 +435,9 @@ start_daemon() {
 start_daemon_with_flags() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
-    if [ -n "${GASOLINE_UAT_GOCOVERDIR:-}" ]; then
-        mkdir -p "${GASOLINE_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${GASOLINE_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+    if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
+        mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
+        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     else
         nohup "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     fi

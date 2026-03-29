@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #81
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/81
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/81
 - Title: Add smart form interaction (auto-fill, form discovery, validation state)
 
 ## Objective

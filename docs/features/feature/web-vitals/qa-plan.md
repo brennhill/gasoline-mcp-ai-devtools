@@ -175,7 +175,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page loaded (any page with measurable content -- images, text, interactive elements)
 - [ ] Chrome version 96+ (required for INP measurement via `event` observer)
@@ -188,7 +188,7 @@ last_verified_date: 2026-03-05
 | UAT-2 | Click several buttons/links on the page, then: `{"tool": "observe", "arguments": {"what": "vitals"}}` | Interactions occurred | INP now has a value with `worst_target` and `worst_type` attribution | [ ] |
 | UAT-3 | `{"tool": "observe", "arguments": {"what": "vitals", "include_history": true}}` | At least 2 page loads in session | History array with previous vitals entries | [ ] |
 | UAT-4 | Reload page 3 times, querying vitals each time | Each reload produces new vitals | Values may vary slightly, all three captured in history | [ ] |
-| UAT-5 | Open Chrome DevTools -> Lighthouse tab -> run audit | Compare Gasoline vitals to Lighthouse | FCP and LCP should be in the same ballpark (not identical due to different measurement conditions) | [ ] |
+| UAT-5 | Open Chrome DevTools -> Lighthouse tab -> run audit | Compare Kaboom vitals to Lighthouse | FCP and LCP should be in the same ballpark (not identical due to different measurement conditions) | [ ] |
 | UAT-6 | Switch to another tab for 5 seconds, then switch back and query vitals | Tab visibility changed | LCP shows finalized value (not still updating) | [ ] |
 | UAT-7 | Verify overall rating | Check individual and overall ratings | `overall_rating` equals the worst individual metric rating | [ ] |
 | UAT-8 | Navigate to a very simple page (e.g., blank HTML with one paragraph) | Fast page load | All metrics "good", summary confirms excellent performance | [ ] |

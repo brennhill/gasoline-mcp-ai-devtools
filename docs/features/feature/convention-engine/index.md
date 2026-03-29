@@ -41,4 +41,4 @@ Three plugin tiers: universal (10 principles, always active, free), language bas
 - Discovered probes integrated into existing convention detection
 - 5-minute cache per project root + language
 - Noise filtering for Go (90+ stdlib patterns) and TS/JS (25+ patterns)
-- Eval fixtures validate discovery against gasoline codebase itself
+- Eval fixtures validate discovery against kaboom codebase itself

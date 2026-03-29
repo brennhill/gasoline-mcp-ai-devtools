@@ -15,7 +15,7 @@ links:
 
 - Problem: AI agents re-read files they already read, lose track of what they changed, and lack awareness of their own session history. This wastes tokens and causes inconsistencies.
 - User value: Eliminates redundant file reads, gives the AI a working memory of its session, and enables other hooks to make context-aware decisions.
-- Binary: `gasoline-hooks session-track` (PostToolUse hook)
+- Binary: `kaboom-hooks session-track` (PostToolUse hook)
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 ---
 title: "Privacy & Security"
-description: "Gasoline is 100% local. No cloud, no analytics, no telemetry. Logs never leave your machine. Auth headers are automatically stripped."
+description: "Kaboom is 100% local. No cloud, no analytics, no telemetry. Logs never leave your machine. Auth headers are automatically stripped."
 keywords: "local only debugging, privacy first developer tools, localhost debugging tool, no telemetry developer tool, secure browser debugging"
 permalink: /privacy/
 header:
@@ -13,7 +13,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-Gasoline is designed with privacy as a core principle, not an afterthought.
+Kaboom is designed with privacy as a core principle, not an afterthought.
 
 ## <i class="fas fa-home"></i> 100% Local
 
@@ -30,7 +30,7 @@ Gasoline is designed with privacy as a core principle, not an afterthought.
 
 ## <i class="fas fa-lock"></i> Localhost Only
 
-The Gasoline server binds exclusively to `127.0.0.1`:
+The Kaboom server binds exclusively to `127.0.0.1`:
 
 - Not accessible from your local network
 - Not accessible from the internet

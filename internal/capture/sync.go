@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // extractBrowserName returns a generic browser name from a User-Agent string.
@@ -171,7 +171,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	clientID := r.Header.Get("X-Gasoline-Client")
+	clientID := r.Header.Get("X-Kaboom-Client")
 
 	state := c.updateSyncConnectionState(req, clientID, now)
 

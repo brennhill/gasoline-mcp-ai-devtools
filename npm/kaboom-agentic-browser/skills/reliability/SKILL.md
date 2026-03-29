@@ -3,7 +3,7 @@ name: reliability
 description: Use when user asks to stress-test the system, validate reconnection behavior, check for race conditions, or verify end-to-end data flow integrity.
 ---
 
-# Gasoline Reliability
+# Kaboom Reliability
 
 Use this skill for hardening and release confidence across the full control plane.
 

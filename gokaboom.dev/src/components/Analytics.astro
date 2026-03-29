@@ -60,8 +60,8 @@ const gaId = import.meta.env.PUBLIC_GA_ID;
 
     // Track outbound link clicks (GitHub, Discord, external resources)
     document.querySelectorAll('a[href^="http"]').forEach(link => {
-      // Skip internal links to cookwithgasoline.com
-      if (!link.href.includes('cookwithgasoline.com')) {
+      // Skip internal links to gokaboom.dev
+      if (!link.href.includes('gokaboom.dev')) {
         link.addEventListener('click', () => {
           const hostname = new URL(link.href).hostname;
           gtag('event', 'outbound_click', {

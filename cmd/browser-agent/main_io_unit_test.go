@@ -37,7 +37,7 @@ func TestSendStartupErrorWritesJSONRPCError(t *testing.T) {
 
 func TestPrintHelpIncludesKeySections(t *testing.T) {
 	output := captureStdout(t, printHelp)
-	if !strings.Contains(output, "Usage: gasoline [options]") {
+	if !strings.Contains(output, "Usage: kaboom [options]") {
 		t.Fatalf("help output missing usage header: %q", output)
 	}
 	if !strings.Contains(output, "--state-dir <path>") {
@@ -68,7 +68,7 @@ func TestRunSetupCheckPortInUseBranch(t *testing.T) {
 	if !strings.Contains(output, "Port "+strconv.Itoa(port)+" is already in use.") {
 		t.Fatalf("setup check output missing in-use message: %q", output)
 	}
-	if !strings.Contains(output, "Quick stop (Gasoline): gasoline --stop --port "+strconv.Itoa(port)) {
+	if !strings.Contains(output, "Quick stop (Kaboom): kaboom --stop --port "+strconv.Itoa(port)) {
 		t.Fatalf("setup check output missing quick-stop guidance: %q", output)
 	}
 	if !strings.Contains(output, "Suggested free port: --port ") {

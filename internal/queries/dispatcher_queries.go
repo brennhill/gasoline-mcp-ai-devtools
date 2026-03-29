@@ -77,7 +77,7 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, tim
 		}
 	}()
 	if plan.queueFull {
-		fmt.Fprintf(os.Stderr, "[gasoline] Queue full (%d/%d): rejecting command type=%s correlation_id=%s\n",
+		fmt.Fprintf(os.Stderr, "[Kaboom] Queue full (%d/%d): rejecting command type=%s correlation_id=%s\n",
 			MaxPendingQueries, MaxPendingQueries, query.Type, plan.correlationID)
 
 		if plan.correlationID != "" {

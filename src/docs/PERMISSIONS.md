@@ -1,8 +1,8 @@
-# Gasoline Extension Permissions & Security Model
+# Kaboom Extension Permissions & Security Model
 
 ## Overview
 
-This document explains why Gasoline requires each permission and how the extension maintains security and privacy.
+This document explains why Kaboom requires each permission and how the extension maintains security and privacy.
 
 ## Manifest Permissions
 
@@ -15,7 +15,7 @@ This document explains why Gasoline requires each permission and how the extensi
 - Required for screenshot capture on demand
 
 **Security Model:**
-- Only applies when user explicitly activates tab tracking in Gasoline UI
+- Only applies when user explicitly activates tab tracking in Kaboom UI
 - Combined with `tabs` permission to track which tab is "active"
 - Does not grant access to all tabs automatically
 
@@ -190,7 +190,7 @@ page context (inject.js)
 
 ## Performance Impact
 
-Gasoline is designed to have minimal impact on browsing:
+Kaboom is designed to have minimal impact on browsing:
 
 - **WebSocket < 0.1ms latency:** Uses non-blocking I/O
 - **Fetch < 0.5ms latency:** Network body capture is separate from fetch operation
@@ -205,7 +205,7 @@ Gasoline is designed to have minimal impact on browsing:
 
 ## User Controls
 
-Users can configure capture at runtime via Gasoline UI:
+Users can configure capture at runtime via Kaboom UI:
 
 - **Server URL:** Change MCP server destination
 - **Log Level:** Filter (error, warn, info, log, debug, all)
@@ -228,7 +228,7 @@ Users can also:
 
 ## Chrome API Availability
 
-Gasoline requires Chrome 102+ for optimal functionality:
+Kaboom requires Chrome 102+ for optimal functionality:
 
 - **chrome.storage.session:** Available Chrome 102+
   - Gracefully degrades to memory cache in older versions

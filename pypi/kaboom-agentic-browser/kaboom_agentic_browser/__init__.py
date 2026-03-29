@@ -1,4 +1,4 @@
-"""Gasoline MCP package metadata.
+"""Kaboom Agentic Browser package metadata.
 
 Purpose: Expose package-level metadata for the PyPI wrapper runtime.
 Why: Keeps version identity centralized for diagnostics and packaging checks.

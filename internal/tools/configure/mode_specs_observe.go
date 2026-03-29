@@ -12,7 +12,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"min_level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope", "summary"},
 	},
 	"extension_logs": {
-		Hint:     "Gasoline extension internal debug logs",
+		Hint:     "Kaboom extension internal debug logs",
 		Optional: []string{"limit"},
 	},
 	"network_waterfall": {

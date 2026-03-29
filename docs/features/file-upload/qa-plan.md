@@ -36,7 +36,7 @@ last_verified_date: 2026-03-05
 ### Negative Tests (must NOT leak)
 - [x] Stage 4 OS automation disabled by default — returns 403 without `--enable-os-upload-automation`
 - [x] Relative paths rejected at all 4 stages
-- [x] All upload routes behind `extensionOnly()` middleware — no `X-Gasoline-Client` header → 403
+- [x] All upload routes behind `extensionOnly()` middleware — no `X-Kaboom-Client` header → 403
 - [ ] Base64 file data not written to server log file (manual verification needed)
 - [ ] Cookies sent only to `form_action` host, not logged
 

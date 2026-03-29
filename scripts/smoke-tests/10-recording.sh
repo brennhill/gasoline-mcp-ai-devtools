@@ -78,7 +78,7 @@ run_test_10_1() {
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_start timed out waiting for user gesture. Open the Gasoline popup and click Approve when prompted, then rerun 10.1."
+        skip "screen_recording_start timed out waiting for user gesture. Open the Kaboom popup and click Approve when prompted, then rerun 10.1."
         return
     fi
 
@@ -165,7 +165,7 @@ run_test_10_2() {
         return
     fi
     if is_interact_timeout "$INTERACT_RESULT"; then
-        skip "screen_recording_start with audio:tab timed out waiting for user gesture. Open the Gasoline popup and click Approve when prompted, then rerun 10.2."
+        skip "screen_recording_start with audio:tab timed out waiting for user gesture. Open the Kaboom popup and click Approve when prompted, then rerun 10.2."
         return
     fi
 
@@ -178,7 +178,7 @@ run_test_10_2() {
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         # Check specifically for 403 errors — indicates server auth issue
         if echo "$INTERACT_RESULT" | grep -qi "403"; then
-            fail "screen_recording_stop returned 403 Forbidden. Server requires X-Gasoline-Client header for /recordings/save endpoint. Check extension upload headers. Result: $(truncate "$INTERACT_RESULT" 200)"
+            fail "screen_recording_stop returned 403 Forbidden. Server requires X-Kaboom-Client header for /recordings/save endpoint. Check extension upload headers. Result: $(truncate "$INTERACT_RESULT" 200)"
         else
             fail "screen_recording_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         fi
@@ -243,7 +243,7 @@ print(r.get('audio_mode','') if r else '')
     fi
 
     echo ""
-    echo "  >>> Open the .webm file in ~/.gasoline/recordings/ to verify audio is audible."
+    echo "  >>> Open the .webm file in ~/.kaboom/recordings/ to verify audio is audible."
 }
 run_test_10_2
 
@@ -274,7 +274,7 @@ run_test_10_3() {
     sleep 3
 
     # Keep generous poll budget to avoid false negatives on slower CI runners.
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"kaboom-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local before_refresh="$INTERACT_RESULT"
     if echo "$before_refresh" | grep -q "csp_blocked_all_worlds"; then
         interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop watermark test recording after CSP block"}' 20
@@ -285,7 +285,7 @@ run_test_10_3() {
     interact_and_wait "refresh" '{"action":"refresh","reason":"Refresh during recording"}' 20
     sleep 5
 
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"kaboom-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local after_refresh="$INTERACT_RESULT"
     if echo "$after_refresh" | grep -q "csp_blocked_all_worlds"; then
         interact_and_wait "screen_recording_stop" '{"action":"screen_recording_stop","reason":"Stop watermark test recording after CSP block"}' 20

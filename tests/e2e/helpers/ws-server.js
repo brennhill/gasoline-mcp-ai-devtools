@@ -64,11 +64,11 @@ export async function enableWebSocketCapture(page, mode) {
   // Post settings directly to the page (same as content.js would)
   await page.evaluate((m) => {
     window.postMessage(
-      { type: 'gasoline_setting', setting: 'set_web_socket_capture_enabled', enabled: true },
+      { type: 'kaboom_setting', setting: 'set_web_socket_capture_enabled', enabled: true },
       window.location.origin
     )
     window.postMessage(
-      { type: 'gasoline_setting', setting: 'set_web_socket_capture_mode', mode: m },
+      { type: 'kaboom_setting', setting: 'set_web_socket_capture_mode', mode: m },
       window.location.origin
     )
   }, mode)

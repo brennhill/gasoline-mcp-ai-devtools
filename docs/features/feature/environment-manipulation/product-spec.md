@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Environment Manipulation
 
 ## Overview
-Environment Manipulation enables Gasoline to inspect and modify environment variables, configuration files, and runtime settings across frontend, backend, and infrastructure layers. When debugging issues related to configuration (API endpoints, feature flags, timeouts, auth tokens, database URLs), AI can now directly verify current settings and make targeted changes to test different behaviors without manual CLI operations.
+Environment Manipulation enables Kaboom to inspect and modify environment variables, configuration files, and runtime settings across frontend, backend, and infrastructure layers. When debugging issues related to configuration (API endpoints, feature flags, timeouts, auth tokens, database URLs), AI can now directly verify current settings and make targeted changes to test different behaviors without manual CLI operations.
 
 ## Problem
 Configuration management is fragmented across multiple locations:
@@ -57,9 +57,9 @@ All operations are:
 - As an AI agent, I want to restore the original environment after testing so that subsequent tests start clean
 
 ## Acceptance Criteria
-- [ ] Gasoline can list all environment variables for frontend and backend services
-- [ ] Gasoline can read individual environment variable values (with secret redaction)
-- [ ] Gasoline can modify environment variables and restart services
+- [ ] Kaboom can list all environment variables for frontend and backend services
+- [ ] Kaboom can read individual environment variable values (with secret redaction)
+- [ ] Kaboom can modify environment variables and restart services
 - [ ] Changes take effect within 2s after service restart
 - [ ] Sensitive values (API keys, passwords, tokens) are never logged in plaintext
 - [ ] Environment changes can be verified via service introspection

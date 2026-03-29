@@ -79,7 +79,7 @@ Return audit report to server
 
 - Location API
 - Resource Timing API
-- Network waterfall from Gasoline
+- Network waterfall from Kaboom
 
 ## Performance Considerations
 
@@ -92,4 +92,4 @@ Return audit report to server
 
 - Read-only inspection of page state
 - No external network requests
-- Header inspection uses data already captured by Gasoline
+- Header inspection uses data already captured by Kaboom

@@ -1,12 +1,12 @@
 # Product Update: Issue #67
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/67
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/67
 - Title: Log and error buffers should filter by current page by default
 - Last Updated: 2026-02-16T13:44:14Z
 
 ## Change Summary
-This update resolves or advances Issue #67 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #67 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Log and error buffers should filter by current page by default

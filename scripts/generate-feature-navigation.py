@@ -12,7 +12,7 @@ Run this after adding/removing features to keep navigation up-to-date.
 from pathlib import Path
 from datetime import datetime
 
-DOCS_DIR = Path("/Users/brenn/dev/gasoline")
+DOCS_DIR = Path("/Users/brenn/dev/kaboom")
 FEATURES_DIR = DOCS_DIR / "docs/features/feature"
 OUTPUT_FILE = DOCS_DIR / "docs/features/FEATURE-NAVIGATION.md"
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")

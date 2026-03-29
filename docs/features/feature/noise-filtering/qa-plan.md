@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application running locally (e.g., a React/Vite app on localhost:3000)
 - [ ] Application generates both real errors and typical browser noise (extension warnings, favicon 404s, etc.)
@@ -181,14 +181,14 @@ last_verified_date: 2026-03-05
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | `{"tool": "configure", "arguments": {"action": "noise_rule", "noise_action": "list"}}` | Review the rule list in response | Response contains ~50 built-in rules with `builtin_` prefixes across console, network, websocket categories | [ ] |
-| UAT-2 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Open browser DevTools, compare console entries | Gasoline output excludes chrome-extension warnings, DevTools prompts, and HMR messages that appear in the browser console | [ ] |
-| UAT-3 | `{"tool": "observe", "arguments": {"action": "get_network"}}` | Check browser Network tab | Gasoline output excludes favicon.ico requests, analytics pings, and CORS preflights visible in browser | [ ] |
-| UAT-4 | Trigger a real application error (e.g., navigate to a broken route) | See the error in browser console | The application error appears in Gasoline's observe output (NOT filtered) | [ ] |
-| UAT-5 | Trigger a 401 response on an analytics-matching URL | Monitor network tab | The 401 response appears in Gasoline's output despite the URL matching an analytics noise rule | [ ] |
+| UAT-2 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Open browser DevTools, compare console entries | Kaboom output excludes chrome-extension warnings, DevTools prompts, and HMR messages that appear in the browser console | [ ] |
+| UAT-3 | `{"tool": "observe", "arguments": {"action": "get_network"}}` | Check browser Network tab | Kaboom output excludes favicon.ico requests, analytics pings, and CORS preflights visible in browser | [ ] |
+| UAT-4 | Trigger a real application error (e.g., navigate to a broken route) | See the error in browser console | The application error appears in Kaboom's observe output (NOT filtered) | [ ] |
+| UAT-5 | Trigger a 401 response on an analytics-matching URL | Monitor network tab | The 401 response appears in Kaboom's output despite the URL matching an analytics noise rule | [ ] |
 | UAT-6 | `{"tool": "configure", "arguments": {"action": "noise_rule", "noise_action": "add", "rules": [{"category": "console", "match": {"message_pattern": "specific-app-warning"}, "classification": "cosmetic"}]}}` | None | Response confirms rule added with `user_` prefix ID | [ ] |
-| UAT-7 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Trigger the "specific-app-warning" message in browser | The warning no longer appears in Gasoline output | [ ] |
+| UAT-7 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Trigger the "specific-app-warning" message in browser | The warning no longer appears in Kaboom output | [ ] |
 | UAT-8 | `{"tool": "configure", "arguments": {"action": "noise_rule", "noise_action": "remove", "rule_id": "<user_rule_id>"}}` | None | Rule removed successfully | [ ] |
-| UAT-9 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Trigger the same warning | The warning now appears again in Gasoline output | [ ] |
+| UAT-9 | `{"tool": "observe", "arguments": {"action": "get_console_logs"}}` | Trigger the same warning | The warning now appears again in Kaboom output | [ ] |
 | UAT-10 | `{"tool": "configure", "arguments": {"action": "noise_rule", "noise_action": "remove", "rule_id": "builtin_favicon"}}` | None | Error returned: cannot remove built-in rule | [ ] |
 | UAT-11 | `{"tool": "configure", "arguments": {"action": "dismiss", "pattern": "repetitive-log-message", "reason": "Noisy during testing"}}` | None | Rule created with `dismiss_` prefix, classification "dismissed" | [ ] |
 | UAT-12 | `{"tool": "configure", "arguments": {"action": "noise_rule", "noise_action": "auto_detect"}}` | Generate repetitive console messages (>10 identical) before calling | Response includes proposals; high-confidence (>=0.9) ones marked as auto-applied | [ ] |

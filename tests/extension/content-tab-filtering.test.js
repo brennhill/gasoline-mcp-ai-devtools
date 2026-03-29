@@ -35,11 +35,11 @@ describe('Content Script Tab Filtering', () => {
     _storageChangeListeners = []
 
     const MESSAGE_MAP = {
-      GASOLINE_LOG: 'log',
-      GASOLINE_WS: 'ws_event',
-      GASOLINE_NETWORK_BODY: 'network_body',
-      GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-      GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
+      kaboom_log: 'log',
+      kaboom_ws: 'ws_event',
+      kaboom_network_body: 'network_body',
+      kaboom_enhanced_action: 'enhanced_action',
+      kaboom_performance_snapshot: 'performance_snapshot'
     }
 
     function safeSendMessage(msg) {
@@ -94,7 +94,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should be dropped' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'should be dropped' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from untracked tab should be dropped')
@@ -105,7 +105,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should be forwarded' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'should be forwarded' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Messages from tracked tab should be forwarded')
@@ -116,11 +116,11 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(999, 1) // untracked
 
     const messageTypes = [
-      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
-      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } },
-      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'gasoline_enhanced_action', payload: { type: 'click', url: '/page' } },
-      { type: 'gasoline_performance_snapshot', payload: { lcp: 100 } }
+      { type: 'kaboom_log', payload: { level: 'error', message: 'test' } },
+      { type: 'kaboom_ws', payload: { event: 'open', url: 'ws://localhost' } },
+      { type: 'kaboom_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'kaboom_enhanced_action', payload: { type: 'click', url: '/page' } },
+      { type: 'kaboom_performance_snapshot', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -134,11 +134,11 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(42, 42) // tracked
 
     const messageTypes = [
-      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
-      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } },
-      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'gasoline_enhanced_action', payload: { type: 'click', url: '/page' } },
-      { type: 'gasoline_performance_snapshot', payload: { lcp: 100 } }
+      { type: 'kaboom_log', payload: { level: 'error', message: 'test' } },
+      { type: 'kaboom_ws', payload: { event: 'open', url: 'ws://localhost' } },
+      { type: 'kaboom_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'kaboom_enhanced_action', payload: { type: 'click', url: '/page' } },
+      { type: 'kaboom_performance_snapshot', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -153,7 +153,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when no tab is tracked')
@@ -164,7 +164,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when trackedTabId is null')
@@ -179,7 +179,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'test' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'test' } }
     })
 
     assert.strictEqual(messagesSent.length, 1)
@@ -191,9 +191,9 @@ describe('Content Script Tab Filtering', () => {
     const sim = createContentScriptSimulator(tabId, tabId)
 
     const messageTypes = [
-      { type: 'gasoline_log', payload: { level: 'error', message: 'test' } },
-      { type: 'gasoline_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'gasoline_ws', payload: { event: 'open', url: 'ws://localhost' } }
+      { type: 'kaboom_log', payload: { level: 'error', message: 'test' } },
+      { type: 'kaboom_network_body', payload: { url: '/api', method: 'GET', status: 200 } },
+      { type: 'kaboom_ws', payload: { event: 'open', url: 'ws://localhost' } }
     ]
 
     for (const msg of messageTypes) {
@@ -214,7 +214,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: {}, // Not window
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'injected' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'injected' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from non-window sources should be rejected')
@@ -233,7 +233,7 @@ describe('Content Script Tab Filtering', () => {
     // Now should forward messages
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'now tracked' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'now tracked' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should forward after tracking status changes to this tab')
@@ -245,7 +245,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward one message while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'info', message: 'tracked' } }
+      data: { type: 'kaboom_log', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -255,7 +255,7 @@ describe('Content Script Tab Filtering', () => {
     // This message should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'should drop' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'should drop' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking switches away')
@@ -267,7 +267,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'info', message: 'tracked' } }
+      data: { type: 'kaboom_log', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -277,7 +277,7 @@ describe('Content Script Tab Filtering', () => {
     // Should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'gasoline_log', payload: { level: 'error', message: 'no tracking' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking disabled')
@@ -597,8 +597,8 @@ describe('Multi-Tab Isolation Scenario', () => {
     const messagesSent = { tab1: [], tab2: [], tab3: [] }
 
     const MESSAGE_MAP = {
-      GASOLINE_LOG: 'log',
-      GASOLINE_NETWORK_BODY: 'network_body'
+      kaboom_log: 'log',
+      kaboom_network_body: 'network_body'
     }
 
     // Simulate 3 tabs
@@ -616,15 +616,15 @@ describe('Multi-Tab Isolation Scenario', () => {
     }
 
     // Tab 1 (tracked) generates activity
-    processMessage(1, 'gasoline_log', { level: 'error', message: 'from tab 1' })
-    processMessage(1, 'gasoline_network_body', { url: '/api', method: 'GET', status: 200 })
+    processMessage(1, 'kaboom_log', { level: 'error', message: 'from tab 1' })
+    processMessage(1, 'kaboom_network_body', { url: '/api', method: 'GET', status: 200 })
 
     // Tab 2 (untracked) generates activity
-    processMessage(2, 'gasoline_log', { level: 'error', message: 'from tab 2' })
-    processMessage(2, 'gasoline_network_body', { url: '/secret', method: 'GET', status: 200 })
+    processMessage(2, 'kaboom_log', { level: 'error', message: 'from tab 2' })
+    processMessage(2, 'kaboom_network_body', { url: '/secret', method: 'GET', status: 200 })
 
     // Tab 3 (untracked) generates activity
-    processMessage(3, 'gasoline_log', { level: 'error', message: 'from tab 3' })
+    processMessage(3, 'kaboom_log', { level: 'error', message: 'from tab 3' })
 
     // Verify only tab 1 data captured
     assert.strictEqual(messagesSent.tab1.length, 2, 'Tab 1 (tracked) should have 2 messages')
@@ -638,7 +638,7 @@ describe('Multi-Tab Isolation Scenario', () => {
 
   test('should switch data flow when tracking changes', () => {
     const allMessages = []
-    const MESSAGE_MAP = { GASOLINE_LOG: 'log' }
+    const MESSAGE_MAP = { kaboom_log: 'log' }
 
     let trackedTabId = 1
 
@@ -653,8 +653,8 @@ describe('Multi-Tab Isolation Scenario', () => {
     }
 
     // Tab 1 tracked, send messages
-    processMessage(1, 'gasoline_log', { level: 'info', message: 'tab1 msg1' })
-    processMessage(2, 'gasoline_log', { level: 'info', message: 'tab2 msg1' })
+    processMessage(1, 'kaboom_log', { level: 'info', message: 'tab1 msg1' })
+    processMessage(2, 'kaboom_log', { level: 'info', message: 'tab2 msg1' })
 
     assert.strictEqual(allMessages.length, 1)
     assert.strictEqual(allMessages[0].tabId, 1)
@@ -662,8 +662,8 @@ describe('Multi-Tab Isolation Scenario', () => {
     // Switch tracking to tab 2
     trackedTabId = 2
 
-    processMessage(1, 'gasoline_log', { level: 'info', message: 'tab1 msg2' })
-    processMessage(2, 'gasoline_log', { level: 'info', message: 'tab2 msg2' })
+    processMessage(1, 'kaboom_log', { level: 'info', message: 'tab1 msg2' })
+    processMessage(2, 'kaboom_log', { level: 'info', message: 'tab2 msg2' })
 
     assert.strictEqual(allMessages.length, 2)
     assert.strictEqual(allMessages[1].tabId, 2, 'After switch, only tab 2 messages forwarded')

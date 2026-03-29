@@ -14,7 +14,7 @@ source "$SMOKE_FRAMEWORK_DIR/../tests/framework.sh"
 # ── Shared mutable state (set by modules, read by later modules) ──
 EXTENSION_CONNECTED=false
 PILOT_ENABLED=false
-SMOKE_MARKER="GASOLINE_SMOKE_$(date +%s)_$$"
+SMOKE_MARKER="KABOOM_SMOKE_$(date +%s)_$$"
 SKIP_COUNT=0
 CURRENT_TEST_ID=""
 
@@ -65,7 +65,7 @@ _smoke_master_cleanup() {
 # ── Persistent output files ──────────────────────────────
 # Output and diagnostics go to well-known persistent locations so they
 # survive crashes and are easy to find. Printed at start of every run.
-SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
+SMOKE_OUTPUT_DIR="${HOME}/.kaboom/smoke-results"
 mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"

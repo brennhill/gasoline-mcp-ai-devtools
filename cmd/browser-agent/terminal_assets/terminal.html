@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Docs: docs/features/feature/terminal/index.md -->
-  <title>Gasoline Terminal</title>
+  <title>Kaboom Terminal</title>
   <link rel="stylesheet" href="/terminal/static/xterm.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -48,7 +48,7 @@
 <body>
   <div id="header">
     <span id="status-dot" class="status"></span>
-    <span id="header-label">Gasoline Terminal</span>
+    <span id="header-label">Kaboom Terminal</span>
     <span id="header-cwd" class="cwd"></span>
   </div>
   <div id="terminal-container"></div>
@@ -274,7 +274,7 @@
       function notifyParent(event, data) {
         if (window.parent === window) return;
         window.parent.postMessage({
-          source: 'gasoline-terminal',
+          source: 'kaboom-terminal',
           event: event,
           data: data
         }, '*');
@@ -282,7 +282,7 @@
 
       // Listen for parent frame commands
       window.addEventListener('message', function(event) {
-        if (!event.data || event.data.target !== 'gasoline-terminal') return;
+        if (!event.data || event.data.target !== 'kaboom-terminal') return;
         switch (event.data.command) {
           case 'focus':
             term.focus();

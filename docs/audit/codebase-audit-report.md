@@ -11,7 +11,7 @@ last-verified: 2026-02-08
 
 **Date:** 2026-02-08
 **Auditor:** Principal Engineer  
-**Scope:** Entire Gasoline codebase (Go backend, TypeScript/JavaScript frontend)  
+**Scope:** Entire Kaboom codebase (Go backend, TypeScript/JavaScript frontend)  
 **Purpose:** Identify bad practices, memory leaks, weak tests, security issues, bad design patterns, and other concerns.
 
 ---
@@ -42,7 +42,7 @@ This audit identified **47 issues** across the codebase categorized as:
 ```go
 // Current code (lines 29-35)
 if len(c.wsEvents) != len(c.wsAddedAt) {
-    fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
+    fmt.Fprintf(os.Stderr, "[kaboom] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
         len(c.wsEvents), len(c.wsAddedAt))
     minLen := min(len(c.wsEvents), len(c.wsAddedAt))
     c.wsEvents = c.wsEvents[:minLen]
@@ -102,7 +102,7 @@ function performPeriodicCleanup(): void {
   }
 
   if (hasStaleRequests) {
-    console.debug('[Gasoline] Periodic cleanup: removed stale requests')
+    console.debug('[Kaboom] Periodic cleanup: removed stale requests')
   }
 }
 
@@ -156,7 +156,7 @@ go func() {
 const (
     recordingStorageMax    = 1024 * 1024 * 1024 // 1GB max storage
     recordingWarningLevel  = 800 * 1024 * 1024  // 800MB warning threshold
-    recordingBaseDir       = ".gasoline/recordings"
+    recordingBaseDir       = ".kaboom/recordings"
     recordingMetadataFile  = "metadata.json"
 )
 ```
@@ -384,7 +384,7 @@ if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 
 **Fix:** Added detailed error logging to stderr for all HTTP handlers:
 - Added `fmt` and `os` imports
-- Added `fmt.Fprintf(os.Stderr, "[gasoline] HandlerName: Error details - %v\n", err)` for:
+- Added `fmt.Fprintf(os.Stderr, "[kaboom] HandlerName: Error details - %v\n", err)` for:
   - HandleNetworkBodies: Invalid JSON errors
   - handleNetworkWaterfallPOST: Invalid JSON errors
   - HandleDOMResult: Method not allowed, Invalid JSON, Missing query ID
@@ -410,7 +410,7 @@ if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 func (c *Capture) LoadSettingsFromDisk() {
     path, err := getSettingsPath()
     if err != nil {
-        fmt.Fprintf(os.Stderr, "[gasoline] Could not determine settings path: %v\n", err)
+        fmt.Fprintf(os.Stderr, "[kaboom] Could not determine settings path: %v\n", err)
         return  // Silent return
     }
     // ...

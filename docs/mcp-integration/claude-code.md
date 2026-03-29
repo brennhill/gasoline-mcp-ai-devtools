@@ -1,6 +1,6 @@
 ---
-title: "Gasoline + Claude Code"
-description: "Configure Gasoline as an MCP server for Claude Code. Give Claude real-time access to browser console logs, network errors, and DOM state."
+title: "Kaboom + Claude Code"
+description: "Configure Kaboom as an MCP server for Claude Code. Give Claude real-time access to browser console logs, network errors, and DOM state."
 keywords: "Claude Code MCP server, Claude Code browser errors, Claude Code debugging, Claude Code browser extension"
 permalink: /mcp-integration/claude-code/
 header:
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 ## <i class="fas fa-file-code"></i> Project-Level Config (Recommended)
@@ -20,16 +20,16 @@ Create `.mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
+      "args": ["-y", "kaboom-agentic-browser"]
     }
   }
 }
 ```
 
-Gasoline only fires up when you're in this project. The single process handles both the HTTP server (for extension) and MCP stdio (for Claude Code).
+Kaboom only fires up when you're in this project. The single process handles both the HTTP server (for extension) and MCP stdio (for Claude Code).
 
 ## <i class="fas fa-globe"></i> Global Config
 
@@ -38,10 +38,10 @@ Available in all projects — add to `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
+      "args": ["-y", "kaboom-agentic-browser"]
     }
   }
 }
@@ -68,10 +68,10 @@ Claude uses the right MCP tool and returns actionable debugging info.
 
 **Port conflict ("bind: address already in use")?**
 
-Kill any manually-started Gasoline instances:
+Kill any manually-started Kaboom instances:
 
 ```bash
-pkill -f gasoline
+pkill -f kaboom-agentic-browser
 ```
 
-Then reload the MCP connection. Do NOT manually start Gasoline when using MCP mode — let Claude Code spawn and manage the process.
+Then reload the MCP connection. Do NOT manually start Kaboom when using MCP mode — let Claude Code spawn and manage the process.

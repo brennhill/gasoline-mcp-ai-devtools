@@ -344,7 +344,7 @@ describe('Performance Snapshot Message Flow', () => {
     delete globalThis.document
   })
 
-  test('sendPerformanceSnapshot posts gasoline_performance_snapshot message', async () => {
+  test('sendPerformanceSnapshot posts kaboom_performance_snapshot message', async () => {
     // capturePerformanceSnapshot requires a navigation entry
     globalThis.performance.getEntriesByType = mock.fn((type) => {
       if (type === 'navigation') {
@@ -373,8 +373,8 @@ describe('Performance Snapshot Message Flow', () => {
     mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'gasoline_performance_snapshot')
-    assert.ok(snapshotMessage, 'Should post gasoline_performance_snapshot message')
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'kaboom_performance_snapshot')
+    assert.ok(snapshotMessage, 'Should post kaboom_performance_snapshot message')
     assert.ok(snapshotMessage.arguments[0].payload.timing, 'Payload should include timing')
   })
 
@@ -406,8 +406,8 @@ describe('Performance Snapshot Message Flow', () => {
     mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'gasoline_performance_snapshot')
-    assert.ok(snapshotMessage, 'Should post gasoline_performance_snapshot message')
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'kaboom_performance_snapshot')
+    assert.ok(snapshotMessage, 'Should post kaboom_performance_snapshot message')
     assert.strictEqual(
       snapshotMessage.arguments[0].payload.timing.interaction_to_next_paint,
       175,
@@ -422,7 +422,7 @@ describe('Performance Snapshot Message Flow', () => {
     mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'gasoline_performance_snapshot')
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'kaboom_performance_snapshot')
     assert.strictEqual(snapshotMessage, undefined, 'Should not post when disabled')
   })
 })

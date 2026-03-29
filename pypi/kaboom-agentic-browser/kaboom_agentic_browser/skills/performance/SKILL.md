@@ -3,7 +3,7 @@ name: performance
 description: Use when user reports slow page load, asks about Core Web Vitals, wants before/after performance comparison, or needs to profile a specific interaction.
 ---
 
-# Gasoline Performance
+# Kaboom Performance
 
 Use this skill for performance triage, regression checks, and optimization validation.
 

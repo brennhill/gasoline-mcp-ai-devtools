@@ -12,7 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 const bridgeWrapperLogFileName = "bridge-wrapper.log"
@@ -72,7 +72,7 @@ func ensureBridgeIOIsolation(logFileHint string) error {
 	bridgeWrapperLogOut = logOut
 	bridgeIOConfigured = true
 	setStderrSink(logOut)
-	stderrf("[gasoline-bridge] stdio isolation enabled; wrapper logs -> %s\n", wrapperLogPath)
+	stderrf("[kaboom-bridge] stdio isolation enabled; wrapper logs -> %s\n", wrapperLogPath)
 
 	return nil
 }
@@ -85,5 +85,5 @@ func resolveBridgeWrapperLogPath(logFileHint string) string {
 		baseDir := filepath.Dir(logFileHint)
 		return filepath.Join(baseDir, bridgeWrapperLogFileName)
 	}
-	return filepath.Join(os.TempDir(), "gasoline", "logs", bridgeWrapperLogFileName)
+	return filepath.Join(os.TempDir(), "kaboom", "logs", bridgeWrapperLogFileName)
 }

@@ -115,11 +115,11 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"action_jitter_ms"},
 	},
 	"report_issue": {
-		Hint:     "Report an issue to the Gasoline team via GitHub",
+		Hint:     "Report an issue to the Kaboom team via GitHub",
 		Optional: []string{"operation", "template", "title", "user_context"},
 	},
 	"setup_quality_gates": {
-		Hint:     "Scaffold .gasoline.json and code standards file for automated quality gate enforcement",
+		Hint:     "Scaffold .kaboom.json and code standards file for automated quality gate enforcement",
 		Optional: []string{"target_dir"},
 	},
 }

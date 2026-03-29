@@ -96,7 +96,7 @@ export function installPerformanceCapture() {
         return;
     // Guard against double installation (prevents infinite recursion)
     if (performanceCaptureActive) {
-        console.warn('[Gasoline] Performance capture already installed, skipping');
+        console.warn('[Kaboom] Performance capture already installed, skipping');
         return;
     }
     // Clear previous captured data

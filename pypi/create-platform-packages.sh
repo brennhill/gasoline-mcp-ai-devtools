@@ -5,7 +5,7 @@ PLATFORMS=("darwin-arm64" "darwin-x64" "linux-arm64" "linux-x64" "win32-x64")
 VERSION="0.7.12"
 
 for platform in "${PLATFORMS[@]}"; do
-    pkg_name="gasoline-agentic-browser-${platform}"
+    pkg_name="kaboom-agentic-browser-${platform}"
     pkg_dir="pypi/${pkg_name}"
     pkg_python_name=$(echo "${pkg_name}" | tr '-' '_')
     
@@ -16,7 +16,7 @@ for platform in "${PLATFORMS[@]}"; do
     
     # Create __init__.py
     cat > "${pkg_dir}/${pkg_python_name}/__init__.py" <<EOF
-"""Platform-specific STRUM binary for ${platform}."""
+"""Platform-specific Kaboom binary for ${platform}."""
 
 __version__ = "${VERSION}"
 EOF
@@ -26,16 +26,16 @@ EOF
 [project]
 name = "${pkg_name}"
 version = "${VERSION}"
-description = "STRUM Agentic Browser binary for ${platform}"
+description = "Kaboom Agentic Browser binary for ${platform}"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"
 authors = [
-    {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
+    {name = "Brennan Hill", email = "noreply@gokaboom.dev"}
 ]
 
 [project.urls]
-Homepage = "https://cookwithgasoline.com"
-Repository = "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
+Homepage = "https://gokaboom.dev"
+Repository = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
@@ -43,29 +43,29 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["${pkg_python_name}"]
-package-data = {"${pkg_python_name}" = ["gasoline*"]}
+package-data = {"${pkg_python_name}" = ["kaboom*"]}
 EOF
     
     # Create README
     cat > "${pkg_dir}/README.md" <<EOF
 # ${pkg_name}
 
-Platform-specific binary package for STRUM Agentic Browser (${platform}).
+Platform-specific binary package for Kaboom Agentic Browser (${platform}).
 
 This package is automatically installed as a dependency when you run:
 
 \`\`\`bash
-pip install gasoline-agentic-browser
+pip install kaboom-agentic-browser
 \`\`\`
 
 You do not need to install this package directly.
 
-For more information, see the main [strum-agentic-browser](https://pypi.org/project/gasoline-agentic-browser/) package.
+For more information, see the main [kaboom-agentic-browser](https://pypi.org/project/kaboom-agentic-browser/) package.
 EOF
     
     # Create MANIFEST.in to include binary
     cat > "${pkg_dir}/MANIFEST.in" <<EOF
-include ${pkg_python_name}/gasoline*
+include ${pkg_python_name}/kaboom*
 EOF
     
     echo "  ✓ Created ${pkg_name}"
@@ -75,6 +75,6 @@ echo ""
 echo "All platform packages created successfully!"
 echo "Next steps:"
 echo "  1. Build all platforms: make build-all-platforms"
-echo "  2. Copy binaries to pypi/*/gasoline_agentic_browser_*/ directories"
+echo "  2. Copy binaries to pypi/*/kaboom_agentic_browser_*/ directories"
 echo "  3. Build Python packages: make build-pypi"
 echo "  4. Publish: make publish-pypi"

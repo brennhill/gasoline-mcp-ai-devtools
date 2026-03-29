@@ -9,7 +9,7 @@ last-verified: 2026-02-03
 
 # Runtime Feedback for AI Decisions
 
-**How Gasoline provides runtime observability to help AI make better development decisions.**
+**How Kaboom provides runtime observability to help AI make better development decisions.**
 
 ---
 
@@ -17,7 +17,7 @@ last-verified: 2026-02-03
 
 LLMs already have codebase access (via `read_file`, `search_files`, etc.). What they lack is **runtime visibility** — seeing what code actually does, not just what it says.
 
-**Gasoline's value:** Runtime feedback that validates AI decisions against actual behavior, performance, and user interactions.
+**Kaboom's value:** Runtime feedback that validates AI decisions against actual behavior, performance, and user interactions.
 
 ---
 
@@ -47,7 +47,7 @@ Result: Hope it's actually faster
 **With runtime feedback:**
 ```
 LLM: "I'll use quicksort for sorting"
-Gasoline: {
+Kaboom: {
   current_implementation: "Array.sort()",
   benchmark: {
     size: 1000,
@@ -55,7 +55,7 @@ Gasoline: {
   }
 }
 LLM: "Let me compare quicksort vs current approach"
-Gasoline: {
+Kaboom: {
   quicksort_benchmark: {
     size: 1000,
     time: "3.1ms"
@@ -86,7 +86,7 @@ Result: Hope it's actually better
 **With runtime feedback:**
 ```
 LLM: "I'll add GraphQL for user queries"
-Gasoline: {
+Kaboom: {
   current_rest_api: {
     endpoint: "/api/users",
     avg_response_time: "45ms",
@@ -94,7 +94,7 @@ Gasoline: {
   }
 }
 LLM: "Let me simulate GraphQL approach"
-Gasoline: {
+Kaboom: {
   graphql_simulation: {
     avg_response_time: "62ms",
     cache_hit_rate: "45%",
@@ -125,7 +125,7 @@ Result: Hope it's actually better
 **With runtime feedback:**
 ```
 LLM: "I'll replace Redux with Zustand"
-Gasoline: {
+Kaboom: {
   current_redux: {
     bundle_size: "12KB",
     avg_update_time: "1.2ms",
@@ -133,7 +133,7 @@ Gasoline: {
   }
 }
 LLM: "Let me simulate Zustand"
-Gasoline: {
+Kaboom: {
   zustand_simulation: {
     bundle_size: "3KB",
     avg_update_time: "0.8ms",
@@ -165,14 +165,14 @@ Result: Hope it's actually faster
 **With runtime feedback:**
 ```
 LLM: "I'll add Redis caching"
-Gasoline: {
+Kaboom: {
   current_no_cache: {
     avg_response_time: "120ms",
     database_load: "High"
   }
 }
 LLM: "Let me simulate with Redis"
-Gasoline: {
+Kaboom: {
   redis_simulation: {
     avg_response_time: "45ms",
     cache_hit_rate: "82%",
@@ -326,7 +326,7 @@ Result: {
 ```mermaid
 graph TD
     A[AI proposes change] --> B[Apply change]
-    B --> C[Gasoline observes runtime]
+    B --> C[Kaboom observes runtime]
     C --> D[Collect metrics]
     D --> E[Compare to baseline]
     E --> F{Impact positive?}

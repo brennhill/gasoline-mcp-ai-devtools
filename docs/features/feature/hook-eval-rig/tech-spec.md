@@ -28,7 +28,7 @@ test_paths:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    gasoline-hooks eval                    │
+│                    kaboom-hooks eval                    │
 │                                                          │
 │  Tier 1: Unit Evals                                      │
 │  ┌─────────────────────────────────────────────────┐     │
@@ -45,7 +45,7 @@ test_paths:
 │  │  - Real codebases pinned at specific commits     │     │
 │  │  - Scripted session sequences (JSONL)            │     │
 │  │  - A/B comparison (hooks on vs off)              │     │
-│  │  - Run as `gasoline-hooks eval` or `make eval`   │     │
+│  │  - Run as `kaboom-hooks eval` or `make eval`   │     │
 │  └─────────────────────────────────────────────────┘     │
 │                                                          │
 │  Tier 3: Live Metrics                                    │
@@ -54,7 +54,7 @@ test_paths:
 │  │  - Per-hook invocation counters                  │     │
 │  │  - Latency histograms                            │     │
 │  │  - Token injection/savings aggregation           │     │
-│  │  - Written to ~/.gasoline/stats/sessions/        │     │
+│  │  - Written to ~/.kaboom/stats/sessions/        │     │
 │  └─────────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -171,10 +171,10 @@ Instead of purpose-built toy projects, we use real open-source codebases pinned 
 scripts/eval/codebases.json:
 [
   {
-    "name": "gasoline",
+    "name": "kaboom",
     "repo": ".",
     "commit": "HEAD",
-    "description": "Gasoline itself — Go + TS, ~300 source files"
+    "description": "Kaboom itself — Go + TS, ~300 source files"
   },
   {
     "name": "chi",
@@ -192,14 +192,14 @@ scripts/eval/codebases.json:
 ```
 
 Each codebase gets:
-- A `.gasoline.json` with standards and decisions
+- A `.kaboom.json` with standards and decisions
 - A set of scripted session sequences
 - Golden metrics for regression comparison
 
 ### Session sequence format
 
 ```
-scripts/eval/scenarios/gasoline-refactor-handler.jsonl
+scripts/eval/scenarios/kaboom-refactor-handler.jsonl
 ```
 
 Each line is a tool use event. The rig replays them in order, running all hooks after each step:
@@ -215,12 +215,12 @@ Each line is a tool use event. The rig replays them in order, running all hooks 
 ### Eval runner
 
 ```bash
-scripts/eval/run.sh [--codebase=gasoline] [--scenario=refactor-handler]
+scripts/eval/run.sh [--codebase=kaboom] [--scenario=refactor-handler]
 ```
 
 For each scenario:
 1. Clone/checkout the codebase at the pinned commit (or use local)
-2. Write `.gasoline.json` and `decisions.json` fixtures
+2. Write `.kaboom.json` and `decisions.json` fixtures
 3. Replay the session sequence, running hooks after each step
 4. Collect metrics: tokens injected, tokens saved, latency, hook outputs
 5. Compare against golden metrics file
@@ -239,7 +239,7 @@ scripts/eval/compare.sh baseline.json full.json
 
 Output:
 ```
-Scenario: gasoline-refactor-handler
+Scenario: kaboom-refactor-handler
   ┌───────────────────┬──────────┬──────────┬────────┐
   │ Metric            │ Baseline │ Hooks On │ Delta  │
   ├───────────────────┼──────────┼──────────┼────────┤
@@ -256,7 +256,7 @@ Scenario: gasoline-refactor-handler
 
 ### Collection
 
-Each hook writes a single metric line to `~/.gasoline/sessions/<id>/metrics.jsonl` after execution:
+Each hook writes a single metric line to `~/.kaboom/sessions/<id>/metrics.jsonl` after execution:
 
 ```jsonl
 {"hook":"quality-gate","t":"2026-03-07T14:30:01Z","latency_ms":6,"tokens_out":180,"action":"injected"}
@@ -267,7 +267,7 @@ Each hook writes a single metric line to `~/.gasoline/sessions/<id>/metrics.json
 
 ### Aggregation
 
-On session end (or via `gasoline-hooks eval --live`), aggregate metrics:
+On session end (or via `kaboom-hooks eval --live`), aggregate metrics:
 
 ```go
 type SessionMetrics struct {
@@ -292,7 +292,7 @@ type SessionMetrics struct {
 
 ### Lifetime aggregation
 
-Roll up into `~/.gasoline/stats/lifetime.json` (extends existing token tracker):
+Roll up into `~/.kaboom/stats/lifetime.json` (extends existing token tracker):
 
 ```json
 {
@@ -363,11 +363,11 @@ scripts/eval/
   check-regression.sh  # CI regression check
   codebases.json       # Pinned codebase list
   scenarios/            # JSONL session sequences
-    gasoline-refactor-handler.jsonl
-    gasoline-add-endpoint.jsonl
+    kaboom-refactor-handler.jsonl
+    kaboom-add-endpoint.jsonl
     chi-add-middleware.jsonl
     hono-extract-component.jsonl
   golden/              # Expected metrics for regression
-    gasoline-refactor-handler.json
+    kaboom-refactor-handler.json
     chi-add-middleware.json
 ```

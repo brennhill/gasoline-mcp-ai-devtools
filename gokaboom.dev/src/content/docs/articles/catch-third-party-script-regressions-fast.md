@@ -11,7 +11,7 @@ normalized_tags: ['third-party', 'performance', 'security', 'debugging', 'articl
 
 Third-party scripts are useful, but they can quietly slow your app, break pages, or leak risk.
 
-This guide helps you quickly find those issues with *.gasoline Agentic Devtools**.
+This guide helps you quickly find those issues with **KaBOOM Agentic Devtools**.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ You want to answer:
 
 “Which outside script is causing this new slowdown or error?”
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Audit third-party activity
 
@@ -74,4 +74,4 @@ configure({what: "log_diff", original_id: "rec-clean", replay_id: "rec-with-thir
 
 ## You’re Protecting User Trust
 
-Users do not care which vendor caused the issue. They only feel your app is slow or broken. *.gasoline Agentic Devtools** helps you find that source quickly and fix it decisively.
+Users do not care which vendor caused the issue. They only feel your app is slow or broken. **KaBOOM Agentic Devtools** helps you find that source quickly and fix it decisively.

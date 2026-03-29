@@ -18,7 +18,7 @@ def _known_server_names():
 
 
 def test_binary(get_binary_path=None):
-    """Test if gasoline binary is available and working.
+    """Test if the Kaboom binary is available and working.
 
     Args:
         get_binary_path: Callable that returns the binary path.
@@ -145,7 +145,7 @@ def _diagnose_cli_client(definition, verbose):
         tool["issues"].append(f"{definition['detectCommand']} CLI not found on PATH")
         return tool
 
-    # Try to check if gasoline is configured via CLI
+    # Try to check if Kaboom is configured via CLI
     env = dict(os.environ)
     env.pop("CLAUDECODE", None)
 

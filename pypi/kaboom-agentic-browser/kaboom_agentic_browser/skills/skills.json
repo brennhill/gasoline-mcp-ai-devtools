@@ -4,7 +4,7 @@
     {
       "id": "debug",
       "version": 1,
-      "description": "Root-cause web failures using Gasoline observability evidence."
+      "description": "Root-cause web failures using Kaboom observability evidence."
     },
     {
       "id": "debug-triage",
@@ -69,7 +69,7 @@
     {
       "id": "config-doctor",
       "version": 1,
-      "description": "Diagnose and repair Gasoline Agentic Browser configuration issues."
+      "description": "Diagnose and repair Kaboom Agentic Browser configuration issues."
     }
   ]
 }

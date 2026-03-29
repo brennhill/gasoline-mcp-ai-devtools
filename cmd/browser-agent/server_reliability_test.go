@@ -10,7 +10,7 @@
 // extended operation, and recovery from errors.
 //
 // Run all reliability tests:
-//   GASOLINE_RELIABILITY_TESTS=1 go test ./cmd/browser-agent -run "TestReliability" -v -timeout 10m
+//   KABOOM_RELIABILITY_TESTS=1 go test ./cmd/browser-agent -run "TestReliability" -v -timeout 10m
 //
 // Individual test categories:
 //   go test ./cmd/browser-agent -run "TestReliability_Stress" -v
@@ -155,8 +155,8 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 // TestReliability_Stress_ExtendedOperation verifies server operates correctly
 // over an extended period (simulates long MCP session).
 func TestReliability_Stress_ExtendedOperation(t *testing.T) {
-	if os.Getenv("GASOLINE_RELIABILITY_TESTS") == "" {
-		t.Skip("skipping extended operation test (set GASOLINE_RELIABILITY_TESTS=1)")
+	if os.Getenv("KABOOM_RELIABILITY_TESTS") == "" {
+		t.Skip("skipping extended operation test (set KABOOM_RELIABILITY_TESTS=1)")
 	}
 
 	port := findFreePort(t)

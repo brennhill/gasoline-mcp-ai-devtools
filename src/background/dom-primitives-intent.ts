@@ -51,14 +51,14 @@ export function domPrimitiveIntent(
 } {
   // — Shared helpers (duplicated for self-containment) —
 
-  function isGasolineOwnedElement(element: Element | null): boolean {
+  function isKaboomOwnedElement(element: Element | null): boolean {
     let node: Element | null = element
     while (node) {
       const id = (node as HTMLElement).id || ''
-      if (id.startsWith('gasoline-')) return true
+      if (id.startsWith('kaboom-')) return true
       const className = (node as HTMLElement).className
-      if (typeof className === 'string' && className.includes('gasoline-')) return true
-      if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true') return true
+      if (typeof className === 'string' && className.includes('kaboom-')) return true
+      if (node.getAttribute && node.getAttribute('data-kaboom-owned') === 'true') return true
       node = node.parentElement
     }
     return false
@@ -77,7 +77,7 @@ export function domPrimitiveIntent(
     if (depth > 10) return results
     const matches = Array.from(root.querySelectorAll(selector))
     for (const match of matches) {
-      if (!isGasolineOwnedElement(match)) results.push(match)
+      if (!isKaboomOwnedElement(match)) results.push(match)
     }
     const children = 'children' in root
       ? (root as Element).children
@@ -95,7 +95,7 @@ export function domPrimitiveIntent(
 
   function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
     const fast = root.querySelector(selector)
-    if (fast && !isGasolineOwnedElement(fast)) return fast
+    if (fast && !isKaboomOwnedElement(fast)) return fast
     return querySelectorDeepWalk(selector, root)
   }
 
@@ -110,7 +110,7 @@ export function domPrimitiveIntent(
       const shadow = getShadowRoot(child)
       if (shadow) {
         const match = shadow.querySelector(selector)
-        if (match && !isGasolineOwnedElement(match)) return match
+        if (match && !isKaboomOwnedElement(match)) return match
         const deep = querySelectorDeepWalk(selector, shadow, depth + 1)
         if (deep) return deep
       }
@@ -132,7 +132,7 @@ export function domPrimitiveIntent(
   }
 
   function isVisible(el: Element): boolean {
-    if (isGasolineOwnedElement(el)) return false
+    if (isKaboomOwnedElement(el)) return false
     if (!(el instanceof HTMLElement)) return true
     const style = getComputedStyle(el)
     if (style.visibility === 'hidden' || style.display === 'none') return false
@@ -210,12 +210,12 @@ export function domPrimitiveIntent(
   }
 
   function getElementHandleStore(): ElementHandleStore {
-    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
-    if (root.__gasolineElementHandles) {
-      if (!root.__gasolineElementHandles.selectorByID) {
-        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
+    const root = globalThis as typeof globalThis & { __kaboomElementHandles?: ElementHandleStore }
+    if (root.__kaboomElementHandles) {
+      if (!root.__kaboomElementHandles.selectorByID) {
+        root.__kaboomElementHandles.selectorByID = new Map<string, string>()
       }
-      return root.__gasolineElementHandles
+      return root.__kaboomElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
@@ -223,7 +223,7 @@ export function domPrimitiveIntent(
       selectorByID: new Map<string, string>(),
       nextID: 1
     }
-    root.__gasolineElementHandles = created
+    root.__kaboomElementHandles = created
     return created
   }
 

@@ -1,17 +1,17 @@
 ---
 title: "API Contract Validation"
-description: "Use.gasoline to infer API schemas from live traffic, detect breaking changes, validate response consistency, and catch contract violations during development."
+description: "Use KaBOOM to infer API schemas from live traffic, detect breaking changes, validate response consistency, and catch contract violations during development."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['guides', 'api', 'validation']
 ---
 
-STRUM watches your API traffic and infers schemas automatically. No OpenAPI spec required — the `api_validation` mode learns your API's structure from real requests and flags inconsistencies, breaking changes, and unexpected responses.
+KaBOOM watches your API traffic and infers schemas automatically. No OpenAPI spec required — the `api_validation` mode learns your API's structure from real requests and flags inconsistencies, breaking changes, and unexpected responses.
 
 ## How It Works
 
-1. **Browse your application normally** —.gasoline captures every API request and response
-2. **Analyze** —.gasoline groups requests by endpoint pattern, normalizes dynamic segments, and infers request/response shapes
+1. **Browse your application normally** — KaBOOM captures every API request and response
+2. **Analyze** — KaBOOM groups requests by endpoint pattern, normalizes dynamic segments, and infers request/response shapes
 3. **Report** — See inferred schemas and any violations
 
 No configuration needed. The validation happens against the API's own observed behavior.

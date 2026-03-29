@@ -159,7 +159,7 @@ last_verified_date: 2026-03-05
    - User A calls observe('link_health', {domain: 'site-a.com'}) → sess_a created
    - User B calls observe('link_health', {domain: 'site-b.com'}) → sess_b created
    - Both run in parallel
-   - → Directory structure: ~/.gasoline/crawls/sess_a/, ~/.gasoline/crawls/sess_b/
+   - → Directory structure: ~/.kaboom/crawls/sess_a/, ~/.kaboom/crawls/sess_b/
    - → Results independent, no interference
 
 4. **Large link set (1000+ links):**
@@ -174,7 +174,7 @@ last_verified_date: 2026-03-05
 
 **Framework:** Bash scripts (see cat-19-link-health.sh)
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-19-link-health.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-19-link-health.sh`
 
 #### 19 Tests Implemented:
 
@@ -202,7 +202,7 @@ last_verified_date: 2026-03-05
 
 #### Smoke Tests:
 
-**File:** `/Users/brenn/dev/gasoline/scripts/smoke-tests/link-health-smoke.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/smoke-tests/link-health-smoke.sh`
 
 (Status: Exists with additional quick-check scenarios)
 
@@ -218,7 +218,7 @@ The cat-19 tests focus on **API contract & MCP protocol validation**. They don't
 |-----|----------|----------|----------------------|
 | GH-1 | Actual HTTP requests to real URLs | CRITICAL | New test: Start daemon, call analyze, verify network requests made to test URLs |
 | GH-2 | Status code categorization accuracy | CRITICAL | Verify 200→'ok', 404→'broken', 403→'requires_auth', 301→'redirect' |
-| GH-3 | Persistent storage (results.jsonl) | HIGH | Verify files created in ~/.gasoline/crawls/{session_id}/ |
+| GH-3 | Persistent storage (results.jsonl) | HIGH | Verify files created in ~/.kaboom/crawls/{session_id}/ |
 | GH-4 | Crash recovery (warm start) | HIGH | Kill daemon mid-check, restart, verify resume works |
 | GH-5 | External vs internal link tracking | MEDIUM | Verify is_external flag correctly set |
 | GH-6 | Worker concurrency (20 workers) | MEDIUM | Monitor concurrent HTTP requests, verify queue management |
@@ -242,7 +242,7 @@ The cat-19 tests focus on **API contract & MCP protocol validation**. They don't
 
 3. **cat-19-links-persistence** — File system validation
    - Start check, wait for completion
-   - Verify ~/.gasoline/crawls/{session_id}/ exists with:
+   - Verify ~/.kaboom/crawls/{session_id}/ exists with:
      - visited.jsonl (one URL per line)
      - results.jsonl (one JSON result per line)
      - state.json (valid JSON with status, counts, queue)

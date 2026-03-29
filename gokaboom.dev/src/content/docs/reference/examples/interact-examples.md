@@ -2080,7 +2080,7 @@ Fix: Use a valid interact action value, e.g. `fill_form`.
   "tool": "interact",
   "arguments": {
     "what": "run_a11y_and_export_sarif",
-    "save_to": ".gasoline/reports/a11y.sarif"
+    "save_to": ".kaboom/reports/a11y.sarif"
   }
 }
 ```
@@ -2106,7 +2106,7 @@ Fix: Use a valid interact action value, e.g. `fill_form`.
   "tool": "interact",
   "arguments": {
     "what": "not_a_real_mode",
-    "save_to": ".gasoline/reports/a11y.sarif"
+    "save_to": ".kaboom/reports/a11y.sarif"
   }
 }
 ```
@@ -2505,7 +2505,7 @@ Fix: Use a valid interact action value, e.g. `clipboard_read`.
   "tool": "interact",
   "arguments": {
     "what": "clipboard_write",
-    "text": "Copied by.gasoline"
+    "text": "Copied by KaBOOM"
   }
 }
 ```
@@ -2531,7 +2531,7 @@ Fix: Use a valid interact action value, e.g. `clipboard_read`.
   "tool": "interact",
   "arguments": {
     "what": "not_a_real_mode",
-    "text": "Copied by.gasoline"
+    "text": "Copied by KaBOOM"
   }
 }
 ```

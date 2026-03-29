@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // TestMain enforces process hygiene for the full cmd/browser-agent test suite.
@@ -26,12 +26,12 @@ func TestMain(m *testing.M) {
 
 func cleanupGoTestDaemons() {
 	if runtime.GOOS == "windows" {
-		_ = exec.Command("taskkill", "/F", "/IM", "gasoline-test-binary.exe").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "kaboom-test-binary.exe").Run()
 		return
 	}
 
-	killPattern("gasoline-test-binary --daemon --port")
-	killPattern("gasoline-test-binary --port")
+	killPattern("kaboom-test-binary --daemon --port")
+	killPattern("kaboom-test-binary --port")
 
 	// Clean known test PID file ranges used by shell and regression tests.
 	cleanupPIDFiles()
@@ -46,7 +46,7 @@ func killPattern(pattern string) {
 	_ = exec.Command("pkill", "-KILL", "-f", pattern).Run()
 }
 
-func TestCleanupPIDFilesRemovesKaboomAndStrumPIDVariants(t *testing.T) {
+func TestCleanupPIDFilesRemovesKaboomAndKaboomPIDVariants(t *testing.T) {
 	stateRoot := t.TempDir()
 	home := t.TempDir()
 	t.Setenv(state.StateDirEnv, stateRoot)

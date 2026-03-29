@@ -1,5 +1,5 @@
 /**
- * Purpose: Anonymous telemetry beacons for error visibility. Disable with STRUM_TELEMETRY storage key.
+ * Purpose: Anonymous telemetry beacons for error visibility. Disable with the Kaboom telemetry opt-out key.
  */
 /**
  * Fire an anonymous telemetry beacon. Fire-and-forget, never throws.

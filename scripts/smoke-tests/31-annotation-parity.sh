@@ -14,7 +14,7 @@ PARITY_CORR_A="corr_parity_a_${SMOKE_MARKER:-seed}"
 PARITY_CORR_B="corr_parity_b_${SMOKE_MARKER:-seed}"
 PARITY_URL_A="http://localhost:3000/dashboard"
 PARITY_URL_B="http://localhost:5173/settings"
-PARITY_CLIENT_HEADER="gasoline-extension/smoke-parity"
+PARITY_CLIENT_HEADER="kaboom-extension/smoke-parity"
 PARITY_SCREENSHOT_DATA_URL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg=="
 
 post_parity_annotation() {
@@ -85,7 +85,7 @@ post_parity_annotation() {
     curl -s --max-time 12 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: ${PARITY_CLIENT_HEADER}" \
+        -H "X-Kaboom-Client: ${PARITY_CLIENT_HEADER}" \
         -w "\n%{http_code}" \
         -d "$payload" \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null

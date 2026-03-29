@@ -24,7 +24,7 @@ Event Collector (server/events.go)
     ↓
 Event Indexer (server/index/events.go)
     ↓
-Gasoline Event Store
+Kaboom Event Store
     ↓ on observe('custom-events')
 MCP Handler
     ↓
@@ -164,11 +164,11 @@ func handleCustomEvents(req *CustomEventsRequest) (*CustomEventsResponse, error)
 ```
 
 ## Code References
-- **Event collector:** `/Users/brenn/dev/gasoline/server/events.go` (new)
-- **Event indexer:** `/Users/brenn/dev/gasoline/server/index/events.go` (new)
-- **Proto definitions:** `/Users/brenn/dev/gasoline/proto/events.proto` (new)
-- **MCP handler:** `/Users/brenn/dev/gasoline/server/handlers.go` (modified)
-- **Tests:** `/Users/brenn/dev/gasoline/server/events_test.go` (new)
+- **Event collector:** `/Users/brenn/dev/kaboom/server/events.go` (new)
+- **Event indexer:** `/Users/brenn/dev/kaboom/server/index/events.go` (new)
+- **Proto definitions:** `/Users/brenn/dev/kaboom/proto/events.proto` (new)
+- **MCP handler:** `/Users/brenn/dev/kaboom/server/handlers.go` (modified)
+- **Tests:** `/Users/brenn/dev/kaboom/server/events_test.go` (new)
 
 ## Performance Requirements
 - **Emission latency:** <1ms per event (async, no database)
@@ -196,12 +196,12 @@ func handleCustomEvents(req *CustomEventsRequest) (*CustomEventsResponse, error)
 ### E2E Tests
 - Real backend service emitting events
 - Frontend emitting events via MCP
-- Verify events appear in Gasoline timeline
+- Verify events appear in Kaboom timeline
 - Verify correlation with other observables
 
 ## Dependencies
 - **Protobuf runtime:** (Go stdlib)
-- **gRPC:** (already in Gasoline)
+- **gRPC:** (already in Kaboom)
 - **Backend SDKs:** Go and Node.js packages for event emission (separate repos)
 - **Trace context:** Must propagate W3C trace format or custom trace_id
 

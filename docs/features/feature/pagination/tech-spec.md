@@ -353,8 +353,8 @@ func TestNetworkWaterfallPagination(t *testing.T) {
 ### Manual UAT
 
 ```bash
-# 1. Start Gasoline
-./gasoline --port 7890
+# 1. Start Kaboom
+./kaboom --port 7890
 
 # 2. In Claude Code, test pagination
 observe({what: "network_waterfall", limit: 10})

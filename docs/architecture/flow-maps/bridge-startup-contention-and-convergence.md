@@ -51,8 +51,8 @@ Covers bridge-mode daemon startup when multiple MCP clients start concurrently, 
 
 ## Error and Recovery Paths
 
-- Non-gasoline service on port: marked failed with actionable error.
-- Version mismatch against running gasoline daemon: bridge attempts controlled daemon recycle.
+- Non-kaboom service on port: marked failed with actionable error.
+- Version mismatch against running kaboom daemon: bridge attempts controlled daemon recycle.
 - Startup leader crash/stall: follower reclaims stale startup lock and takes over spawn.
 - Forwarding connection error after startup: respawn once and retry request.
 - Stale respawn wait state (no ready/failed signal): bridge times out, reclaims respawn leadership, and retries bounded startup.

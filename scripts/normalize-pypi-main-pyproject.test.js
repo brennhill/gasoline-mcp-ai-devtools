@@ -9,32 +9,32 @@ import { normalizeMainPyprojectContent, validateMainPyprojectContent } from './n
 
 const version = '0.7.2'
 const baseProject = `[project]
-name = "gasoline-mcp"
+name = "kaboom-agentic-browser"
 version = "${version}"
 description = "Main package"
 
 [project.urls]
-Homepage = "https://cookwithgasoline.com"
+Homepage = "https://gokaboom.dev"
 
 [project.scripts]
-gasoline-mcp = "gasoline_mcp.__main__:main"
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
 `
 
 test('normalizer moves dependencies from [project.scripts] to [project]', () => {
   const input = `${baseProject}
 dependencies = [
-    "gasoline-mcp-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "gasoline-mcp-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "gasoline-mcp-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "gasoline-mcp-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "kaboom-agentic-browser-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "kaboom-agentic-browser-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 `
 
   const result = normalizeMainPyprojectContent(input)
   assert.equal(result.changed, true)
   assert.match(result.content, /\[project\][\s\S]*dependencies = \[/)
-  assert.match(result.content, /\[project\.scripts\]\ngasoline-mcp = "gasoline_mcp\.__main__:main"\n?$/)
+  assert.match(result.content, /\[project\.scripts\]\nkaboom-agentic-browser = "kaboom_agentic_browser\.__main__:main"\n?$/)
   assert.equal(
     result.content.match(/dependencies = \[/g)?.length ?? 0,
     1,
@@ -44,16 +44,16 @@ dependencies = [
 
 test('normalizer removes duplicate dependencies under [project.scripts] when [project] already has one', () => {
   const input = `[project]
-name = "gasoline-mcp"
+name = "kaboom-agentic-browser"
 version = "${version}"
 dependencies = [
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 
 [project.scripts]
-gasoline-mcp = "gasoline_mcp.__main__:main"
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
 dependencies = [
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 `
   const result = normalizeMainPyprojectContent(input)
@@ -63,14 +63,14 @@ dependencies = [
 
 test('normalizer leaves already-correct structure unchanged', () => {
   const input = `[project]
-name = "gasoline-mcp"
+name = "kaboom-agentic-browser"
 version = "${version}"
 dependencies = [
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 
 [project.scripts]
-gasoline-mcp = "gasoline_mcp.__main__:main"
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
 `
 
   const result = normalizeMainPyprojectContent(input)
@@ -81,7 +81,7 @@ gasoline-mcp = "gasoline_mcp.__main__:main"
 test('validator rejects misplaced dependencies and accepts normalized content', () => {
   const misplaced = `${baseProject}
 dependencies = [
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 `
   const invalid = validateMainPyprojectContent(misplaced, { expectedVersion: version })
@@ -89,18 +89,18 @@ dependencies = [
   assert.match(invalid.errors.join('\n'), /\[project\.scripts\] must not define dependencies/)
 
   const normalized = `[project]
-name = "gasoline-mcp"
+name = "kaboom-agentic-browser"
 version = "${version}"
 dependencies = [
-    "gasoline-mcp-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "gasoline-mcp-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "gasoline-mcp-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "gasoline-mcp-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "gasoline-mcp-win32-x64==${version}; sys_platform == 'win32'",
+    "kaboom-agentic-browser-darwin-arm64==${version}; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "kaboom-agentic-browser-darwin-x64==${version}; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-linux-arm64==${version}; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "kaboom-agentic-browser-linux-x64==${version}; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "kaboom-agentic-browser-win32-x64==${version}; sys_platform == 'win32'",
 ]
 
 [project.scripts]
-gasoline-mcp = "gasoline_mcp.__main__:main"
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
 `
   const valid = validateMainPyprojectContent(normalized, { expectedVersion: version })
   assert.equal(valid.valid, true, valid.errors.join('\n'))

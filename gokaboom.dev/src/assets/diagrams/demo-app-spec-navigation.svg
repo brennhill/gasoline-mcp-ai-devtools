@@ -101,5 +101,5 @@
 
   <!-- Bottom note -->
   <rect x="50" y="570" width="700" height="20" fill="none" stroke="#334155" stroke-width="1" rx="3"/>
-  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="70" y="583">Each page includes realistic bugs designed to be caught by Gasoline (errors, network issues, accessibility violations)</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="70" y="583">Each page includes realistic bugs designed to be caught by KaBOOM (errors, network issues, accessibility violations)</text>
 </svg>

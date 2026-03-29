@@ -126,7 +126,7 @@ Features that are documented but not yet implemented in code.
 | error-bundling | `feature/error-bundling/` | tech-spec.md | Error bundling with surrounding context |
 | flow-recording | `feature/flow-recording/` | product-spec.md, qa-plan.md, tech-spec.md | User flow recording and replay |
 | form-filling | `feature/form-filling/` | product-spec.md, qa-plan.md, tech-spec.md | Automated form filling and submission |
-| gasoline-ci | `feature/gasoline-ci/` | product-spec.md, qa-plan.md, tech-spec.md | Gasoline CI runner for headless testing |
+| kaboom-ci | `feature/kaboom-ci/` | product-spec.md, qa-plan.md, tech-spec.md | Kaboom CI runner for headless testing |
 | git-event-tracking | `feature/git-event-tracking/` | product-spec.md, qa-plan.md, tech-spec.md | Git event tracking and correlation |
 | idl-migration | `feature/idl-migration/` | design-spec.md | IDL-based schema migration |
 | in-browser-agent-panel | `feature/in-browser-agent-panel/` | product-spec.md, qa-plan.md, tech-spec.md | In-browser agent control panel UI |

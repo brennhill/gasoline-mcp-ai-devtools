@@ -21,6 +21,89 @@ function isSessionStorageAvailable() {
     const storage = getStorageWithSession();
     return storage !== null && storage.session !== undefined;
 }
+function isPromiseLike(value) {
+    return typeof value === 'object' && value !== null && typeof value.then === 'function';
+}
+function readStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (result = {}) => {
+            if (settled)
+                return;
+            settled = true;
+            resolve(result);
+        };
+        try {
+            const maybePromise = method(keys, finish);
+            if (isPromiseLike(maybePromise)) {
+                maybePromise.then((result) => finish(result ?? {})).catch(reject);
+            }
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+function writeStorage(method, items) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = () => {
+            if (settled)
+                return;
+            settled = true;
+            resolve();
+        };
+        try {
+            const maybePromise = method(items, finish);
+            if (isPromiseLike(maybePromise)) {
+                maybePromise.then(() => finish()).catch(reject);
+            }
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+function removeFromStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = () => {
+            if (settled)
+                return;
+            settled = true;
+            resolve();
+        };
+        try {
+            const maybePromise = method(keys, finish);
+            if (isPromiseLike(maybePromise)) {
+                maybePromise.then(() => finish()).catch(reject);
+            }
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+function setStorageAccessLevel(method, accessLevel) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = () => {
+            if (settled)
+                return;
+            settled = true;
+            resolve();
+        };
+        try {
+            const maybePromise = method({ accessLevel }, finish);
+            if (isPromiseLike(maybePromise)) {
+                maybePromise.then(() => finish()).catch(reject);
+            }
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
 // =============================================================================
 // LOCAL STORAGE (Promise-based)
 // =============================================================================
@@ -30,7 +113,7 @@ function isSessionStorageAvailable() {
 export async function getLocal(key) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return undefined;
-    const result = await chrome.storage.local.get([key]);
+    const result = await readStorage(chrome.storage.local.get.bind(chrome.storage.local), key);
     return result[key];
 }
 /**
@@ -39,7 +122,7 @@ export async function getLocal(key) {
 export async function getLocals(keys) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return {};
-    return await chrome.storage.local.get(keys);
+    return await readStorage(chrome.storage.local.get.bind(chrome.storage.local), keys);
 }
 /**
  * Set a persistent value in local storage (async)
@@ -47,7 +130,7 @@ export async function getLocals(keys) {
 export async function setLocal(key, value) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    await chrome.storage.local.set({ [key]: value });
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), { [key]: value });
 }
 /**
  * Set multiple persistent values in local storage (async)
@@ -55,7 +138,7 @@ export async function setLocal(key, value) {
 export async function setLocals(items) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    await chrome.storage.local.set(items);
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), items);
 }
 /**
  * Remove a persistent value from local storage (async)
@@ -63,7 +146,7 @@ export async function setLocals(items) {
 export async function removeLocal(key) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    await chrome.storage.local.remove([key]);
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), [key]);
 }
 /**
  * Remove multiple persistent values from local storage (async)
@@ -71,7 +154,7 @@ export async function removeLocal(key) {
 export async function removeLocals(keys) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    await chrome.storage.local.remove(keys);
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), keys);
 }
 // =============================================================================
 // SESSION STORAGE (Promise-based)
@@ -83,7 +166,7 @@ export async function getSession(key) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
         return undefined;
-    const result = await storage.session.get([key]);
+    const result = await readStorage(storage.session.get.bind(storage.session), key);
     return result[key];
 }
 /**
@@ -93,16 +176,16 @@ export async function setSession(key, value) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
         return;
-    await storage.session.set({ [key]: value });
+    await writeStorage(storage.session.set.bind(storage.session), { [key]: value });
 }
 /**
  * Remove an ephemeral value from session storage (async)
  */
-async function removeSession(key) {
+export async function removeSession(key) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
         return;
-    await storage.session.remove([key]);
+    await removeFromStorage(storage.session.remove.bind(storage.session), [key]);
 }
 /**
  * Remove multiple ephemeral values from session storage (async)
@@ -111,7 +194,7 @@ export async function removeSessions(keys) {
     const storage = getStorageWithSession();
     if (!storage || !storage.session)
         return;
-    await storage.session.remove(keys);
+    await removeFromStorage(storage.session.remove.bind(storage.session), keys);
 }
 /**
  * Register a storage change listener. Returns an unsubscribe function.
@@ -133,7 +216,7 @@ export async function setSessionAccessLevel(accessLevel) {
     const storage = getStorageWithSession();
     if (!storage?.session?.setAccessLevel)
         return;
-    await storage.session.setAccessLevel({ accessLevel });
+    await setStorageAccessLevel(storage.session.setAccessLevel.bind(storage.session), accessLevel);
 }
 // =============================================================================
 // STATE RECOVERY & DIAGNOSTICS
@@ -141,7 +224,7 @@ export async function setSessionAccessLevel(accessLevel) {
 /**
  * Get diagnostic info about storage availability
  */
-function getStorageDiagnostics() {
+export function getStorageDiagnostics() {
     return {
         sessionStorageAvailable: isSessionStorageAvailable(),
         localStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage?.local,
@@ -163,7 +246,7 @@ export async function wasServiceWorkerRestarted() {
         // Can't detect restart without session storage
         return false;
     }
-    const result = await storage.session.get([STATE_VERSION_KEY]);
+    const result = await readStorage(storage.session.get.bind(storage.session), [STATE_VERSION_KEY]);
     return result[STATE_VERSION_KEY] !== CURRENT_STATE_VERSION;
 }
 /**
@@ -174,6 +257,6 @@ export async function markStateVersion() {
     if (!storage || !storage.session) {
         return;
     }
-    await storage.session.set({ [STATE_VERSION_KEY]: CURRENT_STATE_VERSION });
+    await writeStorage(storage.session.set.bind(storage.session), { [STATE_VERSION_KEY]: CURRENT_STATE_VERSION });
 }
 //# sourceMappingURL=storage-utils.js.map

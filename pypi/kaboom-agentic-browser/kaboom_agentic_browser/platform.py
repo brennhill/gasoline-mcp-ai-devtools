@@ -146,7 +146,7 @@ def _parse_env_args(args):
             try:
                 parsed = config.parse_env_var(args[i + 1])
                 env_vars[parsed["key"]] = parsed["value"]
-            except errors.GasolineError as e:
+            except errors.KaboomError as e:
                 print(out.error(e.message, e.recovery))
                 sys.exit(1)
     return env_vars
@@ -291,14 +291,14 @@ def run_update(args):
 
 
 def _cleanup_windows():
-    """Kill Kaboom, STRUM, and Gasoline processes on Windows. Returns list of killed PIDs."""
+    """Kill Kaboom plus legacy Gasoline/STRUM processes on Windows. Returns killed PIDs."""
     import re  # pylint: disable=import-outside-toplevel
 
     killed = []
     for image_pattern, regex in (
         ("kaboom*", r'"kaboom[^"]*","(\d+)"'),
-        ("strum*", r'"strum[^"]*","(\d+)"'),
         ("gasoline*", r'"gasoline[^"]*","(\d+)"'),
+        ("strum*", r'"strum[^"]*","(\d+)"'),
     ):
         result = subprocess.run(
             ["tasklist", "/FI", f"IMAGENAME eq {image_pattern}", "/FO", "CSV"],
@@ -332,7 +332,7 @@ def _kill_pids_on_port(port):
 
 
 def _cleanup_unix():
-    """Kill Kaboom, STRUM, and Gasoline processes on Unix. Returns list of killed PIDs."""
+    """Kill Kaboom plus legacy Gasoline/STRUM processes on Unix. Returns killed PIDs."""
     killed = []
     self_pid = os.getpid()
     parent_pid = os.getppid()
@@ -342,14 +342,13 @@ def _cleanup_unix():
 
     for pattern in [
         "kaboom-agentic-browser",
-        "kaboom-mcp",
         "kaboom",
-        "strum-agentic-browser",
-        "strum",
         "gasoline-agentic-browser",
         "gasoline-mcp",
-        "browser-agent",
         "gasoline",
+        "strum-agentic-browser",
+        "strum",
+        "browser-agent",
     ]:
         result = subprocess.run(
             ["pgrep", "-af", pattern],
@@ -412,12 +411,12 @@ def _candidate_home_dirs():
 
 
 def _pid_roots():
-    """Return all roots that may contain Kaboom, STRUM, and Gasoline pid files."""
+    """Return all roots that may contain Kaboom plus legacy pid files."""
     roots = []
     seen = set()
 
     for home in _candidate_home_dirs():
-        for tool_dir in (".kaboom", ".strum", ".gasoline"):
+        for tool_dir in (".kaboom", ".gasoline", ".strum"):
             run_root = os.path.join(home, tool_dir, "run")
             key = _normalize_path_for_set(run_root)
             if key not in seen:
@@ -426,7 +425,7 @@ def _pid_roots():
 
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
     if xdg_state_home:
-        for tool_dir in ("kaboom", "strum", "gasoline"):
+        for tool_dir in ("kaboom", "gasoline", "strum"):
             xdg_root = os.path.join(xdg_state_home, tool_dir, "run")
             key = _normalize_path_for_set(xdg_root)
             if key not in seen:
@@ -471,20 +470,20 @@ def _cleanup_pid_files():
     roots = _pid_roots()
 
     # Glob-based: scan directories for any PID files matching our prefixes
-    _remove_matching_pid_files(roots, ("kaboom-", "strum-", "gasoline-", "browser-agent-"))
-    _remove_matching_pid_files(homes, (".kaboom-", ".strum-", ".gasoline-", ".browser-agent-"))
+    _remove_matching_pid_files(roots, ("kaboom-", "gasoline-", "strum-", "browser-agent-"))
+    _remove_matching_pid_files(homes, (".kaboom-", ".gasoline-", ".strum-", ".browser-agent-"))
 
     # Targeted: remove by known port (catches files even if dir listing failed)
     for port in KNOWN_PORTS:
         for root in roots:
             _best_effort_remove(os.path.join(root, f"kaboom-{port}.pid"))
-            _best_effort_remove(os.path.join(root, f"strum-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"gasoline-{port}.pid"))
+            _best_effort_remove(os.path.join(root, f"strum-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"browser-agent-{port}.pid"))
         for home in homes:
             _best_effort_remove(os.path.join(home, f".kaboom-{port}.pid"))
-            _best_effort_remove(os.path.join(home, f".strum-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
+            _best_effort_remove(os.path.join(home, f".strum-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".browser-agent-{port}.pid"))
 
     # Clean up empty PID directories
@@ -497,7 +496,7 @@ def _cleanup_pid_files():
 
 
 def cleanup_old_processes():
-    """Kill all running Kaboom, STRUM, and Gasoline processes to ensure clean upgrade."""
+    """Kill all running Kaboom, Kaboom, and Kaboom processes to ensure clean upgrade."""
     try:
         if sys.platform == "win32":
             killed = _cleanup_windows()

@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"

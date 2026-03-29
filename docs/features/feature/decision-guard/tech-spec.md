@@ -19,7 +19,7 @@ test_paths:
 
 ## TL;DR
 
-- Design: Read `.gasoline/decisions.json`, match patterns against new code, inject matching rules
+- Design: Read `.kaboom/decisions.json`, match patterns against new code, inject matching rules
 - Key constraints: < 15ms, no network, file-based decisions committed to repo
 - Rollout risk: Low — purely additive, decisions file is opt-in
 
@@ -49,25 +49,25 @@ type Decision struct {
 
 ## Decision File Location
 
-The hook walks up from the edited file looking for `.gasoline/decisions.json`, same algorithm as `findProjectRoot()` in `quality_gate.go` (looks for `.gasoline.json`). This means the decisions file is project-scoped, not global.
+The hook walks up from the edited file looking for `.kaboom/decisions.json`, same algorithm as `findProjectRoot()` in `quality_gate.go` (looks for `.kaboom.json`). This means the decisions file is project-scoped, not global.
 
 ```
 project/
-  .gasoline.json              # quality gates config
-  .gasoline/
+  .kaboom.json              # quality gates config
+  .kaboom/
     decisions.json            # locked decisions
-  gasoline-code-standards.md  # standards doc
+  kaboom-code-standards.md  # standards doc
 ```
 
 ## Hook Logic
 
 ```
-gasoline-hooks decision-guard:
+kaboom-hooks decision-guard:
   1. Parse hook input (tool_name, tool_input)
   2. Skip if not Edit or Write
   3. Extract file_path and new_string/content
-  4. Find project root (walk up for .gasoline.json)
-  5. Load .gasoline/decisions.json (silently skip if missing)
+  4. Find project root (walk up for .kaboom.json)
+  5. Load .kaboom/decisions.json (silently skip if missing)
   6. For each decision:
      a. Skip if expired
      b. Skip if scope doesn't match file extension
@@ -122,15 +122,15 @@ var subcommands = map[string]func() int{
 }
 ```
 
-`lock-decision` reads flags, finds the project root, appends to `.gasoline/decisions.json`:
+`lock-decision` reads flags, finds the project root, appends to `.kaboom/decisions.json`:
 
 ```go
 func runLockDecision() int {
     // Parse flags: --id, --pattern, --rule, --scope
-    // Find project root (cwd, walk up for .gasoline.json)
+    // Find project root (cwd, walk up for .kaboom.json)
     // Read existing decisions (or create empty array)
     // Append new decision with locked_at=now, locked_by="cli"
-    // Write back to .gasoline/decisions.json
+    // Write back to .kaboom/decisions.json
     // Print confirmation to stderr
     return 0
 }
@@ -144,7 +144,7 @@ func runLockDecision() int {
 
   use-shared-http-client: Use the shared HTTP client from internal/util/http.go. Do not create new http.Client instances.
 
-Comply with these decisions or update .gasoline/decisions.json if they are outdated.
+Comply with these decisions or update .kaboom/decisions.json if they are outdated.
 ```
 
 **No matches:**
@@ -154,7 +154,7 @@ No output (exit 0, empty stdout).
 
 | Operation | Budget | Method |
 |-----------|--------|--------|
-| Find project root | < 2ms | Walk up for .gasoline.json |
+| Find project root | < 2ms | Walk up for .kaboom.json |
 | Read decisions.json | < 2ms | os.ReadFile + json.Unmarshal |
 | Pattern matching | < 5ms | string contains / regex per decision |
 | Total | < 15ms | |

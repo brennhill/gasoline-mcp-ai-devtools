@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: Reproduction Script Enhancements
 
 **Branch:** `feature/repro-v2`
-**Worktree:** `../gasoline-repro-v2`
+**Worktree:** `../kaboom-repro-v2`
 **Priority:** P5 (nice-to-have, parallel)
 
 ---

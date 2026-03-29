@@ -12,7 +12,7 @@ import (
 func TestDiscoverConventions_GoProject(t *testing.T) {
 	t.Parallel()
 
-	// Find the repo root (the real gasoline codebase).
+	// Find the repo root (the real kaboom codebase).
 	root := findRepoRoot(t)
 
 	conventions := DiscoverConventions(root, ".go")
@@ -25,13 +25,13 @@ func TestDiscoverConventions_GoProject(t *testing.T) {
 		t.Logf("  %3d files  %s", c.FileCount, c.Pattern)
 	}
 
-	// Sanity: should find patterns we know exist in gasoline.
+	// Sanity: should find patterns we know exist in kaboom.
 	found := make(map[string]bool)
 	for _, c := range conventions {
 		found[c.Pattern] = true
 	}
 
-	// These are real gasoline patterns that appear in many files.
+	// These are real kaboom patterns that appear in many files.
 	wantSome := []string{
 		"json.Unmarshal(",
 		"json.Marshal(",

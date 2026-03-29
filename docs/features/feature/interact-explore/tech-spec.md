@@ -30,7 +30,7 @@ last_verified_date: 2026-03-05
 - `list_interactive` orchestration + index metadata/truncation post-processing
 - DOM primitive selector resolution (`index`/`index_generation`) before queueing `dom_action`
 - browser action implementation internals (navigate/refresh/back/forward/new_tab/switch_tab/activate_tab/close_tab, highlight, execute_js, subtitle/screenshot aliases)
-- URL rewrite (`gasoline-insecure://`) and perf snapshot staging for `perf_diff`
+- URL rewrite (`kaboom-insecure://`) and perf snapshot staging for `perf_diff`
 - interact dispatch map now points directly to `interactActionHandler` methods (ToolHandler browser wrappers removed)
 - storage/cookie mutation handlers (`set/delete/clear_storage`, `set/delete_cookie`) and execute-script queueing helper
 - composed workflow handlers (`navigate_and_wait_for`, `fill_form`, `fill_form_and_submit`, `run_a11y_and_export_sarif`) plus field-step internals

@@ -3,7 +3,7 @@
  */
 
 /**
- * @fileoverview Shared constants for the Gasoline extension capture modules.
+ * @fileoverview Shared constants for the Kaboom extension capture modules.
  */
 import { scaleTimeout } from './timeouts.js'
 

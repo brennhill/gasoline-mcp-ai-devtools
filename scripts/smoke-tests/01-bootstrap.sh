@@ -107,10 +107,10 @@ run_test_1_3() {
         EXTENSION_CONNECTED=true
         pass "Extension connected: capture.extension_connected=true."
     else
-        fail "Extension NOT connected. Open Chrome with Gasoline extension and track a tab."
+        fail "Extension NOT connected. Open Chrome with Kaboom extension and track a tab."
         echo "" | tee -a "$OUTPUT_FILE"
-        echo "  >>> 1. Open Chrome with the Gasoline extension installed" | tee -a "$OUTPUT_FILE"
-        echo "  >>> 2. Click the Gasoline icon > 'Track This Tab' on any page" | tee -a "$OUTPUT_FILE"
+        echo "  >>> 1. Open Chrome with the Kaboom extension installed" | tee -a "$OUTPUT_FILE"
+        echo "  >>> 2. Click the Kaboom icon > 'Track This Tab' on any page" | tee -a "$OUTPUT_FILE"
         echo "  >>> 3. Enable 'AI Web Pilot' toggle in the extension popup" | tee -a "$OUTPUT_FILE"
         echo "  >>> 4. Re-run: bash scripts/smoke-test.sh" | tee -a "$OUTPUT_FILE"
         echo "" | tee -a "$OUTPUT_FILE"

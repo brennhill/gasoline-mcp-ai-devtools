@@ -18,16 +18,16 @@ last_reviewed: 2026-03-06
 
 ## Problem
 
-Gasoline's existing performance tooling (`observe(what="vitals")`, the proposed `generate(what="performance_audit")`) analyzes passively captured telemetry. This gives good heuristic analysis, but it's not the same as a real Lighthouse audit — the industry-standard benchmark that developers, CI pipelines, and stakeholders actually reference.
+Kaboom's existing performance tooling (`observe(what="vitals")`, the proposed `generate(what="performance_audit")`) analyzes passively captured telemetry. This gives good heuristic analysis, but it's not the same as a real Lighthouse audit — the industry-standard benchmark that developers, CI pipelines, and stakeholders actually reference.
 
-Chrome DevTools MCP already exposes `lighthouse_audit` as a first-class tool. This is a gap: an AI agent using Gasoline cannot run a Lighthouse audit without also installing Chrome DevTools MCP.
+Chrome DevTools MCP already exposes `lighthouse_audit` as a first-class tool. This is a gap: an AI agent using Kaboom cannot run a Lighthouse audit without also installing Chrome DevTools MCP.
 
 ## Solution
 
 Add `analyze(what="lighthouse_report")` which runs a real Lighthouse audit via Chrome DevTools Protocol. The extension attaches the debugger to the tracked tab, invokes Lighthouse through CDP, and returns structured results (scores, audits, opportunities) as JSON.
 
 This differs from the proposed `performance_audit` feature:
-- **`generate(what="performance_audit")`** — Gasoline's own static analysis of captured telemetry. Fast (<50ms server-side), always available, no debugger attachment needed.
+- **`generate(what="performance_audit")`** — Kaboom's own static analysis of captured telemetry. Fast (<50ms server-side), always available, no debugger attachment needed.
 - **`analyze(what="lighthouse_report")`** — Real Lighthouse. Reloads the page, runs synthetic benchmarks, produces industry-standard scores. Slower (10-30s), requires debugger attachment.
 
 Both are valuable. The performance audit is great for iterative development (fast feedback). The Lighthouse report is what you run before shipping (authoritative benchmark).
@@ -165,4 +165,4 @@ The extension already has the `debugger` permission and `chrome.debugger.attach/
 
 ## Competitive Context
 
-Chrome DevTools MCP exposes `lighthouse_audit` with navigation/snapshot modes and desktop/mobile emulation. Adding this to Gasoline closes the last major capability gap for auditing.
+Chrome DevTools MCP exposes `lighthouse_audit` with navigation/snapshot modes and desktop/mobile emulation. Adding this to Kaboom closes the last major capability gap for auditing.

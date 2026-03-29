@@ -396,7 +396,7 @@ describe('state snapshots', () => {
   beforeEach(() => {
     // Reset storage mock to return empty snapshots
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: {} }
+      const result = { kaboom_state_snapshots: {} }
       callback?.(result)
       return Promise.resolve(result)
     })
@@ -409,12 +409,12 @@ describe('state snapshots', () => {
   test('save and load roundtrip', async () => {
     const stored = {}
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: stored }
+      const result = { kaboom_state_snapshots: stored }
       callback?.(result)
       return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
-      Object.assign(stored, data.gasoline_state_snapshots)
+      Object.assign(stored, data.kaboom_state_snapshots)
       callback?.()
       return Promise.resolve()
     })
@@ -425,7 +425,7 @@ describe('state snapshots', () => {
     assert.strictEqual(result.snapshot_name, 'test-snap')
 
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: stored }
+      const result = { kaboom_state_snapshots: stored }
       callback?.(result)
       return Promise.resolve(result)
     })
@@ -443,7 +443,7 @@ describe('state snapshots', () => {
   test('list returns array of snapshot metadata', async () => {
     chrome.storage.local.get = mock.fn((_keys, callback) => {
       const result = {
-        gasoline_state_snapshots: {
+        kaboom_state_snapshots: {
           snap1: { name: 'snap1', url: 'https://a.com', timestamp: '2024-01-01T00:00:00Z', size_bytes: 100 },
           snap2: { name: 'snap2', url: 'https://b.com', timestamp: '2024-01-02T00:00:00Z', size_bytes: 200 }
         }
@@ -463,12 +463,12 @@ describe('state snapshots', () => {
       snap1: { name: 'snap1', url: 'https://a.com' }
     }
     chrome.storage.local.get = mock.fn((_keys, callback) => {
-      const result = { gasoline_state_snapshots: { ...stored } }
+      const result = { kaboom_state_snapshots: { ...stored } }
       callback?.(result)
       return Promise.resolve(result)
     })
     chrome.storage.local.set = mock.fn((data, callback) => {
-      Object.assign(stored, data.gasoline_state_snapshots)
+      Object.assign(stored, data.kaboom_state_snapshots)
       callback?.()
       return Promise.resolve()
     })

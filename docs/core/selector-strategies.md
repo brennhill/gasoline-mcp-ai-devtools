@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Selector Strategies in Gasoline
+# Selector Strategies in Kaboom
 
-The Gasoline extension uses a **multi-strategy selector approach** to create robust, maintainable selectors for test automation and element identification. This document explains how selectors are prioritized and when each strategy is used.
+The Kaboom extension uses a **multi-strategy selector approach** to create robust, maintainable selectors for test automation and element identification. This document explains how selectors are prioritized and when each strategy is used.
 
 ## Overview
 
@@ -677,9 +677,9 @@ No DOM traversal is required beyond the element hierarchy.
 To see all computed selectors for an element:
 
 ```javascript
-if (window.__gasoline) {
+if (window.__kaboom) {
   const element = document.querySelector('button');
-  const selectors = window.__gasoline.getSelectors(element);
+  const selectors = window.__kaboom.getSelectors(element);
   console.log('All selectors:', selectors);
   // {
   //   testId: 'submit-btn',

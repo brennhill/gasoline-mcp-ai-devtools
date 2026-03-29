@@ -1,25 +1,25 @@
-# STRUM - Ultimate Windows Installer (PowerShell)
-# https://github.com/brennhill/Strum-AI-Devtools
+# Kaboom - Ultimate Windows Installer (PowerShell)
+# https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP
 #
 # PURPOSE:
 # This PowerShell script provides a native, one-liner installation for Windows users.
 # It avoids external dependencies like bash/curl by using built-in .NET/PowerShell features.
 #
 # USAGE:
-#   irm https://raw.githubusercontent.com/brennhill/Strum-AI-Devtools/STABLE/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 
 # Stop the script if any command results in an error. Equivalent to 'set -e'.
 $ErrorActionPreference = "Stop"
 
 # Configuration: Single source of truth for repository and local paths.
-$REPO = "brennhill/Strum-AI-Devtools"
-$INSTALL_DIR = Join-Path $HOME ".strum"
+$REPO = "brennhill/Kaboom-Browser-AI-Devtools-MCP"
+$INSTALL_DIR = Join-Path $HOME ".kaboom"
 $BIN_DIR = Join-Path $INSTALL_DIR "bin"
-$EXT_DIR = if ($env:STRUM_EXTENSION_DIR) { $env:STRUM_EXTENSION_DIR } else { Join-Path $HOME "StrumExtension" }
-$STRUM_BIN = Join-Path $BIN_DIR "strum.exe"
+$EXT_DIR = if ($env:KABOOM_EXTENSION_DIR) { $env:KABOOM_EXTENSION_DIR } else { Join-Path $HOME "KaboomAgenticDevtoolExtension" }
+$KABOOM_BIN = Join-Path $BIN_DIR "kaboom-agentic-browser.exe"
 # Release version source of truth.
 $VERSION_URL = "https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
-$STRICT_CHECKSUM = $env:STRUM_INSTALL_STRICT -eq "1"
+$STRICT_CHECKSUM = $env:KABOOM_INSTALL_STRICT -eq "1"
 $TEMP_TOKEN = [Guid]::NewGuid().ToString("N")
 $STAGE_EXT_DIR = Join-Path $INSTALL_DIR ".extension-stage-$TEMP_TOKEN"
 $BACKUP_EXT_DIR = Join-Path $INSTALL_DIR ".extension-backup-$TEMP_TOKEN"
@@ -47,18 +47,18 @@ function Show-InstallWarnings {
     }
     Write-Host ""
     Write-Host "The old server may still be running. Kill it manually:" -ForegroundColor Red
-    Write-Host "  Get-Process strum -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
-    Write-Host "  taskkill /F /IM strum.exe /T" -ForegroundColor Yellow
-    Write-Host "  Remove-Item `"$STRUM_BIN`" -Force" -ForegroundColor Yellow
+    Write-Host "  Get-Process kaboom-agentic-browser -ErrorAction SilentlyContinue | Stop-Process -Force" -ForegroundColor Yellow
+    Write-Host "  taskkill /F /IM kaboom-agentic-browser.exe /T" -ForegroundColor Yellow
+    Write-Host "  Remove-Item `"$KABOOM_BIN`" -Force" -ForegroundColor Yellow
     Write-Host "Then re-run installer:" -ForegroundColor Red
     Write-Host "  irm https://raw.githubusercontent.com/$REPO/STABLE/scripts/install.ps1 | iex" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Red
 }
 
-function Get-StrumServerPids {
+function Get-KaboomServerPids {
     $pids = @()
-    $targetPath = [System.IO.Path]::GetFullPath($STRUM_BIN).ToLowerInvariant()
-    $processes = Get-CimInstance Win32_Process -Filter "Name = 'strum.exe' OR Name = 'gasoline.exe'" -ErrorAction SilentlyContinue
+    $targetPath = [System.IO.Path]::GetFullPath($KABOOM_BIN).ToLowerInvariant()
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'kaboom-agentic-browser.exe' OR Name = 'kaboom.exe' OR Name = 'gasoline.exe' OR Name = 'strum.exe'" -ErrorAction SilentlyContinue
 
     foreach ($proc in $processes) {
         if (-not $proc.ProcessId) { continue }
@@ -71,8 +71,8 @@ function Get-StrumServerPids {
 
         try {
             $procPath = [System.IO.Path]::GetFullPath($proc.ExecutablePath).ToLowerInvariant()
-            # Catch both new strum and old gasoline processes
-            if ($procPath -eq $targetPath -or $procPath -match "gasoline\.exe$") {
+            # Catch Kaboom plus legacy Gasoline and STRUM processes.
+            if ($procPath -eq $targetPath -or $procPath -match "kaboom\.exe$" -or $procPath -match "gasoline\.exe$" -or $procPath -match "strum\.exe$") {
                 $pids += [int]$proc.ProcessId
             }
         } catch {
@@ -83,19 +83,19 @@ function Get-StrumServerPids {
     return @($pids | Sort-Object -Unique)
 }
 
-function Stop-StrumServerProcesses {
-    $targetPids = @(Get-StrumServerPids)
+function Stop-KaboomServerProcesses {
+    $targetPids = @(Get-KaboomServerPids)
     if ($targetPids.Count -eq 0) {
         return $true
     }
 
-    Write-Host "🛑 Stopping running STRUM/Gasoline server: PID(s) $($targetPids -join ', ')"
+    Write-Host "🛑 Stopping running Kaboom/legacy server: PID(s) $($targetPids -join ', ')"
     foreach ($procId in $targetPids) {
         Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     }
 
     Start-Sleep -Milliseconds 350
-    $remaining = @(Get-StrumServerPids)
+    $remaining = @(Get-KaboomServerPids)
     if ($remaining.Count -eq 0) {
         return $true
     }
@@ -106,7 +106,7 @@ function Stop-StrumServerProcesses {
     }
 
     Start-Sleep -Milliseconds 500
-    $remaining = @(Get-StrumServerPids)
+    $remaining = @(Get-KaboomServerPids)
     if ($remaining.Count -eq 0) {
         return $true
     }
@@ -115,7 +115,7 @@ function Stop-StrumServerProcesses {
     return $false
 }
 
-function Replace-StrumBinary {
+function Replace-KaboomBinary {
     param(
         [string]$StagePath,
         [string]$LivePath
@@ -123,7 +123,7 @@ function Replace-StrumBinary {
 
     $maxAttempts = 4
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        [void](Stop-StrumServerProcesses)
+        [void](Stop-KaboomServerProcesses)
         try {
             if (Test-Path $LivePath) {
                 Remove-Item -Path $LivePath -Force -ErrorAction Stop
@@ -151,10 +151,10 @@ Write-Host ' \___ \ | | | |_) | | | | |\/| |' -ForegroundColor DarkYellow
 Write-Host '  ___) || | |  _ <| |_| | |  | |' -ForegroundColor DarkYellow
 Write-Host ' |____/ |_| |_| \_\\___/|_|  |_|' -ForegroundColor DarkYellow
 Write-Host ""
-Write-Host "🎸 STRUM Installer" -ForegroundColor DarkYellow
+Write-Host "🎸 Kaboom Installer" -ForegroundColor DarkYellow
 Write-Host "--------------------------------------------------" -ForegroundColor DarkYellow
 if ($STRICT_CHECKSUM) {
-    Write-Host "🔒 Strict checksum mode enabled (STRUM_INSTALL_STRICT=1)" -ForegroundColor Yellow
+    Write-Host "🔒 Strict checksum mode enabled (KABOOM_INSTALL_STRICT=1)" -ForegroundColor Yellow
 }
 
 function New-ExtensionStage {
@@ -235,11 +235,11 @@ if (-not (Test-Path $INSTALL_DIR)) { New-Item -Path $INSTALL_DIR -ItemType Direc
 Write-Host "📁 Install root: $INSTALL_DIR"
 
 # 3. Binary Installation: Download the Windows-native executable.
-$INSTALL_BIN = $STRUM_BIN
-$BINARY_NAME = "strum-win32-x64.exe"
+$INSTALL_BIN = $KABOOM_BIN
+$BINARY_NAME = "kaboom-agentic-browser-win32-x64.exe"
 $BINARY_URL = "https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 $CHECKSUM_URL = "https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
-$STAGED_BIN = "$STRUM_BIN.tmp.$TEMP_TOKEN"
+$STAGED_BIN = "$KABOOM_BIN.tmp.$TEMP_TOKEN"
 
 Write-Host "⬇️  Downloading latest binary..."
 # Download to a temporary '.tmp' file to ensure an atomic replacement later.
@@ -284,26 +284,26 @@ if ($STRICT_CHECKSUM -and -not $checksumVerified) {
 }
 
 # Force-stop old server, then replace binary with retries for lock contention.
-if (-not (Replace-StrumBinary -StagePath $STAGED_BIN -LivePath $STRUM_BIN)) {
-    $FALLBACK_BIN = Join-Path $BIN_DIR "strum.new.exe"
+if (-not (Replace-KaboomBinary -StagePath $STAGED_BIN -LivePath $KABOOM_BIN)) {
+    $FALLBACK_BIN = Join-Path $BIN_DIR "kaboom-agentic-browser.new.exe"
     try {
         Move-Item -Path $STAGED_BIN -Destination $FALLBACK_BIN -Force -ErrorAction Stop
         $INSTALL_BIN = $FALLBACK_BIN
-        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because strum.exe could not be replaced."
+        Add-InstallWarning "Using fallback binary $FALLBACK_BIN because kaboom-agentic-browser.exe could not be replaced."
     } catch {
-        Add-InstallWarning "Downloaded update could not be installed. strum.exe is likely still locked by a running process."
+        Add-InstallWarning "Downloaded update could not be installed. kaboom-agentic-browser.exe is likely still locked by a running process."
     }
 } else {
-    Write-Host "✅ Binary replaced: $STRUM_BIN"
+    Write-Host "✅ Binary replaced: $KABOOM_BIN"
 }
 
 # 5. Extension Staging: Refresh the browser extension files.
 # Tries the optimized release asset first, falling back to the full source zip if missing.
 Write-Host "⬇️  Refreshing browser extension..."
-$EXT_ZIP_NAME = "strum-extension-v$VERSION.zip"
+$EXT_ZIP_NAME = "kaboom-extension-v$VERSION.zip"
 $EXT_ZIP_URL = "https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
-$TEMP_ZIP = Join-Path $env:TEMP "strum-ext-$TEMP_TOKEN.zip"
-$TEMP_EXTRACT = Join-Path $env:TEMP "strum-ext-src-$TEMP_TOKEN"
+$TEMP_ZIP = Join-Path $env:TEMP "kaboom-ext-$TEMP_TOKEN.zip"
+$TEMP_EXTRACT = Join-Path $env:TEMP "kaboom-ext-src-$TEMP_TOKEN"
 
 try {
     Invoke-WebRequest -Uri $EXT_ZIP_URL -OutFile $TEMP_ZIP
@@ -357,15 +357,15 @@ Remove-Item -Path $TEMP_ZIP -ErrorAction SilentlyContinue
 # The binary's --install flag will:
 #   - Detect all installed MCP clients (Claude, Cursor, VS Code, etc.).
 #   - Safely update JSON configuration files with Windows-aware paths.
-#   - Reset any running STRUM processes.
+#   - Reset any running Kaboom and legacy processes.
 #   - Display final success message and extension instructions.
 Write-Host "🚀 Finalizing configuration..."
 if (-not (Test-Path $INSTALL_BIN)) {
     Add-InstallWarning "Installer could not locate an executable to run for --install."
     Show-InstallWarnings
-    throw "STRUM binary install failed. See warning panel for manual recovery steps."
+    throw "Kaboom binary install failed. See warning panel for manual recovery steps."
 }
 
 & $INSTALL_BIN --install
-[void](Stop-StrumServerProcesses)
+[void](Stop-KaboomServerProcesses)
 Show-InstallWarnings

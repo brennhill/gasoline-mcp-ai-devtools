@@ -1,6 +1,6 @@
 ---
 title: "Local-First Demo Recording for Product Teams"
-description: "Record product demos locally, replay them reliably, and keep data private with.gasoline Agentic Devtools."
+description: "Record product demos locally, replay them reliably, and keep data private with KaBOOM Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [demos, recording, product, workflows]
@@ -13,7 +13,7 @@ Great demos are hard to repeat. Local-first recording makes them much easier.
 
 Local-first means your recording workflow runs on your machine first, helping reduce accidental data exposure.
 
-This guide shows how product teams can use *.gasoline Agentic Devtools** to create reliable demos.
+This guide shows how product teams can use *KaBOOM Agentic Devtools** to create reliable demos.
 
 <!-- more -->
 
@@ -31,7 +31,7 @@ You want demos that are:
 - easy to update,
 - safe to share.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Start recording
 
@@ -76,4 +76,4 @@ generate({what: "reproduction", include_screenshots: true})
 
 ## You’re Making Demos a Team Asset
 
-With *.gasoline Agentic Devtools**, demos stop being one-off performances and become reusable, improvable artifacts.
+With *KaBOOM Agentic Devtools**, demos stop being one-off performances and become reusable, improvable artifacts.

@@ -55,7 +55,7 @@ func TestSubmitViaGH_GHNotFound(t *testing.T) {
 func TestSubmitViaGH_Success(t *testing.T) {
 	t.Parallel()
 	runner := &fakeRunner{
-		stdout: "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/42\n",
+		stdout: "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues/42\n",
 	}
 	report := IssueReport{
 		Template: "bug",
@@ -71,7 +71,7 @@ func TestSubmitViaGH_Success(t *testing.T) {
 	if result.Method != "gh_cli" {
 		t.Fatalf("method = %q, want gh_cli", result.Method)
 	}
-	if result.IssueURL != "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/42" {
+	if result.IssueURL != "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues/42" {
 		t.Fatalf("issue_url = %q", result.IssueURL)
 	}
 }
@@ -173,7 +173,7 @@ func TestFormatIssueBody_NoDescriptionWhenEmpty(t *testing.T) {
 
 func TestSubmitViaGH_TargetRepo(t *testing.T) {
 	t.Parallel()
-	if TargetRepo != "brennhill/gasoline-agentic-browser-devtools-mcp" {
-		t.Fatalf("TargetRepo = %q, want brennhill/gasoline-agentic-browser-devtools-mcp", TargetRepo)
+	if TargetRepo != "brennhill/Kaboom-Browser-AI-Devtools-MCP" {
+		t.Fatalf("TargetRepo = %q, want brennhill/Kaboom-Browser-AI-Devtools-MCP", TargetRepo)
 	}
 }

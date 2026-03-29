@@ -7,8 +7,8 @@ package main
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
 const (

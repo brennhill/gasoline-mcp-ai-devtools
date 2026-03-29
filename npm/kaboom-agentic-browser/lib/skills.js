@@ -14,11 +14,11 @@ const os = require('os');
 const path = require('path');
 
 const MANAGED_MARKER = '<!-- kaboom-managed-skill';
-const LEGACY_MANAGED_MARKERS = ['<!-- gasoline-managed-skill', '<!-- strum-managed-skill'];
+const LEGACY_MANAGED_MARKERS = ['<!-- kaboom-managed-skill', '<!-- gasoline-managed-skill', '<!-- strum-managed-skill'];
 const MANAGED_MARKERS = [MANAGED_MARKER, ...LEGACY_MANAGED_MARKERS];
 const BUNDLED_SKILLS_DIR = path.join(__dirname, '..', 'skills');
 const DEFAULT_AGENTS = ['claude', 'codex', 'gemini'];
-const LEGACY_PREFIXES = ['gasoline-', 'strum-'];
+const LEGACY_PREFIXES = ['kaboom-', 'gasoline-', 'strum-'];
 
 function parseBoolEnv(name) {
   const value = process.env[name];
@@ -35,7 +35,7 @@ function parseBoolValue(value) {
 }
 
 function parseAgents() {
-  const raw = process.env.GASOLINE_SKILL_TARGETS || process.env.GASOLINE_SKILL_TARGET;
+  const raw = process.env.KABOOM_SKILL_TARGETS || process.env.KABOOM_SKILL_TARGET;
   if (!raw) return DEFAULT_AGENTS;
   const requested = raw
     .split(',')
@@ -62,7 +62,7 @@ function detectDefaultScope() {
 }
 
 function parseScope(defaultScope = detectDefaultScope()) {
-  const scope = String(process.env.GASOLINE_SKILL_SCOPE || defaultScope).trim().toLowerCase();
+  const scope = String(process.env.KABOOM_SKILL_SCOPE || defaultScope).trim().toLowerCase();
   if (scope === 'project' || scope === 'global' || scope === 'all') return scope;
   return defaultScope;
 }
@@ -73,12 +73,12 @@ function getAgentRoots(agent, scope) {
   const projectRoot = maybeProjectRoot();
 
   const globalByAgent = {
-    claude: process.env.GASOLINE_CLAUDE_SKILLS_DIR || path.join(home, '.claude', 'skills'),
+    claude: process.env.KABOOM_CLAUDE_SKILLS_DIR || path.join(home, '.claude', 'skills'),
     codex:
-      process.env.GASOLINE_CODEX_SKILLS_DIR ||
+      process.env.KABOOM_CODEX_SKILLS_DIR ||
       path.join(process.env.CODEX_HOME || path.join(home, '.codex'), 'skills'),
     gemini:
-      process.env.GASOLINE_GEMINI_SKILLS_DIR ||
+      process.env.KABOOM_GEMINI_SKILLS_DIR ||
       path.join(process.env.GEMINI_HOME || path.join(home, '.gemini'), 'skills'),
   };
 
@@ -167,7 +167,7 @@ function resolveSkillPath(skill, manifestPath, defaultSkillsPath) {
 }
 
 function loadSkillsFromLocalDir(dirPath, options = {}) {
-  const manifestRel = options.skillsManifestPath || process.env.GASOLINE_SKILLS_MANIFEST_PATH || 'skills.json';
+  const manifestRel = options.skillsManifestPath || process.env.KABOOM_SKILLS_MANIFEST_PATH || 'skills.json';
   const rootDir = path.resolve(dirPath);
   const manifestPath = path.join(dirPath, manifestRel);
   if (!path.resolve(manifestPath).startsWith(rootDir + path.sep) && path.resolve(manifestPath) !== rootDir) {
@@ -185,7 +185,7 @@ function loadSkillsFromLocalDir(dirPath, options = {}) {
       const relPath = resolveSkillPath(
         skill,
         manifestRel,
-        options.skillsPath || process.env.GASOLINE_SKILLS_PATH || ''
+        options.skillsPath || process.env.KABOOM_SKILLS_PATH || ''
       );
       const sourcePath = path.resolve(dirPath, relPath);
       if (!sourcePath.startsWith(rootDir + path.sep) && sourcePath !== rootDir) return null;
@@ -284,8 +284,8 @@ async function loadSkillsFromGitHub(repoSpec, ref, options = {}) {
   const base = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/`;
 
   const manifestPath =
-    options.skillsManifestPath || process.env.GASOLINE_SKILLS_MANIFEST_PATH || 'skills/skills.json';
-  const skillRoot = options.skillsPath || process.env.GASOLINE_SKILLS_PATH || '';
+    options.skillsManifestPath || process.env.KABOOM_SKILLS_MANIFEST_PATH || 'skills/skills.json';
+  const skillRoot = options.skillsPath || process.env.KABOOM_SKILLS_PATH || '';
 
   const manifestURL = toURL(base, manifestPath);
   const manifestText = await fetchText(manifestURL);
@@ -308,28 +308,28 @@ async function loadSkillsFromGitHub(repoSpec, ref, options = {}) {
 }
 
 function resolveSkillsSource(options = {}) {
-  const explicitDir = options.skillsDir || process.env.GASOLINE_SKILLS_DIR;
+  const explicitDir = options.skillsDir || process.env.KABOOM_SKILLS_DIR;
   if (explicitDir) {
     const dir = path.resolve(explicitDir);
     return {
       type: 'local',
       source: `dir:${dir}`,
       dir,
-      skillsPath: options.skillsPath || process.env.GASOLINE_SKILLS_PATH || '',
-      manifestPath: options.skillsManifestPath || process.env.GASOLINE_SKILLS_MANIFEST_PATH || 'skills.json',
+      skillsPath: options.skillsPath || process.env.KABOOM_SKILLS_PATH || '',
+      manifestPath: options.skillsManifestPath || process.env.KABOOM_SKILLS_MANIFEST_PATH || 'skills.json',
     };
   }
 
-  const repoInput = options.skillsRepo || process.env.GASOLINE_SKILLS_REPO;
+  const repoInput = options.skillsRepo || process.env.KABOOM_SKILLS_REPO;
   if (repoInput) {
     const parsed = parseGitHubRepo(repoInput);
     const repo = `${parsed.owner}/${parsed.repo}`;
-    const ref = options.skillsRef || process.env.GASOLINE_SKILLS_REF || parsed.inferredRef || 'main';
+    const ref = options.skillsRef || process.env.KABOOM_SKILLS_REF || parsed.inferredRef || 'main';
     const inferredPath = parsed.inferredPath || '';
-    const skillsPath = options.skillsPath || process.env.GASOLINE_SKILLS_PATH || inferredPath || '';
+    const skillsPath = options.skillsPath || process.env.KABOOM_SKILLS_PATH || inferredPath || '';
     const manifestPath =
       options.skillsManifestPath ||
-      process.env.GASOLINE_SKILLS_MANIFEST_PATH ||
+      process.env.KABOOM_SKILLS_MANIFEST_PATH ||
       (inferredPath ? joinRepoPath(inferredPath, 'skills.json') : 'skills/skills.json');
     return {
       type: 'github',
@@ -370,7 +370,7 @@ async function loadSkillCatalog(options = {}) {
     return { source: source.source, skills, warnings: [] };
   } catch (err) {
     const fallbackAllowed =
-      !parseBoolValue(options.skillsNoFallback) && !parseBoolEnv('GASOLINE_SKILLS_NO_FALLBACK');
+      !parseBoolValue(options.skillsNoFallback) && !parseBoolEnv('KABOOM_SKILLS_NO_FALLBACK');
     if (!fallbackAllowed) {
       throw err;
     }
@@ -534,7 +534,7 @@ function cleanupInstalledSkills(options = {}) {
 async function installBundledSkills(options = {}) {
   const verbose = Boolean(options.verbose);
   const skip =
-    parseBoolEnv('GASOLINE_SKIP_SKILL_INSTALL') || parseBoolEnv('GASOLINE_SKIP_SKILLS_INSTALL');
+    parseBoolEnv('KABOOM_SKIP_SKILL_INSTALL') || parseBoolEnv('KABOOM_SKIP_SKILLS_INSTALL');
   if (skip) {
     return {
       skipped: true,

@@ -30,7 +30,7 @@ Without this information, AI agents waste time debugging interactions that shoul
 
 ## Solution
 
-The **Visual-Semantic Bridge** extends Gasoline's DOM observation to include computed visual and semantic information for every interactive element. This gives AI agents human-like vision:
+The **Visual-Semantic Bridge** extends Kaboom's DOM observation to include computed visual and semantic information for every interactive element. This gives AI agents human-like vision:
 
 - **Computed Layout Maps** — Bounding boxes, visibility states (visible/hidden/covered), z-index layers
 - **Self-Healing Selectors** — Auto-generate unique, robust identifiers (test-IDs) for every interactive element
@@ -51,7 +51,7 @@ Result: AI agents see the page as humans see it—not as a flat HTML dump, but a
 
 - **Semantic Identifiers** — Auto-generate unique, stable IDs:
   - For every clickable, focusable, or form-interactive element
-  - Format: `data-gasoline-id="type-hash"` (e.g., `data-gasoline-id="btn-a7x2"`)
+  - Format: `data-kaboom-id="type-hash"` (e.g., `data-kaboom-id="btn-a7x2"`)
   - Survive minor UI refactors (not brittle like `.nth-child(7)`)
   - Injected at runtime; include in context window
 
@@ -100,7 +100,7 @@ Result: AI agents see the page as humans see it—not as a flat HTML dump, but a
 ### For AI Agents
 
 1. Agent observes the page via `observe({what: 'page'})`
-2. Gasoline returns DOM with augmented metadata:
+2. Kaboom returns DOM with augmented metadata:
    ```
    {
      "elements": [
@@ -109,7 +109,7 @@ Result: AI agents see the page as humans see it—not as a flat HTML dump, but a
          "text": "Save",
          "id": "btn-save",
          "class": "px-4 py-2 bg-blue-500",
-         "gasoline_id": "btn-a7x2",        // NEW: Unique, stable ID
+         "kaboom_id": "btn-a7x2",        // NEW: Unique, stable ID
          "visible": true,                   // NEW: Visibility state
          "bounding_box": {...},            // NEW: Layout info
          "covered_by": null,               // NEW: Occlusion info
@@ -118,14 +118,14 @@ Result: AI agents see the page as humans see it—not as a flat HTML dump, but a
      ]
    }
    ```
-3. Agent uses `data-gasoline-id="btn-a7x2"` when clicking or testing
+3. Agent uses `data-kaboom-id="btn-a7x2"` when clicking or testing
 4. Agent sees that off-screen elements are marked `off_screen: true` and doesn't try to click them
 5. Agent uses visibility info to diagnose "button should be visible but user reports it's not" issues
 
 ### For Engineers
 
 1. Enable Visual-Semantic Bridge in extension settings (checkbox: "Show layout maps + semantic IDs")
-2. Open Gasoline UI in DevTools sidebar
+2. Open Kaboom UI in DevTools sidebar
 3. See DOM rendered with bounding boxes, z-index layers, and unique IDs overlaid on the page
 4. Hover over elements to see which component they belong to + computed styles
 5. Use this as a debugging aid when AI or tests fail ("Wait, the button is actually covered by the modal!")
@@ -151,7 +151,7 @@ AI observes DOM:
 {
   "tag": "button",
   "text": "Close",
-  "gasoline_id": "btn-close-menu",
+  "kaboom_id": "btn-close-menu",
   "visible": false,
   "off_screen": true,
   "bounding_box": {"left": -100, "top": 20}
@@ -190,19 +190,19 @@ AI observes DOM:
     "tag": "button",
     "text": "Save",
     "class": "px-4 py-2 bg-blue-500",
-    "gasoline_id": "btn-save"     // Unique, semantic ID
+    "kaboom_id": "btn-save"     // Unique, semantic ID
   },
   {
     "tag": "button",
     "text": "Submit",
     "class": "px-4 py-2 bg-blue-500",
-    "gasoline_id": "btn-submit"   // Different ID, not just .bg-blue-500
+    "kaboom_id": "btn-submit"   // Different ID, not just .bg-blue-500
   },
   ... (8 more with unique IDs)
 ]
 
-AI thinks: "Perfect, each button has a unique ID. I'll click data-gasoline-id='btn-submit'"
-AI: document.querySelector('[data-gasoline-id="btn-submit"]').click()
+AI thinks: "Perfect, each button has a unique ID. I'll click data-kaboom-id='btn-submit'"
+AI: document.querySelector('[data-kaboom-id="btn-submit"]').click()
 Result: Clicks the Submit button correctly
 ```
 
@@ -212,11 +212,11 @@ Result: Clicks the Submit button correctly
 
 #### With Visual-Semantic Bridge:
 ```
-Engineer opens Gasoline DevTools:
+Engineer opens Kaboom DevTools:
 - Hovers over Save button
 - Sees: "visible: false, covered_by: [ModalOverlay, z-index: 9999]"
 - Root cause immediately clear: modal is blocking the button
-- No need to ask "is it visible?" — Gasoline just showed them
+- No need to ask "is it visible?" — Kaboom just showed them
 ```
 
 ## Notes
@@ -232,6 +232,6 @@ Engineer opens Gasoline DevTools:
 - Vue DevTools hooks (for Vue component mapping)
 
 ### Design decision rationale:
-- Using `data-gasoline-id` instead of modifying real IDs: doesn't pollute user's HTML, survives page reloads
+- Using `data-kaboom-id` instead of modifying real IDs: doesn't pollute user's HTML, survives page reloads
 - Hit-test algorithm over z-index inspection alone: matches actual browser behavior (what matters to users)
 - Injecting semantic IDs at runtime: avoids build-time dependencies, works with any framework

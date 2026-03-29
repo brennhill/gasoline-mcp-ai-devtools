@@ -1,5 +1,5 @@
 /**
- * Purpose: Chrome context menu installation and click handlers for Gasoline actions.
+ * Purpose: Chrome context menu installation and click handlers for Kaboom actions.
  * Split from event-listeners.ts to keep files under 800 LOC.
  */
 
@@ -15,11 +15,11 @@ import { setTrackedTab, clearTrackedTab } from './tab-state.js'
 // CONTEXT MENU IDS
 // =============================================================================
 
-const MENU_ID_CONTROL = 'gasoline-control-page'
-const MENU_ID_SCREENSHOT = 'gasoline-screenshot'
-const MENU_ID_ANNOTATE = 'gasoline-annotate-page'
-const MENU_ID_RECORD = 'gasoline-record-screen'
-const MENU_ID_ACTION_RECORD = 'gasoline-action-record'
+const MENU_ID_CONTROL = 'kaboom-control-page'
+const MENU_ID_SCREENSHOT = 'kaboom-screenshot'
+const MENU_ID_ANNOTATE = 'kaboom-annotate-page'
+const MENU_ID_RECORD = 'kaboom-record-screen'
+const MENU_ID_ACTION_RECORD = 'kaboom-action-record'
 
 const CONTROL_TAB_TITLE = 'Control Tab'
 const RELEASE_CONTROL_TITLE = 'Release Control'
@@ -40,7 +40,7 @@ async function isDrawModeActive(tabId: number | undefined): Promise<boolean> {
   if (!tabId) return false
   try {
     const result = (await chrome.tabs.sendMessage(tabId, {
-      type: 'gasoline_get_annotations'
+      type: 'kaboom_get_annotations'
     })) as { draw_mode_active?: boolean }
     return result?.draw_mode_active === true
   } catch {
@@ -74,7 +74,7 @@ async function refreshDynamicContextMenuTitles(
 // =============================================================================
 
 /**
- * Create context menu items for Gasoline actions.
+ * Create context menu items for Kaboom actions.
  * Chrome auto-groups multiple items under a parent with the extension icon.
  */
 export function installContextMenus(

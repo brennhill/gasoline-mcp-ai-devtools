@@ -98,7 +98,7 @@ func TestRunDecisionGuard_ReadIgnored(t *testing.T) {
 func TestRunDecisionGuard_NoDecisionsFile(t *testing.T) {
 	root := t.TempDir()
 	// Project without decisions.json.
-	writeFile(t, root, ".gasoline.json", `{}`)
+	writeFile(t, root, ".kaboom.json", `{}`)
 	writeFile(t, root, "handler.go", "package main\n")
 
 	input := Input{
@@ -115,9 +115,9 @@ func TestRunDecisionGuard_NoDecisionsFile(t *testing.T) {
 
 func TestRunDecisionGuard_InlineRegex(t *testing.T) {
 	root := t.TempDir()
-	os.MkdirAll(filepath.Join(root, ".gasoline"), 0o755)
-	writeFile(t, root, ".gasoline.json", `{}`)
-	writeFile(t, root, ".gasoline/decisions.json", `[
+	os.MkdirAll(filepath.Join(root, ".kaboom"), 0o755)
+	writeFile(t, root, ".kaboom.json", `{}`)
+	writeFile(t, root, ".kaboom/decisions.json", `[
 		{"id":"INLINE-RE","rule":"No fmt.Println","pattern":"re:fmt\\.Println\\(","reason":"Use structured logging"}
 	]`)
 	writeFile(t, root, "main.go", "package main\n")
@@ -165,12 +165,12 @@ func TestIsExpired(t *testing.T) {
 func setupDecisionProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	os.MkdirAll(filepath.Join(root, ".gasoline"), 0o755)
+	os.MkdirAll(filepath.Join(root, ".kaboom"), 0o755)
 
-	writeFile(t, root, ".gasoline.json", `{"code_standards":"standards.md","file_size_limit":800}`)
+	writeFile(t, root, ".kaboom.json", `{"code_standards":"standards.md","file_size_limit":800}`)
 	writeFile(t, root, "handler.go", "package main\n")
 
-	writeFile(t, root, ".gasoline/decisions.json", `[
+	writeFile(t, root, ".kaboom/decisions.json", `[
 		{
 			"id": "DECISION-001",
 			"rule": "Use shared HTTP client from pkg/httpclient",

@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 const (
@@ -23,11 +23,11 @@ const (
 	terminateSignalSettleDelay = 100 * time.Millisecond
 )
 
-var forceCleanupCommandNames = []string{"kaboom", "strum", "gasoline"}
+var forceCleanupCommandNames = []string{"kaboom", "gasoline", "strum"}
 
-// killUnixGasolineProcesses finds and kills gasoline processes on Unix systems
+// killUnixKaboomProcesses finds and kills Kaboom plus legacy processes on Unix systems
 // using lsof and pkill. Returns (killed, failedToKill) counts.
-func killUnixGasolineProcesses() (int, int) {
+func killUnixKaboomProcesses() (int, int) {
 	killed := 0
 	failedToKill := 0
 
@@ -54,7 +54,7 @@ func killUnixGasolineProcesses() (int, int) {
 	}
 
 	// Also try pkill as fallback.
-	for _, pattern := range []string{"kaboom.*--daemon", "strum.*--daemon", "gasoline.*--daemon"} {
+	for _, pattern := range []string{"kaboom.*--daemon", "gasoline.*--daemon", "strum.*--daemon"} {
 		pkillCmd := exec.Command("pkill", "-f", pattern)
 		_ = pkillCmd.Run()
 	}
@@ -82,10 +82,10 @@ func terminateProcess(pid int) (int, int) {
 	return 0, 1
 }
 
-// killWindowsGasolineProcesses kills gasoline processes on Windows using taskkill.
-func killWindowsGasolineProcesses() int {
+// killWindowsKaboomProcesses kills Kaboom plus legacy processes on Windows using taskkill.
+func killWindowsKaboomProcesses() int {
 	killed := 0
-	for _, imageName := range []string{"kaboom.exe", "strum.exe", "gasoline.exe"} {
+	for _, imageName := range []string{"kaboom.exe", "gasoline.exe", "strum.exe"} {
 		cmd := exec.Command("taskkill", "/IM", imageName, "/F")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -113,16 +113,16 @@ func cleanupPIDFiles() {
 	}
 }
 
-func killUnixGasolineProcessesQuietly() (int, int) {
-	for _, pattern := range []string{"kaboom.*--daemon", "strum.*--daemon", "gasoline.*--daemon"} {
+func killUnixKaboomProcessesQuietly() (int, int) {
+	for _, pattern := range []string{"kaboom.*--daemon", "gasoline.*--daemon", "strum.*--daemon"} {
 		cmd := exec.Command("pkill", "-f", pattern)
 		_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
 	}
 	return 0, 0
 }
 
-func killWindowsGasolineProcessesQuietly() int {
-	for _, imageName := range []string{"kaboom.exe", "strum.exe", "gasoline.exe"} {
+func killWindowsKaboomProcessesQuietly() int {
+	for _, imageName := range []string{"kaboom.exe", "gasoline.exe", "strum.exe"} {
 		cmd := exec.Command("taskkill", "/IM", imageName, "/F")
 		_ = cmd.Run() //nolint:errcheck // best-effort process cleanup; exit code irrelevant
 	}
@@ -138,42 +138,42 @@ func removeLegacyPIDVariants(port int) {
 	if homeDir != "" {
 		roots = append(roots,
 			filepath.Join(homeDir, ".kaboom", "run"),
-			filepath.Join(homeDir, ".strum", "run"),
 			filepath.Join(homeDir, ".gasoline", "run"),
+			filepath.Join(homeDir, ".strum", "run"),
 		)
 	}
 	if xdgStateHome := strings.TrimSpace(os.Getenv("XDG_STATE_HOME")); xdgStateHome != "" {
 		roots = append(roots,
 			filepath.Join(xdgStateHome, "kaboom", "run"),
-			filepath.Join(xdgStateHome, "strum", "run"),
 			filepath.Join(xdgStateHome, "gasoline", "run"),
+			filepath.Join(xdgStateHome, "strum", "run"),
 		)
 	}
 
 	for _, root := range roots {
 		_ = os.Remove(filepath.Join(root, "kaboom-"+strconv.Itoa(port)+".pid"))
-		_ = os.Remove(filepath.Join(root, "strum-"+strconv.Itoa(port)+".pid"))
 		_ = os.Remove(filepath.Join(root, "gasoline-"+strconv.Itoa(port)+".pid"))
+		_ = os.Remove(filepath.Join(root, "strum-"+strconv.Itoa(port)+".pid"))
 	}
 	if homeDir == "" {
 		return
 	}
 	_ = os.Remove(filepath.Join(homeDir, ".kaboom-"+strconv.Itoa(port)+".pid"))
-	_ = os.Remove(filepath.Join(homeDir, ".strum-"+strconv.Itoa(port)+".pid"))
 	_ = os.Remove(filepath.Join(homeDir, ".gasoline-"+strconv.Itoa(port)+".pid"))
+	_ = os.Remove(filepath.Join(homeDir, ".strum-"+strconv.Itoa(port)+".pid"))
 }
 
 // printForceCleanupSummary outputs the results of the force cleanup operation.
 func printForceCleanupSummary(killed, failedToKill int) {
 	fmt.Println()
 	if killed > 0 {
-		fmt.Printf("✓ Successfully killed %d gasoline process(es)\n", killed)
+		fmt.Printf("✓ Successfully killed %d Kaboom/legacy process(es)\n", killed)
 	}
 	if failedToKill > 0 {
 		fmt.Printf("⚠ Failed to kill %d process(es) (may have already exited)\n", failedToKill)
 	}
 	if killed == 0 && failedToKill == 0 {
-		fmt.Println("✓ No running gasoline processes found")
+		fmt.Println("✓ No running Kaboom/legacy processes found")
 	}
 	fmt.Println()
 	fmt.Println("Cleaned up PID files. Safe to proceed with installation.")
@@ -181,9 +181,9 @@ func printForceCleanupSummary(killed, failedToKill int) {
 
 func runForceCleanupQuietly() error {
 	if runtime.GOOS != "windows" {
-		_, _ = killUnixGasolineProcessesQuietly()
+		_, _ = killUnixKaboomProcessesQuietly()
 	} else {
-		_ = killWindowsGasolineProcessesQuietly()
+		_ = killWindowsKaboomProcessesQuietly()
 	}
 	cleanupPIDFiles()
 	return nil

@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pty"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tracking"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tracking"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // LogEntry represents a single log entry (alias to internal/mcp).

@@ -12,6 +12,7 @@ import { getRequestHeaders } from './server.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';
 import { updateVersionFromHealth } from './version-check.js';
 import { createBatcherInstances } from './batcher-instances.js';
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { startSyncClient as startSyncClientImpl, resetSyncClientConnection as resetSyncClientConnectionImpl } from './sync-manager.js';
 // Re-export for consumers that already import from here
@@ -54,7 +55,7 @@ export function debugLog(category, message, data = null) {
     });
     capExtensionLogs(2000);
     if (isDebugMode()) {
-        const prefix = `[Gasoline:${category}]`;
+        const prefix = `${KABOOM_LOG_PREFIX.slice(0, -1)}:${category}]`;
         if (data !== null) {
             console.log(prefix, message, data); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
         }
@@ -64,7 +65,7 @@ export function debugLog(category, message, data = null) {
     }
 }
 ;
-globalThis.__GASOLINE_DEBUG_LOG__ = debugLog;
+globalThis.__KABOOM_DEBUG_LOG__ = debugLog;
 /**
  * Get all debug log entries
  */
@@ -273,7 +274,7 @@ function broadcastStatusUpdate() {
         return;
     chrome.runtime
         .sendMessage({ type: 'status_update', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
-        .catch((err) => console.error('[Gasoline] Error sending status update:', err));
+        .catch((err) => console.error(`${KABOOM_LOG_PREFIX} Error sending status update:`, err));
 }
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate() {

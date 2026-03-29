@@ -1,4 +1,4 @@
-// beacon.go — Anonymous telemetry beacons. Disable with STRUM_TELEMETRY=off.
+// beacon.go — Anonymous telemetry beacons. Disable with Kaboom_TELEMETRY=off.
 
 package telemetry
 
@@ -10,14 +10,14 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // Version is set via ldflags at build time. Falls back to "dev" if unset.
 var Version = "dev"
 
 // defaultEndpoint is the canonical telemetry ingest URL.
-const defaultEndpoint = "https://t.getstrum.dev/v1/event"
+const defaultEndpoint = "https://t.gokaboom.dev/v1/event"
 
 // endpoint is the telemetry ingest URL. Overridable for tests.
 var endpoint = defaultEndpoint
@@ -43,7 +43,7 @@ func BeaconEvent(event string, props map[string]string) {
 }
 
 func beacon(event string, props map[string]string) {
-	if os.Getenv("STRUM_TELEMETRY") == "off" {
+	if os.Getenv("Kaboom_TELEMETRY") == "off" {
 		return
 	}
 

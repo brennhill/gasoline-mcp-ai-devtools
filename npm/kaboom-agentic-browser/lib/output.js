@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Output formatters for Gasoline MCP CLI
+ * Output formatters for the Kaboom CLI
  */
 
 /**
@@ -101,7 +101,7 @@ function installResult(result) {
  * Format doctor diagnostic report
  */
 function diagnosticReport(report) {
-  let output = '\n📋 Gasoline MCP Diagnostic Report\n\n';
+  let output = '\n📋 Kaboom Diagnostic Report\n\n';
 
   report.tools.forEach(tool => {
     if (tool.status === 'ok') {
@@ -157,7 +157,7 @@ function diagnosticReport(report) {
   if (report.binary) {
     if (report.binary.ok) {
       output += `✅ Binary Check\n`;
-      output += `   Gasoline binary found at ${report.binary.path}\n`;
+      output += `   Kaboom binary found at ${report.binary.path}\n`;
       if (report.binary.version) {
         output += `   Version: ${report.binary.version}\n`;
       }
@@ -184,7 +184,7 @@ function diagnosticReport(report) {
     output += '\n⚠️  Legacy Configs Found:\n';
     report.legacyWarnings.forEach(w => {
       output += `   ${w.description}: ${w.path}\n`;
-      output += `   This path is no longer used. You can safely remove the gasoline entry.\n`;
+      output += `   This path is no longer used. You can safely remove the legacy entry.\n`;
     });
   }
 
@@ -208,7 +208,7 @@ function uninstallResult(result) {
       }
     });
   } else {
-    output += `ℹ️  Gasoline not configured in any clients\n`;
+    output += `ℹ️  Kaboom not configured in any clients\n`;
   }
 
   if (result.notConfigured && result.notConfigured.length > 0) {

@@ -6,7 +6,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Gasoline MCP Diagram Inventory
+# Kaboom MCP Diagram Inventory
 
 **Last Updated:** 2026-02-08
 **Total Tech Specs:** 88

@@ -23,7 +23,7 @@ func TestClassifyLaunchMode_DaemonFlagAlwaysPersistent(t *testing.T) {
 }
 
 func TestClassifyLaunchMode_InteractiveShellIsLikelyTransient(t *testing.T) {
-	t.Setenv("GASOLINE_SUPERVISED", "")
+	t.Setenv("KABOOM_SUPERVISED", "")
 	t.Setenv("INVOCATION_ID", "")
 
 	origLookup := lookupParentProcessName
@@ -40,7 +40,7 @@ func TestClassifyLaunchMode_InteractiveShellIsLikelyTransient(t *testing.T) {
 }
 
 func TestClassifyLaunchMode_NonInteractiveDefaultsPersistent(t *testing.T) {
-	t.Setenv("GASOLINE_SUPERVISED", "")
+	t.Setenv("KABOOM_SUPERVISED", "")
 	t.Setenv("INVOCATION_ID", "")
 
 	origLookup := lookupParentProcessName
@@ -66,7 +66,7 @@ func TestEnforcePersistentMode_StrictTransientFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected strict-mode error for likely_transient launch")
 	}
-	if !strings.Contains(err.Error(), "GASOLINE_REQUIRE_PERSISTENT") {
+	if !strings.Contains(err.Error(), "KABOOM_REQUIRE_PERSISTENT") {
 		t.Fatalf("error = %q, expected strict-mode guidance", err.Error())
 	}
 }
@@ -79,7 +79,7 @@ func TestBuildLaunchModeWarning_ContainsRemediation(t *testing.T) {
 	if warn == "" {
 		t.Fatal("expected warning text")
 	}
-	if !strings.Contains(warn, "gasoline-mcp --daemon --port 7890") {
+	if !strings.Contains(warn, "kaboom-agentic-browser --daemon --port 7890") {
 		t.Fatalf("warning = %q, expected remediation command", warn)
 	}
 }

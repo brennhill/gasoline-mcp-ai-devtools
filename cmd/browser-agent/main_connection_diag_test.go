@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func freePortForTest(t *testing.T) int {
@@ -51,7 +51,7 @@ func TestGatherConnectionDiagnosticsHealthyServer(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline-browser-devtools"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","name":"kaboom-browser-devtools"}`)
 	})
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -98,7 +98,7 @@ func TestRunStopModeRemovesStalePIDAndHandlesNoServer(t *testing.T) {
 
 	port := freePortForTest(t)
 
-	pidPath := filepath.Join(stateRoot, "run", "gasoline-"+strconv.Itoa(port)+".pid")
+	pidPath := filepath.Join(stateRoot, "run", "kaboom-"+strconv.Itoa(port)+".pid")
 	if err := os.MkdirAll(filepath.Dir(pidPath), 0o755); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(pidPath), err)
 	}
@@ -121,7 +121,7 @@ func TestRunStopModeRemovesStalePIDAndHandlesNoServer(t *testing.T) {
 	if _, err := os.Stat(pidPath); err == nil {
 		t.Fatalf("expected stale pid file %q to be removed", pidPath)
 	}
-	if !strings.Contains(string(out), "Stopping gasoline server") {
+	if !strings.Contains(string(out), "Stopping kaboom server") {
 		t.Fatalf("runStopMode output missing startup line: %q", string(out))
 	}
 }

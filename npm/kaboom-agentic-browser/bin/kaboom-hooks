@@ -29,7 +29,7 @@ function findHooksBinary(info) {
   const scriptDir = __dirname
 
   // 1. Dev build — dist/ directory
-  const devBin = path.join(scriptDir, '..', '..', '..', 'dist', `gasoline-hooks${info.ext}`)
+  const devBin = path.join(scriptDir, '..', '..', '..', 'dist', `kaboom-hooks${info.ext}`)
   if (fs.existsSync(devBin)) return devBin
 
   // 2. node_modules candidates

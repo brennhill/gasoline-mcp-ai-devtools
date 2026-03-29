@@ -2,7 +2,7 @@
 // Why: Separates console log classification from the main checkpoint diff computation.
 package checkpoint
 
-import gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+import gasTypes "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 
 type fingerprintEntry struct {
 	message string

@@ -6,7 +6,7 @@ set -euo pipefail
 # Reference: https://spec.modelcontextprotocol.io/specification/
 
 PORT=$((8000 + RANDOM % 1000))
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 TEMP_DIR=$(mktemp -d)
 PASS=0
 FAIL=0

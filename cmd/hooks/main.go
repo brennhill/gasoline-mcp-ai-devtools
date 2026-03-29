@@ -1,6 +1,6 @@
-// main.go — Entry point for the gasoline-hooks binary.
+// main.go — Entry point for the kaboom-hooks binary.
 // Standalone CLI for AI coding agent hooks (Claude Code, Gemini CLI, Codex).
-// Can be installed independently or as part of the full Gasoline suite.
+// Can be installed independently or as part of the full Kaboom suite.
 
 package main
 
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/hook"
 )
 
 // version is set at build time via -ldflags "-X main.version=..."
@@ -54,9 +54,9 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `gasoline-hooks — AI coding agent hooks (Claude Code, Gemini CLI, Codex)
+	fmt.Fprintf(os.Stderr, `kaboom-hooks — AI coding agent hooks (Claude Code, Gemini CLI, Codex)
 
-Usage: gasoline-hooks <command>
+Usage: kaboom-hooks <command>
 
 Commands:
   quality-gate      Check edited files against project standards
@@ -76,23 +76,23 @@ Claude Code (.claude/settings.json):
   "hooks": {
     "PostToolUse": [
       {"matcher": "Edit|Write", "hooks": [
-        {"type": "command", "command": "gasoline-hooks quality-gate", "timeout": 10},
-        {"type": "command", "command": "gasoline-hooks blast-radius", "timeout": 10},
-        {"type": "command", "command": "gasoline-hooks decision-guard", "timeout": 10},
-        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+        {"type": "command", "command": "kaboom-hooks quality-gate", "timeout": 10},
+        {"type": "command", "command": "kaboom-hooks blast-radius", "timeout": 10},
+        {"type": "command", "command": "kaboom-hooks decision-guard", "timeout": 10},
+        {"type": "command", "command": "kaboom-hooks session-track", "timeout": 10}
       ]},
       {"matcher": "Read", "hooks": [
-        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+        {"type": "command", "command": "kaboom-hooks session-track", "timeout": 10}
       ]},
       {"matcher": "Bash", "hooks": [
-        {"type": "command", "command": "gasoline-hooks compress-output", "timeout": 10},
-        {"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}
+        {"type": "command", "command": "kaboom-hooks compress-output", "timeout": 10},
+        {"type": "command", "command": "kaboom-hooks session-track", "timeout": 10}
       ]}
     ]
   }
 
-Install: curl -fsSL https://gasoline.dev/install.sh | sh -s -- --hooks-only
-Full:    curl -fsSL https://gasoline.dev/install.sh | sh
+Install: curl -fsSL https://gokaboom.dev/install.sh | sh -s -- --hooks-only
+Full:    curl -fsSL https://gokaboom.dev/install.sh | sh
 `)
 }
 
@@ -115,7 +115,7 @@ func runCompressOutput() int {
 	}
 
 	// Post stats to daemon after output (best-effort, may block up to 200ms).
-	port := os.Getenv("GASOLINE_PORT")
+	port := os.Getenv("KABOOM_PORT")
 	if port == "" {
 		port = defaultDaemonPort
 	}

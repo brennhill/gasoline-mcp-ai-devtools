@@ -203,7 +203,7 @@ func TestStartVersionCheckLoopInitialFetch(t *testing.T) {
 }
 
 func TestGetEnvOrDefaultSmoke(t *testing.T) {
-	key := fmt.Sprintf("GASOLINE_TEST_ENV_%d", time.Now().UnixNano())
+	key := fmt.Sprintf("KABOOM_TEST_ENV_%d", time.Now().UnixNano())
 	if got := getEnvOrDefault(key, "fallback"); got != "fallback" {
 		t.Fatalf("getEnvOrDefault(%q) = %q, want fallback", key, got)
 	}

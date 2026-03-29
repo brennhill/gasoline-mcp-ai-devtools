@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: playbook-resource-resolution
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
@@ -21,8 +21,8 @@ test_paths:
   - cmd/browser-agent/bridge_fastpath_unit_test.go
   - cmd/browser-agent/bridge_faststart_extended_test.go
   - cmd/browser-agent/playbooks_content_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-28
 ---
 
 # Playbook Resource Resolution
@@ -38,7 +38,7 @@ Covers MCP `resources/list`, `resources/templates/list`, and `resources/read` re
 
 ## Primary Flow
 
-1. Client requests resource templates and discovers `gasoline://playbook/{capability}/{level}`.
+1. Client requests resource templates and discovers `kaboom://playbook/{capability}/{level}`.
 2. Client calls `resources/read` with a URI.
 3. `resolveResourceContent` routes URI family (`capabilities`, `guide`, `quickstart`, `playbook`, `demo`).
 4. Playbook URIs are normalized via `resolvePlaybookKey` and capability aliases.

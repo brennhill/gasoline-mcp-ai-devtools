@@ -119,31 +119,31 @@ describe('user-configured cloaked domains', () => {
 
   test('user-added domain is cloaked', async () => {
     const { isDomainCloaked } = await loadModule()
-    chromeMock._store['gasoline_cloaked_domains'] = ['internal.corp.com']
+    chromeMock._store['kaboom_cloaked_domains'] = ['internal.corp.com']
     assert.strictEqual(await isDomainCloaked('internal.corp.com'), true)
   })
 
   test('subdomain of user-added domain is cloaked', async () => {
     const { isDomainCloaked } = await loadModule()
-    chromeMock._store['gasoline_cloaked_domains'] = ['corp.com']
+    chromeMock._store['kaboom_cloaked_domains'] = ['corp.com']
     assert.strictEqual(await isDomainCloaked('app.corp.com'), true)
   })
 
   test('unrelated domain is NOT cloaked', async () => {
     const { isDomainCloaked } = await loadModule()
-    chromeMock._store['gasoline_cloaked_domains'] = ['corp.com']
+    chromeMock._store['kaboom_cloaked_domains'] = ['corp.com']
     assert.strictEqual(await isDomainCloaked('other.com'), false)
   })
 
   test('works with empty user list', async () => {
     const { isDomainCloaked } = await loadModule()
-    chromeMock._store['gasoline_cloaked_domains'] = []
+    chromeMock._store['kaboom_cloaked_domains'] = []
     assert.strictEqual(await isDomainCloaked('example.com'), false)
   })
 
   test('works when user list is undefined', async () => {
     const { isDomainCloaked } = await loadModule()
-    // No gasoline_cloaked_domains in storage
+    // No kaboom_cloaked_domains in storage
     assert.strictEqual(await isDomainCloaked('example.com'), false)
   })
 })
@@ -167,7 +167,7 @@ describe('getCloakedDomains', () => {
 
   test('includes user-configured domains', async () => {
     const { getCloakedDomains } = await loadModule()
-    chromeMock._store['gasoline_cloaked_domains'] = ['mysite.com']
+    chromeMock._store['kaboom_cloaked_domains'] = ['mysite.com']
     const domains = await getCloakedDomains()
     assert.ok(domains.includes('cloudflare.com'))
     assert.ok(domains.includes('mysite.com'))

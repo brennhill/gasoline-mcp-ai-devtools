@@ -10,32 +10,32 @@ init_framework "$1" "$2"
 begin_category "8" "Security" "4"
 ensure_daemon
 
-# ── 8.1 — Extension endpoints reject without X-Gasoline-Client header ──
-begin_test "8.1" "Extension endpoints reject without X-Gasoline-Client header" \
-    "Verify /sync returns 403 when no X-Gasoline-Client header is present" \
+# ── 8.1 — Extension endpoints reject without X-Kaboom-Client header ──
+begin_test "8.1" "Extension endpoints reject without X-Kaboom-Client header" \
+    "Verify /sync returns 403 when no X-Kaboom-Client header is present" \
     "extensionOnly middleware must actually block. Without it, any local process can inject data."
 run_test_8_1() {
     local status
     status=$(get_http_status "http://localhost:${PORT}/sync")
     if [ "$status" = "403" ]; then
-        pass "/sync without X-Gasoline-Client header returned HTTP 403 as expected."
+        pass "/sync without X-Kaboom-Client header returned HTTP 403 as expected."
     else
-        fail "/sync without X-Gasoline-Client header returned HTTP $status, expected 403."
+        fail "/sync without X-Kaboom-Client header returned HTTP $status, expected 403."
     fi
 }
 run_test_8_1
 
 # ── 8.2 — Extension endpoints accept valid header ─────────
-begin_test "8.2" "Extension endpoints accept valid X-Gasoline-Client header" \
+begin_test "8.2" "Extension endpoints accept valid X-Kaboom-Client header" \
     "Verify /sync with valid header does NOT return 403 (400 for missing body is acceptable)" \
     "The middleware must not over-block. Valid extension requests must pass."
 run_test_8_2() {
     local status
-    status=$(get_http_status "http://localhost:${PORT}/sync" -H "X-Gasoline-Client: gasoline-extension/${VERSION}" -X POST)
+    status=$(get_http_status "http://localhost:${PORT}/sync" -H "X-Kaboom-Client: kaboom-extension/${VERSION}" -X POST)
     if [ "$status" = "200" ] || [ "$status" = "400" ]; then
-        pass "/sync with valid X-Gasoline-Client header returned HTTP $status. Middleware accepted the request."
+        pass "/sync with valid X-Kaboom-Client header returned HTTP $status. Middleware accepted the request."
     else
-        fail "/sync with valid X-Gasoline-Client header returned HTTP $status. Expected 200 or 400 (missing body), not $status."
+        fail "/sync with valid X-Kaboom-Client header returned HTTP $status. Expected 200 or 400 (missing body), not $status."
     fi
 }
 run_test_8_2

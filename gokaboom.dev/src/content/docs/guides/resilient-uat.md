@@ -12,7 +12,7 @@ You write a Playwright or Selenium test. It clicks `#app > div.main-content > di
 
 This happens because traditional test scripts are coupled to **structure**, not **intent**.
 
-STRUM takes a different approach. You write your UAT in natural language. The AI uses semantic selectors — `text=Submit`, `label=Email`, `role=button` — that target what elements _mean_, not where they _sit_. The UI can be completely redesigned and the test still works.
+KaBOOM takes a different approach. You write your UAT in natural language. The AI uses semantic selectors — `text=Submit`, `label=Email`, `role=button` — that target what elements _mean_, not where they _sit_. The UI can be completely redesigned and the test still works.
 
 ## Step 1: Write the Test in Plain English
 
@@ -37,7 +37,7 @@ That's your test. Save it as a text file, a Notion doc, a comment in your issue 
 
 ## Step 2: Let the AI Run It
 
-Hand the script to your AI (Claude Code, Cursor, etc.) with.gasoline connected. The AI translates each step into `interact` calls using semantic selectors:
+Hand the script to your AI (Claude Code, Cursor, etc.) with KaBOOM connected. The AI translates each step into `interact` calls using semantic selectors:
 
 ```js
 interact({action: "click", selector: "text=Sign Up"})

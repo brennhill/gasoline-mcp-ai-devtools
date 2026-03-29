@@ -1,5 +1,5 @@
 ---
-title: .gasoline v6.0.0 Released"
+title: KaBOOM v6.0.0 Released"
 description: "AI agents can now check all links on your page, automate your browser with complete visibility, and identify performance bottlenecks in real time."
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v6', 'beta']
 
 ## What's New in v6.0.0
 
-STRUM v6.0.0 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
+Kaboom v6.0.0 introduces the Link Health Analyzer, plus browser automation, recording, and performance analysis for AI agents. Check all links on your page, record full sessions with video, capture performance metrics, and let AI agents test, debug, and fix your app automatically. Complete visibility. You stay in control.
 
 ### Features
 
@@ -62,13 +62,13 @@ Use the current installer flow instead:
 ### MCP Server
 
 ```bash
-npm install -g gasoline-mcp@6.0.0
-gasoline-mcp --help
+npm install -g kaboom-agentic-browser@6.0.0
+kaboom-agentic-browser --help
 ```
 
 Or via pip:
 ```bash
-pip install gasoline-mcp==6.0.0
+pip install kaboom-agentic-browser==6.0.0
 ```
 
 ## Known Limitations
@@ -85,4 +85,4 @@ pip install gasoline-mcp==6.0.0
 
 ## Full Changelog
 
-[v5.8.0...v6.0.0](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/compare/v5.8.0...v6.0.0)
+[v5.8.0...v6.0.0](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/compare/v5.8.0...v6.0.0)

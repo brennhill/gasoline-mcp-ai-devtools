@@ -39,7 +39,7 @@ test_paths:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                  gasoline-hooks binary                │
+│                  kaboom-hooks binary                │
 │                                                      │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐ │
 │  │ quality-gate │  │ blast-radius │  │ session-track│ │
@@ -145,17 +145,17 @@ When `configure(what="setup_quality_gates")` detects `.gemini/` in the project, 
       {
         "matcher": "write_file|replace_in_file|edit_file",
         "hooks": [
-          {"name": "quality-gate", "type": "command", "command": "gasoline-hooks quality-gate", "timeout": 10000},
-          {"name": "blast-radius", "type": "command", "command": "gasoline-hooks blast-radius", "timeout": 10000},
-          {"name": "decision-guard", "type": "command", "command": "gasoline-hooks decision-guard", "timeout": 10000},
-          {"name": "session-track", "type": "command", "command": "gasoline-hooks session-track", "timeout": 10000}
+          {"name": "quality-gate", "type": "command", "command": "kaboom-hooks quality-gate", "timeout": 10000},
+          {"name": "blast-radius", "type": "command", "command": "kaboom-hooks blast-radius", "timeout": 10000},
+          {"name": "decision-guard", "type": "command", "command": "kaboom-hooks decision-guard", "timeout": 10000},
+          {"name": "session-track", "type": "command", "command": "kaboom-hooks session-track", "timeout": 10000}
         ]
       },
       {
         "matcher": "run_shell_command",
         "hooks": [
-          {"name": "compress-output", "type": "command", "command": "gasoline-hooks compress-output", "timeout": 10000},
-          {"name": "session-track", "type": "command", "command": "gasoline-hooks session-track", "timeout": 10000}
+          {"name": "compress-output", "type": "command", "command": "kaboom-hooks compress-output", "timeout": 10000},
+          {"name": "session-track", "type": "command", "command": "kaboom-hooks session-track", "timeout": 10000}
         ]
       }
     ]
@@ -171,7 +171,7 @@ Note differences from Claude Code config:
 
 ## Tool Name Mapping
 
-| Claude Code | Gemini CLI | Gasoline hook |
+| Claude Code | Gemini CLI | Kaboom hook |
 |-------------|-----------|---------------|
 | `Read` | `read_file` | session-track |
 | `Edit` | `replace_in_file` | quality-gate, blast-radius, decision-guard, session-track |

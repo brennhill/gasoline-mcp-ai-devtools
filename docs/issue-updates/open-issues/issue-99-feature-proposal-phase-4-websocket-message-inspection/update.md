@@ -1,12 +1,12 @@
 # Product Update: Issue #99
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/99
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/99
 - Title: [Feature Proposal] Phase 4: WebSocket Message Inspection
 - Last Updated: 2026-02-16T16:52:12Z
 
 ## Change Summary
-This update resolves or advances Issue #99 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #99 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 [Feature Proposal] Phase 4: WebSocket Message Inspection

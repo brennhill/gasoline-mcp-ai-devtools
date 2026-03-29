@@ -3,7 +3,7 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Doctor diagnostics for Gasoline MCP CLI
+ * Doctor diagnostics for the Kaboom MCP CLI
  * Checks config validity, binary availability, and provides repair suggestions
  */
 
@@ -62,7 +62,7 @@ function checkPortSync(port) {
   }
   try {
     // Try to check if something is listening
-    const result = execSync(`lsof -ti :${portNum} 2>/dev/null || true`, { // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process -- spawning own gasoline binary for health check
+    const result = execSync(`lsof -ti :${portNum} 2>/dev/null || true`, { // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process -- spawning own Kaboom binary for health check
       encoding: 'utf8',
       timeout: 2000,
     }).trim();
@@ -78,7 +78,7 @@ function checkPortSync(port) {
 }
 
 /**
- * Test if gasoline binary is available and working
+ * Test if the Kaboom binary is available and working
  * @returns {Object} {ok: bool, path?: string, version?: string, error?: string}
  */
 function testBinary() {
@@ -90,11 +90,11 @@ function testBinary() {
     const arch = os.arch();
 
     const platformMap = {
-      'darwin-arm64': '@brennhill/gasoline-agentic-browser-darwin-arm64',
-      'darwin-x64': '@brennhill/gasoline-agentic-browser-darwin-x64',
-      'linux-arm64': '@brennhill/gasoline-agentic-browser-linux-arm64',
-      'linux-x64': '@brennhill/gasoline-agentic-browser-linux-x64',
-      'win32-x64': '@brennhill/gasoline-agentic-browser-win32-x64',
+      'darwin-arm64': '@brennhill/kaboom-agentic-browser-darwin-arm64',
+      'darwin-x64': '@brennhill/kaboom-agentic-browser-darwin-x64',
+      'linux-arm64': '@brennhill/kaboom-agentic-browser-linux-arm64',
+      'linux-x64': '@brennhill/kaboom-agentic-browser-linux-x64',
+      'win32-x64': '@brennhill/kaboom-agentic-browser-win32-x64',
     };
 
     const key = `${platform}-${arch}`;
@@ -108,7 +108,7 @@ function testBinary() {
     }
 
     // Try to find binary
-    const binaryName = platform === 'win32' ? 'gasoline.exe' : 'gasoline';
+    const binaryName = platform === 'win32' ? 'kaboom-agentic-browser.exe' : 'kaboom-agentic-browser';
     const homeDir = os.homedir();
 
     // Check several locations
@@ -131,7 +131,7 @@ function testBinary() {
     if (!binaryPath) {
       return {
         ok: false,
-        error: `Gasoline binary not found for platform ${key}`,
+        error: `Kaboom binary not found for platform ${key}`,
       };
     }
 
@@ -202,14 +202,14 @@ function diagnoseFileClient(def, verbose) {
   if (!fs.existsSync(cfgPath)) {
     tool.status = 'error';
     tool.issues.push('Config file not found');
-    tool.suggestions.push('Run: gasoline-agentic-browser --install');
+    tool.suggestions.push('Run: kaboom-agentic-browser --install');
     return tool;
   }
 
   const readResult = readConfigFile(cfgPath);
   if (!readResult.valid) {
     tool.issues.push('Invalid JSON');
-    tool.suggestions.push('Fix the JSON syntax or run: gasoline-agentic-browser --install');
+    tool.suggestions.push('Fix the JSON syntax or run: kaboom-agentic-browser --install');
     return tool;
   }
 
@@ -218,12 +218,14 @@ function diagnoseFileClient(def, verbose) {
   const matchedName = knownServerNames().find((name) => Object.prototype.hasOwnProperty.call(servers, name));
   if (!matchedName) {
     tool.issues.push(`${MCP_SERVER_NAME} entry missing from ${configKey}`);
-    tool.suggestions.push('Run: gasoline-agentic-browser --install');
+    tool.suggestions.push('Run: kaboom-agentic-browser --install');
     return tool;
   }
   if (matchedName !== MCP_SERVER_NAME) {
+    tool.status = 'error';
     tool.issues.push(`Legacy MCP server name detected (${matchedName}); migrate to ${MCP_SERVER_NAME}`);
-    tool.suggestions.push('Run: gasoline-agentic-browser --install');
+    tool.suggestions.push('Run: kaboom-agentic-browser --install');
+    return tool;
   }
 
   tool.status = 'ok';
@@ -259,7 +261,7 @@ function diagnoseCliClient(def, verbose) {
     return tool;
   }
 
-  // Try to check if gasoline is configured via CLI
+  // Try to check if Kaboom is configured via CLI
   let found = false;
   for (const serverName of knownServerNames()) {
     try {
@@ -279,7 +281,7 @@ function diagnoseCliClient(def, verbose) {
   } else {
     tool.status = 'error';
     tool.issues.push(`${MCP_SERVER_NAME} not configured`);
-    tool.suggestions.push('Run: gasoline-agentic-browser --install');
+    tool.suggestions.push('Run: kaboom-agentic-browser --install');
   }
 
   return tool;

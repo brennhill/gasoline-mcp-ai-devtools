@@ -14,7 +14,7 @@ func seedSyncSettings(t *testing.T, env *configureTestEnv, settingsJSON string) 
 	t.Helper()
 	reqBody := `{"ext_session_id":"tutorial-test","settings":` + settingsJSON + `}`
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(reqBody))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
 }
 

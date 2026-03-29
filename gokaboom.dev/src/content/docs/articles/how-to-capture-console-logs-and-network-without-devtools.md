@@ -1,6 +1,6 @@
 ---
 title: "How to Capture Console Logs and Network Requests Without DevTools"
-description: "Beginner guide to collect browser logs and network failures with.gasoline Agentic Devtools, no manual DevTools digging required."
+description: "Beginner guide to collect browser logs and network failures with KaBOOM Agentic Devtools, no manual DevTools digging required."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, debugging, logs, network]
@@ -11,7 +11,7 @@ normalized_tags: ['beginner', 'debugging', 'logs', 'network', 'articles', 'captu
 
 You do not need to manually dig through Chrome DevTools for every bug.
 
-Use.gasoline to collect the same evidence in a structured way.
+Use KaBOOM to collect the same evidence in a structured way.
 
 <!-- more -->
 

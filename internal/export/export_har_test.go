@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // ============================================
@@ -117,7 +117,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Request.Comment != "Body truncated at 8KB by Gasoline Agentic Browser" {
+		if entry.Request.Comment != "Body truncated at 8KB by Kaboom Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Request.Comment)
 		}
 	})
@@ -133,7 +133,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Response.Comment != "Body truncated at 16KB by Gasoline Agentic Browser" {
+		if entry.Response.Comment != "Body truncated at 16KB by Kaboom Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Response.Comment)
 		}
 	})

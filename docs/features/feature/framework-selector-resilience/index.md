@@ -37,7 +37,7 @@ last_verified_date: 2026-03-05
 - Flow Map: `flow-map.md`
 
 ## Canonical Note
-This feature makes fixture coverage a first-class capability: Gasoline validates automation resilience against real React, Vue, Svelte, and Next.js pages that model hydration races, overlays, remount churn, async delayed UI, and virtualized content.
+This feature makes fixture coverage a first-class capability: Kaboom validates automation resilience against real React, Vue, Svelte, and Next.js pages that model hydration races, overlays, remount churn, async delayed UI, and virtualized content.
 
 The parity gate supports explicit repeat budgets:
 - `FRAMEWORK_RESILIENCE_FULL_REPEATS` (full scenario repeats per framework)

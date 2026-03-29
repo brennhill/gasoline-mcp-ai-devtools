@@ -95,7 +95,7 @@ func serveTestIndex(w http.ResponseWriter) {
 
 	body := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Gasoline Test Pages</title>
+<head><meta charset="UTF-8"><title>Kaboom Test Pages</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
      background:#1a1a1a;color:#e0e0e0;padding:40px;max-width:600px;margin:0 auto}
@@ -109,8 +109,8 @@ a:hover{text-decoration:underline}
 .ep a{color:#d29922}
 </style></head>
 <body>
-<h1><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="24" height="24" style="vertical-align:middle;margin-right:6px"><defs><linearGradient id="fl" x1="0%%" y1="100%%" x2="0%%" y2="0%%"><stop offset="0%%" style="stop-color:#f97316"/><stop offset="50%%" style="stop-color:#fb923c"/><stop offset="100%%" style="stop-color:#fbbf24"/></linearGradient><linearGradient id="ifl" x1="0%%" y1="100%%" x2="0%%" y2="0%%"><stop offset="0%%" style="stop-color:#fbbf24"/><stop offset="100%%" style="stop-color:#fef3c7"/></linearGradient></defs><circle cx="64" cy="64" r="60" fill="#1a1a1a"/><path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/><path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/></svg>Gasoline — Test Harness</h1>
-<p>Deterministic smoke-test pages served by the Gasoline Go daemon.</p>
+<h1><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="24" height="24" style="vertical-align:middle;margin-right:6px"><defs><linearGradient id="fl" x1="0%%" y1="100%%" x2="0%%" y2="0%%"><stop offset="0%%" style="stop-color:#f97316"/><stop offset="50%%" style="stop-color:#fb923c"/><stop offset="100%%" style="stop-color:#fbbf24"/></linearGradient><linearGradient id="ifl" x1="0%%" y1="100%%" x2="0%%" y2="0%%"><stop offset="0%%" style="stop-color:#fbbf24"/><stop offset="100%%" style="stop-color:#fef3c7"/></linearGradient></defs><circle cx="64" cy="64" r="60" fill="#1a1a1a"/><path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/><path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/></svg>Kaboom — Test Harness</h1>
+<p>Deterministic smoke-test pages served by the Kaboom Go daemon.</p>
 <ul>%s</ul>
 <div class="ep">
   <div>Test endpoints:</div>

@@ -117,7 +117,7 @@ graph TB
     end
 
     subgraph "Extension (Single Instance)"
-        Poll[Polls /pending-queries<br/>X-Gasoline-Client header]
+        Poll[Polls /pending-queries<br/>X-Kaboom-Client header]
     end
 
     MCP_A -->|CreatePendingQuery<br/>clientID: agent-a| Queue

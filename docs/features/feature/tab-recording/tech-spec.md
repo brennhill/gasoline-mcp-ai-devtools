@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Tab recording captures the active browser tab as a WebM video using `chrome.tabCapture.capture()`. The extension holds the video in memory during recording, then POSTs the final blob to the Go server on stop. The server writes the video file and metadata sidecar to `~/.gasoline/recordings/`.
+Tab recording captures the active browser tab as a WebM video using `chrome.tabCapture.capture()`. The extension holds the video in memory during recording, then POSTs the final blob to the Go server on stop. The server writes the video file and metadata sidecar to `~/.kaboom/recordings/`.
 
 ### Key design decisions:
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
     AI->>Server: interact({action: "screen_recording_start", name: "checkout bug"})
     Server->>Server: Generate filename: checkout-bug--2026-02-07-1423
-    Server->>Server: Create dir ~/.gasoline/recordings/ (if needed)
+    Server->>Server: Create dir ~/.kaboom/recordings/ (if needed)
     Server->>Ext: PendingQuery {action: "screen_recording_start", name: "checkout-bug--2026-02-07-1423"}
 
     Ext->>Tab: chrome.tabCapture.capture({video: true, audio: false})
@@ -43,7 +43,7 @@ sequenceDiagram
     Ext->>Ext: recorder.ondataavailable → push chunk to array
 
     Ext-->>Server: CommandResult {status: "recording", name, path}
-    Server-->>AI: {status: "recording", name: "checkout-bug--2026-02-07-1423", path: "~/.gasoline/recordings/checkout-bug--2026-02-07-1423.webm"}
+    Server-->>AI: {status: "recording", name: "checkout-bug--2026-02-07-1423", path: "~/.kaboom/recordings/checkout-bug--2026-02-07-1423.webm"}
 
     Note over AI,Tab: ... AI interacts with page, subtitles render in tab ...
 
@@ -107,7 +107,7 @@ sequenceDiagram
     participant Disk as Filesystem
 
     AI->>Server: observe({what: "saved_videos"})
-    Server->>Disk: Glob ~/.gasoline/recordings/*_meta.json
+    Server->>Disk: Glob ~/.kaboom/recordings/*_meta.json
     Disk-->>Server: [checkout-bug--..._meta.json, site-demo--..._meta.json]
 
     loop For each _meta.json
@@ -199,10 +199,10 @@ async function startRecording(name: string, fps: number = 15): Promise<Recording
 
   // Persist state flag for popup sync
   await chrome.storage.local.set({
-    gasoline_recording: { active: true, name, startTime: Date.now() },
+    kaboom_recording: { active: true, name, startTime: Date.now() },
   });
 
-  return { status: "recording", name, path: `~/.gasoline/recordings/${name}.webm` };
+  return { status: "recording", name, path: `~/.kaboom/recordings/${name}.webm` };
 }
 
 async function stopRecording(): Promise<RecordingResult> {
@@ -239,10 +239,10 @@ async function stopRecording(): Promise<RecordingResult> {
       });
 
       // Clear state
-      await chrome.storage.local.remove("gasoline_recording");
+      await chrome.storage.local.remove("kaboom_recording");
       const result = {
         status: "saved", name: recordingState.name,
-        path: `~/.gasoline/recordings/${recordingState.name}.webm`,
+        path: `~/.kaboom/recordings/${recordingState.name}.webm`,
         duration_seconds: duration, size_bytes: blob.size,
       };
 
@@ -294,7 +294,7 @@ New section below existing toggles:
 
 #### Popup logic:
 
-- On open: read `chrome.storage.local.get("gasoline_recording")` → show correct state
+- On open: read `chrome.storage.local.get("kaboom_recording")` → show correct state
 - Start: send `{type: "screen_recording_start", name}` to background
 - Stop: send `{type: "screen_recording_stop"}` to background
 - Timer: `setInterval` updates display every second while recording
@@ -318,7 +318,7 @@ func (h *Handler) handleRecordingSave(w http.ResponseWriter, r *http.Request) {
     json.Unmarshal([]byte(metadataStr), &meta)
 
     // Ensure directory exists
-    dir := filepath.Join(os.Getenv("HOME"), ".gasoline", "recordings")
+    dir := filepath.Join(os.Getenv("HOME"), ".kaboom", "recordings")
     os.MkdirAll(dir, 0755)
 
     // Write video file
@@ -351,7 +351,7 @@ case "saved_videos":
 
 ```go
 func (h *Handler) handleObserveSavedVideos(req mcp.Request, args ObserveArgs) mcp.Response {
-    dir := filepath.Join(os.Getenv("HOME"), ".gasoline", "recordings")
+    dir := filepath.Join(os.Getenv("HOME"), ".kaboom", "recordings")
 
     matches, err := filepath.Glob(filepath.Join(dir, "*_meta.json"))
     if err != nil || len(matches) == 0 {
@@ -597,7 +597,7 @@ sequenceDiagram
     Ext->>Server: POST /recordings/save (40MB blob)
     Server->>Disk: os.Create(videoPath)
     Disk-->>Server: Error: no space left on device
-    Server-->>Ext: 500 {error: "RECORDING_SAVE: Disk full. Free space in ~/.gasoline/recordings/"}
+    Server-->>Ext: 500 {error: "RECORDING_SAVE: Disk full. Free space in ~/.kaboom/recordings/"}
     Ext-->>Ext: Return error to caller
 ```
 
@@ -619,13 +619,13 @@ sequenceDiagram
 
 **Scenario:** MCP started a recording, user opens popup.
 
-**Resolution:** Popup reads `chrome.storage.local.get("gasoline_recording")` on open. If `active: true`, show "Stop Recording" button + elapsed time calculated from `startTime`.
+**Resolution:** Popup reads `chrome.storage.local.get("kaboom_recording")` on open. If `active: true`, show "Stop Recording" button + elapsed time calculated from `startTime`.
 
 ### 10. Browser Crash During Recording
 
 **Scenario:** Chrome crashes or extension is force-reloaded.
 
-**Resolution:** Data loss — chunks in memory are gone. This is accepted for v6. Chunked streaming (v6.1+) would mitigate by having partial video on disk. On extension startup, clear any stale `gasoline_recording` state from `chrome.storage.local`.
+**Resolution:** Data loss — chunks in memory are gone. This is accepted for v6. Chunked streaming (v6.1+) would mitigate by having partial video on disk. On extension startup, clear any stale `kaboom_recording` state from `chrome.storage.local`.
 
 ## Network Communication
 
@@ -644,7 +644,7 @@ sequenceDiagram
 
 ### Server → Filesystem
 
-**Write path:** `~/.gasoline/recordings/{name}.webm` + `{name}_meta.json`
+**Write path:** `~/.kaboom/recordings/{name}.webm` + `{name}_meta.json`
 
 **Directory creation:** `os.MkdirAll` on first save if directory doesn't exist.
 
@@ -694,7 +694,7 @@ Go Server:
 
 ## Security
 
-- Videos saved to `~/.gasoline/recordings/` — user's home directory, standard permissions
+- Videos saved to `~/.kaboom/recordings/` — user's home directory, standard permissions
 - No network transmission — localhost only (extension → `127.0.0.1`)
 - Metadata contains URL of recorded page — no credentials, no cookies
 - Video may contain sensitive screen content — same risk as any screen recording tool

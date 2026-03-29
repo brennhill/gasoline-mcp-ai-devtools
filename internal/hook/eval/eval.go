@@ -1,4 +1,4 @@
-// eval.go — Eval runner library for gasoline-hooks.
+// eval.go — Eval runner library for kaboom-hooks.
 // Loads JSON test fixtures, runs hooks, and validates output against expectations.
 
 package eval
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/hook"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/hook"
 )
 
 // Fixture represents a single eval test case loaded from a JSON file.

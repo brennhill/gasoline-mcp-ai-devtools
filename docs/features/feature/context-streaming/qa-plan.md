@@ -27,7 +27,7 @@ last_verified_date: 2026-03-05
 | DL-1 | Notification includes unredacted Authorization headers | When a network error triggers a notification, verify the notification `detail` and `data` fields do NOT contain Authorization, Cookie, or API key headers | critical |
 | DL-2 | Notification includes unredacted request/response bodies | Network error notifications must NOT contain raw request/response bodies unless body capture is explicitly opt-in | critical |
 | DL-3 | URL query parameters with sensitive keys are exposed | Notification URLs containing `?token=`, `?api_key=`, `?secret=` must have values masked (e.g., `?token=***`) | critical |
-| DL-4 | Notification data written to stdout is captured by other processes | stdout is a local pipe between Gasoline and MCP client; verify no additional logging of notification content to disk files | high |
+| DL-4 | Notification data written to stdout is captured by other processes | stdout is a local pipe between Kaboom and MCP client; verify no additional logging of notification content to disk files | high |
 | DL-5 | Error message in notification contains sensitive stack trace data | Console error notifications may include stack traces with file paths, but should not include variable values or secrets | high |
 | DL-6 | CI webhook data in notification leaks build secrets | CI event notifications from `/ci-result` must not include environment variables, secrets, or build tokens from the webhook payload | high |
 | DL-7 | Notification `source` field leaks internal server details | The `source` field (e.g., `anomaly_detector`) should be a safe label, not an internal implementation path | low |
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web application running (e.g., localhost:3000) with ability to trigger errors and network requests
 - [ ] MCP client (Claude Code) that can receive and display `notifications/message`
@@ -182,7 +182,7 @@ last_verified_date: 2026-03-05
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | `{"tool": "configure", "arguments": {"action": "streaming", "streaming_action": "status"}}` | No visual change | AI receives `{ config: { enabled: false }, notify_count: 0, pending: 0 }` | [ ] |
 | UAT-2 | `{"tool": "configure", "arguments": {"action": "streaming", "streaming_action": "enable", "events": ["errors", "network_errors"], "throttle_seconds": 5, "severity_min": "warning"}}` | No visual change | AI receives `{ status: "enabled", config: { enabled: true, events: [...], throttle_seconds: 5, ... } }` | [ ] |
-| UAT-3 | Human triggers a JavaScript error on the page (e.g., `throw new Error("UAT streaming test")` in DevTools) | Error appears in DevTools console | Within 5 seconds, AI receives an MCP notification: `{ jsonrpc: "2.0", method: "notifications/message", params: { level: "warning", logger: "gasoline", data: { category: "errors", ... } } }` | [ ] |
+| UAT-3 | Human triggers a JavaScript error on the page (e.g., `throw new Error("UAT streaming test")` in DevTools) | Error appears in DevTools console | Within 5 seconds, AI receives an MCP notification: `{ jsonrpc: "2.0", method: "notifications/message", params: { level: "warning", logger: "kaboom", data: { category: "errors", ... } } }` | [ ] |
 | UAT-4 | Human triggers a 500 network error (e.g., fetch to a failing endpoint) | Network error in DevTools | AI receives a notification with `category: "network_errors"` | [ ] |
 | UAT-5 | `{"tool": "configure", "arguments": {"action": "streaming", "streaming_action": "status"}}` | No visual change | `notify_count` is > 0; reflects notifications emitted in UAT-3 and UAT-4 | [ ] |
 | UAT-6 | Human triggers the same error twice within 30 seconds | Two errors in DevTools | AI receives only ONE notification (second is deduped) | [ ] |
@@ -197,7 +197,7 @@ last_verified_date: 2026-03-05
 |---|-------|--------|----------|------|
 | DL-UAT-1 | Notification does not contain Authorization header | Trigger a network error for a request that had an Authorization header; check notification content | Notification `data` field contains URL and status but NOT the Authorization header value | [ ] |
 | DL-UAT-2 | Notification URL has sensitive params masked | Trigger error for URL like `/api?token=secret123`; check notification | URL shows `/api?token=***` or similar masking | [ ] |
-| DL-UAT-3 | Notification not written to disk | Check `~/.gasoline/` directory and JSONL log after streaming session | No notification content in any disk file (audit log only contains setting changes, not notification data) | [ ] |
+| DL-UAT-3 | Notification not written to disk | Check `~/.kaboom/` directory and JSONL log after streaming session | No notification content in any disk file (audit log only contains setting changes, not notification data) | [ ] |
 
 ### Regression Checks
 - [ ] `observe()` returns the same data with streaming enabled vs disabled

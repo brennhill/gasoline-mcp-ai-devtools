@@ -39,7 +39,7 @@ func formatResult(format, tool, action string, result *MCPToolResult) int {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] output error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] output error: %v\n", err)
 		return 1
 	}
 

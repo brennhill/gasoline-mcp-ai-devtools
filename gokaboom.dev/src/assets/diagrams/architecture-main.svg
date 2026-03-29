@@ -34,7 +34,7 @@
 
   <!-- Server Section -->
   <rect class="box-dark" x="370" y="20" width="280" height="200" rx="8"/>
-  <text class="text-light" x="390" y="45">⚙️ Gasoline Server (Go)</text>
+  <text class="text-light" x="390" y="45">⚙️ Kaboom Server (Go)</text>
 
   <rect class="box-light" x="385" y="60" width="250" height="40" rx="4"/>
   <text class="text-light" x="400" y="78">HTTP Endpoints</text>

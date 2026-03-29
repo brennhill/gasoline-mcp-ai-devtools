@@ -1,0 +1,16 @@
+{
+  "name": "kaboom-workflows",
+  "version": "0.1.0",
+  "description": "Workflow commands that compose Kaboom MCP's 5 browser telemetry tools into complete, opinionated workflows for debugging, auditing, recording, and interactive development.",
+  "author": "Kaboom",
+  "homepage": "https://github.com/anthropics/kaboom",
+  "commands": [
+    "commands/debug-ui.md",
+    "commands/seo-audit.md",
+    "commands/record-workflow.md",
+    "commands/interactive-dev.md"
+  ],
+  "skills": [
+    "skills/kaboom-connection-guard/SKILL.md"
+  ]
+}

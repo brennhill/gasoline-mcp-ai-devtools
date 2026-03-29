@@ -42,7 +42,7 @@ func TestRunConnectModeHappyPath(t *testing.T) {
 		_ = r.Body.Close()
 		state.mu.Lock()
 		state.registerCalls++
-		state.lastClientHeader = r.Header.Get("X-Gasoline-Client")
+		state.lastClientHeader = r.Header.Get("X-Kaboom-Client")
 		state.lastRegisterBody = string(body)
 		state.mu.Unlock()
 		w.WriteHeader(http.StatusOK)
@@ -55,7 +55,7 @@ func TestRunConnectModeHappyPath(t *testing.T) {
 		_ = json.Unmarshal(body, &req)
 		state.mu.Lock()
 		state.mcpCalls++
-		state.lastClientHeader = r.Header.Get("X-Gasoline-Client")
+		state.lastClientHeader = r.Header.Get("X-Kaboom-Client")
 		state.mu.Unlock()
 		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"ok":true}`)}
 		_ = json.NewEncoder(w).Encode(resp)
@@ -67,7 +67,7 @@ func TestRunConnectModeHappyPath(t *testing.T) {
 		}
 		state.mu.Lock()
 		state.unregisterCalls++
-		state.lastClientHeader = r.Header.Get("X-Gasoline-Client")
+		state.lastClientHeader = r.Header.Get("X-Kaboom-Client")
 		state.mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, `{}`)
@@ -151,7 +151,7 @@ func TestRunConnectModeHappyPath(t *testing.T) {
 		t.Fatalf("mcp calls = %d, want 1", state.mcpCalls)
 	}
 	if state.lastClientHeader != "client-1" {
-		t.Fatalf("X-Gasoline-Client header = %q, want client-1", state.lastClientHeader)
+		t.Fatalf("X-Kaboom-Client header = %q, want client-1", state.lastClientHeader)
 	}
 	if !strings.Contains(state.lastRegisterBody, `"cwd":"/tmp/project"`) {
 		t.Fatalf("register body = %q, want cwd payload", state.lastRegisterBody)

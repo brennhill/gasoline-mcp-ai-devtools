@@ -105,7 +105,7 @@ describe('Tooling contracts', () => {
     assert.match(daemonHttp, /const DEFAULT_CLIENT_NAME = 'kaboom-extension'/)
     assert.match(daemonHttp, /'X-Kaboom-Client'/)
     assert.match(daemonHttp, /'X-Kaboom-Extension-Version'/)
-    assert.doesNotMatch(daemonHttp, /X-Gasoline/)
+    assert.doesNotMatch(daemonHttp, /X-Gasoline|X-STRUM/)
 
     assert.match(constants, /SHOW_TRACKED_HOVER_LAUNCHER: 'kaboom_show_tracked_hover_launcher'/)
     assert.match(constants, /TERMINAL_AI_COMMAND: 'kaboom_terminal_ai_command'/)

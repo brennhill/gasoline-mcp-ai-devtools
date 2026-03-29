@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-const docsRoot = path.join(process.cwd(), 'cookwithgasoline.com', 'src', 'content', 'docs')
+const docsRoot = path.join(process.cwd(), 'gokaboom.dev', 'src', 'content', 'docs')
 
 async function walk(dir) {
   const out = []
@@ -39,7 +39,7 @@ for (const file of files) {
 
 const duplicates = [...seen.entries()].filter(([, paths]) => paths.length > 1)
 if (duplicates.length > 0) {
-  console.error('Duplicate content IDs/slugs detected in cookwithgasoline docs collection:\n')
+  console.error('Duplicate content IDs/slugs detected in gokaboom docs collection:\n')
   for (const [slug, paths] of duplicates) {
     console.error(`- slug "${slug}"`) 
     for (const file of paths) {

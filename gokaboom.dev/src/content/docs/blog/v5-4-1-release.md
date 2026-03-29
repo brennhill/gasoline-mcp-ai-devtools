@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.4.1 Released"
+title: KaBOOM v5.4.1 Released"
 description: "Hotfix for interaction reliability"
 date: 2026-01-18
 authors: [brennhill]
@@ -23,9 +23,9 @@ Quick patch release fixing element selection and interaction issues in v5.4.0.
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.4.1
+npm install -g kaboom-agentic-browser@5.4.1
 ```
 
 ## Full Changelog
 
-[v5.4.1 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.1)
+[v5.4.1 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.4.1)

@@ -101,27 +101,27 @@ async function validateReferenceExamples() {
     {
       tool: 'observe',
       modes: extractWhatEnum(await fs.readFile(path.join(root, 'internal/schema/observe.go'), 'utf8')),
-      doc: path.join(root, 'cookwithgasoline.com/src/content/docs/reference/examples/observe-examples.md')
+      doc: path.join(root, 'gokaboom.dev/src/content/docs/reference/examples/observe-examples.md')
     },
     {
       tool: 'analyze',
       modes: extractWhatEnum(await fs.readFile(path.join(root, 'internal/schema/analyze.go'), 'utf8')),
-      doc: path.join(root, 'cookwithgasoline.com/src/content/docs/reference/examples/analyze-examples.md')
+      doc: path.join(root, 'gokaboom.dev/src/content/docs/reference/examples/analyze-examples.md')
     },
     {
       tool: 'configure',
       modes: extractWhatEnum(await fs.readFile(path.join(root, 'internal/schema/configure_properties_core.go'), 'utf8')),
-      doc: path.join(root, 'cookwithgasoline.com/src/content/docs/reference/examples/configure-examples.md')
+      doc: path.join(root, 'gokaboom.dev/src/content/docs/reference/examples/configure-examples.md')
     },
     {
       tool: 'generate',
       modes: extractWhatEnum(await fs.readFile(path.join(root, 'internal/schema/generate.go'), 'utf8')),
-      doc: path.join(root, 'cookwithgasoline.com/src/content/docs/reference/examples/generate-examples.md')
+      doc: path.join(root, 'gokaboom.dev/src/content/docs/reference/examples/generate-examples.md')
     },
     {
       tool: 'interact',
       modes: extractInteractActions(await fs.readFile(path.join(root, 'internal/schema/interact_actions.go'), 'utf8')),
-      doc: path.join(root, 'cookwithgasoline.com/src/content/docs/reference/examples/interact-examples.md')
+      doc: path.join(root, 'gokaboom.dev/src/content/docs/reference/examples/interact-examples.md')
     }
   ]
 

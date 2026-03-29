@@ -4,7 +4,7 @@
 package analyze
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // Deps provides all dependencies the analyze handlers need.

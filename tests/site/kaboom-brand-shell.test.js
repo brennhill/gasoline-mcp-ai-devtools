@@ -66,6 +66,17 @@ describe('kaboom site brand shell', () => {
     assert.doesNotMatch(rotatingHero, /STRUM MCP:/)
   })
 
+  test('workflow and article library copy uses KaBOOM branding', () => {
+    const articlesLibrary = readSite('src/components/ArticlesLibrary.astro')
+    const workflowLibrary = readSite('src/components/WorkflowLibrary.astro')
+
+    assert.match(articlesLibrary, /KaBOOM/)
+    assert.doesNotMatch(articlesLibrary, /STRUM|Gasoline|\.gasoline/)
+
+    assert.match(workflowLibrary, /KaBOOM/)
+    assert.doesNotMatch(workflowLibrary, /STRUM|Gasoline|\.gasoline/)
+  })
+
   test('site flame logo assets use the restored flame mark', () => {
     const idleLogo = readSite('src/assets/logo.svg')
     const animatedLogo = readSite('src/assets/logo-animated.svg')
@@ -76,5 +87,11 @@ describe('kaboom site brand shell', () => {
       assert.match(logo, /linearGradient id="innerFlame/)
       assert.doesNotMatch(logo, /strum-path|ghost-1|harmonic-osc|energy-speed/)
     }
+  })
+
+  test('social preview shell uses KaBOOM branding', () => {
+    const socialPreview = read('kaboom-social-preview.html')
+    assert.match(socialPreview, /KaBOOM/)
+    assert.doesNotMatch(socialPreview, /Strum|Gasoline|getstrum|cookwithgasoline/)
   })
 })

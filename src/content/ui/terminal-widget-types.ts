@@ -10,13 +10,13 @@ import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET } from '../../lib/constants.js
 // ---------------------------------------------------------------------------
 // DOM element IDs
 // ---------------------------------------------------------------------------
-export const WIDGET_ID = 'gasoline-terminal-widget'
-export const IFRAME_ID = 'gasoline-terminal-iframe'
-export const HEADER_ID = 'gasoline-terminal-header'
-export const DISCONNECT_TERMINAL_BUTTON_ID = 'gasoline-terminal-disconnect-button'
-export const REDRAW_TERMINAL_BUTTON_ID = 'gasoline-terminal-redraw-button'
-export const MINIMIZE_TERMINAL_BUTTON_ID = 'gasoline-terminal-minimize-button'
-export const CLOSE_TERMINAL_BUTTON_ID = 'gasoline-terminal-close-button'
+export const WIDGET_ID = 'kaboom-terminal-widget'
+export const IFRAME_ID = 'kaboom-terminal-iframe'
+export const HEADER_ID = 'kaboom-terminal-header'
+export const DISCONNECT_TERMINAL_BUTTON_ID = 'kaboom-terminal-disconnect-button'
+export const REDRAW_TERMINAL_BUTTON_ID = 'kaboom-terminal-redraw-button'
+export const MINIMIZE_TERMINAL_BUTTON_ID = 'kaboom-terminal-minimize-button'
+export const CLOSE_TERMINAL_BUTTON_ID = 'kaboom-terminal-close-button'
 
 // ---------------------------------------------------------------------------
 // Layout defaults

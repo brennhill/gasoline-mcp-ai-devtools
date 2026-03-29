@@ -1,6 +1,6 @@
-# Strum Code Quality Standards
+# Kaboom Code Quality Standards
 
-This file ships with every Strum-scaffolded project at `.strum/code-quality-standards.md`. It is appended to every decorated prompt sent through the terminal. The AI must follow these rules — they are not suggestions.
+This file ships with every Kaboom-scaffolded project at `.kaboom/code-quality-standards.md`. It is appended to every decorated prompt sent through the terminal. The AI must follow these rules — they are not suggestions.
 
 ## File Rules
 

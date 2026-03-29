@@ -6,7 +6,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Gasoline Feature Test Plans — Summary Report
+# Kaboom Feature Test Plans — Summary Report
 
 **Generated:** 2026-02-09
 **Status:** ✅ 5 Test Plans Created | ⏳ 40+ Recommended Additional Tests Identified
@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This document summarizes the comprehensive test plans created for 5 major Gasoline features with existing UAT test coverage. Each feature now has a dedicated `test-plan.md` that:
+This document summarizes the comprehensive test plans created for 5 major Kaboom features with existing UAT test coverage. Each feature now has a dedicated `test-plan.md` that:
 
 1. **Documents all product-level test scenarios** (valid states, edge cases, concurrency, failure recovery)
 2. **Maps UAT tests to actual test files** (with line numbers and test counts)
@@ -28,7 +28,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### 1. Link Health (`feature/link-health/`)
 
-**Location:** `/Users/brenn/dev/gasoline/docs/features/feature/link-health/test-plan.md`
+**Location:** `/Users/brenn/dev/kaboom/docs/features/feature/link-health/test-plan.md`
 
 **UAT Tests:** 19 tests in `cat-19-link-health.sh`
 - Group A (5): Basic link checking (correlation_id, parameters, status=queued, hint)
@@ -59,7 +59,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### 2. Noise Filtering (`feature/noise-filtering/`)
 
-**Location:** `/Users/brenn/dev/gasoline/docs/features/feature/noise-filtering/test-plan.md`
+**Location:** `/Users/brenn/dev/kaboom/docs/features/feature/noise-filtering/test-plan.md`
 
 **UAT Tests:** 10 tests in `cat-20-noise-persistence.sh`
 - Test 1: Rule creation with user_N ID
@@ -95,7 +95,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### 3. AI Web Pilot (`feature/ai-web-pilot/`)
 
-**Location:** `/Users/brenn/dev/gasoline/docs/features/feature/ai-web-pilot/test-plan.md`
+**Location:** `/Users/brenn/dev/kaboom/docs/features/feature/ai-web-pilot/test-plan.md`
 
 **UAT Tests:** 12 tests across 3 categories
 - **Cat-13** (3 tests): Pilot state contract tests
@@ -128,7 +128,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### 4. Flow Recording (`feature/flow-recording/`)
 
-**Location:** `/Users/brenn/dev/gasoline/docs/features/feature/flow-recording/test-plan.md`
+**Location:** `/Users/brenn/dev/kaboom/docs/features/feature/flow-recording/test-plan.md`
 
 **UAT Tests:** 7 tests in `cat-18-recording.sh`
 - Test 18.1-18.2: record_start/record_stop JSON-RPC validation
@@ -167,11 +167,11 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### 5. Test Generation (`feature/test-generation/`)
 
-**Location:** `/Users/brenn/dev/gasoline/docs/features/feature/test-generation/test-plan.md`
+**Location:** `/Users/brenn/dev/kaboom/docs/features/feature/test-generation/test-plan.md`
 
 **UAT Tests:** 6 tests in `cat-29-reproduction.sh`
 - Test 17.1: Seed actions via HTTP POST (5 actions)
-- Test 17.2: Export gasoline format (natural language)
+- Test 17.2: Export kaboom format (natural language)
 - Test 17.3-17.6: Playwright export, Vitest export, round-trip validation, error handling
 
 #### Status:
@@ -305,31 +305,31 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### New Test Plan Documents
 
-1. **`/Users/brenn/dev/gasoline/docs/features/feature/link-health/test-plan.md`** (382 lines)
+1. **`/Users/brenn/dev/kaboom/docs/features/feature/link-health/test-plan.md`** (382 lines)
    - Product tests: 4 valid, 5 edge, 2 concurrent, 4 recovery
    - Tech tests: Unit (link extraction, categorization), Integration (workflows), UAT (19 tests)
    - Gaps: 10 HTTP logic tests needed
    - Status: ✅ Comprehensive
 
-2. **`/Users/brenn/dev/gasoline/docs/features/feature/noise-filtering/test-plan.md`** (534 lines)
+2. **`/Users/brenn/dev/kaboom/docs/features/feature/noise-filtering/test-plan.md`** (534 lines)
    - Product tests: 5 valid, 5 edge, 2 concurrent, 2 recovery
    - Tech tests: Unit (rule matching, persistence), Integration (auto-detect), UAT (10 tests)
    - Gaps: **CRITICAL DL-1/2/3, 10 filtering logic tests**
    - Status: ⚠️ Persistence validated, data leak tests **NOT IMPLEMENTED**
 
-3. **`/Users/brenn/dev/gasoline/docs/features/feature/ai-web-pilot/test-plan.md`** (395 lines)
+3. **`/Users/brenn/dev/kaboom/docs/features/feature/ai-web-pilot/test-plan.md`** (395 lines)
    - Product tests: 5 valid (pilot ON), 3 invalid (pilot OFF), 2 transitions, 3 startup, 2 concurrent
    - Tech tests: Unit (gating, state cache), Integration (transitions, sessions), UAT (12 tests)
    - Gaps: 8 edge case tests (rapid toggles, concurrent sessions, defaults)
    - Status: ✅ Core logic validated, edge cases recommended
 
-4. **`/Users/brenn/dev/gasoline/docs/features/feature/flow-recording/test-plan.md`** (411 lines)
+4. **`/Users/brenn/dev/kaboom/docs/features/feature/flow-recording/test-plan.md`** (411 lines)
    - Product tests: 3 recording, 3 playback, 2 diffing
    - Tech tests: Unit (actions, selectors, diffing), Integration (workflows), UAT (7 tests)
    - Gaps: 8 recording logic, 7 playback logic, 5 diffing tests
    - Status: ⏳ API contract validated, **core logic NOT TESTED**
 
-5. **`/Users/brenn/dev/gasoline/docs/features/feature/test-generation/test-plan.md`** (402 lines)
+5. **`/Users/brenn/dev/kaboom/docs/features/feature/test-generation/test-plan.md`** (402 lines)
    - Product tests: 3 generation, 3 healing, 2 classification
    - Tech tests: Unit (generation, healing, classification), Integration (workflows), UAT (6 tests)
    - Gaps: 6 generation, 7 healing, 6 classification tests
@@ -337,7 +337,7 @@ This document summarizes the comprehensive test plans created for 5 major Gasoli
 
 ### Summary Document
 
-6. **`/Users/brenn/dev/gasoline/docs/features/TEST_PLAN_SUMMARY.md`** (This file)
+6. **`/Users/brenn/dev/kaboom/docs/features/TEST_PLAN_SUMMARY.md`** (This file)
    - Executive summary
    - Feature-by-feature status
    - Test coverage matrix
@@ -449,7 +449,7 @@ All test-plans follow the standard template in `/docs/features/_template/templat
 
 - **Author:** Claude Code
 - **Date:** 2026-02-09
-- **Scope:** 5 major Gasoline features with UAT test coverage
+- **Scope:** 5 major Kaboom features with UAT test coverage
 - **Status:** ✅ Test plans created, gaps identified, recommendations prioritized
 - **Next Review:** After Phase 1 (data leak tests) implementation
 

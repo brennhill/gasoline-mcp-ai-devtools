@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-AI coding agents need to understand what is on a web page to interact with it intelligently. Currently, Gasoline offers two page-reading mechanisms:
+AI coding agents need to understand what is on a web page to interact with it intelligently. Currently, Kaboom offers two page-reading mechanisms:
 
 1. **`analyze {what: "dom"}`** -- Returns structural DOM data (tags, attributes, bounding boxes) for elements matching a CSS selector. This is powerful but requires the AI to already know what to look for (a selector), returns structural rather than semantic data, and produces verbose output that consumes many tokens.
 
@@ -46,7 +46,7 @@ Add `observe {what: "a11y_tree"}` -- a new mode that traverses the page's access
 
 - As an AI coding agent, I want to get a semantic overview of a page so that I can understand its structure without parsing HTML.
 - As an AI coding agent, I want interactive elements labeled with stable UIDs so that I can reference them in follow-up `interact` calls (e.g., "click the login button at uid=42").
-- As a developer using Gasoline, I want a token-efficient page representation so that my AI agent stays within context limits on complex pages.
+- As a developer using Kaboom, I want a token-efficient page representation so that my AI agent stays within context limits on complex pages.
 - As an AI coding agent, I want to filter the tree to only interactive elements so that I can quickly find what I can click, type into, or toggle.
 
 ## MCP Interface
@@ -158,7 +158,7 @@ role "name" [uid=N] attr=value
 ## Security Considerations
 
 - **Data captured:** Accessible names (text content, labels), ARIA attributes, element roles, and CSS selectors. No raw HTML, no attribute values beyond ARIA-related ones, no computed styles.
-- **Redaction:** Input values for password fields (`type="password"`) and fields with `autocomplete` hints containing "password", "cc-", or "secret" are replaced with `"[REDACTED]"`. This follows the existing pattern in Gasoline's sensitive input type detection (`SENSITIVE_INPUT_TYPES` constant).
+- **Redaction:** Input values for password fields (`type="password"`) and fields with `autocomplete` hints containing "password", "cc-", or "secret" are replaced with `"[REDACTED]"`. This follows the existing pattern in Kaboom's sensitive input type detection (`SENSITIVE_INPUT_TYPES` constant).
 - **Privacy implications:** The accessible name may contain user-visible text (e.g., email addresses displayed on the page). This is equivalent to what `analyze({what: "dom"})` already exposes. Since data stays on localhost, this is acceptable.
 - **Attack surface:** No change. This feature reads the DOM (read-only). It does not execute arbitrary code, inject scripts, or modify page state. The traversal runs in inject.js in the same security context as existing DOM queries.
 - **UID stability:** UIDs are derived from DOM structure, not from sensitive content. An attacker cannot learn private data from observing UIDs.
@@ -186,7 +186,7 @@ role "name" [uid=N] attr=value
 - A1: The extension is connected and tracking a tab (standard precondition for all on-demand queries).
 - A2: The page has a meaningful DOM loaded (not a browser internal page like `chrome://extensions`).
 - A3: ARIA roles and labels on the page are reasonably well-authored. Poorly-labeled pages will produce a less useful tree, but the feature will still function (falling back to tag-based implicit roles).
-- A4: The `TreeWalker` API is available in all Chromium-based browsers that Gasoline targets (Chrome 90+). This is a well-supported, stable API.
+- A4: The `TreeWalker` API is available in all Chromium-based browsers that Kaboom targets (Chrome 90+). This is a well-supported, stable API.
 - A5: Integer UIDs (1, 2, 3, ...) are sufficient. We do not need UUIDs or globally unique identifiers since UIDs are only meaningful within a single snapshot and are regenerated on each call.
 
 ## Implementation Notes
@@ -230,7 +230,7 @@ AI calls observe({what:"a11y_tree", scope:"#main"})
   -> Go server: toolObserveA11yTree() creates PendingQuery{Type:"a11y_tree"}
   -> Extension polls /pending-queries, receives query
   -> background.js dispatches to content.js: {type:"A11Y_TREE_QUERY", params:{scope,max_depth,...}}
-  -> content.js forwards to inject.js via postMessage: {type:"GASOLINE_A11Y_TREE_QUERY",...}
+  -> content.js forwards to inject.js via postMessage: {type:"KABOOM_A11Y_TREE_QUERY",...}
   -> inject.js: buildA11yTree() traverses DOM, assigns UIDs, formats text
   -> inject.js -> content.js -> background.js -> POST /a11y-result
   -> Go server returns result to AI

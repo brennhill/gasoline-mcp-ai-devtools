@@ -1,6 +1,6 @@
 ---
-title: "How to Run Your First Browser Debug Session with.gasoline"
-description: "A beginner-friendly walkthrough for your first complete browser debugging session with.gasoline Agentic Devtools."
+title: "How to Run Your First Browser Debug Session with KaBOOM"
+description: "A beginner-friendly walkthrough for your first complete browser debugging session with KaBOOM Agentic Devtools."
 date: 2026-03-05
 authors: [brenn]
 tags: [beginner, debugging, workflow]
@@ -9,7 +9,7 @@ last_verified_date: 2026-03-06
 normalized_tags: ['beginner', 'debugging', 'workflow', 'articles', 'run', 'first', 'browser', 'session']
 ---
 
-This is the simplest full debug loop you can run with *.gasoline Agentic Devtools**.
+This is the simplest full debug loop you can run with **KaBOOM Agentic Devtools**.
 
 You will go from "something is broken" to "I can prove where it breaks."
 

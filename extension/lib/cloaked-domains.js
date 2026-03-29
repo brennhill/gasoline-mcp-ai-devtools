@@ -1,9 +1,9 @@
-// cloaked-domains.ts — Domain blocklist where Gasoline disables itself.
+// cloaked-domains.ts — Domain blocklist where Kaboom disables itself.
 // Content scripts bail out early on cloaked domains to avoid interference.
 import { StorageKey } from './constants.js';
 import { getLocal } from './storage-utils.js';
 /**
- * Built-in domains where Gasoline should never run.
+ * Built-in domains where Kaboom should never run.
  * These are also excluded via manifest exclude_matches, but this list
  * serves as a runtime fallback for subdomains or edge cases.
  */
@@ -49,7 +49,7 @@ export async function isDomainCloaked(hostname) {
 /**
  * Get the full list of cloaked domains (built-in + user-configured).
  */
-async function getCloakedDomains() {
+export async function getCloakedDomains() {
     const userDomains = (await getLocal(StorageKey.CLOAKED_DOMAINS));
     return [...BUILTIN_CLOAKED, ...(userDomains || [])];
 }

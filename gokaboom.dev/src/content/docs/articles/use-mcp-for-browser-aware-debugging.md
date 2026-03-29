@@ -1,6 +1,6 @@
 ---
 title: "How to Use MCP for Browser-Aware Debugging"
-description: "A first-timer guide to using the Model Context Protocol for debugging real browser behavior with.gasoline Agentic Devtools."
+description: "A first-timer guide to using the Model Context Protocol for debugging real browser behavior with KaBOOM Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [mcp, debugging, browser, ai-development]
@@ -13,7 +13,7 @@ If your assistant can only read source code, it misses runtime truth.
 
 The **Model Context Protocol (MCP)** is a standard that lets tools connect AI assistants to external capabilities. MCP spec: https://modelcontextprotocol.io/specification/
 
-With *.gasoline Agentic Devtools**, MCP gives your assistant browser awareness.
+With *KaBOOM Agentic Devtools**, MCP gives your assistant browser awareness.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ With *.gasoline Agentic Devtools**, MCP gives your assistant browser awareness.
 
 You want to stop copy-pasting logs and screenshots into chat.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Observe what the browser is doing
 
@@ -63,10 +63,10 @@ You are no longer narrating bugs to your assistant. Your assistant can inspect, 
 
 ## Image and Diagram Callouts
 
-> [Diagram Idea] MCP flow: user request ->.gasoline tools -> browser evidence -> fix -> verification.
+> [Diagram Idea] MCP flow: user request -> KaBOOM tools -> browser evidence -> fix -> verification.
 
 > [Image Idea] “Before MCP vs after MCP” debugging workflow comparison.
 
 ## You’re Using the New Debugging Stack
 
-This is modern development: live context + AI + repeatable artifacts. *.gasoline Agentic Devtools** makes that workflow practical today.
+This is modern development: live context + AI + repeatable artifacts. *KaBOOM Agentic Devtools** makes that workflow practical today.

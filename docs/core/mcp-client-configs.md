@@ -1,12 +1,12 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 # MCP Client Configuration Locations
 
-Quick reference for updating Gasoline MCP configuration across all supported AI coding assistants.
+Quick reference for updating Kaboom MCP configuration across all supported AI coding assistants.
 
 ## Configuration Files
 
@@ -23,7 +23,7 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "gasoline-mcp@VERSION"]
+  "args": ["-y", "kaboom-agentic-browser@VERSION"]
 }
 ```
 
@@ -34,9 +34,9 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@VERSION"]
+      "args": ["-y", "kaboom-agentic-browser@VERSION"]
     }
   }
 }
@@ -49,9 +49,9 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@VERSION"]
+      "args": ["-y", "kaboom-agentic-browser@VERSION"]
     }
   }
 }
@@ -65,12 +65,12 @@ All clients should use the same configuration pattern for consistency:
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "local",
       "command": [
         "npx",
         "-y",
-        "gasoline-mcp@VERSION"
+        "kaboom-agentic-browser@VERSION"
       ]
     }
   }
@@ -85,15 +85,15 @@ Update all configs to a new version:
 VERSION="0.7.12"
 
 # Claude Desktop
-sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \
+sed -i '' "s/kaboom-agentic-browser@[0-9.]*\"/kaboom-agentic-browser@$VERSION\"/g" \
   ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 # Cursor
-sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \
+sed -i '' "s/kaboom-agentic-browser@[0-9.]*\"/kaboom-agentic-browser@$VERSION\"/g" \
   ~/.cursor/mcp.json
 
 # OpenCode
-sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \
+sed -i '' "s/kaboom-agentic-browser@[0-9.]*\"/kaboom-agentic-browser@$VERSION\"/g" \
   ~/.config/opencode/opencode.json
 ```
 
@@ -122,7 +122,7 @@ After updating configs:
 
 **Connection timeout**
 - Restart the MCP client after config changes
-- Verify Gasoline path/version is current (`gasoline-mcp --version`)
+- Verify Kaboom path/version is current (`kaboom-agentic-browser --version`)
 
 **Tools not appearing**
 - Verify browser extension shows "Connected"

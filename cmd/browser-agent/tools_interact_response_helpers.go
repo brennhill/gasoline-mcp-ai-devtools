@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
 // isResponseQueued checks if an MCP response is a queued async response.

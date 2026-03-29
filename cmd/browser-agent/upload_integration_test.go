@@ -22,7 +22,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).
@@ -126,7 +126,7 @@ func TestUploadInteg_ExtensionOnlyMiddleware(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run("no_header"+ep, func(t *testing.T) {
-			// POST without X-Gasoline-Client header -> 403
+			// POST without X-Kaboom-Client header -> 403
 			resp := postJSON(t, ts.URL+ep, `{"file_path":"/tmp/test.txt"}`)
 			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusForbidden {

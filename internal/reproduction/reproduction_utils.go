@@ -1,12 +1,12 @@
 // Purpose: Provides JavaScript string escaping and URL rewriting utilities for reproduction scripts.
-// Why: Centralizes shared utilities used by both Gasoline and Playwright reproduction generators.
+// Why: Centralizes shared utilities used by both Kaboom and Playwright reproduction generators.
 package reproduction
 
 import (
 	"net/url"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // EscapeJS escapes a string for embedding in JavaScript string literals.

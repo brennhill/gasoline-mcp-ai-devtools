@@ -1,12 +1,12 @@
 # Product Update: Issue #140
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/140
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/140
 - Title: Wire diff_sessions feature into ToolHandler
 - Last Updated: 2026-02-17T22:13:26Z
 
 ## Change Summary
-This update resolves or advances Issue #140 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #140 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Wire diff_sessions feature into ToolHandler

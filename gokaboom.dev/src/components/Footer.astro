@@ -15,22 +15,22 @@ const relatedGuides = getRelatedGuides(Astro.locals.starlightRoute?.entry?.slug 
 
 <Default><slot /></Default>
 
-<footer class="gasoline-footer">
-  <div class="gasoline-footer-content">
-    <img src="/images/sparky-relaxed-hammock-1-web.webp" alt="Sparky relaxing" class="gasoline-footer-sparky" />
-    <div class="gasoline-footer-copy">
+<footer class="kaboom-footer">
+  <div class="kaboom-footer-content">
+    <img src="/images/sparky-relaxed-hammock-1-web.webp" alt="Sparky relaxing" class="kaboom-footer-sparky" />
+    <div class="kaboom-footer-copy">
       <p>KaBOOM &copy; 2025-2026 and crafted with care by <a href="https://www.linkedin.com/in/brennhill/" target="_blank" rel="noopener">Brenn Hill</a>. <em>Fueling rapid development with AI.</em></p>
-      <p class="gasoline-footer-version">Docs version: <strong>{siteVersionLabel}</strong> ({siteReleaseChannel})</p>
+      <p class="kaboom-footer-version">Docs version: <strong>{siteVersionLabel}</strong> ({siteReleaseChannel})</p>
       {
         verifiedVersion && verifiedDate && (
-          <p class="gasoline-footer-version">
+          <p class="kaboom-footer-version">
             Verified on: <strong>{verifiedVersion}</strong> ({verifiedDate})
           </p>
         )
       }
       {
         relatedGuides.length > 0 && (
-          <p class="gasoline-footer-related">
+          <p class="kaboom-footer-related">
             Related guides:{' '}
             {relatedGuides.map((guide, index) => (
               <>
@@ -41,7 +41,7 @@ const relatedGuides = getRelatedGuides(Astro.locals.starlightRoute?.entry?.slug 
           </p>
         )
       }
-      <p class="gasoline-footer-blogline">Read the latest updates on the <a href="/blog/">Blog</a>.</p>
+      <p class="kaboom-footer-blogline">Read the latest updates on the <a href="/blog/">Blog</a>.</p>
     </div>
   </div>
 </footer>

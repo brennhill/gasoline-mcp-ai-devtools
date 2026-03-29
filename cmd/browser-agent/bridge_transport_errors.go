@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
 )
 
 type bridgeToolErrorOptions struct {

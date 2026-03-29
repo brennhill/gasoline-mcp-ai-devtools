@@ -15,11 +15,11 @@ const exec = promisify(execCallback)
 
 // Get version from VERSION file
 const VERSION = fs.readFileSync('./VERSION', 'utf-8').trim()
-const KEY_FILE = path.resolve(process.env.HOME, '.gasoline/extension-signing-key.pem')
+const KEY_FILE = path.resolve(process.env.HOME, '.kaboom/extension-signing-key.pem')
 const EXTENSION_DIR = './extension'
 const BUILD_DIR = './dist'
-const OUTPUT_CRX = path.join(BUILD_DIR, `gasoline-extension-v${VERSION}.crx`)
-const TEMP_ZIP = path.join(BUILD_DIR, `.gasoline-temp-${Date.now()}.zip`)
+const OUTPUT_CRX = path.join(BUILD_DIR, `kaboom-extension-v${VERSION}.crx`)
+const TEMP_ZIP = path.join(BUILD_DIR, `.kaboom-temp-${Date.now()}.zip`)
 
 async function buildCRX() {
   try {
@@ -186,7 +186,7 @@ async function buildCRX() {
     console.log(`1. Open Chrome and go to chrome://extensions/`)
     console.log(`2. Enable "Developer mode" (top right)`)
     console.log(`3. Drag and drop the ${OUTPUT_CRX} file into the page`)
-    console.log(`\n🔗 Distribution URL: https://cookwithgasoline.com/downloads/gasoline-extension-v${VERSION}.crx`)
+    console.log(`\n🔗 Distribution URL: https://gokaboom.dev/downloads/kaboom-extension-v${VERSION}.crx`)
     console.log(`📦 Extension ID: ${extensionId}`)
   } catch (err) {
     console.error('❌ Error building CRX:', err.message)

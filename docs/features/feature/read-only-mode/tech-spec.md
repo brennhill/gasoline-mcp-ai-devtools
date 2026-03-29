@@ -20,7 +20,7 @@ Read-only mode is a server-wide boolean flag set at startup via CLI flag or envi
 
 - **Server config**: Add ReadOnlyMode boolean field to server config struct
 - **CLI flag**: Add --read-only flag to main.go
-- **Environment variable**: Check GASOLINE_READ_ONLY env var
+- **Environment variable**: Check KABOOM_READ_ONLY env var
 - **Tool handler guards**: Each mutation operation checks ReadOnlyMode before execution
 - **Error response**: Return standard error format with "read_only_mode_enabled" code
 - **Health integration**: Include read_only_mode in configure health response
@@ -28,7 +28,7 @@ Read-only mode is a server-wide boolean flag set at startup via CLI flag or envi
 ## Data Flows
 
 ```
-Server startup: gasoline --read-only
+Server startup: kaboom --read-only
   → Parse CLI flags, read environment
   → Set config.ReadOnlyMode = true
   → Log: "Read-only mode enabled, mutation tools disabled"

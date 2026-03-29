@@ -1,5 +1,5 @@
 /**
- * Purpose: Replaces the page favicon with the Gasoline flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
+ * Purpose: Replaces the page favicon with the Kaboom flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 /**
@@ -61,7 +61,7 @@ function updateFavicon(state) {
     }
 }
 /**
- * Save original favicon and replace with Gasoline flame.
+ * Save original favicon and replace with Kaboom flame.
  */
 function replaceFaviconWithFlame(withGlow) {
     // Save original favicon (only once)
@@ -72,11 +72,11 @@ function replaceFaviconWithFlame(withGlow) {
     // Remove existing favicons
     const existingIcons = document.querySelectorAll('link[rel*="icon"]');
     existingIcons.forEach((icon) => icon.remove());
-    // Add Gasoline flame favicon
+    // Add Kaboom flame favicon
     const link = document.createElement('link');
     link.rel = 'icon';
     link.type = 'image/svg+xml';
-    link.id = 'gasoline-favicon';
+    link.id = 'kaboom-favicon';
     // Use glow icon if tracking, regular icon if not
     const iconPath = withGlow ? 'icons/icon-glow.svg' : 'icons/icon.svg';
     link.href = chrome.runtime.getURL(iconPath);
@@ -86,10 +86,10 @@ function replaceFaviconWithFlame(withGlow) {
  * Restore the original page favicon.
  */
 function restoreOriginalFavicon() {
-    // Remove Gasoline favicon
-    const gasolineIcon = document.getElementById('gasoline-favicon');
-    if (gasolineIcon) {
-        gasolineIcon.remove();
+    // Remove Kaboom favicon
+    const kaboomIcon = document.getElementById('kaboom-favicon');
+    if (kaboomIcon) {
+        kaboomIcon.remove();
     }
     // Restore original
     if (originalFaviconHref) {
@@ -130,10 +130,10 @@ function startFlicker() {
     flickerInterval = window.setInterval(() => {
         currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length;
         // Update favicon
-        const gasolineIcon = document.getElementById('gasoline-favicon');
-        if (gasolineIcon) {
+        const kaboomIcon = document.getElementById('kaboom-favicon');
+        if (kaboomIcon) {
             const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
-            gasolineIcon.href = chrome.runtime.getURL(iconPath);
+            kaboomIcon.href = chrome.runtime.getURL(iconPath);
         }
     }, 150); // 150ms per frame = 1.2s full cycle (browser-limited, but visible)
 }

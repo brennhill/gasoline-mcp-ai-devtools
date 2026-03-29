@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-all-tools-comprehensive.sh — Parallel UAT runner for Gasoline MCP.
+# test-all-tools-comprehensive.sh — Parallel UAT runner for Kaboom MCP.
 # Launches 8 groups of category tests, collects results, prints summary.
 # Compatible with bash 3.2+ (macOS default).
 # NO set -e: we need to collect all results even if some groups fail.
@@ -34,10 +34,10 @@ check_deps
 
 # Disable per-category global cleanup while running categories in parallel.
 # Each category still cleans up its own daemon by port.
-export GASOLINE_TEST_DISABLE_GLOBAL_CLEANER=1
+export KABOOM_TEST_DISABLE_GLOBAL_CLEANER=1
 # Comprehensive run should collect all test outcomes, not abort category scripts
 # on first non-zero helper command.
-export GASOLINE_TEST_FAIL_FAST=0
+export KABOOM_TEST_FAIL_FAST=0
 
 # ── Timeout Compatibility ─────────────────────────────────
 if command -v timeout >/dev/null 2>&1; then
@@ -54,8 +54,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 resolve_project_root() {
-    if [ -n "${GASOLINE_PROJECT_ROOT:-}" ] && [ -d "${GASOLINE_PROJECT_ROOT:-}" ]; then
-        (cd "$GASOLINE_PROJECT_ROOT" && pwd -P)
+    if [ -n "${KABOOM_PROJECT_ROOT:-}" ] && [ -d "${KABOOM_PROJECT_ROOT:-}" ]; then
+        (cd "$KABOOM_PROJECT_ROOT" && pwd -P)
         return 0
     fi
 
@@ -82,17 +82,19 @@ resolve_project_root() {
 }
 
 PROJECT_ROOT="$(resolve_project_root)" || {
-    echo "FATAL: Could not resolve project root. Set GASOLINE_PROJECT_ROOT=/path/to/repo" >&2
+    echo "FATAL: Could not resolve project root. Set KABOOM_PROJECT_ROOT=/path/to/repo" >&2
     exit 1
 }
 TESTS_DIR="$PROJECT_ROOT/scripts/tests"
 
-if [ -x "$PROJECT_ROOT/gasoline-mcp" ]; then
-    WRAPPER="$PROJECT_ROOT/gasoline-mcp"
-elif command -v gasoline-mcp >/dev/null 2>&1; then
-    WRAPPER="$(command -v gasoline-mcp)"
+if [ -x "$PROJECT_ROOT/dist/kaboom-agentic-browser" ]; then
+    WRAPPER="$PROJECT_ROOT/dist/kaboom-agentic-browser"
+elif [ -x "$PROJECT_ROOT/npm/kaboom-agentic-browser/bin/kaboom-agentic-browser" ]; then
+    WRAPPER="$PROJECT_ROOT/npm/kaboom-agentic-browser/bin/kaboom-agentic-browser"
+elif command -v kaboom-agentic-browser >/dev/null 2>&1; then
+    WRAPPER="$(command -v kaboom-agentic-browser)"
 else
-    echo "FATAL: gasoline-mcp not found in $PROJECT_ROOT or PATH" >&2
+    echo "FATAL: kaboom-agentic-browser not found in $PROJECT_ROOT or PATH" >&2
     exit 1
 fi
 
@@ -102,7 +104,7 @@ OVERALL_START="$(date +%s)"
 
 echo ""
 echo "############################################################"
-echo "# STRUM MCP — COMPREHENSIVE UAT"
+echo "# Kaboom MCP — COMPREHENSIVE UAT"
 echo "############################################################"
 echo ""
 echo "Binary:     $WRAPPER"
@@ -147,14 +149,14 @@ if [ "$EXT_CONNECTED" != "true" ]; then
     echo "# FATAL: No browser extension connected"
     echo "############################################################"
     echo ""
-    echo "UAT requires a Chrome browser with the STRUM extension"
+    echo "UAT requires a Chrome browser with the Kaboom extension"
     echo "connected and tracking a tab."
     echo ""
     echo "  Extension last seen: $EXT_LAST_SEEN"
     echo ""
     echo "Steps:"
-    echo "  1. Open Chrome with the STRUM extension installed"
-    echo "  2. Click the STRUM icon → 'Track This Tab'"
+    echo "  1. Open Chrome with the Kaboom extension installed"
+    echo "  2. Click the Kaboom icon → 'Track This Tab'"
     echo "  3. Re-run this UAT script"
     echo ""
     exit 1
@@ -540,7 +542,7 @@ for port in $ALL_UAT_PORTS 7906; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
-if [ "${GASOLINE_KEEP_RESULTS:-0}" = "1" ]; then
+if [ "${KABOOM_KEEP_RESULTS:-0}" = "1" ]; then
     echo "Results kept at: $RESULTS_DIR"
 else
     rm -rf "$RESULTS_DIR"

@@ -1,6 +1,6 @@
 ---
 title: "Run Accessibility Audits in CI and Export SARIF"
-description: "A beginner-friendly guide to automated accessibility checks and SARIF export in Continuous Integration using.gasoline Agentic Devtools."
+description: "A beginner-friendly guide to automated accessibility checks and SARIF export in Continuous Integration using KaBOOM Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [accessibility, ci, sarif, testing]
@@ -15,7 +15,7 @@ The **Web Content Accessibility Guidelines (WCAG)** are the international access
 
 **SARIF** means **Static Analysis Results Interchange Format**, a standard file format for tool findings. https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 
-This guide shows how to automate both using *.gasoline Agentic Devtools**.
+This guide shows how to automate both using **KaBOOM Agentic Devtools**.
 
 <!-- more -->
 
@@ -29,7 +29,7 @@ This guide shows how to automate both using *.gasoline Agentic Devtools**.
 
 You want to catch accessibility issues before users do.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Run an accessibility analysis
 
@@ -45,7 +45,7 @@ generate({what: "sarif", save_to: "./reports/accessibility.sarif"})
 
 ### Step 3. Automate in your pipeline
 
-In your CI job, run your scripted.gasoline checks and archive `accessibility.sarif` as a build artifact.
+In your CI job, run your scripted KaBOOM checks and archive `accessibility.sarif` as a build artifact.
 
 ### Step 4. Re-check after fixes
 
@@ -65,4 +65,4 @@ Accessibility is quality. Continuous checks help teams ship inclusive experience
 
 ## You’re Building Better Software for Everyone
 
-Teams that automate accessibility early move faster and cause less harm. *.gasoline Agentic Devtools** makes this practical for everyday workflows.
+Teams that automate accessibility early move faster and cause less harm. **KaBOOM Agentic Devtools** makes this practical for everyday workflows.

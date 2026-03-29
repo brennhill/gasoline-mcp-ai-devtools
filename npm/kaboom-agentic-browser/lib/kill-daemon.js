@@ -14,8 +14,8 @@ const KNOWN_PORTS = [
   ...Array.from({ length: 21 }, (_, i) => 7890 + i),
 ];
 
-const LOG_PATH = process.env.GASOLINE_KILL_DAEMON_LOG;
-const DRY_RUN = process.env.GASOLINE_KILL_DAEMON_DRY_RUN === '1';
+const LOG_PATH = process.env.KABOOM_KILL_DAEMON_LOG;
+const DRY_RUN = process.env.KABOOM_KILL_DAEMON_DRY_RUN === '1';
 
 function logLine(message) {
   if (!LOG_PATH) return;
@@ -48,26 +48,26 @@ function safeExecFile(file, args) {
 
 function runForceCleanupCommands() {
   // Try installed CLIs first. --force uses the binary's own stop logic.
-  for (const binary of ['gasoline-mcp', 'gasoline', 'browser-agent']) {
+  for (const binary of ['kaboom-agentic-browser', 'gasoline-mcp', 'kaboom', 'gasoline', 'browser-agent']) {
     safeExecFile(binary, ['--force']);
   }
 }
 
 function killByProcessName() {
   if (process.platform === 'win32') {
-    // Use wildcards so renamed test binaries (e.g. gasoline-old.exe) are cleaned too.
-    for (const image of ['gasoline*.exe', 'gasoline-mcp*.exe', 'browser-agent*.exe']) {
+    // Use wildcards so renamed legacy binaries are cleaned too.
+    for (const image of ['kaboom-agentic-browser*.exe', 'gasoline*.exe', 'kaboom*.exe', 'browser-agent*.exe']) {
       safeExec(`taskkill /F /IM ${image} 2>nul`);
     }
     return;
   }
 
-  // Avoid killing this cleanup process (repo path includes "gasoline").
+  // Avoid killing this cleanup process even when the repo path contains legacy names.
   const selfPid = process.pid;
   const parentPid = process.ppid;
   const isNodeCmd = (cmd) => /\bnode(\s|$)/.test(cmd) || /\bnpm(\s|$)/.test(cmd);
 
-  for (const pattern of ['gasoline-mcp', 'browser-agent', 'gasoline']) {
+  for (const pattern of ['kaboom-agentic-browser', 'gasoline-mcp', 'browser-agent', 'gasoline', 'kaboom']) {
     logLine(`[pattern] ${pattern}`);
     if (DRY_RUN) continue;
     let output = '';
@@ -134,9 +134,11 @@ function killPid(pid) {
 
 function cleanupPIDFiles() {
   const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
-  const modernRoot = path.join(home, '.gasoline', 'run');
-  const roots = [modernRoot];
+  const modernRoot = path.join(home, '.kaboom', 'run');
+  const legacyRoot = path.join(home, '.gasoline', 'run');
+  const roots = [modernRoot, legacyRoot];
   if (process.env.XDG_STATE_HOME) {
+    roots.push(path.join(process.env.XDG_STATE_HOME, 'kaboom', 'run'));
     roots.push(path.join(process.env.XDG_STATE_HOME, 'gasoline', 'run'));
   }
 
@@ -145,6 +147,9 @@ function cleanupPIDFiles() {
   for (const root of roots) {
     try {
       for (const entry of fs.readdirSync(root)) {
+        if (entry.startsWith('kaboom-') && entry.endsWith('.pid')) {
+          pidFiles.add(path.join(root, entry));
+        }
         if (entry.startsWith('gasoline-') && entry.endsWith('.pid')) {
           pidFiles.add(path.join(root, entry));
         }
@@ -159,6 +164,9 @@ function cleanupPIDFiles() {
 
   try {
     for (const entry of fs.readdirSync(home)) {
+      if (entry.startsWith('.kaboom-') && entry.endsWith('.pid')) {
+        pidFiles.add(path.join(home, entry));
+      }
       if (entry.startsWith('.gasoline-') && entry.endsWith('.pid')) {
         pidFiles.add(path.join(home, entry));
       }
@@ -172,9 +180,11 @@ function cleanupPIDFiles() {
 
   for (const port of KNOWN_PORTS) {
     for (const root of roots) {
+      pidFiles.add(path.join(root, `kaboom-${port}.pid`));
       pidFiles.add(path.join(root, `gasoline-${port}.pid`));
       pidFiles.add(path.join(root, `browser-agent-${port}.pid`));
     }
+    pidFiles.add(path.join(home, `.kaboom-${port}.pid`));
     pidFiles.add(path.join(home, `.gasoline-${port}.pid`));
     pidFiles.add(path.join(home, `.browser-agent-${port}.pid`));
   }

@@ -59,7 +59,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Basic Audit Works
 1. Setup:
-   - Start Gasoline server: `./dist/gasoline`
+   - Start Kaboom server: `./dist/kaboom`
    - Load Chrome with extension
    - Navigate to <https://example.com>
    - Start tracking the tab via interact tool
@@ -118,7 +118,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 4: No Tracked Tab Error
 1. Setup:
-   - Start Gasoline server
+   - Start Kaboom server
    - DO NOT track any tab
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_accessibility"})`

@@ -3,8 +3,8 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Uninstall logic for Gasoline MCP CLI
- * Removes gasoline from all detected AI assistant clients
+ * Uninstall logic for Kaboom MCP CLI
+ * Removes kaboom from all detected AI assistant clients
  */
 
 const fs = require('fs');
@@ -141,7 +141,7 @@ function uninstallViaFile(def, options) {
 
   if (dryRun) {
     if (verbose) {
-      console.log(`[DEBUG] Would remove gasoline from ${cfgPath}`);
+      console.log(`[DEBUG] Would remove kaboom from ${cfgPath}`);
     }
     return {
       status: 'removed',
@@ -165,7 +165,7 @@ function uninstallViaFile(def, options) {
   }
 
   if (verbose) {
-    console.log(`[DEBUG] Removed gasoline from ${cfgPath}`);
+    console.log(`[DEBUG] Removed kaboom from ${cfgPath}`);
   }
 
   return {

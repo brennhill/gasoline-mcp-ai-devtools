@@ -92,7 +92,7 @@ func TestMaybeAddUpdateAvailableWarning_NewerAvailable(t *testing.T) {
 	if !strings.Contains(text, "UPDATE AVAILABLE") || !strings.Contains(text, "99.0.0") {
 		t.Fatalf("expected update notice, got %q", text)
 	}
-	if !strings.Contains(text, "npm install -g gasoline-mcp@latest") {
+	if !strings.Contains(text, "npm install -g kaboom-agentic-browser@latest") {
 		t.Fatalf("expected install command, got %q", text)
 	}
 }

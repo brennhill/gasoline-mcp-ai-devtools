@@ -4,7 +4,7 @@
 package main
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // JSONRPCVersion is the JSON-RPC protocol version string re-exported from internal/mcp.

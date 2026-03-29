@@ -8,7 +8,7 @@
  * to interact with Kaboom capture capabilities.
  */
 
-declare const __GASOLINE_VERSION__: string
+declare const __KABOOM_VERSION__: string
 
 import type {
   LogEntry,
@@ -314,13 +314,13 @@ export function installKaboomAPI(): void {
     setInputValue(selector: string, value: string | boolean): boolean {
       const element = document.querySelector(selector)
       if (!element) {
-        console.error('[Gasoline] Element not found:', selector)
+        console.error('[Kaboom] Element not found:', selector)
         return false
       }
 
       try {
         if (!setNativeValue(element, value)) {
-          console.error('[Gasoline] Element is not a form input:', selector)
+          console.error('[Kaboom] Element is not a form input:', selector)
           return false
         }
 
@@ -330,7 +330,7 @@ export function installKaboomAPI(): void {
         element.dispatchEvent(new Event('blur', { bubbles: true }))
         return true
       } catch (err) {
-        console.error('[Gasoline] Failed to set input value:', err)
+        console.error('[Kaboom] Failed to set input value:', err)
         return false
       }
     },
@@ -338,7 +338,7 @@ export function installKaboomAPI(): void {
     /**
      * Version of the Kaboom API
      */
-    version: __GASOLINE_VERSION__
+    version: __KABOOM_VERSION__
   }
 }
 

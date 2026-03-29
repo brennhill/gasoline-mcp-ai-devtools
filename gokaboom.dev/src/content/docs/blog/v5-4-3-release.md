@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.4.3 Released"
+title: KaBOOM v5.4.3 Released"
 description: "Bug fixes and stability improvements"
 date: 2026-01-18
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.4.3
 
-STRUM v5.4.3 includes additional bug fixes and stability improvements following v5.4.1.
+Kaboom v5.4.3 includes additional bug fixes and stability improvements following v5.4.1.
 
 ### Fixes
 
@@ -28,9 +28,9 @@ STRUM v5.4.3 includes additional bug fixes and stability improvements following 
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.4.3
+npm install -g kaboom-agentic-browser@5.4.3
 ```
 
 ## Full Changelog
 
-[v5.4.3 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.3)
+[v5.4.3 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.4.3)

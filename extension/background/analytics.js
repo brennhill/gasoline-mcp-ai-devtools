@@ -7,10 +7,10 @@ import { getLocal, setLocal } from '../lib/storage-utils.js';
 // =============================================================================
 const ANALYTICS_ENDPOINT = 'https://blazetorch-analytics.brennhill.workers.dev/api/events';
 const ANALYTICS_STORAGE = {
-    FINGERPRINT: 'gasoline_analytics_fingerprint',
-    FIRST_SEEN_DATE: 'gasoline_analytics_first_seen',
-    LAST_PING_DATE: 'gasoline_analytics_last_ping',
-    DAILY_FLAGS: 'gasoline_analytics_daily_flags'
+    FINGERPRINT: 'kaboom_analytics_fingerprint',
+    FIRST_SEEN_DATE: 'kaboom_analytics_first_seen',
+    LAST_PING_DATE: 'kaboom_analytics_last_ping',
+    DAILY_FLAGS: 'kaboom_analytics_daily_flags'
 };
 export const ALARM_NAME_ANALYTICS = 'analyticsPing';
 /** How often to attempt a ping (hours). Server deduplicates by fingerprint+date. */

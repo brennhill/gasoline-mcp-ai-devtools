@@ -16,7 +16,7 @@ import fs from 'fs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.join(__dirname, '..', '..')
 const extensionPath = path.join(projectRoot, 'extension')
-const binaryPath = path.join(projectRoot, 'dist', 'gasoline')
+const binaryPath = path.join(projectRoot, 'dist', 'kaboom-agentic-browser')
 
 /**
  * Find a free port on localhost

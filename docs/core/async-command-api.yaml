@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Gasoline Async Command API
+  title: Kaboom Async Command API
   version: 0.7.12
   description: |
     HTTP API for async command execution between MCP server and browser extension.
@@ -67,7 +67,7 @@ info:
 
 servers:
   - url: http://localhost:7890
-    description: Local Gasoline server
+    description: Local Kaboom server
 
 paths:
   /pending-queries:
@@ -80,13 +80,13 @@ paths:
         Once a command result is posted via `/execute-result`, the command is
         removed from the pending queue.
       parameters:
-        - name: X-Gasoline-Session
+        - name: X-Kaboom-Session
           in: header
           required: true
           schema:
             type: string
           description: Extension session ID (UUID v4)
-        - name: X-Gasoline-Pilot
+        - name: X-Kaboom-Pilot
           in: header
           required: false
           schema:

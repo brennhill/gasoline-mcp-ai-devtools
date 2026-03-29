@@ -10,10 +10,14 @@ import os
 from pathlib import Path
 
 MANAGED_MARKER = "<!-- kaboom-managed-skill"
-LEGACY_MANAGED_MARKERS = ["<!-- gasoline-managed-skill", "<!-- strum-managed-skill"]
+LEGACY_MANAGED_MARKERS = [
+    "<!-- kaboom-managed-skill",
+    "<!-- gasoline-managed-skill",
+    "<!-- strum-managed-skill",
+]
 MANAGED_MARKERS = [MANAGED_MARKER, *LEGACY_MANAGED_MARKERS]
 DEFAULT_AGENTS = ["claude", "codex", "gemini"]
-LEGACY_PREFIXES = ["gasoline-", "strum-"]
+LEGACY_PREFIXES = ["kaboom-", "gasoline-", "strum-"]
 
 
 def _parse_bool_env(name):
@@ -25,8 +29,8 @@ def _parse_bool_env(name):
 
 
 def parse_agents():
-    """Parse target agents from GASOLINE_SKILL_TARGETS or GASOLINE_SKILL_TARGET."""
-    raw = os.environ.get("GASOLINE_SKILL_TARGETS") or os.environ.get("GASOLINE_SKILL_TARGET")
+    """Parse target agents from KABOOM_SKILL_TARGETS or KABOOM_SKILL_TARGET."""
+    raw = os.environ.get("KABOOM_SKILL_TARGETS") or os.environ.get("KABOOM_SKILL_TARGET")
     if not raw:
         return list(DEFAULT_AGENTS)
 
@@ -36,15 +40,15 @@ def parse_agents():
 
 
 def parse_scope(default_scope="global"):
-    """Parse install scope from GASOLINE_SKILL_SCOPE."""
-    raw = str(os.environ.get("GASOLINE_SKILL_SCOPE", default_scope)).strip().lower()
+    """Parse install scope from KABOOM_SKILL_SCOPE."""
+    raw = str(os.environ.get("KABOOM_SKILL_SCOPE", default_scope)).strip().lower()
     if raw in {"global", "project", "all"}:
         return raw
     return default_scope
 
 
 def _project_root():
-    override = os.environ.get("GASOLINE_PROJECT_ROOT")
+    override = os.environ.get("KABOOM_PROJECT_ROOT")
     if override:
         return Path(override).expanduser().resolve()
     return Path.cwd().resolve()
@@ -68,16 +72,16 @@ def get_agent_roots(agent, scope):
     project_root = _project_root()
 
     global_roots = {
-        "claude": Path(os.environ.get("GASOLINE_CLAUDE_SKILLS_DIR", home / ".claude" / "skills")),
+        "claude": Path(os.environ.get("KABOOM_CLAUDE_SKILLS_DIR", home / ".claude" / "skills")),
         "codex": Path(
             os.environ.get(
-                "GASOLINE_CODEX_SKILLS_DIR",
+                "KABOOM_CODEX_SKILLS_DIR",
                 Path(os.environ.get("CODEX_HOME", home / ".codex")) / "skills",
             )
         ),
         "gemini": Path(
             os.environ.get(
-                "GASOLINE_GEMINI_SKILLS_DIR",
+                "KABOOM_GEMINI_SKILLS_DIR",
                 Path(os.environ.get("GEMINI_HOME", home / ".gemini")) / "skills",
             )
         ),
@@ -200,7 +204,7 @@ def install_bundled_skills(verbose=False):
 
     Returns a dict with install summary and warnings.
     """
-    if _parse_bool_env("GASOLINE_SKIP_SKILL_INSTALL") or _parse_bool_env("GASOLINE_SKIP_SKILLS_INSTALL"):
+    if _parse_bool_env("KABOOM_SKIP_SKILL_INSTALL") or _parse_bool_env("KABOOM_SKIP_SKILLS_INSTALL"):
         return {
             "skipped": True,
             "reason": "disabled_by_env",

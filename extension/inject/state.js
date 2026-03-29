@@ -6,14 +6,14 @@ import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = '';
 if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
-    const nonceEl = document.querySelector('script[data-gasoline-nonce]');
+    const nonceEl = document.querySelector('script[data-kaboom-nonce]');
     if (nonceEl) {
-        pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || '';
+        pageNonce = nonceEl.getAttribute('data-kaboom-nonce') || '';
     }
 }
 /** Patterns for sensitive storage keys whose values should be redacted */
 const SENSITIVE_KEY_PATTERNS = /token|secret|password|api.?key|auth|session.?id|csrf|jwt/i;
-let gasolineHighlighter = null;
+let kaboomHighlighter = null;
 /**
  * Capture browser state (localStorage, sessionStorage, cookies).
  * Returns a snapshot that can be restored later.
@@ -83,12 +83,12 @@ function restoreStorageEntries(storage, entries, label) {
     for (const [key, value] of Object.entries(entries)) {
         if (!isValidStorageKey(key)) {
             skipped++;
-            console.warn(`[gasoline] Skipped ${label} key with invalid pattern:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            console.warn(`[Kaboom] Skipped ${label} key with invalid pattern:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
             continue;
         }
         if (typeof value === 'string' && value.length > MAX_STORAGE_VALUE_SIZE) {
             skipped++;
-            console.warn(`[gasoline] Skipped ${label} value exceeding 10MB:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            console.warn(`[Kaboom] Skipped ${label} value exceeding 10MB:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
             continue;
         }
         storage.setItem(key, value);
@@ -131,11 +131,11 @@ function navigateSameOrigin(url) {
             window.location.href = url;
         }
         else {
-            console.warn('[gasoline] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin);
+            console.warn('[Kaboom] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin);
         }
     }
     catch (e) {
-        console.warn('[gasoline] Invalid URL for navigation:', url, e);
+        console.warn('[Kaboom] Invalid URL for navigation:', url, e);
     }
 }
 // #lizard forgives
@@ -157,7 +157,7 @@ export function restoreState(state, includeUrl = true) {
     if (includeUrl && state.url)
         navigateSameOrigin(state.url);
     if (skipped > 0)
-        console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`);
+        console.warn(`[Kaboom] restoreState completed with ${skipped} skipped item(s)`);
     return { success: true, restored };
 }
 /**
@@ -166,19 +166,19 @@ export function restoreState(state, includeUrl = true) {
 // #lizard forgives
 export function highlightElement(selector, durationMs = 5000) {
     // Remove existing highlight
-    if (gasolineHighlighter) {
-        gasolineHighlighter.remove();
-        gasolineHighlighter = null;
+    if (kaboomHighlighter) {
+        kaboomHighlighter.remove();
+        kaboomHighlighter = null;
     }
     const element = document.querySelector(selector);
     if (!element) {
         return { success: false, error: 'element_not_found', selector };
     }
     const rect = element.getBoundingClientRect();
-    gasolineHighlighter = document.createElement('div');
-    gasolineHighlighter.id = 'gasoline-highlighter';
-    gasolineHighlighter.dataset.selector = selector;
-    Object.assign(gasolineHighlighter.style, {
+    kaboomHighlighter = document.createElement('div');
+    kaboomHighlighter.id = 'kaboom-highlighter';
+    kaboomHighlighter.dataset.selector = selector;
+    Object.assign(kaboomHighlighter.style, {
         position: 'fixed',
         top: `${rect.top}px`,
         left: `${rect.left}px`,
@@ -194,16 +194,16 @@ export function highlightElement(selector, durationMs = 5000) {
     });
     const targetElement = document.body || document.documentElement;
     if (targetElement) {
-        targetElement.appendChild(gasolineHighlighter);
+        targetElement.appendChild(kaboomHighlighter);
     }
     else {
-        console.warn('[Gasoline] No document body available for highlighter injection');
+        console.warn('[Kaboom] No document body available for highlighter injection');
         return;
     }
     setTimeout(() => {
-        if (gasolineHighlighter) {
-            gasolineHighlighter.remove();
-            gasolineHighlighter = null;
+        if (kaboomHighlighter) {
+            kaboomHighlighter.remove();
+            kaboomHighlighter = null;
         }
     }, durationMs);
     return {
@@ -217,9 +217,9 @@ export function highlightElement(selector, durationMs = 5000) {
  */
 // #lizard forgives
 export function clearHighlight() {
-    if (gasolineHighlighter) {
-        gasolineHighlighter.remove();
-        gasolineHighlighter = null;
+    if (kaboomHighlighter) {
+        kaboomHighlighter.remove();
+        kaboomHighlighter = null;
     }
 }
 /**
@@ -227,21 +227,21 @@ export function clearHighlight() {
  */
 if (typeof window !== 'undefined') {
     window.addEventListener('scroll', () => {
-        if (gasolineHighlighter) {
-            const selector = gasolineHighlighter.dataset.selector;
+        if (kaboomHighlighter) {
+            const selector = kaboomHighlighter.dataset.selector;
             if (selector) {
                 const el = document.querySelector(selector);
                 if (el) {
                     const rect = el.getBoundingClientRect();
-                    gasolineHighlighter.style.top = `${rect.top}px`;
-                    gasolineHighlighter.style.left = `${rect.left}px`;
+                    kaboomHighlighter.style.top = `${rect.top}px`;
+                    kaboomHighlighter.style.left = `${rect.left}px`;
                 }
             }
         }
     }, { passive: true });
 }
 /**
- * Handle GASOLINE_HIGHLIGHT_REQUEST messages from content script
+ * Handle KABOOM_HIGHLIGHT_REQUEST messages from content script
  */
 if (typeof window !== 'undefined') {
     window.addEventListener('message', (event) => {
@@ -249,12 +249,12 @@ if (typeof window !== 'undefined') {
             return;
         if (pageNonce && event.data?._nonce !== pageNonce)
             return;
-        if (event.data?.type === 'gasoline_highlight_request') {
+        if (event.data?.type === 'kaboom_highlight_request') {
             const { requestId, params } = event.data;
             const { selector, duration_ms } = params || { selector: '' };
             const result = highlightElement(selector, duration_ms);
             window.postMessage({
-                type: 'gasoline_highlight_response',
+                type: 'kaboom_highlight_response',
                 requestId,
                 result
             }, window.location.origin);

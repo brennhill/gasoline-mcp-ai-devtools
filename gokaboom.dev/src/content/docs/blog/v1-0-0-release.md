@@ -1,5 +1,5 @@
 ---
-title: .gasoline v1.0.0 Released"
+title: "KaBOOM v1.0.0 Released"
 description: "Initial proof of concept - Go server with Chrome extension communication"
 date: 2025-12-11T22:34:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v1']
 
 ## What's New in v1.0.0
 
-STRUM v1.0.0 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
+Kaboom v1.0.0 is the first public release. It's a proof of concept showing a Go server talking to a Chrome extension to capture browser telemetry.
 
 ### Features
 
@@ -36,8 +36,8 @@ STRUM v1.0.0 is the first public release. It's a proof of concept showing a Go s
 ### Installation
 
 ```bash
-go build -o gasoline ./cmd/server
-./gasoline
+go build -o kaboom ./cmd/server
+./kaboom
 
 # Then load the extension in chrome://extensions/
 ```
@@ -48,4 +48,4 @@ This is early. Very early. But it works.
 
 **Next steps:** Add network request capture, implement MCP protocol, persistent storage.
 
-See [GitHub](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp for source.
+See [GitHub](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP) for source.

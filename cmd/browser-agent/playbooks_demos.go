@@ -1,4 +1,4 @@
-// Purpose: Stores lightweight demo scripts exposed via gasoline://demo/* resources.
+// Purpose: Stores lightweight demo scripts exposed via kaboom://demo/* resources.
 // Why: Keeps demo payloads modular and separate from primary capability playbooks.
 
 package main

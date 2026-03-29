@@ -29,10 +29,10 @@ func TestFastStart_ClientCompatibilityMatrix(t *testing.T) {
 		clientVer   string
 		playbookURI string
 	}{
-		{name: "claude_code", clientName: "claude-code", clientVer: "1.0", playbookURI: "gasoline://playbook/performance"},
-		{name: "cursor", clientName: "cursor", clientVer: "1.0", playbookURI: "gasoline://playbook/performance_analysis/quick"},
-		{name: "windsurf", clientName: "windsurf", clientVer: "1.0", playbookURI: "gasoline://playbook/accessibility_audit/quick"},
-		{name: "continue", clientName: "continue", clientVer: "1.0", playbookURI: "gasoline://playbook/security_audit/quick"},
+		{name: "claude_code", clientName: "claude-code", clientVer: "1.0", playbookURI: "kaboom://playbook/performance"},
+		{name: "cursor", clientName: "cursor", clientVer: "1.0", playbookURI: "kaboom://playbook/performance_analysis/quick"},
+		{name: "windsurf", clientName: "windsurf", clientVer: "1.0", playbookURI: "kaboom://playbook/accessibility_audit/quick"},
+		{name: "continue", clientName: "continue", clientVer: "1.0", playbookURI: "kaboom://playbook/security_audit/quick"},
 	}
 
 	for _, tc := range clients {
@@ -67,7 +67,7 @@ func TestFastStart_ClientCompatibilityMatrix(t *testing.T) {
 			}
 
 			start := time.Now()
-			writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`)
+			writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`)
 			capResp := readJSONRPCLine(t, reader, 1*time.Second)
 			if capResp.Error != nil {
 				t.Fatalf("resources/read capabilities error: %+v", capResp.Error)
@@ -126,13 +126,13 @@ func TestFastStart_ResourceWorkflowSoak(t *testing.T) {
 	start := time.Now()
 	for i := 0; i < iterations; i++ {
 		baseID := 100 + (i * 10)
-		writeJSONRPCLine(t, stdin, fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`, baseID))
+		writeJSONRPCLine(t, stdin, fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`, baseID))
 		capResp := readJSONRPCLine(t, reader, 1*time.Second)
 		if capResp.Error != nil {
 			t.Fatalf("iteration %d capabilities error: %+v", i, capResp.Error)
 		}
 
-		writeJSONRPCLine(t, stdin, fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"resources/read","params":{"uri":"gasoline://playbook/security_audit/quick"}}`, baseID+1))
+		writeJSONRPCLine(t, stdin, fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"resources/read","params":{"uri":"kaboom://playbook/security_audit/quick"}}`, baseID+1))
 		playbookResp := readJSONRPCLine(t, reader, 1*time.Second)
 		if playbookResp.Error != nil {
 			t.Fatalf("iteration %d playbook error: %+v", i, playbookResp.Error)
@@ -370,7 +370,7 @@ func TestFastStart_ResourceWorkflowBeforeDaemonReady(t *testing.T) {
 	}
 
 	start = time.Now()
-	writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`)
+	writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"kaboom://capabilities"}}`)
 	capResp := readJSONRPCLine(t, reader, 1*time.Second)
 	if capResp.Error != nil {
 		t.Fatalf("resources/read capabilities error: %+v", capResp.Error)
@@ -383,12 +383,12 @@ func TestFastStart_ResourceWorkflowBeforeDaemonReady(t *testing.T) {
 	if err := json.Unmarshal(capResp.Result, &capResult); err != nil {
 		t.Fatalf("capabilities result parse error: %v", err)
 	}
-	if len(capResult.Contents) != 1 || capResult.Contents[0].URI != "gasoline://capabilities" {
+	if len(capResult.Contents) != 1 || capResult.Contents[0].URI != "kaboom://capabilities" {
 		t.Fatalf("capabilities result = %+v, want one capabilities content", capResult)
 	}
 
 	start = time.Now()
-	writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"gasoline://playbook/security"}}`)
+	writeJSONRPCLine(t, stdin, `{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"kaboom://playbook/security"}}`)
 	playbookResp := readJSONRPCLine(t, reader, 1*time.Second)
 	if playbookResp.Error != nil {
 		t.Fatalf("resources/read playbook error: %+v", playbookResp.Error)
@@ -400,7 +400,7 @@ func TestFastStart_ResourceWorkflowBeforeDaemonReady(t *testing.T) {
 	if err := json.Unmarshal(playbookResp.Result, &playbookResult); err != nil {
 		t.Fatalf("playbook result parse error: %v", err)
 	}
-	if len(playbookResult.Contents) != 1 || playbookResult.Contents[0].URI != "gasoline://playbook/security/quick" {
+	if len(playbookResult.Contents) != 1 || playbookResult.Contents[0].URI != "kaboom://playbook/security/quick" {
 		t.Fatalf("playbook result = %+v, want canonical security/quick content", playbookResult)
 	}
 

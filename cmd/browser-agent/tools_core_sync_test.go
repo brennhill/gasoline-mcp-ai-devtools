@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
@@ -36,7 +36,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	// Simulate extension connection via a Sync call so IsExtensionConnected() returns true
 	reqBody := `{"ext_session_id":"test"}`
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(reqBody))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 
 	// Call with no explicit sync param (should default to true)
@@ -176,7 +176,7 @@ func TestMaybeWaitForCommand_PendingDisconnectReturnsTerminalError(t *testing.T)
 
 	// Seed a recent /sync so the first connectivity check passes.
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 
 	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")

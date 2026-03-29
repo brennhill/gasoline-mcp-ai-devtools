@@ -94,7 +94,7 @@ export function forwardHighlightMessage(message: {
 
     // Post message to page context (inject.js)
     postToInject({
-      type: 'gasoline_highlight_request',
+      type: 'kaboom_highlight_request',
       requestId,
       params: message.params
     })
@@ -135,7 +135,7 @@ export async function handleStateCommand(
     event: MessageEvent<{ type?: string; messageId?: string; result?: { error?: string; [key: string]: unknown } }>
   ) => {
     if (event.source !== window) return
-    if (event.data?.type === 'gasoline_state_response' && event.data?.messageId === messageId) {
+    if (event.data?.type === 'kaboom_state_response' && event.data?.messageId === messageId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve(event.data.result || { error: 'No result from state command' })
     }
@@ -144,7 +144,7 @@ export async function handleStateCommand(
 
   // Send command to inject.js (include state for restore action)
   postToInject({
-    type: 'gasoline_state_command',
+    type: 'kaboom_state_command',
     messageId,
     action,
     name,
@@ -160,7 +160,7 @@ export async function handleStateCommand(
 }
 
 /**
- * Handle GASOLINE_PING message
+ * Handle KABOOM_PING message
  */
 export function handlePing(sendResponse: (response: ContentPingResponse) => void): boolean {
   sendResponse({ status: 'alive', timestamp: Date.now() })
@@ -175,7 +175,7 @@ export function handleToggleMessage(
 ): void {
   if (!TOGGLE_MESSAGES.has(message.type)) return
 
-  const payload: SettingMessage = { type: 'gasoline_setting', setting: message.type }
+  const payload: SettingMessage = { type: 'kaboom_setting', setting: message.type }
   if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
     payload.mode = message.mode
   } else if (message.type === SettingName.SERVER_URL) {
@@ -220,7 +220,7 @@ function executeInMainWorld(
   }, safetyTimeoutMs)
 
   postToInject({
-    type: 'gasoline_execute_js',
+    type: 'kaboom_execute_js',
     requestId,
     script: params.script || '',
     timeoutMs
@@ -228,7 +228,7 @@ function executeInMainWorld(
 }
 
 /**
- * Handle GASOLINE_EXECUTE_JS message.
+ * Handle kaboom_execute_js message.
  * Always executes in MAIN world via inject script.
  * Returns inject_not_loaded error if inject script isn't available,
  * so background can fallback to chrome.scripting API.
@@ -258,7 +258,7 @@ export function handleExecuteJs(
 }
 
 /**
- * Handle GASOLINE_EXECUTE_QUERY message (async command path)
+ * Handle KABOOM_EXECUTE_QUERY message (async command path)
  */
 export function handleExecuteQuery(
   params: string | Record<string, unknown>,
@@ -298,7 +298,7 @@ export function handleA11yQuery(
 
   // Forward to inject.js via postMessage
   postToInject({
-    type: 'gasoline_a11y_query',
+    type: 'kaboom_a11y_query',
     requestId,
     params: parsedParams
   })
@@ -326,7 +326,7 @@ export function handleDomQuery(
 
   // Forward to inject.js via postMessage
   postToInject({
-    type: 'gasoline_dom_query',
+    type: 'kaboom_dom_query',
     requestId,
     params: parsedParams
   })
@@ -350,7 +350,7 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
     // Accept responses with no nonce for backwards compat during migration.
     const nonce = event.data?._nonce
     if (nonce && nonce !== getPageNonce()) return
-    if (event.data?.type === 'gasoline_waterfall_response' && event.data?.requestId === requestId) {
+    if (event.data?.type === 'kaboom_waterfall_response' && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve({ entries: event.data.entries || [] })
     }
@@ -360,7 +360,7 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
 
   // Post message to page context
   postToInject({
-    type: 'gasoline_get_waterfall',
+    type: 'kaboom_get_waterfall',
     requestId
   })
 
@@ -428,8 +428,8 @@ export function handleComputedStylesQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'gasoline_computed_styles_query',
-    'gasoline_computed_styles_response',
+    'kaboom_computed_styles_query',
+    'kaboom_computed_styles_response',
     'Computed styles query',
     params,
     sendResponse
@@ -441,8 +441,8 @@ export function handleFormDiscoveryQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'gasoline_form_discovery_query',
-    'gasoline_form_discovery_response',
+    'kaboom_form_discovery_query',
+    'kaboom_form_discovery_response',
     'Form discovery',
     params,
     sendResponse
@@ -454,8 +454,8 @@ export function handleFormStateQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'gasoline_form_state_query',
-    'gasoline_form_state_response',
+    'kaboom_form_state_query',
+    'kaboom_form_state_response',
     'Form state',
     params,
     sendResponse
@@ -467,8 +467,8 @@ export function handleDataTableQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'gasoline_data_table_query',
-    'gasoline_data_table_response',
+    'kaboom_data_table_query',
+    'kaboom_data_table_response',
     'Data table extraction',
     params,
     sendResponse
@@ -480,8 +480,8 @@ export function handleLinkHealthQuery(
   sendResponse: (result: unknown) => void
 ): boolean {
   return forwardInjectQuery(
-    'gasoline_link_health_query',
-    'gasoline_link_health_response',
+    'kaboom_link_health_query',
+    'kaboom_link_health_response',
     'Link health check',
     params,
     sendResponse

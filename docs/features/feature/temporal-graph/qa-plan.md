@@ -20,12 +20,12 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
 | DL-1 | Error event descriptions contain raw stack traces with PII | Verify error events store normalized/fingerprinted messages, not raw messages with user data | critical |
-| DL-2 | JSONL file on disk is world-readable | Verify `.gasoline/history/events.jsonl` has user-only file permissions | high |
+| DL-2 | JSONL file on disk is world-readable | Verify `.kaboom/history/events.jsonl` has user-only file permissions | high |
 | DL-3 | Event descriptions accumulate user behavior patterns over 90 days | Verify event deduplication and fingerprinting prevent granular user activity reconstruction | high |
 | DL-4 | Deploy events expose CI/CD secrets | Verify deploy events from CI webhooks and resource changes store only public commit refs and timestamps, not CI tokens or environment variables | critical |
 | DL-5 | Agent-recorded events contain arbitrary text | Verify `configure(action: "record_event")` sanitizes or limits description length, preventing storage of arbitrary sensitive data by a misconfigured AI | medium |
@@ -175,10 +175,10 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web app capable of generating errors and performance changes
-- [ ] `.gasoline/history/` directory accessible (created automatically)
+- [ ] `.kaboom/history/` directory accessible (created automatically)
 
 ### Step-by-Step Verification
 
@@ -197,7 +197,7 @@ last_verified_date: 2026-03-05
 | UAT-11 | Check for automatic correlation | Query history for regression event | Regression has "possibly_caused_by" link to deploy event (if within 30s) | [ ] |
 | UAT-12 | Fix the error (remove the buggy code), wait 5+ minutes | Error stops occurring | No more errors in console | [ ] |
 | UAT-13 | `{"tool": "analyze", "arguments": {"target": "history", "query": {"since": "1h"}}}` | AI receives full history | Resolution event with "possibly_resolved_by" link | [ ] |
-| UAT-14 | Restart Gasoline server, then query history | Human restarts server | Events persist from JSONL file | [ ] |
+| UAT-14 | Restart Kaboom server, then query history | Human restarts server | Events persist from JSONL file | [ ] |
 | UAT-15 | `{"tool": "analyze", "arguments": {"target": "history"}}` | AI receives history | All events from before restart are present with correct timestamps | [ ] |
 | UAT-16 | Search by pattern: `{"tool": "analyze", "arguments": {"target": "history", "query": {"pattern": "UserProfile"}}}` | AI receives filtered results | Only events mentioning "UserProfile" in description | [ ] |
 
@@ -206,7 +206,7 @@ last_verified_date: 2026-03-05
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
 | DL-UAT-1 | No raw PII in error event descriptions | Inspect error events in history response | Fingerprinted/normalized messages, no user emails or tokens | [ ] |
-| DL-UAT-2 | JSONL file permissions | `ls -la .gasoline/history/events.jsonl` | File owned by current user, not world-readable | [ ] |
+| DL-UAT-2 | JSONL file permissions | `ls -la .kaboom/history/events.jsonl` | File owned by current user, not world-readable | [ ] |
 | DL-UAT-3 | Deploy events have no CI secrets | Trigger CI webhook or resource-change deploy event | No tokens, env vars, or CI credentials in event | [ ] |
 | DL-UAT-4 | Eviction removes data from disk | Set retention to 1 day, add old events, restart server | Old events physically removed from file (not just hidden) | [ ] |
 | DL-UAT-5 | Agent-recorded events do not contain arbitrary secrets | Record fix event with sensitive-looking description | Description stored but not broadcast; only accessible via explicit query | [ ] |

@@ -3,7 +3,7 @@ name: demo
 description: Use when user asks to build a product demo, create a walkthrough, record a feature showcase, or produce a repeatable demo script.
 ---
 
-# Gasoline Demo
+# Kaboom Demo
 
 Use this skill when preparing customer demos, release demos, or internal walkthroughs.
 

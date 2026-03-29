@@ -5,14 +5,14 @@
 
 const test = require('node:test')
 const assert = require('node:assert')
-const output = require('../../npm/gasoline-mcp/lib/output')
+const output = require('../../npm/kaboom-agentic-browser/lib/output')
 
 test('output.success returns formatted success message', () => {
-  const result = output.success('Gasoline installed')
+  const result = output.success('Kaboom installed')
 
   assert.ok(typeof result === 'string', 'Should return string')
   assert.ok(result.includes('✅'), 'Should include success emoji')
-  assert.ok(result.includes('Gasoline installed'), 'Should include message')
+  assert.ok(result.includes('Kaboom installed'), 'Should include message')
 })
 
 test('output.success with details includes details', () => {
@@ -121,6 +121,7 @@ test('output.diagnosticReport formats diagnostic results', () => {
   assert.ok(result.includes('Claude Desktop'), 'Should mention tools')
   assert.ok(result.includes('Configured and ready'), 'Should show ok status')
   assert.ok(result.includes('Issue:'), 'Should show issues')
+  assert.doesNotMatch(result, /Gasoline/)
 })
 
 test('output.diagnosticReport includes binary version', () => {
@@ -133,6 +134,7 @@ test('output.diagnosticReport includes binary version', () => {
   const result = output.diagnosticReport(report)
 
   assert.ok(result.includes('1.2.3'), 'Should include binary version')
+  assert.match(result, /Kaboom/)
 })
 
 test('output.uninstallResult formats uninstall results', () => {
@@ -158,6 +160,7 @@ test('output.uninstallResult shows not configured tools', () => {
 
   assert.ok(result.includes('VSCode'), 'Should mention unconfigured tool')
   assert.ok(result.includes('Cursor'), 'Should mention unconfigured tool')
+  assert.doesNotMatch(result, /Gasoline/)
 })
 
 test('output.uninstallResult shows errors', () => {

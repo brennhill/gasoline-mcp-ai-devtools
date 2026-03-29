@@ -1,6 +1,6 @@
 ---
-title: "Gasoline + Zed"
-description: "Configure Gasoline as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
+title: "Kaboom + Zed"
+description: "Configure Kaboom as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
 keywords: "Zed MCP server, Zed context server, Zed browser debugging, Zed AI browser logs"
 permalink: /mcp-integration/zed/
 header:
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 ## <i class="fas fa-file-code"></i> Configuration
@@ -20,10 +20,10 @@ Add to `~/.config/zed/settings.json`:
 ```json
 {
   "context_servers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-mcp"]
+        "args": ["kaboom-agentic-browser"]
       }
     }
   }
@@ -34,7 +34,7 @@ Add to `~/.config/zed/settings.json`:
 
 ## <i class="fas fa-fire-alt"></i> Usage
 
-After restarting Zed, the AI assistant taps into Gasoline's full MCP toolset.
+After restarting Zed, the AI assistant taps into Kaboom's full MCP toolset.
 
 ## <i class="fas fa-wrench"></i> Troubleshooting
 

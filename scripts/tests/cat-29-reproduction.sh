@@ -1,7 +1,7 @@
 #!/bin/bash
 # cat-17-reproduction.sh — Category 17: Reproduction Export & Replay (6 tests).
 # Tests the full reproduction script lifecycle:
-# seed actions → export (gasoline + playwright) → write to file → parse → replay.
+# seed actions → export (kaboom + playwright) → write to file → parse → replay.
 # Proves both export formats and recreation pipeline work end-to-end.
 set -eo pipefail
 
@@ -14,7 +14,7 @@ begin_category "29" "Reproduction Replay" "6"
 
 ensure_daemon
 
-GASOLINE_FILE="$TEMP_DIR/gasoline-script.txt"
+KABOOM_FILE="$TEMP_DIR/kaboom-script.txt"
 PLAYWRIGHT_FILE="$TEMP_DIR/playwright-script.js"
 
 # Helper: seed 5 realistic actions via HTTP POST to /enhanced-actions.
@@ -22,7 +22,7 @@ PLAYWRIGHT_FILE="$TEMP_DIR/playwright-script.js"
 seed_actions() {
     curl -s -X POST "http://localhost:${PORT}/enhanced-actions" \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension" \
+        -H "X-Kaboom-Client: kaboom-extension" \
         -d @- <<'SEED_EOF'
 {
     "actions": [
@@ -111,14 +111,14 @@ run_test_17_1() {
 }
 run_test_17_1
 
-# ── 17.2 — Export gasoline format ────────────────────────
-begin_test "29.2" "export gasoline format with all action types" \
-    "Call generate(reproduction, output_format=gasoline). Verify all 5 action types in numbered steps." \
-    "Gasoline natural language format must be complete and human-readable."
+# ── 17.2 — Export kaboom format ────────────────────────
+begin_test "29.2" "export kaboom format with all action types" \
+    "Call generate(reproduction, output_format=kaboom). Verify all 5 action types in numbered steps." \
+    "Kaboom natural language format must be complete and human-readable."
 run_test_17_2() {
-    RESPONSE=$(call_tool "generate" '{"format":"reproduction","output_format":"gasoline"}')
+    RESPONSE=$(call_tool "generate" '{"format":"reproduction","output_format":"kaboom"}')
     if ! check_not_error "$RESPONSE"; then
-        fail "generate(reproduction, gasoline) returned error: $(truncate "$(extract_content_text "$RESPONSE")")"
+        fail "generate(reproduction, kaboom) returned error: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
     fi
     local text json_payload script
@@ -131,7 +131,7 @@ run_test_17_2() {
     fi
 
     # Write to file for later tests
-    echo "$script" > "$GASOLINE_FILE"
+    echo "$script" > "$KABOOM_FILE"
 
     # Verify header
     if ! echo "$script" | grep -q "^# Reproduction:"; then
@@ -148,7 +148,7 @@ run_test_17_2() {
     echo "$script" | grep -q "Press:" || missing="$missing keypress"
 
     if [ -n "$missing" ]; then
-        fail "Missing action types in gasoline script:$missing. Script: $(truncate "$script" 500)"
+        fail "Missing action types in kaboom script:$missing. Script: $(truncate "$script" 500)"
         return
     fi
 
@@ -166,7 +166,7 @@ run_test_17_2() {
         return
     fi
 
-    pass "Gasoline script: 5 numbered steps, all action types, timing pause. Written to file."
+    pass "Kaboom script: 5 numbered steps, all action types, timing pause. Written to file."
 }
 run_test_17_2
 
@@ -216,11 +216,11 @@ run_test_17_3
 
 # ── 17.4 — Verify exported files ─────────────────────────
 begin_test "29.4" "verify exported files are parseable" \
-    "Read gasoline and playwright files. Verify step counts and structural integrity." \
+    "Read kaboom and playwright files. Verify step counts and structural integrity." \
     "Export must produce deterministic, parseable output files."
 run_test_17_4() {
-    if [ ! -f "$GASOLINE_FILE" ]; then
-        fail "Gasoline file not found at $GASOLINE_FILE (depends on test 17.2)"
+    if [ ! -f "$KABOOM_FILE" ]; then
+        fail "Kaboom file not found at $KABOOM_FILE (depends on test 17.2)"
         return
     fi
     if [ ! -f "$PLAYWRIGHT_FILE" ]; then
@@ -228,11 +228,11 @@ run_test_17_4() {
         return
     fi
 
-    # Verify gasoline step count
+    # Verify kaboom step count
     local gas_steps
-    gas_steps=$(grep -cE '^[0-9]+\.' "$GASOLINE_FILE" || true)
+    gas_steps=$(grep -cE '^[0-9]+\.' "$KABOOM_FILE" || true)
     if [ "$gas_steps" -ne 5 ]; then
-        fail "Expected 5 numbered steps in gasoline file, got $gas_steps"
+        fail "Expected 5 numbered steps in kaboom file, got $gas_steps"
         return
     fi
 
@@ -250,17 +250,17 @@ run_test_17_4() {
         return
     fi
 
-    pass "Gasoline: $gas_steps steps. Playwright: $pw_lines lines with complete test block."
+    pass "Kaboom: $gas_steps steps. Playwright: $pw_lines lines with complete test block."
 }
 run_test_17_4
 
-# ── 17.5 — Replay gasoline steps via interact ────────────
-begin_test "29.5" "replay gasoline steps via interact tool" \
-    "Parse gasoline script, convert each step to interact() call, verify dispatch." \
-    "Proves the gasoline format is machine-parseable and the interact tool accepts the commands."
+# ── 17.5 — Replay kaboom steps via interact ────────────
+begin_test "29.5" "replay kaboom steps via interact tool" \
+    "Parse kaboom script, convert each step to interact() call, verify dispatch." \
+    "Proves the kaboom format is machine-parseable and the interact tool accepts the commands."
 run_test_17_5() {
-    if [ ! -f "$GASOLINE_FILE" ]; then
-        fail "Gasoline file not found (depends on test 17.2)"
+    if [ ! -f "$KABOOM_FILE" ]; then
+        fail "Kaboom file not found (depends on test 17.2)"
         return
     fi
 
@@ -311,10 +311,10 @@ run_test_17_5() {
         if [ -n "$resp" ] && check_valid_jsonrpc "$resp"; then
             dispatched=$((dispatched + 1))
         fi
-    done < "$GASOLINE_FILE"
+    done < "$KABOOM_FILE"
 
     if [ "$total" -eq 0 ]; then
-        fail "No steps parsed from gasoline file"
+        fail "No steps parsed from kaboom file"
         return
     fi
 
@@ -323,7 +323,7 @@ run_test_17_5() {
         return
     fi
 
-    pass "All $dispatched/$total steps parsed from gasoline file and dispatched to interact tool."
+    pass "All $dispatched/$total steps parsed from kaboom file and dispatched to interact tool."
 }
 run_test_17_5
 
@@ -332,7 +332,7 @@ begin_test "29.6" "last_n filter returns correct subset" \
     "Call generate(reproduction, last_n=2). Verify only the last 2 actions (select + keypress)." \
     "last_n is essential for focusing reproduction on recent actions."
 run_test_17_6() {
-    RESPONSE=$(call_tool "generate" '{"format":"reproduction","output_format":"gasoline","last_n":2}')
+    RESPONSE=$(call_tool "generate" '{"format":"reproduction","output_format":"kaboom","last_n":2}')
     if ! check_not_error "$RESPONSE"; then
         fail "generate with last_n returned error: $(truncate "$(extract_content_text "$RESPONSE")")"
         return

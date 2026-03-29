@@ -41,8 +41,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://gokaboom.dev"
 Documentation = "https://gokaboom.dev/getting-started/"
-Repository = "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp"
-Issues = "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues"
+Repository = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
+Issues = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues"
 
 [project.scripts]
 kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"

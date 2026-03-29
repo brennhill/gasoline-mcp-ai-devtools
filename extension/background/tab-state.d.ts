@@ -83,7 +83,7 @@ export declare function captureVisibleTabSafe(tabId: number, windowId: number, o
     quality?: number;
 }): Promise<string>;
 /**
- * Send a gasoline_action_toast message to a tab.
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export declare function sendTabToast(tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error' | 'audio', duration_ms?: number): void;

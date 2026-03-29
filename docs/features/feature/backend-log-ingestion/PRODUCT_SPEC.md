@@ -42,12 +42,12 @@ Missing for Layer 1 debugging:
 
 ```
 Workflow:
-1. Run: gasoline-run npm run dev
+1. Run: kaboom-run npm run dev
 2. Browser opens: localhost:3000
 3. User clicks: "Add to Cart"
 4. Extension captures: Click event, network call
 5. Stdout capture: "[2024-01-01T12:00:00Z] INFO [req:abc123] Cart updated"
-6. Gasoline merges both
+6. Kaboom merges both
 7. Query result shows:
    - FE: User clicked button (12:00:00.000)
    - FE: POST /api/cart sent (12:00:00.002)
@@ -66,7 +66,7 @@ Workflow:
 
 ```
 Workflow:
-1. Configure: ~/.gasoline/config.yaml
+1. Configure: ~/.kaboom/config.yaml
    ```yaml
    backend:
      logs:
@@ -75,11 +75,11 @@ Workflow:
          user: ubuntu
          path: /var/log/app.log
    ```
-2. Start: gasoline (daemon connects to prod via SSH)
+2. Start: kaboom (daemon connects to prod via SSH)
 3. Open: production website in browser
 4. User sees: Error on checkout page
 5. Extension captures: FE error, network 500
-6. Gasoline tails: /var/log/app.log on prod server
+6. Kaboom tails: /var/log/app.log on prod server
 7. Correlates: FE error (timestamp 12:00:00) ← → BE error (timestamp 12:00:00.050)
 8. Query shows:
    - FE: User clicked "Checkout" (12:00:00.000)
@@ -104,7 +104,7 @@ Workflow:
    - Service A (FE): localhost:3000
    - Service B (Auth): localhost:3001
    - Service C (API): localhost:3002
-2. gasoline-run docker-compose logs --follow
+2. kaboom-run docker-compose logs --follow
    OR configure multiple log sources:
    ```yaml
    backend:
@@ -130,15 +130,15 @@ Workflow:
 
 ## Features to Implement
 
-### Feature 1: gasoline-run Wrapper (Local Dev)
+### Feature 1: kaboom-run Wrapper (Local Dev)
 **What:** Wrapper command that intercepts stdout/stderr and streams to daemon
 
 #### How:
 ```bash
-gasoline-run npm run dev           # Node
-gasoline-run python -m flask run   # Python
-gasoline-run go run main.go        # Go
-gasoline-run docker-compose up     # Docker
+kaboom-run npm run dev           # Node
+kaboom-run python -m flask run   # Python
+kaboom-run go run main.go        # Go
+kaboom-run docker-compose up     # Docker
 ```
 
 #### Data captured:
@@ -152,7 +152,7 @@ gasoline-run docker-compose up     # Docker
 - [ ] Logs appear in daemon within 10ms of writing
 - [ ] Zero performance impact on dev server
 - [ ] Pass-through doesn't buffer output
-- [ ] Works with piped output (e.g., `gasoline-run npm run dev | tee output.log`)
+- [ ] Works with piped output (e.g., `kaboom-run npm run dev | tee output.log`)
 
 ---
 
@@ -452,7 +452,7 @@ Content-Type: application/json
 
 ### Endpoint 2: POST /events (Batch)
 
-**Used by:** gasoline-run wrapper (for efficiency)
+**Used by:** kaboom-run wrapper (for efficiency)
 
 #### Request:
 
@@ -520,12 +520,12 @@ MCP Server (stdio)
 HTTP Server (localhost:7890)
 ├─ POST /event ← Extension sends FE events (single)
 ├─ POST /event ← File/SSH tailers send BE events (single)
-├─ POST /events ← gasoline-run sends batches (10K lines or 100ms timeout)
+├─ POST /events ← kaboom-run sends batches (10K lines or 100ms timeout)
 ├─ GET /buffers/timeline ← LLM queries
 └─ Ring Buffers ← Stores all events (merged by timestamp)
 
 Log Ingestion (Concurrent goroutines)
-├─ gasoline-run listener
+├─ kaboom-run listener
 │  ├─ Receives POST /event from wrapper
 │  └─ Normalizes to NormalizedEvent
 ├─ File tailer
@@ -549,7 +549,7 @@ MCP Server (stdio)
    - Single binary stays zero-deps
 
 2. **All ingest via HTTP POST /event**
-   - gasoline-run sends HTTP
+   - kaboom-run sends HTTP
    - File tailer sends HTTP
    - SSH tailer sends HTTP
    - Consistent interface
@@ -575,7 +575,7 @@ MCP Server (stdio)
 ### Functional
 - [ ] FE and BE events queryable together
 - [ ] Correlation by trace ID works reliably
-- [ ] gasoline-run wrapper works with any command
+- [ ] kaboom-run wrapper works with any command
 - [ ] SSH tailer works without password auth
 - [ ] File tailer handles log rotation
 - [ ] Multi-source logging works simultaneously
@@ -588,9 +588,9 @@ MCP Server (stdio)
 - [ ] No impact on MCP query latency
 
 ### Developer Experience
-- [ ] Local dev: `gasoline-run npm run dev` just works
+- [ ] Local dev: `kaboom-run npm run dev` just works
 - [ ] Production: YAML config, no code changes
-- [ ] Help text: `gasoline-run --help` explains usage
+- [ ] Help text: `kaboom-run --help` explains usage
 - [ ] Errors: Clear messages when config wrong
 - [ ] Debugging: Logs show what's being ingested
 
@@ -623,5 +623,5 @@ MCP Server (stdio)
 
 **Status:** Ready for spec review and tech spec development
 **Owner:** (Assign 1-2 engineers)
-**Duration:** 2 weeks (gasoline-run + file tailer + parser)
-**Next:** Tech specs per process (gasoline-run, local tailer, SSH tailer)
+**Duration:** 2 weeks (kaboom-run + file tailer + parser)
+**Next:** Tech specs per process (kaboom-run, local tailer, SSH tailer)

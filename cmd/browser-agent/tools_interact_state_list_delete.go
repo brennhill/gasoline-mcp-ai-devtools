@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
 func resolveStateSnapshotName(snapshotName, legacyName string) string {

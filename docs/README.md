@@ -7,7 +7,7 @@ tags: [docs, index, canonical]
 last-verified: 2026-02-17
 ---
 
-# Gasoline Docs Index
+# Kaboom Docs Index
 
 ## Quick Links
 - Project rules and commands: `../claude.md`

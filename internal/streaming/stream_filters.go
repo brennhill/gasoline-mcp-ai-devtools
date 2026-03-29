@@ -2,7 +2,7 @@
 // Why: Separates filter matching from dedup, emission, and rate limiting.
 package streaming
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 
 // eventCategoryMap maps streaming event types to matching alert categories.
 var eventCategoryMap = map[string]map[string]bool{

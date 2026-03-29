@@ -67,10 +67,10 @@ func diagnoseProcessOnPort(diagnostics map[string]any, port int) {
 		return
 	}
 	diagnostics["process_command"] = cmdLine
-	if strings.Contains(strings.ToLower(cmdLine), "gasoline") {
-		diagnostics["process_type"] = "gasoline (correct)"
+	if strings.Contains(strings.ToLower(cmdLine), "kaboom") {
+		diagnostics["process_type"] = "kaboom (correct)"
 	} else {
-		diagnostics["process_type"] = "NOT gasoline (conflict)"
+		diagnostics["process_type"] = "NOT kaboom (conflict)"
 		diagnostics["process_info"] = fmt.Sprintf("Port %d is occupied by: %s", port, cmdLine)
 	}
 }
@@ -102,8 +102,8 @@ func diagnoseHealthEndpoint(diagnostics map[string]any, healthURL string) {
 		return
 	}
 	bodyStr := string(body)
-	if strings.Contains(bodyStr, "gasoline") || strings.Contains(bodyStr, "status") {
-		diagnostics["health_response"] = "valid gasoline response"
+	if strings.Contains(bodyStr, "kaboom") || strings.Contains(bodyStr, "status") {
+		diagnostics["health_response"] = "valid kaboom response"
 	} else {
 		diagnostics["health_response"] = "unexpected response format"
 		previewLen := 100
@@ -158,11 +158,11 @@ func summarizeDiagnosis(diagnostics map[string]any, port int) {
 	case diagnostics["port_status"] == "not listening":
 		diagnostics["diagnosis"] = "No server running on port"
 		diagnostics["recommended_action"] = "Server should auto-spawn but didn't - check logs"
-	case diagnostics["process_type"] == "NOT gasoline (conflict)":
+	case diagnostics["process_type"] == "NOT kaboom (conflict)":
 		diagnostics["diagnosis"] = "Port occupied by different service"
 		diagnostics["recommended_action"] = fmt.Sprintf("Kill process or use different port: --port %d", port+1)
 	case diagnostics["health_check"] == "failed":
-		diagnostics["diagnosis"] = "Gasoline process exists but not responding"
+		diagnostics["diagnosis"] = "Kaboom process exists but not responding"
 		diagnostics["recommended_action"] = "Process may be hung or crashed - will attempt recovery"
 	case diagnostics["health_check"] == "passed" && diagnostics["mcp_endpoint"] == "unreachable":
 		diagnostics["diagnosis"] = "Health endpoint works but MCP endpoint doesn't"

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace all `Gasoline` and `STRUM` branding, packaging, runtime contracts, and installer-managed state with one hard-cutover identity: `Kaboom` on `gokaboom.dev`, with the original flame icon restored.
+**Goal:** Replace all `Kaboom` and `Kaboom` branding, packaging, runtime contracts, and installer-managed state with one hard-cutover identity: `Kaboom` on `gokaboom.dev`, with the original flame icon restored.
 
 **Architecture:** Execute the rename as a sequence of small, bounded commits. Separate visible branding, path/package renames, runtime-contract changes, and cleanup logic so each patch stays reviewable and each behavior change gets its own failing test first. Avoid hand-editing generated outputs until the last regeneration pass.
 
@@ -14,8 +14,8 @@
 
 - Keep each commit at **<=500 changed LOC** including tests and docs.
 - Do not manually edit generated outputs:
-  - `getstrum.dev/dist/**`
-  - `getstrum.dev/.astro/**`
+  - `gokaboom.dev/dist/**`
+  - `gokaboom.dev/.astro/**`
   - `gokaboom.dev/dist/**`
   - `gokaboom.dev/.astro/**`
   - `pypi/**/**/*.egg-info/**`
@@ -42,17 +42,17 @@
 
 ### Site And Domain
 
-- `getstrum.dev/astro.config.mjs`
-- `getstrum.dev/src/assets/logo.svg`
-- `getstrum.dev/src/assets/logo-animated.svg`
-- `getstrum.dev/src/components/Head.astro`
-- `getstrum.dev/src/components/Footer.astro`
-- `getstrum.dev/src/components/Landing.astro`
-- `getstrum.dev/src/components/RotatingHero.astro`
-- `getstrum.dev/src/content/docs/*.md`
-- `getstrum.dev/src/content/docs/*.mdx`
-- `getstrum.dev/src/pages/*.ts`
-- `getstrum.dev/src/pages/markdown/[...slug].md.ts`
+- `gokaboom.dev/astro.config.mjs`
+- `gokaboom.dev/src/assets/logo.svg`
+- `gokaboom.dev/src/assets/logo-animated.svg`
+- `gokaboom.dev/src/components/Head.astro`
+- `gokaboom.dev/src/components/Footer.astro`
+- `gokaboom.dev/src/components/Landing.astro`
+- `gokaboom.dev/src/components/RotatingHero.astro`
+- `gokaboom.dev/src/content/docs/*.md`
+- `gokaboom.dev/src/content/docs/*.mdx`
+- `gokaboom.dev/src/pages/*.ts`
+- `gokaboom.dev/src/pages/markdown/[...slug].md.ts`
 - `scripts/docs/check-gokaboom-content-contract.mjs`
 
 ### Root Metadata And Build Paths
@@ -139,7 +139,7 @@
 - Test: `tests/extension/popup-features.test.js`
 
 - [ ] **Step 1: Write the failing tests**
-  Add assertions that the extension shell uses `Kaboom` labels and the flame asset paths instead of STRUM-specific assets.
+  Add assertions that the extension shell uses `Kaboom` labels and the flame asset paths instead of Kaboom-specific assets.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `node --test tests/extension/logo-motion.test.js tests/extension/popup-features.test.js`
@@ -173,7 +173,7 @@
   Run: `node --test tests/extension/sidepanel-terminal.test.js tests/extension/tracked-hover-launcher.test.js tests/extension/options.test.js`
 
 - [ ] **Step 3: Implement the minimal string rename**
-  Replace visible STRUM/Gasoline copy with `Kaboom` in the three UI entry points only.
+  Replace visible Kaboom/Kaboom copy with `Kaboom` in the three UI entry points only.
 
 - [ ] **Step 4: Verify**
   Run: `make compile-ts`
@@ -188,13 +188,13 @@
 **Budget:** <=500 changed LOC
 
 **Files:**
-- Modify: `getstrum.dev/src/assets/logo.svg`
-- Modify: `getstrum.dev/src/assets/logo-animated.svg`
-- Modify: `getstrum.dev/src/components/Head.astro`
-- Modify: `getstrum.dev/src/components/Footer.astro`
-- Modify: `getstrum.dev/src/components/Landing.astro`
-- Modify: `getstrum.dev/src/components/RotatingHero.astro`
-- Modify: `getstrum.dev/src/content/docs/index.mdx`
+- Modify: `gokaboom.dev/src/assets/logo.svg`
+- Modify: `gokaboom.dev/src/assets/logo-animated.svg`
+- Modify: `gokaboom.dev/src/components/Head.astro`
+- Modify: `gokaboom.dev/src/components/Footer.astro`
+- Modify: `gokaboom.dev/src/components/Landing.astro`
+- Modify: `gokaboom.dev/src/components/RotatingHero.astro`
+- Modify: `gokaboom.dev/src/content/docs/index.mdx`
 - Create: `tests/site/kaboom-brand-shell.test.js`
 
 - [ ] **Step 1: Write the failing test**
@@ -219,7 +219,7 @@
 **Budget:** <=500 changed LOC
 
 **Files:**
-- Move: `getstrum.dev` -> `gokaboom.dev`
+- Move: `gokaboom.dev` -> `gokaboom.dev`
 - Modify: `package.json`
 - Modify: `Makefile`
 - Modify: `eslint.config.js`
@@ -252,7 +252,7 @@
 - Modify: `gokaboom.dev/src/pages/llms-full.txt.ts`
 - Modify: `gokaboom.dev/src/pages/llms.txt.ts`
 - Modify: `gokaboom.dev/src/pages/markdown/[...slug].md.ts`
-- Move: `scripts/docs/check-cookwithgasoline-content-contract.mjs` -> `scripts/docs/check-gokaboom-content-contract.mjs`
+- Move: `scripts/docs/check-gokaboom-content-contract.mjs` -> `scripts/docs/check-gokaboom-content-contract.mjs`
 - Create: `tests/site/gokaboom-domain-contract.test.js`
 
 - [ ] **Step 1: Write the failing test**
@@ -303,11 +303,11 @@
 **Budget:** <=500 changed LOC
 
 **Files:**
-- Move: `npm/gasoline-agentic-browser` -> `npm/kaboom-agentic-browser`
+- Move: `npm/kaboom-agentic-browser` -> `npm/kaboom-agentic-browser`
 - Modify: `npm/kaboom-agentic-browser/package.json`
 - Modify: `npm/kaboom-agentic-browser/README.md`
-- Move: `npm/kaboom-agentic-browser/bin/gasoline-agentic-browser` -> `npm/kaboom-agentic-browser/bin/kaboom-agentic-browser`
-- Move: `npm/kaboom-agentic-browser/bin/gasoline-hooks` -> `npm/kaboom-agentic-browser/bin/kaboom-hooks`
+- Move: `npm/kaboom-agentic-browser/bin/kaboom-agentic-browser` -> `npm/kaboom-agentic-browser/bin/kaboom-agentic-browser`
+- Move: `npm/kaboom-agentic-browser/bin/kaboom-hooks` -> `npm/kaboom-agentic-browser/bin/kaboom-hooks`
 - Test: `npm/kaboom-agentic-browser/lib/install.test.js`
 - Test: `npm/kaboom-agentic-browser/lib/uninstall.test.js`
 
@@ -360,10 +360,10 @@
 **Budget:** <=500 changed LOC
 
 **Files:**
-- Move: `pypi/gasoline-agentic-browser` -> `pypi/kaboom-agentic-browser`
+- Move: `pypi/kaboom-agentic-browser` -> `pypi/kaboom-agentic-browser`
 - Modify: `pypi/kaboom-agentic-browser/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser/README.md`
-- Move: `pypi/kaboom-agentic-browser/gasoline_agentic_browser` -> `pypi/kaboom-agentic-browser/kaboom_agentic_browser`
+- Move: `pypi/kaboom-agentic-browser/kaboom_agentic_browser` -> `pypi/kaboom-agentic-browser/kaboom_agentic_browser`
 - Modify: `pypi/kaboom-agentic-browser/kaboom_agentic_browser/__main__.py`
 - Modify: `pypi/kaboom-agentic-browser/kaboom_agentic_browser/doctor.py`
 - Test: `pypi/kaboom-agentic-browser/tests/test_install.py`
@@ -389,18 +389,18 @@
 **Budget:** <=500 changed LOC
 
 **Files:**
-- Move: `pypi/gasoline-agentic-browser-darwin-arm64` -> `pypi/kaboom-agentic-browser-darwin-arm64`
-- Move: `pypi/gasoline-agentic-browser-darwin-x64` -> `pypi/kaboom-agentic-browser-darwin-x64`
-- Move: `pypi/gasoline-agentic-browser-linux-arm64` -> `pypi/kaboom-agentic-browser-linux-arm64`
-- Move: `pypi/gasoline-agentic-browser-linux-x64` -> `pypi/kaboom-agentic-browser-linux-x64`
-- Move: `pypi/gasoline-agentic-browser-win32-x64` -> `pypi/kaboom-agentic-browser-win32-x64`
+- Move: `pypi/kaboom-agentic-browser-darwin-arm64` -> `pypi/kaboom-agentic-browser-darwin-arm64`
+- Move: `pypi/kaboom-agentic-browser-darwin-x64` -> `pypi/kaboom-agentic-browser-darwin-x64`
+- Move: `pypi/kaboom-agentic-browser-linux-arm64` -> `pypi/kaboom-agentic-browser-linux-arm64`
+- Move: `pypi/kaboom-agentic-browser-linux-x64` -> `pypi/kaboom-agentic-browser-linux-x64`
+- Move: `pypi/kaboom-agentic-browser-win32-x64` -> `pypi/kaboom-agentic-browser-win32-x64`
 - Modify: `pypi/kaboom-agentic-browser-darwin-arm64/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser-darwin-x64/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser-linux-arm64/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser-linux-x64/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser-win32-x64/pyproject.toml`
 - Modify: `pypi/kaboom-agentic-browser-*/README.md`
-- Move: `pypi/kaboom-agentic-browser-*/gasoline_agentic_browser_*` -> `pypi/kaboom-agentic-browser-*/kaboom_agentic_browser_*`
+- Move: `pypi/kaboom-agentic-browser-*/kaboom_agentic_browser_*` -> `pypi/kaboom-agentic-browser-*/kaboom_agentic_browser_*`
 - Test: `pypi/kaboom-agentic-browser/tests/test_platform_cleanup.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -461,7 +461,7 @@
 - Test: `tests/extension/inject-v5-wiring.test.js`
 
 - [ ] **Step 1: Write the failing tests**
-  Assert the browser-exposed API is `window.__kaboom` and that old `window.__gasoline` references are removed.
+  Assert the browser-exposed API is `window.__kaboom` and that old `window.__kaboom` references are removed.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `node --test tests/extension/inject-context-api-actions.test.js tests/extension/inject-v5-wiring.test.js`
@@ -510,7 +510,7 @@
 
 ## Chunk 5: Aggressive Cleanup Semantics
 
-### Task 14: Add npm Install Cleanup For Gasoline/STRUM Artifacts
+### Task 14: Add npm Install Cleanup For Kaboom/Kaboom Artifacts
 
 **Budget:** <=500 changed LOC
 
@@ -522,7 +522,7 @@
 - Test: `tests/cli/install.test.cjs`
 
 - [ ] **Step 1: Write the failing tests**
-  Add install tests that create legacy Gasoline/STRUM managed artifacts and assert Kaboom install removes them before writing new config/skills.
+  Add install tests that create legacy Kaboom/Kaboom managed artifacts and assert Kaboom install removes them before writing new config/skills.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `node --test npm/kaboom-agentic-browser/lib/install.test.js tests/cli/install.test.cjs`
@@ -547,7 +547,7 @@
 - Test: `tests/cli/uninstall.test.cjs`
 
 - [ ] **Step 1: Write the failing tests**
-  Add uninstall/update-oriented tests that assert Kaboom removes Kaboom, Gasoline, and STRUM managed entries and skills.
+  Add uninstall/update-oriented tests that assert Kaboom removes Kaboom, Kaboom, and Kaboom managed entries and skills.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `node --test npm/kaboom-agentic-browser/lib/uninstall.test.js tests/cli/uninstall.test.cjs`
@@ -574,7 +574,7 @@
 - Test: `pypi/kaboom-agentic-browser/tests/test_platform_cleanup.py`
 
 - [ ] **Step 1: Write the failing tests**
-  Add Python tests for wipe-and-go cleanup of Gasoline/STRUM state, skills, and config before install and during uninstall.
+  Add Python tests for wipe-and-go cleanup of Kaboom/Kaboom state, skills, and config before install and during uninstall.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `python3 -m unittest pypi/kaboom-agentic-browser/tests/test_install.py pypi/kaboom-agentic-browser/tests/test_uninstall.py pypi/kaboom-agentic-browser/tests/test_platform_cleanup.py`
@@ -600,7 +600,7 @@
 - Test: `cmd/browser-agent/test_daemon_cleanup_test.go`
 
 - [ ] **Step 1: Write the failing tests**
-  Add Go tests that assert Kaboom native install/stop flows kill and remove Gasoline/STRUM managed state as part of wipe-and-go behavior.
+  Add Go tests that assert Kaboom native install/stop flows kill and remove Kaboom/Kaboom managed state as part of wipe-and-go behavior.
 
 - [ ] **Step 2: Run tests to verify they fail**
   Run: `go test ./cmd/browser-agent -run 'Test(NativeInstall|DaemonCleanup|Stop.*)'`
@@ -622,7 +622,7 @@
 
 **Files:**
 - Modify: `docs/architecture/flow-maps/README.md`
-- Move: `docs/architecture/flow-maps/cookwithgasoline-content-publishing-and-agent-markdown.md` -> `docs/architecture/flow-maps/gokaboom-content-publishing-and-agent-markdown.md`
+- Move: `docs/architecture/flow-maps/gokaboom-content-publishing-and-agent-markdown.md` -> `docs/architecture/flow-maps/gokaboom-content-publishing-and-agent-markdown.md`
 - Modify: `docs/architecture/flow-maps/gokaboom-content-publishing-and-agent-markdown.md`
 - Modify: `docs/architecture/flow-maps/terminal-side-panel-host.md`
 - Modify: `docs/architecture/flow-maps/tracked-tab-hover-quick-actions.md`
@@ -658,7 +658,7 @@
 - Modify batch 3: `features.md`, `privacy.md`, `security.md`, `troubleshooting.md`
 
 - [ ] **Step 1: Write or extend the failing site branding test**
-  Expand `tests/site/gokaboom-domain-contract.test.js` to scan the touched content files for disallowed `Gasoline`/`STRUM`/old-domain strings.
+  Expand `tests/site/gokaboom-domain-contract.test.js` to scan the touched content files for disallowed `Kaboom`/`Kaboom`/old-domain strings.
 
 - [ ] **Step 2: Run test to verify it fails**
   Run: `node --test tests/site/gokaboom-domain-contract.test.js`
@@ -684,7 +684,7 @@
 - Regenerate: compiled extension outputs and site outputs after code changes are complete
 
 - [ ] **Step 1: Add the final failing audit**
-  Add a final scan test that rejects surviving first-party `Gasoline`, `STRUM`, `cookwithgasoline`, and `getstrum` strings outside approved historical/spec files.
+  Add a final scan test that rejects surviving first-party `Kaboom`, `Kaboom`, `gokaboom`, and `gokaboom` strings outside approved historical/spec files.
 
 - [ ] **Step 2: Run the final audit to verify it fails**
   Run: `node --test tests/cli/root-metadata-branding.test.cjs tests/site/gokaboom-domain-contract.test.js`

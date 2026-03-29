@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.0.0 Released"
+title: KaBOOM v5.0.0 Released"
 description: "Initial public release with core observability features"
 date: 2026-01-04T00:03:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.0.0
 
-STRUM v5.0.0 marks the initial public release of the.gasoline MCP protocol and extension. This release includes core browser observability features for AI coding assistants.
+Kaboom v5.0.0 marks the initial public release of the KaBOOM MCP protocol and extension. This release includes core browser observability features for AI coding assistants.
 
 ### Features
 
@@ -31,12 +31,12 @@ STRUM v5.0.0 marks the initial public release of the.gasoline MCP protocol and e
 ## Get Started
 
 ```bash
-npm install -g gasoline-mcp
-gasoline-mcp --help
+npm install -g kaboom-agentic-browser
+kaboom-agentic-browser --help
 ```
 
 Install the browser extension from the Chrome Web Store or load it manually via Developer Mode.
 
 ## Full Changelog
 
-[v5.0.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.0.0)
+[v5.0.0 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.0.0)

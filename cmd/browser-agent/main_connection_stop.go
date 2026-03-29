@@ -13,8 +13,8 @@ import (
 // runStopMode gracefully stops a running server on the specified port.
 // Uses hybrid approach: PID file (fast) -> HTTP /shutdown (graceful) -> platform-aware process kill (fallback).
 func runStopMode(port int) {
-	fmt.Printf("Stopping gasoline server on port %d...\n", port)
-	logCommandInvocation("stop_command_invoked", "gasoline --stop", port)
+	fmt.Printf("Stopping kaboom server on port %d...\n", port)
+	logCommandInvocation("stop_command_invoked", "kaboom --stop", port)
 
 	if stopViaPIDFile(port) {
 		return
@@ -25,16 +25,16 @@ func runStopMode(port int) {
 	stopViaProcessLookup(port)
 }
 
-// runForceCleanup kills ALL running gasoline daemons across all ports.
+// runForceCleanup kills ALL running kaboom daemons across all ports.
 // Used during package install to ensure clean upgrade from older versions.
 func runForceCleanup() {
-	fmt.Println("Force cleanup: Killing all running gasoline daemons...")
+	fmt.Println("Force cleanup: Killing all running kaboom daemons...")
 
 	logFile := resolveLogFile()
 	cleanupEntry := map[string]any{
 		"type":       "lifecycle",
 		"event":      "force_cleanup_invoked",
-		"source":     "gasoline --force",
+		"source":     "kaboom --force",
 		"caller_pid": os.Getpid(),
 		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	}
@@ -42,9 +42,9 @@ func runForceCleanup() {
 
 	var killed, failedToKill int
 	if runtime.GOOS != "windows" {
-		killed, failedToKill = killUnixGasolineProcesses()
+		killed, failedToKill = killUnixKaboomProcesses()
 	} else {
-		killed = killWindowsGasolineProcesses()
+		killed = killWindowsKaboomProcesses()
 	}
 
 	cleanupPIDFiles()

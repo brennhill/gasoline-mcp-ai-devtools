@@ -15,7 +15,7 @@ links:
 
 - Problem: We build hooks that claim to save tokens and prevent mistakes, but we have no way to prove it. Without measurement, we can't tell if a hook helps, hurts, or does nothing.
 - User value: Confidence that each hook delivers measurable improvement. Data-driven decisions about which hooks to enable. Regression detection when hook logic changes.
-- Binary: `gasoline-hooks eval` (subcommand) + `scripts/eval/` (orchestration)
+- Binary: `kaboom-hooks eval` (subcommand) + `scripts/eval/` (orchestration)
 
 ## Requirements
 
@@ -55,7 +55,7 @@ Purpose-built codebases for integration evals. Each designed to exercise specifi
 **`eval/codebase-go-web`** — Go web server (~30 files)
 - Known import graph: `main.go` -> `routes.go` -> `handlers.go` -> `db.go`
 - Standards doc with 5 specific rules
-- 3 locked decisions in `.gasoline/decisions.json`
+- 3 locked decisions in `.kaboom/decisions.json`
 - 2 convention probes (http.Client, handler map pattern)
 - 1 file at 780/800 LOC (near limit)
 
@@ -150,7 +150,7 @@ Extend the existing token-savings tracking to record per-hook metrics during rea
 }
 ```
 
-Persisted to `~/.gasoline/stats/sessions/` alongside the existing `lifetime.json`. Users can opt-in via `.gasoline.json`:
+Persisted to `~/.kaboom/stats/sessions/` alongside the existing `lifetime.json`. Users can opt-in via `.kaboom.json`:
 
 ```json
 {
@@ -160,10 +160,10 @@ Persisted to `~/.gasoline/stats/sessions/` alongside the existing `lifetime.json
 
 ### EVAL_008: CLI report command
 
-`gasoline-hooks eval` runs the tier-1 and tier-2 evals and prints a summary:
+`kaboom-hooks eval` runs the tier-1 and tier-2 evals and prints a summary:
 
 ```
-gasoline-hooks eval
+kaboom-hooks eval
 
 Running unit evals...
   quality-gate:    12/12 passed (avg 4ms)

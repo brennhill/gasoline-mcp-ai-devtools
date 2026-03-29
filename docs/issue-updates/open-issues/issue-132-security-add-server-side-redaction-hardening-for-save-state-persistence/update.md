@@ -1,12 +1,12 @@
 # Product Update: Issue #132
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/132
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/132
 - Title: Security: add server-side redaction hardening for save_state persistence
 - Last Updated: 2026-02-17T16:37:03Z
 
 ## Change Summary
-This update resolves or advances Issue #132 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #132 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Security: add server-side redaction hardening for save_state persistence

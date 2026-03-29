@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.5.0: Rock-Solid MCP Protocol Compliance"
+title: "KaBOOM v5.5.0: Rock-Solid MCP Protocol Compliance"
 description: "v5.5.0 delivers 100% MCP protocol compliance with critical fixes for stdio transport, notification handling, and response framing. Claude Desktop and Cursor now connect flawlessly."
 date: 2026-02-04T21:09:00Z
 authors:
@@ -13,11 +13,11 @@ last_verified_date: 2026-03-06
 normalized_tags: ['--releases', 'releases', 'mcp', 'stability', 'blog', 'v5', 'release']
 ---
 
-STRUM v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
+Kaboom v5.5.0 is a stability release focused on MCP protocol compliance. If you experienced "Unexpected end of JSON input" errors or connection issues with Claude Desktop or Cursor, this release fixes them all.
 
 ## The Problem: Intermittent Connection Failures
 
-Users reported sporadic errors when connecting to.gasoline via Claude Desktop:
+Users reported sporadic errors when connecting to KaBOOM via Claude Desktop:
 
 ```
 [error] Unexpected end of JSON input
@@ -75,7 +75,7 @@ All npm packages prior to v5.5.0 have been deprecated. Users installing old vers
 ## Upgrade
 
 ```bash
-npx gasoline-mcp@5.5.0
+npx kaboom-agentic-browser@5.5.0
 ```
 
 Or update your MCP configuration:
@@ -83,10 +83,10 @@ Or update your MCP configuration:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "kaboom": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@5.5.0", "--port", "7890", "--persist"]
+      "args": ["-y", "kaboom-agentic-browser@5.5.0", "--port", "7890", "--persist"]
     }
   }
 }
@@ -94,4 +94,4 @@ Or update your MCP configuration:
 
 ## Full Changelog
 
-[GitHub Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.5.0)
+[GitHub Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.5.0)

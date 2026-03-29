@@ -70,8 +70,8 @@ export default function NextFixturePage() {
 
   return (
     <>
-      <header className="gasoline-brand">
-        <svg className="gasoline-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+      <header className="kaboom-brand">
+        <svg className="kaboom-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="nextBrandFlame" x1="0%" y1="100%" x2="0%" y2="0%">
               <stop offset="0%" stopColor="#f97316"></stop>
@@ -93,7 +93,7 @@ export default function NextFixturePage() {
             fill="url(#nextBrandInnerFlame)"
           ></path>
         </svg>
-        <span>Gasoline Framework Smoke</span>
+        <span>Kaboom Framework Smoke</span>
         <small>Next Selector Fixture</small>
       </header>
 
@@ -275,26 +275,26 @@ export default function NextFixturePage() {
       />
       <style jsx global>{`
         :root {
-          --gasoline-ink: #17171d;
-          --gasoline-muted: #4b5563;
-          --gasoline-warm-100: #fff7ed;
-          --gasoline-warm-200: #ffedd5;
-          --gasoline-warm-500: #f97316;
-          --gasoline-warm-600: #ea580c;
-          --gasoline-border: #fdba74;
-          --gasoline-shadow: rgba(234, 88, 12, 0.18);
+          --kaboom-ink: #17171d;
+          --kaboom-muted: #4b5563;
+          --kaboom-warm-100: #fff7ed;
+          --kaboom-warm-200: #ffedd5;
+          --kaboom-warm-500: #f97316;
+          --kaboom-warm-600: #ea580c;
+          --kaboom-border: #fdba74;
+          --kaboom-shadow: rgba(234, 88, 12, 0.18);
         }
         body {
           margin: 0;
           font-family: 'Avenir Next', 'Inter', 'Segoe UI', sans-serif;
           background:
             radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 38%),
-            linear-gradient(140deg, var(--gasoline-warm-100), #fff);
-          color: var(--gasoline-ink);
+            linear-gradient(140deg, var(--kaboom-warm-100), #fff);
+          color: var(--kaboom-ink);
           min-height: 100vh;
           padding: 1.6rem 1.2rem 2.4rem;
         }
-        .gasoline-brand {
+        .kaboom-brand {
           width: min(100%, 760px);
           margin: 0 auto 0.9rem;
           display: flex;
@@ -305,13 +305,13 @@ export default function NextFixturePage() {
           font-weight: 700;
           letter-spacing: 0.02em;
         }
-        .gasoline-brand-mark {
+        .kaboom-brand-mark {
           width: 22px;
           height: 22px;
           flex: 0 0 22px;
         }
-        .gasoline-brand small {
-          color: var(--gasoline-muted);
+        .kaboom-brand small {
+          color: var(--kaboom-muted);
           font-weight: 600;
         }
         .fixture-shell {
@@ -319,10 +319,10 @@ export default function NextFixturePage() {
           max-width: 760px;
           margin: 0 auto;
           padding: 1.25rem 1.25rem 1.3rem;
-          border: 1px solid var(--gasoline-border);
+          border: 1px solid var(--kaboom-border);
           border-radius: 14px;
           background: #ffffff;
-          box-shadow: 0 14px 32px -24px var(--gasoline-shadow);
+          box-shadow: 0 14px 32px -24px var(--kaboom-shadow);
         }
         .fixture-shell h1 {
           margin-top: 0;
@@ -332,7 +332,7 @@ export default function NextFixturePage() {
           letter-spacing: -0.01em;
         }
         .fixture-shell p {
-          color: var(--gasoline-muted);
+          color: var(--kaboom-muted);
         }
         .fixture-shell label {
           display: block;
@@ -347,7 +347,7 @@ export default function NextFixturePage() {
           border: 1px solid #fdba74;
           border-radius: 6px;
           background: #fffefc;
-          color: var(--gasoline-ink);
+          color: var(--kaboom-ink);
         }
         .fixture-shell button {
           display: inline-block;
@@ -355,7 +355,7 @@ export default function NextFixturePage() {
           padding: 0.55rem 1rem;
           border: none;
           border-radius: 6px;
-          background: linear-gradient(180deg, var(--gasoline-warm-500), var(--gasoline-warm-600));
+          background: linear-gradient(180deg, var(--kaboom-warm-500), var(--kaboom-warm-600));
           color: #fff;
           cursor: pointer;
           font-weight: 700;
@@ -399,7 +399,7 @@ export default function NextFixturePage() {
           text-align: center;
         }
         #consent-modal button {
-          background: linear-gradient(180deg, var(--gasoline-warm-500), var(--gasoline-warm-600));
+          background: linear-gradient(180deg, var(--kaboom-warm-500), var(--kaboom-warm-600));
           margin-top: 0;
         }
       `}</style>

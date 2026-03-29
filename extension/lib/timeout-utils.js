@@ -108,11 +108,12 @@ async function withTimeout(promise, timeoutMs, fallback) {
 export async function withTimeoutAndCleanup(promise, timeoutMs, options) {
     const fallback = options?.fallback;
     const cleanup = options?.cleanup;
+    let timeoutId;
     try {
         return await Promise.race([
             promise,
             new Promise((_, reject) => {
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     cleanup?.();
                     if (fallback !== undefined) {
                         reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
@@ -129,6 +130,10 @@ export async function withTimeoutAndCleanup(promise, timeoutMs, options) {
             return err.fallback;
         }
         throw err;
+    }
+    finally {
+        if (timeoutId)
+            clearTimeout(timeoutId);
     }
 }
 /**

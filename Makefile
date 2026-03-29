@@ -1,10 +1,10 @@
-# Gasoline Build Makefile
+# Kaboom Build Makefile
 
 VERSION := $(shell cat VERSION)
-BINARY_NAME := gasoline-agentic-devtools
-HOOKS_BINARY_NAME := gasoline-hooks
+BINARY_NAME := kaboom-agentic-browser
+HOOKS_BINARY_NAME := kaboom-hooks
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry.Version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/export.version=$(VERSION) -X github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry.Version=$(VERSION)
 HOOKS_LDFLAGS := -s -w -X main.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
@@ -35,7 +35,7 @@ GO_TEST_SHARDS ?= 4
 GO_TEST_COUNT ?= 1
 GO_TEST_PARALLEL ?= 16
 GO_TEST_P ?= 8
-GO_TEST_STATE_DIR ?= /tmp/gasoline-state-test
+GO_TEST_STATE_DIR ?= /tmp/kaboom-state-test
 GO_TEST_TOOLCHAIN ?= auto
 GO_TEST_CACHE_DIR ?= /tmp/go-build-cache
 
@@ -93,17 +93,17 @@ test-all: test test-js
 
 test-go-quick:
 	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) --short -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) KABOOM_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) --short -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-long:
 	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) KABOOM_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-sharded:
 	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) KABOOM_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-race:
 	go test -race -v ./...
@@ -115,7 +115,7 @@ test-cover:
 
 test-integration:
 	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -tags=integration -count=1 -timeout=300s ./internal/... $(CMD_PKG)/...
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) KABOOM_STATE_DIR=$(GO_TEST_STATE_DIR) go test -tags=integration -count=1 -timeout=300s ./internal/... $(CMD_PKG)/...
 
 test-cover-integration:
 	@mkdir -p coverage/integration
@@ -146,7 +146,7 @@ verify-zero-deps:
 	@echo "OK: Zero external dependencies verified"
 
 verify-imports:
-	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/brennhill/gasoline-agentic-browser-devtools-mcp'); \
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP'); \
 	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
 	@echo "OK: All imports are stdlib or internal"
 
@@ -199,22 +199,22 @@ windows-amd64:
 # Build and copy binaries to NPM package directories (for releases)
 npm-binaries: build compile-ts
 	@echo "=== Copying binaries to NPM packages ==="
-	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/gasoline
-	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/gasoline
-	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline
-	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
-	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/kaboom
+	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/kaboom
+	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/kaboom
+	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/kaboom
+	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/kaboom.exe
 	@echo "=== Copying hooks binaries to NPM packages ==="
-	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/gasoline-hooks
-	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/gasoline-hooks
-	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline-hooks
-	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline-hooks
-	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline-hooks.exe
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/kaboom-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/kaboom-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/kaboom-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 npm/linux-x64/bin/kaboom-hooks
+	cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/kaboom-hooks.exe
 	@echo "=== Copying extension to main NPM package ==="
 	@mkdir -p npm/kaboom-agentic-browser/extension
 	@cp -r extension/* npm/kaboom-agentic-browser/extension/
 	@echo "=== Verifying embedded versions ==="
-	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
+	@EMBEDDED=$$(npm/darwin-arm64/bin/kaboom --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
 	EXPECTED=$$(cat VERSION); \
 	if [ "$$EMBEDDED" != "$$EXPECTED" ]; then \
 		echo "❌ ERROR: Embedded version $$EMBEDDED does not match VERSION file $$EXPECTED"; \
@@ -324,12 +324,12 @@ ci-e2e:
 
 extension-zip:
 	@mkdir -p $(BUILD_DIR)
-	@rm -f $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
-	cd extension && zip -r ../$(BUILD_DIR)/gasoline-extension-v$(VERSION).zip \
+	@rm -f $(BUILD_DIR)/kaboom-extension-v$(VERSION).zip
+	cd extension && zip -r ../$(BUILD_DIR)/kaboom-extension-v$(VERSION).zip \
 		. \
 		-x "*.DS_Store" "package.json" "*__tests__/*" "*.test.js" "*.test.cjs"
-	@echo "Built $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip"
-	@ls -lh $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
+	@echo "Built $(BUILD_DIR)/kaboom-extension-v$(VERSION).zip"
+	@ls -lh $(BUILD_DIR)/kaboom-extension-v$(VERSION).zip
 
 extension-crx:
 	@node scripts/build-crx.js
@@ -356,8 +356,8 @@ ci-security:
 ci-bench:
 	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
 	@test -f docs/benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
-	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > /tmp/gasoline-bench-current.txt
-	benchstat docs/benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
+	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > /tmp/kaboom-bench-current.txt
+	benchstat docs/benchmarks/baseline.txt /tmp/kaboom-bench-current.txt
 
 ci-fuzz:
 	go test -fuzz=FuzzPostLogs -fuzztime=30s $(CMD_PKG)/
@@ -434,7 +434,7 @@ test-upgrade-guards:
 	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
 	node --test scripts/install-upgrade-regression.contract.test.mjs
 	node --test npm/kaboom-agentic-browser/lib/kill-daemon.test.js
-	python3 -m unittest discover -s pypi/gasoline-agentic-browser/tests -p 'test_*.py'
+	python3 -m unittest discover -s pypi/kaboom-agentic-browser/tests -p 'test_*.py'
 	node scripts/install-upgrade-regression.mjs
 
 # Release gate for daemon cleanup/version safety.
@@ -452,27 +452,27 @@ sync-version:
 			npm/linux-arm64/package.json npm/win32-x64/package.json \
 			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
-	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
+	@perl -pi -e 's/("@brennhill\/kaboom-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
 		npm/kaboom-agentic-browser/package.json
 	@# PyPI version fields in pyproject.toml
 	@perl -pi -e 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' \
-		pypi/gasoline-agentic-browser/pyproject.toml \
-		pypi/gasoline-agentic-browser-darwin-arm64/pyproject.toml \
-		pypi/gasoline-agentic-browser-darwin-x64/pyproject.toml \
-		pypi/gasoline-agentic-browser-linux-arm64/pyproject.toml \
-		pypi/gasoline-agentic-browser-linux-x64/pyproject.toml \
-		pypi/gasoline-agentic-browser-win32-x64/pyproject.toml
+		pypi/kaboom-agentic-browser/pyproject.toml \
+		pypi/kaboom-agentic-browser-darwin-arm64/pyproject.toml \
+		pypi/kaboom-agentic-browser-darwin-x64/pyproject.toml \
+		pypi/kaboom-agentic-browser-linux-arm64/pyproject.toml \
+		pypi/kaboom-agentic-browser-linux-x64/pyproject.toml \
+		pypi/kaboom-agentic-browser-win32-x64/pyproject.toml
 	@# PyPI optional dependencies versions
-	@perl -pi -e 's/(gasoline-agentic-browser-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
-		pypi/gasoline-agentic-browser/pyproject.toml
+	@perl -pi -e 's/(kaboom-agentic-browser-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
+		pypi/kaboom-agentic-browser/pyproject.toml
 	@# PyPI __init__.py versions
 	@perl -pi -e 's/__version__ = "[0-9]+\.[0-9]+\.[0-9]+"/__version__ = "$(VERSION)"/' \
-		pypi/gasoline-agentic-browser/gasoline_agentic_browser/__init__.py \
-		pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/__init__.py \
-		pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/__init__.py \
-		pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/__init__.py \
-		pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/__init__.py \
-		pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/__init__.py
+		pypi/kaboom-agentic-browser/kaboom_agentic_browser/__init__.py \
+		pypi/kaboom-agentic-browser-darwin-arm64/kaboom_agentic_browser_darwin_arm64/__init__.py \
+		pypi/kaboom-agentic-browser-darwin-x64/kaboom_agentic_browser_darwin_x64/__init__.py \
+		pypi/kaboom-agentic-browser-linux-arm64/kaboom_agentic_browser_linux_arm64/__init__.py \
+		pypi/kaboom-agentic-browser-linux-x64/kaboom_agentic_browser_linux_x64/__init__.py \
+		pypi/kaboom-agentic-browser-win32-x64/kaboom_agentic_browser_win32_x64/__init__.py
 	@# JS version strings
 	@perl -pi -e "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '$(VERSION)'/g" \
 		extension/inject.js tests/extension/popup.test.js
@@ -484,14 +484,14 @@ sync-version:
 	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
 		$(CMD_DIR)/main.go cmd/hooks/main.go
 	@# Shell wrapper version
-	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
+	@perl -pi -e 's/KABOOM_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/KABOOM_VERSION="$(VERSION)"/' \
 		npm/kaboom-agentic-browser/bin/kaboom-agentic-browser
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
 	@# Docs and benchmarks
-	@perl -pi -e 's/Gasoline v[0-9]+\.[0-9]+\.[0-9]+/Gasoline v$(VERSION)/g' docs/getting-started.md
-	@perl -pi -e 's/\[gasoline\] v[0-9]+\.[0-9]+\.[0-9]+/[gasoline] v$(VERSION)/g' docs/getting-started.md
+	@perl -pi -e 's/Kaboom v[0-9]+\.[0-9]+\.[0-9]+/Kaboom v$(VERSION)/g' docs/getting-started.md
+	@perl -pi -e 's/\[kaboom\] v[0-9]+\.[0-9]+\.[0-9]+/[Kaboom] v$(VERSION)/g' docs/getting-started.md
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' docs/har-export.md
 	@perl -pi -e 's/\*\*Version:\*\* [0-9]+\.[0-9]+\.[0-9]+/**Version:** $(VERSION)/' docs/benchmarks/latest-benchmark.md
 	@echo "All files synced to $(VERSION)"
@@ -529,17 +529,17 @@ context-size:
 
 pypi-binaries: build
 	@echo "Copying binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline.exe
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/kaboom-agentic-browser-darwin-arm64/kaboom_agentic_browser_darwin_arm64/kaboom
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/kaboom-agentic-browser-darwin-x64/kaboom_agentic_browser_darwin_x64/kaboom
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/kaboom-agentic-browser-linux-arm64/kaboom_agentic_browser_linux_arm64/kaboom
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/kaboom-agentic-browser-linux-x64/kaboom_agentic_browser_linux_x64/kaboom
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/kaboom-agentic-browser-win32-x64/kaboom_agentic_browser_win32_x64/kaboom.exe
 	@echo "Copying hooks binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/gasoline-hooks
-	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/gasoline-hooks
-	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline-hooks
-	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline-hooks
-	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline-hooks.exe
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-arm64 pypi/kaboom-agentic-browser-darwin-arm64/kaboom_agentic_browser_darwin_arm64/kaboom-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-darwin-x64 pypi/kaboom-agentic-browser-darwin-x64/kaboom_agentic_browser_darwin_x64/kaboom-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-arm64 pypi/kaboom-agentic-browser-linux-arm64/kaboom_agentic_browser_linux_arm64/kaboom-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-linux-x64 pypi/kaboom-agentic-browser-linux-x64/kaboom_agentic_browser_linux_x64/kaboom-hooks
+	@cp $(BUILD_DIR)/$(HOOKS_BINARY_NAME)-win32-x64.exe pypi/kaboom-agentic-browser-win32-x64/kaboom_agentic_browser_win32_x64/kaboom-hooks.exe
 	@echo "Binaries copied successfully"
 
 pypi-preflight:
@@ -555,7 +555,7 @@ pypi-preflight:
 pypi-schema-check:
 	@echo "Checking PyPI main pyproject normalization..."
 	@node scripts/normalize-pypi-main-pyproject.js --check --validate
-	@python3 -c 'import sys,tomllib; p="pypi/gasoline-agentic-browser/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
+	@python3 -c 'import sys,tomllib; p="pypi/kaboom-agentic-browser/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
 	(isinstance(scripts, dict) or (print("ERROR: [project.scripts] must be a TOML table"), sys.exit(1))); \
 	("dependencies" not in scripts or (print("ERROR: project.scripts.dependencies must not exist"), sys.exit(1))); \
 	print("PyPI schema check ok"); print("project keys:", sorted(project.keys())); print("project.scripts keys:", sorted(scripts.keys())); print("project.dependencies count:", len(project.get("dependencies", [])))'
@@ -567,12 +567,12 @@ pypi-build: pypi-preflight pypi-schema-check
 	@echo "Validating PyPI main pyproject metadata..."
 	@node scripts/normalize-pypi-main-pyproject.js --validate
 	@echo "Building PyPI wheels..."
-	@for pkg in pypi/gasoline-agentic-browser-*/; do \
+	@for pkg in pypi/kaboom-agentic-browser-*/; do \
 		echo "Building $$pkg..."; \
 		(cd "$$pkg" && python3 -m build); \
 	done
 	@echo "Building main package..."
-	@(cd pypi/gasoline-agentic-browser && python3 -m build)
+	@(cd pypi/kaboom-agentic-browser && python3 -m build)
 	@echo "All PyPI packages built successfully"
 	@echo ""
 	@echo "Wheels created:"
@@ -581,28 +581,28 @@ pypi-build: pypi-preflight pypi-schema-check
 pypi-test-publish: pypi-build
 	@echo "Publishing to Test PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
-	@for pkg in pypi/gasoline-agentic-browser-*/; do \
+	@for pkg in pypi/kaboom-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload --repository testpypi dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload --repository testpypi dist/*)
+	@(cd pypi/kaboom-agentic-browser && python3 -m twine upload --repository testpypi dist/*)
 	@echo "All packages published to Test PyPI"
-	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-agentic-browser"
+	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ kaboom-agentic-browser"
 
 pypi-publish: pypi-build
 	@echo "Publishing to PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read dummy
-	@for pkg in pypi/gasoline-agentic-browser-*/; do \
+	@for pkg in pypi/kaboom-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload dist/*)
+	@(cd pypi/kaboom-agentic-browser && python3 -m twine upload dist/*)
 	@echo "All packages published to PyPI"
-	@echo "Installation: pip install gasoline-agentic-browser"
+	@echo "Installation: pip install kaboom-agentic-browser"
 
 pypi-clean:
 	@echo "Cleaning PyPI build artifacts..."

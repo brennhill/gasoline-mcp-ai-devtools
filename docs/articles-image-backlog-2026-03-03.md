@@ -56,14 +56,14 @@ Consolidated visual callouts for new articles so we can triage design/illustrati
 | P2 | /blog/use-mcp-for-browser-aware-debugging/ | Image | Before/after workflow comparison (manual vs MCP-assisted) |
 | P1 | /blog/mcp-tools-vs-traditional-test-runners/ | Diagram | Hybrid model: MCP discovery + test runner enforcement |
 | P2 | /blog/mcp-tools-vs-traditional-test-runners/ | Image | Decision matrix for workflow choice |
-| P1 | /blog/claude-code-gasoline-fast-bug-triage-setup/ | Diagram | Claude triage loop with Gasoline tool calls |
-| P2 | /blog/claude-code-gasoline-fast-bug-triage-setup/ | Image | MCP config screen snippet |
-| P1 | /blog/cursor-gasoline-interactive-web-development/ | Diagram | Interactive dev loop: edit -> inspect -> fix -> verify |
-| P2 | /blog/cursor-gasoline-interactive-web-development/ | Image | Cursor assistant panel with observe/generate calls |
+| P1 | /blog/claude-code-kaboom-fast-bug-triage-setup/ | Diagram | Claude triage loop with Kaboom tool calls |
+| P2 | /blog/claude-code-kaboom-fast-bug-triage-setup/ | Image | MCP config screen snippet |
+| P1 | /blog/cursor-kaboom-interactive-web-development/ | Diagram | Interactive dev loop: edit -> inspect -> fix -> verify |
+| P2 | /blog/cursor-kaboom-interactive-web-development/ | Image | Cursor assistant panel with observe/generate calls |
 | P1 | /blog/local-first-demo-recording-for-product-teams/ | Diagram | Demo production flow: record -> review -> replay -> export |
 | P2 | /blog/local-first-demo-recording-for-product-teams/ | Image | Demo chapter timeline with key moments |
-| P1 | /blog/production-debugging-runbook-with-gasoline/ | Diagram | Incident runbook flowchart from alert to verified fix |
-| P2 | /blog/production-debugging-runbook-with-gasoline/ | Image | Incident board screenshot with status columns |
+| P1 | /blog/production-debugging-runbook-with-kaboom/ | Diagram | Incident runbook flowchart from alert to verified fix |
+| P2 | /blog/production-debugging-runbook-with-kaboom/ | Image | Incident board screenshot with status columns |
 
 ## Notes
 

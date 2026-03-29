@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // appendExitDiagnostic writes a structured exit diagnostic entry to the first
@@ -58,7 +58,7 @@ func crashLogCandidates() []string {
 	if p, err := state.LegacyCrashLogFile(); err == nil {
 		add(p)
 	}
-	add(filepath.Join(os.TempDir(), "gasoline-crash.log"))
+	add(filepath.Join(os.TempDir(), "kaboom-crash.log"))
 	return candidates
 }
 

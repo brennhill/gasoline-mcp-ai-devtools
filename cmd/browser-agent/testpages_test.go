@@ -156,7 +156,7 @@ func TestHandleTestPagesSpecialEndpoints(t *testing.T) {
 		wantStatus  int
 		wantBodySub string
 	}{
-		{path: "/tests/", wantStatus: http.StatusOK, wantBodySub: "Gasoline"},
+		{path: "/tests/", wantStatus: http.StatusOK, wantBodySub: "Kaboom"},
 		{path: "/tests/404", wantStatus: http.StatusNotFound, wantBodySub: "network_error"},
 		{path: "/tests/500", wantStatus: http.StatusInternalServerError, wantBodySub: "network_error"},
 		{path: "/tests/cors-test", wantStatus: http.StatusOK, wantBodySub: "cors_block"},

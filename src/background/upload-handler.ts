@@ -306,7 +306,7 @@ async function escalateToStage4Internal(
         return {
           success: false,
           stage: 4,
-          error: `Escalation failed: OS automation disabled on daemon. Restart with: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
+          error: `Escalation failed: OS automation disabled on daemon. Restart with: kaboom-agentic-browser --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
         }
       }
       await dismissFileDialog(serverUrl)

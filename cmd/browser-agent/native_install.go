@@ -12,13 +12,16 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/telemetry"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // installerLegacyServerKeys are historical MCP config IDs that are migrated
 // to the canonical mcpServerName during install.
 var installerLegacyServerKeys = []string{
+	"kaboom-agentic-browser",
+	"kaboom",
+	"gasoline-browser-devtools",
 	"gasoline-agentic-browser",
 	"gasoline",
 	"strum-browser-devtools",
@@ -27,7 +30,7 @@ var installerLegacyServerKeys = []string{
 }
 
 func extensionInstallDir(home string) string {
-	if override := strings.TrimSpace(os.Getenv("GASOLINE_EXTENSION_DIR")); override != "" {
+	if override := strings.TrimSpace(os.Getenv("KABOOM_EXTENSION_DIR")); override != "" {
 		return override
 	}
 	return filepath.Join(home, "KaboomAgenticDevtoolExtension")

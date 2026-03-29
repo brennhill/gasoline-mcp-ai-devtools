@@ -20,8 +20,8 @@ function runKillDaemon({ homeDir, binDir, env = {}, logPath }) {
     env: {
       ...process.env,
       ...env,
-      GASOLINE_KILL_DAEMON_DRY_RUN: '1',
-      GASOLINE_KILL_DAEMON_LOG: logPath || '',
+      KABOOM_KILL_DAEMON_DRY_RUN: '1',
+      KABOOM_KILL_DAEMON_LOG: logPath || '',
       HOME: homeDir,
       PATH: `${binDir}${path.delimiter}${process.env.PATH || ''}`,
     },
@@ -30,8 +30,8 @@ function runKillDaemon({ homeDir, binDir, env = {}, logPath }) {
   assert.equal(run.status, 0, `kill-daemon.js exited with ${run.status}: ${run.stderr}`);
 }
 
-test('cleanup targets legacy and current daemon names', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-kill-test-'));
+test('cleanup targets kaboom and legacy daemon names', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-kill-test-'));
   const binDir = path.join(tmp, 'bin');
   fs.mkdirSync(binDir, { recursive: true });
 
@@ -40,22 +40,24 @@ test('cleanup targets legacy and current daemon names', () => {
 
   const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
   if (process.platform === 'win32') {
+    assert.match(log, /kaboom-agentic-browser\*\.exe/, 'expected cleanup to target kaboom-agentic-browser*.exe');
     assert.match(log, /gasoline\*\.exe/, 'expected cleanup to target gasoline*.exe');
     assert.match(log, /browser-agent\*\.exe/, 'expected cleanup to target legacy browser-agent*.exe');
-    assert.match(log, /\[execFile\] gasoline-mcp --force/, 'expected cleanup to invoke gasoline-mcp --force');
+    assert.match(log, /\[execFile\] kaboom-agentic-browser --force/, 'expected cleanup to invoke kaboom-agentic-browser --force');
     return;
   }
 
+  assert.match(log, /\[pattern\] kaboom-agentic-browser/, 'expected cleanup to target kaboom-agentic-browser');
   assert.match(log, /\[pattern\] gasoline-mcp/, 'expected cleanup to target gasoline-mcp');
   assert.match(log, /\[pattern\] browser-agent/, 'expected cleanup to target legacy browser-agent');
 });
 
-test('cleanup removes modern and legacy pid files', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-kill-pids-'));
+test('cleanup removes kaboom and legacy pid files', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-kill-pids-'));
   const binDir = path.join(tmp, 'bin');
   fs.mkdirSync(binDir, { recursive: true });
 
-  const modernPid = path.join(tmp, '.gasoline', 'run', 'gasoline-7890.pid');
+  const modernPid = path.join(tmp, '.kaboom', 'run', 'kaboom-7890.pid');
   const legacyPid = path.join(tmp, '.gasoline-7890.pid');
   fs.mkdirSync(path.dirname(modernPid), { recursive: true });
   fs.writeFileSync(modernPid, '123');
@@ -68,15 +70,15 @@ test('cleanup removes modern and legacy pid files', () => {
 });
 
 test('cleanup removes pid files across known ports and XDG state root', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-kill-known-ports-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-kill-known-ports-'));
   const binDir = path.join(tmp, 'bin');
   const xdgStateHome = path.join(tmp, 'xdg-state');
   fs.mkdirSync(binDir, { recursive: true });
 
   const trackedPaths = [];
   for (const port of KNOWN_PORTS) {
-    const modernPid = path.join(tmp, '.gasoline', 'run', `gasoline-${port}.pid`);
-    const xdgPid = path.join(xdgStateHome, 'gasoline', 'run', `gasoline-${port}.pid`);
+    const modernPid = path.join(tmp, '.kaboom', 'run', `kaboom-${port}.pid`);
+    const xdgPid = path.join(xdgStateHome, 'kaboom', 'run', `kaboom-${port}.pid`);
     const legacyPid = path.join(tmp, `.gasoline-${port}.pid`);
 
     fs.mkdirSync(path.dirname(modernPid), { recursive: true });
@@ -101,11 +103,11 @@ test('cleanup removes pid files across known ports and XDG state root', () => {
 });
 
 test('cleanup attempts to terminate pids discovered from pid files', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-kill-pid-kill-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-kill-pid-kill-'));
   const binDir = path.join(tmp, 'bin');
   fs.mkdirSync(binDir, { recursive: true });
 
-  const modernPid = path.join(tmp, '.gasoline', 'run', 'gasoline-22222.pid');
+  const modernPid = path.join(tmp, '.kaboom', 'run', 'kaboom-22222.pid');
   fs.mkdirSync(path.dirname(modernPid), { recursive: true });
   fs.writeFileSync(modernPid, '22222');
 

@@ -48,7 +48,7 @@ export async function handleAiWebPilotToggle(enabled) {
     // ONLY communicate with background - do NOT write to storage directly
     chrome.runtime.sendMessage({ type: 'set_ai_web_pilot_enabled', enabled }, (response) => {
         if (!response || !response.success) {
-            console.error('[Gasoline] Failed to set AI Web Pilot toggle in background');
+            console.error('[Kaboom] Failed to set AI Web Pilot toggle in background');
             // Revert the UI if background didn't accept the change
             const toggle = document.getElementById('aiWebPilotEnabled');
             if (toggle) {

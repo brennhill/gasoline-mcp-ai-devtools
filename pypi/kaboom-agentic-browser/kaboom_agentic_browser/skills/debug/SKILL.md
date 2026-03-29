@@ -3,7 +3,7 @@ name: debug
 description: Use when user reports a bug, broken feature, console error, failed network request, or unexpected page behavior that needs investigation.
 ---
 
-# Gasoline Debug
+# Kaboom Debug
 
 Use this skill when a user reports "it is broken" and needs a root cause, not guesses.
 

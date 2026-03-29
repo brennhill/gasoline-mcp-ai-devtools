@@ -7,7 +7,7 @@
   role="img"
   aria-labelledby="title desc"
 >
-  <title id="title">Gasoline hover widget</title>
+  <title id="title">KaBOOM hover widget</title>
   <desc id="desc">A compact hover widget with action buttons and a flame badge, styled to match the live interface.</desc>
 
   <defs>

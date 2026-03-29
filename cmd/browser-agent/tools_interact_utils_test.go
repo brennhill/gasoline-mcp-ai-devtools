@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -189,15 +189,15 @@ func TestResolveNavigateURL_EmptyURL_ReturnsEmpty(t *testing.T) {
 }
 
 // ============================================
-// resolveNavigateURL — gasoline-insecure:// handling
+// resolveNavigateURL — kaboom-insecure:// handling
 // ============================================
 
-func TestResolveNavigateURL_GasolineInsecure_NilCapture_ReturnsError(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_NilCapture_ReturnsError(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 	h.capture = nil
 
-	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when capture is nil")
 	}
@@ -206,14 +206,14 @@ func TestResolveNavigateURL_GasolineInsecure_NilCapture_ReturnsError(t *testing.
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_WrongSecurityMode_ReturnsError(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_WrongSecurityMode_ReturnsError(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 
 	// Default security mode is "normal", not "insecure_proxy".
 	_ = cap
 
-	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when security mode is not insecure_proxy")
 	}
@@ -222,12 +222,12 @@ func TestResolveNavigateURL_GasolineInsecure_WrongSecurityMode_ReturnsError(t *t
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_MissingTarget_ReturnsError(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_MissingTarget_ReturnsError(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://")
+	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://")
 	if err == nil {
 		t.Fatal("expected error for empty target URL")
 	}
@@ -236,12 +236,12 @@ func TestResolveNavigateURL_GasolineInsecure_MissingTarget_ReturnsError(t *testi
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_InvalidScheme_ReturnsError(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_InvalidScheme_ReturnsError(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://ftp://files.example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://ftp://files.example.com")
 	if err == nil {
 		t.Fatal("expected error for non-http/https target scheme")
 	}
@@ -250,12 +250,12 @@ func TestResolveNavigateURL_GasolineInsecure_InvalidScheme_ReturnsError(t *testi
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_MissingHost_ReturnsError(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_MissingHost_ReturnsError(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://http://")
+	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://http://")
 	if err == nil {
 		t.Fatal("expected error for target URL missing host")
 	}
@@ -264,7 +264,7 @@ func TestResolveNavigateURL_GasolineInsecure_MissingHost_ReturnsError(t *testing
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_ValidTarget_ReturnsProxyURL(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_ValidTarget_ReturnsProxyURL(t *testing.T) {
 	t.Parallel()
 	h, server, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
@@ -278,12 +278,12 @@ func TestResolveNavigateURL_GasolineInsecure_ValidTarget_ReturnsProxyURL(t *test
 	}{
 		{
 			name:       "https target",
-			input:      "gasoline-insecure://https://example.com/page",
+			input:      "kaboom-insecure://https://example.com/page",
 			wantTarget: "https://example.com/page",
 		},
 		{
 			name:       "http target",
-			input:      "gasoline-insecure://http://localhost:3000/api",
+			input:      "kaboom-insecure://http://localhost:3000/api",
 			wantTarget: "http://localhost:3000/api",
 		},
 	}
@@ -316,13 +316,13 @@ func TestResolveNavigateURL_GasolineInsecure_ValidTarget_ReturnsProxyURL(t *test
 	}
 }
 
-func TestResolveNavigateURL_GasolineInsecure_CaseInsensitive(t *testing.T) {
+func TestResolveNavigateURL_KaboomInsecure_CaseInsensitive(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
 	// The prefix check is case-insensitive.
-	got, err := h.interactAction().resolveNavigateURLImpl("GASOLINE-INSECURE://https://example.com")
+	got, err := h.interactAction().resolveNavigateURLImpl("KABOOM-INSECURE://https://example.com")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL with uppercase prefix error: %v", err)
 	}

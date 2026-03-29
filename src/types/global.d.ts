@@ -185,22 +185,22 @@ declare global {
     fetch: typeof fetch
 
     /** Early-patch: original WebSocket constructor saved before page scripts run */
-    __GASOLINE_ORIGINAL_WS__?: typeof WebSocket
+    __KABOOM_ORIGINAL_WS__?: typeof WebSocket
 
     /** Early-patch: buffered WebSocket connections created before inject script loaded */
-    __GASOLINE_EARLY_WS__?: EarlyWsConnection[]
+    __KABOOM_EARLY_WS__?: EarlyWsConnection[]
 
     /** Early-patch: original fetch function saved before page scripts run */
-    __GASOLINE_ORIGINAL_FETCH__?: typeof fetch
+    __KABOOM_ORIGINAL_FETCH__?: typeof fetch
 
     /** Early-patch: original XMLHttpRequest.prototype.open saved before page scripts run */
-    __GASOLINE_ORIGINAL_XHR_OPEN__?: typeof XMLHttpRequest.prototype.open
+    __KABOOM_ORIGINAL_XHR_OPEN__?: typeof XMLHttpRequest.prototype.open
 
     /** Early-patch: original XMLHttpRequest.prototype.send saved before page scripts run */
-    __GASOLINE_ORIGINAL_XHR_SEND__?: typeof XMLHttpRequest.prototype.send
+    __KABOOM_ORIGINAL_XHR_SEND__?: typeof XMLHttpRequest.prototype.send
 
     /** Early-patch: buffered network bodies captured before inject script loaded */
-    __GASOLINE_EARLY_BODIES__?: EarlyNetworkBody[]
+    __KABOOM_EARLY_BODIES__?: EarlyNetworkBody[]
   }
 }
 

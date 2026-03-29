@@ -62,7 +62,7 @@ last_verified_date: 2026-03-05
 
 ```bash
 $ go test -short ./cmd/browser-agent/
-ok      github.com/brennhill/gasoline-agentic-browser-devtools-mcp/cmd/browser-agent     2.438s
+ok      github.com/brennhill/kaboom-agentic-browser-devtools-mcp/cmd/browser-agent     2.438s
 ```
 
 ### Documentation
@@ -81,7 +81,7 @@ ok      github.com/brennhill/gasoline-agentic-browser-devtools-mcp/cmd/browser-a
 
 #### Feature Parity with TestSprite:
 
-| Feature | TestSprite | Gasoline | Status |
+| Feature | TestSprite | Kaboom | Status |
 |---------|-----------|----------|--------|
 | Test generation | ✅ From PRD | ✅ From errors/actions | **Implemented** |
 | Self-healing | ✅ AI-powered | ✅ Confidence-based | **Implemented** |
@@ -126,9 +126,9 @@ These features are implemented but not connected:
 
 ### Validation Environment
 
-**Demo site available:** `~/dev/gasoline-demos`
+**Demo site available:** `~/dev/kaboom-demos`
 - 34 intentional bugs across 7 phases
-- Includes WebSocket bugs (Gasoline's unique feature)
+- Includes WebSocket bugs (Kaboom's unique feature)
 - Real-world scenarios ready for testing
 
 ### Validation Plan
@@ -136,12 +136,12 @@ These features are implemented but not connected:
 **[validation-guide.md](validation-guide.md)** provides step-by-step validation:
 
 1. **Phase 1:** Generate test from WebSocket error (30 min)
-   - **Unique to Gasoline:** WebSocket frame monitoring
+   - **Unique to Kaboom:** WebSocket frame monitoring
    - Uses demo bugs: Chat connection failures, message parsing
    - Validates: test_from_context.error
 
 2. **Phase 1B:** WebSocket interaction test (15 min)
-   - **Unique to Gasoline:** Captures WebSocket frames automatically
+   - **Unique to Kaboom:** Captures WebSocket frames automatically
    - Validates: test_from_context.interaction
 
 3. **Phase 2:** Heal broken selectors (30 min)
@@ -179,15 +179,15 @@ We can claim "TestSprite parity" when:
 
 1. **Start demo site:**
    ```bash
-   cd ~/dev/gasoline-demos
+   cd ~/dev/kaboom-demos
    npm run demo
    ```
 
-2. **Start Gasoline:**
+2. **Start Kaboom:**
    ```bash
-   cd ~/dev/gasoline
+   cd ~/dev/kaboom
    make dev
-   ./dist/gasoline-mcp
+   ./dist/kaboom-mcp
    ```
 
 3. **Follow validation-guide.md** step-by-step
@@ -237,7 +237,7 @@ We don't know if the **output is useful**:
 
 ### The WebSocket Advantage
 
-**Gasoline's killer feature:** Real-time WebSocket monitoring.
+**Kaboom's killer feature:** Real-time WebSocket monitoring.
 
 TestSprite can't capture:
 - WebSocket connection lifecycle
@@ -245,7 +245,7 @@ TestSprite can't capture:
 - Bidirectional message flow
 - Timing of WebSocket events
 
-Gasoline can generate tests that verify WebSocket behavior automatically — no manual mocking needed. This is a **significant competitive advantage**.
+Kaboom can generate tests that verify WebSocket behavior automatically — no manual mocking needed. This is a **significant competitive advantage**.
 
 ---
 

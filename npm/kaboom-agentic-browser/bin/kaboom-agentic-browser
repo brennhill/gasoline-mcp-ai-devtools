@@ -39,7 +39,7 @@ function detectPlatform() {
 
 function findBinary(info) {
   // 1. Dev build — dist/ directory (for local development)
-  const devBin = path.join(SCRIPT_DIR, '..', '..', '..', 'dist', `gasoline-${info.platformKey}${info.ext}`)
+  const devBin = path.join(SCRIPT_DIR, '..', '..', '..', 'dist', `kaboom-${info.platformKey}${info.ext}`)
   if (fs.existsSync(devBin)) return devBin
 
   // 2. node_modules candidates (3 depths: local dep, hoisted, global)

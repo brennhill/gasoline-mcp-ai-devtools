@@ -65,7 +65,7 @@ export default [
         clients: 'readonly',
         registration: 'readonly',
         self: 'readonly',
-        __GASOLINE_VERSION__: 'readonly'
+        __KABOOM_VERSION__: 'readonly'
       }
     },
     plugins: {
@@ -175,9 +175,9 @@ export default [
     }
   },
 
-  // Gasoline CI package (runs in browser)
+  // Kaboom CI package (runs in browser)
   {
-    files: ['packages/gasoline-ci/**/*.js'],
+    files: ['packages/kaboom-ci/**/*.js'],
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: 'script',
@@ -196,9 +196,9 @@ export default [
     }
   },
 
-  // Gasoline Playwright package (CommonJS, run in Node.js)
+  // Kaboom Playwright package (CommonJS, run in Node.js)
   {
-    files: ['packages/gasoline-playwright/**/*.js'],
+    files: ['packages/kaboom-playwright/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

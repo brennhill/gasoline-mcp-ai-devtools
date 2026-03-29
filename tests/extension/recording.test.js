@@ -190,7 +190,7 @@ async function waitForPendingRecordingIntent(timeoutMs = 2500) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const hasPendingIntent = globalThis.chrome.storage.local.set.mock.calls.some(
-      (call) => call.arguments[0]?.gasoline_pending_recording
+      (call) => call.arguments[0]?.kaboom_pending_recording
     )
     if (hasPendingIntent) return
     await new Promise((r) => setTimeout(r, 20))
@@ -239,15 +239,15 @@ describe('Recording Initial State', () => {
     })
   })
 
-  test('module load should clear stale gasoline_recording from storage', () => {
+  test('module load should clear stale recording state from storage', () => {
     // The module clears stale recording state at import time.
     // We verify the storage.local.remove was called during module load.
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const clearedRecording = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
-    assert.ok(clearedRecording, 'Module should clear stale gasoline_recording from storage on load')
+    assert.ok(clearedRecording, 'Module should clear stale recording state from storage on load')
   })
 })
 
@@ -270,7 +270,7 @@ describe('stopRecording when not active', () => {
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const cleaned = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
     assert.ok(cleaned, 'Should clean up zombie storage')
   })
@@ -387,7 +387,7 @@ describe('MCP-initiated recording flow', () => {
     const permissionToastOnTarget = toastCalls.some(
       (c) =>
         c.arguments[0] === 77 &&
-        c.arguments[1]?.type === 'gasoline_action_toast' &&
+        c.arguments[1]?.type === 'kaboom_action_toast' &&
         String(c.arguments[1]?.text || '').includes('Open Kaboom')
     )
     assert.ok(permissionToastOnTarget, 'Should show popup-approval permission toast on target tab')
@@ -625,12 +625,12 @@ describe('Successful Recording Lifecycle', () => {
     simulateOffscreenStarted(true)
     await startPromise
 
-    // Check that gasoline_recording was saved to local storage
+    // Check that kaboom_recording was saved to local storage
     const setCalls = globalThis.chrome.storage.local.set.mock.calls
-    const recordingSet = setCalls.find((c) => c.arguments[0]?.gasoline_recording)
+    const recordingSet = setCalls.find((c) => c.arguments[0]?.kaboom_recording)
     assert.ok(recordingSet, 'Should persist recording state to local storage')
-    assert.strictEqual(recordingSet.arguments[0].gasoline_recording.active, true)
-    assert.strictEqual(recordingSet.arguments[0].gasoline_recording.name, 'popup-sync-test')
+    assert.strictEqual(recordingSet.arguments[0].kaboom_recording.active, true)
+    assert.strictEqual(recordingSet.arguments[0].kaboom_recording.name, 'popup-sync-test')
 
     // Cleanup
     const stopPromise = stopRecording()
@@ -935,7 +935,7 @@ describe('stopRecording save toast', () => {
 
     const sendCalls = globalThis.chrome.tabs.sendMessage.mock.calls
     const toastCall = sendCalls.find(
-      (c) => c.arguments[1]?.type === 'gasoline_action_toast' && c.arguments[1]?.text === 'Recording saved'
+      (c) => c.arguments[1]?.type === 'kaboom_action_toast' && c.arguments[1]?.text === 'Recording saved'
     )
     assert.ok(toastCall, 'Should show "Recording saved" toast')
     assert.ok(toastCall.arguments[1].detail.includes('5.0 MB'), 'Toast should include file size')
@@ -1164,7 +1164,7 @@ describe('Stop result passthrough', () => {
 // =============================================================================
 
 describe('Storage cleanup on stop', () => {
-  test('should remove gasoline_recording from storage on stop', async () => {
+  test('should remove recording state from storage on stop', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('cleanup-test', 15, '', '', true)
@@ -1182,8 +1182,8 @@ describe('Storage cleanup on stop', () => {
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const cleaned = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
-    assert.ok(cleaned, 'Should remove gasoline_recording from storage on stop')
+    assert.ok(cleaned, 'Should remove recording state from storage on stop')
   })
 })

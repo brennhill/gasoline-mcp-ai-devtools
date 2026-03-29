@@ -644,7 +644,7 @@
           "type": "array"
         },
         "output_format": {
-          "description": "Output format. reproduction: 'gasoline-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
+          "description": "Output format. reproduction: 'kaboom-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
           "type": "string"
         },
         "resource_types": {
@@ -991,7 +991,7 @@
           "type": "array"
         },
         "target_dir": {
-          "description": "Directory to write .gasoline.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
+          "description": "Directory to write .kaboom.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
           "type": "string"
         },
         "telemetry_mode": {

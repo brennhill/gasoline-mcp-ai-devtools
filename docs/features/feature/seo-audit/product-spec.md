@@ -28,7 +28,7 @@ Today, discovering these problems requires:
 2. **Interpreting unstructured output.** Lighthouse and similar tools produce reports designed for human consumption -- HTML dashboards, PDF reports, color-coded scores. An AI agent cannot easily parse these into actionable code changes.
 3. **Running audits too late.** SEO problems are typically discovered after deployment, during a periodic audit, or when search rankings drop. By then, the damage is done and the root cause is harder to trace.
 
-**Current state:** Gasoline already captures the live DOM, network traffic, and page metadata from the active browser tab. The `observe` tool can read page state and the `generate` tool can produce structured artifacts (tests, PRs, security reports). But there is no mode that synthesizes captured browser state into a structured SEO assessment that an AI agent can act on during development.
+**Current state:** Kaboom already captures the live DOM, network traffic, and page metadata from the active browser tab. The `observe` tool can read page state and the `generate` tool can produce structured artifacts (tests, PRs, security reports). But there is no mode that synthesizes captured browser state into a structured SEO assessment that an AI agent can act on during development.
 
 **The gap:** An AI coding agent working on a frontend feature should be able to request an SEO audit of the current page and receive machine-readable findings with specific issues, locations, and fix suggestions -- all without leaving the development loop.
 
@@ -52,9 +52,9 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 - As an AI coding agent, I want to audit the current page for SEO issues so that I can identify and fix problems before they reach production.
 - As an AI coding agent, I want each SEO finding to include the affected element's selector and current value so that I can generate a targeted code fix without additional DOM queries.
 - As an AI coding agent, I want findings categorized by severity (error, warning, info) so that I can prioritize the most impactful issues first.
-- As a developer using Gasoline, I want the AI to catch SEO regressions (e.g., missing canonical tag after a refactor) during development so that I do not discover them after deployment.
+- As a developer using Kaboom, I want the AI to catch SEO regressions (e.g., missing canonical tag after a refactor) during development so that I do not discover them after deployment.
 - As an AI coding agent, I want structured data validation results so that I can fix JSON-LD markup errors that affect rich search results.
-- As a developer using Gasoline, I want the SEO audit output as structured JSON so that I can integrate it into CI checks or automated review workflows.
+- As a developer using Kaboom, I want the SEO audit output as structured JSON so that I can integrate it into CI checks or automated review workflows.
 
 ## MCP Interface
 
@@ -326,15 +326,15 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 
 - **This feature does NOT crawl the site.** The audit runs against the single page currently loaded in the tracked browser tab. Multi-page audits, sitemap crawling, and cross-page duplicate content detection are out of scope. The AI agent can invoke the audit on multiple pages sequentially by navigating via `interact({action: "navigate"})`.
 
-- **This feature does NOT check external link reachability.** Detecting broken external links requires outbound HTTP requests, which Gasoline does not make. The link audit covers structural issues (empty hrefs, missing anchor text) but not 404 detection for external URLs. Internal link status can be inferred from network waterfall data if the page has been navigated.
+- **This feature does NOT check external link reachability.** Detecting broken external links requires outbound HTTP requests, which Kaboom does not make. The link audit covers structural issues (empty hrefs, missing anchor text) but not 404 detection for external URLs. Internal link status can be inferred from network waterfall data if the page has been navigated.
 
-- **This feature does NOT produce a Lighthouse score.** Lighthouse is a comprehensive performance, accessibility, SEO, and best-practices audit tool with its own scoring methodology. Gasoline's SEO audit covers the on-page SEO dimension with a focus on machine-readable output. It does not replicate Lighthouse's scoring system, PWA checks, or JavaScript execution analysis.
+- **This feature does NOT produce a Lighthouse score.** Lighthouse is a comprehensive performance, accessibility, SEO, and best-practices audit tool with its own scoring methodology. Kaboom's SEO audit covers the on-page SEO dimension with a focus on machine-readable output. It does not replicate Lighthouse's scoring system, PWA checks, or JavaScript execution analysis.
 
-- **This feature does NOT replace accessibility audits.** Gasoline already has `observe({what: "accessibility"})` powered by axe-core. The SEO audit touches heading hierarchy and alt text (which overlap with accessibility) but does not duplicate the full WCAG audit. The AI agent should use both tools for comprehensive coverage.
+- **This feature does NOT replace accessibility audits.** Kaboom already has `observe({what: "accessibility"})` powered by axe-core. The SEO audit touches heading hierarchy and alt text (which overlap with accessibility) but does not duplicate the full WCAG audit. The AI agent should use both tools for comprehensive coverage.
 
 - **This feature does NOT create a new MCP tool.** It adds a new mode (`seo_audit`) to the existing `generate` tool, respecting the 5-tool model.
 
-- **This feature does NOT modify the page.** It is read-only. The AI agent applies fixes using the `interact` tool or by editing source code. Gasoline reports issues; the agent resolves them.
+- **This feature does NOT modify the page.** It is read-only. The AI agent applies fixes using the `interact` tool or by editing source code. Kaboom reports issues; the agent resolves them.
 
 ## Performance SLOs
 
@@ -410,5 +410,5 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 | OI-3 | Should Microdata and RDFa structured data formats be supported? | open | JSON-LD is dominant (~80% of structured data on the web), but some legacy sites use Microdata. Propose: JSON-LD only for v1, with Microdata as a "could" for v2. |
 | OI-4 | Should the extension-side collection be a single query or multiple targeted queries? | open | A single comprehensive query is simpler but may be slower. Multiple targeted queries (one per dimension) enable scoped audits to skip unnecessary collection. Propose: single collection for v1 with scope-based filtering on the server side. |
 | OI-5 | What is the appropriate truncation limit for very large pages? | open | Pages with hundreds of images or thousands of links need a cap to stay within performance SLOs. Propose: 200 images, 500 links, 50 headings. Report truncation in the response. |
-| OI-6 | Should issue codes follow an existing standard (e.g., Lighthouse audit IDs)? | open | Using Lighthouse-compatible codes would allow cross-referencing with existing SEO tools. However, Gasoline's audit scope differs. Propose: custom codes with a mapping table to Lighthouse equivalents where applicable. |
+| OI-6 | Should issue codes follow an existing standard (e.g., Lighthouse audit IDs)? | open | Using Lighthouse-compatible codes would allow cross-referencing with existing SEO tools. However, Kaboom's audit scope differs. Propose: custom codes with a mapping table to Lighthouse equivalents where applicable. |
 | OI-7 | Should the audit detect meta tags injected by JavaScript (e.g., React Helmet, Next.js Head)? | open | Since the audit reads the rendered DOM (not source HTML), JS-injected tags are naturally included. This is correct behavior for SPA SEO audits. Confirm this is the desired behavior and document it explicitly. |

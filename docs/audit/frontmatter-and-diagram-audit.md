@@ -147,7 +147,7 @@ All files have excellent documentation. No updates required.
 4. Recording Lifecycle (needed for recording QA)
 5. C4 L2 Containers (system understanding for new contributors)
 
-**Rationale:** These 5 diagrams would unblock 80% of questions about how Gasoline works. They're referenced by all other features.
+**Rationale:** These 5 diagrams would unblock 80% of questions about how Kaboom works. They're referenced by all other features.
 
 **Template:** See [mcp-persistent-server/architecture.md](../features/mcp-persistent-server/architecture.md) and [tab-recording/tech-spec.md](../features/feature/tab-recording/tech-spec.md) for reference implementations.
 

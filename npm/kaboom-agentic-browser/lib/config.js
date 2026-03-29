@@ -20,7 +20,17 @@ const {
 
 const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
 const MCP_SERVER_NAME = 'kaboom-browser-devtools';
-const LEGACY_MCP_SERVER_NAMES = ['gasoline-browser-devtools', 'gasoline-agentic-browser', 'gasoline'];
+const LEGACY_MCP_SERVER_NAMES = [
+  'kaboom-browser-devtools',
+  'kaboom-agentic-browser',
+  'kaboom',
+  'gasoline-browser-devtools',
+  'gasoline-agentic-browser',
+  'gasoline',
+  'strum-browser-devtools',
+  'strum-agentic-browser',
+  'strum',
+];
 
 /**
  * Resolve the managed Kaboom binary path from the installed npm package layout.
@@ -48,7 +58,7 @@ function resolveManagedBinaryPath() {
   const pkgName = `@brennhill/kaboom-agentic-browser-${platformKey}`;
   const packageRoot = path.resolve(__dirname, '..');
 
-  const localDistCandidate = path.resolve(packageRoot, 'dist', `gasoline-${platformKey}${ext}`);
+  const localDistCandidate = path.resolve(packageRoot, 'dist', `kaboom-${platformKey}${ext}`);
   const candidates = [
     path.join(packageRoot, 'node_modules', pkgName, 'bin', binaryName),
     path.join(packageRoot, '..', pkgName, 'bin', binaryName),
@@ -498,13 +508,13 @@ function validateMCPConfig(data) {
 }
 
 /**
- * Merge gasoline config into existing config
+ * Merge Kaboom config into existing config
  * @param {Object} existing Existing config object
- * @param {Object} gassolineEntry New gasoline entry {command, args, env}
+ * @param {Object} kaboomEntry New Kaboom entry {command, args, env}
  * @param {Object} envVars Additional env vars to merge {KEY: VALUE}
  * @returns {Object} Merged config
  */
-function mergeGassolineConfig(existing, gassolineEntry, envVars = {}) {
+function mergeKaboomConfig(existing, kaboomEntry, envVars = {}) {
   const merged = JSON.parse(JSON.stringify(existing)); // Deep copy
 
   // Ensure mcpServers exists
@@ -519,10 +529,10 @@ function mergeGassolineConfig(existing, gassolineEntry, envVars = {}) {
     }
   }
 
-  // Merge gasoline entry
+  // Merge Kaboom entry
   merged.mcpServers[MCP_SERVER_NAME] = {
-    command: gassolineEntry.command,
-    args: gassolineEntry.args || [],
+    command: kaboomEntry.command,
+    args: kaboomEntry.args || [],
   };
 
   // Add env vars if provided
@@ -574,7 +584,7 @@ module.exports = {
   readConfigFile,
   writeConfigFile,
   validateMCPConfig,
-  mergeGassolineConfig,
+  mergeKaboomConfig,
   parseEnvVar,
   resolveManagedBinaryPath,
 };

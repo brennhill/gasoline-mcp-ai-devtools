@@ -219,12 +219,12 @@ export function installKaboomAPI() {
         setInputValue(selector, value) {
             const element = document.querySelector(selector);
             if (!element) {
-                console.error('[Gasoline] Element not found:', selector);
+                console.error('[Kaboom] Element not found:', selector);
                 return false;
             }
             try {
                 if (!setNativeValue(element, value)) {
-                    console.error('[Gasoline] Element is not a form input:', selector);
+                    console.error('[Kaboom] Element is not a form input:', selector);
                     return false;
                 }
                 // Dispatch events that React/Vue/Svelte listen for
@@ -234,14 +234,14 @@ export function installKaboomAPI() {
                 return true;
             }
             catch (err) {
-                console.error('[Gasoline] Failed to set input value:', err);
+                console.error('[Kaboom] Failed to set input value:', err);
                 return false;
             }
         },
         /**
          * Version of the Kaboom API
          */
-        version: __GASOLINE_VERSION__
+        version: __KABOOM_VERSION__
     };
 }
 /**

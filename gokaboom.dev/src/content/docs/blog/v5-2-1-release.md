@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.2.1 Released"
+title: KaBOOM v5.2.1 Released"
 description: "Hotfix for error clustering and network filtering"
 date: 2026-01-10T21:47:00Z
 authors: [brennhill]
@@ -22,9 +22,9 @@ Quick patch release fixing issues with error clustering in v5.2.0.
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.2.1
+npm install -g kaboom-agentic-browser@5.2.1
 ```
 
 ## Full Changelog
 
-[v5.2.1 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.2.1)
+[v5.2.1 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.2.1)

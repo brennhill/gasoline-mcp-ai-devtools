@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // ExtractURLPath delegates to util.ExtractURLPath for cross-package callers.

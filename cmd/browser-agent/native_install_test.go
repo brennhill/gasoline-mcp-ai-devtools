@@ -30,7 +30,7 @@ func TestManualExtensionSetupChecklist_IncludesRequiredSteps(t *testing.T) {
 }
 
 func TestExtensionInstallDir_DefaultVisiblePath(t *testing.T) {
-	t.Setenv("GASOLINE_EXTENSION_DIR", "")
+	t.Setenv("KABOOM_EXTENSION_DIR", "")
 	home := "/Users/tester"
 	want := filepath.Join(home, "KaboomAgenticDevtoolExtension")
 
@@ -40,8 +40,8 @@ func TestExtensionInstallDir_DefaultVisiblePath(t *testing.T) {
 }
 
 func TestExtensionInstallDir_EnvOverride(t *testing.T) {
-	override := "/tmp/custom-gasoline-ext"
-	t.Setenv("GASOLINE_EXTENSION_DIR", override)
+	override := "/tmp/custom-kaboom-ext"
+	t.Setenv("KABOOM_EXTENSION_DIR", override)
 	home := "/Users/tester"
 
 	if got := extensionInstallDir(home); got != override {
@@ -49,11 +49,11 @@ func TestExtensionInstallDir_EnvOverride(t *testing.T) {
 	}
 }
 
-func TestInstallerLegacyServerKeys_IncludeStrumAndGasolineVariants(t *testing.T) {
+func TestInstallerLegacyServerKeys_IncludeKaboomAndKaboomVariants(t *testing.T) {
 	joined := strings.Join(installerLegacyServerKeys, "\n")
 	required := []string{
-		"gasoline-agentic-browser",
-		"gasoline",
+		"kaboom-agentic-browser",
+		"kaboom",
 		"strum-browser-devtools",
 		"strum-agentic-browser",
 		"strum",

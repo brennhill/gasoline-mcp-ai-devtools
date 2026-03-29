@@ -5,7 +5,7 @@ package streaming
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // CanEmitAt checks if enough time has passed since the last notification.

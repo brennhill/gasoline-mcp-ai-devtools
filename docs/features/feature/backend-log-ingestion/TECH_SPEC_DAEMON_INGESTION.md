@@ -2,7 +2,7 @@
 status: draft
 priority: tier-1
 phase: v5.4-foundation
-relates_to: [PRODUCT_SPEC.md, TECH_SPEC_GASOLINE_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md]
+relates_to: [PRODUCT_SPEC.md, TECH_SPEC_KABOOM_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md]
 last-updated: 2026-01-31
 last_reviewed: 2026-03-05
 last_verified_version: 0.7.12
@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 # Backend Log Ingestion: Daemon Integration — Technical Specification
 
-**Goal:** Extend Gasoline daemon to ingest backend logs (gasoline-run, file tailer, SSH tailer) and merge with FE telemetry for unified request tracing.
+**Goal:** Extend Kaboom daemon to ingest backend logs (kaboom-run, file tailer, SSH tailer) and merge with FE telemetry for unified request tracing.
 
 ---
 
@@ -37,7 +37,7 @@ MCP Server (stdio)
 ```
 HTTP Server (localhost:7890)
 ├─ POST /event ← Single events (extension, file tailer, SSH tailer)
-├─ POST /events ← Batch events (gasoline-run wrapper)
+├─ POST /events ← Batch events (kaboom-run wrapper)
 ├─ GET /buffers/timeline ← LLM queries (merged FE+BE)
 ├─ GET /daemon/status ← Health check (includes clock skew)
 ├─ GET /ingest/stats ← Backend ingestion stats
@@ -390,7 +390,7 @@ func extractTraceIDFromMessage(msg string) string {
 
 ```json
 {
-  "gasoline_run": {
+  "kaboom_run": {
     "host": "localhost",
     "lines_read": 12500,
     "lines_failed": 0,
@@ -510,7 +510,7 @@ GET /buffers/timeline              # Returns all events (FE only in v5.3, FE+BE 
 
 ```
 POST /event             # Already exists for extension, now also used by tailers
-POST /events            # New, optional (only used by gasoline-run)
+POST /events            # New, optional (only used by kaboom-run)
 GET /ingest/stats       # New, optional endpoint
 GET /daemon/status      # Existing, adds clock_skew field
 ```
@@ -537,7 +537,7 @@ GET /daemon/status      # Existing, adds clock_skew field
 
 ### End-to-End Tests
 
-1. Run gasoline-run with Node server
+1. Run kaboom-run with Node server
 2. Simulate FE events via extension
 3. Verify merged timeline in `/buffers/timeline`
 4. Verify correlation by trace ID
@@ -565,7 +565,7 @@ curl http://localhost:7890/ingest/stats
 ```
 
 Shows:
-- Lines read from each source (gasoline-run, file tailers, SSH tailers)
+- Lines read from each source (kaboom-run, file tailers, SSH tailers)
 - Error rates and last errors
 - Circuit breaker state for SSH connections
 
@@ -573,7 +573,7 @@ Shows:
 
 ```
 [daemon] POST /event received from extension: correlation_id=550e8400-e29b-41d4
-[daemon] POST /events received batch of 100 lines from gasoline-run
+[daemon] POST /events received batch of 100 lines from kaboom-run
 [daemon] Clock skew updated: median=5ms, std_dev=3ms, status=synchronized
 [daemon] Query: /buffers/timeline?correlation_id=550e8400-e29b-41d4 → 12 events
 ```
@@ -602,7 +602,7 @@ Shows:
 ## Related Documents
 
 - **Product Spec:** [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
-- **gasoline-run:** [TECH_SPEC_GASOLINE_RUN.md](TECH_SPEC_GASOLINE_RUN.md)
+- **kaboom-run:** [TECH_SPEC_KABOOM_RUN.md](TECH_SPEC_KABOOM_RUN.md)
 - **Local Tailer:** [TECH_SPEC_LOCAL_TAILER.md](TECH_SPEC_LOCAL_TAILER.md)
 - **SSH Tailer:** [TECH_SPEC_SSH_TAILER.md](TECH_SPEC_SSH_TAILER.md)
 

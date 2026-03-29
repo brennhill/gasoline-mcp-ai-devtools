@@ -3,16 +3,16 @@
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 /**
- * Error classes and message catalog for Gasoline MCP CLI
+ * Error classes and message catalog for the Kaboom CLI
  */
 
 /**
- * Base error class for all Gasoline MCP CLI errors
+ * Base error class for all Kaboom CLI errors
  */
-class GasolineError extends Error {
+class KaboomError extends Error {
   constructor(message, recovery) {
     super(message);
-    this.name = 'GasolineError';
+    this.name = 'KaboomError';
     this.recovery = recovery;
   }
 
@@ -25,58 +25,58 @@ class GasolineError extends Error {
   }
 }
 
-class PermissionError extends GasolineError {
+class PermissionError extends KaboomError {
   constructor(path) {
     super(
       `Permission denied writing ${path}`,
-      `Try: sudo gasoline-mcp --install\nOr: Check permissions with: ls -la ${path.split('/').slice(0, -1).join('/')}`
+      `Try: sudo kaboom-agentic-browser --install\nOr: Check permissions with: ls -la ${path.split('/').slice(0, -1).join('/')}`
     );
     this.name = 'PermissionError';
   }
 }
 
-class InvalidJSONError extends GasolineError {
+class InvalidJSONError extends KaboomError {
   constructor(path, lineNumber, errorMessage) {
     const msg = `Invalid JSON in ${path}${lineNumber ? ` at line ${lineNumber}` : ''}\n   ${errorMessage}`;
     super(
       msg,
-      `Fix options:\n   1. Manually edit: code ${path}\n   2. Restore from backup and try --install again\n   3. Run: gasoline-mcp --doctor (for more info)`
+      `Fix options:\n   1. Manually edit: code ${path}\n   2. Restore from backup and try --install again\n   3. Run: kaboom-agentic-browser --doctor (for more info)`
     );
     this.name = 'InvalidJSONError';
   }
 }
 
-class BinaryNotFoundError extends GasolineError {
+class BinaryNotFoundError extends KaboomError {
   constructor(expectedPath) {
     super(
-      `Gasoline binary not found at ${expectedPath}`,
-      `Reinstall: npm install -g gasoline-mcp@latest\nOr build from source: go build ./cmd/browser-agent`
+      `Kaboom binary not found at ${expectedPath}`,
+      `Reinstall: npm install -g kaboom-agentic-browser@latest\nOr build from source: go build ./cmd/browser-agent`
     );
     this.name = 'BinaryNotFoundError';
   }
 }
 
-class InvalidEnvFormatError extends GasolineError {
+class InvalidEnvFormatError extends KaboomError {
   constructor(envStr) {
     super(
       `Invalid env format "${envStr}". Expected: KEY=VALUE`,
-      `Examples of valid formats:\n   - --env DEBUG=1\n   - --env GASOLINE_SERVER=http://localhost:7890\n   - --env LOG_LEVEL=info`
+      `Examples of valid formats:\n   - --env DEBUG=1\n   - --env KABOOM_SERVER=http://localhost:7890\n   - --env LOG_LEVEL=info`
     );
     this.name = 'InvalidEnvFormatError';
   }
 }
 
-class EnvWithoutInstallError extends GasolineError {
+class EnvWithoutInstallError extends KaboomError {
   constructor() {
     super(
       '--env only works with --install',
-      'Usage: gasoline-mcp --install --env KEY=VALUE'
+      'Usage: kaboom-agentic-browser --install --env KEY=VALUE'
     );
     this.name = 'EnvWithoutInstallError';
   }
 }
 
-class ConfigValidationError extends GasolineError {
+class ConfigValidationError extends KaboomError {
   constructor(errors) {
     super(
       'Config validation failed',
@@ -86,7 +86,7 @@ class ConfigValidationError extends GasolineError {
   }
 }
 
-class FileSizeError extends GasolineError {
+class FileSizeError extends KaboomError {
   constructor(path, size) {
     super(
       `Config file too large: ${(size / 1024 / 1024).toFixed(2)}MB`,
@@ -97,7 +97,7 @@ class FileSizeError extends GasolineError {
 }
 
 module.exports = {
-  GasolineError,
+  KaboomError,
   PermissionError,
   InvalidJSONError,
   BinaryNotFoundError,

@@ -47,7 +47,7 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Disabled Feature (Error Path)
 1. Setup:
    - Create features.yaml: `{generate_har: false}`
-   - Start: `gasoline --feature-flags=features.yaml`
+   - Start: `kaboom --feature-flags=features.yaml`
 2. Steps:
    - [ ] Check flags: `observe({what: "feature_flags"})` — verify generate_har: false
    - [ ] Attempt HAR generation: `generate({format: "har"})`
@@ -71,7 +71,7 @@ last_verified_date: 2026-03-05
 ### Scenario 3: Emergency Disable via CLI
 1. Setup:
    - Features.yaml has interact_execute_js: true
-   - Start: `gasoline --feature-flags=features.yaml --disable-feature=interact_execute_js`
+   - Start: `kaboom --feature-flags=features.yaml --disable-feature=interact_execute_js`
 2. Steps:
    - [ ] Check flags: verify interact_execute_js: false (CLI override)
    - [ ] Attempt execute_js: fails
@@ -84,7 +84,7 @@ last_verified_date: 2026-03-05
 ### Scenario 4: Default Enabled (Backwards Compatibility)
 1. Setup:
    - No feature flags config (or empty file)
-   - Start: `gasoline`
+   - Start: `kaboom`
 2. Steps:
    - [ ] Check flags: observe({what: "feature_flags"}) returns empty or all true
    - [ ] Attempt all features: all work normally
@@ -94,7 +94,7 @@ last_verified_date: 2026-03-05
 ### Scenario 5: Invalid Config (Error Handling)
 1. Setup:
    - Create bad features.yaml: malformed YAML
-   - Start: `gasoline --feature-flags=bad.yaml`
+   - Start: `kaboom --feature-flags=bad.yaml`
 2. Steps:
    - [ ] Verify server fails to start with clear error
    - [ ] Or (if more graceful): server starts, logs error, uses defaults

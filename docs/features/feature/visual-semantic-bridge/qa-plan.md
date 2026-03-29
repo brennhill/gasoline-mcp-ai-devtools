@@ -110,7 +110,7 @@ last_verified_date: 2026-03-05
    ```
 
 #### Steps:
-1. [ ] Open Gasoline DevTools
+1. [ ] Open Kaboom DevTools
 2. [ ] Call `observe({what: 'page'})`
 3. [ ] Review returned DOM metadata
 
@@ -120,7 +120,7 @@ last_verified_date: 2026-03-05
 - Covered button marked with `visible: false, covered_by: "modal-overlay"`
 
 #### Verification:
-- Each button has a unique `gasoline_id` (e.g., `btn-visible`, `btn-hidden-css`, `btn-covered`)
+- Each button has a unique `kaboom_id` (e.g., `btn-visible`, `btn-hidden-css`, `btn-covered`)
 - Bounding boxes are present and non-zero for visible elements
 - Bounding box is present but off-screen for hidden elements
 
@@ -172,8 +172,8 @@ last_verified_date: 2026-03-05
 1. [ ] AI observes DOM
 2. [ ] Reviews returned metadata
 3. [ ] AI agent is instructed to click "Submit" button
-4. [ ] Agent uses `data-gasoline-id="btn-submit"` instead of `.bg-blue-500`
-5. [ ] Agent executes: `document.querySelector('[data-gasoline-id="btn-submit"]').click()`
+4. [ ] Agent uses `data-kaboom-id="btn-submit"` instead of `.bg-blue-500`
+5. [ ] Agent executes: `document.querySelector('[data-kaboom-id="btn-submit"]').click()`
 
 #### Expected Result:
 - Each button has a unique semantic ID (different from others)
@@ -193,7 +193,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. [ ] Enable DevTools in React app
-2. [ ] Open Gasoline and observe page
+2. [ ] Open Kaboom and observe page
 3. [ ] Review component metadata for each element
 
 #### Expected Result:

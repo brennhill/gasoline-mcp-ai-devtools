@@ -10,18 +10,18 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "=== Testing --hooks-only install flow ==="
 
 # Build the hooks binary.
-echo "Building gasoline-hooks..."
+echo "Building kaboom-hooks..."
 TEMP_BIN=$(mktemp -d)
 trap 'rm -rf "$TEMP_BIN"' EXIT
 
-(cd "$REPO_ROOT" && CGO_ENABLED=0 go build -o "$TEMP_BIN/gasoline-hooks" ./cmd/hooks)
+(cd "$REPO_ROOT" && CGO_ENABLED=0 go build -o "$TEMP_BIN/kaboom-hooks" ./cmd/hooks)
 
 # Verify it runs.
-HOOKS_VERSION=$("$TEMP_BIN/gasoline-hooks" --version)
-echo "Built gasoline-hooks version: $HOOKS_VERSION"
+HOOKS_VERSION=$("$TEMP_BIN/kaboom-hooks" --version)
+echo "Built kaboom-hooks version: $HOOKS_VERSION"
 
 # Verify --help works.
-HOOKS_HELP=$("$TEMP_BIN/gasoline-hooks" --help 2>&1)
+HOOKS_HELP=$("$TEMP_BIN/kaboom-hooks" --help 2>&1)
 if ! echo "$HOOKS_HELP" | grep -q "quality-gate"; then
     echo "FAIL: --help missing quality-gate command"
     exit 1
@@ -33,18 +33,18 @@ fi
 echo "PASS: --help shows both commands"
 
 # Verify unknown command exits with code 2.
-if "$TEMP_BIN/gasoline-hooks" nonexistent 2>/dev/null; then
+if "$TEMP_BIN/kaboom-hooks" nonexistent 2>/dev/null; then
     echo "FAIL: unknown command should exit non-zero"
     exit 1
 fi
 echo "PASS: unknown command exits non-zero"
 
 # Verify quality-gate with empty stdin exits 0.
-echo "" | "$TEMP_BIN/gasoline-hooks" quality-gate
+echo "" | "$TEMP_BIN/kaboom-hooks" quality-gate
 echo "PASS: quality-gate with empty stdin exits 0"
 
 # Verify compress-output with empty stdin exits 0.
-echo "" | "$TEMP_BIN/gasoline-hooks" compress-output
+echo "" | "$TEMP_BIN/kaboom-hooks" compress-output
 echo "PASS: compress-output with empty stdin exits 0"
 
 # Verify the install.sh script has --hooks-only support.
@@ -69,16 +69,12 @@ if ! grep -q "HOOKS_PKG" "$REPO_ROOT/Makefile"; then
 fi
 echo "PASS: Makefile builds both binaries"
 
-# Verify quality gates write gasoline-hooks command (not gasoline hook).
-if grep -q '"gasoline hook quality-gate"' "$REPO_ROOT/cmd/dev-console/tools_configure_quality_gates.go"; then
-    echo "FAIL: quality gates still references 'gasoline hook' instead of 'gasoline-hooks'"
+# Verify quality gates write kaboom-hooks command.
+if ! grep -q '"kaboom-hooks quality-gate"' "$REPO_ROOT/cmd/browser-agent/tools_configure_quality_gates.go"; then
+    echo "FAIL: quality gates missing 'kaboom-hooks quality-gate'"
     exit 1
 fi
-if ! grep -q '"gasoline-hooks quality-gate"' "$REPO_ROOT/cmd/dev-console/tools_configure_quality_gates.go"; then
-    echo "FAIL: quality gates missing 'gasoline-hooks quality-gate'"
-    exit 1
-fi
-echo "PASS: quality gates reference gasoline-hooks binary"
+echo "PASS: quality gates reference kaboom-hooks binary"
 
 echo ""
 echo "=== All hooks-only install tests passed ==="

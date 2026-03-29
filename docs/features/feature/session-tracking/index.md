@@ -21,8 +21,8 @@ test_paths:
 | Field         | Value                                   |
 |---------------|-----------------------------------------|
 | **Status**    | implemented                             |
-| **Binary**    | gasoline-hooks                          |
-| **Command**   | `gasoline-hooks session-track`          |
+| **Binary**    | kaboom-hooks                          |
+| **Command**   | `kaboom-hooks session-track`          |
 | **Hook**      | PostToolUse on Read, Edit, Write, Bash  |
 | **Parent**    | [Quality Gates](../quality-gates/index.md) |
 
@@ -40,8 +40,8 @@ This is the foundation hook that other hooks (`blast-radius`, `decision-guard`) 
 ## Install
 
 ```bash
-# Already included in gasoline-hooks
-gasoline-hooks session-track
+# Already included in kaboom-hooks
+kaboom-hooks session-track
 ```
 
 ## Hook Configuration
@@ -49,6 +49,6 @@ gasoline-hooks session-track
 ```json
 {
   "matcher": "Read|Edit|Write|Bash",
-  "hooks": [{"type": "command", "command": "gasoline-hooks session-track", "timeout": 10}]
+  "hooks": [{"type": "command", "command": "kaboom-hooks session-track", "timeout": 10}]
 }
 ```

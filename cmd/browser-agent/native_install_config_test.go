@@ -25,7 +25,7 @@ func TestMergeJSONConfig_PreservesExistingServers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -51,7 +51,7 @@ func TestMergeJSONConfig_RefusesToOverwriteInvalidJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false)
+	err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON, got nil")
 	}
@@ -72,7 +72,7 @@ func TestMergeJSONConfig_CreatesBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -92,8 +92,8 @@ func TestMergeJSONConfig_RemovesLegacyKeys(t *testing.T) {
 
 	existing := map[string]any{
 		"mcpServers": map[string]any{
-			"gasoline":                 map[string]any{"command": "old"},
-			"gasoline-agentic-browser": map[string]any{"command": "older"},
+			"kaboom":                 map[string]any{"command": "old"},
+			"kaboom-agentic-browser": map[string]any{"command": "older"},
 			"github":                   map[string]any{"command": "github-mcp"},
 		},
 	}
@@ -102,7 +102,7 @@ func TestMergeJSONConfig_RemovesLegacyKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 
@@ -130,7 +130,7 @@ func TestMergeJSONConfig_EmptyFileCreatesNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/gasoline", false); err != nil {
+	if err := mergeJSONConfig(path, "mcpServers", "/usr/local/bin/kaboom", false); err != nil {
 		t.Fatalf("mergeJSONConfig failed: %v", err)
 	}
 

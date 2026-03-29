@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Development Guide
 
-This guide covers local development setup, quality checks, and CI pipeline for Gasoline.
+This guide covers local development setup, quality checks, and CI pipeline for Kaboom.
 
 ## Quick Start
 

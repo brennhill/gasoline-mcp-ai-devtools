@@ -34,15 +34,15 @@ class TestPackageCommandText(unittest.TestCase):
 
 
 class TestUninstallFromClient(unittest.TestCase):
-    def test_removes_kaboom_gasoline_and_strum_from_config(self):
+    def test_removes_kaboom_kaboom_and_strum_from_config(self):
         tmp = tempfile.mkdtemp()
         try:
             cfg_path = os.path.join(tmp, "mcp.json")
             with open(cfg_path, "w") as f:
                 json.dump({
                     "mcpServers": {
-                        MCP_SERVER_NAME: {"command": "gasoline-mcp", "args": []},
-                        "gasoline": {"command": "gasoline-mcp", "args": []},
+                        MCP_SERVER_NAME: {"command": "kaboom-mcp", "args": []},
+                        "kaboom": {"command": "kaboom-mcp", "args": []},
                         "strum": {"command": "strum-agentic-browser", "args": []},
                         "strum-browser-devtools": {"command": "strum-agentic-browser", "args": []},
                         "other": {"command": "other", "args": []},
@@ -60,7 +60,7 @@ class TestUninstallFromClient(unittest.TestCase):
             with open(cfg_path) as f:
                 written = json.load(f)
             self.assertNotIn(MCP_SERVER_NAME, written["mcpServers"])
-            self.assertNotIn("gasoline", written["mcpServers"])
+            self.assertNotIn("kaboom", written["mcpServers"])
             self.assertNotIn("strum", written["mcpServers"])
             self.assertNotIn("strum-browser-devtools", written["mcpServers"])
             self.assertIn("other", written["mcpServers"])
@@ -72,7 +72,7 @@ class TestUninstallFromClient(unittest.TestCase):
         try:
             cfg_path = os.path.join(tmp, "mcp.json")
             with open(cfg_path, "w") as f:
-                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "kaboom-mcp"}}}, f)
 
             d = {
                 "id": "test", "name": "Test", "type": "file",
@@ -99,7 +99,7 @@ class TestUninstallFromClient(unittest.TestCase):
         try:
             cfg_path = os.path.join(tmp, "mcp.json")
             with open(cfg_path, "w") as f:
-                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "kaboom-mcp"}}}, f)
 
             d = {
                 "id": "test", "name": "Test", "type": "file",
@@ -134,7 +134,7 @@ class TestExecuteUninstall(unittest.TestCase):
             with open(cfg_path, "w") as f:
                 json.dump({
                     "mcpServers": {
-                        MCP_SERVER_NAME: {"command": "gasoline-mcp"},
+                        MCP_SERVER_NAME: {"command": "kaboom-mcp"},
                         "other": {"command": "other"},
                     }
                 }, f)
@@ -150,27 +150,27 @@ class TestExecuteUninstall(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
-    def test_removes_managed_skill_files_for_kaboom_gasoline_and_strum(self):
+    def test_removes_managed_skill_files_for_kaboom_kaboom_and_strum(self):
         tmp = tempfile.mkdtemp()
-        original_env = {key: os.environ.get(key) for key in ["GASOLINE_CLAUDE_SKILLS_DIR", "GASOLINE_SKILL_TARGETS"]}
+        original_env = {key: os.environ.get(key) for key in ["KABOOM_CLAUDE_SKILLS_DIR", "KABOOM_SKILL_TARGETS"]}
         try:
             claude_root = os.path.join(tmp, "claude-skills")
             os.makedirs(claude_root, exist_ok=True)
             with open(os.path.join(claude_root, "debug.md"), "w", encoding="utf-8") as f:
                 f.write("<!-- kaboom-managed-skill id:debug version:2 -->\ncurrent kaboom skill\n")
-            with open(os.path.join(claude_root, "gasoline-debug.md"), "w", encoding="utf-8") as f:
-                f.write("<!-- gasoline-managed-skill id:debug version:1 -->\nold gasoline skill\n")
+            with open(os.path.join(claude_root, "kaboom-debug.md"), "w", encoding="utf-8") as f:
+                f.write("<!-- kaboom-managed-skill id:debug version:1 -->\nold kaboom skill\n")
             with open(os.path.join(claude_root, "strum-debug.md"), "w", encoding="utf-8") as f:
                 f.write("<!-- strum-managed-skill id:debug version:1 -->\nold strum skill\n")
 
-            os.environ["GASOLINE_CLAUDE_SKILLS_DIR"] = claude_root
-            os.environ["GASOLINE_SKILL_TARGETS"] = "claude"
+            os.environ["KABOOM_CLAUDE_SKILLS_DIR"] = claude_root
+            os.environ["KABOOM_SKILL_TARGETS"] = "claude"
             result = execute_uninstall({"dryRun": False, "_clientOverrides": []})
 
             self.assertTrue(result["success"])
             self.assertEqual(result["skillCleanup"]["removed"], 3)
             self.assertFalse(os.path.exists(os.path.join(claude_root, "debug.md")))
-            self.assertFalse(os.path.exists(os.path.join(claude_root, "gasoline-debug.md")))
+            self.assertFalse(os.path.exists(os.path.join(claude_root, "kaboom-debug.md")))
             self.assertFalse(os.path.exists(os.path.join(claude_root, "strum-debug.md")))
         finally:
             for key, value in original_env.items():

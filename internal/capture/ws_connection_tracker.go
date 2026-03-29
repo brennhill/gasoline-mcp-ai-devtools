@@ -2,7 +2,7 @@
 // Why: Separates event-driven state transitions from connection storage and query logic.
 package capture
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 
 // trackEvent applies one event to per-connection lifecycle state.
 //

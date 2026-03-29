@@ -13,8 +13,9 @@ import { errorMessage } from '../lib/error-utils.js'
 import { delay } from '../lib/timeout-utils.js'
 import { buildRecordingToastLabel } from './recording-utils.js'
 import { setLocal, removeLocal } from '../lib/storage-utils.js'
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js'
 
-const LOG = '[Gasoline REC]'
+const LOG = KABOOM_RECORDING_LOG_PREFIX
 const AWAITING_APPROVAL_BADGE_TEXT = '?'
 const AWAITING_APPROVAL_BADGE_COLOR = '#d29922'
 

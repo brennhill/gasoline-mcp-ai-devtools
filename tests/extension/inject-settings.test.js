@@ -10,7 +10,7 @@ import assert from 'node:assert'
 import { createMockWindow } from './helpers.js'
 
 // Provide esbuild constant
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 let originalWindow
 
@@ -59,11 +59,11 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled', enabled: true }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_network_waterfall_enabled', enabled: true }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_action_replay_enabled', enabled: false }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_action_replay_enabled', enabled: false }),
       true
     )
   })
@@ -72,7 +72,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'setUnknownThing', enabled: true }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'setUnknownThing', enabled: true }),
       false
     )
   })
@@ -81,7 +81,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_network_waterfall_enabled' }),
       false
     )
   })
@@ -90,7 +90,7 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_network_waterfall_enabled', enabled: 'yes' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_network_waterfall_enabled', enabled: 'yes' }),
       false
     )
   })
@@ -99,15 +99,15 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode', mode: 'high' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_web_socket_capture_mode', mode: 'high' }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode', mode: 123 }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_web_socket_capture_mode', mode: 123 }),
       false
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_web_socket_capture_mode' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_web_socket_capture_mode' }),
       false
     )
   })
@@ -116,15 +116,15 @@ describe('isValidSettingPayload', () => {
     const { isValidSettingPayload } = await import('../../extension/inject/settings.js')
 
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url', url: 'http://localhost:9999' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_server_url', url: 'http://localhost:9999' }),
       true
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url', url: 123 }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_server_url', url: 123 }),
       false
     )
     assert.strictEqual(
-      isValidSettingPayload({ type: 'gasoline_setting', setting: 'set_server_url' }),
+      isValidSettingPayload({ type: 'kaboom_setting', setting: 'set_server_url' }),
       false
     )
   })
@@ -238,7 +238,7 @@ describe('handleStateCommand', () => {
     const restoreFn = mock.fn()
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-1', action: 'capture' },
+      { type: 'kaboom_state_command', messageId: 'msg-1', action: 'capture' },
       captureFn,
       restoreFn
     )
@@ -249,7 +249,7 @@ describe('handleStateCommand', () => {
     const postCalls = globalThis.window.postMessage.mock.calls
     assert.strictEqual(postCalls.length, 1)
     const msg = postCalls[0].arguments[0]
-    assert.strictEqual(msg.type, 'gasoline_state_response')
+    assert.strictEqual(msg.type, 'kaboom_state_response')
     assert.strictEqual(msg.messageId, 'msg-1')
     assert.deepStrictEqual(msg.result, capturedState)
   })
@@ -262,7 +262,7 @@ describe('handleStateCommand', () => {
     const restoreFn = mock.fn(() => ({ success: true }))
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-2', action: 'restore', state: stateToRestore, include_url: true },
+      { type: 'kaboom_state_command', messageId: 'msg-2', action: 'restore', state: stateToRestore, include_url: true },
       captureFn,
       restoreFn
     )
@@ -273,7 +273,7 @@ describe('handleStateCommand', () => {
     assert.strictEqual(restoreFn.mock.calls[0].arguments[1], true, 'include_url should be true')
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'gasoline_state_response')
+    assert.strictEqual(msg.type, 'kaboom_state_response')
     assert.strictEqual(msg.messageId, 'msg-2')
     assert.deepStrictEqual(msg.result, { success: true })
   })
@@ -283,7 +283,7 @@ describe('handleStateCommand', () => {
 
     const restoreFn = mock.fn()
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-3', action: 'restore', state: { url: '/' } },
+      { type: 'kaboom_state_command', messageId: 'msg-3', action: 'restore', state: { url: '/' } },
       mock.fn(),
       restoreFn
     )
@@ -295,13 +295,13 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-4', action: 'delete' },
+      { type: 'kaboom_state_command', messageId: 'msg-4', action: 'delete' },
       mock.fn(),
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'gasoline_state_response')
+    assert.strictEqual(msg.type, 'kaboom_state_response')
     assert.strictEqual(msg.messageId, 'msg-4')
     assert.ok(msg.result.error.includes('Invalid action'))
   })
@@ -310,13 +310,13 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-5', action: 'restore' },
+      { type: 'kaboom_state_command', messageId: 'msg-5', action: 'restore' },
       mock.fn(),
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'gasoline_state_response')
+    assert.strictEqual(msg.type, 'kaboom_state_response')
     assert.ok(msg.result.error.includes('Invalid state object'))
   })
 
@@ -326,13 +326,13 @@ describe('handleStateCommand', () => {
     const captureFn = mock.fn(() => { throw new Error('DOM not ready') })
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-6', action: 'capture' },
+      { type: 'kaboom_state_command', messageId: 'msg-6', action: 'capture' },
       captureFn,
       mock.fn()
     )
 
     const msg = globalThis.window.postMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(msg.type, 'gasoline_state_response')
+    assert.strictEqual(msg.type, 'kaboom_state_response')
     assert.strictEqual(msg.result.error, 'DOM not ready')
   })
 
@@ -340,7 +340,7 @@ describe('handleStateCommand', () => {
     const { handleStateCommand } = await import('../../extension/inject/settings.js')
 
     handleStateCommand(
-      { type: 'gasoline_state_command', messageId: 'msg-7', action: 'capture' },
+      { type: 'kaboom_state_command', messageId: 'msg-7', action: 'capture' },
       mock.fn(() => ({})),
       mock.fn()
     )

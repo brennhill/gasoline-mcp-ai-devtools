@@ -11,7 +11,7 @@ last_reviewed: 2026-02-16
 
 ## Problem Statement
 
-Users don't know when a newer version of Gasoline is available. They may be running outdated software with bugs or missing features. There's no visibility into version compatibility between the extension and server.
+Users don't know when a newer version of Kaboom is available. They may be running outdated software with bugs or missing features. There's no visibility into version compatibility between the extension and server.
 
 ## Solution
 
@@ -27,8 +27,8 @@ Implement automatic periodic version checking where:
 - Extension reads its version from `manifest.json`
 - Extension periodically polls `/health` endpoint for server version
 - Visual badge ("⬆") appears on extension icon when new version available
-- Badge includes tooltip showing available version (e.g., "Gasoline: New version available (v5.2.6)")
-- All extension requests include `X-Gasoline-Extension-Version` header
+- Badge includes tooltip showing available version (e.g., "Kaboom: New version available (v5.2.6)")
+- All extension requests include `X-Kaboom-Extension-Version` header
 - Server logs version mismatches to stderr for diagnostics
 - Version comparison uses semantic versioning (X.Y.Z format)
 - Rate limiting prevents excessive polling (30-minute intervals)
@@ -59,7 +59,7 @@ Implement automatic periodic version checking where:
 
 ### Happy Path: New Version Available
 
-1. User has Gasoline extension v5.2.5 installed
+1. User has Kaboom extension v5.2.5 installed
 2. Server is updated to v5.2.6
 3. Extension connects to server, version check starts
 4. Within 30 minutes, periodic check runs:
@@ -68,7 +68,7 @@ Implement automatic periodic version checking where:
    - Compares: 5.2.6 > 5.2.5 ✓
    - Updates state: `newVersionAvailable = true`
 5. Badge "⬆" appears on extension icon (blue background)
-6. Hovering over badge shows: "Gasoline: New version available (v5.2.6)"
+6. Hovering over badge shows: "Kaboom: New version available (v5.2.6)"
 7. User clicks badge or visits Web Store to update
 8. User installs new extension (v5.2.6)
 9. Next version check: versions match, badge disappears
@@ -80,7 +80,7 @@ Implement automatic periodic version checking where:
 3. Comparison: 5.2.5 == 5.2.5 (no newer version)
 4. State: `newVersionAvailable = false`
 5. No badge shown
-6. Extension title: "Gasoline"
+6. Extension title: "Kaboom"
 
 ### Error Path: Server Unreachable
 

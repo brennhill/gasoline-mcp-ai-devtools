@@ -28,7 +28,7 @@ export interface PageMessageEventData {
  * Setting message to be posted to page context
  */
 export interface SettingMessage {
-    type: 'gasoline_setting';
+    type: 'kaboom_setting';
     setting: string;
     enabled?: boolean;
     mode?: WebSocketCaptureMode;
@@ -38,7 +38,7 @@ export interface SettingMessage {
  * Highlight request message to page context
  */
 export interface HighlightRequestMessage {
-    type: 'gasoline_highlight_request';
+    type: 'kaboom_highlight_request';
     requestId: number;
     params: {
         selector: string;
@@ -49,7 +49,7 @@ export interface HighlightRequestMessage {
  * Execute JS request message to page context
  */
 export interface ExecuteJsRequestMessage {
-    type: 'gasoline_execute_js';
+    type: 'kaboom_execute_js';
     requestId: number;
     script: string;
     timeoutMs: number;
@@ -58,7 +58,7 @@ export interface ExecuteJsRequestMessage {
  * A11y query request message to page context
  */
 export interface A11yQueryRequestMessage {
-    type: 'gasoline_a11y_query';
+    type: 'kaboom_a11y_query';
     requestId: number;
     params: Record<string, unknown>;
 }
@@ -66,7 +66,7 @@ export interface A11yQueryRequestMessage {
  * DOM query request message to page context
  */
 export interface DomQueryRequestMessage {
-    type: 'gasoline_dom_query';
+    type: 'kaboom_dom_query';
     requestId: number;
     params: Record<string, unknown>;
 }
@@ -74,14 +74,14 @@ export interface DomQueryRequestMessage {
  * Get waterfall request message to page context
  */
 export interface GetWaterfallRequestMessage {
-    type: 'gasoline_get_waterfall';
+    type: 'kaboom_get_waterfall';
     requestId: number;
 }
 /**
  * State command message to page context
  */
 export interface StateCommandMessage {
-    type: 'gasoline_state_command';
+    type: 'kaboom_state_command';
     messageId: string;
     action?: StateAction;
     name?: string;

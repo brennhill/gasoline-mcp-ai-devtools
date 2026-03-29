@@ -1,9 +1,9 @@
 ---
 name: config-doctor
-description: Use when MCP tools fail to connect, user reports "extension not connected", tool calls return errors, or user asks to check their Gasoline setup.
+description: Use when MCP tools fail to connect, user reports "extension not connected", tool calls return errors, or user asks to check their Kaboom setup.
 ---
 
-# Gasoline Config Doctor
+# Kaboom Config Doctor
 
 Use this skill when setup is failing or behavior differs by client.
 

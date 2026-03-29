@@ -55,7 +55,7 @@ describe('recording capture branding', () => {
   beforeEach(() => {
     mock.reset()
     globalThis.chrome = createChromeMock()
-    delete globalThis.GASOLINE_TEST_TIMEOUT_SCALE
+    delete globalThis.KABOOM_TEST_TIMEOUT_SCALE
   })
 
   test('requestRecordingGesture uses Kaboom approval copy for denied requests', async () => {
@@ -83,7 +83,7 @@ describe('recording capture branding', () => {
   })
 
   test('requestRecordingGesture timeout reminder keeps Kaboom popup copy', async () => {
-    globalThis.GASOLINE_TEST_TIMEOUT_SCALE = 0.001
+    globalThis.KABOOM_TEST_TIMEOUT_SCALE = 0.001
     const { requestRecordingGesture } = await import('../../extension/background/recording-capture.js')
 
     const result = await requestRecordingGesture(

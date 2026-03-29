@@ -16,7 +16,7 @@ let webSocketCaptureEnabled = true;
 /** Post a WebSocket lifecycle event (open/close/error) */
 function postLifecycleEvent(event, connectionId, urlString, extra) {
     window.postMessage({
-        type: 'gasoline_ws',
+        type: 'kaboom_ws',
         payload: {
             type: 'websocket',
             event,
@@ -34,7 +34,7 @@ function postMessageEvent(connectionId, urlString, direction, data) {
     const formatted = formatPayload(data);
     const { data: truncatedData, truncated } = truncateWsMessage(formatted);
     window.postMessage({
-        type: 'gasoline_ws',
+        type: 'kaboom_ws',
         payload: {
             type: 'websocket',
             event: 'message',
@@ -102,10 +102,10 @@ export function installWebSocketCapture() {
         return; // Already installed
     webSocketCaptureEnabled = true; // Ensure capture is enabled when installing
     // Check for early-patch: use the saved original, not the early-patch wrapper
-    const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
+    const earlyOriginal = window.__KABOOM_ORIGINAL_WS__;
     originalWebSocket = earlyOriginal || window.WebSocket;
     const OriginalWS = originalWebSocket;
-    function GasolineWebSocket(url, protocols) {
+    function KaboomWebSocket(url, protocols) {
         const ws = new OriginalWS(url, protocols);
         const connectionId = crypto.randomUUID();
         const urlString = url.toString();
@@ -120,12 +120,12 @@ export function installWebSocketCapture() {
         return ws;
     }
     // Set up prototype chain and static properties
-    GasolineWebSocket.prototype = OriginalWS.prototype;
-    Object.defineProperty(GasolineWebSocket, 'CONNECTING', { value: OriginalWS.CONNECTING, writable: false });
-    Object.defineProperty(GasolineWebSocket, 'OPEN', { value: OriginalWS.OPEN, writable: false });
-    Object.defineProperty(GasolineWebSocket, 'CLOSING', { value: OriginalWS.CLOSING, writable: false });
-    Object.defineProperty(GasolineWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false });
-    window.WebSocket = GasolineWebSocket;
+    KaboomWebSocket.prototype = OriginalWS.prototype;
+    Object.defineProperty(KaboomWebSocket, 'CONNECTING', { value: OriginalWS.CONNECTING, writable: false });
+    Object.defineProperty(KaboomWebSocket, 'OPEN', { value: OriginalWS.OPEN, writable: false });
+    Object.defineProperty(KaboomWebSocket, 'CLOSING', { value: OriginalWS.CLOSING, writable: false });
+    Object.defineProperty(KaboomWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false });
+    window.WebSocket = KaboomWebSocket;
     // Adopt connections buffered by the early-patch script
     adoptEarlyConnections();
 }
@@ -139,11 +139,11 @@ export function installWebSocketCapture() {
  * that opened before the inject script loaded.
  */
 function adoptEarlyConnections() {
-    const earlyConnections = window.__GASOLINE_EARLY_WS__;
+    const earlyConnections = window.__KABOOM_EARLY_WS__;
     if (!earlyConnections || earlyConnections.length === 0) {
         // Clean up globals even if no connections
-        delete window.__GASOLINE_ORIGINAL_WS__;
-        delete window.__GASOLINE_EARLY_WS__;
+        delete window.__KABOOM_ORIGINAL_WS__;
+        delete window.__KABOOM_EARLY_WS__;
         return;
     }
     let adopted = 0;
@@ -168,11 +168,11 @@ function adoptEarlyConnections() {
         attachMessageCapture(ws, connectionId, urlString, tracker);
     }
     if (adopted > 0) {
-        console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`);
+        console.log(`[Kaboom] Adopted ${adopted} early WebSocket connection(s)`);
     }
     // Clean up early-patch globals
-    delete window.__GASOLINE_ORIGINAL_WS__;
-    delete window.__GASOLINE_EARLY_WS__;
+    delete window.__KABOOM_ORIGINAL_WS__;
+    delete window.__KABOOM_EARLY_WS__;
 }
 // =============================================================================
 // CONFIGURATION
@@ -218,8 +218,8 @@ export function resetForTesting() {
     originalWebSocket = null;
     // Clean up early-patch globals if present
     if (typeof window !== 'undefined') {
-        delete window.__GASOLINE_ORIGINAL_WS__;
-        delete window.__GASOLINE_EARLY_WS__;
+        delete window.__KABOOM_ORIGINAL_WS__;
+        delete window.__KABOOM_EARLY_WS__;
     }
 }
 //# sourceMappingURL=websocket.js.map

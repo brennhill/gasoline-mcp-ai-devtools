@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // cliToolNames lists valid tool names for CLI mode detection.
@@ -43,9 +43,9 @@ func runCLIMode(args []string) int {
 	cfg, remaining := resolveCLIConfig(args)
 
 	if len(remaining) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: gasoline <tool> <action> [flags]\n")
+		fmt.Fprintf(os.Stderr, "Usage: kaboom <tool> <action> [flags]\n")
 		fmt.Fprintf(os.Stderr, "  Tools: observe, analyze, generate, configure, interact\n")
-		fmt.Fprintf(os.Stderr, "  Example: gasoline observe errors --limit 50\n")
+		fmt.Fprintf(os.Stderr, "  Example: kaboom observe errors --limit 50\n")
 		return 2
 	}
 
@@ -101,14 +101,14 @@ func resolveCLIConfig(args []string) (cliConfig, []string) {
 	return cfg, remaining
 }
 
-// applyCLIEnvOverrides applies GASOLINE_PORT and GASOLINE_FORMAT environment variables.
+// applyCLIEnvOverrides applies KABOOM_PORT and KABOOM_FORMAT environment variables.
 func applyCLIEnvOverrides(cfg *cliConfig) {
-	if envPort := os.Getenv("GASOLINE_PORT"); envPort != "" {
+	if envPort := os.Getenv("KABOOM_PORT"); envPort != "" {
 		if p, err := strconv.Atoi(envPort); err == nil {
 			cfg.Port = p
 		}
 	}
-	if envFormat := os.Getenv("GASOLINE_FORMAT"); envFormat != "" {
+	if envFormat := os.Getenv("KABOOM_FORMAT"); envFormat != "" {
 		cfg.Format = envFormat
 	}
 }

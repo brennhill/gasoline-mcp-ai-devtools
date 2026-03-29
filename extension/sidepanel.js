@@ -242,7 +242,7 @@ function notifyIframe(command, data = {}) {
     state.iframeEl.contentWindow.postMessage({ command, ...data }, '*');
 }
 function handleIframeMessage(event) {
-    if (!event.data || event.data.source !== 'gasoline-terminal')
+    if (!event.data || event.data.source !== 'kaboom-terminal')
         return;
     try {
         const termOrigin = getTerminalServerUrl(state.serverUrl);
@@ -303,7 +303,7 @@ function createTerminalHeader() {
         flexShrink: '0'
     });
     statusDotEl = document.createElement('span');
-    statusDotEl.className = 'gasoline-terminal-status-dot';
+    statusDotEl.className = 'kaboom-terminal-status-dot';
     Object.assign(statusDotEl.style, {
         width: '8px',
         height: '8px',

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"runtime"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/issuereport"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/issuereport"
 )
 
 // toolConfigureReportIssue handles configure(what="report_issue") calls.

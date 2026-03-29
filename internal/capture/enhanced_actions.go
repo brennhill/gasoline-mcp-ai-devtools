@@ -7,7 +7,7 @@ package capture
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // AddEnhancedActions ingests action telemetry and optionally triggers navigation callback.

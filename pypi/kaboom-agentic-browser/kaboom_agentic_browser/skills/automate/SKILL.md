@@ -3,7 +3,7 @@ name: automate
 description: Use when user asks to automate browser actions, click buttons, fill forms, navigate pages, run a sequence of browser steps, or build a repeatable workflow.
 ---
 
-# Gasoline Automate
+# Kaboom Automate
 
 Use this skill for reliable task execution in the browser where flakiness must be minimized.
 

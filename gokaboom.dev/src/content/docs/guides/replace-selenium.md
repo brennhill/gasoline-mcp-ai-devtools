@@ -18,7 +18,7 @@ Every team has one. A folder full of Selenium or Playwright scripts that nobody 
 
 Product managers know what needs testing. They wrote the acceptance criteria. But there's a wall between "user can complete checkout as a guest" and a 200-line Playwright test that implements it.
 
-STRUM removes that wall.
+KaBOOM removes that wall.
 
 ## What Replaces the Code
 
@@ -64,13 +64,13 @@ Test: Guest Checkout
 11. Verify the URL contains "/checkout/payment"
 ```
 
-Hand that to your AI (Claude Code, Cursor, Windsurf — any MCP-compatible tool) with.gasoline connected. The AI reads it, drives the browser, and reports the results.
+Hand that to your AI (Claude Code, Cursor, Windsurf — any MCP-compatible tool) with KaBOOM connected. The AI reads it, drives the browser, and reports the results.
 
 ## Why Product Managers Can Do This
 
-**No dev environment.** You need a browser with the.gasoline extension and an AI tool. No `npm install`, no `pip install`, no `package.json`.
+**No dev environment.** You need a browser with the KaBOOM extension and an AI tool. No `npm install`, no `pip install`, no `package.json`.
 
-**No selectors.** You write "Click the Add to Cart button." The AI figures out the selector..gasoline supports semantic selectors — `text=Add to Cart`, `label=Email`, `aria-label=Close` — that target what elements _mean_. The AI picks the right one.
+**No selectors.** You write "Click the Add to Cart button." The AI figures out the selector. KaBOOM supports semantic selectors — `text=Add to Cart`, `label=Email`, `aria-label=Close` — that target what elements _mean_. The AI picks the right one.
 
 **No maintenance.** When the design team renames a button from "Checkout" to "Proceed to Checkout," your test still works — the AI adapts. If the text changes so much that the AI can't find the element, it tells you in plain English: "I couldn't find a button matching 'Checkout'. I see 'Proceed to Checkout' instead. Should I use that?"
 
@@ -78,7 +78,7 @@ Hand that to your AI (Claude Code, Cursor, Windsurf — any MCP-compatible tool)
 
 ## How to Run a Test
 
-**Step 1:** Open your AI tool with.gasoline configured.
+**Step 1:** Open your AI tool with KaBOOM configured.
 
 **Step 2:** Paste your test script and ask the AI to run it:
 
@@ -118,9 +118,9 @@ The AI calls `save_state` and `load_state` behind the scenes.
 
 The AI uses `observe({what: "errors"})` and `observe({what: "network_bodies"})` to verify these — deeper than any Selenium assertion.
 
-## Selenium vs..gasoline: Side by Side
+## Selenium vs. KaBOOM: Side by Side
 
-| | Selenium/Playwright |.gasoline + Natural Language |
+| | Selenium/Playwright | KaBOOM + Natural Language |
 |---|---|---|
 | **Who writes tests** | Engineers | Anyone who can describe the workflow |
 | **Language** | JavaScript, Python, Java | English |
@@ -134,7 +134,7 @@ The AI uses `observe({what: "errors"})` and `observe({what: "network_bodies"})` 
 
 ## Getting Started
 
-1. Install.gasoline ([Getting Started](/getting-started/))
+1. Install KaBOOM ([Getting Started](/getting-started/))
 2. Enable AI Web Pilot in the extension popup
 3. Write your first test — start with something you already test manually
 4. Paste it into your AI tool and say "run this test"

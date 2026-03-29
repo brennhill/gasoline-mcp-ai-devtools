@@ -1,5 +1,5 @@
 // quality_gate.go — Quality gate enforcement for Claude Code PostToolUse hooks.
-// Reads .gasoline.json, loads standards doc, checks file size, and injects findings.
+// Reads .kaboom.json, loads standards doc, checks file size, and injects findings.
 
 package hook
 
@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	GasolineConfigFile       = ".gasoline.json"
-	DefaultCodeStandardsFile = "gasoline-code-standards.md"
+	KaboomConfigFile         = ".kaboom.json"
+	DefaultCodeStandardsFile = "kaboom-code-standards.md"
 	DefaultFileSizeLimit     = 800
 	maxStandardsLines        = 150
 )
 
-// GasolineConfig is the structure of .gasoline.json.
-type GasolineConfig struct {
+// KaboomConfig is the structure of .kaboom.json.
+type KaboomConfig struct {
 	CodeStandards      string `json:"code_standards"`
 	FileSizeLimit      int    `json:"file_size_limit"`
 	DuplicateThreshold int    `json:"duplicate_threshold"`
@@ -56,7 +56,7 @@ func RunQualityGate(input Input) *QualityGateResult {
 		return nil
 	}
 
-	cfg := loadGasolineConfig(filepath.Join(projectRoot, GasolineConfigFile))
+	cfg := loadKaboomConfig(filepath.Join(projectRoot, KaboomConfigFile))
 
 	var parts []string
 
@@ -112,11 +112,11 @@ func RunQualityGate(input Input) *QualityGateResult {
 	}
 }
 
-// FindProjectRoot walks up from filePath looking for .gasoline.json.
+// FindProjectRoot walks up from filePath looking for .kaboom.json.
 func FindProjectRoot(filePath string) string {
 	dir := filepath.Dir(filePath)
 	for {
-		if _, err := os.Stat(filepath.Join(dir, GasolineConfigFile)); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, KaboomConfigFile)); err == nil {
 			return dir
 		}
 		parent := filepath.Dir(dir)
@@ -128,9 +128,9 @@ func FindProjectRoot(filePath string) string {
 	return ""
 }
 
-// loadGasolineConfig reads and parses .gasoline.json with defaults.
-func loadGasolineConfig(path string) GasolineConfig {
-	cfg := GasolineConfig{
+// loadKaboomConfig reads and parses .kaboom.json with defaults.
+func loadKaboomConfig(path string) KaboomConfig {
+	cfg := KaboomConfig{
 		CodeStandards: DefaultCodeStandardsFile,
 		FileSizeLimit: DefaultFileSizeLimit,
 	}

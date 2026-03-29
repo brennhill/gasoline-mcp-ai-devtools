@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP Server -- Stability & Performance Audit
+# Kaboom MCP Server -- Stability & Performance Audit
 
 **Date:** 2026-02-14
 **Auditor:** Senior Reliability Engineer (automated)
@@ -528,7 +528,7 @@ func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
     case <-s.logDone:
         // Worker exited cleanly
     case <-time.After(timeout):
-        fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown timeout, %d logs may be lost\n", len(s.logChan))
+        fmt.Fprintf(os.Stderr, "[kaboom] Async logger shutdown timeout, %d logs may be lost\n", len(s.logChan))
     }
 }
 ```
@@ -612,7 +612,7 @@ Use `exec.CommandContext` with a 5-second timeout, consistent with the pattern u
 
 ---
 
-### FINDING 7.2 -- killUnixGasolineProcesses lsof and pkill lack context timeout
+### FINDING 7.2 -- killUnixKaboomProcesses lsof and pkill lack context timeout
 
 - **Location:** `cmd/browser-agent/main_connection_stop.go:189-212`
 - **Category:** External Process
@@ -623,13 +623,13 @@ The force cleanup path uses `exec.Command` without timeouts for both `lsof` and 
 
 ```go
 // main_connection_stop.go:189
-cmd := exec.Command("lsof", "-c", "gasoline")
+cmd := exec.Command("lsof", "-c", "kaboom")
 output, err := cmd.Output()
 ```
 
 ```go
 // main_connection_stop.go:209
-pkillCmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
+pkillCmd := exec.Command("pkill", "-f", "kaboom.*--daemon")
 _ = pkillCmd.Run()
 ```
 
@@ -704,7 +704,7 @@ Use `http.NewRequestWithContext` with a 3-second context for consistency.
 **HIGH (3):**
 - 1.1: Connect mode stdout writes lack `mcpStdoutMu` serialization
 - 7.1: `findProcessOnPort` and `getProcessCommand` lack context timeout
-- 7.2: `killUnixGasolineProcesses` lsof/pkill lack context timeout
+- 7.2: `killUnixKaboomProcesses` lsof/pkill lack context timeout
 
 **MEDIUM (2):**
 - 2.1: `globalAnnotationStore` starts background goroutine at package init
@@ -735,7 +735,7 @@ Use `http.NewRequestWithContext` with a 3-second context for consistency.
 **Change:** Replace `exec.Command(...)` with `exec.CommandContext(ctx, ...)` using a 5-second timeout
 **Why:** A hung `lsof` or `ps` command during `--stop` makes the CLI appear frozen. This is user-facing and erodes trust in the tool.
 
-### 3. Add context timeouts to exec.Command in killUnixGasolineProcesses
+### 3. Add context timeouts to exec.Command in killUnixKaboomProcesses
 **File:** `cmd/browser-agent/main_connection_stop.go:189-210`
 **Change:** Replace `exec.Command(...)` with `exec.CommandContext(ctx, ...)` using 10-second and 5-second timeouts
 **Why:** This runs during npm package install. A hung command blocks the entire installation pipeline.

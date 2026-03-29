@@ -136,8 +136,8 @@ func TestGetSessionSummary_WithData(t *testing.T) {
 	}
 
 	// Must contain the header line with total tokens saved and compression percentage.
-	if !strings.Contains(summary, "Gasoline saved") {
-		t.Errorf("summary missing 'Gasoline saved' header: %s", summary)
+	if !strings.Contains(summary, "Kaboom saved") {
+		t.Errorf("summary missing 'Kaboom saved' header: %s", summary)
 	}
 	// Must contain category breakdowns.
 	if !strings.Contains(summary, "Test output") {

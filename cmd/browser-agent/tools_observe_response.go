@@ -6,7 +6,7 @@ package main
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.
 func (h *ToolHandler) prependDisconnectWarning(resp JSONRPCResponse) JSONRPCResponse {
-	warning := "⚠ Extension is not connected — results may be stale or empty. Ensure the Gasoline extension shows 'Connected' and a tab is tracked.\n\n"
+	warning := "⚠ Extension is not connected — results may be stale or empty. Ensure the Kaboom extension shows 'Connected' and a tab is tracked.\n\n"
 	return prependWarningToResponse(resp, warning)
 }
 

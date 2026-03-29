@@ -22,9 +22,9 @@ func setupProject(t *testing.T, lines int) (projectDir, filePath string) {
 	t.Helper()
 	dir := t.TempDir()
 
-	// Write .gasoline.json
+	// Write .kaboom.json
 	cfg := `{"code_standards":"standards.md","file_size_limit":100}`
-	if err := os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(cfg), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(cfg), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,7 +62,7 @@ func TestRunQualityGate_NoFilePath(t *testing.T) {
 	}
 }
 
-func TestRunQualityGate_NoGasolineConfig(t *testing.T) {
+func TestRunQualityGate_NoKaboomConfig(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	fp := filepath.Join(dir, "foo.go")
@@ -70,7 +70,7 @@ func TestRunQualityGate_NoGasolineConfig(t *testing.T) {
 
 	in := makeEditInput(fp)
 	if result := RunQualityGate(in); result != nil {
-		t.Error("expected nil when no .gasoline.json exists")
+		t.Error("expected nil when no .kaboom.json exists")
 	}
 }
 
@@ -141,10 +141,10 @@ func TestRunQualityGate_DefaultConfig(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	// Minimal .gasoline.json with no code_standards field.
-	os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(`{}`), 0644)
+	// Minimal .kaboom.json with no code_standards field.
+	os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(`{}`), 0644)
 	// Write the default standards file.
-	os.WriteFile(filepath.Join(dir, "gasoline-code-standards.md"), []byte("# Default\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "kaboom-code-standards.md"), []byte("# Default\n"), 0644)
 
 	fp := filepath.Join(dir, "main.go")
 	os.WriteFile(fp, []byte("package main\n"), 0644)
@@ -162,7 +162,7 @@ func TestRunQualityGate_DefaultConfig(t *testing.T) {
 func TestFindProjectRoot_Nested(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".gasoline.json"), []byte(`{}`), 0644)
+	os.WriteFile(filepath.Join(dir, ".kaboom.json"), []byte(`{}`), 0644)
 	nested := filepath.Join(dir, "src", "pkg")
 	os.MkdirAll(nested, 0755)
 	fp := filepath.Join(nested, "foo.go")

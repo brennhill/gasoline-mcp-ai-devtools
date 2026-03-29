@@ -1,5 +1,5 @@
 // Purpose: Validate uninstall behavior for npm wrapper-managed MCP config entries.
-// Why: Ensures cleanup removes only gasoline entries while preserving user config state.
+// Why: Ensures cleanup removes only Kaboom-managed entries while preserving user config state.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 const test = require('node:test');
@@ -24,7 +24,7 @@ test('npm wrapper no longer exposes gasoline launcher aliases', () => {
 // --- uninstallFromClient: file-type ---
 
 test('uninstallFromClient removes kaboom, gasoline, and strum managed entries from file-type config', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -58,8 +58,8 @@ test('uninstallFromClient removes kaboom, gasoline, and strum managed entries fr
   fs.rmSync(tmp, { recursive: true });
 });
 
-test('uninstallFromClient deletes file when gasoline is only server', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+test('uninstallFromClient deletes file when managed entries are the only servers', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -86,16 +86,16 @@ test('uninstallFromClient returns notConfigured when file does not exist', () =>
     id: 'test-cursor',
     name: 'Test Cursor',
     type: 'file',
-    configPath: { all: '/tmp/nonexistent-gasoline-test-12345/mcp.json' },
-    detectDir: { all: '/tmp/nonexistent-gasoline-test-12345' },
+    configPath: { all: '/tmp/nonexistent-kaboom-test-12345/mcp.json' },
+    detectDir: { all: '/tmp/nonexistent-kaboom-test-12345' },
   };
 
   const result = uninstallFromClient(def, { dryRun: false });
   assert.equal(result.status, 'notConfigured');
 });
 
-test('uninstallFromClient returns notConfigured when gasoline not in config', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+test('uninstallFromClient returns notConfigured when no managed entries are in config', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -117,7 +117,7 @@ test('uninstallFromClient returns notConfigured when gasoline not in config', ()
 });
 
 test('uninstallFromClient dry-run does not modify file', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   const original = {
@@ -161,7 +161,7 @@ test('uninstallFromClient handles CLI type with dry-run', () => {
 // --- executeUninstall ---
 
 test('executeUninstall removes from detected file-type clients', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const cfgPath = path.join(tmp, 'mcp.json');
 
   fs.writeFileSync(cfgPath, JSON.stringify({
@@ -191,7 +191,7 @@ test('executeUninstall removes from detected file-type clients', () => {
 });
 
 test('executeUninstall removes kaboom, gasoline, and strum managed skill files', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-uninstall-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-uninstall-'));
   const claudeRoot = path.join(tmp, 'claude-skills');
   fs.mkdirSync(claudeRoot, { recursive: true });
   fs.writeFileSync(
@@ -210,9 +210,9 @@ test('executeUninstall removes kaboom, gasoline, and strum managed skill files',
     'utf8'
   );
 
-  const originalClaudeDir = process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+  const originalClaudeDir = process.env.KABOOM_CLAUDE_SKILLS_DIR;
   try {
-    process.env.GASOLINE_CLAUDE_SKILLS_DIR = claudeRoot;
+    process.env.KABOOM_CLAUDE_SKILLS_DIR = claudeRoot;
     const result = executeUninstall({
       dryRun: false,
       _clientOverrides: [],
@@ -228,9 +228,9 @@ test('executeUninstall removes kaboom, gasoline, and strum managed skill files',
     assert.equal(fs.existsSync(path.join(claudeRoot, 'strum-debug.md')), false);
   } finally {
     if (originalClaudeDir === undefined) {
-      delete process.env.GASOLINE_CLAUDE_SKILLS_DIR;
+      delete process.env.KABOOM_CLAUDE_SKILLS_DIR;
     } else {
-      process.env.GASOLINE_CLAUDE_SKILLS_DIR = originalClaudeDir;
+      process.env.KABOOM_CLAUDE_SKILLS_DIR = originalClaudeDir;
     }
     fs.rmSync(tmp, { recursive: true, force: true });
   }

@@ -22,7 +22,7 @@ last_verified_date: 2026-03-05
 
 Modern web applications are single-page apps. After the initial page load, navigation between routes happens entirely on the client — React Router, Next.js, Vue Router, and similar libraries call `history.pushState()` or `history.replaceState()`, render new components, fetch data, and update the URL without a full page reload.
 
-Today, Gasoline's performance measurement captures the initial page load but is blind to subsequent route transitions. For an app with 20 routes, the AI sees performance data for one of them (whichever was loaded first). The other 19 are invisible.
+Today, Kaboom's performance measurement captures the initial page load but is blind to subsequent route transitions. For an app with 20 routes, the AI sees performance data for one of them (whichever was loaded first). The other 19 are invisible.
 
 SPA route measurement tracks each client-side navigation as a discrete performance event: time-to-interactive for the new route, network requests triggered by the transition, layout shifts during the render, and long tasks that block interaction. The AI gets per-route performance data and can identify which routes are fast and which are slow — even though they're all "the same page" to the browser.
 
@@ -38,7 +38,7 @@ SPA route measurement tracks each client-side navigation as a discrete performan
 
 **Interoperability with React/Next.js/Vue tooling**: Framework-specific performance tools (React Profiler, Next.js Analytics, Vue Performance Devtool) measure component-level rendering. SPA route measurement provides the higher-level "time to usable" metric that frameworks don't track directly. These are complementary data sources.
 
-**Soft Navigation API alignment**: Chrome's experimental Soft Navigation API (behind a flag since Chrome 110) aims to standardize SPA navigation measurement. Gasoline's implementation can use this API when available and fall back to heuristics when it's not, providing consistent measurement regardless of browser support.
+**Soft Navigation API alignment**: Chrome's experimental Soft Navigation API (behind a flag since Chrome 110) aims to standardize SPA navigation measurement. Kaboom's implementation can use this API when available and fall back to heuristics when it's not, providing consistent measurement regardless of browser support.
 
 ---
 

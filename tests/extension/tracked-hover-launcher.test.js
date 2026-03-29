@@ -129,7 +129,7 @@ function emitStorageChange(areaName, key, oldValue, newValue) {
 
 function resetGlobals() {
   elementsById = {}
-  storageData = { gasoline_recording: { active: false } }
+  storageData = { kaboom_recording: { active: false } }
   sessionStorageData = {}
   storageChangeListeners = []
   runtimeOnMessageListeners = []
@@ -144,12 +144,12 @@ function resetGlobals() {
       return Promise.resolve({ success: true })
     }
     if (message?.type === 'record_start') {
-      storageData.gasoline_recording = { active: true }
+      storageData.kaboom_recording = { active: true }
       callback?.({ status: 'recording' })
       return Promise.resolve({ status: 'recording' })
     }
     if (message?.type === 'record_stop') {
-      storageData.gasoline_recording = { active: false }
+      storageData.kaboom_recording = { active: false }
       callback?.({ status: 'saved' })
       return Promise.resolve({ status: 'saved' })
     }
@@ -281,15 +281,15 @@ describe('tracked hover launcher', () => {
   test('mounts only when tracked is enabled', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher root should be mounted')
-    assert.ok(elementsById['gasoline-tracked-hover-toggle'], 'launcher toggle should exist')
-    assert.ok(elementsById['gasoline-tracked-hover-panel'], 'launcher panel should exist')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher root should be mounted')
+    assert.ok(elementsById['kaboom-tracked-hover-toggle'], 'launcher toggle should exist')
+    assert.ok(elementsById['kaboom-tracked-hover-panel'], 'launcher panel should exist')
   })
 
   test('hover island keeps the flame icon on hover', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const toggle = elementsById['gasoline-tracked-hover-toggle']
+    const toggle = elementsById['kaboom-tracked-hover-toggle']
     assert.ok(toggle, 'expected hover island toggle')
     const logo = toggle.children[0]
     assert.ok(logo, 'expected logo image inside hover island toggle')
@@ -309,14 +309,14 @@ describe('tracked hover launcher', () => {
 
     await setTrackedHoverLauncherEnabled(false)
 
-    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
-    assert.strictEqual(elementsById['gasoline-tracked-hover-toggle'], undefined)
+    assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined)
+    assert.strictEqual(elementsById['kaboom-tracked-hover-toggle'], undefined)
   })
 
   test('screenshot action sends captureScreenshot runtime message', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const root = elementsById['gasoline-tracked-hover-launcher']
+    const root = elementsById['kaboom-tracked-hover-launcher']
     const screenshotButton = findElementByTitlePrefix(root, 'Screenshot')
     assert.ok(screenshotButton, 'expected screenshot button')
 
@@ -329,7 +329,7 @@ describe('tracked hover launcher', () => {
   test('stop recording button sends screen_recording_stop and is hidden by default', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const root = elementsById['gasoline-tracked-hover-launcher']
+    const root = elementsById['kaboom-tracked-hover-launcher']
     const stopButton = findElementByTitle(root, 'Stop recording')
     assert.ok(stopButton, 'expected stop recording button')
     assert.strictEqual(stopButton.style.display, 'none', 'stop button should be hidden when not recording')
@@ -340,10 +340,45 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('screen_recording_stop'))
   })
 
+  test('annotate action warns with Kaboom copy when extension context is invalidated', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+    const warn = mock.method(console, 'warn', () => {})
+    globalThis.chrome.runtime.getURL = undefined
+
+    const root = elementsById['kaboom-tracked-hover-launcher']
+    const drawButton = findElementByTitlePrefix(root, 'Annotate the page')
+    assert.ok(drawButton, 'expected annotate button')
+
+    drawButton.dispatch('click')
+
+    assert.strictEqual(warn.mock.calls.length, 1)
+    const message = warn.mock.calls[0].arguments[0]
+    assert.match(message, /Kaboom/)
+    assert.doesNotMatch(message, /Gasoline|STRUM/)
+  })
+
+  test('annotate action warns with Kaboom copy when draw-mode module load fails', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+    const warn = mock.method(console, 'warn', () => {})
+
+    const root = elementsById['kaboom-tracked-hover-launcher']
+    const drawButton = findElementByTitlePrefix(root, 'Annotate the page')
+    assert.ok(drawButton, 'expected annotate button')
+
+    drawButton.dispatch('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.strictEqual(warn.mock.calls.length, 1)
+    const message = warn.mock.calls[0].arguments[0]
+    assert.match(message, /Kaboom/)
+    assert.match(message, /chrome:\/\/extensions/)
+    assert.doesNotMatch(message, /Gasoline|STRUM/)
+  })
+
   test('settings menu exposes docs and github links', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const root = elementsById['gasoline-tracked-hover-launcher']
+    const root = elementsById['kaboom-tracked-hover-launcher']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton, 'expected settings button')
     settingsButton.dispatch('click')
@@ -353,15 +388,15 @@ describe('tracked hover launcher', () => {
 
     assert.ok(docsLink, 'expected docs link')
     assert.ok(repoLink, 'expected repo link')
-    assert.strictEqual(docsLink.href, 'https://cookwithgasoline.com/docs')
-    assert.strictEqual(repoLink.href, 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp')
+    assert.strictEqual(docsLink.href, 'https://gokaboom.dev/docs')
+    assert.strictEqual(repoLink.href, 'https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP')
   })
 
   test('hide action removes launcher until popup show message arrives', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const root = elementsById['gasoline-tracked-hover-launcher']
-    const toggle = elementsById['gasoline-tracked-hover-toggle']
+    const root = elementsById['kaboom-tracked-hover-launcher']
+    const toggle = elementsById['kaboom-tracked-hover-toggle']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton)
     assert.strictEqual(toggle?.title, 'Kaboom quick actions')
@@ -371,18 +406,18 @@ describe('tracked hover launcher', () => {
     assert.ok(hideButton, 'expected hide button')
     hideButton.dispatch('click')
 
-    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+    assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined)
     assert.strictEqual(storageData[sharedStorageKey], true, 'hide state should persist in storage')
 
     dispatchRuntimeMessage({ type: sharedReshowMessageType })
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should remount after popup signal')
     assert.strictEqual(storageData[sharedStorageKey], undefined, 'reshow should clear persisted hidden state')
   })
 
   test('terminal action opens the side panel', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
-    const root = elementsById['gasoline-tracked-hover-launcher']
+    const root = elementsById['kaboom-tracked-hover-launcher']
     const terminalButton = findElementByTitlePrefix(root, 'Terminal')
     assert.ok(terminalButton, 'expected terminal button')
 
@@ -394,15 +429,15 @@ describe('tracked hover launcher', () => {
 
   test('launcher returns when terminal session is minimized and hides only while panel is open', async () => {
     await setTrackedHoverLauncherEnabled(true)
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should start mounted')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should start mounted')
 
     await chrome.storage.session.set({ [terminalUiStateKey]: 'open' })
     await new Promise((resolve) => setTimeout(resolve, 10))
-    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined, 'launcher should hide while the side panel is open')
+    assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined, 'launcher should hide while the side panel is open')
 
     await chrome.storage.session.set({ [terminalUiStateKey]: 'minimized' })
     await new Promise((resolve) => setTimeout(resolve, 10))
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should return when the side panel is minimized')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should return when the side panel is minimized')
   })
 
   test('persisted hidden state suppresses launcher after module reload until popup signal', async () => {
@@ -412,21 +447,21 @@ describe('tracked hover launcher', () => {
     ))
 
     await setTrackedHoverLauncherEnabled(true)
-    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+    assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined)
 
     dispatchRuntimeMessage({ type: sharedReshowMessageType })
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should remount after popup signal')
   })
 
   test('unmount removes launcher and storage listener', async () => {
     await setTrackedHoverLauncherEnabled(true)
-    assert.ok(elementsById['gasoline-tracked-hover-launcher'])
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'])
     const mountedListenerCount = storageChangeListeners.length
     assert.ok(mountedListenerCount > 0, 'storage listener should be installed while mounted')
 
     await setTrackedHoverLauncherEnabled(false)
 
-    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+    assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined)
     assert.ok(storageChangeListeners.length < mountedListenerCount, 'launcher-specific storage listeners should be removed on unmount')
   })
 })

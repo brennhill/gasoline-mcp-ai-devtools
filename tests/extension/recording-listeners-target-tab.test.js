@@ -68,7 +68,7 @@ function dispatchPopupMessage(message, senderOverrides = {}) {
 describe('recording listeners popup target selection', () => {
   beforeEach(() => {
     globalThis.chrome = createChromeMock()
-    delete globalThis.GASOLINE_TEST_TIMEOUT_SCALE
+    delete globalThis.KABOOM_TEST_TIMEOUT_SCALE
   })
 
   test('popup screen_recording_start targets tracked tab when available', async () => {
@@ -96,7 +96,7 @@ describe('recording listeners popup target selection', () => {
   })
 
   test('mic permission guidance toast uses Kaboom copy', async () => {
-    globalThis.GASOLINE_TEST_TIMEOUT_SCALE = 0.001
+    globalThis.KABOOM_TEST_TIMEOUT_SCALE = 0.001
     globalThis.chrome = createChromeMock({ pendingMicReturnTabId: 88 })
 
     const { installRecordingListeners } = await import('../../extension/background/recording-listeners.js')

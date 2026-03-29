@@ -13,7 +13,7 @@ A **Content Security Policy (CSP)** controls which scripts, styles, and resource
 
 Writing one by hand is painful. Generating one from real usage is much easier.
 
-This is where *.gasoline Agentic Devtools** shines.
+This is where **KaBOOM Agentic Devtools** shines.
 
 <!-- more -->
 
@@ -27,7 +27,7 @@ This is where *.gasoline Agentic Devtools** shines.
 
 You want stronger security without breaking business-critical scripts.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Capture real network usage
 
@@ -71,4 +71,4 @@ generate({what: "csp", mode: "strict", exclude_origins: ["https://optional-widge
 
 ## You’re Doing Real Defensive Engineering
 
-A good CSP is one of the highest-leverage web security controls. *.gasoline Agentic Devtools** helps you build it with confidence from real data.
+A good CSP is one of the highest-leverage web security controls. **KaBOOM Agentic Devtools** helps you build it with confidence from real data.

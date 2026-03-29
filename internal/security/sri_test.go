@@ -355,7 +355,7 @@ func TestSRIGeneratorSizeBytes(t *testing.T) {
 func TestSRIGeneratorAlreadyHasSRI(t *testing.T) {
 	t.Parallel()
 	// This tests that we track resources that already have SRI
-	// Note: In practice, Gasoline captures the response, not the HTML.
+	// Note: In practice, Kaboom captures the response, not the HTML.
 	// AlreadyHasSRI would be set based on external data or heuristics.
 	// For now, we just ensure the field exists in the output.
 	gen := NewSRIGenerator()

@@ -1,7 +1,7 @@
 # pylint: disable=duplicate-code
 """Uninstall logic for the PyPI wrapper.
 
-Purpose: Remove gasoline MCP config entries from detected clients safely.
+Purpose: Remove Kaboom MCP config entries from detected clients safely.
 Why: Prevents collateral config loss while enabling clean rollback paths.
 Docs: docs/features/feature/enhanced-cli-config/index.md
 """

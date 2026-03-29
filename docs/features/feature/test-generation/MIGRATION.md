@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This document outlines the migration plan for adding test generation capabilities to Gasoline's `generate` tool. This is a non-breaking addition that extends existing functionality.
+This document outlines the migration plan for adding test generation capabilities to Kaboom's `generate` tool. This is a non-breaking addition that extends existing functionality.
 
 ## Version Impact
 
@@ -223,9 +223,9 @@ After release, measure:
 
 ## Appendix: Competitive Parity
 
-This feature positions Gasoline to compete with TestSprite by providing:
+This feature positions Kaboom to compete with TestSprite by providing:
 
-| Capability | TestSprite | Gasoline (After) |
+| Capability | TestSprite | Kaboom (After) |
 |------------|------------|------------------|
 | Test generation | From PRD | From captured context |
 | Self-healing | Cloud-based | Local |

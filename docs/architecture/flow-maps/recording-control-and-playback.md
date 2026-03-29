@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: recording-control-and-playback
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
@@ -54,6 +54,7 @@ Covers configure/observe flows for action recording, playback execution, result 
 - `playbackSessions` is write/read protected by `playbackMu`.
 - `buildPlaybackResult` defines canonical playback completion response fields.
 - `appendServerLog` enforces bounded in-memory server log capacity.
+- Extension popup/background/offscreen recording modules share `KABOOM_RECORDING_LOG_PREFIX` from `src/lib/brand.ts` so diagnostics stay consistent during the Kaboom cutover.
 
 ## Code Paths
 

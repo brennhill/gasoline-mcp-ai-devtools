@@ -1,21 +1,24 @@
 /**
- * Purpose: Anonymous telemetry beacons for error visibility. Disable with STRUM_TELEMETRY storage key.
+ * Purpose: Anonymous telemetry beacons for error visibility. Disable with the Kaboom telemetry opt-out key.
  */
 
-const TELEMETRY_ENDPOINT = 'https://t.getstrum.dev/v1/event'
+import {
+  KABOOM_TELEMETRY_ENDPOINT,
+  KABOOM_TELEMETRY_STORAGE_KEY
+} from './brand.js'
 
 // Opt-out flag cached from chrome.storage.local for synchronous checks.
 let telemetryDisabled = false
 
 // Check opt-out on load
 try {
-  chrome.storage.local.get('strum_telemetry_off', (result) => {
-    telemetryDisabled = result.strum_telemetry_off === true
+  chrome.storage.local.get(KABOOM_TELEMETRY_STORAGE_KEY, (result) => {
+    telemetryDisabled = result[KABOOM_TELEMETRY_STORAGE_KEY] === true
   })
   // Listen for runtime changes so opt-out takes effect immediately
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && 'strum_telemetry_off' in changes) {
-      telemetryDisabled = changes.strum_telemetry_off.newValue === true
+    if (area === 'local' && KABOOM_TELEMETRY_STORAGE_KEY in changes) {
+      telemetryDisabled = changes[KABOOM_TELEMETRY_STORAGE_KEY].newValue === true
     }
   })
 } catch {
@@ -37,12 +40,12 @@ export function beacon(event: string, props: Record<string, string> = {}): void 
 
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
       const blob = new Blob([payload], { type: 'application/json' })
-      navigator.sendBeacon(TELEMETRY_ENDPOINT, blob)
+      navigator.sendBeacon(KABOOM_TELEMETRY_ENDPOINT, blob)
       return
     }
 
     // Fallback to fetch (fire-and-forget)
-    void fetch(TELEMETRY_ENDPOINT, {
+    void fetch(KABOOM_TELEMETRY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload,

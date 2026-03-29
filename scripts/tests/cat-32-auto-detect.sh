@@ -14,7 +14,7 @@ begin_category "32" "Noise Filtering: Auto-Detect & Framework" "8"
 ensure_daemon
 
 # Clean up
-rm -rf ".gasoline/noise" 2>/dev/null || true
+rm -rf ".kaboom/noise" 2>/dev/null || true
 
 # ── TEST 20.9: Confidence Threshold >= 0.9 Auto-Applies ──────────────────
 

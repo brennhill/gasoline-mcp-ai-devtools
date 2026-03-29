@@ -24,6 +24,7 @@ import type {
   PerformanceSnapshot
 } from '../types/index.js'
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { pushChatMessage } from './push-handler.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
@@ -324,12 +325,12 @@ function handleMessage(
       handleSetServerUrl(message.url, sendResponse, deps)
       return false
 
-    case 'gasoline_capture_screenshot':
+    case 'kaboom_capture_screenshot':
       // Content script requests screenshot capture (while draw mode overlay is still visible)
       handleDrawModeCaptureScreenshot(sender, sendResponse)
       return true
 
-    case 'gasoline_push_chat':
+    case 'kaboom_push_chat':
       handlePushChatAsync(message as { message: string; page_url: string }, sender, sendResponse)
       return true
 
@@ -357,7 +358,7 @@ async function handleLogMessageAsync(
   try {
     await deps.handleLogMessage(message.payload, sender, message.tabId)
   } catch (err) {
-    console.error('[Gasoline] Failed to handle log message:', err)
+    console.error(`${KABOOM_LOG_PREFIX} Failed to handle log message:`, err)
   }
 }
 
@@ -367,7 +368,7 @@ async function handleClearLogsAsync(sendResponse: SendResponse, deps: MessageHan
     const result = await deps.handleClearLogs()
     sendResponse(result)
   } catch (err) {
-    console.error('[Gasoline] Failed to clear logs:', err)
+    console.error(`${KABOOM_LOG_PREFIX} Failed to clear logs:`, err)
     sendResponse({ error: errorMessage(err) })
   }
 }
@@ -378,10 +379,10 @@ function handleSetAiWebPilotEnabled(
   deps: MessageHandlerDependencies
 ): void {
   const newValue = enabled === true
-  console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`)
+  console.log(`${KABOOM_LOG_PREFIX} AI Web Pilot toggle: -> ${newValue}`)
 
   deps.setAiWebPilotEnabled(newValue, () => {
-    console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`)
+    console.log(`${KABOOM_LOG_PREFIX} AI Web Pilot persisted to storage: ${newValue}`)
     // Settings now sent automatically via /sync
     // Broadcast tracking state change to tracked tab (for favicon flicker)
     broadcastTrackingState()
@@ -411,7 +412,7 @@ async function handleGetTrackingState(
       }
     })
   } catch (err) {
-    console.error('[Gasoline] Failed to get tracking state:', err)
+    console.error(`${KABOOM_LOG_PREFIX} Failed to get tracking state:`, err)
     sendResponse({ state: { isTracked: false, aiPilotEnabled: false } })
   }
 }
@@ -458,7 +459,7 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
         })
     }
   } catch (err) {
-    console.error('[Gasoline] Failed to broadcast tracking state:', err)
+    console.error(`${KABOOM_LOG_PREFIX} Failed to broadcast tracking state:`, err)
   }
 }
 
@@ -520,7 +521,7 @@ function handleForwardedSetting(
 }
 
 /**
- * Handle GASOLINE_CAPTURE_SCREENSHOT from content script.
+ * Handle KABOOM_CAPTURE_SCREENSHOT from content script.
  * Captures visible tab while draw mode overlay is still visible (annotations in screenshot).
  */
 async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, sendResponse: SendResponse): Promise<void> {
@@ -534,7 +535,7 @@ async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, send
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' })
     sendResponse({ dataUrl })
   } catch (err) {
-    console.error('[Gasoline] Draw mode screenshot capture failed:', errorMessage(err))
+    console.error(`${KABOOM_LOG_PREFIX} Draw mode screenshot capture failed:`, errorMessage(err))
     sendResponse({ dataUrl: '' })
   }
 }
@@ -576,7 +577,7 @@ async function handleDrawModeCompletedAsync(
 }
 
 /**
- * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
+ * Handle KABOOM_PUSH_CHAT from content script (chat widget).
  * Pushes a text message to the daemon's push pipeline.
  */
 async function handlePushChatAsync(
@@ -615,7 +616,7 @@ function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: Messa
 // STATE SNAPSHOT STORAGE
 // =============================================================================
 
-const SNAPSHOT_KEY = 'gasoline_state_snapshots'
+const SNAPSHOT_KEY = 'kaboom_state_snapshots'
 
 interface StoredStateSnapshot extends BrowserStateSnapshot {
   name: string

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/annotation"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/annotation"
 )
 
 // annotationWaitCommandTTL is how long pending annotation commands remain active.

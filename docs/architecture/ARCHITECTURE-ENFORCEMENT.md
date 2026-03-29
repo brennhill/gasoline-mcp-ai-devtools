@@ -144,7 +144,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 
 **Example output**:
 ```bash
-🏗️  Validating Gasoline architecture...
+🏗️  Validating Kaboom architecture...
 
 1️⃣  Checking critical files...
    ✅ internal/capture/queries.go
@@ -405,5 +405,5 @@ Since implementing enforcement (2026-02-02):
 
 ---
 
-**Remember**: The async queue is not "just code" - it's the **foundation** of Gasoline.
+**Remember**: The async queue is not "just code" - it's the **foundation** of Kaboom.
 Treat it like infrastructure, not like a feature.

@@ -13,7 +13,7 @@
  *
  * This is a barrel/facade file that re-exports from the modular structure in
  * /inject subdirectory. The actual implementation is split into:
- * - inject/api.ts (GasolineAPI interface)
+ * - inject/api.ts (KaboomAPI interface)
  * - inject/observers.ts (Observer setup and installation)
  * - inject/message-handlers.ts (Content script message handling)
  * - inject/state.ts (State capture/restore)

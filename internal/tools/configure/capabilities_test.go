@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 func TestBuildCapabilitiesMap_Empty(t *testing.T) {

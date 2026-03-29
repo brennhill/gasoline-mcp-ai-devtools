@@ -17,6 +17,7 @@ import { delay } from '../lib/timeout-utils.js';
 import { buildRecordingToastLabel } from './recording-utils.js';
 import { startRecordingBadgeTimer, stopRecordingBadgeTimer } from './recording-badge.js';
 import { setTrackedTab } from './tab-state.js';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
 const defaultState = {
     active: false,
     name: '',
@@ -28,11 +29,11 @@ const defaultState = {
     queryId: ''
 };
 let recordingState = { ...defaultState };
-const LOG = '[Gasoline REC]';
+const LOG = KABOOM_RECORDING_LOG_PREFIX;
 /** Listener to re-send watermark when recording tab navigates or content script re-injects. */
 let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
-console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
+console.log(LOG, 'Module loaded, clearing stale recording state from storage');
 removeLocal(StorageKey.RECORDING).catch(() => { });
 // =============================================================================
 // STATE QUERIES
@@ -42,7 +43,7 @@ export function isRecording() {
     return recordingState.active;
 }
 /** Returns current recording info for popup sync. */
-function getRecordingInfo() {
+export function getRecordingInfo() {
     return {
         active: recordingState.active,
         name: recordingState.name,

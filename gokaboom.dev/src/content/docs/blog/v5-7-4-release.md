@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.7.4 Released"
+title: KaBOOM v5.7.4 Released"
 description: "Stability and MCP reliability improvements"
 date: 2026-02-07T22:56:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.7.4
 
-STRUM v5.7.4 improves stability and MCP protocol reliability based on production feedback.
+Kaboom v5.7.4 improves stability and MCP protocol reliability based on production feedback.
 
 ### Improvements
 
@@ -35,9 +35,9 @@ STRUM v5.7.4 improves stability and MCP protocol reliability based on production
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.7.4
+npm install -g kaboom-agentic-browser@5.7.4
 ```
 
 ## Full Changelog
 
-[v5.7.4 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.7.4)
+[v5.7.4 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.7.4)

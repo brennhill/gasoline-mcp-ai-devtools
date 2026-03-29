@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gasoline Full Stack Demo Lab</title>
+  <title>KaBOOM Full Stack Demo Lab</title>
   <style>
     :root {
       --bg: #070a12;
@@ -349,7 +349,7 @@
     <header class="top">
       <div class="brand">
         <span class="dot" aria-hidden="true"></span>
-        <span>Gasoline Full Stack Lab</span>
+        <span>KaBOOM Full Stack Lab</span>
       </div>
       <nav class="top-links" aria-label="Demo lab links">
         <a class="chip" href="/">Main Site</a>
@@ -360,7 +360,7 @@
     <section class="hero">
       <h1>Full Stack Demo Lab</h1>
       <p>
-        This page intentionally includes usability and integration issues so an LLM + Gasoline can detect,
+        This page intentionally includes usability and integration issues so an LLM + KaBOOM can detect,
         annotate, and fix real problems: oversized layout elements, websocket contract mismatch,
         and suspicious dependency loads.
       </p>
@@ -471,7 +471,7 @@
       <h2>Dependency Vetting</h2>
       <p style="margin: 0; color: var(--muted); font-size: 13px;">
         On load, the page attempts to load a third-party script from <span class="pill">mysite.xyz</span>.
-        Use Gasoline network tools to confirm where dependencies come from and whether this is intentional.
+        Use KaBOOM network tools to confirm where dependencies come from and whether this is intentional.
       </p>
       <div class="controls" style="max-width: 520px;">
         <button id="reload-dependencies" type="button">Reload Dependencies</button>
@@ -588,15 +588,15 @@
       };
     }
 
-    window.gasolineDemo = {
+    window.kaboomDemo = {
       setMode(mode) {
-        return applyMode(mode, 'gasolineDemo.setMode');
+        return applyMode(mode, 'kaboomDemo.setMode');
       },
       applyPostFixMode() {
-        return applyMode('fixed', 'gasolineDemo.applyPostFixMode');
+        return applyMode('fixed', 'kaboomDemo.applyPostFixMode');
       },
       applyBrokenMode() {
-        return applyMode('broken', 'gasolineDemo.applyBrokenMode');
+        return applyMode('broken', 'kaboomDemo.applyBrokenMode');
       },
       getMode() {
         return app.mode;
@@ -815,7 +815,7 @@
     applyMode('broken', 'initial-load');
     addListItem(annotationLog, 'Demo loaded. Start with: "this image is too big".', 'info');
     addListItem(wsRaw, 'WebSocket is idle. Click Connect WebSocket.', 'info');
-    addListItem(wsRaw, 'One-command fix path: window.gasolineDemo.applyPostFixMode()', 'info');
+    addListItem(wsRaw, 'One-command fix path: window.kaboomDemo.applyPostFixMode()', 'info');
     loadDemoDependencies();
   </script>
 </body>

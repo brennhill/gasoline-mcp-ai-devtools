@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 type bridgeStartupLockRecord struct {

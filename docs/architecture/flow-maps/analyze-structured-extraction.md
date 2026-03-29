@@ -26,7 +26,7 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 2. Go server enqueues pending query (`form_state` or `data_table`) with shared fail-fast queue handling (`enqueuePendingQuery`).
 3. Extension `handlePendingQuery` routes to `registerCommand('form_state'|'data_table')`.
 4. Background command sends content-script message (`FORM_STATE_QUERY` or `DATA_TABLE_QUERY`) for the resolved tab.
-5. Content script forwards to inject context with nonce-scoped postMessage (`GASOLINE_FORM_STATE_QUERY` / `GASOLINE_DATA_TABLE_QUERY`).
+5. Content script forwards to inject context with nonce-scoped postMessage (`KABOOM_FORM_STATE_QUERY` / `KABOOM_DATA_TABLE_QUERY`).
 6. Inject handlers execute deterministic extractors:
    - `discoverForms(..., mode:'discover')` for form state.
    - `extractDataTables(...)` for HTML table rows/headers.

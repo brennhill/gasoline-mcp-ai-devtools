@@ -2,7 +2,7 @@
 
 ## Current State
 
-The gasoline codebase has two major architectural pain points: a monolithic Go backend (`cmd/browser-agent/`) and a flat Chrome extension (`src/`). Both suffer from poor modularity, but for different reasons.
+The kaboom codebase has two major architectural pain points: a monolithic Go backend (`cmd/browser-agent/`) and a flat Chrome extension (`src/`). Both suffer from poor modularity, but for different reasons.
 
 ---
 

@@ -20,19 +20,19 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline captures browser activity by wrapping native APIs — console, fetch, WebSocket, error handlers, and PerformanceObservers. Today, these wraps execute immediately when `inject.js` loads, which happens before or during the page's critical rendering path. On a fast page, this adds measurable overhead to First Contentful Paint. On a heavy page with dozens of early-loading scripts, the WebSocket constructor replacement can race with libraries that instantiate WebSocket connections during initialization (e.g., Socket.io, Phoenix LiveView, Supabase Realtime).
+Kaboom captures browser activity by wrapping native APIs — console, fetch, WebSocket, error handlers, and PerformanceObservers. Today, these wraps execute immediately when `inject.js` loads, which happens before or during the page's critical rendering path. On a fast page, this adds measurable overhead to First Contentful Paint. On a heavy page with dozens of early-loading scripts, the WebSocket constructor replacement can race with libraries that instantiate WebSocket connections during initialization (e.g., Socket.io, Phoenix LiveView, Supabase Realtime).
 
-The core thesis demands that Gasoline be invisible to the app it observes. If the debugger perturbs the system, the AI observes artificial behavior and makes incorrect decisions. An AI that sees a 200ms FCP regression doesn't know whether the app got slower or whether Gasoline's interception added the latency.
+The core thesis demands that Kaboom be invisible to the app it observes. If the debugger perturbs the system, the AI observes artificial behavior and makes incorrect decisions. An AI that sees a 200ms FCP regression doesn't know whether the app got slower or whether Kaboom's interception added the latency.
 
-Interception deferral solves this by postponing all heavy intercepts until after the page has finished its critical load, ensuring Gasoline never contributes to perceived slowness or initialization races.
+Interception deferral solves this by postponing all heavy intercepts until after the page has finished its critical load, ensuring Kaboom never contributes to perceived slowness or initialization races.
 
 ---
 
 ## Opportunity & Business Value
 
-**AI accuracy**: Performance observations (FCP, LCP, TTFB) made by the performance budget monitor are only trustworthy if Gasoline itself doesn't inflate them. Deferral ensures the AI's performance baselines reflect real app behavior, not instrumentation artifacts.
+**AI accuracy**: Performance observations (FCP, LCP, TTFB) made by the performance budget monitor are only trustworthy if Kaboom itself doesn't inflate them. Deferral ensures the AI's performance baselines reflect real app behavior, not instrumentation artifacts.
 
-**Developer trust**: If developers notice their app loads slower with Gasoline installed, they disable it — eliminating the AI's eyes. A zero-impact extension stays installed permanently.
+**Developer trust**: If developers notice their app loads slower with Kaboom installed, they disable it — eliminating the AI's eyes. A zero-impact extension stays installed permanently.
 
 **Framework compatibility**: Modern frameworks initialize WebSocket connections, set up error boundaries, and call console.log during hydration. Wrapping these APIs before the framework is ready can cause subtle timing bugs (e.g., a WebSocket message arriving during React hydration when the handler isn't mounted yet). Deferral eliminates this entire class of issues.
 
@@ -47,7 +47,7 @@ Interception deferral solves this by postponing all heavy intercepts until after
 The inject script splits its work into two phases:
 
 **Phase 1 (Immediate)**: Only lightweight, non-intercepting setup runs at script load time:
-- Register the `window.__gasoline` API object (no interceptions, just a namespace)
+- Register the `window.__kaboom` API object (no interceptions, just a namespace)
 - Set up the message listener for content script commands
 - Start PerformanceObservers for paint timing and CLS (these are passive observers that don't wrap anything — the browser simply calls a callback, no prototype replacement needed)
 - Record `performance.now()` as the injection timestamp (for later diagnostics)
@@ -68,13 +68,13 @@ Phase 2 fires on the **later** of:
 
 This means: `window.addEventListener('load', () => setTimeout(install, 100))`.
 
-The 100ms buffer accounts for late-firing scripts that initialize during or just after the load event (common in lazy-loaded bundles and async analytics). It also prevents Gasoline's interceptions from appearing in the browser's load waterfall.
+The 100ms buffer accounts for late-firing scripts that initialize during or just after the load event (common in lazy-loaded bundles and async analytics). It also prevents Kaboom's interceptions from appearing in the browser's load waterfall.
 
 If the page takes longer than 10 seconds to fire `load` (a timeout safeguard), Phase 2 installs anyway. This handles pathological cases like pages that never finish loading due to a stuck resource.
 
 ### Early Events Are Not Lost
 
-Between Phase 1 and Phase 2, console logs, fetch calls, and WebSocket connections happen without Gasoline observing them. This is acceptable because:
+Between Phase 1 and Phase 2, console logs, fetch calls, and WebSocket connections happen without Kaboom observing them. This is acceptable because:
 
 1. **Console logs during load are usually noise** — framework initialization messages, HMR connection logs, etc. The noise filter would suppress most of them anyway.
 2. **Fetch requests during load are captured by the Performance API** — `performance.getEntriesByType('resource')` retroactively provides all network requests that happened before fetch wrapping started. The performance snapshot collects these.
@@ -104,7 +104,7 @@ New state in inject.js:
 
 ### MCP Visibility
 
-The `get_page_info` tool response includes a `gasoline` section that reports:
+The `get_page_info` tool response includes a `kaboom` section that reports:
 - Whether deferral is active
 - When injection occurred relative to page load
 - When Phase 2 installed
@@ -123,7 +123,7 @@ The initialization block at the bottom of the file changes from:
 ```
 if (typeof window !== 'undefined') {
   install()
-  installGasolineAPI()
+  installKaboomAPI()
 }
 ```
 
@@ -154,7 +154,7 @@ Passes the deferral preference from background to inject:
 ```
 // On load, query background for deferral setting
 chrome.runtime.sendMessage({ type: 'get_settings' }, (response) => {
-  window.postMessage({ type: 'GASOLINE_SETTINGS', deferral: response.deferral })
+  window.postMessage({ type: 'KABOOM_SETTINGS', deferral: response.deferral })
 })
 ```
 

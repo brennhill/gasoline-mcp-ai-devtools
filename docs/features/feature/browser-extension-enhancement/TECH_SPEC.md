@@ -158,7 +158,7 @@ class ActionTimer {
 
     // Emit as normalized event
     window.postMessage({
-      type: 'GASOLINE_ACTION_TIMING',
+      type: 'KABOOM_ACTION_TIMING',
       payload: record,
     }, '*');
 

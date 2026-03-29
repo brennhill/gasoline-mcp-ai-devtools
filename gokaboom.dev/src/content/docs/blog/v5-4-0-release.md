@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.4.0 Released"
+title: KaBOOM v5.4.0 Released"
 description: "Redesigned interaction model and improved AI agent integration"
 date: 2026-01-17T22:18:00Z
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.4.0
 
-STRUM v5.4.0 redesigns the interaction model for better AI agent integration and reliability.
+Kaboom v5.4.0 redesigns the interaction model for better AI agent integration and reliability.
 
 ### Features
 
@@ -36,9 +36,9 @@ STRUM v5.4.0 redesigns the interaction model for better AI agent integration and
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.4.0
+npm install -g kaboom-agentic-browser@5.4.0
 ```
 
 ## Full Changelog
 
-[v5.4.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.4.0)
+[v5.4.0 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.4.0)

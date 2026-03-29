@@ -21,7 +21,7 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "kaboom-agentic-browser"
     }
@@ -36,7 +36,7 @@ Add to your `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "stdio",
       "command": "kaboom-agentic-browser"
     }
@@ -67,7 +67,7 @@ Install the Chrome extension to capture browser telemetry:
 [Chrome Web Store Link](https://chrome.google.com/webstore) (coming soon)
 
 Or load from source:
-1. Download the extension from [GitHub Releases](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/releases)
+1. Download the extension from [GitHub Releases](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases)
 2. Go to `chrome://extensions`
 3. Enable "Developer mode"
 4. Click "Load unpacked" and select the `extension/` folder
@@ -87,8 +87,8 @@ Or load from source:
 ## Documentation
 
 - [Getting Started](https://gokaboom.dev/getting-started/)
-- [GitHub Repository](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp)
-- [Issue Tracker](https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues)
+- [GitHub Repository](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP)
+- [Issue Tracker](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues)
 
 ## Privacy
 

@@ -97,7 +97,7 @@ def _install_via_file(definition, options):
             "message": "No config path for this platform",
         }
 
-    gasoline_entry = {"command": binary_path, "args": []}
+    kaboom_entry = {"command": binary_path, "args": []}
 
     read_result = config.read_config_file(cfg_path)
     if read_result["valid"]:
@@ -107,7 +107,7 @@ def _install_via_file(definition, options):
         config_data = generate_default_config(binary_path=binary_path)
         is_new = True
 
-    merged = config.merge_gasoline_config(config_data, gasoline_entry, env_vars)
+    merged = config.merge_kaboom_config(config_data, kaboom_entry, env_vars)
     config.write_config_file(cfg_path, merged, dry_run)
 
     return {

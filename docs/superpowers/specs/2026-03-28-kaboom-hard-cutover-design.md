@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace the current mixed `Gasoline` / `STRUM` identity with one new canonical identity:
+Replace the current mixed `Kaboom` / `Kaboom` identity with one new canonical identity:
 
 - product name: `Kaboom`
 - site/domain identity: `gokaboom.dev`
@@ -17,16 +17,16 @@ The approved direction is:
 - hard cutover, not phased public compatibility
 - full rename, not just user-facing copy
 - wipe old state instead of migrating it
-- aggressively remove first-party managed `Gasoline` and `STRUM` artifacts during install, update, and uninstall
+- aggressively remove first-party managed `Kaboom` and `Kaboom` artifacts during install, update, and uninstall
 - restore the original flame icon as the canonical visual asset
 
 ## Problem Statement
 
 The repo currently contains three overlapping brand layers:
 
-- legacy `Gasoline`
-- recent `STRUM`
-- a partially renamed site rooted in `getstrum.dev` while older references still point to `cookwithgasoline.com`
+- legacy `Kaboom`
+- recent `Kaboom`
+- a partially renamed site rooted in `gokaboom.dev` while older references still point to `gokaboom.com`
 
 That mixed state creates product confusion, inconsistent documentation, conflicting install commands, and cleanup risk for customers who may have one or more legacy variants installed locally.
 
@@ -35,9 +35,9 @@ The new branding must eliminate the mixed state and make `Kaboom` the only suppo
 ## Constraints
 
 - No compatibility aliases for old names in first-party runtime flows.
-- No state migration from `Gasoline` or `STRUM`.
+- No state migration from `Kaboom` or `Kaboom`.
 - All first-party managed legacy assets should be removed during install/update/uninstall.
-- The original flame icon should replace the STRUM branding assets everywhere possible.
+- The original flame icon should replace the Kaboom branding assets everywhere possible.
 - The change should cover user-facing branding, packaging, runtime contracts, and installer behavior.
 - The implementation must still satisfy the repo documentation cross-reference contract.
 
@@ -45,12 +45,12 @@ The new branding must eliminate the mixed state and make `Kaboom` the only suppo
 
 - In-repo URLs, names, and packaging metadata will move to Kaboom naming even if external infrastructure such as domains, GitHub repo slugs, or package registry names still need separate operational follow-through.
 - The target naming map is:
-  - `Gasoline` -> `Kaboom`
-  - `STRUM` -> `Kaboom`
-  - `cookwithgasoline.com` -> `gokaboom.dev`
-  - `getstrum.dev` -> `gokaboom.dev`
-  - `gasoline-mcp` -> `kaboom-mcp`
-  - `gasoline-agentic-browser` -> `kaboom-agentic-browser`
+  - `Kaboom` -> `Kaboom`
+  - `Kaboom` -> `Kaboom`
+  - `gokaboom.com` -> `gokaboom.dev`
+  - `gokaboom.dev` -> `gokaboom.dev`
+  - `kaboom-mcp` -> `kaboom-mcp`
+  - `kaboom-agentic-browser` -> `kaboom-agentic-browser`
   - repo/import/package families should move to Kaboom-derived names consistently
 - Any customer-owned content outside installer-managed locations is not deleted automatically.
 
@@ -77,8 +77,8 @@ The new branding must eliminate the mixed state and make `Kaboom` the only suppo
 ### Iconography
 
 - The original flame icon becomes the primary icon asset again
-- STRUM-specific visual marks are removed from the shipped surfaces
-- Animated variants may remain only if they are based on the restored flame identity rather than the STRUM mark
+- Kaboom-specific visual marks are removed from the shipped surfaces
+- Animated variants may remain only if they are based on the restored flame identity rather than the Kaboom mark
 
 ## Rename Surface
 
@@ -98,7 +98,7 @@ Update all extension-facing product identity:
 
 Update all site-facing and docs-facing identity:
 
-- site source root currently under `getstrum.dev`
+- site source root currently under `gokaboom.dev`
 - canonical/meta URLs
 - footer, CTA, hero, and install/download copy
 - markdown mirror generators and llms text outputs
@@ -130,11 +130,11 @@ Update source-level identity where represented in repo content:
 
 This cutover includes runtime-facing identifiers, not just copy:
 
-- HTTP headers such as `X-Gasoline-*` become `X-Kaboom-*`
-- resource URIs such as `gasoline://...` become `kaboom://...`
-- extension storage keys prefixed with `gasoline_*` become `kaboom_*`
-- env vars such as `GASOLINE_*` or `STRUM_*` become `KABOOM_*`
-- developer API names such as `window.__gasoline` become `window.__kaboom`
+- HTTP headers such as `X-Kaboom-*` become `X-Kaboom-*`
+- resource URIs such as `kaboom://...` become `kaboom://...`
+- extension storage keys prefixed with `kaboom_*` become `kaboom_*`
+- env vars such as `KABOOM_*` or `Kaboom_*` become `KABOOM_*`
+- developer API names such as `window.__kaboom` become `window.__kaboom`
 - debug log prefixes and telemetry product labels become `Kaboom`
 
 Old state is deleted rather than translated into the new keys.
@@ -171,7 +171,7 @@ The contract is aggressive cleanup for first-party owned assets, not indiscrimin
 
 Install should run as:
 
-1. detect legacy Kaboom/Gasoline/STRUM managed assets
+1. detect legacy Kaboom/Kaboom/Kaboom managed assets
 2. stop running daemons for old and new brands
 3. remove first-party managed legacy assets and old state
 4. remove managed skills and config entries for old brands
@@ -198,8 +198,8 @@ Update is effectively `wipe managed state + reinstall`, not an in-place preserve
 Uninstall should remove:
 
 - Kaboom-managed assets
-- Gasoline-managed assets
-- STRUM-managed assets
+- Kaboom-managed assets
+- Kaboom-managed assets
 - managed skills, configs, caches, logs, and extension handoff artifacts across those names
 
 Uninstall should leave no first-party managed residue behind.
@@ -243,7 +243,7 @@ This remains one hard-cutover program, but execution should be structured in wav
 ### Wave 1: Visual And User-Facing Branding
 
 - restore flame icon
-- remove STRUM iconography
+- remove Kaboom iconography
 - rename extension/product/site copy to Kaboom
 - rename visible site/domain references to `gokaboom.dev`
 
@@ -280,7 +280,7 @@ The implementation should be planned with explicit regression coverage for:
 
 - branding string changes in extension/site surfaces
 - package/install metadata rename correctness
-- cleanup behavior for legacy Gasoline/STRUM assets
+- cleanup behavior for legacy Kaboom/Kaboom assets
 - install/update/uninstall deleting old managed artifacts
 - state wipe behavior rather than migration behavior
 - runtime contract rename correctness

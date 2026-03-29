@@ -4,22 +4,22 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP - Marketing Plan
+# Kaboom MCP - Marketing Plan
 
 **Version:** 1.0  
 **Date:** 2026-02-09  
-**Target:** Drive traffic and uptake for gasoline-agentic-browser-devtools-mcp
+**Target:** Drive traffic and uptake for kaboom-agentic-browser-devtools-mcp
 
 ---
 
 ## Executive Summary
 
-Gasoline MCP is a browser observability tool for AI coding agents that enables autonomous debugging and real-time issue fixing. This marketing plan outlines strategies to increase visibility, drive adoption, and build a sustainable community around the project.
+Kaboom MCP is a browser observability tool for AI coding agents that enables autonomous debugging and real-time issue fixing. This marketing plan outlines strategies to increase visibility, drive adoption, and build a sustainable community around the project.
 
 **Key Objectives:**
 - Increase GitHub stars from current baseline to 1,000+ within 6 months
 - Achieve 5,000+ monthly active users (MAU) within 12 months
-- Establish Gasoline as the go-to browser observability tool for AI developers
+- Establish Kaboom as the go-to browser observability tool for AI developers
 - Build a vibrant community of contributors and users
 
 ---
@@ -71,7 +71,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ### Core Differentiators
 
-| Feature | Gasoline MCP | Competitors |
+| Feature | Kaboom MCP | Competitors |
 |---------|-------------|-------------|
 | Debug Port Required | ❌ No (standard extension) | ✅ Yes (security risk) |
 | Runtime Dependencies | ❌ Zero (single Go binary) | ✅ Node.js, Python, etc. |
@@ -97,22 +97,22 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ### 1. Content Marketing
 
-#### Blog Posts (cookwithgasoline.com/blog)
+#### Blog Posts (gokaboom.dev/blog)
 - **Weekly technical deep-dives:**
-  - "How Gasoline MCP Captures WebSocket Messages"
+  - "How Kaboom MCP Captures WebSocket Messages"
   - "Auto-Generating Playwright Tests from Browser Sessions"
   - "Web Vitals Regression Detection Explained"
   - "Building MCP-Compatible Tools: Lessons Learned"
 
 - **Comparison articles:**
-  - "Gasoline vs Puppeteer: Why Browser Extensions Win"
+  - "Kaboom vs Puppeteer: Why Browser Extensions Win"
   - "Browser Observability Tools for AI: Complete Guide"
   - "Security Analysis: Debug Port vs Extension-Based Tools"
 
 - **Tutorial series:**
-  - "Debugging AI-Generated Code with Gasoline"
-  - "Setting Up Gasoline with Your Favorite AI Tool"
-  - "Advanced: Using Gasoline for API Schema Inference"
+  - "Debugging AI-Generated Code with Kaboom"
+  - "Setting Up Kaboom with Your Favorite AI Tool"
+  - "Advanced: Using Kaboom for API Schema Inference"
 
 #### Video Content
 - **YouTube channel:**
@@ -128,7 +128,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ### 2. Social Media Strategy
 
-#### Twitter/X (@gasolinedev)
+#### Twitter/X (@kaboomdev)
 - **Daily content calendar:**
   - Mon: Feature spotlight
   - Tue: Tip of the day
@@ -217,7 +217,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
   - "API schema inference from traffic"
 
 #### Technical SEO
-- Optimize docs.cookwithgasoline.com
+- Optimize docs.gokaboom.dev
 - Create sitemap and robots.txt
 - Implement structured data (JSON-LD)
 - Improve Core Web Vitals
@@ -276,7 +276,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 
 ---
 
-## Launch Campaign: "Gasoline 6.0 GA"
+## Launch Campaign: "Kaboom 6.0 GA"
 
 ### Pre-Launch (2 Weeks Before)
 1. **Teaser content:**
@@ -293,7 +293,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 ### Launch Day
 1. **Announcements:**
    - GitHub release with detailed notes
-   - Blog post: "Introducing Gasoline 6.0"
+   - Blog post: "Introducing Kaboom 6.0"
    - Twitter thread with feature highlights
    - Email to community mailing list
 
@@ -442,7 +442,7 @@ Gasoline MCP is a browser observability tool for AI coding agents that enables a
 ### User Testimonial Template
 ```
 "I was struggling with debugging AI-generated code for hours. 
-With Gasoline MCP, I can now see exactly what's happening in the 
+With Kaboom MCP, I can now see exactly what's happening in the 
 browser and let Claude fix issues in real-time. Saved me 10+ hours 
 last week alone!"
 
@@ -451,7 +451,7 @@ last week alone!"
 
 ### Case Study Template
 1. **Challenge:** [User's problem]
-2. **Solution:** [How Gasoline helped]
+2. **Solution:** [How Kaboom helped]
 3. **Results:** [Quantifiable outcomes]
 4. **Quote:** [User testimonial]
 
@@ -460,7 +460,7 @@ last week alone!"
 ## Next Steps (Immediate Actions)
 
 1. **This Week:**
-   - [ ] Set up Google Analytics on cookwithgasoline.com
+   - [ ] Set up Google Analytics on gokaboom.dev
    - [ ] Create social media content calendar
    - [ ] Write first 3 blog posts
    - [ ] Record first 2 videos
@@ -496,14 +496,14 @@ last week alone!"
 
 Learn more: [link to docs]
 
-#GasolineMCP #AI #DevTools
+#KaboomMCP #AI #DevTools
 ```
 
 #### LinkedIn - Thought Leadership
 ```
 The future of debugging isn't manual—it's collaborative.
 
-With tools like Gasoline MCP, AI coding agents can now see exactly 
+With tools like Kaboom MCP, AI coding agents can now see exactly 
 what's happening in your browser. No more switching between windows, 
 no more copy-pasting error messages.
 
@@ -520,7 +520,7 @@ Title: I built a browser observability tool for AI coding agents—here's why
 
 Body:
 - The problem I was trying to solve
-- How Gasoline MCP works
+- How Kaboom MCP works
 - Key features that make it different
 - How to get started
 
@@ -533,11 +533,11 @@ Looking for feedback from the community!
 ### Email Newsletter Template
 
 ```
-Subject: Gasoline MCP Update: [Feature/News]
+Subject: Kaboom MCP Update: [Feature/News]
 
 Hi [Name],
 
-This week in Gasoline MCP:
+This week in Kaboom MCP:
 
 🚀 New Feature: [Feature name]
 [Brief description + link to docs]
@@ -551,17 +551,17 @@ This week in Gasoline MCP:
 
 [CTA: Try it now / Join Discord / etc.]
 
-Thanks for being part of the Gasoline community!
+Thanks for being part of the Kaboom community!
 
 Best,
-The Gasoline Team
+The Kaboom Team
 ```
 
 ---
 
 ## Conclusion
 
-This marketing plan provides a comprehensive roadmap for driving traffic and uptake for Gasoline MCP. By focusing on content creation, community building, strategic partnerships, and data-driven optimization, we can establish Gasoline as the leading browser observability tool for AI-assisted development.
+This marketing plan provides a comprehensive roadmap for driving traffic and uptake for Kaboom MCP. By focusing on content creation, community building, strategic partnerships, and data-driven optimization, we can establish Kaboom as the leading browser observability tool for AI-assisted development.
 
 **Key Success Factors:**
 - Consistent, high-quality content

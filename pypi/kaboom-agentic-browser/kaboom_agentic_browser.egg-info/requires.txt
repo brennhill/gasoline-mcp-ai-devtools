@@ -1,15 +1,15 @@
 
 [:sys_platform == "darwin" and platform_machine == "arm64"]
-gasoline-agentic-browser-darwin-arm64==0.7.2
+kaboom-agentic-browser-darwin-arm64==0.8.1
 
 [:sys_platform == "darwin" and platform_machine == "x86_64"]
-gasoline-agentic-browser-darwin-x64==0.7.2
+kaboom-agentic-browser-darwin-x64==0.8.1
 
 [:sys_platform == "linux" and platform_machine == "aarch64"]
-gasoline-agentic-browser-linux-arm64==0.7.2
+kaboom-agentic-browser-linux-arm64==0.8.1
 
 [:sys_platform == "linux" and platform_machine == "x86_64"]
-gasoline-agentic-browser-linux-x64==0.7.2
+kaboom-agentic-browser-linux-x64==0.8.1
 
 [:sys_platform == "win32"]
-gasoline-agentic-browser-win32-x64==0.7.2
+kaboom-agentic-browser-win32-x64==0.8.1

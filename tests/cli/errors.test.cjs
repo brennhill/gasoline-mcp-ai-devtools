@@ -6,7 +6,7 @@
 const test = require('node:test')
 const assert = require('node:assert')
 const {
-  GasolineError,
+  KaboomError,
   PermissionError,
   InvalidJSONError,
   BinaryNotFoundError,
@@ -14,18 +14,18 @@ const {
   EnvWithoutInstallError,
   ConfigValidationError,
   FileSizeError
-} = require('../../npm/gasoline-mcp/lib/errors')
+} = require('../../npm/kaboom-agentic-browser/lib/errors')
 
-test('GasolineError is base class for all errors', () => {
-  const err = new GasolineError('Test message', 'Test recovery')
+test('KaboomError is base class for all errors', () => {
+  const err = new KaboomError('Test message', 'Test recovery')
 
   assert.ok(err instanceof Error, 'Should extend Error')
-  assert.strictEqual(err.name, 'GasolineError')
+  assert.strictEqual(err.name, 'KaboomError')
   assert.strictEqual(err.message, 'Test message')
 })
 
-test('GasolineError.format() returns formatted string', () => {
-  const err = new GasolineError('Test message', 'Try this fix')
+test('KaboomError.format() returns formatted string', () => {
+  const err = new KaboomError('Test message', 'Try this fix')
   const formatted = err.format()
 
   assert.ok(typeof formatted === 'string', 'Should return string')
@@ -52,11 +52,11 @@ test('InvalidJSONError has correct properties', () => {
 })
 
 test('BinaryNotFoundError has correct properties', () => {
-  const err = new BinaryNotFoundError('/path/to/gasoline')
+  const err = new BinaryNotFoundError('/path/to/kaboom-agentic-browser')
 
   assert.strictEqual(err.name, 'BinaryNotFoundError')
   assert.ok(
-    err.message.includes('Gasoline') || err.message.includes('binary') || err.message.includes('not found'),
+    err.message.includes('Kaboom') || err.message.includes('binary') || err.message.includes('not found'),
     'Message should mention binary'
   )
   assert.ok(err.recovery, 'Should have recovery suggestion')
@@ -96,7 +96,7 @@ test('FileSizeError has correct properties', () => {
 
 test('All errors have recovery properties', () => {
   const errors = [
-    new GasolineError('Test', 'Recovery'),
+    new KaboomError('Test', 'Recovery'),
     new PermissionError('/path'),
     new InvalidJSONError('/path'),
     new BinaryNotFoundError('linux-x64'),
@@ -113,7 +113,7 @@ test('All errors have recovery properties', () => {
 
 test('All errors format() methods include emoji', () => {
   const errors = [
-    new GasolineError('Test', 'Recovery'),
+    new KaboomError('Test', 'Recovery'),
     new PermissionError('/path'),
     new InvalidJSONError('/path'),
     new BinaryNotFoundError('linux-x64'),
@@ -155,7 +155,7 @@ test('Multiple errors can be instantiated independently', () => {
 })
 
 test('ConfigValidationError includes validation details', () => {
-  const errors = ['mcpServers missing', 'gasoline entry invalid']
+  const errors = ['mcpServers missing', 'kaboom entry invalid']
   const err = new ConfigValidationError(errors)
 
   const formatted = err.format()

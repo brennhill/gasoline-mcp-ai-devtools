@@ -152,7 +152,7 @@ func configureRuntimeProperties() map[string]any {
 		},
 		"target_dir": map[string]any{
 			"type":        "string",
-			"description": "Directory to write .gasoline.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
+			"description": "Directory to write .kaboom.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
 		},
 	}
 }

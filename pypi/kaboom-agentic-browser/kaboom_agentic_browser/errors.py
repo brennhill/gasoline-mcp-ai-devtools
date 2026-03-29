@@ -9,13 +9,13 @@ Docs: docs/features/feature/enhanced-cli-config/index.md
 import os
 
 
-class GasolineError(Exception):
-    """Base class for all Gasoline errors."""
+class KaboomError(Exception):
+    """Base class for all Kaboom errors."""
 
     def __init__(self, message, recovery=""):
         self.message = message
         self.recovery = recovery
-        self.name = "GasolineError"
+        self.name = "KaboomError"
         super().__init__(message)
 
     def format(self):
@@ -26,20 +26,20 @@ class GasolineError(Exception):
         return output
 
 
-class FilePermissionError(GasolineError):
+class FilePermissionError(KaboomError):
     """Raised when permission is denied."""
 
     def __init__(self, path):
         msg = f"Permission denied writing {path}"
         recovery = (
-            "Try: sudo gasoline-agentic-browser --install\n"
+            "Try: sudo kaboom-agentic-browser --install\n"
             f"Or: Check permissions with: ls -la {os.path.dirname(path)}"
         )
         super().__init__(msg, recovery)
         self.name = "FilePermissionError"
 
 
-class InvalidJSONError(GasolineError):
+class InvalidJSONError(KaboomError):
     """Raised when JSON parsing fails."""
 
     def __init__(self, path, line_number=None, error_message=""):
@@ -51,50 +51,50 @@ class InvalidJSONError(GasolineError):
         recovery = (
             f"Fix options:\n   1. Manually edit: code {path}"
             "\n   2. Restore from backup and try --install again"
-            "\n   3. Run: gasoline-agentic-browser --doctor (for more info)"
+            "\n   3. Run: kaboom-agentic-browser --doctor (for more info)"
         )
         super().__init__(msg, recovery)
         self.name = "InvalidJSONError"
 
 
-class BinaryNotFoundError(GasolineError):
+class BinaryNotFoundError(KaboomError):
     """Raised when binary is not found."""
 
     def __init__(self, expected_path):
-        msg = f"Gasoline binary not found at {expected_path}"
+        msg = f"Kaboom binary not found at {expected_path}"
         recovery = (
-            "Reinstall: pip install -U gasoline-agentic-browser\n"
+            "Reinstall: pip install -U kaboom-agentic-browser\n"
             "Or build from source: go build ./cmd/browser-agent"
         )
         super().__init__(msg, recovery)
         self.name = "BinaryNotFoundError"
 
 
-class InvalidEnvFormatError(GasolineError):
+class InvalidEnvFormatError(KaboomError):
     """Raised when environment variable format is invalid."""
 
     def __init__(self, env_str):
         msg = f'Invalid env format "{env_str}". Expected: KEY=VALUE'
         recovery = (
             "Examples of valid formats:\n   - --env DEBUG=1"
-            "\n   - --env GASOLINE_SERVER=http://localhost:7890"
+            "\n   - --env KABOOM_SERVER=http://localhost:7890"
             "\n   - --env LOG_LEVEL=info"
         )
         super().__init__(msg, recovery)
         self.name = "InvalidEnvFormatError"
 
 
-class EnvWithoutInstallError(GasolineError):
+class EnvWithoutInstallError(KaboomError):
     """Raised when --env is used without --install."""
 
     def __init__(self):
         msg = "--env only works with --install"
-        recovery = "Usage: gasoline-agentic-browser --install --env KEY=VALUE"
+        recovery = "Usage: kaboom-agentic-browser --install --env KEY=VALUE"
         super().__init__(msg, recovery)
         self.name = "EnvWithoutInstallError"
 
 
-class ConfigValidationError(GasolineError):
+class ConfigValidationError(KaboomError):
     """Raised when config validation fails."""
 
     def __init__(self, errors):
@@ -104,7 +104,7 @@ class ConfigValidationError(GasolineError):
         self.name = "ConfigValidationError"
 
 
-class FileSizeError(GasolineError):
+class FileSizeError(KaboomError):
     """Raised when file exceeds size limit."""
 
     def __init__(self, path, size):

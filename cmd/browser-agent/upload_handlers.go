@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 // handleFileReadInternal is the core logic for file read, delegating to internal/upload.

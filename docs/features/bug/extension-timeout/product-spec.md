@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-After performing 5-6 operations (DOM queries, accessibility audits, network captures, etc.), the Gasoline extension becomes unresponsive. Subsequent MCP tool calls hang, timeout, or return no data. The extension appears frozen and requires a browser restart to recover.
+After performing 5-6 operations (DOM queries, accessibility audits, network captures, etc.), the Kaboom extension becomes unresponsive. Subsequent MCP tool calls hang, timeout, or return no data. The extension appears frozen and requires a browser restart to recover.
 
 ### Current User Experience:
 1. User starts session, performs 3-4 operations successfully

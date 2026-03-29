@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Causality Analysis
 
 ## Overview
-Causality Analysis automatically detects cause-and-effect relationships in system events. When a test fails, Gasoline asks "What changed right before the failure?" and highlights the most likely causes. When a user reports "Payment declined," Gasoline identifies whether the failure was due to network latency, backend error, feature flag state, or user input. By analyzing event timestamps, state changes, error propagation, and dependencies, Gasoline builds a causal graph showing which events directly caused which outcomes.
+Causality Analysis automatically detects cause-and-effect relationships in system events. When a test fails, Kaboom asks "What changed right before the failure?" and highlights the most likely causes. When a user reports "Payment declined," Kaboom identifies whether the failure was due to network latency, backend error, feature flag state, or user input. By analyzing event timestamps, state changes, error propagation, and dependencies, Kaboom builds a causal graph showing which events directly caused which outcomes.
 
 ## Problem
 Current debugging requires manual hypothesis testing: "Is the failure due to the network request? The backend? The database query? The feature flag?" Developers must examine logs in sequence, trace dependencies manually, and guess at causality based on timestamps. This is slow and error-prone, especially with latency: a network request at timestamp X could cause an effect at timestamp X+500ms.

@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This specification defines optional shared-secret authentication for Gasoline's HTTP API. When enabled, all HTTP requests must include a valid API key via the `X-API-Key` header or `Authorization: Bearer` header. Authentication is disabled by default, maintaining backward compatibility with existing deployments.
+This specification defines optional shared-secret authentication for Kaboom's HTTP API. When enabled, all HTTP requests must include a valid API key via the `X-API-Key` header or `Authorization: Bearer` header. Authentication is disabled by default, maintaining backward compatibility with existing deployments.
 
 ---
 
@@ -116,11 +116,11 @@ This specification defines optional shared-secret authentication for Gasoline's 
 
 ### Header Priority
 
-When both headers are present, `X-API-Key` takes precedence. This allows explicit Gasoline authentication to override any ambient `Authorization` headers that might be present from browser context.
+When both headers are present, `X-API-Key` takes precedence. This allows explicit Kaboom authentication to override any ambient `Authorization` headers that might be present from browser context.
 
 ```go
 func extractAPIKey(r *http.Request) string {
-    // Check X-API-Key first (Gasoline-specific)
+    // Check X-API-Key first (Kaboom-specific)
     if key := r.Header.Get("X-API-Key"); key != "" {
         return key
     }
@@ -153,9 +153,9 @@ func extractAPIKey(r *http.Request) string {
 
 | Variable | Description |
 |----------|-------------|
-| `GASOLINE_API_KEY` | Primary API key (comma-separated for multiple keys) |
-| `GASOLINE_API_KEY_FILE` | Path to file containing API keys |
-| `GASOLINE_API_KEY_LOCALHOST_EXEMPT` | Set to `true` to enable localhost exemption |
+| `KABOOM_API_KEY` | Primary API key (comma-separated for multiple keys) |
+| `KABOOM_API_KEY_FILE` | Path to file containing API keys |
+| `KABOOM_API_KEY_LOCALHOST_EXEMPT` | Set to `true` to enable localhost exemption |
 
 #### Priority Order
 
@@ -192,7 +192,7 @@ Returned when authentication fails. Response body is JSON:
 ```
 
 Headers included:
-- `WWW-Authenticate: Bearer realm="gasoline"`
+- `WWW-Authenticate: Bearer realm="kaboom"`
 - `Content-Type: application/json`
 
 #### Success
@@ -341,7 +341,7 @@ func isLocalhost(addr string) bool {
 
 func respondUnauthorized(w http.ResponseWriter, message string) {
     w.Header().Set("Content-Type", "application/json")
-    w.Header().Set("WWW-Authenticate", `Bearer realm="gasoline"`)
+    w.Header().Set("WWW-Authenticate", `Bearer realm="kaboom"`)
     w.WriteHeader(http.StatusUnauthorized)
     json.NewEncoder(w).Encode(map[string]string{
         "error":   "unauthorized",
@@ -353,17 +353,17 @@ func respondUnauthorized(w http.ResponseWriter, message string) {
 
 ### Integration with Existing Auth
 
-The existing `AuthMiddleware` in `auth.go` supports a single key via `X-Gasoline-Key` header. The new implementation:
+The existing `AuthMiddleware` in `auth.go` supports a single key via `X-Kaboom-Key` header. The new implementation:
 
 1. **Replaces** the existing middleware with the enhanced version
 2. **Adds** support for `X-API-Key` header (shorter, follows common conventions)
 3. **Adds** support for `Authorization: Bearer` header
-4. **Deprecates** `X-Gasoline-Key` (still accepted for backward compatibility, but not documented)
+4. **Deprecates** `X-Kaboom-Key` (still accepted for backward compatibility, but not documented)
 5. **Adds** multi-key support for rotation
 6. **Adds** audit logging
 
 Migration path:
-- `X-Gasoline-Key` continues to work (mapped to the same validation)
+- `X-Kaboom-Key` continues to work (mapped to the same validation)
 - New deployments should use `X-API-Key` or `Authorization: Bearer`
 - Documentation updated to recommend `X-API-Key`
 
@@ -809,7 +809,7 @@ test('handles 401 response gracefully', async () => {
 ## Backward Compatibility
 
 - **Existing deployments without auth** continue to work unchanged (auth disabled by default)
-- **Existing `X-Gasoline-Key` header** continues to work (mapped internally to same validation)
+- **Existing `X-Kaboom-Key` header** continues to work (mapped internally to same validation)
 - **Extension without API key configured** continues to work if server has no keys
 - **MCP stdio connections** are unaffected (no auth on stdio)
 

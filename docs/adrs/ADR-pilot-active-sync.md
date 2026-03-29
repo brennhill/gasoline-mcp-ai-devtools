@@ -150,7 +150,7 @@ async function verifyPilotStorageConsistency() {
         // Sync wins: overwrite local/session
         chrome.storage.local.set({ aiWebPilotEnabled: sync.aiWebPilotEnabled })
         chrome.storage.session.set({ aiWebPilotEnabled: sync.aiWebPilotEnabled })
-        console.log('[Gasoline] Storage mismatch detected — sync value restored')
+        console.log('[Kaboom] Storage mismatch detected — sync value restored')
     }
 }
 ```

@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline MCP Roadmap
+# Kaboom MCP Roadmap
 
-This document outlines the planned features and architectural improvements for Gasoline MCP.
+This document outlines the planned features and architectural improvements for Kaboom MCP.
 
 ## Current Focus (v5.3)
 - Performance optimizations for high-traffic WebSocket monitoring.

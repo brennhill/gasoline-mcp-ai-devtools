@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-Gasoline exposes 5 tools with 140 modes and 100+ parameters. When an LLM calls `describe_capabilities` without filters, it receives a 42KB payload with every parameter dumped into every mode. The LLM cannot tell which parameters are relevant to a given mode — e.g., `observe/errors` returns 36 params including 18 that belong to screenshot, indexeddb, logs, etc.
+Kaboom exposes 5 tools with 140 modes and 100+ parameters. When an LLM calls `describe_capabilities` without filters, it receives a 42KB payload with every parameter dumped into every mode. The LLM cannot tell which parameters are relevant to a given mode — e.g., `observe/errors` returns 36 params including 18 that belong to screenshot, indexeddb, logs, etc.
 
 This wastes tokens and causes LLMs to send irrelevant parameters, producing confusing error responses.
 
@@ -90,8 +90,8 @@ Returns a flat structure:
 
 An LLM connecting for the first time follows this path:
 
-1. **Initialize** → `serverInstructions` mentions `gasoline://capabilities` resource
-2. **`gasoline://capabilities`** → "Runtime Discovery" section points to `describe_capabilities` with examples
+1. **Initialize** → `serverInstructions` mentions `kaboom://capabilities` resource
+2. **`kaboom://capabilities`** → "Runtime Discovery" section points to `describe_capabilities` with examples
 3. **`describe_capabilities(summary=true)`** → mode index with one-line hints per mode
 4. **`describe_capabilities(tool=X, mode=Y)`** → exact params for the intended operation
 

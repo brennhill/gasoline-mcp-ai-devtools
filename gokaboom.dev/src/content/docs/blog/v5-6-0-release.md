@@ -1,5 +1,5 @@
 ---
-title: .gasoline v5.6.0 Released"
+title: KaBOOM v5.6.0 Released"
 description: "Server reliability, persistence guarantees, and architecture tests"
 date: 2026-02-06
 authors: [brennhill]
@@ -11,7 +11,7 @@ normalized_tags: ['release', 'blog', 'v5']
 
 ## What's New in v5.6.0
 
-STRUM v5.6.0 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
+Kaboom v5.6.0 focuses on server-side reliability with persistence guarantees and comprehensive architecture invariant tests.
 
 ### Features
 
@@ -35,9 +35,9 @@ STRUM v5.6.0 focuses on server-side reliability with persistence guarantees and 
 ## Upgrade
 
 ```bash
-npm install -g gasoline-mcp@5.6.0
+npm install -g kaboom-agentic-browser@5.6.0
 ```
 
 ## Full Changelog
 
-[v5.6.0 Release](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/tag/v5.6.0)
+[v5.6.0 Release](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/tag/v5.6.0)

@@ -29,7 +29,7 @@ function createChromeMock({ trackedTabId = null, drawModeActive = false } = {}) 
     },
     tabs: {
       sendMessage: mock.fn((_tabId, message) => {
-        if (message?.type === 'gasoline_get_annotations') {
+        if (message?.type === 'kaboom_get_annotations') {
           return Promise.resolve({ draw_mode_active: drawModeActive })
         }
         return Promise.resolve({})
@@ -65,11 +65,11 @@ describe('context menu dynamic labels', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     const updates = globalThis.chrome.contextMenus.update.mock.calls.map((c) => [c.arguments[0], c.arguments[1]?.title])
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-control-page' && title === 'Release Control'))
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-annotate-page' && title === 'Stop Annotation'))
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-record-screen' && title === 'Stop Screen Recording'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-control-page' && title === 'Release Control'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-annotate-page' && title === 'Stop Annotation'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-record-screen' && title === 'Stop Screen Recording'))
     assert.ok(
-      updates.some(([id, title]) => id === 'gasoline-action-record' && title === 'Stop User Action Recording')
+      updates.some(([id, title]) => id === 'kaboom-action-record' && title === 'Stop User Action Recording')
     )
   })
 
@@ -94,10 +94,10 @@ describe('context menu dynamic labels', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     const updates = globalThis.chrome.contextMenus.update.mock.calls.map((c) => [c.arguments[0], c.arguments[1]?.title])
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-control-page' && title === 'Control Tab'))
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-annotate-page' && title === 'Annotate Page'))
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-record-screen' && title === 'Record Screen'))
-    assert.ok(updates.some(([id, title]) => id === 'gasoline-action-record' && title === 'Record User Actions'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-control-page' && title === 'Control Tab'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-annotate-page' && title === 'Annotate Page'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-record-screen' && title === 'Record Screen'))
+    assert.ok(updates.some(([id, title]) => id === 'kaboom-action-record' && title === 'Record User Actions'))
   })
 })
 

@@ -547,7 +547,7 @@ begin_test "5.15" "[BROWSER] Open new tab" \
     "Tests: new_tab action via chrome.tabs.create"
 
 run_test_5_15() {
-    skip "new_tab creates an untracked tab — no way to verify from Gasoline. Feature exists for future multi-tab support (e.g. login flows)."
+    skip "new_tab creates an untracked tab — no way to verify from Kaboom. Feature exists for future multi-tab support (e.g. login flows)."
 }
 run_test_5_15
 

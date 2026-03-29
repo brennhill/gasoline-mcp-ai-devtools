@@ -10,6 +10,7 @@
  */
 
 import { beacon } from '../lib/telemetry-beacon.js'
+import { getTrackedTabLostToastDetail, KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import {
   debugLog,
   DebugCategory,
@@ -101,7 +102,7 @@ export function initializeExtension(): void {
   // Fire async initialization without awaiting at top level
   // (Service worker will remain alive as long as event handlers are installed)
   initializeExtensionAsync().catch((err) => {
-    console.error('[Gasoline] Failed to initialize extension:', err)
+    console.error(`${KABOOM_LOG_PREFIX} Failed to initialize extension:`, err)
   })
 }
 
@@ -118,7 +119,7 @@ async function initializeExtensionAsync(): Promise<void> {
     const wasRestarted = await wasServiceWorkerRestarted()
     if (wasRestarted) {
       console.warn(
-        '[Gasoline] Service worker restarted - ephemeral state cleared. ' +
+        `${KABOOM_LOG_PREFIX} Service worker restarted - ephemeral state cleared. ` +
           'User preferences restored from persistent storage.'
       )
       debugLog(DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered')
@@ -134,7 +135,7 @@ async function initializeExtensionAsync(): Promise<void> {
     const debugEnabled = await loadDebugModeState()
     setDebugMode(debugEnabled)
     if (debugEnabled) {
-      console.log('[Gasoline] Debug mode enabled on startup')
+      console.log(`${KABOOM_LOG_PREFIX} Debug mode enabled on startup`)
     }
 
     // ============= STEP 3: Install startup listener =============
@@ -144,7 +145,7 @@ async function initializeExtensionAsync(): Promise<void> {
     const aiPilotEnabled = await loadAiWebPilotState()
     setAiWebPilotEnabledCache(aiPilotEnabled)
     setAiWebPilotCacheInitialized(true)
-    console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', isAiWebPilotEnabled())
+    console.log(`${KABOOM_LOG_PREFIX} Storage value:`, aiPilotEnabled, '| Cache value:', isAiWebPilotEnabled())
 
     // Execute any pending pilot init callback
     const pilotCb = getPilotInitCallback()
@@ -165,33 +166,33 @@ async function initializeExtensionAsync(): Promise<void> {
     installStorageChangeListener({
       onAiWebPilotChanged: (newValue) => {
         setAiWebPilotEnabledCache(newValue)
-        console.log('[Gasoline] AI Web Pilot cache updated from storage:', newValue)
+        console.log(`${KABOOM_LOG_PREFIX} AI Web Pilot cache updated from storage:`, newValue)
         // Reset connection when AI Web Pilot is enabled to allow immediate reconnection
         if (newValue) {
           resetSyncClientConnection()
-          console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled')
+          console.log(`${KABOOM_LOG_PREFIX} Sync client reset due to AI Web Pilot enabled`)
         }
         // Broadcast to tracked tab for favicon flicker
-        broadcastTrackingState().catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
+        broadcastTrackingState().catch((err) => console.error(`${KABOOM_LOG_PREFIX} Error broadcasting tracking state:`, err))
       },
       onTrackedTabChanged: (newTabId, oldTabId) => {
         sendStatusPingWrapper()
         if (newTabId !== null) {
           resetSyncClientConnection()
-          console.log('[Gasoline] Sync client reset due to tracking enabled')
+          console.log(`${KABOOM_LOG_PREFIX} Sync client reset due to tracking enabled`)
         } else if (oldTabId !== null) {
           // Tracking was lost — notify user on active tab
-          console.log('[Gasoline] Tracking lost for tab', oldTabId)
+          console.log(`${KABOOM_LOG_PREFIX} Tracking lost for tab`, oldTabId)
           getActiveTab()
             .then((tab) => {
               if (tab?.id) {
-                sendTabToast(tab.id, 'Tab tracking lost', 'Re-enable in Gasoline popup', 'warning', 5000)
+                sendTabToast(tab.id, 'Tab tracking lost', getTrackedTabLostToastDetail(), 'warning', 5000)
               }
             })
             .catch(() => {})
         }
         broadcastTrackingState(oldTabId).catch((err) =>
-          console.error('[Gasoline] Error broadcasting tracking state:', err)
+          console.error(`${KABOOM_LOG_PREFIX} Error broadcasting tracking state:`, err)
         )
       }
     })
@@ -232,11 +233,11 @@ async function initializeExtensionAsync(): Promise<void> {
           // Reset connection when enabling to allow immediate reconnection
           if (enabled) {
             resetSyncClientConnection()
-            console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled (direct)')
+            console.log(`${KABOOM_LOG_PREFIX} Sync client reset due to AI Web Pilot enabled (direct)`)
           }
           if (callback) callback()
         }).catch((err: unknown) => {
-          console.error('[Gasoline] Failed to save aiWebPilotEnabled:', err)
+          console.error(`${KABOOM_LOG_PREFIX} Failed to save aiWebPilotEnabled:`, err)
           if (callback) callback()
         })
       },
@@ -296,11 +297,11 @@ async function initializeExtensionAsync(): Promise<void> {
     })
 
     // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
-    installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+    installDrawModeCommandListener((msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`))
 
     // ============= STEP 9.7: Install push keyboard shortcut listeners =============
-    installPushCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
-    installChatCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+    installPushCommandListener((msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`))
+    installChatCommandListener((msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`))
 
     // ============= STEP 9.8: Install recording keyboard shortcut listener =============
     installRecordingShortcutCommandListener(
@@ -309,14 +310,14 @@ async function initializeExtensionAsync(): Promise<void> {
         startRecording,
         stopRecording
       },
-      (msg) => console.log(`[Gasoline] ${msg}`)
+      (msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`)
     )
 
     // ============= STEP 9.9: Install screen recording shortcut + context menus =============
     const screenRecHandlers = { isRecording, startRecording, stopRecording }
     const actionRecHandlers = { isRecording, startRecording, stopRecording }
-    installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
-    installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`[Gasoline] ${msg}`))
+    installScreenRecordingCommandListener(screenRecHandlers, (msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`))
+    installContextMenus(screenRecHandlers, actionRecHandlers, (msg) => console.log(`${KABOOM_LOG_PREFIX} ${msg}`))
 
     // ============= STEP 10: Set disconnected badge immediately =============
     // Badge must reflect disconnected state BEFORE the async health check.
@@ -343,7 +344,7 @@ async function initializeExtensionAsync(): Promise<void> {
       debugMode: isDebugMode()
     })
   } catch (error) {
-    console.error('[Gasoline] Error during extension initialization:', error)
+    console.error(`${KABOOM_LOG_PREFIX} Error during extension initialization:`, error)
     debugLog(DebugCategory.LIFECYCLE, 'Extension initialization failed', { error: String(error) })
   }
 }

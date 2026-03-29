@@ -37,7 +37,7 @@ When the agent calls `save_baseline`, the server reads the current state of all 
 - **WebSocket**: Records which WebSocket URLs are currently connected and whether they're expected to be open.
 - **Timing**: Computes P50, P95, and max latency across all network requests.
 
-The baseline is stored in memory (keyed by name) and persisted to disk at `~/.gasoline/baselines/<name>.json`.
+The baseline is stored in memory (keyed by name) and persisted to disk at `~/.kaboom/baselines/<name>.json`.
 
 ### Comparing Against a Baseline
 
@@ -120,7 +120,7 @@ Comparisons accept a tolerance config:
 
 ## Persistence
 
-Baselines persist across server restarts. On save, the baseline is written as JSON to `~/.gasoline/baselines/<name>.json`. On server startup, all `.json` files in that directory are loaded into memory.
+Baselines persist across server restarts. On save, the baseline is written as JSON to `~/.kaboom/baselines/<name>.json`. On server startup, all `.json` files in that directory are loaded into memory.
 
 Size limits:
 - Max 50 baselines

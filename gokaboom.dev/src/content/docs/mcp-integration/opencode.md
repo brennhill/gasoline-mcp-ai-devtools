@@ -1,17 +1,17 @@
 ---
-title:.gasoline + OpenCode
-description: "Configure.gasoline as an MCP server for OpenCode. Give OpenCode access to browser console logs, network errors, and DOM state."
+title: KaBOOM + OpenCode
+description: "Configure KaBOOM as an MCP server for OpenCode. Give OpenCode access to browser console logs, network errors, and DOM state."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration', 'opencode']
 ---
 
-STRUM is an open-source MCP server that gives OpenCode access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+KaBOOM is an open-source MCP server that gives OpenCode access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
 
 ## Auto-Install
 
 ```bash
-gasoline-mcp --install opencode
+kaboom-agentic-browser --install opencode
 ```
 
 ## Manual Configuration
@@ -21,9 +21,9 @@ Add to `~/.config/opencode/opencode.json`:
 ```json
 {
   "mcp": {
-    "gasoline": {
+    "kaboom": {
       "type": "local",
-      "command": ["gasoline-mcp"],
+      "command": ["kaboom-agentic-browser"],
       "enabled": true
     }
   }
@@ -34,10 +34,10 @@ Add to `~/.config/opencode/opencode.json`:
 
 ## Usage
 
-After configuring, OpenCode can access.gasoline's full MCP toolset.
+After configuring, OpenCode can access KaBOOM's full MCP toolset.
 
 ## Troubleshooting
 
 1. **Restart OpenCode** after editing config
 2. **Check the config key** — must be `mcp`, not `mcpServers`
-3. **Verify extension popup** shows "Connected"
+3. **Verify the KaBOOM extension popup** shows "Connected"

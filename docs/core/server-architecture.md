@@ -2,19 +2,19 @@
 
 ## Overview
 
-The Gasoline server is a zero-dependency Go binary that receives browser telemetry from the Chrome extension over HTTP and exposes it to AI coding agents via the MCP protocol (JSON-RPC 2.0 over stdio or HTTP). All data stays local -- nothing leaves the machine.
+The Kaboom server is a zero-dependency Go binary that receives browser telemetry from the Chrome extension over HTTP and exposes it to AI coding agents via the MCP protocol (JSON-RPC 2.0 over stdio or HTTP). All data stays local -- nothing leaves the machine.
 
 For the extension half of the system, see [extension-architecture.md](extension-architecture.md).
 
 ## Modes
 
-The binary (`gasoline-mcp`) runs in one of three modes:
+The binary (`kaboom-agentic-browser`) runs in one of three modes:
 
 **Bridge mode** (default) -- Stdio MCP transport. Spawns a persistent HTTP daemon in the background (or connects to an existing one), then forwards JSON-RPC messages between stdin/stdout and the daemon's `/mcp` endpoint. The daemon survives after the bridge exits. If the daemon dies mid-session, the bridge detects it and respawns transparently. Entry: `runBridgeMode()` in `bridge.go`.
 
 **Daemon mode** (`--daemon`) -- HTTP server only. Binds a port (default 7890), serves both extension HTTP endpoints and the `/mcp` JSON-RPC endpoint. Manages PID files and handles SIGTERM/SIGINT for graceful shutdown. Entry: `runMCPMode()` in `main_connection_mcp.go`.
 
-**CLI mode** (`gasoline observe errors ...`) -- Direct tool access from the terminal. Parses CLI flags into MCP tool arguments, sends a single JSON-RPC request to a running daemon over HTTP, formats the response as human/JSON/CSV, and exits. Entry: `runCLIMode()` in `cli.go`, parsers in `cli_commands.go`.
+**CLI mode** (`kaboom-agentic-browser observe errors ...`) -- Direct tool access from the terminal. Parses CLI flags into MCP tool arguments, sends a single JSON-RPC request to a running daemon over HTTP, formats the response as human/JSON/CSV, and exits. Entry: `runCLIMode()` in `cli.go`, parsers in `cli_commands.go`.
 
 Mode selection: `main()` checks for CLI mode first (args match a tool name), otherwise `selectRuntimeMode()` picks bridge or daemon based on flags. Bridge is the default because MCP clients expect stdio transport.
 
@@ -148,7 +148,7 @@ internal/
 | Change MCP protocol handling            | `handler.go` (MCPHandler), `tools_core.go` (ToolHandler)                                                 |
 | Add an internal package                 | `internal/<name>/`, import from `cmd/browser-agent/` -- keep it zero-dep                                    |
 | Change bridge behavior                  | `bridge.go` (spawn/respawn), `internal/bridge/` (timeout logic)                                           |
-| Add a resource (gasoline://*)           | `handler.go` (resource registration in MCPHandler)                                                        |
+| Add a resource (kaboom://*)             | `handler.go` (resource registration in MCPHandler)                                                        |
 
 ## Testing
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func TestFindMCPConfigResolution(t *testing.T) {
@@ -25,7 +25,7 @@ func TestFindMCPConfigResolution(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(continuePath), 0o755); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(continuePath), err)
 	}
-	if err := os.WriteFile(continuePath, []byte(`{"tool":"gasoline-mcp"}`), 0o600); err != nil {
+	if err := os.WriteFile(continuePath, []byte(`{"tool":"kaboom-agentic-browser"}`), 0o600); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", continuePath, err)
 	}
 	if got := findMCPConfig(); got != continuePath {
@@ -40,7 +40,7 @@ func TestFindMCPConfigResolutionClaudePath(t *testing.T) {
 
 	home := os.Getenv("HOME")
 	claudePath := filepath.Join(home, ".claude.json")
-	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline-browser-devtools":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
+	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"kaboom-browser-devtools":{"command":"kaboom-agentic-browser"}}}`), 0o600); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", claudePath, err)
 	}
 	if got := findMCPConfig(); got != claudePath {
@@ -104,7 +104,7 @@ func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
 		t.Fatalf("ReadAll(stdout) error = %v", err)
 	}
 	text := string(out)
-	if !strings.Contains(text, "GASOLINE SETUP CHECK") || !strings.Contains(text, "Next steps:") {
+	if !strings.Contains(text, "KABOOM SETUP CHECK") || !strings.Contains(text, "Next steps:") {
 		t.Fatalf("runSetupCheck output missing expected sections:\n%s", text)
 	}
 	if !strings.Contains(text, "Port:    "+strconv.Itoa(port)) {

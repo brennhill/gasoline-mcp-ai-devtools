@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/persistence"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/session"
 )
 
 // configureSessionDeps defines the narrow interface that configureSessionHandler needs.

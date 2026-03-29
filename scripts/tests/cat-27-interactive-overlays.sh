@@ -330,7 +330,7 @@ run_test_27_11() {
     echo "  >>> ACTION REQUIRED: Click the gear (⚙) button in the launcher panel."
     echo ""
 
-    if human_verify "Does a dropdown menu appear with 'Docs', 'GitHub Repository', and 'Hide Gasoline Devtool' options?"; then
+    if human_verify "Does a dropdown menu appear with 'Docs', 'GitHub Repository', and 'Hide Kaboom Devtool' options?"; then
         pass "Settings menu opened with correct options."
     else
         fail "Human reports settings menu did not open or is missing options."

@@ -32,8 +32,8 @@ func TestUsageBeaconLoop_FiresOnActivity(t *testing.T) {
 	// Reset install ID state so it generates fresh for this test.
 	resetInstallIDState()
 	dir := t.TempDir()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	counter := NewUsageCounter()
 	counter.Increment("observe:errors")
@@ -125,7 +125,7 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 }
 
 func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
-	t.Setenv("STRUM_TELEMETRY", "off")
+	t.Setenv("Kaboom_TELEMETRY", "off")
 
 	var mu sync.Mutex
 	callCount := 0
@@ -176,7 +176,7 @@ func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
 	mu.Unlock()
 
 	if count != 0 {
-		t.Fatalf("beacon fired %d times with STRUM_TELEMETRY=off, want 0", count)
+		t.Fatalf("beacon fired %d times with Kaboom_TELEMETRY=off, want 0", count)
 	}
 }
 

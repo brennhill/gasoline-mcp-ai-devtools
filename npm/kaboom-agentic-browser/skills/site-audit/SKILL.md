@@ -3,7 +3,7 @@ name: site-audit
 description: Use when user asks to audit a website, review all pages, check for broken links, capture full site state, or do a comprehensive product review.
 ---
 
-# Gasoline Site Audit
+# Kaboom Site Audit
 
 Use this skill when the user wants a full-product, screenshot-backed audit of a site or web app after login.
 Goal: maximize meaningful coverage inside strict scope/budget limits, then produce a detailed report with strengths, weaknesses, risks, and technical notes.

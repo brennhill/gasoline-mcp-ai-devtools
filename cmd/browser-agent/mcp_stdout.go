@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
 )
 
 // writeMCPPayload is the only stdout emitter used by MCP wrapper responses.
@@ -36,7 +36,7 @@ func normalizeMCPPayload(payload []byte) []byte {
 		return trimmed
 	}
 
-	stderrf("[gasoline-bridge] ERROR: stdout invariant violation: invalid JSON payload (len=%d)\n", len(payload))
+	stderrf("[kaboom-bridge] ERROR: stdout invariant violation: invalid JSON payload (len=%d)\n", len(payload))
 	errResp := JSONRPCResponse{
 		JSONRPC: JSONRPCVersion,
 		ID:      nil,

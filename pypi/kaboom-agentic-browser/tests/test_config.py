@@ -8,8 +8,9 @@ import os
 import tempfile
 import shutil
 import unittest
-from gasoline_agentic_browser.config import (
+from kaboom_agentic_browser.config import (
     CLIENT_DEFINITIONS,
+    MCP_SERVER_NAME,
     get_client_config_path,
     is_client_installed,
     get_detected_clients,
@@ -22,6 +23,9 @@ from gasoline_agentic_browser.config import (
 
 class TestClientDefinitions(unittest.TestCase):
     """Test CLIENT_DEFINITIONS registry."""
+
+    def test_uses_kaboom_mcp_server_name(self):
+        self.assertEqual(MCP_SERVER_NAME, "kaboom-browser-devtools")
 
     def test_contains_all_5_clients(self):
         ids = [c["id"] for c in CLIENT_DEFINITIONS]
@@ -105,8 +109,8 @@ class TestIsClientInstalled(unittest.TestCase):
     def test_returns_false_for_missing_dir(self):
         d = {
             "id": "test", "type": "file",
-            "detectDir": {"all": "/tmp/nonexistent-gasoline-12345"},
-            "configPath": {"all": "/tmp/nonexistent-gasoline-12345/mcp.json"},
+            "detectDir": {"all": "/tmp/nonexistent-kaboom-12345"},
+            "configPath": {"all": "/tmp/nonexistent-kaboom-12345/mcp.json"},
         }
         self.assertFalse(is_client_installed(d))
 

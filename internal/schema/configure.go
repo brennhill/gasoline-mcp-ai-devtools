@@ -3,7 +3,7 @@
 
 package schema
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
 // configureToolSchema returns the MCP tool definition for the configure tool.
 func configureToolSchema() mcp.MCPTool {

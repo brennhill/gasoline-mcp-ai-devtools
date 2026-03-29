@@ -18,7 +18,7 @@ test_paths:
 
 ## Overview
 
-Gasoline supports a **lazy server start** model: users can bind pages (track tabs) and configure the extension at any time, regardless of whether the MCP daemon is running. The server starts automatically when an AI tool (Claude Code, Cursor, etc.) invokes its first MCP command.
+Kaboom supports a **lazy server start** model: users can bind pages (track tabs) and configure the extension at any time, regardless of whether the MCP daemon is running. The server starts automatically when an AI tool (Claude Code, Cursor, etc.) invokes its first MCP command.
 
 ## Contracts
 

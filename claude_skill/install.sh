@@ -1,12 +1,12 @@
 #!/bin/bash
-# install.sh — Install the STRUM Claude Code skill.
+# install.sh — Install the Kaboom Claude Code skill.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILL_SRC="$SCRIPT_DIR/strum"
+SKILL_SRC="$SCRIPT_DIR/kaboom"
 
 if [ ! -d "$SKILL_SRC" ]; then
-  echo "Error: strum skill directory not found at $SKILL_SRC" >&2
+  echo "Error: kaboom skill directory not found at $SKILL_SRC" >&2
   exit 1
 fi
 
@@ -18,34 +18,34 @@ install_mcp_server() {
   fi
 
   echo ""
-  echo "Install the STRUM MCP server (strum-agentic-browser)."
+  echo "Install the Kaboom MCP server (kaboom-agentic-browser)."
   echo "  To match your Chrome extension version, check chrome://extensions"
-  echo "  and find the version number next to 'STRUM Devtools'."
+  echo "  and find the version number next to 'Kaboom Devtools'."
   echo ""
   read -rp "Enter extension version to match (or press Enter for latest): " version
 
   if [ -z "$version" ]; then
-    echo "Installing latest strum-agentic-browser..."
-    npm install -g strum-agentic-browser
+    echo "Installing latest kaboom-agentic-browser..."
+    npm install -g kaboom-agentic-browser
     return
   fi
 
   # Validate version exists on npm
-  echo "Checking if strum-agentic-browser@${version} exists on npm..."
+  echo "Checking if kaboom-agentic-browser@${version} exists on npm..."
   while true; do
-    if npm view "strum-agentic-browser@${version}" version &>/dev/null; then
-      npm install -g "strum-agentic-browser@${version}"
+    if npm view "kaboom-agentic-browser@${version}" version &>/dev/null; then
+      npm install -g "kaboom-agentic-browser@${version}"
       return
     else
       echo "ERROR: Version ${version} not found on npm."
       echo "  Available versions:"
-      npm view strum-agentic-browser versions --json 2>/dev/null \
+      npm view kaboom-agentic-browser versions --json 2>/dev/null \
         | tr -d '[]",' | xargs -n1 | tail -5 | sed 's/^/    /'
       echo ""
       read -rp "Enter a different version (or press Enter for latest): " version
       if [ -z "$version" ]; then
-        echo "Installing latest strum-agentic-browser..."
-        npm install -g strum-agentic-browser
+        echo "Installing latest kaboom-agentic-browser..."
+        npm install -g kaboom-agentic-browser
         return
       fi
     fi
@@ -60,10 +60,10 @@ if git rev-parse --show-toplevel > /dev/null 2>&1; then
   GIT_ROOT="$(git rev-parse --show-toplevel)"
 fi
 
-GLOBAL_DIR="$HOME/.claude/skills/strum"
+GLOBAL_DIR="$HOME/.claude/skills/kaboom"
 PROJECT_DIR=""
 if $IN_GIT; then
-  PROJECT_DIR="$GIT_ROOT/.claude/skills/strum"
+  PROJECT_DIR="$GIT_ROOT/.claude/skills/kaboom"
 fi
 
 install_skill() {
@@ -85,15 +85,15 @@ install_skill() {
   fi
   mkdir -p "$dest"
   cp -r "$SKILL_SRC/"* "$dest/"
-  echo "Installed STRUM skill to $dest"
+  echo "Installed Kaboom skill to $dest"
 }
 
 if $IN_GIT; then
   echo "You are inside a git project: $GIT_ROOT"
   echo ""
-  echo "Where do you want to install the STRUM skill?"
-  echo "  1) Global  (~/.claude/skills/strum) — available in all projects"
-  echo "  2) Project (.claude/skills/strum)   — this project only"
+  echo "Where do you want to install the Kaboom skill?"
+  echo "  1) Global  (~/.claude/skills/kaboom) — available in all projects"
+  echo "  2) Project (.claude/skills/kaboom)   — this project only"
   echo ""
   read -rp "Choose [1/2]: " choice
 

@@ -1,12 +1,12 @@
 // Purpose: Generates Playwright test scripts from captured browser actions.
-// Why: Separates Playwright-specific code generation from the Gasoline-native step format.
+// Why: Separates Playwright-specific code generation from the Kaboom-native step format.
 package reproduction
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // GeneratePlaywrightScript converts actions to a Playwright test script.

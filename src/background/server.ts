@@ -1,11 +1,11 @@
 /**
- * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Gasoline MCP server.
+ * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Kaboom MCP server.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 
 /**
  * @fileoverview Server Communication - HTTP functions for sending data to
- * the Gasoline server.
+ * the Kaboom server.
  */
 
 import type {
@@ -16,6 +16,7 @@ import type {
   PerformanceSnapshot,
   ConnectionStatus
 } from '../types/index.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { getExtensionVersion } from './version-check.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { buildDaemonHeaders } from '../lib/daemon-http.js'
@@ -225,12 +226,12 @@ export async function sendStatusPing(
     })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
+      console.error(`${KABOOM_LOG_PREFIX} Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
     }
   } catch (err) {
-    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) })
+    console.error(`${KABOOM_LOG_PREFIX} Error sending status ping:`, { type: statusMessage.type, error: errorMessage(err) })
     if (diagnosticLogFn) {
-      diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err))
+      diagnosticLogFn(`${KABOOM_LOG_PREFIX} Status ping error: ${errorMessage(err)}`)
     }
   }
 }

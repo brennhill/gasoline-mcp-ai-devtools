@@ -17,26 +17,26 @@ const TOAST_THEMES: Record<string, { bg: string; shadow: string }> = {
 /** Pre-built CSS for toast animations — extracted to reduce function complexity */
 // nosemgrep: missing-template-string-indicator
 const TOAST_ANIMATION_CSS = [
-  '@keyframes gasolineArrowBounceUp {',
+  '@keyframes kaboomArrowBounceUp {',
   '  0%, 100% { transform: translateY(0); opacity: 1; }',
   '  50% { transform: translateY(-6px); opacity: 0.7; }',
   '}',
-  '@keyframes gasolineToastPulse {',
+  '@keyframes kaboomToastPulse {',
   '  0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }',
   '  50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }',
   '}',
-  '.gasoline-toast-arrow {',
+  '.kaboom-toast-arrow {',
   '  display: inline-block; margin-left: 8px;',
-  '  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;',
+  '  animation: kaboomArrowBounceUp 1.5s ease-in-out infinite;',
   '}',
-  '.gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }'
+  '.kaboom-toast-pulse { animation: kaboomToastPulse 2s ease-in-out infinite; }'
 ].join('\n')
 
 /** Add animation keyframes to document */
 function injectToastAnimationStyles(): void {
-  if (document.getElementById('gasoline-toast-animations')) return
+  if (document.getElementById('kaboom-toast-animations')) return
   const style = document.createElement('style')
-  style.id = 'gasoline-toast-animations'
+  style.id = 'kaboom-toast-animations'
   style.textContent = TOAST_ANIMATION_CSS
   document.head.appendChild(style)
 }
@@ -60,7 +60,7 @@ export function showActionToast(
   durationMs = 3000
 ): void {
   // Remove existing toast
-  const existing = document.getElementById('gasoline-action-toast')
+  const existing = document.getElementById('kaboom-action-toast')
   if (existing) existing.remove()
 
   // Inject animation styles once
@@ -73,12 +73,12 @@ export function showActionToast(
   const arrowChar = '\u2191'
 
   const toast = document.createElement('div')
-  toast.id = 'gasoline-action-toast'
+  toast.id = 'kaboom-action-toast'
   if (isAudioPrompt) {
-    toast.className = 'gasoline-toast-pulse'
+    toast.className = 'kaboom-toast-pulse'
   }
 
-  // Add gasoline icon for audio/extension-click prompts
+  // Add kaboom icon for audio/extension-click prompts
   if (isAudioPrompt) {
     const icon = document.createElement('img')
     icon.src = chrome.runtime.getURL('icons/icon-48.png')
@@ -112,7 +112,7 @@ export function showActionToast(
   // Add animated arrow for audio prompts (pointing to extension toolbar)
   if (isAudioPrompt) {
     const arrow = document.createElement('span')
-    arrow.className = 'gasoline-toast-arrow'
+    arrow.className = 'kaboom-toast-arrow'
     arrow.textContent = arrowChar
     Object.assign(arrow.style, {
       fontSize: '16px',

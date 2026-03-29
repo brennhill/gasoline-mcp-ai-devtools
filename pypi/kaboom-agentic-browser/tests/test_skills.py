@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from gasoline_agentic_browser import skills
+from kaboom_agentic_browser import skills
 
 
 class SkillsInstallTests(unittest.TestCase):
@@ -18,9 +18,9 @@ class SkillsInstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             codex_root = os.path.join(tmp, "codex-skills")
             env = {
-                "GASOLINE_SKILL_TARGETS": "codex",
-                "GASOLINE_SKILL_SCOPE": "global",
-                "GASOLINE_CODEX_SKILLS_DIR": codex_root,
+                "KABOOM_SKILL_TARGETS": "codex",
+                "KABOOM_SKILL_SCOPE": "global",
+                "KABOOM_CODEX_SKILLS_DIR": codex_root,
             }
 
             with patch.dict(os.environ, env, clear=False):
@@ -34,11 +34,11 @@ class SkillsInstallTests(unittest.TestCase):
 
             with open(expected, "r", encoding="utf-8") as f:
                 content = f.read()
-            self.assertIn("<!-- gasoline-managed-skill", content)
+            self.assertIn("<!-- kaboom-managed-skill", content)
             self.assertIn("name: debug-triage", content)
 
     def test_skip_respects_env_flag(self):
-        with patch.dict(os.environ, {"GASOLINE_SKIP_SKILL_INSTALL": "1"}, clear=False):
+        with patch.dict(os.environ, {"KABOOM_SKIP_SKILL_INSTALL": "1"}, clear=False):
             result = skills.install_bundled_skills(verbose=False)
 
         self.assertTrue(result["skipped"])
@@ -53,9 +53,9 @@ class SkillsInstallTests(unittest.TestCase):
                 f.write("# user owned\n")
 
             env = {
-                "GASOLINE_SKILL_TARGETS": "codex",
-                "GASOLINE_SKILL_SCOPE": "global",
-                "GASOLINE_CODEX_SKILLS_DIR": codex_root,
+                "KABOOM_SKILL_TARGETS": "codex",
+                "KABOOM_SKILL_SCOPE": "global",
+                "KABOOM_CODEX_SKILLS_DIR": codex_root,
             }
             with patch.dict(os.environ, env, clear=False):
                 result = skills.install_bundled_skills(verbose=False)

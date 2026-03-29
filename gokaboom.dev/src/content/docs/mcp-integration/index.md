@@ -1,12 +1,12 @@
 ---
 title: Fuel Any Agent
-description: "Connect.gasoline to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, and VS Code with Continue."
+description: "Connect KaBOOM to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, and VS Code with Continue."
 last_verified_version: 0.8.0
 last_verified_date: 2026-03-06
 normalized_tags: ['mcp', 'integration']
 ---
 
-STRUM is an open-source MCP server that implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state. Zero dependencies. Localhost only.
+KaBOOM is an open-source MCP server that implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state. Zero dependencies. Localhost only.
 
 ## Supported Tools
 
@@ -24,15 +24,15 @@ STRUM is an open-source MCP server that implements the [Model Context Protocol](
 
 ## How MCP Mode Works
 
-STRUM runs as a dual-mode server by default:
+KaBOOM runs as a dual-mode server by default:
 
 - **HTTP server** — background daemon for the browser extension
 - **stdio transport** — MCP JSON-RPC over stdin/stdout
 - **Auto-managed** — your AI tool starts and stops the server
 
-## What MCP tools does.gasoline provide?
+## What MCP tools does KaBOOM provide?
 
-STRUM exposes **5 tools** — each with multiple sub-modes controlled by a single parameter.
+KaBOOM exposes **5 tools** — each with multiple sub-modes controlled by a single parameter.
 
 | Tool | What it does | Key sub-modes |
 |------|-------------|---------------|
@@ -163,9 +163,9 @@ If port 7890 is occupied:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "kaboom": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--port", "7891"]
+      "args": ["-y", "kaboom-agentic-browser", "--port", "7891"]
     }
   }
 }
@@ -185,7 +185,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["-y", "gasoline-mcp"]
+          "args": ["-y", "kaboom-agentic-browser"]
         }
       }
     ]
@@ -193,9 +193,9 @@ Add to `~/.continue/config.json`:
 }
 ```
 
-## How do I verify.gasoline is connected?
+## How do I verify KaBOOM is connected?
 
 1. Restart your AI tool
-2..gasoline server ignites automatically
+2. KaBOOM starts automatically
 3. Extension popup shows "Connected"
 4. Ask your AI: _"What browser errors do you see?"_

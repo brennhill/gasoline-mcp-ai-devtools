@@ -19,11 +19,11 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Hook Installation & Simple Commit
 #### Setup:
 - Test Git repository initialized
-- Gasoline MCP server running
+- Kaboom MCP server running
 - Hooks not yet installed
 
 #### Steps:
-1. Run `gasoline install-hooks /path/to/repo`
+1. Run `kaboom install-hooks /path/to/repo`
 2. Verify hooks installed in `.git/hooks/`
 3. Make a simple commit: `git commit -m "Test commit"`
 4. Query `observe({what: 'git-events', type: 'git:commit'})`

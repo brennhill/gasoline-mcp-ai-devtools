@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 const indexedDBQueryTimeout = 10 * time.Second
@@ -44,7 +44,7 @@ func GetIndexedDB(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 	if !enabled {
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
 			mcp.ErrNoData,
-			"No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab'.",
+			"No tab is being tracked. Open the Kaboom extension popup and click 'Track This Tab'.",
 			"Track a tab first, then call observe with what='indexeddb'.",
 			mcp.WithHint(deps.DiagnosticHintString()),
 		)}

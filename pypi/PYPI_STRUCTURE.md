@@ -5,41 +5,41 @@
 ### Package Structure:
 ```
 pypi/
-├── strum-agentic-browser/              # Main package
+├── kaboom-agentic-browser/             # Main package
 │   ├── pyproject.toml
 │   ├── setup.py
-│   ├── strum_agentic_browser/
+│   ├── kaboom_agentic_browser/
 │   │   ├── __init__.py
 │   │   ├── __main__.py        # Entry point
 │   │   └── platform.py        # Platform detection
 │   └── README.md
-├── strum-agentic-browser-darwin-arm64/  # Platform-specific packages
-├── gasoline-agentic-browser-darwin-x64/
-├── gasoline-agentic-browser-linux-arm64/
-├── gasoline-agentic-browser-linux-x64/
-├── gasoline-agentic-browser-win32-x64/
+├── kaboom-agentic-browser-darwin-arm64/ # Platform-specific packages
+├── kaboom-agentic-browser-darwin-x64/
+├── kaboom-agentic-browser-linux-arm64/
+├── kaboom-agentic-browser-linux-x64/
+├── kaboom-agentic-browser-win32-x64/
 └── publish.py                  # Publish script
 ```
 
 ### How it Works:
-1. **Main package** (`strum-agentic-browser`):
+1. **Main package** (`kaboom-agentic-browser`):
    - No binary, just Python wrapper
    - Detects platform at runtime
    - Imports platform-specific package
-   - Entry point: `strum-agentic-browser` command
+   - Entry point: `kaboom-agentic-browser` command
 
-2. **Platform packages** (e.g., `strum-agentic-browser-darwin-arm64`):
+2. **Platform packages** (e.g., `kaboom-agentic-browser-darwin-arm64`):
    - Contains the Go binary for that platform
    - Listed as extras in main package
 
 3. **Installation**:
    ```bash
-   pip install strum-agentic-browser
+   pip install kaboom-agentic-browser
    # Automatically installs correct platform-specific package
    ```
 
 ### Benefits:
-- Users just run `pip install strum-agentic-browser`
+- Users just run `pip install kaboom-agentic-browser`
 - Same UX as NPM version
 - Automatic platform detection
 - Smaller downloads (only installs one platform)
@@ -48,28 +48,28 @@ pypi/
 ### pyproject.toml Example:
 ```toml
 [project]
-name = "strum-agentic-browser"
+name = "kaboom-agentic-browser"
 version = "5.1.0"
 description = "Agentic Browser Devtools - rapid e2e web development"
 requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
-darwin-arm64 = ["strum-agentic-browser-darwin-arm64==5.1.0"]
-darwin-x64 = ["strum-agentic-browser-darwin-x64==5.1.0"]
-linux-arm64 = ["strum-agentic-browser-linux-arm64==5.1.0"]
-linux-x64 = ["strum-agentic-browser-linux-x64==5.1.0"]
-win32-x64 = ["strum-agentic-browser-win32-x64==5.1.0"]
+darwin-arm64 = ["kaboom-agentic-browser-darwin-arm64==5.1.0"]
+darwin-x64 = ["kaboom-agentic-browser-darwin-x64==5.1.0"]
+linux-arm64 = ["kaboom-agentic-browser-linux-arm64==5.1.0"]
+linux-x64 = ["kaboom-agentic-browser-linux-x64==5.1.0"]
+win32-x64 = ["kaboom-agentic-browser-win32-x64==5.1.0"]
 
 [project.scripts]
-strum-agentic-browser = "strum_agentic_browser.__main__:main"
+kaboom-agentic-browser = "kaboom_agentic_browser.__main__:main"
 ```
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 ```
 
-### Platform Detection (gasoline_agentic_browser/platform.py):
+### Platform Detection (kaboom_agentic_browser/platform.py):
 ```python
 import sys
 import platform
@@ -96,20 +96,20 @@ def get_platform():
 
 def get_binary_path():
     platform_name = get_platform()
-    package_name = f"gasoline_agentic_browser_{platform_name.replace('-', '_')}"
+    package_name = f"kaboom_agentic_browser_{platform_name.replace('-', '_')}"
     
     try:
         import importlib.util
         spec = importlib.util.find_spec(package_name)
         if spec and spec.origin:
             import os
-            return os.path.join(os.path.dirname(spec.origin), "gasoline")
+            return os.path.join(os.path.dirname(spec.origin), "kaboom")
     except ImportError:
         pass
     
     raise RuntimeError(
         f"Platform-specific package not found. Install with:\n"
-        f"  pip install gasoline-agentic-browser[{platform_name}]"
+        f"  pip install kaboom-agentic-browser[{platform_name}]"
     )
 
 def run():
@@ -134,8 +134,8 @@ if __name__ == "__main__":
 make build-all-platforms
 
 # Build Python wheels
-cd pypi/gasoline-agentic-browser && python -m build
-cd pypi/gasoline-agentic-browser-darwin-arm64 && python -m build
+cd pypi/kaboom-agentic-browser && python -m build
+cd pypi/kaboom-agentic-browser-darwin-arm64 && python -m build
 # ... repeat for each platform
 
 # Publish to PyPI
@@ -146,9 +146,9 @@ twine upload dist/*
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "kaboom": {
       "type": "stdio",
-      "command": "gasoline-agentic-browser",
+      "command": "kaboom-agentic-browser",
       "args": ["--port", "7890", "--persist"]
     }
   }
@@ -158,22 +158,22 @@ twine upload dist/*
 ### Installation Methods:
 ```bash
 # Automatic (recommended)
-pip install gasoline-agentic-browser
+pip install kaboom-agentic-browser
 
 # Manual platform selection
-pip install gasoline-agentic-browser[darwin-arm64]
+pip install kaboom-agentic-browser[darwin-arm64]
 
 # From source
-git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
-cd gasoline && make install-pypi
+git clone https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP
+cd kaboom && make install-pypi
 ```
 
 ### Comparison:
 | Distribution | Install | Size | Users |
 |--------------|---------|------|-------|
-| NPM | `npx -y gasoline-agentic-browser` | ~5MB | Node.js devs, Claude Code |
-| PyPI | `pip install gasoline-agentic-browser` | ~5MB | Python devs, Claude Desktop |
-| Homebrew | `brew install gasoline` | ~5MB | macOS power users |
+| NPM | `npx -y kaboom-agentic-browser` | ~5MB | Node.js devs, Claude Code |
+| PyPI | `pip install kaboom-agentic-browser` | ~5MB | Python devs, Claude Desktop |
+| Homebrew | `brew install kaboom` | ~5MB | macOS power users |
 | Binary | Download from releases | ~5MB | Windows users |
 
 ### Next Steps to Implement:

@@ -6,6 +6,7 @@
  */
 import { errorMessage } from '../lib/error-utils.js';
 import { buildDaemonHeaders } from '../lib/daemon-http.js';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
 const defaultState = {
@@ -23,7 +24,7 @@ const defaultState = {
     totalBytes: 0
 };
 let state = { ...defaultState };
-const LOG = '[Gasoline REC offscreen]';
+const LOG = `${KABOOM_RECORDING_LOG_PREFIX} offscreen`;
 /**
  * Start recording using a tab capture stream ID.
  * Called when the service worker sends OFFSCREEN_START_RECORDING.

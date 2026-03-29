@@ -255,15 +255,15 @@ cleanup
 # ═══════════════════════════════════════════════════════════════
 # Test 8: Server name is canonical in response
 # ═══════════════════════════════════════════════════════════════
-info "Test 8: Server name is 'gasoline-browser-devtools' in response"
+info "Test 8: Server name is 'kaboom-browser-devtools' in response"
 
 RESULT=$(mcp_request 5 '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}')
 
 SERVER_NAME=$(echo "$RESULT" | jq -r '.result.serverInfo.name // empty')
 
-if [ "$SERVER_NAME" != "gasoline-browser-devtools" ]; then
+if [ "$SERVER_NAME" != "kaboom-browser-devtools" ]; then
   echo "DEBUG: Got response: $RESULT"
-  fail "Test 8: Server name is '$SERVER_NAME', expected 'gasoline-browser-devtools'"
+  fail "Test 8: Server name is '$SERVER_NAME', expected 'kaboom-browser-devtools'"
 fi
 
 pass "Test 8: Server name is '$SERVER_NAME'"

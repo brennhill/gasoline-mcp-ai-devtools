@@ -108,7 +108,7 @@ def _format_tool_problem(tool):
 def _format_binary(binary):
     """Format binary check section."""
     if binary.get("ok"):
-        output = f"✅ Binary Check\n   Gasoline binary found at {binary['path']}\n"
+        output = f"✅ Binary Check\n   Kaboom binary found at {binary['path']}\n"
         if binary.get("version"):
             output += f"   Version: {binary['version']}\n"
         return output
@@ -117,7 +117,7 @@ def _format_binary(binary):
 
 def diagnostic_report(report):
     """Format diagnostic report."""
-    output = "\n📋 Gasoline Agentic Browser Diagnostic Report\n\n"
+    output = "\n📋 Kaboom Agentic Browser Diagnostic Report\n\n"
 
     for tool in report.get("tools", []):
         if tool["status"] == "ok":
@@ -135,7 +135,7 @@ def diagnostic_report(report):
         output += "\n⚠️  Legacy Configs Found:\n"
         for w in report["legacyWarnings"]:
             output += f"   {w['description']}: {w['path']}\n"
-            output += "   This path is no longer used. You can safely remove the gasoline entry.\n"
+            output += "   This path is no longer used. You can safely remove the legacy managed entry.\n"
 
     if report.get("summary"):
         output += f"\n{report['summary']}\n"
@@ -156,7 +156,7 @@ def uninstall_result(result):
             else:
                 output += f"   ✅ {entry['name']} (removed from {entry['path']})\n"
     else:
-        output += "ℹ️  Gasoline not configured in any clients\n"
+        output += "ℹ️  Kaboom not configured in any clients\n"
 
     if result.get("notConfigured", []):
         output += f"\nℹ️  Not configured in: {', '.join(result['notConfigured'])}\n"

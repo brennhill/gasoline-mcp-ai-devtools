@@ -24,7 +24,7 @@ last_verified_date: 2026-03-05
 ### 1. Start Demo Site
 
 ```bash
-cd ~/dev/gasoline-demos
+cd ~/dev/kaboom-demos
 npm run demo
 # Opens http://localhost:3000 with 34 intentional bugs
 ```
@@ -121,7 +121,7 @@ go test -short ./cmd/browser-agent/
 
 ### TestSprite can't test WebSocket apps.
 
-Gasoline captures WebSocket frames in real-time and generates tests with frame-level assertions.
+Kaboom captures WebSocket frames in real-time and generates tests with frame-level assertions.
 
 **Demo:** Chat widget bugs (connection error + message parsing)
 

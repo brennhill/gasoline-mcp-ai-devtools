@@ -3,12 +3,12 @@
 // Docs: docs/features/feature/project-isolation/index.md
 
 /*
-Package state resolves filesystem paths for Gasoline runtime artifacts.
+Package state resolves filesystem paths for Kaboom runtime artifacts.
 
 Resolution order for the root directory:
- 1. GASOLINE_STATE_DIR environment variable (if set).
- 2. XDG_STATE_HOME/gasoline (if XDG_STATE_HOME is set).
- 3. ~/.gasoline (cross-platform dotfolder fallback).
+ 1. KABOOM_STATE_DIR environment variable (if set).
+ 2. XDG_STATE_HOME/kaboom (if XDG_STATE_HOME is set).
+ 3. ~/.kaboom (cross-platform dotfolder fallback).
 
 Key functions:
   - RootDir: returns the runtime state root directory.

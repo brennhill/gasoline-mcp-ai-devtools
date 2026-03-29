@@ -14,12 +14,12 @@
 export function domPrimitiveListInteractive(scopeSelector, options) {
     function getElementHandleStore() {
         const root = globalThis;
-        if (root.__gasolineElementHandles) {
+        if (root.__kaboomElementHandles) {
             // Migrate legacy stores that lack selectorByID (#361)
-            if (!root.__gasolineElementHandles.selectorByID) {
-                root.__gasolineElementHandles.selectorByID = new Map();
+            if (!root.__kaboomElementHandles.selectorByID) {
+                root.__kaboomElementHandles.selectorByID = new Map();
             }
-            return root.__gasolineElementHandles;
+            return root.__kaboomElementHandles;
         }
         const created = {
             byElement: new WeakMap(),
@@ -27,7 +27,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             selectorByID: new Map(),
             nextID: 1
         };
-        root.__gasolineElementHandles = created;
+        root.__kaboomElementHandles = created;
         return created;
     }
     // #361: Store selector alongside element_id so stale handles can be re-resolved

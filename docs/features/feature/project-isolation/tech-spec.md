@@ -21,7 +21,7 @@ Project isolation is implemented via a project registry (map of project_key to P
 - **Project registry**: Map[string]*ProjectContext, guarded by RWMutex
 - **ProjectContext struct**: Contains all buffers (logs, network, websocket, vitals, pending queries, etc.) and metadata
 - **MCP initialize handler**: Extract project_key from init params, create/get ProjectContext
-- **HTTP middleware**: Extract X-Gasoline-Project header, route to correct ProjectContext
+- **HTTP middleware**: Extract X-Kaboom-Project header, route to correct ProjectContext
 - **Expiration goroutine**: Periodically scan projects, delete inactive ones
 - **Observe integration**: Filter data by project_key
 - **Configure/Interact integration**: Scope operations to project_key
@@ -36,7 +36,7 @@ Agent A connects via MCP:
   → Associate session with projectA
 
 Extension POSTs log:
-  → HTTP header: X-Gasoline-Project: projectA
+  → HTTP header: X-Kaboom-Project: projectA
   → Server: extract header, get ProjectContext
   → Append log to projectA.logBuffer
 
@@ -81,7 +81,7 @@ Expiration:
 - All subsequent MCP calls use session's project_key to lookup ProjectContext
 
 ### HTTP integration:
-- Middleware extracts X-Gasoline-Project header (default "default")
+- Middleware extracts X-Kaboom-Project header (default "default")
 - Route to correct ProjectContext for data storage
 - Return 400 if project_key invalid characters (security: prevent injection)
 

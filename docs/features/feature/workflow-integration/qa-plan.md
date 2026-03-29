@@ -25,12 +25,12 @@ last_verified_date: 2026-03-05
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
 | DL-1 | PR summary exposes sensitive URLs | Verify that `generate_pr_summary` markdown output does not include full URLs with query parameters containing API keys, tokens, or session IDs | critical |
-| DL-2 | Session summary file on disk contains secrets | Verify that `.gasoline/sessions/latest.json` and archive files do not contain raw network body content, auth headers, or credentials | critical |
+| DL-2 | Session summary file on disk contains secrets | Verify that `.kaboom/sessions/latest.json` and archive files do not contain raw network body content, auth headers, or credentials | critical |
 | DL-3 | Error messages in PR summary expose internal paths | Verify that error messages in the "Errors" section of the PR summary (e.g., `TypeError at dashboard.js:142`) do not expose absolute server-side file paths or database connection strings | high |
 | DL-4 | Resource change list reveals internal infrastructure | Verify that the "Resource Changes" section (`Added: chart-library.js`) does not expose internal package names, private registry URLs, or proprietary library names that should not be public | medium |
 | DL-5 | Git hook one-liner leaks performance data to public repos | Verify that the one-liner format (`[perf: +200ms load, +45KB bundle]`) appended to commit messages does not reveal sensitive performance baselines that competitors could use | low |
 | DL-6 | HTTP endpoint `/v4/session-summary` accessible beyond localhost | Verify that the endpoint is bound to 127.0.0.1 only and not accessible from external network interfaces | critical |
-| DL-7 | Session archive files accumulate sensitive data over time | Verify that the 20-entry archive cap (FIFO) properly deletes old session files and that deleted files are not recoverable from the `.gasoline/` directory | medium |
+| DL-7 | Session archive files accumulate sensitive data over time | Verify that the 20-entry archive cap (FIFO) properly deletes old session files and that deleted files are not recoverable from the `.kaboom/` directory | medium |
 | DL-8 | Git context in session metadata exposes branch names with secrets | Verify that `git_branch` and `git_commit` metadata captured in session summaries do not expose branch names that contain secrets (e.g., `fix/api-key-ABC123`) | medium |
 | DL-9 | Bundle size analysis reveals internal dependency graph | Verify that resource additions/removals in the summary do not reveal the full dependency tree or internal package versions | low |
 | DL-10 | Concurrent session summaries leak cross-session data | Verify that two concurrent server instances produce independent summaries and do not merge data from different sessions | medium |
@@ -38,7 +38,7 @@ last_verified_date: 2026-03-05
 ### Negative Tests (must NOT leak)
 - [ ] Auth header values must not appear in PR summary markdown
 - [ ] API keys in URL query strings must not appear in session summary JSON files
-- [ ] `.gasoline/sessions/latest.json` must not contain raw request/response bodies with tokens
+- [ ] `.kaboom/sessions/latest.json` must not contain raw request/response bodies with tokens
 - [ ] The `/v4/session-summary` endpoint must reject connections from non-localhost origins
 - [ ] Deleted archive files (beyond 20-entry cap) must not remain on disk
 - [ ] Error stack traces in PR summaries must not include server-side file system paths
@@ -83,9 +83,9 @@ last_verified_date: 2026-03-05
 | Generate PR summary | 1 step: `generate_pr_summary` (no parameters) | No -- already zero-config |
 | View current session summary | 1 step: `GET /v4/session-summary` | No -- already minimal |
 | Include summary in PR | 2 steps: (1) call `generate_pr_summary`, (2) paste into `gh pr create --body` | No -- the two steps are inherently separate (generate, then use) |
-| Configure git hook | 3 steps: (1) create hook script, (2) make executable, (3) verify it works | Yes -- could provide `gasoline install-hook` CLI command |
+| Configure git hook | 3 steps: (1) create hook script, (2) make executable, (3) verify it works | Yes -- could provide `kaboom install-hook` CLI command |
 | Load previous session context | 1 step: `load_session_context` | No -- already minimal |
-| View session archive history | 1 step: read `.gasoline/sessions/archive/` directory | Yes -- could provide MCP tool for session history query |
+| View session archive history | 1 step: read `.kaboom/sessions/archive/` directory | Yes -- could provide MCP tool for session history query |
 
 ### Default Behavior Verification
 - [ ] Session summary generates automatically on server shutdown (no explicit call needed)
@@ -115,7 +115,7 @@ last_verified_date: 2026-03-05
 | UT-10 | Single snapshot returns "insufficient data" | Session with 1 snapshot | Summary marked as "insufficient data" | must |
 | UT-11 | Multiple URLs: top 5 by reload count | 8 URLs, varying reload counts | Summary includes top 5 URLs sorted by reload count | must |
 | UT-12 | URLs with 1 snapshot excluded | URL visited once (1 snapshot) | URL excluded from delta report (no delta possible) | must |
-| UT-13 | Shutdown generates `.gasoline/sessions/latest.json` | Server clean shutdown | File exists with valid JSON session summary | must |
+| UT-13 | Shutdown generates `.kaboom/sessions/latest.json` | Server clean shutdown | File exists with valid JSON session summary | must |
 | UT-14 | Archive capped at 20 entries | 25 sessions completed | Only most recent 20 exist in archive directory | must |
 | UT-15 | Resource changes: added/removed detection | Script `chart-library.js` added, `legacy-charts.js` removed | Summary shows both under correct categories with byte sizes | must |
 | UT-16 | Bundle size net calculation | Added 98KB + 12KB, removed 65KB | Net: +45KB | must |
@@ -131,11 +131,11 @@ last_verified_date: 2026-03-05
 | # | Test Case | Components Involved | Expected Behavior | Priority |
 |---|-----------|--------------------|--------------------|----------|
 | IT-1 | End-to-end: capture -> shutdown -> summary | Extension capture + server shutdown + file write | Session summary file written with correct deltas from captured performance snapshots | must |
-| IT-2 | PR summary uses same data as session summary | `generate_pr_summary` + `.gasoline/sessions/latest.json` | Both contain identical performance deltas, error counts, and resource changes | must |
+| IT-2 | PR summary uses same data as session summary | `generate_pr_summary` + `.kaboom/sessions/latest.json` | Both contain identical performance deltas, error counts, and resource changes | must |
 | IT-3 | HTTP endpoint consistency with MCP tool | `GET /v4/session-summary` + `generate_pr_summary` MCP call | Both return the same data (one as HTTP JSON, one as MCP response) | must |
 | IT-4 | Archive rotation | Generate 25 sessions sequentially | Archive contains exactly 20 files, oldest 5 deleted | must |
 | IT-5 | Git hook integration | `prepare-commit-msg` hook calls `/v4/session-summary` | Commit message has one-liner appended correctly | should |
-| IT-6 | Session summary survives partial crash | Kill server with SIGKILL after 5 minutes of capture | Periodic flush ensures `.gasoline/sessions/latest.json` has data (at most 60s stale) | should |
+| IT-6 | Session summary survives partial crash | Kill server with SIGKILL after 5 minutes of capture | Periodic flush ensures `.kaboom/sessions/latest.json` has data (at most 60s stale) | should |
 | IT-7 | Concurrent server instances | Two servers running, both shut down | Each produces its own summary in archive with unique session ID filename | should |
 
 ### 4.3 Performance Tests
@@ -161,7 +161,7 @@ last_verified_date: 2026-03-05
 | EC-6 | Concurrent sessions (two server instances) | Two servers write summaries simultaneously | Each writes unique session ID file, no data corruption | should |
 | EC-7 | First snapshot is cold load | First page load has empty cache, subsequent are cached | Delta excludes cold-load bias (uses second snapshot as baseline) | should |
 | EC-8 | Very large session (thousands of snapshots) | 8-hour development session with many reloads | Summary generation still under 50ms due to incremental computation | should |
-| EC-9 | `.gasoline/sessions/` directory does not exist | Fresh project, no previous sessions | Directory created on first summary write | must |
+| EC-9 | `.kaboom/sessions/` directory does not exist | Fresh project, no previous sessions | Directory created on first summary write | must |
 | EC-10 | Disk full during summary write | Disk has no free space | Write fails gracefully, server does not crash, error logged | should |
 | EC-11 | Session summary with all zeros | All metrics identical between first and last snapshot | Delta shows "0ms (0%)" for all metrics, one-liner suppressed | should |
 
@@ -172,7 +172,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application loaded and tracked (e.g., `http://localhost:3000`)
 - [ ] Application has been loaded at least twice to produce performance snapshots
@@ -185,23 +185,23 @@ last_verified_date: 2026-03-05
 | UAT-2 | Human makes a code change that increases bundle size (add a large library), reloads page | Browser shows updated app | New performance snapshot captured | [ ] |
 | UAT-3 | AI generates PR summary: `{"tool":"generate","arguments":{"type":"pr_summary"}}` | N/A | Markdown table showing performance delta (increased load time, bundle size) | [ ] |
 | UAT-4 | AI verifies summary contains all sections | Read returned markdown | Performance Impact table, Resource Changes, Errors, Accessibility sections all present | [ ] |
-| UAT-5 | Human introduces a console error, reloads page | Error visible in DevTools | Error captured by Gasoline | [ ] |
+| UAT-5 | Human introduces a console error, reloads page | Error visible in DevTools | Error captured by Kaboom | [ ] |
 | UAT-6 | AI generates PR summary again | N/A | Summary now includes the new error under "New" errors section | [ ] |
 | UAT-7 | Human fixes the error, reloads page | Error no longer in DevTools | Error resolved | [ ] |
 | UAT-8 | AI generates PR summary again | N/A | Summary shows the error under "Fixed" errors section | [ ] |
 | UAT-9 | AI queries HTTP endpoint: `GET http://127.0.0.1:7890/v4/session-summary` | N/A | JSON response with running summary matching MCP tool output | [ ] |
-| UAT-10 | Human gracefully stops server (Ctrl+C) | Server exits cleanly | `.gasoline/sessions/latest.json` file created with full session summary | [ ] |
+| UAT-10 | Human gracefully stops server (Ctrl+C) | Server exits cleanly | `.kaboom/sessions/latest.json` file created with full session summary | [ ] |
 | UAT-11 | Human restarts server, AI loads previous context: `{"tool":"configure","arguments":{"action":"load_session_context"}}` | Server running again | Previous session summary loaded and available | [ ] |
-| UAT-12 | Verify archive file | Check `.gasoline/sessions/archive/` | At least one timestamped JSON file present | [ ] |
+| UAT-12 | Verify archive file | Check `.kaboom/sessions/archive/` | At least one timestamped JSON file present | [ ] |
 
 ### Data Leak UAT Verification
 
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
 | DL-UAT-1 | PR summary does not contain auth headers | Make authenticated API calls, generate PR summary | No Authorization/Cookie header values in markdown | [ ] |
-| DL-UAT-2 | Session JSON file has no raw bodies | Inspect `.gasoline/sessions/latest.json` | No request/response body content with secrets | [ ] |
+| DL-UAT-2 | Session JSON file has no raw bodies | Inspect `.kaboom/sessions/latest.json` | No request/response body content with secrets | [ ] |
 | DL-UAT-3 | HTTP endpoint rejects external access | Attempt `curl http://<machine-external-ip>:7890/v4/session-summary` | Connection refused or no response | [ ] |
-| DL-UAT-4 | Error messages are sanitized | Trigger error with file path, check PR summary | Error message included as-is (console output), but no additional server-side paths added by Gasoline | [ ] |
+| DL-UAT-4 | Error messages are sanitized | Trigger error with file path, check PR summary | Error message included as-is (console output), but no additional server-side paths added by Kaboom | [ ] |
 
 ### Regression Checks
 - [ ] Existing `observe` tools work independently of workflow integration

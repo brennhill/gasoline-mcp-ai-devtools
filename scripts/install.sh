@@ -1,13 +1,13 @@
 #!/bin/bash
-# Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+# Kaboom - The Ultimate One-liner Installer
+# https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP
 #
 # PURPOSE:
-# This script provides a zero-dependency, platform-aware installation flow for Gasoline.
+# This script provides a zero-dependency, platform-aware installation flow for Kaboom.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 #   curl -sSL ... | sh -s -- --hooks-only   # Install only the hooks binary
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
@@ -18,7 +18,7 @@ set -euo pipefail
 # CLI flag parsing
 # ─────────────────────────────────────────────────────────────
 
-HOOKS_ONLY="${GASOLINE_HOOKS_ONLY:-0}"
+HOOKS_ONLY="${KABOOM_HOOKS_ONLY:-0}"
 for arg in "$@"; do
     case "$arg" in
         --hooks-only) HOOKS_ONLY=1 ;;
@@ -26,15 +26,15 @@ for arg in "$@"; do
 done
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
-INSTALL_DIR="$HOME/.gasoline"
+REPO="brennhill/Kaboom-Browser-AI-Devtools-MCP"
+INSTALL_DIR="$HOME/.kaboom"
 BIN_DIR="$INSTALL_DIR/bin"
-EXT_DIR="${GASOLINE_EXTENSION_DIR:-$HOME/GasolineAgenticDevtoolExtension}"
+EXT_DIR="${KABOOM_EXTENSION_DIR:-$HOME/KaboomAgenticDevtoolExtension}"
 STAGE_EXT_DIR="$INSTALL_DIR/.extension-stage-$$"
 BACKUP_EXT_DIR="$INSTALL_DIR/.extension-backup-$$"
 # The VERSION file on the STABLE branch is the source of truth for the latest release.
 VERSION_URL="https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
-STRICT_CHECKSUM="${GASOLINE_INSTALL_STRICT:-0}"
+STRICT_CHECKSUM="${KABOOM_INSTALL_STRICT:-0}"
 # Minimum plausible binary sizes. Catches truncated downloads and HTML error pages.
 MIN_BINARY_BYTES=5000000
 MIN_HOOKS_BINARY_BYTES=2000000
@@ -48,12 +48,12 @@ ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color (Reset)
 
-# Anonymous install error beacon (disable: STRUM_TELEMETRY=off).
+# Anonymous install error beacon (disable: KABOOM_TELEMETRY=off).
 # Fire-and-forget, never blocks, never fails the install.
 beacon_error() {
     local step="${1:-unknown}"
-    if [ "${STRUM_TELEMETRY:-}" = "off" ]; then return; fi
-    curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+    if [ "${KABOOM_TELEMETRY:-}" = "off" ]; then return; fi
+    curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
         -H "Content-Type: application/json" \
         -d "{\"event\":\"install_error\",\"v\":\"${VERSION:-unknown}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"step\":\"${step}\",\"method\":\"curl\"}}" \
         > /dev/null 2>&1 || true
@@ -78,13 +78,13 @@ cat <<'EOF'
 EOF
 echo -e "${NC}"
 if [ "$HOOKS_ONLY" = "1" ]; then
-    echo -e "${ORANGE}${BOLD}STRUM Hooks Installer${NC} (hooks-only mode)"
+    echo -e "${ORANGE}${BOLD}Kaboom Hooks Installer${NC} (hooks-only mode)"
 else
-    echo -e "${ORANGE}${BOLD}STRUM Installer${NC}"
+    echo -e "${ORANGE}${BOLD}Kaboom Installer${NC}"
 fi
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
-    echo -e "Strict checksum mode enabled (GASOLINE_INSTALL_STRICT=1)"
+    echo -e "Strict checksum mode enabled (KABOOM_INSTALL_STRICT=1)"
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -268,55 +268,46 @@ stage_extension_from_source_zip() {
     return 0
 }
 
-sync_binary_compat_aliases() {
-    local source_bin="$1"
-    shift
-    local target_bin=""
-    local had_failure=0
-
-    for target_bin in "$@"; do
-        if [ -z "$target_bin" ] || [ "$target_bin" = "$source_bin" ]; then
-            continue
-        fi
-
-        rm -f "$target_bin" || true
-        if ln -s "$(basename "$source_bin")" "$target_bin" 2>/dev/null; then
-            :
-        elif cp "$source_bin" "$target_bin" 2>/dev/null; then
-            :
-        else
-            had_failure=1
-            echo -e "${YELLOW}  Could not create compatibility alias: $target_bin${NC}"
-            continue
-        fi
-        chmod 755 "$target_bin" 2>/dev/null || true
+purge_legacy_install_artifacts() {
+    local legacy_path=""
+    for legacy_path in \
+        "$BIN_DIR/kaboom$BINARY_EXT" \
+        "$BIN_DIR/kaboom-agentic-browser$BINARY_EXT" \
+        "$BIN_DIR/kaboom-agentic-devtools$BINARY_EXT" \
+        "$BIN_DIR/kaboom-hooks$BINARY_EXT" \
+        "$BIN_DIR/gasoline$BINARY_EXT" \
+        "$BIN_DIR/gasoline-agentic-browser$BINARY_EXT" \
+        "$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT" \
+        "$BIN_DIR/gasoline-hooks$BINARY_EXT" \
+        "$BIN_DIR/strum$BINARY_EXT" \
+        "$BIN_DIR/strum-hooks$BINARY_EXT"
+    do
+        rm -f "$legacy_path" 2>/dev/null || true
     done
-
-    return "$had_failure"
 }
 
 # ─────────────────────────────────────────────────────────────
 # Stale process cleanup (pre-install)
 # ─────────────────────────────────────────────────────────────
 
-kill_stale_gasoline_processes() {
-    # Kill any running gasoline daemons before replacing the binary.
+kill_stale_kaboom_processes() {
+    # Kill any running Kaboom daemons before replacing the binary.
     # This avoids "text file busy" on Linux and ensures a clean upgrade.
     local killed=0
     local pids=""
 
     if command -v pgrep >/dev/null 2>&1; then
-        pids=$(pgrep -f 'gasoline-agentic-devtools|gasoline-agentic-browser|gasoline.*--daemon' 2>/dev/null || true)
+        pids=$(pgrep -f 'kaboom-agentic-browser|kaboom.*--daemon|kaboom-agentic-devtools|gasoline-agentic-browser|gasoline.*--daemon|gasoline-agentic-devtools|strum(\.exe)?|strum.*--daemon' 2>/dev/null || true)
     elif command -v pkill >/dev/null 2>&1; then
         # pgrep not available but pkill is — just send TERM directly.
-        pkill -f 'gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
+        pkill -f 'kaboom-agentic-browser|kaboom-agentic-devtools|gasoline-agentic-browser|gasoline-agentic-devtools|gasoline|strum' 2>/dev/null || true
         sleep 0.5
-        pkill -9 -f 'gasoline-agentic-devtools|gasoline-agentic-browser' 2>/dev/null || true
+        pkill -9 -f 'kaboom-agentic-browser|kaboom-agentic-devtools|gasoline-agentic-browser|gasoline-agentic-devtools|gasoline|strum' 2>/dev/null || true
         return 0
     fi
 
     if [ -n "$pids" ]; then
-        echo -e "  Stopping running Gasoline processes..."
+        echo -e "  Stopping running Kaboom/legacy processes..."
         for pid in $pids; do
             # Don't kill ourselves.
             if [ "$pid" != "$$" ]; then
@@ -381,21 +372,19 @@ fi
 # 3. Detect install vs upgrade
 # ─────────────────────────────────────────────────────────────
 
-CANONICAL_GASOLINE_BIN="$BIN_DIR/gasoline-agentic-devtools$BINARY_EXT"
-GASOLINE_HOOKS_BIN="$BIN_DIR/gasoline-hooks$BINARY_EXT"
-LEGACY_GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
-LEGACY_GASOLINE_BROWSER_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
+CANONICAL_KABOOM_BIN="$BIN_DIR/kaboom-agentic-browser$BINARY_EXT"
+KABOOM_HOOKS_BIN="$BIN_DIR/kaboom-hooks$BINARY_EXT"
 IS_UPGRADE=0
 PREVIOUS_VERSION=""
 
 if [ "$HOOKS_ONLY" = "1" ]; then
-    if [ -x "$GASOLINE_HOOKS_BIN" ]; then
-        PREVIOUS_VERSION=$("$GASOLINE_HOOKS_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    if [ -x "$KABOOM_HOOKS_BIN" ]; then
+        PREVIOUS_VERSION=$("$KABOOM_HOOKS_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
         IS_UPGRADE=1
     fi
 else
-    if [ -x "$CANONICAL_GASOLINE_BIN" ]; then
-        PREVIOUS_VERSION=$("$CANONICAL_GASOLINE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    if [ -x "$CANONICAL_KABOOM_BIN" ]; then
+        PREVIOUS_VERSION=$("$CANONICAL_KABOOM_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
         IS_UPGRADE=1
     fi
 fi
@@ -429,8 +418,9 @@ echo -e "Install root: $INSTALL_DIR"
 
 # Hooks-only installs don't run a daemon — no processes to stop.
 if [ "$HOOKS_ONLY" != "1" ]; then
-    kill_stale_gasoline_processes
+    kill_stale_kaboom_processes
 fi
+purge_legacy_install_artifacts
 
 # ─────────────────────────────────────────────────────────────
 # 6. Binary Installation
@@ -523,20 +513,14 @@ fi
 
 # --- Install main binary (skip for --hooks-only) ---
 if [ "$HOOKS_ONLY" != "1" ]; then
-    BINARY_NAME="gasoline-agentic-devtools-$PLATFORM-$E_ARCH$BINARY_EXT"
-    download_and_verify "$BINARY_NAME" "$CANONICAL_GASOLINE_BIN" "$MIN_BINARY_BYTES" "gasoline binary"
-
-    if sync_binary_compat_aliases "$CANONICAL_GASOLINE_BIN" "$LEGACY_GASOLINE_BIN" "$LEGACY_GASOLINE_BROWSER_BIN"; then
-        echo -e "${GREEN}Binary installed with command aliases.${NC}"
-    else
-        echo -e "${YELLOW}  Core binary installed, but one or more compatibility aliases could not be created.${NC}"
-    fi
+    BINARY_NAME="kaboom-agentic-browser-$PLATFORM-$E_ARCH$BINARY_EXT"
+    download_and_verify "$BINARY_NAME" "$CANONICAL_KABOOM_BIN" "$MIN_BINARY_BYTES" "kaboom binary"
 fi
 
 # --- Always install hooks binary ---
-HOOKS_BINARY_NAME="gasoline-hooks-$PLATFORM-$E_ARCH$BINARY_EXT"
-download_and_verify "$HOOKS_BINARY_NAME" "$GASOLINE_HOOKS_BIN" "$MIN_HOOKS_BINARY_BYTES" "gasoline-hooks binary"
-echo -e "${GREEN}gasoline-hooks installed.${NC}"
+HOOKS_BINARY_NAME="kaboom-hooks-$PLATFORM-$E_ARCH$BINARY_EXT"
+download_and_verify "$HOOKS_BINARY_NAME" "$KABOOM_HOOKS_BIN" "$MIN_HOOKS_BINARY_BYTES" "kaboom-hooks binary"
+echo -e "${GREEN}kaboom-hooks installed.${NC}"
 
 # ─────────────────────────────────────────────────────────────
 # 7. Extension, Config, Daemon (skip for --hooks-only)
@@ -547,7 +531,7 @@ if [ "$HOOKS_ONLY" = "1" ]; then
 else
 
 echo -e "Refreshing browser extension..."
-EXT_ZIP_NAME="gasoline-extension-v$VERSION.zip"
+EXT_ZIP_NAME="kaboom-extension-v$VERSION.zip"
 EXT_ZIP_URL="https://github.com/$REPO/releases/download/v$VERSION/$EXT_ZIP_NAME"
 TEMP_ZIP="$TEMP_ROOT/extension.zip"
 
@@ -586,11 +570,11 @@ fi
 # ─────────────────────────────────────────────────────────────
 
 echo -e "Finalizing configuration..."
-if ! "$CANONICAL_GASOLINE_BIN" --install; then
+if ! "$CANONICAL_KABOOM_BIN" --install; then
     echo -e "${YELLOW}Native configuration returned an error.${NC}"
     echo -e "The binary and extension were installed successfully."
     echo -e "You may need to manually configure your MCP clients."
-    echo -e "Run: $CANONICAL_GASOLINE_BIN --install"
+    echo -e "Run: $CANONICAL_KABOOM_BIN --install"
     # Don't exit 1 here — the core install succeeded, only config auto-detection had issues.
 fi
 
@@ -620,7 +604,7 @@ fi
 register_autostart() {
     if [ "$PLATFORM" = "darwin" ]; then
         local plist_dir="$HOME/Library/LaunchAgents"
-        local plist_path="$plist_dir/com.gasoline.daemon.plist"
+        local plist_path="$plist_dir/com.kaboom.daemon.plist"
         mkdir -p "$plist_dir"
 
         cat > "$plist_path" <<PLIST
@@ -629,10 +613,10 @@ register_autostart() {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.gasoline.daemon</string>
+    <string>com.kaboom.daemon</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$CANONICAL_GASOLINE_BIN</string>
+        <string>$CANONICAL_KABOOM_BIN</string>
         <string>--daemon</string>
         <string>--port</string>
         <string>7890</string>
@@ -648,7 +632,7 @@ register_autostart() {
 PLIST
 
         # Unload previous registration (if any), then register fresh.
-        launchctl bootout "gui/$(id -u)/com.gasoline.daemon" 2>/dev/null || true
+        launchctl bootout "gui/$(id -u)/com.kaboom.daemon" 2>/dev/null || true
         if launchctl bootstrap "gui/$(id -u)" "$plist_path" 2>/dev/null || \
            launchctl load "$plist_path" 2>/dev/null; then
             echo -e "${GREEN}Registered to start on login (LaunchAgent).${NC}"
@@ -660,17 +644,17 @@ PLIST
     elif [ "$PLATFORM" = "linux" ]; then
         if command -v systemctl >/dev/null 2>&1 && systemctl --user status >/dev/null 2>&1; then
             local service_dir="$HOME/.config/systemd/user"
-            local service_path="$service_dir/gasoline.service"
+            local service_path="$service_dir/kaboom.service"
             mkdir -p "$service_dir"
 
             cat > "$service_path" <<SERVICE
 [Unit]
-Description=Gasoline Agentic Devtools Daemon
+Description=Kaboom Browser AI Devtools Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$CANONICAL_GASOLINE_BIN --daemon --port 7890
+ExecStart=$CANONICAL_KABOOM_BIN --daemon --port 7890
 Restart=on-failure
 RestartSec=5
 
@@ -679,23 +663,23 @@ WantedBy=default.target
 SERVICE
 
             systemctl --user daemon-reload 2>/dev/null || true
-            if systemctl --user enable gasoline.service 2>/dev/null; then
+            if systemctl --user enable kaboom.service 2>/dev/null; then
                 echo -e "${GREEN}Registered to start on login (systemd user service).${NC}"
             else
                 echo -e "${YELLOW}  Could not enable systemd service.${NC}"
-                echo -e "  To start on login manually: systemctl --user enable gasoline.service"
+                echo -e "  To start on login manually: systemctl --user enable kaboom.service"
             fi
         else
             # Fallback: XDG autostart for non-systemd desktops.
             local autostart_dir="$HOME/.config/autostart"
-            local desktop_path="$autostart_dir/gasoline.desktop"
+            local desktop_path="$autostart_dir/kaboom.desktop"
             mkdir -p "$autostart_dir"
 
             cat > "$desktop_path" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Gasoline Daemon
-Exec=$CANONICAL_GASOLINE_BIN --daemon --port 7890
+Name=Kaboom Daemon
+Exec=$CANONICAL_KABOOM_BIN --daemon --port 7890
 Hidden=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
@@ -736,9 +720,9 @@ register_path() {
 
     local path_line=""
     if [ "$shell_name" = "fish" ]; then
-        path_line="fish_add_path $BIN_DIR # gasoline"
+        path_line="fish_add_path $BIN_DIR # kaboom"
     else
-        path_line="export PATH=\"$BIN_DIR:\$PATH\" # gasoline"
+        path_line="export PATH=\"$BIN_DIR:\$PATH\" # kaboom"
     fi
 
     echo "" >> "$rc_file"
@@ -750,11 +734,11 @@ register_path() {
 register_path
 
 # ─────────────────────────────────────────────────────────────
-# 13. Anonymous telemetry (disable: STRUM_TELEMETRY=off)
+# 13. Anonymous telemetry (disable: KABOOM_TELEMETRY=off)
 # ─────────────────────────────────────────────────────────────
 
-if [ "${STRUM_TELEMETRY:-}" != "off" ]; then
-    curl -s --max-time 2 -X POST "https://t.getstrum.dev/v1/event" \
+if [ "${KABOOM_TELEMETRY:-}" != "off" ]; then
+    curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
         -H "Content-Type: application/json" \
         -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"method\":\"curl\"}}" \
         > /dev/null 2>&1 &
@@ -767,19 +751,19 @@ fi
 echo ""
 if [ "$HOOKS_ONLY" = "1" ]; then
     if [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
-        echo -e "${GREEN}${BOLD}gasoline-hooks upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+        echo -e "${GREEN}${BOLD}kaboom-hooks upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
     else
-        echo -e "${GREEN}${BOLD}gasoline-hooks v$VERSION installed successfully.${NC}"
+        echo -e "${GREEN}${BOLD}kaboom-hooks v$VERSION installed successfully.${NC}"
     fi
     echo ""
     echo -e "Add quality gates to your Claude Code project:"
-    echo -e "  gasoline-hooks quality-gate   (check code against project standards)"
-    echo -e "  gasoline-hooks compress-output (compress verbose test/build output)"
+    echo -e "  kaboom-hooks quality-gate   (check code against project standards)"
+    echo -e "  kaboom-hooks compress-output (compress verbose test/build output)"
     echo ""
-    echo -e "Want the full Gasoline suite (browser devtools, MCP server, extension)?"
-    echo -e "  curl -fsSL https://gasoline.dev/install.sh | sh"
+    echo -e "Want the full Kaboom suite (browser devtools, MCP server, extension)?"
+    echo -e "  curl -fsSL https://gokaboom.dev/install.sh | sh"
 elif [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
-    echo -e "${GREEN}${BOLD}Gasoline upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+    echo -e "${GREEN}${BOLD}Kaboom upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
 else
-    echo -e "${GREEN}${BOLD}Gasoline v$VERSION installed successfully.${NC}"
+    echo -e "${GREEN}${BOLD}Kaboom v$VERSION installed successfully.${NC}"
 fi

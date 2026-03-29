@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 func TestInteract_NavigateAndDocument_InWhatEnum(t *testing.T) {
@@ -305,7 +305,7 @@ func TestInteract_NavigateAndDocument_IncludeScreenshot(t *testing.T) {
 	env := newToolTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	httpReq.Header.Set("X-Kaboom-Client", "test-client")
 	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
 	env.capture.SetTrackingStatusForTest(42, "https://example.com")
 

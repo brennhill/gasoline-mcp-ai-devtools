@@ -13,7 +13,7 @@ import (
 )
 
 func TestBeaconError_DisabledByEnv(t *testing.T) {
-	t.Setenv("STRUM_TELEMETRY", "off")
+	t.Setenv("Kaboom_TELEMETRY", "off")
 
 	var called bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,7 @@ func TestBeaconError_DisabledByEnv(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	if called {
-		t.Fatal("BeaconError should not make HTTP calls when STRUM_TELEMETRY=off")
+		t.Fatal("BeaconError should not make HTTP calls when Kaboom_TELEMETRY=off")
 	}
 }
 
@@ -201,8 +201,8 @@ func TestBeacon_SemaphoreBackpressure(t *testing.T) {
 
 	resetInstallIDState()
 	dir := t.TempDir()
-	overrideStrumDir(dir)
-	defer resetStrumDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
 
 	BeaconEvent("post_drain", nil)
 	select {

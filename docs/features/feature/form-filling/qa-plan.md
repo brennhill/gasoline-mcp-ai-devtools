@@ -58,7 +58,7 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Simple Login Form (Happy Path)
 1. Setup:
    - Open <https://example.com/login> (or local test page with login form)
-   - Start Gasoline, enable AI Web Pilot toggle in extension
+   - Start Kaboom, enable AI Web Pilot toggle in extension
    - Observe DOM to identify form fields
 2. Steps:
    - [ ] Call `interact({action: "fill_form", fields: [{selector: "#username", value: "testuser"}, {selector: "#password", value: "testpass123"}]})`

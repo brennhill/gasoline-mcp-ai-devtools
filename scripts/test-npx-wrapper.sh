@@ -38,7 +38,7 @@ for i in $(seq 1 "$NUM_CLIENTS"); do
 
         # Use the ACTUAL npx command with stdio (like Claude Desktop does)
         RESPONSE="$(echo "{\"jsonrpc\":\"2.0\",\"id\":$i,\"method\":\"tools/list\"}" | \
-            npx -y gasoline-mcp 2>/dev/null)"
+            npx -y kaboom-agentic-browser 2>/dev/null)"
 
         END="$(date +%s%N)"
         DURATION_MS="$(( (END - START) / 1000000 ))"

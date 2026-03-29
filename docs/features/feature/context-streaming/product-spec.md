@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-Current Gasoline workflow is "polling-based": AI calls `observe()`, waits for response, analyzes stale data.
+Current Kaboom workflow is "polling-based": AI calls `observe()`, waits for response, analyzes stale data.
 
 ### Limitations:
 - **Latency:** AI can't react to errors as they happen; must wait for next observation cycle
@@ -30,7 +30,7 @@ Current Gasoline workflow is "polling-based": AI calls `observe()`, waits for re
 
 Context Streaming enables **real-time push notifications** instead of polling:
 
-1. **Server-Pushed Events:** Gasoline server pushes errors, network failures, log anomalies to MCP as they happen
+1. **Server-Pushed Events:** Kaboom server pushes errors, network failures, log anomalies to MCP as they happen
 2. **Event Subscriptions:** AI subscribes to specific event types (errors, perf warnings, API failures, selector mismatches)
 3. **Causal Ordering:** Events include timestamps, correlation IDs for ordering
 4. **Efficiency:** Only new events sent; no redundant state polling
@@ -103,7 +103,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 #### After (Streaming):
 ```
 1. Error occurs: POST /api/cart failed
-2. Gasoline pushes error event immediately (<100ms)
+2. Kaboom pushes error event immediately (<100ms)
 3. AI receives: { type: 'network_error', status: 500, url: '/api/cart', timestamp: '...' }
 4. AI diagnoses immediately (total: <500ms latency)
 ```
@@ -112,7 +112,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 
 #### Subscribe to Specific Channels:
 ```javascript
-await gasoline.configure({
+await kaboom.configure({
   action: 'streaming',
   events: ['errors', 'network_errors'],  // Only errors
   exclude_patterns: ['/analytics', '/metrics'],  // Ignore noise
@@ -125,7 +125,7 @@ await gasoline.configure({
 
 #### React to Event:
 ```javascript
-// Gasoline pushes: { type: 'network_error', status: 401, url: '/api/user' }
+// Kaboom pushes: { type: 'network_error', status: 401, url: '/api/user' }
 // AI immediately diagnoses: "Auth token expired or missing"
 // AI proposes: "Refresh session" OR "Reload with new credentials"
 ```
@@ -151,13 +151,13 @@ await gasoline.configure({
 ## Integration Points
 
 - **Self-Healing Tests (#1):** Streams error events for real-time diagnosis
-- **Gasoline CI Infrastructure (#2):** Streams events during CI test runs
+- **Kaboom CI Infrastructure (#2):** Streams events during CI test runs
 - **MCP Server:** WebSocket or polling-driven delivery over existing `/mcp` bridge
 - **LLM:** Receives event stream; reacts to failures in real-time
 
 ## Dependencies
 
-- ✅ **Gasoline Core:** observe(), configure() tools
+- ✅ **Kaboom Core:** observe(), configure() tools
 - ✅ **WebSocket Support:** For real-time event delivery
 - ✅ **Buffer Architecture:** Existing buffers + streaming layer
 - ⏳ **Self-Healing Tests (#1):** Consumes streaming events for diagnosis
@@ -214,7 +214,7 @@ await gasoline.configure({
 ## Related Features
 
 - [Self-Healing Tests (#33)](../self-healing-tests/product-spec.md) — Primary consumer of event stream
-- [Gasoline CI Infrastructure](../ci-infrastructure/product-spec.md) — Uses streaming for CI diagnostics
+- [Kaboom CI Infrastructure](../ci-infrastructure/product-spec.md) — Uses streaming for CI diagnostics
 - [Agentic E2E Repair (#34)](../agentic-e2e-repair/product-spec.md) — Streams API contract changes
 
 ---

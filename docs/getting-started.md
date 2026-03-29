@@ -1,7 +1,7 @@
 ---
 title: "Fire It Up"
-description: "Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command."
-keywords: "install gasoline, gasoline agentic browser setup, browser extension install, MCP server setup"
+description: "Install and configure Kaboom in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command."
+keywords: "install kaboom, kaboom agentic browser setup, browser extension install, MCP server setup"
 permalink: /getting-started/
 header:
   overlay_image: /assets/images/hero-banner.png
@@ -21,17 +21,17 @@ last_reviewed: 2026-03-02
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
-1.  **Downloads** the latest stable `gasoline` binary for your OS and architecture.
-2.  **Installs** the browser extension files to `~/GasolineAgenticDevtoolExtension`.
+1.  **Downloads** the latest stable `kaboom-agentic-browser` binary for your OS and architecture.
+2.  **Installs** the browser extension files to `~/KaboomAgenticDevtoolExtension`.
 3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
@@ -45,43 +45,43 @@ Since you've already downloaded the extension files with the script above, you j
 1.  Open `chrome://extensions`
 2.  Enable **Developer mode** (top right)
 3.  Click **Load unpacked**
-4.  Select the folder: `~/GasolineAgenticDevtoolExtension`
+4.  Select the folder: `~/KaboomAgenticDevtoolExtension`
 
-Click the Gasoline Agentic Browser icon in your toolbar — it should show **Connected**.
+Click the Kaboom Agentic Browser icon in your toolbar — it should show **Connected**.
 
 ## <i class="fas fa-plug"></i> 3. Verify Your AI Tool
 
-The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
+The install script has already added Kaboom to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
 
 <i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for manual setup if needed.
 
 ### Launch Mode Guard (Persistent vs Transient)
 
-Gasoline now classifies launch context at startup:
+Kaboom now classifies launch context at startup:
 
 - `persistent`: expected long-lived runtime (daemon flag, supervisor, or non-interactive stdio).
 - `likely_transient`: interactive shell launch likely to disconnect when the process exits.
 
-If launch mode is `likely_transient`, Gasoline prints a one-time warning with remediation:
+If launch mode is `likely_transient`, Kaboom prints a one-time warning with remediation:
 
 ```bash
-gasoline-mcp --daemon --port 7890
+kaboom-agentic-browser --daemon --port 7890
 ```
 
 To enforce this in CI/team environments, set:
 
 ```bash
-GASOLINE_REQUIRE_PERSISTENT=true
+KABOOM_REQUIRE_PERSISTENT=true
 ```
 
-When strict mode is enabled, Gasoline exits non-zero on `likely_transient` launches.
+When strict mode is enabled, Kaboom exits non-zero on `likely_transient` launches.
 
 ## <i class="fas fa-check-circle"></i> Verify the Flame
 
 Open your web app. Trigger an error:
 
 ```javascript
-console.error("Gasoline test — is the fire lit?")
+console.error("Kaboom test — is it live?")
 ```
 
 Ask your AI: _"What browser errors do you see?"_
@@ -106,4 +106,4 @@ See [MCP Integration](/mcp-integration/) for full tool documentation.
 
 - <i class="fas fa-sliders-h"></i> [Configure the server](/configuration/) — port, log rotation, file path
 - <i class="fas fa-plug"></i> [MCP Integration](/mcp-integration/) — setup for your specific tool
-- <i class="fas fa-fire-alt"></i> [All capabilities](/features/) — everything Gasoline captures
+- <i class="fas fa-fire-alt"></i> [All capabilities](/features/) — everything Kaboom captures

@@ -20,19 +20,19 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline captures sensitive browser state — console logs, network bodies, WebSocket payloads, DOM content, and accessibility trees. In enterprise environments, AI tools accessing this data create legitimate questions: Who called which tool? What data was exposed? How long is it retained? Can runaway AI agents be constrained?
+Kaboom captures sensitive browser state — console logs, network bodies, WebSocket payloads, DOM content, and accessibility trees. In enterprise environments, AI tools accessing this data create legitimate questions: Who called which tool? What data was exposed? How long is it retained? Can runaway AI agents be constrained?
 
-This specification defines four tiers of enterprise-readiness features that give teams visibility, control, and auditability over how AI agents interact with captured browser data through Gasoline's MCP interface.
+This specification defines four tiers of enterprise-readiness features that give teams visibility, control, and auditability over how AI agents interact with captured browser data through Kaboom's MCP interface.
 
 ---
 
 ## Compliance Posture
 
-Gasoline runs exclusively on the developer's machine. Data never leaves localhost. This architecture provides a natural compliance advantage: captured browser state is never transmitted to external services, never stored in cloud infrastructure, and never accessible to other users or processes.
+Kaboom runs exclusively on the developer's machine. Data never leaves localhost. This architecture provides a natural compliance advantage: captured browser state is never transmitted to external services, never stored in cloud infrastructure, and never accessible to other users or processes.
 
-The enterprise features in this spec do not claim to make Gasoline "SOC2-compliant" or "HIPAA-compliant" — compliance is an organizational property, not a tool property. What these features provide is **evidence and control**: audit trails that demonstrate what data an AI agent accessed, retention policies that limit exposure windows, and redaction that prevents sensitive patterns from reaching AI clients. These are building blocks that help organizations satisfy their own compliance requirements, not compliance certifications themselves.
+The enterprise features in this spec do not claim to make Kaboom "SOC2-compliant" or "HIPAA-compliant" — compliance is an organizational property, not a tool property. What these features provide is **evidence and control**: audit trails that demonstrate what data an AI agent accessed, retention policies that limit exposure windows, and redaction that prevents sensitive patterns from reaching AI clients. These are building blocks that help organizations satisfy their own compliance requirements, not compliance certifications themselves.
 
-For teams operating in regulated environments, Gasoline's localhost-only architecture means it sits outside the scope of most data-handling regulations (data is not "in transit" or "at rest" in a regulated sense — it is ephemeral runtime state on a developer workstation). The audit and governance features exist to satisfy internal security policies and provide forensic evidence if needed, not to meet external audit frameworks.
+For teams operating in regulated environments, Kaboom's localhost-only architecture means it sits outside the scope of most data-handling regulations (data is not "in transit" or "at rest" in a regulated sense — it is ephemeral runtime state on a developer workstation). The audit and governance features exist to satisfy internal security policies and provide forensic evidence if needed, not to meet external audit frameworks.
 
 ---
 
@@ -70,7 +70,7 @@ The log stores metadata about access, not the accessed data itself. This keeps t
 
 #### Lifecycle
 
-The audit log lives in memory and is lost on server restart. This matches Gasoline's ephemeral design — the server is spawned for a session and dies when done. For teams that need a durable record, the `export_data` tool (see 2.3) can dump the current audit buffer to a file before the session ends. This is an explicit action, not a background persistence mechanism.
+The audit log lives in memory and is lost on server restart. This matches Kaboom's ephemeral design — the server is spawned for a session and dies when done. For teams that need a durable record, the `export_data` tool (see 2.3) can dump the current audit buffer to a file before the session ends. This is an explicit action, not a background persistence mechanism.
 
 ---
 
@@ -80,12 +80,12 @@ Each MCP connection identifies the connecting client. This information is record
 
 #### How It Works
 
-When an MCP client connects (over stdio), Gasoline identifies it through the MCP handshake. During the MCP `initialize` request, the client sends its `clientInfo` object (part of the MCP specification). Gasoline extracts:
+When an MCP client connects (over stdio), Kaboom identifies it through the MCP handshake. During the MCP `initialize` request, the client sends its `clientInfo` object (part of the MCP specification). Kaboom extracts:
 
 - Client name (e.g., "claude-code", "cursor", "windsurf", "continue")
 - Client version
 
-If the client doesn't send `clientInfo` (older clients), Gasoline labels the connection as "unknown".
+If the client doesn't send `clientInfo` (older clients), Kaboom labels the connection as "unknown".
 
 #### Storage
 
@@ -99,7 +99,7 @@ Each MCP connection receives a unique session ID that correlates all tool calls 
 
 #### How It Works
 
-When an MCP client sends the `initialize` request, Gasoline generates a session ID using a compact format: a base-36 timestamp prefix plus 6 random characters (e.g., `s_m5kq2a_7f3xab`). This provides chronological sortability, uniqueness (36^6 = 2.2 billion combinations per timestamp unit), and human-readability.
+When an MCP client sends the `initialize` request, Kaboom generates a session ID using a compact format: a base-36 timestamp prefix plus 6 random characters (e.g., `s_m5kq2a_7f3xab`). This provides chronological sortability, uniqueness (36^6 = 2.2 billion combinations per timestamp unit), and human-readability.
 
 The session ID is:
 - Returned in the `initialize` response as a server capability extension
@@ -111,7 +111,7 @@ Sessions end when the stdio pipe closes (MCP client disconnects or process dies)
 
 #### Current Limitation: Single Session
 
-The current architecture supports exactly one MCP session over stdio (one `bufio.Scanner` reading stdin). This means one AI client per Gasoline server instance. The session ID is still valuable for correlating tool calls within that session's lifetime and distinguishing across server restarts.
+The current architecture supports exactly one MCP session over stdio (one `bufio.Scanner` reading stdin). This means one AI client per Kaboom server instance. The session ID is still valuable for correlating tool calls within that session's lifetime and distinguishing across server restarts.
 
 #### Future: Multi-Session Support
 
@@ -222,7 +222,7 @@ For `captures` scope, the response includes all buffer contents (console, networ
 
 For `audit` scope, the response includes all audit log entries currently in the ring buffer.
 
-The export is a point-in-time snapshot — data continues to be captured and evicted normally during the export. The AI client receiving the response can write it to a file, send it to a log aggregator, or process it however the team's tooling requires. Gasoline does not write files or manage export directories.
+The export is a point-in-time snapshot — data continues to be captured and evicted normally during the export. The AI client receiving the response can write it to a file, send it to a log aggregator, or process it however the team's tooling requires. Kaboom does not write files or manage export directories.
 
 ---
 
@@ -283,11 +283,11 @@ Redaction adds latency to tool responses. With the built-in patterns on a typica
 
 ### 3.1 API Key Authentication
 
-Optional authentication for the HTTP API that prevents unauthorized clients from connecting to the Gasoline server. When enabled, all HTTP requests (from extension, direct API) must include the key.
+Optional authentication for the HTTP API that prevents unauthorized clients from connecting to the Kaboom server. When enabled, all HTTP requests (from extension, direct API) must include the key.
 
 #### How It Works
 
-When started with `--api-key=<secret>` or `GASOLINE_API_KEY` environment variable, the server requires an `Authorization: Bearer <secret>` header on all HTTP requests. Requests without the header or with the wrong key receive 401 Unauthorized.
+When started with `--api-key=<secret>` or `KABOOM_API_KEY` environment variable, the server requires an `Authorization: Bearer <secret>` header on all HTTP requests. Requests without the header or with the wrong key receive 401 Unauthorized.
 
 The key is a shared secret — the same key is configured in the extension settings and the server. This is not intended for multi-user authentication (see Tier 4 for multi-tenant), but for preventing accidental connections from other tools on localhost.
 
@@ -358,18 +358,18 @@ All hardcoded server limits become configurable via CLI flags, environment varia
 
 | Parameter | Default | Flag | Env |
 |-----------|---------|------|-----|
-| Console buffer size | 1000 entries | `--buffer-console` | `GASOLINE_BUFFER_CONSOLE` |
-| Network buffer size | 500 entries | `--buffer-network` | `GASOLINE_BUFFER_NETWORK` |
-| WebSocket buffer size | 1000 events | `--buffer-websocket` | `GASOLINE_BUFFER_WEBSOCKET` |
-| Action buffer size | 200 actions | `--buffer-actions` | `GASOLINE_BUFFER_ACTIONS` |
-| Network body max size | 100KB | `--body-max-size` | `GASOLINE_BODY_MAX_SIZE` |
-| Network body store count | 50 bodies | `--body-max-count` | `GASOLINE_BODY_MAX_COUNT` |
-| Memory soft limit | 20MB | `--memory-soft` | `GASOLINE_MEMORY_SOFT` |
-| Memory hard limit | 50MB | `--memory-hard` | `GASOLINE_MEMORY_HARD` |
-| Global rate limit | 1000 events/sec | `--rate-limit` | `GASOLINE_RATE_LIMIT` |
-| Server port | 7890 | `--port` | `GASOLINE_PORT` |
-| TTL | unlimited | `--ttl` | `GASOLINE_TTL` |
-| Audit log size | 10000 entries | `--audit-size` | `GASOLINE_AUDIT_SIZE` |
+| Console buffer size | 1000 entries | `--buffer-console` | `KABOOM_BUFFER_CONSOLE` |
+| Network buffer size | 500 entries | `--buffer-network` | `KABOOM_BUFFER_NETWORK` |
+| WebSocket buffer size | 1000 events | `--buffer-websocket` | `KABOOM_BUFFER_WEBSOCKET` |
+| Action buffer size | 200 actions | `--buffer-actions` | `KABOOM_BUFFER_ACTIONS` |
+| Network body max size | 100KB | `--body-max-size` | `KABOOM_BODY_MAX_SIZE` |
+| Network body store count | 50 bodies | `--body-max-count` | `KABOOM_BODY_MAX_COUNT` |
+| Memory soft limit | 20MB | `--memory-soft` | `KABOOM_MEMORY_SOFT` |
+| Memory hard limit | 50MB | `--memory-hard` | `KABOOM_MEMORY_HARD` |
+| Global rate limit | 1000 events/sec | `--rate-limit` | `KABOOM_RATE_LIMIT` |
+| Server port | 7890 | `--port` | `KABOOM_PORT` |
+| TTL | unlimited | `--ttl` | `KABOOM_TTL` |
+| Audit log size | 10000 entries | `--audit-size` | `KABOOM_AUDIT_SIZE` |
 
 #### Config File
 
@@ -428,7 +428,7 @@ The tool returns:
 
 ### 4.1 Project Isolation
 
-Multiple isolated capture contexts on a single Gasoline server. Each project has independent buffers and noise rules. The primary use case is a developer working on multiple applications simultaneously (e.g., a frontend and a backend admin panel in separate browser tabs) who wants clean separation of captured data.
+Multiple isolated capture contexts on a single Kaboom server. Each project has independent buffers and noise rules. The primary use case is a developer working on multiple applications simultaneously (e.g., a frontend and a backend admin panel in separate browser tabs) who wants clean separation of captured data.
 
 #### How It Works
 
@@ -518,22 +518,22 @@ Hidden tools don't appear in the MCP `tools/list` response. An AI client that do
 
 ## Configuration Summary
 
-All enterprise features are opt-in. A default Gasoline installation behaves identically to today — no audit log, no TTL, no redaction, no auth. Enterprise features activate via explicit configuration.
+All enterprise features are opt-in. A default Kaboom installation behaves identically to today — no audit log, no TTL, no redaction, no auth. Enterprise features activate via explicit configuration.
 
 ### Minimal Enterprise Setup
 
 ```bash
-gasoline --api-key=$GASOLINE_KEY --ttl=1h
+kaboom --api-key=$KABOOM_KEY --ttl=1h
 ```
 
 ### Restricted Setup
 
 ```bash
-gasoline \
+kaboom \
   --profile=restricted \
-  --api-key=$GASOLINE_KEY \
+  --api-key=$KABOOM_KEY \
   --redaction-config=./redaction-rules.json \
-  --config=./gasoline.json
+  --config=./kaboom.json
 ```
 
 ---

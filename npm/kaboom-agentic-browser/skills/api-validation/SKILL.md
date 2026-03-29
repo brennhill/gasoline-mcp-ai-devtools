@@ -3,7 +3,7 @@ name: api-validation
 description: Use when user asks to check API responses, validate request/response contracts, compare API behavior against a spec, or detect schema drift.
 ---
 
-# Gasoline API Validation
+# Kaboom API Validation
 
 Use this skill when endpoint behavior, payload shape, or status handling is in question.
 

@@ -5,6 +5,7 @@
 
 import { scaleTimeout } from '../lib/timeouts.js'
 import { delay } from '../lib/timeout-utils.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { StorageKey } from '../lib/constants.js'
 import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/storage-utils.js'
 
@@ -18,7 +19,7 @@ import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/s
 export async function pingContentScript(tabId: number, timeoutMs = scaleTimeout(500)): Promise<boolean> {
   try {
     const response = (await Promise.race([
-      chrome.tabs.sendMessage(tabId, { type: 'gasoline_ping' }),
+      chrome.tabs.sendMessage(tabId, { type: 'kaboom_ping' }),
       new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)),
@@ -105,7 +106,7 @@ export async function loadSavedSettings(): Promise<SavedSettings> {
     ])) as SavedSettings
     return result
   } catch {
-    console.warn('[Gasoline] Could not load saved settings - using defaults')
+    console.warn(`${KABOOM_LOG_PREFIX} Could not load saved settings - using defaults`)
     return {}
   }
 }
@@ -119,7 +120,7 @@ export async function loadAiWebPilotState(logFn?: (message: string) => void): Pr
   const wasLoaded = aiEnabled !== false
   const loadTime = performance.now() - startTime
   if (logFn) {
-    logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
+    logFn(`${KABOOM_LOG_PREFIX} AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
   }
   return wasLoaded
 }
@@ -392,7 +393,7 @@ export async function captureVisibleTabSafe(
 // =============================================================================
 
 /**
- * Send a gasoline_action_toast message to a tab.
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(
@@ -404,7 +405,7 @@ export function sendTabToast(
 ): void {
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'gasoline_action_toast' as const,
+      type: 'kaboom_action_toast' as const,
       text,
       detail,
       state,

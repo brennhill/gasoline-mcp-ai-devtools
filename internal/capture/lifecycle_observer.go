@@ -121,7 +121,7 @@ func (o *LifecycleObserver) Emit(event LifecycleEvent, data map[string]any) {
 		func(fn LifecycleListener) {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "[gasoline] lifecycle observer: listener panic on %s: %v\n", event.String(), r)
+					fmt.Fprintf(os.Stderr, "[Kaboom] lifecycle observer: listener panic on %s: %v\n", event.String(), r)
 				}
 			}()
 			fn(event, data)

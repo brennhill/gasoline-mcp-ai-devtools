@@ -16,7 +16,7 @@ last_reviewed: 2026-02-16
 
 Backend services already log to stdout. We don't ask developers to change their code. We intercept:
 
-1. **Local dev:** Wrap the dev command (`gasoline-run npm run dev`)
+1. **Local dev:** Wrap the dev command (`kaboom-run npm run dev`)
 2. **Production:** Tail the log file or fetch via SSH
 3. **Logging format:** Any format (plaintext, JSON, custom regex)
 4. **Request correlation:** Extract request ID from log to link FE + BE
@@ -32,7 +32,7 @@ FE: User clicks button (trace_id = abc123)
 
 BE: Service receives request
     ├─ Logs to stdout: "[timestamp] INFO [req:abc123] Processing"
-    ├─ Gasoline-run captures: stdout → parses → normalizes
+    ├─ Kaboom-run captures: stdout → parses → normalizes
     └─ Sends to: localhost:7890 via HTTP
 
 Daemon (localhost:7890)
@@ -48,20 +48,20 @@ Daemon (localhost:7890)
 
 ---
 
-## Implementation: gasoline-run (Local Dev)
+## Implementation: kaboom-run (Local Dev)
 
-**File:** `cmd/gasoline-run/main.go`
+**File:** `cmd/kaboom-run/main.go`
 
 ### Usage
 
 ```bash
 # Instead of: npm run dev
-# Use:        gasoline-run npm run dev
+# Use:        kaboom-run npm run dev
 
-gasoline-run npm run dev
-gasoline-run python -m flask run
-gasoline-run go run main.go
-gasoline-run ruby rails server
+kaboom-run npm run dev
+kaboom-run python -m flask run
+kaboom-run go run main.go
+kaboom-run ruby rails server
 ```
 
 ### How It Works
@@ -79,7 +79,7 @@ import (
 )
 
 func main() {
-	// Parse: gasoline-run [--config ...] [command] [args...]
+	// Parse: kaboom-run [--config ...] [command] [args...]
 	args := os.Args[1:]
 	configFile := ""
 
@@ -89,7 +89,7 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: gasoline-run [--config file] command [args...]\n")
+		fmt.Fprintf(os.Stderr, "Usage: kaboom-run [--config file] command [args...]\n")
 		os.Exit(1)
 	}
 
@@ -467,13 +467,13 @@ func (t *SSHTailer) Close() error {
 
 ## Configuration
 
-**File:** `~/.gasoline/config.yaml`
+**File:** `~/.kaboom/config.yaml`
 
-### Local Dev (gasoline-run)
+### Local Dev (kaboom-run)
 
 ```yaml
-# Auto-configured by gasoline-run
-# No config needed, just use: gasoline-run npm run dev
+# Auto-configured by kaboom-run
+# No config needed, just use: kaboom-run npm run dev
 ```
 
 ### Production Layer 1
@@ -617,10 +617,10 @@ Confidence: Medium (could be concurrent requests)
 ## Local Dev Flow
 
 ```bash
-$ gasoline-run npm run dev
+$ kaboom-run npm run dev
 
-[Gasoline] Starting daemon (localhost:7890)
-[Gasoline] Listening for events
+[Kaboom] Starting daemon (localhost:7890)
+[Kaboom] Listening for events
 [App] Server running on http://localhost:3000
 
 # User opens browser, clicks button
@@ -647,8 +647,8 @@ FE + BE events merged:
 # Production server: normal operations
 $ npm run start > /var/log/app.log 2>&1
 
-# Developer's machine: configure Gasoline
-$ cat ~/.gasoline/config.yaml
+# Developer's machine: configure Kaboom
+$ cat ~/.kaboom/config.yaml
 backend:
   logs:
     - type: ssh
@@ -657,11 +657,11 @@ backend:
       path: /var/log/app.log
 
 # Developer starts debugging on production
-$ gasoline --config ~/.gasoline/config.yaml
+$ kaboom --config ~/.kaboom/config.yaml
 
-[Gasoline] SSH connected to prod.example.com
-[Gasoline] Tailing /var/log/app.log
-[Gasoline] Daemon ready on http://localhost:7890
+[Kaboom] SSH connected to prod.example.com
+[Kaboom] Tailing /var/log/app.log
+[Kaboom] Daemon ready on http://localhost:7890
 
 # Developer opens prod site in browser
 # User clicks button, sees error
@@ -700,4 +700,4 @@ Timeline:
 ---
 
 **Status:** Architecture for Layer 1 BE observability
-**Next:** Implementation specs for gasoline-run and log tailer
+**Next:** Implementation specs for kaboom-run and log tailer

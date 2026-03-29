@@ -3,7 +3,7 @@
 
 package schema
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
 func testFailureSchema() map[string]any {
 	return map[string]any{
@@ -185,7 +185,7 @@ func generateToolSchema() mcp.MCPTool {
 				},
 				"output_format": map[string]any{
 					"type":        "string",
-					"description": "Output format. reproduction: 'gasoline-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
+					"description": "Output format. reproduction: 'kaboom-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
 				},
 			},
 			"required": []string{"what"},

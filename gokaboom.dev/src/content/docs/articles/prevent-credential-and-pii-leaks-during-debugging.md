@@ -13,7 +13,7 @@ Debugging should solve bugs, not create privacy incidents.
 
 **Personally Identifiable Information (PII)** is data that can identify a person, like full names, emails, or IDs. NIST privacy resources: https://www.nist.gov/privacy-framework
 
-This guide shows a safer workflow with *.gasoline Agentic Devtools**.
+This guide shows a safer workflow with *KaBOOM Agentic Devtools**.
 
 <!-- more -->
 
@@ -28,7 +28,7 @@ This guide shows a safer workflow with *.gasoline Agentic Devtools**.
 
 You want rich debugging context without leaking secrets into logs, screenshots, or reports.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Run security-focused checks
 
@@ -74,4 +74,4 @@ Preview before submit to confirm sensitive text is not included.
 
 ## You’re Not Slowing Down, You’re Growing Up
 
-Safe debugging is a sign of mature engineering. *.gasoline Agentic Devtools** helps you move fast and stay responsible.
+Safe debugging is a sign of mature engineering. *KaBOOM Agentic Devtools** helps you move fast and stay responsible.

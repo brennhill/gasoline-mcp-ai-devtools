@@ -4,10 +4,10 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Chrome Web Store Submission - Gasoline v5.4.0
+# Chrome Web Store Submission - Kaboom v5.4.0
 
 ## Package
-**File:** `/Users/brenn/dev/gasoline/gasoline-extension-v5.4.0-webstore.zip` (319KB)
+**File:** `/Users/brenn/dev/kaboom/kaboom-extension-v5.4.0-webstore.zip` (319KB)
 
 ---
 
@@ -15,7 +15,7 @@ last_reviewed: 2026-02-16
 
 **Extension Name:**
 ```
-Gasoline
+Kaboom
 ```
 
 **Short Description:** (132 characters max)
@@ -25,7 +25,7 @@ Agentic Browser Devtools - rapid e2e web development. Stream console logs, netwo
 
 **Detailed Description:**
 ```
-Gasoline is a browser extension + local MCP server that streams real-time browser telemetry to AI coding assistants, enabling autonomous debugging and issue resolution.
+Kaboom is a browser extension + local MCP server that streams real-time browser telemetry to AI coding assistants, enabling autonomous debugging and issue resolution.
 
 🔥 What It Does
 • Captures console logs, network errors, exceptions, WebSocket events
@@ -34,7 +34,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • Provides visual feedback when AI is actively debugging
 
 ⚙️ How It Works
-1. Install extension and run local MCP server: npx gasoline-mcp
+1. Install extension and run local MCP server: npx kaboom-mcp
 2. Connect your AI assistant (Claude Code, Cursor, Copilot, Windsurf, Zed)
 3. Track a browser tab to start capturing telemetry
 4. AI sees errors in real-time and can autonomously fix issues
@@ -44,7 +44,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • No SaaS, no cloud service, no telemetry
 • All data stays on your machine
 • Automatic redaction of passwords, API keys, tokens
-• Open source (AGPL-3.0): github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• Open source (AGPL-3.0): github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 
 ✨ Key Features
 • MCP protocol integration (emerging standard for AI tooling)
@@ -60,9 +60,9 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • Engineers who want AI to fix bugs autonomously
 
 📚 Documentation
-• Setup guide: cookwithgasoline.com/getting-started
-• Full docs: cookwithgasoline.com
-• GitHub: github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+• Setup guide: gokaboom.dev/getting-started
+• Full docs: gokaboom.dev
+• GitHub: github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 
 🔧 Technical Requirements
 • Chrome or Brave browser
@@ -139,7 +139,7 @@ English (United States)
 **File:** `docs/assets/images/chrome_store/promo-tile-440x280.png` (TODO: Create if submitting)
 
 **Suggested design:**
-- Gasoline flame logo
+- Kaboom flame logo
 - Text: "AI-Native Browser Observability"
 - Dark background with brand colors
 
@@ -152,7 +152,7 @@ English (United States)
 
 ## Privacy Policy URL
 ```
-https://cookwithgasoline.com/privacy/
+https://gokaboom.dev/privacy/
 ```
 
 **Note:** Ensure privacy policy page exists and covers:
@@ -225,7 +225,7 @@ This is a developer tool - broad access is necessary to debug any web applicatio
 
 ## Single Purpose Statement
 ```
-Gasoline is a developer tool that captures browser telemetry (console logs, network errors, exceptions, WebSocket events) from a user-selected tab and streams it to AI coding assistants running locally via the MCP protocol, enabling autonomous debugging and issue resolution.
+Kaboom is a developer tool that captures browser telemetry (console logs, network errors, exceptions, WebSocket events) from a user-selected tab and streams it to AI coding assistants running locally via the MCP protocol, enabling autonomous debugging and issue resolution.
 ```
 
 ---
@@ -266,7 +266,7 @@ Verify by inspecting:
 
 ## Open Source
 
-Full source code: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+Full source code: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 License: AGPL-3.0
 All compiled code matches source (TypeScript → JavaScript via tsc)
 ```
@@ -275,14 +275,14 @@ All compiled code matches source (TypeScript → JavaScript via tsc)
 
 ## Website
 ```
-https://cookwithgasoline.com
+https://gokaboom.dev
 ```
 
 ---
 
 ## Support Email
 ```
-support@cookwithgasoline.com
+support@gokaboom.dev
 ```
 (Or your preferred support email)
 
@@ -305,7 +305,7 @@ Free
 ## Submission Checklist
 
 Before submitting:
-- [ ] Privacy policy live at cookwithgasoline.com/privacy/
+- [ ] Privacy policy live at gokaboom.dev/privacy/
 - [ ] Screenshots created (5 images, 1280x800)
 - [ ] Store icon verified (128x128)
 - [ ] Test installation from zip (unzip and load unpacked)
@@ -327,7 +327,7 @@ Before submitting:
 
 After approval:
 - [ ] Update GitHub release with Web Store link
-- [ ] Update cookwithgasoline.com with "Get on Chrome Web Store" button
+- [ ] Update gokaboom.dev with "Get on Chrome Web Store" button
 - [ ] Announce on social media
 - [ ] Add Web Store badge to README.md
 
@@ -336,7 +336,7 @@ After approval:
 ## Files
 
 **Submission Package:**
-`/Users/brenn/dev/gasoline/gasoline-extension-v5.4.0-webstore.zip` (319KB)
+`/Users/brenn/dev/kaboom/kaboom-extension-v5.4.0-webstore.zip` (319KB)
 
 **Manifest Version:** 5.4.0
 

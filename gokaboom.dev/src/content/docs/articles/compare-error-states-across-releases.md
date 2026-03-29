@@ -1,6 +1,6 @@
 ---
 title: "How to Compare Error States Across Releases"
-description: "A friendly guide to checking whether a new release reduced or introduced browser errors using.gasoline Agentic Devtools."
+description: "A friendly guide to checking whether a new release reduced or introduced browser errors using KaBOOM Agentic Devtools."
 date: 2026-03-03
 authors: [brenn]
 tags: [releases, debugging, regression, quality]
@@ -15,7 +15,7 @@ This article shows how to compare error behavior between two runs so you can ans
 
 “Did this release actually improve things?”
 
-with confidence using *.gasoline Agentic Devtools**.
+with confidence using *KaBOOM Agentic Devtools**.
 
 <!-- more -->
 
@@ -34,7 +34,7 @@ Without structured comparison, teams rely on feelings:
 
 You need hard evidence.
 
-## Step-by-Step with.gasoline Agentic Devtools
+## Step-by-Step with KaBOOM Agentic Devtools
 
 ### Step 1. Capture baseline run (before)
 
@@ -80,4 +80,4 @@ observe({what: "network_bodies", status_min: 400, limit: 40})
 
 ## Smart Habit for Every Release
 
-Pick 3 critical flows. Run this comparison every time. *.gasoline Agentic Devtools** makes this lightweight enough to do regularly.
+Pick 3 critical flows. Run this comparison every time. *KaBOOM Agentic Devtools** makes this lightweight enough to do regularly.

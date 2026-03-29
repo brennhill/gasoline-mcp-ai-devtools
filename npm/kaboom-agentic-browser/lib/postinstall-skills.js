@@ -13,10 +13,10 @@ const { installBundledSkills } = require('./skills');
 async function run() {
   try {
     const verbose =
-      String(process.env.GASOLINE_SKILL_VERBOSE || '')
+      String(process.env.KABOOM_SKILL_VERBOSE || '')
         .trim()
         .toLowerCase() === '1' ||
-      String(process.env.GASOLINE_SKILL_VERBOSE || '')
+      String(process.env.KABOOM_SKILL_VERBOSE || '')
         .trim()
         .toLowerCase() === 'true';
 

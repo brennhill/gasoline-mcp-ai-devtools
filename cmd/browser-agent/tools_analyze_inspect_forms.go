@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	az "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/analyze"
 )
 
 // ============================================

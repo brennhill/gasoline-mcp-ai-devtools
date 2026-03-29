@@ -3,7 +3,7 @@ name: test-coverage
 description: Use when user asks to improve test coverage, find untested code paths, identify risky files without tests, or add missing test cases.
 ---
 
-# Gasoline Test Coverage
+# Kaboom Test Coverage
 
 Use this skill to systematically increase coverage while preserving behavior.
 

@@ -11,8 +11,12 @@ import os
 import shutil
 import sys
 
-MCP_SERVER_NAME = "gasoline-browser-devtools"
+MCP_SERVER_NAME = "kaboom-browser-devtools"
 LEGACY_MCP_SERVER_NAMES = (
+    "kaboom-browser-devtools",
+    "kaboom-agentic-browser",
+    "kaboom",
+    "gasoline-browser-devtools",
     "gasoline-agentic-browser",
     "gasoline",
     "strum-browser-devtools",
@@ -21,8 +25,8 @@ LEGACY_MCP_SERVER_NAMES = (
 )
 
 
-class GasolineError(Exception):
-    """Base class for Gasoline errors."""
+class KaboomError(Exception):
+    """Base class for Kaboom errors."""
 
     def __init__(self, message, recovery=""):
         self.message = message
@@ -37,7 +41,7 @@ class GasolineError(Exception):
         return output
 
 
-class InvalidJSONError(GasolineError):
+class InvalidJSONError(KaboomError):
     """Raised when JSON parsing fails."""
 
     def __init__(self, path, line_number=None, error_message=""):
@@ -49,13 +53,13 @@ class InvalidJSONError(GasolineError):
         recovery = (
             f"Fix options:\n   1. Manually edit: code {path}"
             "\n   2. Restore from backup and try --install again"
-            "\n   3. Run: gasoline-agentic-browser --doctor (for more info)"
+            "\n   3. Run: kaboom-agentic-browser --doctor (for more info)"
         )
         super().__init__(msg, recovery)
         self.name = "InvalidJSONError"
 
 
-class FileSizeError(GasolineError):
+class FileSizeError(KaboomError):
     """Raised when file exceeds size limit."""
 
     def __init__(self, path, size):
@@ -68,7 +72,7 @@ class FileSizeError(GasolineError):
         self.name = "FileSizeError"
 
 
-class ConfigValidationError(GasolineError):
+class ConfigValidationError(KaboomError):
     """Raised when config validation fails."""
 
     def __init__(self, errors):
@@ -320,7 +324,7 @@ def write_config_file(path, data, dry_run=False):
         return {"success": True, "path": path}
 
     except OSError as e:
-        raise GasolineError(f"Failed to write {path}: {e}") from e
+        raise KaboomError(f"Failed to write {path}: {e}") from e
 
 
 def validate_mcp_config(data):
@@ -344,12 +348,12 @@ def validate_mcp_config(data):
     return errors
 
 
-def merge_gasoline_config(existing, gasoline_entry, env_vars):
-    """Merge gasoline config into existing config.
+def merge_kaboom_config(existing, kaboom_entry, env_vars):
+    """Merge Kaboom config into existing config.
 
     Args:
         existing: Existing config
-        gasoline_entry: Gasoline server entry
+        kaboom_entry: Kaboom server entry
         env_vars: Environment variables dict
 
     Returns:
@@ -366,7 +370,7 @@ def merge_gasoline_config(existing, gasoline_entry, env_vars):
         if legacy_name != MCP_SERVER_NAME:
             merged["mcpServers"].pop(legacy_name, None)
 
-    merged["mcpServers"][MCP_SERVER_NAME] = copy.deepcopy(gasoline_entry)
+    merged["mcpServers"][MCP_SERVER_NAME] = copy.deepcopy(kaboom_entry)
 
     if env_vars:
         merged["mcpServers"][MCP_SERVER_NAME]["env"] = copy.deepcopy(env_vars)
@@ -381,10 +385,10 @@ def parse_env_var(env_str):
         dict: {key: str, value: str}
 
     Raises:
-        GasolineError: If format is invalid
+        KaboomError: If format is invalid
     """
     if "=" not in env_str:
-        raise GasolineError(
+        raise KaboomError(
             f'Invalid env format "{env_str}". Expected: KEY=VALUE',
             'Examples:\n   - --env DEBUG=1\n   - --env API_KEY=secret'
         )
@@ -394,13 +398,13 @@ def parse_env_var(env_str):
     value = value.strip()
 
     if not key:
-        raise GasolineError(
+        raise KaboomError(
             f'Invalid env format "{env_str}". Missing key',
             "Format: KEY=VALUE (key cannot be empty)"
         )
 
     if not value:
-        raise GasolineError(
+        raise KaboomError(
             f'Invalid env format "{env_str}". Missing value',
             "Format: KEY=VALUE (value cannot be empty)"
         )

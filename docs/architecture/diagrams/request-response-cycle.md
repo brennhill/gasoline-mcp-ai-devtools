@@ -25,7 +25,7 @@ This is the most complex pattern. All other patterns are simplifications.
 ```mermaid
 sequenceDiagram
     participant AI as AI Agent<br/>(Claude, Cursor)
-    participant Wrapper as Wrapper<br/>(bin/gasoline-mcp)
+    participant Wrapper as Wrapper<br/>(bin/kaboom-mcp)
     participant Server as Go Server<br/>(MCP Handler)
     participant Capture as Capture<br/>Manager
     participant Session as Session<br/>Manager
@@ -156,7 +156,7 @@ sequenceDiagram
 
     AI->>Wrapper: configure({action: 'store', data: {...}})
     Wrapper->>Server: POST /mcp
-    Server->>Disk: Write state to ~/.gasoline/
+    Server->>Disk: Write state to ~/.kaboom/
     Server-->>Wrapper: 200 OK {status: 'ok'}
     Wrapper-->>AI: Response (stdout)<br/>⚡ FAST - immediate persistence
 

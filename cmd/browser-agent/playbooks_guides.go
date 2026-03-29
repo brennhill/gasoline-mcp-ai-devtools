@@ -4,7 +4,7 @@
 package main
 
 // guideContent is the full usage guide resource.
-var guideContent = `# Gasoline MCP Tools
+var guideContent = `# Kaboom MCP Tools
 
 Agentic Browser Devtools - rapid e2e web development. 5 tools for real-time browser telemetry.
 
@@ -105,7 +105,7 @@ Use restart_on_eviction=true if a cursor expires.
 `
 
 // quickstartContent is the short quickstart resource.
-var quickstartContent = `# Gasoline MCP Quickstart
+var quickstartContent = `# Kaboom MCP Quickstart
 
 ## 1. Health Check
 {"tool":"configure","arguments":{"what":"health"}}

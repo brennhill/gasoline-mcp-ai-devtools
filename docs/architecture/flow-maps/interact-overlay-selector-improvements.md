@@ -45,9 +45,9 @@ Covers overlay dismiss loop detection (#444), cross-extension overlay detection 
 1. LLM calls `interact({what: "dismiss_top_overlay"})`.
 2. `dom-dispatch.ts` routes to `executeOverlayAction` which calls `domPrimitiveOverlay` (self-contained, #502).
 3. `domPrimitiveOverlay` finds overlay via its internal `findTopmostOverlay()`.
-4. **Loop check**: If overlay has `data-gasoline-dismiss-ts` attribute with timestamp < 30s old, return `dismiss_loop_detected` error with overlay info and guidance.
+4. **Loop check**: If overlay has `data-kaboom-dismiss-ts` attribute with timestamp < 30s old, return `dismiss_loop_detected` error with overlay info and guidance.
 5. If stamp is > 30s old, clear it and proceed (stale stamp from different page state).
-6. Before dismiss action (click or Escape), stamp overlay with `data-gasoline-dismiss-ts = Date.now()` (tracks the attempt even if dismiss fails).
+6. Before dismiss action (click or Escape), stamp overlay with `data-kaboom-dismiss-ts = Date.now()` (tracks the attempt even if dismiss fails).
 7. On next call, if overlay is still present and stamped, the loop check fires.
 
 ### 2. Cross-Extension Overlay Detection (#445)
@@ -83,7 +83,7 @@ Covers overlay dismiss loop detection (#444), cross-extension overlay detection 
 
 ## State and Contracts
 
-1. Dismiss stamps use DOM attribute `data-gasoline-dismiss-ts` — self-cleaning when element is removed.
+1. Dismiss stamps use DOM attribute `data-kaboom-dismiss-ts` — self-cleaning when element is removed.
 2. Stamp TTL is 30 seconds. After that, retries are allowed (page navigation may have changed context).
 3. `near_*` params are aliases — explicit `scope_rect` takes precedence.
 4. Summary mode stripping only applies to successful interact responses, not errors.

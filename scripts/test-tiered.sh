@@ -11,7 +11,7 @@ TEST_DIR="$SCRIPT_DIR/tests"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════════════════════╗"
-echo "║              GASOLINE UAT TIERED TEST SUITE — Parallel Execution               ║"
+echo "║               KABOOM UAT TIERED TEST SUITE — Parallel Execution                ║"
 echo "║                                                                                ║"
 echo "║ Tier 1 (1 min):   Protocol + Basic Tools (fastest feedback)                   ║"
 echo "║ Tier 2 (5 min):   Extended Coverage (more confidence)                         ║"
@@ -21,7 +21,7 @@ echo "║ All tiers run in PARALLEL — results show incrementally              
 echo "╚════════════════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-RESULTS_DIR="/tmp/gasoline-uat-tiered-$(date +%s)"
+RESULTS_DIR="/tmp/kaboom-uat-tiered-$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 
 echo "📊 Results directory: $RESULTS_DIR"

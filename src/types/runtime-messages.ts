@@ -250,7 +250,7 @@ export type BackgroundMessage =
  * Draw mode: content script requests screenshot capture
  */
 interface DrawModeCaptureScreenshotMessage {
-  readonly type: 'gasoline_capture_screenshot'
+  readonly type: 'kaboom_capture_screenshot'
 }
 
 /**
@@ -271,7 +271,7 @@ export interface DrawModeCompletedMessage {
  * Push chat: content script sends a chat message to push to AI.
  */
 interface PushChatMessage {
-  readonly type: 'gasoline_push_chat'
+  readonly type: 'kaboom_push_chat'
   readonly message: string
   readonly page_url: string
 }
@@ -309,7 +309,7 @@ interface RecordingGestureDeniedMessage {
  * Content script requests popup open to activate activeTab for tabCapture.
  */
 interface OpenPopupForRecordingMessage {
-  readonly type: 'gasoline_open_popup_for_recording'
+  readonly type: 'kaboom_open_popup_for_recording'
 }
 
 /**
@@ -331,7 +331,7 @@ export interface TerminalPanelWriteMessage {
  * Toggle chat widget message (background to content).
  */
 interface ToggleChatMessage {
-  readonly type: 'gasoline_toggle_chat'
+  readonly type: 'kaboom_toggle_chat'
   readonly client_name?: string
 }
 
@@ -343,7 +343,7 @@ interface ToggleChatMessage {
  * Ping message to check if content script is loaded
  */
 export interface ContentPingMessage {
-  readonly type: 'gasoline_ping'
+  readonly type: 'kaboom_ping'
 }
 
 export interface ContentPingResponse {
@@ -355,7 +355,7 @@ export interface ContentPingResponse {
  * Highlight element message
  */
 export interface HighlightMessage {
-  readonly type: 'gasoline_highlight'
+  readonly type: 'kaboom_highlight'
   readonly params: {
     readonly selector: string
     readonly duration_ms?: number
@@ -378,7 +378,7 @@ export interface HighlightResponse {
  * Execute JavaScript message
  */
 export interface ExecuteJsMessage {
-  readonly type: 'gasoline_execute_js'
+  readonly type: 'kaboom_execute_js'
   readonly params: {
     readonly script: string
     readonly timeout_ms?: number
@@ -389,7 +389,7 @@ export interface ExecuteJsMessage {
  * Execute query message (polling system)
  */
 export interface ExecuteQueryMessage {
-  readonly type: 'gasoline_execute_query'
+  readonly type: 'kaboom_execute_query'
   readonly queryId: string
   readonly params: string | Record<string, unknown>
 }
@@ -472,18 +472,18 @@ interface DataTableQueryMessage {
  * Draw mode control messages (background to content)
  */
 interface DrawModeStartMessage {
-  readonly type: 'gasoline_draw_mode_start'
+  readonly type: 'kaboom_draw_mode_start'
   readonly started_by?: string
   readonly annot_session_name?: string
   readonly correlation_id?: string
 }
 
 interface DrawModeStopMessage {
-  readonly type: 'gasoline_draw_mode_stop'
+  readonly type: 'kaboom_draw_mode_stop'
 }
 
 interface GetAnnotationsMessage {
-  readonly type: 'gasoline_get_annotations'
+  readonly type: 'kaboom_get_annotations'
 }
 
 /**
@@ -501,7 +501,7 @@ export interface TrackingStateChangedMessage {
  * State management message
  */
 export interface ManageStateMessage {
-  readonly type: 'gasoline_manage_state'
+  readonly type: 'kaboom_manage_state'
   readonly params: {
     readonly action: StateAction
     readonly name?: string
@@ -515,7 +515,7 @@ export interface ManageStateMessage {
  * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 interface ActionToastMessage {
-  readonly type: 'gasoline_action_toast'
+  readonly type: 'kaboom_action_toast'
   readonly text: string
   readonly detail?: string
   readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio'
@@ -526,7 +526,7 @@ interface ActionToastMessage {
  * Subtitle overlay message (persistent narration text)
  */
 interface SubtitleMessage {
-  readonly type: 'gasoline_subtitle'
+  readonly type: 'kaboom_subtitle'
   readonly text: string
 }
 
@@ -534,7 +534,7 @@ interface SubtitleMessage {
  * Recording watermark overlay message
  */
 interface RecordingWatermarkMessage {
-  readonly type: 'gasoline_recording_watermark'
+  readonly type: 'kaboom_recording_watermark'
   readonly visible: boolean
 }
 
@@ -583,37 +583,37 @@ export type ContentMessage =
  * Page to content script messages (postMessage types)
  */
 export type PageMessageType =
-  | 'gasoline_log'
-  | 'gasoline_ws'
-  | 'gasoline_network_body'
-  | 'gasoline_enhanced_action'
-  | 'gasoline_performance_snapshot'
-  | 'gasoline_inject_bridge_pong'
-  | 'gasoline_highlight_response'
-  | 'gasoline_execute_js_result'
-  | 'gasoline_a11y_query_response'
-  | 'gasoline_dom_query_response'
-  | 'gasoline_state_response'
-  | 'gasoline_waterfall_response'
-  | 'gasoline_link_health_response'
-  | 'gasoline_form_state_response'
-  | 'gasoline_data_table_response'
+  | 'kaboom_log'
+  | 'kaboom_ws'
+  | 'kaboom_network_body'
+  | 'kaboom_enhanced_action'
+  | 'kaboom_performance_snapshot'
+  | 'kaboom_inject_bridge_pong'
+  | 'kaboom_highlight_response'
+  | 'kaboom_execute_js_result'
+  | 'kaboom_a11y_query_response'
+  | 'kaboom_dom_query_response'
+  | 'kaboom_state_response'
+  | 'kaboom_waterfall_response'
+  | 'kaboom_link_health_response'
+  | 'kaboom_form_state_response'
+  | 'kaboom_data_table_response'
 
 /**
  * Content to page messages (postMessage types)
  */
 export type ContentToPageMessageType =
-  | 'gasoline_setting'
-  | 'gasoline_inject_bridge_ping'
-  | 'gasoline_highlight_request'
-  | 'gasoline_execute_js'
-  | 'gasoline_a11y_query'
-  | 'gasoline_dom_query'
-  | 'gasoline_state_command'
-  | 'gasoline_get_waterfall'
-  | 'gasoline_link_health_query'
-  | 'gasoline_form_state_query'
-  | 'gasoline_data_table_query'
+  | 'kaboom_setting'
+  | 'kaboom_inject_bridge_ping'
+  | 'kaboom_highlight_request'
+  | 'kaboom_execute_js'
+  | 'kaboom_a11y_query'
+  | 'kaboom_dom_query'
+  | 'kaboom_state_command'
+  | 'kaboom_get_waterfall'
+  | 'kaboom_link_health_query'
+  | 'kaboom_form_state_query'
+  | 'kaboom_data_table_query'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)

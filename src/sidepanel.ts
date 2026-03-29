@@ -274,7 +274,7 @@ function notifyIframe(command: string, data: Record<string, unknown> = {}): void
 }
 
 function handleIframeMessage(event: MessageEvent): void {
-  if (!event.data || event.data.source !== 'gasoline-terminal') return
+  if (!event.data || event.data.source !== 'kaboom-terminal') return
   try {
     const termOrigin = getTerminalServerUrl(state.serverUrl)
     if (event.origin !== termOrigin) return
@@ -333,7 +333,7 @@ function createTerminalHeader(): HTMLDivElement {
   })
 
   statusDotEl = document.createElement('span')
-  statusDotEl.className = 'gasoline-terminal-status-dot'
+  statusDotEl.className = 'kaboom-terminal-status-dot'
   Object.assign(statusDotEl.style, {
     width: '8px',
     height: '8px',

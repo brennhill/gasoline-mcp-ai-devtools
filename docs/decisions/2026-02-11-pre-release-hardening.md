@@ -22,7 +22,7 @@ Evaluation of architecture, polling, extension UI, and UX identified 18 issues.
 | # | Issue | Fix |
 |---|-------|-----|
 | P0-1 | Extension disconnect detection — no heartbeat, pending queries hang indefinitely | Track `last_sync_seen` per client; expire pending queries after 10s silence; surface in `observe(what="pilot")` |
-| P0-2 | "No tab being tracked" error missing fix instructions | Reword to include "Open the Gasoline extension popup and click 'Track This Tab'" |
+| P0-2 | "No tab being tracked" error missing fix instructions | Reword to include "Open the Kaboom extension popup and click 'Track This Tab'" |
 
 ### P1 — High
 

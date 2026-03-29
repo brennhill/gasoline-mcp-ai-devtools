@@ -10,18 +10,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func TestHandleHealthIncludesBridgeFastPathCounters(t *testing.T) {
 	t.Setenv(statecfg.StateDirEnv, t.TempDir())
 	resetFastPathResourceReadCounters()
-	recordFastPathResourceRead("gasoline://capabilities", true, 0)
-	recordFastPathResourceRead("gasoline://playbook/nonexistent/quick", false, -32002)
+	recordFastPathResourceRead("kaboom://capabilities", true, 0)
+	recordFastPathResourceRead("kaboom://playbook/nonexistent/quick", false, -32002)
 
 	s := &Server{
 		maxEntries: 100,
-		logFile:    filepath.Join(t.TempDir(), "gasoline.jsonl"),
+		logFile:    filepath.Join(t.TempDir(), "kaboom.jsonl"),
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
