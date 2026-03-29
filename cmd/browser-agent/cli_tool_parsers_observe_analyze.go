@@ -72,6 +72,7 @@ func parseAnalyzeArgs(what string, args []string) (map[string]any, error) {
 		"--telemetry-mode":      {mcpKey: "telemetry_mode", kind: flagString},
 		"--background":          {mcpKey: "background", kind: flagBool},
 		"--summary":             {mcpKey: "summary", kind: flagBool},
+		"--limit":               {mcpKey: "limit", kind: flagInt},
 		// Element targeting
 		"--selector":            {mcpKey: "selector", kind: flagString},
 		"--frame":               {mcpKey: "frame", kind: flagIntOrString},

@@ -25,6 +25,7 @@ const terminalPortOffset = 1
 func setupTerminalMux(server *Server, mgr *pty.Manager, cap *capture.Store) *http.ServeMux {
 	mux := http.NewServeMux()
 	registerTerminalRoutes(mux, server, mgr, cap)
+	registerIntentRoutes(mux, server)
 	return mux
 }
 

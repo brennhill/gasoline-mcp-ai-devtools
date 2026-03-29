@@ -416,7 +416,8 @@ function createLauncherUi() {
         gap: '8px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         opacity: '0.65',
-        transition: 'opacity 200ms ease'
+        transition: 'opacity 200ms ease',
+        pointerEvents: 'none' // Only the toggle circle is interactive when collapsed
     });
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
@@ -477,9 +478,26 @@ function createLauncherUi() {
         stopButton.style.color = '#fff';
     });
     stopButtonEl = stopButton;
+    let qaScanDebounce = 0;
+    const findProblemsButton = createActionButton('\u2691', 'Find Problems — QA scan this page', () => {
+        const now = Date.now();
+        if (now - qaScanDebounce < 500)
+            return;
+        qaScanDebounce = now;
+        panelPinned = false;
+        setPanelOpen(false);
+        try {
+            chrome.runtime.sendMessage({ type: 'qa_scan_requested', page_url: location.href }, () => { void chrome.runtime.lastError; });
+        }
+        catch {
+            // Extension context invalidated
+        }
+    });
+    findProblemsButton.style.fontSize = '20px';
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(findProblemsButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement('span');
     dotSep.textContent = '\u22EE';
@@ -551,15 +569,18 @@ function createLauncherUi() {
         padding: '0',
         boxShadow: '0 8px 24px rgba(15, 23, 42, 0.25)',
         transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        pointerEvents: 'auto' // Always interactive, even when root is pointer-events:none
     });
     toggle.addEventListener('mouseenter', () => {
         toggle.style.transform = 'translateY(-1px)';
         toggle.style.boxShadow = '0 10px 26px rgba(15, 23, 42, 0.28)';
+        toggleIcon.src = chrome.runtime.getURL('icons/logo-animated.svg');
     });
     toggle.addEventListener('mouseleave', () => {
         toggle.style.transform = 'translateY(0)';
         toggle.style.boxShadow = '0 8px 24px rgba(15, 23, 42, 0.25)';
+        toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
     });
     toggle.addEventListener('click', (event) => {
         event.preventDefault();
@@ -571,14 +592,23 @@ function createLauncherUi() {
             setSettingsMenuOpen(false);
     });
     toggleEl = toggle;
-    root.addEventListener('mouseenter', () => {
+    // Hover trigger on the toggle circle only — not the full root container.
+    // The root spans the panel width even when collapsed, which would intercept
+    // page interactions in the invisible panel region.
+    toggle.addEventListener('mouseenter', () => {
         root.style.opacity = '1';
+        root.style.pointerEvents = 'auto';
         clearHideTimer();
         setPanelOpen(true);
     });
+    // Leave handler stays on root so the panel remains open while mousing across buttons.
     root.addEventListener('mouseleave', () => {
-        if (!panelPinned && !settingsMenuOpen)
+        if (!panelPinned && !settingsMenuOpen) {
             root.style.opacity = '0.65';
+            root.style.pointerEvents = 'none';
+            // Re-enable pointer events on toggle so it remains hoverable
+            toggle.style.pointerEvents = 'auto';
+        }
         if (panelPinned || settingsMenuOpen)
             return;
         clearHideTimer();

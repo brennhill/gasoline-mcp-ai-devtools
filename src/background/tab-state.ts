@@ -377,14 +377,43 @@ export async function captureVisibleTabSafe(
     await chrome.tabs.update(tabId, { active: true })
   }
 
+  // Hide Kaboom UI overlay so it doesn't appear in screenshots.
+  await setKaboomOverlayVisibility(tabId, false)
+
   try {
     return await chrome.tabs.captureVisibleTab(windowId, options)
   } finally {
+    await setKaboomOverlayVisibility(tabId, true)
     if (!wasActive && activeTab?.id) {
       await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
         /* original tab may have been closed during capture */
       })
     }
+  }
+}
+
+/**
+ * Toggles visibility of all Kaboom UI overlays (hover launcher, draw mode)
+ * in the target tab. Uses executeScript for speed — no message round-trip needed.
+ */
+export async function setKaboomOverlayVisibility(tabId: number, visible: boolean): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (show: boolean) => {
+        const ids = [
+          'kaboom-tracked-hover-launcher',
+          'kaboom-draw-toolbar'
+        ]
+        for (const id of ids) {
+          const el = document.getElementById(id)
+          if (el) el.style.display = show ? '' : 'none'
+        }
+      },
+      args: [visible]
+    })
+  } catch {
+    // Tab may not have content script injected — safe to ignore
   }
 }
 

@@ -118,4 +118,8 @@ var observeModeSpecs = map[string]modeParamSpec{
 	"inbox": {
 		Hint: "Drain pending push events queued for MCP clients",
 	},
+	"site_menus": {
+		Hint:     "Discover page menus using 3-layer heuristic: semantic landmarks, axis alignment, border proximity. Returns {main, sidebar, footer, other, ungrouped}",
+		Optional: []string{"summary"},
+	},
 }

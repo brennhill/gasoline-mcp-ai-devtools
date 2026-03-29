@@ -173,19 +173,19 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         }
         return false;
     }
-    // #369: Detect if an element is inside a navigation container (nav, header, role=navigation)
-    function isInsideNavigation(el) {
-        let node = el;
+    const LANDMARK_TAGS = new Set(['nav', 'header', 'footer', 'aside', 'main']);
+    const LANDMARK_ROLES = new Set(['navigation', 'banner', 'contentinfo', 'complementary', 'main']);
+    function findNearestLandmark(el) {
+        let node = el.parentElement;
         while (node && node !== document.documentElement) {
             const tag = node.tagName.toLowerCase();
-            if (tag === 'nav' || tag === 'header')
-                return true;
-            const role = node.getAttribute('role');
-            if (role === 'navigation' || role === 'banner')
-                return true;
+            const role = node.getAttribute('role') || undefined;
+            if (LANDMARK_TAGS.has(tag) || (role && LANDMARK_ROLES.has(role))) {
+                return { tag, role };
+            }
             node = node.parentElement;
         }
-        return false;
+        return undefined;
     }
     function extractBoundingBox(el) {
         const htmlEl = el;
@@ -350,8 +350,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             // #369: Apply filters early to maximize useful elements within the 100-cap
             if (visibleOnly && !visible)
                 continue;
-            if (excludeNav && isInsideNavigation(el))
-                continue;
+            if (excludeNav) {
+                const lm = findNearestLandmark(el);
+                if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner'))
+                    continue;
+            }
             const bbox = extractBoundingBox(el);
             // Use >>> selector for shadow DOM elements, regular selector otherwise
             const shadowSel = buildShadowSelector(el);
@@ -369,6 +372,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const ariaRole = el.getAttribute('role') || '';
             if (roleFilter && elementType !== roleFilter && ariaRole.toLowerCase() !== roleFilter)
                 continue;
+            const landmark = findNearestLandmark(el);
             rawEntries.push({
                 el,
                 htmlEl,
@@ -382,13 +386,91 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
                 placeholder: el.getAttribute('placeholder') || undefined,
                 bbox,
                 visible,
-                inOverlay: isInsideOverlay(el)
+                inOverlay: isInsideOverlay(el),
+                landmarkTag: landmark?.tag,
+                landmarkRole: landmark?.role
             });
             if (rawEntries.length >= 100)
                 break;
         }
         if (rawEntries.length >= 100)
             break;
+    }
+    // Second pass: find cursor:pointer elements not caught by selector scan.
+    // Catches framework-bound click handlers (React onClick, Vue @click, etc.)
+    // that render as plain divs/spans with no semantic interactive attributes.
+    if (rawEntries.length < 100) {
+        const cursorPointerTags = new Set(['div', 'span', 'li', 'td', 'p', 'img', 'svg', 'label', 'figure', 'section', 'article']);
+        const candidates = scopeRoot.querySelectorAll('*');
+        let checked = 0;
+        const maxCheck = 500; // Budget: don't scan more than 500 elements for cursor style
+        for (const el of candidates) {
+            if (rawEntries.length >= 100)
+                break;
+            if (checked >= maxCheck)
+                break;
+            if (seen.has(el))
+                continue;
+            const tag = el.tagName.toLowerCase();
+            if (!cursorPointerTags.has(tag))
+                continue;
+            checked++;
+            const htmlEl = el;
+            if (!htmlEl.offsetParent && htmlEl !== document.body)
+                continue;
+            let cursor;
+            try {
+                cursor = getComputedStyle(htmlEl).cursor;
+            }
+            catch {
+                continue;
+            }
+            if (cursor !== 'pointer')
+                continue;
+            // Confirmed: cursor:pointer on a non-interactive element
+            seen.add(el);
+            const rect = htmlEl.getBoundingClientRect();
+            const visible = rect.width > 0 && rect.height > 0;
+            if (visibleOnly && !visible)
+                continue;
+            if (!intersectsScopeRect(el))
+                continue;
+            const bbox = extractBoundingBox(el);
+            const shadowSel = buildShadowSelector(el);
+            const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, '*');
+            const label = el.getAttribute('aria-label') ||
+                el.getAttribute('title') ||
+                (htmlEl.textContent || '').trim().slice(0, 60) ||
+                tag;
+            if (textContains && !label.toLowerCase().includes(textContains))
+                continue;
+            const ariaRole = el.getAttribute('role') || '';
+            if (roleFilter && ariaRole.toLowerCase() !== roleFilter)
+                continue;
+            if (excludeNav) {
+                const lm = findNearestLandmark(el);
+                if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner'))
+                    continue;
+            }
+            const landmark = findNearestLandmark(el);
+            rawEntries.push({
+                el,
+                htmlEl,
+                baseSelector,
+                finalSelector: baseSelector,
+                tag,
+                inputType: undefined,
+                elementType: 'clickable',
+                label,
+                role: ariaRole || undefined,
+                placeholder: undefined,
+                bbox,
+                visible,
+                inOverlay: isInsideOverlay(el),
+                landmarkTag: landmark?.tag,
+                landmarkRole: landmark?.role
+            });
+        }
     }
     // Disambiguate selectors in DOM order BEFORE dedup and spatial sort.
     // The resolver (resolveByTextAll, querySelectorAllDeep) returns elements in DOM order,
@@ -496,7 +578,9 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             bbox: entry.bbox,
             visible: entry.visible,
             ...(distPx !== undefined ? { distance_px: distPx } : {}),
-            ...(entry.inOverlay ? { in_overlay: true } : {})
+            ...(entry.inOverlay ? { in_overlay: true } : {}),
+            ...(entry.landmarkTag ? { landmark_tag: entry.landmarkTag } : {}),
+            ...(entry.landmarkRole ? { landmark_role: entry.landmarkRole } : {})
         });
     }
     // #369: Build filter metadata for the response

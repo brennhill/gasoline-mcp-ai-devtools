@@ -1,9 +1,0 @@
-MANIFEST.in
-README.md
-pyproject.toml
-kaboom_agentic_browser_win32_x64/__init__.py
-kaboom_agentic_browser_win32_x64/kaboom.exe
-kaboom_agentic_browser_win32_x64.egg-info/PKG-INFO
-kaboom_agentic_browser_win32_x64.egg-info/SOURCES.txt
-kaboom_agentic_browser_win32_x64.egg-info/dependency_links.txt
-kaboom_agentic_browser_win32_x64.egg-info/top_level.txt

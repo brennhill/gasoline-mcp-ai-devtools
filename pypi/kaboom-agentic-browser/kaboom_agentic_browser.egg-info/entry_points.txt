@@ -1,2 +1,0 @@
-[console_scripts]
-kaboom-agentic-browser = kaboom_agentic_browser.__main__:main

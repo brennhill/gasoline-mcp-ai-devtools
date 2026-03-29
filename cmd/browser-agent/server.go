@@ -58,8 +58,9 @@ type Server struct {
 	pushRouter *push.Router
 
 	// Terminal PTY session manager
-	ptyManager *pty.Manager
-	ptyRelays  *terminalRelayMap
+	ptyManager  *pty.Manager
+	ptyRelays   *terminalRelayMap
+	intentStore *intentStore
 
 	// Terminal server port (0 = terminal server not running)
 	terminalPort int
@@ -89,6 +90,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		pushInbox:       push.NewPushInbox(50),
 		ptyManager:      pty.NewManager(),
 		tokenTracker:    tracking.NewTokenTracker(),
+		intentStore:     newIntentStore(),
 	}
 
 	// Initialize push router with capability sync callback
