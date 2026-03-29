@@ -305,15 +305,44 @@ export async function captureVisibleTabSafe(tabId, windowId, options) {
     if (!wasActive) {
         await chrome.tabs.update(tabId, { active: true });
     }
+    // Hide Gasoline UI overlay so it doesn't appear in screenshots.
+    await setGasolineOverlayVisibility(tabId, false);
     try {
         return await chrome.tabs.captureVisibleTab(windowId, options);
     }
     finally {
+        await setGasolineOverlayVisibility(tabId, true);
         if (!wasActive && activeTab?.id) {
             await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
                 /* original tab may have been closed during capture */
             });
         }
+    }
+}
+/**
+ * Toggles visibility of all Gasoline UI overlays (hover launcher, draw mode)
+ * in the target tab. Uses executeScript for speed — no message round-trip needed.
+ */
+export async function setGasolineOverlayVisibility(tabId, visible) {
+    try {
+        await chrome.scripting.executeScript({
+            target: { tabId },
+            func: (show) => {
+                const ids = [
+                    'gasoline-tracked-hover-launcher',
+                    'gasoline-draw-toolbar'
+                ];
+                for (const id of ids) {
+                    const el = document.getElementById(id);
+                    if (el)
+                        el.style.display = show ? '' : 'none';
+                }
+            },
+            args: [visible]
+        });
+    }
+    catch {
+        // Tab may not have content script injected — safe to ignore
     }
 }
 // =============================================================================
