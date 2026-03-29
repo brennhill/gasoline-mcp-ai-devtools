@@ -3,13 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>STRUM Devtools</title>
+    <title>KaBOOM! Devtools</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
+    <!-- One-time rebrand notification -->
+    <div id="kaboom-rebrand" style="
+      display: none;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid #e94560;
+      border-radius: 10px;
+      text-align: center;
+      position: relative;
+    ">
+      <button id="kaboom-rebrand-close" style="
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 2px 6px;
+        line-height: 1;
+      ">&times;</button>
+      <div style="font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px;">
+        <span style="color: #e94560;">Ka</span><span style="color: #fff;">BOOM!</span>
+      </div>
+      <div style="color: #aaa; font-size: 12px; line-height: 1.5; margin-bottom: 10px;">
+        Gasoline is now <strong style="color: #fff;">KaBOOM!</strong><br>
+        Same powerful devtools. Even better bug-finding.
+      </div>
+      <div style="
+        display: inline-block;
+        padding: 4px 12px;
+        background: rgba(233, 69, 96, 0.15);
+        border: 1px solid rgba(233, 69, 96, 0.3);
+        border-radius: 20px;
+        color: #e94560;
+        font-size: 11px;
+        font-weight: 600;
+      ">New: one-click QA &bull; smart menu discovery &bull; auto-fix</div>
+    </div>
+
     <h1>
       <img class="logo" src="icons/icon.svg" alt="" />
-      STRUM Devtools
+      KaBOOM! Devtools
     </h1>
 
     <div class="status-row">
@@ -405,5 +447,26 @@
     </div>
 
     <script src="popup.bundled.js"></script>
+    <script>
+      // One-time rebrand notification — show once, then never again.
+      // Self-contained so it can be cleanly removed after the transition period.
+      (function() {
+        const KEY = 'kaboom_rebrand_seen';
+        const banner = document.getElementById('kaboom-rebrand');
+        const closeBtn = document.getElementById('kaboom-rebrand-close');
+        if (!banner || !closeBtn) return;
+
+        chrome.storage.local.get(KEY, function(result) {
+          if (!result[KEY]) {
+            banner.style.display = 'block';
+          }
+        });
+
+        closeBtn.addEventListener('click', function() {
+          banner.style.display = 'none';
+          chrome.storage.local.set({ [KEY]: true });
+        });
+      })();
+    </script>
   </body>
 </html>
