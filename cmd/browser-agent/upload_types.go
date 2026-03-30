@@ -1,34 +1,34 @@
-// Purpose: Re-exports upload request/response wire types (FileReadRequest, FileDialogInjectRequest, etc.) from internal/upload.
-// Why: Keeps wire type definitions in internal/upload while making them available as short aliases in cmd.
+// Purpose: Re-exports upload request/response wire types from the uploadhandler sub-package.
+// Why: Keeps wire type definitions centralized while making them available as short aliases in cmd.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 
 // ============================================
 // Type Aliases
 // ============================================
 
-type FileReadRequest = upload.FileReadRequest
-type FileReadResponse = upload.FileReadResponse
-type FileDialogInjectRequest = upload.FileDialogInjectRequest
-type FormSubmitRequest = upload.FormSubmitRequest
-type OSAutomationInjectRequest = upload.OSAutomationInjectRequest
-type UploadStageResponse = upload.StageResponse
-type ProgressTier = upload.ProgressTier
+type FileReadRequest = uploadhandler.FileReadRequest
+type FileReadResponse = uploadhandler.FileReadResponse
+type FileDialogInjectRequest = uploadhandler.FileDialogInjectRequest
+type FormSubmitRequest = uploadhandler.FormSubmitRequest
+type OSAutomationInjectRequest = uploadhandler.OSAutomationInjectRequest
+type UploadStageResponse = uploadhandler.StageResponse
+type ProgressTier = uploadhandler.ProgressTier
 
 // ============================================
 // Constants
 // ============================================
 
 const (
-	ProgressTierSimple   = upload.ProgressTierSimple
-	ProgressTierPeriodic = upload.ProgressTierPeriodic
-	ProgressTierDetailed = upload.ProgressTierDetailed
+	ProgressTierSimple   = uploadhandler.ProgressTierSimple
+	ProgressTierPeriodic = uploadhandler.ProgressTierPeriodic
+	ProgressTierDetailed = uploadhandler.ProgressTierDetailed
 
-	maxBase64FileSize          = upload.MaxBase64FileSize
-	defaultEscalationTimeoutMs = upload.DefaultEscalationTimeoutMs
+	maxBase64FileSize          = uploadhandler.MaxBase64FileSize
+	defaultEscalationTimeoutMs = uploadhandler.DefaultEscalationTimeoutMs
 )
 
 // ============================================
@@ -36,6 +36,6 @@ const (
 // ============================================
 
 var (
-	getProgressTier = upload.GetProgressTier
-	detectMimeType  = upload.DetectMimeType
+	getProgressTier = uploadhandler.GetProgressTier
+	detectMimeType  = uploadhandler.DetectMimeType
 )

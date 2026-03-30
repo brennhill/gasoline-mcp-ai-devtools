@@ -22,14 +22,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 )
 
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).
 func allowTestSSRF(t *testing.T) {
 	t.Helper()
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 }
 
 // testUploadSecurity returns a permissive UploadSecurity config for tests.
@@ -37,7 +37,7 @@ func allowTestSSRF(t *testing.T) {
 // The denylist is still active (it's hardcoded).
 func testUploadSecurity(t *testing.T) *UploadSecurity {
 	t.Helper()
-	return upload.NewSecurity("/", nil)
+	return uploadhandler.NewSecurity("/", nil)
 }
 
 // testUploadSecurityWithDir returns an UploadSecurity scoped to a specific directory.
@@ -48,13 +48,13 @@ func testUploadSecurityWithDir(t *testing.T, dir string) *UploadSecurity {
 	if err != nil {
 		t.Fatalf("testUploadSecurityWithDir: EvalSymlinks(%s) failed: %v", dir, err)
 	}
-	return upload.NewSecurity(resolved, nil)
+	return uploadhandler.NewSecurity(resolved, nil)
 }
 
 // testUploadSecurityNoDir returns an UploadSecurity with no upload-dir (Stage 1 only).
 func testUploadSecurityNoDir(t *testing.T) *UploadSecurity {
 	t.Helper()
-	return upload.NewSecurity("", nil)
+	return uploadhandler.NewSecurity("", nil)
 }
 
 // ============================================

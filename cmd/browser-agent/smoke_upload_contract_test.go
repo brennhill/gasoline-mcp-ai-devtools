@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 )
 
 func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
@@ -71,7 +71,7 @@ func TestOSAutomation_RejectsSmokeTmpPathOutsideDefaultUploadDir(t *testing.T) {
 		t.Fatalf("failed to write smoke file: %v", err)
 	}
 
-	sec, secErr := upload.ValidateUploadDir(allowedDir, nil)
+	sec, secErr := uploadhandler.ValidateUploadDir(allowedDir, nil)
 	if secErr != nil {
 		t.Fatalf("ValidateUploadDir() error = %v", secErr)
 	}

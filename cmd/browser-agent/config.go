@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 )
 
 // multiFlag implements flag.Value for repeatable string flags (e.g., --upload-deny-pattern).
@@ -98,7 +98,7 @@ func parseAndValidateFlags() *serverConfig {
 	f := registerFlags()
 
 	osUploadAutomationFlag = *f.enableOsUploadAutomation
-	upload.SetSSRFAllowedHosts(f.ssrfAllowedHosts)
+	uploadhandler.SetSSRFAllowedHosts(f.ssrfAllowedHosts)
 	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)

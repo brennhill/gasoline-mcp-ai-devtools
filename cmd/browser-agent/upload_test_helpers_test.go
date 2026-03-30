@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
 )
 
 type uploadTestEnv struct {
@@ -20,8 +20,8 @@ type uploadTestEnv struct {
 // newUploadTestEnv creates a test environment with upload automation enabled.
 func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	t.Helper()
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "test-upload.jsonl"), 100)
 	if err != nil {
@@ -32,7 +32,7 @@ func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 
-	handler.uploadSecurity = upload.NewSecurity("/", nil)
+	handler.uploadSecurity = uploadhandler.NewSecurity("/", nil)
 
 	return &uploadTestEnv{
 		interactTestEnv: &interactTestEnv{handler: handler, server: server, capture: cap},

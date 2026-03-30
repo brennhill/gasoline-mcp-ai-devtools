@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 )
 
 // ============================================
@@ -114,8 +114,8 @@ func TestUploadHandler_FileRead_Base64Roundtrip(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 	testFile := createTestFile(t, "upload.txt", "file content for form submit")
 
 	var (
@@ -216,11 +216,11 @@ func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
 func newUploadHTTPServer(t *testing.T, osAutomationEnabled bool) (*httptest.Server, *Server) {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 	// Set permissive upload security for HTTP handler tests
 	prev := uploadSecurityConfig
-	uploadSecurityConfig = upload.NewSecurity("/", nil)
+	uploadSecurityConfig = uploadhandler.NewSecurity("/", nil)
 	t.Cleanup(func() { uploadSecurityConfig = prev })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "upload-http.jsonl"), 100)

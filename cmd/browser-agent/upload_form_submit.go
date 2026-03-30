@@ -1,18 +1,17 @@
-// Purpose: Re-exports form submission handlers and file validation functions from internal/upload for interact upload stages.
-// Why: Keeps form submit logic in internal/upload while maintaining backward-compatible function references in cmd.
+// Purpose: Re-exports form submission handlers from the uploadhandler sub-package.
+// Why: Keeps form submit logic centralized while maintaining backward-compatible function references in cmd.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 
 // Function aliases for form submission handlers.
 var (
-	handleFormSubmitInternal    = upload.HandleFormSubmit
-	handleFormSubmitInternalCtx = upload.HandleFormSubmitCtx
-	validateFormSubmitFields    = upload.ValidateFormSubmitFields
-	openAndValidateFile         = upload.OpenAndValidateFile
-	streamMultipartForm         = upload.StreamMultipartForm
-	executeFormSubmit           = upload.ExecuteFormSubmit
+	handleFormSubmitInternal    = uploadhandler.HandleFormSubmit
+	handleFormSubmitInternalCtx = uploadhandler.HandleFormSubmitCtx
+	validateFormSubmitFields    = uploadhandler.ValidateFormSubmitFields
+	openAndValidateFile         = uploadhandler.OpenAndValidateFile
+	streamMultipartForm         = uploadhandler.StreamMultipartForm
+	executeFormSubmit           = uploadhandler.ExecuteFormSubmit
 )
-

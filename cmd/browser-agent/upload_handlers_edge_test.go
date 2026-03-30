@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/uploadhandler"
 )
 
 // ============================================
@@ -364,8 +364,8 @@ func TestUploadHandler_FileRead_RelativePathRejected(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 	}))
@@ -389,8 +389,8 @@ func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(403)
 	}))
@@ -414,8 +414,8 @@ func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP422Response(t *testing.T) {
-	upload.SetSkipSSRFCheck(true)
-	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
+	uploadhandler.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { uploadhandler.SetSkipSSRFCheck(false) })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(422)
 	}))
