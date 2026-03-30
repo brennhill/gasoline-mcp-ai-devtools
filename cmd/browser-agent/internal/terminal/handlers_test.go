@@ -1,10 +1,13 @@
-// terminal_handlers_test.go — Tests for terminal HTTP handlers: auth, session lifecycle, static serving.
+// handlers_test.go -- Tests for terminal HTTP handlers: auth, session lifecycle, static serving.
 
-package main
+package terminal
 
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,14 +19,105 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 )
 
-func TestNewTerminalFrameWriter_SerializesConcurrentWrites(t *testing.T) {
+// testDeps returns a Deps instance for testing with real WS codec functions.
+func testDeps() Deps {
+	return Deps{
+		JSONResponse:   testJSONResponse,
+		CORSMiddleware: func(next http.HandlerFunc) http.HandlerFunc { return next },
+		Stderrf:        func(format string, args ...any) {},
+		MaxPostBody:    10 * 1024 * 1024,
+		WSReadFrame:    testWSReadFrame,
+		WSWriteFrame:   testWSWriteFrame,
+		WSAcceptKey:    testWSAcceptKey,
+	}
+}
+
+func testJSONResponse(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(data)
+}
+
+func testWSReadFrame(r io.Reader) (fin bool, opcode byte, payload []byte, err error) {
+	header := make([]byte, 2)
+	if _, err = io.ReadFull(r, header); err != nil {
+		return
+	}
+	fin = header[0]&0x80 != 0
+	opcode = header[0] & 0x0F
+	masked := header[1]&0x80 != 0
+	length := uint64(header[1] & 0x7F)
+
+	switch length {
+	case 126:
+		ext := make([]byte, 2)
+		if _, err = io.ReadFull(r, ext); err != nil {
+			return
+		}
+		length = uint64(binary.BigEndian.Uint16(ext))
+	case 127:
+		ext := make([]byte, 8)
+		if _, err = io.ReadFull(r, ext); err != nil {
+			return
+		}
+		length = binary.BigEndian.Uint64(ext)
+	}
+
+	var mask [4]byte
+	if masked {
+		if _, err = io.ReadFull(r, mask[:]); err != nil {
+			return
+		}
+	}
+
+	payload = make([]byte, length)
+	if _, err = io.ReadFull(r, payload); err != nil {
+		return
+	}
+	if masked {
+		for i := range payload {
+			payload[i] ^= mask[i%4]
+		}
+	}
+	return
+}
+
+func testWSWriteFrame(w *bufio.ReadWriter, opcode byte, payload []byte) error {
+	length := uint64(len(payload))
+	header := []byte{0x80 | opcode}
+	switch {
+	case length < 126:
+		header = append(header, byte(length))
+	case length < 65536:
+		header = append(header, 126,
+			byte(length>>8), byte(length))
+	default:
+		header = append(header, 127,
+			byte(length>>56), byte(length>>48), byte(length>>40), byte(length>>32),
+			byte(length>>24), byte(length>>16), byte(length>>8), byte(length))
+	}
+	if _, err := w.Write(append(header, payload...)); err != nil {
+		return err
+	}
+	return w.Flush()
+}
+
+func testWSAcceptKey(key string) string {
+	const guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+	h := sha1.New()
+	h.Write([]byte(key + guid))
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+func TestNewFrameWriter_SerializesConcurrentWrites(t *testing.T) {
 	t.Parallel()
 
 	const frameCount = 64
 
 	var wire bytes.Buffer
 	rw := bufio.NewReadWriter(bufio.NewReader(&wire), bufio.NewWriter(&wire))
-	writeFrame := newTerminalFrameWriter(rw)
+	deps := testDeps()
+	writeFrame := NewFrameWriter(rw, deps)
 
 	var wg sync.WaitGroup
 	for i := 0; i < frameCount; i++ {
@@ -41,7 +135,7 @@ func TestNewTerminalFrameWriter_SerializesConcurrentWrites(t *testing.T) {
 	seen := make(map[string]bool, frameCount)
 	reader := bytes.NewReader(wire.Bytes())
 	for {
-		_, _, payload, err := wsReadFrame(reader)
+		_, _, payload, err := testWSReadFrame(reader)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -63,9 +157,10 @@ func TestNewTerminalFrameWriter_SerializesConcurrentWrites(t *testing.T) {
 }
 
 func TestHandleTerminalPage_ServesHTML(t *testing.T) {
+	deps := testDeps()
 	req := httptest.NewRequest("GET", "/terminal", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalPage(rec, req)
+	HandleTerminalPage(rec, req, deps)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -81,9 +176,10 @@ func TestHandleTerminalPage_ServesHTML(t *testing.T) {
 }
 
 func TestHandleTerminalPage_RejectsNonGET(t *testing.T) {
+	deps := testDeps()
 	req := httptest.NewRequest("POST", "/terminal", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalPage(rec, req)
+	HandleTerminalPage(rec, req, deps)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", rec.Code)
@@ -93,6 +189,7 @@ func TestHandleTerminalPage_RejectsNonGET(t *testing.T) {
 func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	body, _ := json.Marshal(map[string]any{
 		"cmd":  "/bin/sh",
@@ -102,8 +199,8 @@ func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	relays := newTerminalRelayMap()
-	handleTerminalStart(rec, req, nil, mgr, nil, relays)
+	relays := NewMap()
+	HandleTerminalStart(rec, req, deps, nil, mgr, nil, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -127,18 +224,19 @@ func TestHandleTerminalStart_CreatesSession(t *testing.T) {
 func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	body, _ := json.Marshal(map[string]any{
 		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
 
-	relays := newTerminalRelayMap()
+	relays := NewMap()
 
 	// First start.
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil, relays)
+	HandleTerminalStart(rec, req, deps, nil, mgr, nil, relays)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("first start: expected 200, got %d", rec.Code)
 	}
@@ -146,7 +244,7 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 	// Second start with same ID.
 	req = httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	rec = httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil, relays)
+	HandleTerminalStart(rec, req, deps, nil, mgr, nil, relays)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("duplicate start: expected 409, got %d", rec.Code)
 	}
@@ -155,14 +253,15 @@ func TestHandleTerminalStart_DuplicateReturnsConflict(t *testing.T) {
 func TestHandleTerminalStart_DefaultsToShell(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	body, _ := json.Marshal(map[string]any{})
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	relays := newTerminalRelayMap()
-	handleTerminalStart(rec, req, nil, mgr, nil, relays)
+	relays := NewMap()
+	HandleTerminalStart(rec, req, deps, nil, mgr, nil, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -172,22 +271,23 @@ func TestHandleTerminalStart_DefaultsToShell(t *testing.T) {
 func TestHandleTerminalStop_DestroysSession(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	// Start a session first.
 	startBody, _ := json.Marshal(map[string]any{
 		"cmd":  "/bin/sh",
 		"args": []string{"-c", "exec cat"},
 	})
-	relays := newTerminalRelayMap()
+	relays := NewMap()
 	req := httptest.NewRequest("POST", "/terminal/start", bytes.NewReader(startBody))
 	rec := httptest.NewRecorder()
-	handleTerminalStart(rec, req, nil, mgr, nil, relays)
+	HandleTerminalStart(rec, req, deps, nil, mgr, nil, relays)
 
 	// Stop it.
 	stopBody, _ := json.Marshal(map[string]any{"id": "default"})
 	req = httptest.NewRequest("POST", "/terminal/stop", bytes.NewReader(stopBody))
 	rec = httptest.NewRecorder()
-	handleTerminalStop(rec, req, mgr, relays)
+	HandleTerminalStop(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -201,12 +301,13 @@ func TestHandleTerminalStop_DestroysSession(t *testing.T) {
 
 func TestHandleTerminalStop_NotFound(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	body, _ := json.Marshal(map[string]any{"id": "nonexistent"})
 	req := httptest.NewRequest("POST", "/terminal/stop", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	relays := newTerminalRelayMap()
-	handleTerminalStop(rec, req, mgr, relays)
+	relays := NewMap()
+	HandleTerminalStop(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)
@@ -216,6 +317,7 @@ func TestHandleTerminalStop_NotFound(t *testing.T) {
 func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	// Start a session.
 	_, err := mgr.Start(pty.StartConfig{
@@ -229,8 +331,8 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/config", nil)
 	rec := httptest.NewRecorder()
-	relays := newTerminalRelayMap()
-	handleTerminalConfig(rec, req, mgr, relays)
+	relays := NewMap()
+	HandleTerminalConfig(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -271,6 +373,7 @@ func TestHandleTerminalConfig_ListsSessions(t *testing.T) {
 func TestHandleTerminalValidate_ValidToken(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	result, err := mgr.Start(pty.StartConfig{
 		Cmd:  "/bin/sh",
@@ -282,7 +385,7 @@ func TestHandleTerminalValidate_ValidToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/validate?token="+result.Token, nil)
 	rec := httptest.NewRecorder()
-	handleTerminalValidate(rec, req, mgr)
+	HandleTerminalValidate(rec, req, deps, mgr)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -298,10 +401,11 @@ func TestHandleTerminalValidate_ValidToken(t *testing.T) {
 
 func TestHandleTerminalValidate_InvalidToken(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	req := httptest.NewRequest("GET", "/terminal/validate?token=bogus", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalValidate(rec, req, mgr)
+	HandleTerminalValidate(rec, req, deps, mgr)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -317,10 +421,11 @@ func TestHandleTerminalValidate_InvalidToken(t *testing.T) {
 
 func TestHandleTerminalValidate_EmptyToken(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	req := httptest.NewRequest("GET", "/terminal/validate", nil)
 	rec := httptest.NewRecorder()
-	handleTerminalValidate(rec, req, mgr)
+	HandleTerminalValidate(rec, req, deps, mgr)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -336,6 +441,7 @@ func TestHandleTerminalValidate_EmptyToken(t *testing.T) {
 
 func TestHandleTerminalValidate_StaleToken(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	// Start and immediately stop to create a stale token.
 	result, err := mgr.Start(pty.StartConfig{
@@ -352,7 +458,7 @@ func TestHandleTerminalValidate_StaleToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/validate?token="+token, nil)
 	rec := httptest.NewRecorder()
-	handleTerminalValidate(rec, req, mgr)
+	HandleTerminalValidate(rec, req, deps, mgr)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
@@ -368,11 +474,12 @@ func TestHandleTerminalValidate_StaleToken(t *testing.T) {
 
 func TestHandleTerminalWS_MissingToken(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	req := httptest.NewRequest("GET", "/terminal/ws", nil)
 	rec := httptest.NewRecorder()
-	relays := newTerminalRelayMap()
-	handleTerminalWS(rec, req, mgr, relays)
+	relays := NewMap()
+	HandleTerminalWS(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -381,11 +488,12 @@ func TestHandleTerminalWS_MissingToken(t *testing.T) {
 
 func TestHandleTerminalWS_InvalidToken(t *testing.T) {
 	mgr := pty.NewManager()
+	deps := testDeps()
 
 	req := httptest.NewRequest("GET", "/terminal/ws?token=bogus", nil)
 	rec := httptest.NewRecorder()
-	relays := newTerminalRelayMap()
-	handleTerminalWS(rec, req, mgr, relays)
+	relays := NewMap()
+	HandleTerminalWS(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -395,6 +503,7 @@ func TestHandleTerminalWS_InvalidToken(t *testing.T) {
 func TestHandleTerminalWS_NoUpgradeHeader(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	// Start a session to get a valid token.
 	result, err := mgr.Start(pty.StartConfig{
@@ -407,8 +516,8 @@ func TestHandleTerminalWS_NoUpgradeHeader(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/terminal/ws?token="+result.Token, nil)
 	rec := httptest.NewRecorder()
-	relays := newTerminalRelayMap()
-	handleTerminalWS(rec, req, mgr, relays)
+	relays := NewMap()
+	HandleTerminalWS(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rec.Code)
@@ -418,6 +527,7 @@ func TestHandleTerminalWS_NoUpgradeHeader(t *testing.T) {
 func TestHandleTerminalUpload_Success(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	_, err := mgr.Start(pty.StartConfig{
 		ID:   "upload-test",
@@ -429,14 +539,14 @@ func TestHandleTerminalUpload_Success(t *testing.T) {
 	}
 
 	sess, _ := mgr.Get("upload-test")
-	relays := newTerminalRelayMap()
-	relays.getOrCreate("upload-test", sess, t.TempDir())
+	relays := NewMap()
+	relays.GetOrCreate("upload-test", sess, t.TempDir())
 
 	imgData := bytes.Repeat([]byte{0xFF, 0xD8, 0xFF}, 10)
 	req := httptest.NewRequest("POST", "/terminal/upload?session_id=upload-test&filename=test.png", bytes.NewReader(imgData))
 	req.Header.Set("Content-Type", "image/png")
 	rec := httptest.NewRecorder()
-	handleTerminalUpload(rec, req, mgr, relays)
+	HandleTerminalUpload(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
@@ -454,6 +564,7 @@ func TestHandleTerminalUpload_Success(t *testing.T) {
 func TestHandleTerminalUpload_InvalidContentType(t *testing.T) {
 	mgr := pty.NewManager()
 	defer mgr.StopAll()
+	deps := testDeps()
 
 	_, err := mgr.Start(pty.StartConfig{
 		ID:   "upload-bad",
@@ -465,13 +576,13 @@ func TestHandleTerminalUpload_InvalidContentType(t *testing.T) {
 	}
 
 	sess, _ := mgr.Get("upload-bad")
-	relays := newTerminalRelayMap()
-	relays.getOrCreate("upload-bad", sess, t.TempDir())
+	relays := NewMap()
+	relays.GetOrCreate("upload-bad", sess, t.TempDir())
 
 	req := httptest.NewRequest("POST", "/terminal/upload?session_id=upload-bad&filename=test.txt", bytes.NewReader([]byte("not an image")))
 	req.Header.Set("Content-Type", "text/plain")
 	rec := httptest.NewRecorder()
-	handleTerminalUpload(rec, req, mgr, relays)
+	HandleTerminalUpload(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
@@ -480,12 +591,13 @@ func TestHandleTerminalUpload_InvalidContentType(t *testing.T) {
 
 func TestHandleTerminalUpload_SessionNotFound(t *testing.T) {
 	mgr := pty.NewManager()
-	relays := newTerminalRelayMap()
+	relays := NewMap()
+	deps := testDeps()
 
 	req := httptest.NewRequest("POST", "/terminal/upload?session_id=nonexistent", bytes.NewReader([]byte("data")))
 	req.Header.Set("Content-Type", "image/png")
 	rec := httptest.NewRecorder()
-	handleTerminalUpload(rec, req, mgr, relays)
+	HandleTerminalUpload(rec, req, deps, mgr, relays)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)

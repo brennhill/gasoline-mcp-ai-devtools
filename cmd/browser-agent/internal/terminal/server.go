@@ -1,10 +1,10 @@
-// terminal_server.go — Dedicated HTTP server for the in-browser terminal.
+// server.go -- Dedicated HTTP server for the in-browser terminal.
 // Why: Isolates terminal WebSocket, HTML page, static assets, and session lifecycle
 // onto a separate port so shared timeouts and middleware on the main server can't interfere
 // with long-lived terminal connections.
 // Docs: docs/features/feature/terminal/index.md
 
-package main
+package terminal
 
 import (
 	"fmt"
@@ -17,22 +17,23 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
-// terminalPortOffset is the offset from the main daemon port for the terminal server.
-const terminalPortOffset = 1
+// PortOffset is the offset from the main daemon port for the terminal server.
+const PortOffset = 1
 
-// setupTerminalMux creates a new ServeMux with only terminal routes.
+// SetupMux creates a new ServeMux with only terminal routes.
 // No AuthMiddleware — terminal uses its own session token validation.
-func setupTerminalMux(server *Server, mgr *pty.Manager, cap *capture.Store) *http.ServeMux {
+// Returns the mux and the relay map for use in shutdown.
+func SetupMux(deps Deps, server ServerDeps, intentDeps IntentDeps, mgr *pty.Manager, cap *capture.Store) (*http.ServeMux, *Map) {
 	mux := http.NewServeMux()
-	registerTerminalRoutes(mux, server, mgr, cap)
-	registerIntentRoutes(mux, server)
-	return mux
+	relays := RegisterRoutes(mux, deps, server, mgr, cap)
+	RegisterIntentRoutes(mux, deps, intentDeps)
+	return mux, relays
 }
 
-// startTerminalServer launches the terminal HTTP server on the given port.
+// StartServer launches the terminal HTTP server on the given port.
 // WriteTimeout and IdleTimeout are zero because WebSocket connections are long-lived.
 // Returns the server, a done channel (closes if listener dies), and any bind error.
-func startTerminalServer(server *Server, port int, mux *http.ServeMux) (*http.Server, <-chan struct{}, error) {
+func StartServer(deps Deps, port int, mux *http.ServeMux) (*http.Server, <-chan struct{}, error) {
 	ready := make(chan error, 1)
 	done := make(chan struct{})
 	srv := &http.Server{
@@ -52,7 +53,7 @@ func startTerminalServer(server *Server, port int, mux *http.ServeMux) (*http.Se
 		ready <- nil
 		// #nosec G114 -- localhost-only terminal server
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			stderrf("[Kaboom] terminal server error on port %d: %v\n", port, err)
+			deps.Stderrf("[Kaboom] terminal server error on port %d: %v\n", port, err)
 		}
 	})
 

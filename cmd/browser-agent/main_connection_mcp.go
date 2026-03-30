@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/terminal"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
@@ -49,9 +50,10 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 
 	// Start dedicated terminal server on port+1.
 	// Non-fatal: if the terminal port is busy, log a warning and continue without terminal.
-	termPort := port + terminalPortOffset
-	termMux := setupTerminalMux(server, server.ptyManager, cap)
-	termSrv, termDone, termErr := startTerminalServer(server, termPort, termMux)
+	termPort := port + terminal.PortOffset
+	termMux, termRelays := setupTerminalMux(server, server.ptyManager, cap)
+	server.ptyRelays = termRelays
+	termSrv, termDone, termErr := startTerminalServer(termPort, termMux)
 	if termErr != nil {
 		stderrf("[Kaboom] WARNING: terminal server failed to start on port %d: %v\n", termPort, termErr)
 		stderrf("[Kaboom] Terminal features are unavailable. Free port %d or use a different base port.\n", termPort)

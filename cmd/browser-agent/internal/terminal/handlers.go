@@ -1,9 +1,9 @@
-// terminal_handlers.go — HTTP handlers for the in-browser terminal.
+// handlers.go -- HTTP handlers for the in-browser terminal.
 // Why: Isolates terminal WebSocket upgrade, session lifecycle, and static asset serving
 // from the main route wiring for maintainability and test focus.
 // Docs: docs/features/feature/terminal/index.md
 
-package main
+package terminal
 
 import (
 	"bufio"
@@ -19,90 +19,92 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 )
 
-// terminalPingInterval is how often the server sends WebSocket ping frames.
+// PingInterval is how often the server sends WebSocket ping frames.
 // Browser WebSocket API auto-replies with pong — no client code needed.
-const terminalPingInterval = 30 * time.Second
+const PingInterval = 30 * time.Second
 
-// terminalPongTimeout is the max time allowed without receiving any frame (data or pong).
+// PongTimeout is the max time allowed without receiving any frame (data or pong).
 // If exceeded, the connection is considered dead and closed. The PTY session survives
 // so the browser can reconnect with scrollback replay.
-const terminalPongTimeout = 60 * time.Second
+const PongTimeout = 60 * time.Second
 
-// terminalReadBufSize is the buffer size for PTY reads relayed to the browser.
-const terminalReadBufSize = 4096
+// ReadBufSize is the buffer size for PTY reads relayed to the browser.
+const ReadBufSize = 4096
 
-// terminalInitTimeout is the max time to wait for a shell prompt before
+// InitTimeout is the max time to wait for a shell prompt before
 // writing init_command. Replaces the old hardcoded 500ms sleep with an
 // adaptive readiness check that looks for prompt characters.
-const terminalInitTimeout = 2 * time.Second
+const InitTimeout = 2 * time.Second
 
-// terminalPromptChars contains characters that indicate a shell prompt is ready.
-const terminalPromptChars = "$#>%"
+// PromptChars contains characters that indicate a shell prompt is ready.
+const PromptChars = "$#>%"
 
-// registerTerminalRoutes adds terminal-related routes to the mux.
+// IdleTimeout is the duration of silence after PTY output before
+// the idle callback fires. Used to detect when an agent is waiting for input.
+const IdleTimeout = 30 * time.Second
+
+// RegisterRoutes adds terminal-related routes to the mux.
 // NOT MCP — These are daemon-served endpoints for the in-browser terminal.
-func registerTerminalRoutes(mux *http.ServeMux, server *Server, mgr *pty.Manager, cap *capture.Store) {
-	relays := newTerminalRelayMap()
-	if server != nil {
-		server.ptyRelays = relays
-	}
+func RegisterRoutes(mux *http.ServeMux, deps Deps, server ServerDeps, mgr *pty.Manager, cap *capture.Store) *Map {
+	relays := NewMap()
 
 	// Serve terminal HTML page.
-	mux.HandleFunc("/terminal", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalPage(w, r)
+	mux.HandleFunc("/terminal", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalPage(w, r, deps)
 	}))
 
 	// Serve xterm.js and other static assets.
-	staticFS, err := fs.Sub(terminalAssetsFS, "terminal_assets")
+	staticFS, err := fs.Sub(AssetsFS, "terminal_assets")
 	if err != nil {
-		stderrf("[Kaboom] failed to create terminal static FS: %v\n", err)
-		return
+		deps.Stderrf("[Kaboom] failed to create terminal static FS: %v\n", err)
+		return relays
 	}
-	mux.Handle("/terminal/static/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/terminal/static/", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/terminal/static")
 		http.FileServer(http.FS(staticFS)).ServeHTTP(w, r)
 	}))
 
 	// WebSocket upgrade for PTY I/O.
-	mux.HandleFunc("/terminal/ws", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalWS(w, r, mgr, relays)
+	mux.HandleFunc("/terminal/ws", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalWS(w, r, deps, mgr, relays)
 	}))
 
 	// Session lifecycle.
-	mux.HandleFunc("/terminal/start", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalStart(w, r, server, mgr, cap, relays)
+	mux.HandleFunc("/terminal/start", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalStart(w, r, deps, server, mgr, cap, relays)
 	}))
-	mux.HandleFunc("/terminal/stop", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalStop(w, r, mgr, relays)
+	mux.HandleFunc("/terminal/stop", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalStop(w, r, deps, mgr, relays)
 	}))
 
 	// Session validation — checks a specific token against a live session.
-	mux.HandleFunc("/terminal/validate", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalValidate(w, r, mgr)
+	mux.HandleFunc("/terminal/validate", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalValidate(w, r, deps, mgr)
 	}))
 
 	// Session configuration.
-	mux.HandleFunc("/terminal/config", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalConfig(w, r, mgr, relays)
+	mux.HandleFunc("/terminal/config", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalConfig(w, r, deps, mgr, relays)
 	}))
 
 	// Image upload for terminal sessions.
-	mux.HandleFunc("/terminal/upload", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleTerminalUpload(w, r, mgr, relays)
+	mux.HandleFunc("/terminal/upload", deps.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		HandleTerminalUpload(w, r, deps, mgr, relays)
 	}))
 
 	// NOTE: /config/active-codebase is registered in registerCoreRoutes (not terminal-specific).
+	return relays
 }
 
-// handleTerminalPage serves the terminal HTML page.
-func handleTerminalPage(w http.ResponseWriter, r *http.Request) {
+// HandleTerminalPage serves the terminal HTML page.
+func HandleTerminalPage(w http.ResponseWriter, r *http.Request, deps Deps) {
 	if r.Method != "GET" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	data, err := terminalAssetsFS.ReadFile("terminal_assets/terminal.html")
+	data, err := AssetsFS.ReadFile("terminal_assets/terminal.html")
 	if err != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "failed to read terminal page"})
+		deps.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "failed to read terminal page"})
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -110,43 +112,43 @@ func handleTerminalPage(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-// handleTerminalWS upgrades a GET /terminal/ws request to a WebSocket connection
+// HandleTerminalWS upgrades a GET /terminal/ws request to a WebSocket connection
 // that relays raw PTY I/O to/from the browser's xterm.js terminal emulator.
-func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, relays *terminalRelayMap) {
+func HandleTerminalWS(w http.ResponseWriter, r *http.Request, deps Deps, mgr *pty.Manager, relays *Map) {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "missing token"})
+		deps.JSONResponse(w, http.StatusUnauthorized, map[string]string{"error": "missing token"})
 		return
 	}
 
 	sess, err := mgr.GetByToken(token)
 	if err != nil {
-		jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+		deps.JSONResponse(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
 		return
 	}
 
 	key := r.Header.Get("Sec-WebSocket-Key")
 	if key == "" || strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "websocket upgrade required"})
+		deps.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "websocket upgrade required"})
 		return
 	}
 
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "server does not support hijacking"})
+		deps.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "server does not support hijacking"})
 		return
 	}
 
 	conn, bufrw, err := hj.Hijack()
 	if err != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		deps.JSONResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	// NOTE: After a successful handshake, conn.Close() is handled by closeConn
-	// inside terminalWSLoop via sync.Once. We only close here on handshake failure.
+	// inside wsLoop via sync.Once. We only close here on handshake failure.
 
 	// Send 101 handshake.
-	accept := wsAcceptKey(key)
+	accept := deps.WSAcceptKey(key)
 	handshake := "HTTP/1.1 101 Switching Protocols\r\n" +
 		"Upgrade: websocket\r\n" +
 		"Connection: Upgrade\r\n" +
@@ -161,7 +163,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 	}
 
 	// Get or create relay for multi-subscriber fan-out.
-	relay := relays.getOrCreate(sess.ID, sess, "")
+	relay := relays.GetOrCreate(sess.ID, sess, "")
 
 	// Capture scrollback BEFORE subscribing to the fanout to avoid duplicate
 	// data. The readLoop appends to scrollback then broadcasts, so any data
@@ -169,17 +171,17 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 	// channel, not replayed from scrollback.
 	history := sess.Scrollback()
 
-	subID := nextWSSubID()
+	subID := NextWSSubID()
 	sub, subErr := relay.fanout.Subscribe(subID)
 
 	// Replay scrollback so the reconnecting (or first-connecting) terminal sees prior output.
 	if len(history) > 0 {
-		for off := 0; off < len(history); off += terminalReadBufSize {
-			end := off + terminalReadBufSize
+		for off := 0; off < len(history); off += ReadBufSize {
+			end := off + ReadBufSize
 			if end > len(history) {
 				end = len(history)
 			}
-			if err := wsWriteFrame(bufrw, 0x2, history[off:end]); err != nil {
+			if err := deps.WSWriteFrame(bufrw, 0x2, history[off:end]); err != nil {
 				if subErr == nil {
 					relay.fanout.Unsubscribe(subID)
 				}
@@ -189,7 +191,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 		}
 	}
 	replayEnd, _ := json.Marshal(map[string]string{"type": "replay_end"})
-	if err := wsWriteFrame(bufrw, 0x1, replayEnd); err != nil {
+	if err := deps.WSWriteFrame(bufrw, 0x1, replayEnd); err != nil {
 		if subErr == nil {
 			relay.fanout.Unsubscribe(subID)
 		}
@@ -202,28 +204,28 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, 
 	// the full output history plus the exited message and stops reconnecting.
 	if subErr != nil {
 		exitMsg, _ := json.Marshal(map[string]any{"type": "exited", "code": relay.exitCode})
-		_ = wsWriteFrame(bufrw, 0x1, exitMsg)
-		_ = wsWriteFrame(bufrw, 0x8, nil)
+		_ = deps.WSWriteFrame(bufrw, 0x1, exitMsg)
+		_ = deps.WSWriteFrame(bufrw, 0x8, nil)
 		_ = conn.Close()
 		return
 	}
 
-	terminalWSLoop(conn, bufrw, sess, relay, sub)
+	wsLoop(conn, bufrw, deps, sess, relay, sub)
 	relay.fanout.Unsubscribe(subID)
 }
 
-// terminalWSLoop relays data between a WebSocket connection and a PTY session.
+// wsLoop relays data between a WebSocket connection and a PTY session.
 // Downstream (fan-out -> browser): binary WebSocket frames with raw terminal output.
 // Upstream (browser -> PTY): binary frames as keystrokes via write buffer, text frames as JSON control.
-// Server sends ping frames every terminalPingInterval; if no frame (data or pong) arrives
-// within terminalPongTimeout the connection is considered dead and closed. The PTY session
+// Server sends ping frames every PingInterval; if no frame (data or pong) arrives
+// within PongTimeout the connection is considered dead and closed. The PTY session
 // survives so the browser can reconnect with scrollback replay.
 //
 // Coordinated shutdown: all three goroutines share a connDone channel and a sync.Once-guarded
 // closeConn function. Any goroutine that detects a terminal condition calls closeConn(),
 // which closes connDone (unblocking the others) then closes the underlying TCP connection
 // exactly once. This prevents double-close races and goroutine leaks.
-func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, relay *terminalRelay, sub <-chan []byte) {
+func wsLoop(conn net.Conn, rw *bufio.ReadWriter, deps Deps, sess *pty.Session, relay *Relay, sub <-chan []byte) {
 	// Coordinated shutdown: connDone signals all goroutines to exit,
 	// closeConn ensures conn.Close() is called exactly once.
 	connDone := make(chan struct{})
@@ -237,7 +239,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 
 	// Multiple goroutines emit frames (downstream, keepalive ping, and upstream
 	// control responses). Serialize writes to avoid interleaved/corrupted frames.
-	writeFrame := newTerminalFrameWriter(rw)
+	writeFrame := NewFrameWriter(rw, deps)
 
 	// Fan-out -> WebSocket (downstream): read from subscriber channel and send as binary frames.
 	// Also tracks alt-screen state changes and notifies the frontend.
@@ -276,7 +278,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 
 	// Server-initiated ping keepalive — detects dead connections (browser crash,
 	// laptop sleep) without ever timing out idle users.
-	pingTicker := time.NewTicker(terminalPingInterval)
+	pingTicker := time.NewTicker(PingInterval)
 	go func() { // lint:allow-bare-goroutine — bounded by connDone
 		defer pingTicker.Stop()
 		for {
@@ -302,9 +304,9 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 		for {
 			// Refresh read deadline on every iteration — any received frame
 			// (data, pong, ping) proves the connection is alive.
-			_ = conn.SetReadDeadline(time.Now().Add(terminalPongTimeout))
+			_ = conn.SetReadDeadline(time.Now().Add(PongTimeout))
 
-			fin, opcode, payload, err := wsReadFrame(rw)
+			fin, opcode, payload, err := deps.WSReadFrame(rw)
 			if err != nil {
 				// Read deadline expired or connection error — close silently.
 				// PTY stays alive for reconnection.
@@ -329,7 +331,7 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 			case 0x2: // Binary — raw keystrokes -> PTY stdin via write buffer
 				_, _ = relay.writeBuf.Write(payload)
 			case 0x1: // Text — JSON control message
-				handleTerminalControlMessage(payload, sess)
+				HandleControlMessage(payload, sess)
 			}
 		}
 	}()
@@ -337,31 +339,27 @@ func terminalWSLoop(conn net.Conn, rw *bufio.ReadWriter, sess *pty.Session, rela
 	<-downstreamDone
 }
 
-// newTerminalFrameWriter returns a thread-safe frame writer for one WebSocket
+// NewFrameWriter returns a thread-safe frame writer for one WebSocket
 // connection. All callers for that connection must share this writer.
-func newTerminalFrameWriter(rw *bufio.ReadWriter) func(opcode byte, payload []byte) error {
+func NewFrameWriter(rw *bufio.ReadWriter, deps Deps) func(opcode byte, payload []byte) error {
 	var wsWriteMu sync.Mutex
 	return func(opcode byte, payload []byte) error {
 		wsWriteMu.Lock()
 		defer wsWriteMu.Unlock()
-		return wsWriteFrame(rw, opcode, payload)
+		return deps.WSWriteFrame(rw, opcode, payload)
 	}
 }
 
-// terminalIdleTimeout is the duration of silence after PTY output before
-// the idle callback fires. Used to detect when an agent is waiting for input.
-const terminalIdleTimeout = 30 * time.Second
-
-// terminalControlMessage is a JSON control message from the browser terminal.
-type terminalControlMessage struct {
+// ControlMessage is a JSON control message from the browser terminal.
+type ControlMessage struct {
 	Type string `json:"type"`
 	Cols int    `json:"cols"`
 	Rows int    `json:"rows"`
 }
 
-// handleTerminalControlMessage processes a JSON control message from the browser.
-func handleTerminalControlMessage(payload []byte, sess *pty.Session) {
-	var msg terminalControlMessage
+// HandleControlMessage processes a JSON control message from the browser.
+func HandleControlMessage(payload []byte, sess *pty.Session) {
+	var msg ControlMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
@@ -377,14 +375,14 @@ func handleTerminalControlMessage(payload []byte, sess *pty.Session) {
 	}
 }
 
-// handleTerminalStart creates a new terminal session.
-func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server, mgr *pty.Manager, cap *capture.Store, relays *terminalRelayMap) {
+// HandleTerminalStart creates a new terminal session.
+func HandleTerminalStart(w http.ResponseWriter, r *http.Request, deps Deps, server ServerDeps, mgr *pty.Manager, cap *capture.Store, relays *Map) {
 	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, deps.MaxPostBody)
 
 	var req struct {
 		ID          string   `json:"id"`
@@ -398,7 +396,7 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 		AgentType   string   `json:"agent_type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		deps.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
 	}
 
@@ -412,7 +410,7 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 		req.Dir = server.GetActiveCodebase()
 	}
 	if req.Dir == "" && cap != nil {
-		req.Dir = autoDetectCWD(cap)
+		req.Dir = AutoDetectCWD(cap)
 	}
 
 	result, err := mgr.Start(pty.StartConfig{
@@ -429,23 +427,23 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 	// and handle init_command via the relay instead of reading PTY directly.
 	if err == nil {
 		sess, _ := mgr.Get(result.SessionID)
-		relay := relays.getOrCreate(result.SessionID, sess, req.Dir)
+		relay := relays.GetOrCreate(result.SessionID, sess, req.Dir)
 		sess.SetIdleConfig(pty.IdleConfig{
-			Timeout: terminalIdleTimeout,
+			Timeout: IdleTimeout,
 			Callback: func(id string) {
-				stderrf("[Kaboom] terminal session %s is idle\n", id)
+				deps.Stderrf("[Kaboom] terminal session %s is idle\n", id)
 			},
 		})
 		if req.InitCommand != "" {
-			go func(r *terminalRelay, cmd string) { // lint:allow-bare-goroutine — one-shot init, bounded by timeout
-				waitForPromptViaRelay(r, cmd)
+			go func(r *Relay, cmd string) { // lint:allow-bare-goroutine — one-shot init, bounded by timeout
+				WaitForPromptViaRelay(r, cmd)
 			}(relay, req.InitCommand)
 		}
 	}
 	if err != nil {
 		// Detect macOS sandbox restriction (MCP stdio-spawned daemon can't fork).
-		if isSandboxError(err) {
-			jsonResponse(w, http.StatusServiceUnavailable, map[string]any{
+		if IsSandboxError(err) {
+			deps.JSONResponse(w, http.StatusServiceUnavailable, map[string]any{
 				"error":       "sandbox_restricted",
 				"message":     "The daemon was started by an MCP client and cannot spawn terminal processes due to macOS sandbox restrictions.",
 				"instruction": "Run this command in a separate terminal to restart the daemon with full permissions:",
@@ -459,7 +457,7 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 			sessionID = "default"
 		}
 		existingToken := mgr.GetTokenForSession(sessionID)
-		jsonResponse(w, http.StatusConflict, map[string]any{
+		deps.JSONResponse(w, http.StatusConflict, map[string]any{
 			"error":      err.Error(),
 			"session_id": sessionID,
 			"token":      existingToken,
@@ -467,15 +465,15 @@ func handleTerminalStart(w http.ResponseWriter, r *http.Request, server *Server,
 		return
 	}
 
-	jsonResponse(w, http.StatusOK, map[string]any{
+	deps.JSONResponse(w, http.StatusOK, map[string]any{
 		"session_id": result.SessionID,
 		"token":      result.Token,
 		"pid":        result.Pid,
 	})
 }
 
-// autoDetectCWD gets the CWD from the first registered MCP client.
-func autoDetectCWD(cap *capture.Store) string {
+// AutoDetectCWD gets the CWD from the first registered MCP client.
+func AutoDetectCWD(cap *capture.Store) string {
 	reg := cap.GetClientRegistry()
 	if reg == nil {
 		return ""
@@ -514,20 +512,20 @@ func autoDetectCWD(cap *capture.Store) string {
 	return ""
 }
 
-// handleTerminalStop destroys a terminal session.
-func handleTerminalStop(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, relays *terminalRelayMap) {
+// HandleTerminalStop destroys a terminal session.
+func HandleTerminalStop(w http.ResponseWriter, r *http.Request, deps Deps, mgr *pty.Manager, relays *Map) {
 	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, deps.MaxPostBody)
 
 	var req struct {
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		deps.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
 	}
 	if req.ID == "" {
@@ -535,25 +533,25 @@ func handleTerminalStop(w http.ResponseWriter, r *http.Request, mgr *pty.Manager
 	}
 
 	if err := mgr.Stop(req.ID); err != nil {
-		jsonResponse(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		deps.JSONResponse(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
-	relays.remove(req.ID)
+	relays.Remove(req.ID)
 
-	jsonResponse(w, http.StatusOK, map[string]string{"status": "stopped"})
+	deps.JSONResponse(w, http.StatusOK, map[string]string{"status": "stopped"})
 }
 
-// isSandboxError returns true if err looks like a macOS sandbox/fork restriction.
+// IsSandboxError returns true if err looks like a macOS sandbox/fork restriction.
 // MCP stdio-spawned daemons inherit a restricted environment that blocks posix_spawn/fork.
-func isSandboxError(err error) bool {
+func IsSandboxError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "operation not permitted") ||
 		strings.Contains(msg, "Operation not permitted") ||
 		strings.Contains(msg, "not permitted")
 }
 
-// handleTerminalConfig returns terminal session details including alt-screen state and subscriber counts.
-func handleTerminalConfig(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, relays *terminalRelayMap) {
+// HandleTerminalConfig returns terminal session details including alt-screen state and subscriber counts.
+func HandleTerminalConfig(w http.ResponseWriter, r *http.Request, deps Deps, mgr *pty.Manager, relays *Map) {
 	switch r.Method {
 	case "GET":
 		ids := mgr.List()
@@ -569,46 +567,46 @@ func handleTerminalConfig(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 				"pid":        sess.Pid(),
 				"alt_screen": sess.AltScreenActive(),
 			}
-			if relay := relays.get(id); relay != nil {
+			if relay := relays.Get(id); relay != nil {
 				info["subscribers"] = relay.fanout.Count()
 			}
 			sessions = append(sessions, info)
 		}
-		jsonResponse(w, http.StatusOK, map[string]any{
+		deps.JSONResponse(w, http.StatusOK, map[string]any{
 			"sessions": sessions,
 			"count":    mgr.Count(),
 		})
 	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
 }
 
-// handleTerminalValidate checks whether a specific token maps to a live PTY session.
+// HandleTerminalValidate checks whether a specific token maps to a live PTY session.
 // Returns {"valid": true} if the token resolves to a running session, false otherwise.
-func handleTerminalValidate(w http.ResponseWriter, r *http.Request, mgr *pty.Manager) {
+func HandleTerminalValidate(w http.ResponseWriter, r *http.Request, deps Deps, mgr *pty.Manager) {
 	if r.Method != "GET" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		deps.JSONResponse(w, http.StatusOK, map[string]bool{"valid": false})
 		return
 	}
 	sess, err := mgr.GetByToken(token)
 	if err != nil {
-		jsonResponse(w, http.StatusOK, map[string]bool{"valid": false})
+		deps.JSONResponse(w, http.StatusOK, map[string]bool{"valid": false})
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]bool{"valid": sess.IsAlive()})
+	deps.JSONResponse(w, http.StatusOK, map[string]bool{"valid": sess.IsAlive()})
 }
 
-// handleTerminalUpload handles image uploads for terminal sessions.
+// HandleTerminalUpload handles image uploads for terminal sessions.
 // POST /terminal/upload?session_id=xxx&filename=screenshot.png
 // Content-Type must be an image type. Body is raw image data.
-func handleTerminalUpload(w http.ResponseWriter, r *http.Request, mgr *pty.Manager, relays *terminalRelayMap) {
+func HandleTerminalUpload(w http.ResponseWriter, r *http.Request, deps Deps, mgr *pty.Manager, relays *Map) {
 	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
@@ -623,17 +621,17 @@ func handleTerminalUpload(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 
 	// Verify session exists.
 	if _, err := mgr.Get(sessionID); err != nil {
-		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "session not found"})
+		deps.JSONResponse(w, http.StatusNotFound, map[string]string{"error": "session not found"})
 		return
 	}
 
-	relay := relays.get(sessionID)
+	relay := relays.Get(sessionID)
 	workspaceDir := ""
 	if relay != nil {
 		workspaceDir = relay.workspaceDir
 	}
 	if workspaceDir == "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "no workspace directory for session"})
+		deps.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "no workspace directory for session"})
 		return
 	}
 
@@ -646,38 +644,38 @@ func handleTerminalUpload(w http.ResponseWriter, r *http.Request, mgr *pty.Manag
 		if err == pty.ErrUploadTooLarge {
 			status = http.StatusRequestEntityTooLarge
 		}
-		jsonResponse(w, status, map[string]string{"error": err.Error()})
+		deps.JSONResponse(w, status, map[string]string{"error": err.Error()})
 		return
 	}
 
-	jsonResponse(w, http.StatusOK, map[string]any{
+	deps.JSONResponse(w, http.StatusOK, map[string]any{
 		"path": result.RelPath,
 		"size": result.Size,
 	})
 }
 
-// handleActiveCodebase gets or sets the active codebase path used as terminal CWD.
-func handleActiveCodebase(w http.ResponseWriter, r *http.Request, server *Server) {
+// HandleActiveCodebase gets or sets the active codebase path used as terminal CWD.
+func HandleActiveCodebase(w http.ResponseWriter, r *http.Request, deps Deps, server ServerDeps) {
 	switch r.Method {
 	case "GET":
-		jsonResponse(w, http.StatusOK, map[string]string{
+		deps.JSONResponse(w, http.StatusOK, map[string]string{
 			"active_codebase": server.GetActiveCodebase(),
 		})
 	case "PUT", "POST":
-		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+		r.Body = http.MaxBytesReader(w, r.Body, deps.MaxPostBody)
 		var body struct {
 			Path string `json:"path"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+			deps.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 			return
 		}
 		server.SetActiveCodebase(strings.TrimSpace(body.Path))
-		jsonResponse(w, http.StatusOK, map[string]string{
+		deps.JSONResponse(w, http.StatusOK, map[string]string{
 			"status":          "ok",
 			"active_codebase": server.GetActiveCodebase(),
 		})
 	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		deps.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
 }

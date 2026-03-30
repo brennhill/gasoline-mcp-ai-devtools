@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/terminal"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
@@ -59,8 +60,8 @@ type Server struct {
 
 	// Terminal PTY session manager
 	ptyManager  *pty.Manager
-	ptyRelays   *terminalRelayMap
-	intentStore *intentStore
+	ptyRelays   *terminal.Map
+	intentStore *terminal.IntentStore
 
 	// Terminal server port (0 = terminal server not running)
 	terminalPort int
@@ -90,7 +91,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		pushInbox:       push.NewPushInbox(50),
 		ptyManager:      pty.NewManager(),
 		tokenTracker:    tracking.NewTokenTracker(),
-		intentStore:     newIntentStore(),
+		intentStore:     terminal.NewIntentStore(),
 	}
 
 	// Initialize push router with capability sync callback
