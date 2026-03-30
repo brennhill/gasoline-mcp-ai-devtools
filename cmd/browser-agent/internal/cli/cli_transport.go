@@ -1,8 +1,8 @@
-// Purpose: Implements CLI-side JSON-RPC transport to the local MCP endpoint.
+// cli_transport.go — Implements CLI-side JSON-RPC transport to the local MCP endpoint.
 // Why: Isolates request/response wire handling from CLI orchestration and daemon startup concerns.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package cli
 
 import (
 	"bytes"
@@ -12,33 +12,35 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
-// callTool builds a JSON-RPC tools/call request, POSTs to /mcp, and parses the response.
-func callTool(baseURL, toolName string, mcpArgs map[string]any, timeoutMs int) (*MCPToolResult, error) {
-	body, err := buildToolCallBody(toolName, mcpArgs)
+// CallTool builds a JSON-RPC tools/call request, POSTs to /mcp, and parses the response.
+func CallTool(baseURL, toolName string, mcpArgs map[string]any, timeoutMs int, maxBodySize int64) (*mcp.MCPToolResult, error) {
+	body, err := BuildToolCallBody(toolName, mcpArgs)
 	if err != nil {
 		return nil, err
 	}
 
-	respBody, err := postToolCall(baseURL+"/mcp", body, timeoutMs)
+	respBody, err := PostToolCall(baseURL+"/mcp", body, timeoutMs, maxBodySize)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseToolCallResponse(respBody)
+	return ParseToolCallResponse(respBody)
 }
 
-// buildToolCallBody creates the JSON-RPC request body for a tools/call.
-func buildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) {
+// BuildToolCallBody creates the JSON-RPC request body for a tools/call.
+func BuildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) {
 	params := map[string]any{"name": toolName, "arguments": mcpArgs}
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("marshal params: %w. Check argument types", err)
 	}
 
-	rpcReq := JSONRPCRequest{
-		JSONRPC: JSONRPCVersion,
+	rpcReq := mcp.JSONRPCRequest{
+		JSONRPC: mcp.JSONRPCVersion,
 		ID:      "cli-1",
 		Method:  "tools/call",
 		Params:  paramsJSON,
@@ -50,8 +52,8 @@ func buildToolCallBody(toolName string, mcpArgs map[string]any) ([]byte, error) 
 	return body, nil
 }
 
-// postToolCall sends a JSON-RPC request to the MCP endpoint and returns the raw response body.
-func postToolCall(endpoint string, body []byte, timeoutMs int) ([]byte, error) {
+// PostToolCall sends a JSON-RPC request to the MCP endpoint and returns the raw response body.
+func PostToolCall(endpoint string, body []byte, timeoutMs int, maxBodySize int64) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
 	defer cancel()
 
@@ -62,13 +64,13 @@ func postToolCall(endpoint string, body []byte, timeoutMs int) ([]byte, error) {
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(httpReq) // #nosec G704 -- endpoint comes from ensureDaemon() and is localhost-only
+	resp, err := client.Do(httpReq) // #nosec G704 -- endpoint comes from EnsureDaemon() and is localhost-only
 	if err != nil {
 		return nil, fmt.Errorf("connect to server: %w. Verify daemon is running on the target port", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w. Server may have disconnected", err)
 	}
@@ -79,9 +81,9 @@ func postToolCall(endpoint string, body []byte, timeoutMs int) ([]byte, error) {
 	return respBody, nil
 }
 
-// parseToolCallResponse parses a JSON-RPC response into an MCPToolResult.
-func parseToolCallResponse(respBody []byte) (*MCPToolResult, error) {
-	var rpcResp JSONRPCResponse
+// ParseToolCallResponse parses a JSON-RPC response into an MCPToolResult.
+func ParseToolCallResponse(respBody []byte) (*mcp.MCPToolResult, error) {
+	var rpcResp mcp.JSONRPCResponse
 	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -89,7 +91,7 @@ func parseToolCallResponse(respBody []byte) (*MCPToolResult, error) {
 		return nil, fmt.Errorf("server error (%d): %s", rpcResp.Error.Code, rpcResp.Error.Message)
 	}
 
-	var toolResult MCPToolResult
+	var toolResult mcp.MCPToolResult
 	if err := json.Unmarshal(rpcResp.Result, &toolResult); err != nil {
 		return nil, fmt.Errorf("failed to parse tool result: %w", err)
 	}

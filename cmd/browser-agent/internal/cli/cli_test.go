@@ -1,8 +1,7 @@
-// Purpose: Tests for CLI argument parsing and execution.
+// cli_test.go — Tests for CLI mode: argument parsing, output formatting, and end-to-end flow.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
-// cli_test.go — Tests for CLI mode: argument parsing, output formatting, and end-to-end flow.
-package main
+package cli
 
 import (
 	"bytes"
@@ -12,7 +11,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
+
+const testDefaultPort = 7890
 
 // --- IsCLIMode tests ---
 
@@ -56,14 +59,18 @@ func TestIsCLIMode(t *testing.T) {
 	}
 }
 
-// --- resolveCLIConfig tests ---
+// --- ResolveCLIConfig tests ---
+
+func testRC() RuntimeConfig {
+	return RuntimeConfig{DefaultPort: testDefaultPort}
+}
 
 func TestResolveCLIConfigDefaults(t *testing.T) {
 	t.Parallel()
 
-	cfg, remaining := resolveCLIConfig([]string{"observe", "errors"})
-	if cfg.Port != defaultPort {
-		t.Errorf("expected port %d, got %d", defaultPort, cfg.Port)
+	cfg, remaining := ResolveCLIConfig([]string{"observe", "errors"}, testRC())
+	if cfg.Port != testDefaultPort {
+		t.Errorf("expected port %d, got %d", testDefaultPort, cfg.Port)
 	}
 	if cfg.Format != "human" {
 		t.Errorf("expected format 'human', got %q", cfg.Format)
@@ -79,7 +86,7 @@ func TestResolveCLIConfigDefaults(t *testing.T) {
 func TestResolveCLIConfigFlagOverrides(t *testing.T) {
 	t.Parallel()
 
-	cfg, remaining := resolveCLIConfig([]string{"--port", "9999", "--format", "json", "--timeout", "10000", "observe", "errors"})
+	cfg, remaining := ResolveCLIConfig([]string{"--port", "9999", "--format", "json", "--timeout", "10000", "observe", "errors"}, testRC())
 	if cfg.Port != 9999 {
 		t.Errorf("expected port 9999, got %d", cfg.Port)
 	}
@@ -98,7 +105,7 @@ func TestResolveCLIConfigEnvOverrides(t *testing.T) {
 	t.Setenv("KABOOM_PORT", "8888")
 	t.Setenv("KABOOM_FORMAT", "csv")
 
-	cfg, _ := resolveCLIConfig([]string{"observe", "errors"})
+	cfg, _ := ResolveCLIConfig([]string{"observe", "errors"}, testRC())
 	if cfg.Port != 8888 {
 		t.Errorf("expected port 8888, got %d", cfg.Port)
 	}
@@ -110,13 +117,13 @@ func TestResolveCLIConfigEnvOverrides(t *testing.T) {
 func TestResolveCLIConfigFlagBeatsEnv(t *testing.T) {
 	t.Setenv("KABOOM_PORT", "8888")
 
-	cfg, _ := resolveCLIConfig([]string{"--port", "9999", "observe", "errors"})
+	cfg, _ := ResolveCLIConfig([]string{"--port", "9999", "observe", "errors"}, testRC())
 	if cfg.Port != 9999 {
 		t.Errorf("expected port 9999 (flag beats env), got %d", cfg.Port)
 	}
 }
 
-// --- normalizeAction tests ---
+// --- NormalizeAction tests ---
 
 func TestNormalizeAction(t *testing.T) {
 	t.Parallel()
@@ -143,20 +150,20 @@ func TestNormalizeAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
-			got := normalizeAction(tt.input)
+			got := NormalizeAction(tt.input)
 			if got != tt.want {
-				t.Errorf("normalizeAction(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("NormalizeAction(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}
 }
 
-// --- parseObserveArgs tests ---
+// --- ParseObserveArgs tests ---
 
 func TestParseObserveArgsErrors(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("errors", nil)
+	mcpArgs, err := ParseObserveArgs("errors", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -168,7 +175,7 @@ func TestParseObserveArgsErrors(t *testing.T) {
 func TestParseObserveArgsWithLimit(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("errors", []string{"--limit", "50"})
+	mcpArgs, err := ParseObserveArgs("errors", []string{"--limit", "50"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -180,7 +187,7 @@ func TestParseObserveArgsWithLimit(t *testing.T) {
 func TestParseObserveArgsLogs(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("logs", []string{"--min-level", "warn", "--limit", "100"})
+	mcpArgs, err := ParseObserveArgs("logs", []string{"--min-level", "warn", "--limit", "100"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -198,7 +205,7 @@ func TestParseObserveArgsLogs(t *testing.T) {
 func TestParseObserveArgsNetworkWaterfall(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("network_waterfall", []string{"--url", "api.example.com", "--status-min", "400"})
+	mcpArgs, err := ParseObserveArgs("network_waterfall", []string{"--url", "api.example.com", "--status-min", "400"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -213,7 +220,7 @@ func TestParseObserveArgsNetworkWaterfall(t *testing.T) {
 func TestParseObserveArgsAccessibility(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("accessibility", []string{"--scope", "form"})
+	mcpArgs, err := ParseObserveArgs("accessibility", []string{"--scope", "form"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -225,7 +232,7 @@ func TestParseObserveArgsAccessibility(t *testing.T) {
 func TestParseObserveArgsWebsocket(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseObserveArgs("websocket_events", []string{"--connection-id", "ws1", "--direction", "sent"})
+	mcpArgs, err := ParseObserveArgs("websocket_events", []string{"--connection-id", "ws1", "--direction", "sent"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -237,12 +244,12 @@ func TestParseObserveArgsWebsocket(t *testing.T) {
 	}
 }
 
-// --- parseGenerateArgs tests ---
+// --- ParseGenerateArgs tests ---
 
 func TestParseGenerateArgsHAR(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseGenerateArgs("har", []string{"--save-to", "out.har"})
+	mcpArgs, err := ParseGenerateArgs("har", []string{"--save-to", "out.har"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -257,7 +264,7 @@ func TestParseGenerateArgsHAR(t *testing.T) {
 func TestParseGenerateArgsTest(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseGenerateArgs("test", []string{"--test-name", "my_test", "--assert-network", "--assert-no-errors"})
+	mcpArgs, err := ParseGenerateArgs("test", []string{"--test-name", "my_test", "--assert-network", "--assert-no-errors"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -275,7 +282,7 @@ func TestParseGenerateArgsTest(t *testing.T) {
 func TestParseGenerateArgsCSP(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseGenerateArgs("csp", []string{"--mode", "strict"})
+	mcpArgs, err := ParseGenerateArgs("csp", []string{"--mode", "strict"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -287,7 +294,7 @@ func TestParseGenerateArgsCSP(t *testing.T) {
 func TestParseGenerateArgsReproduction(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseGenerateArgs("reproduction", []string{"--error-message", "timeout", "--last-n", "5"})
+	mcpArgs, err := ParseGenerateArgs("reproduction", []string{"--error-message", "timeout", "--last-n", "5"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -299,12 +306,12 @@ func TestParseGenerateArgsReproduction(t *testing.T) {
 	}
 }
 
-// --- parseConfigureArgs tests ---
+// --- ParseConfigureArgs tests ---
 
 func TestParseConfigureArgsHealth(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseConfigureArgs("health", nil)
+	mcpArgs, err := ParseConfigureArgs("health", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -316,7 +323,7 @@ func TestParseConfigureArgsHealth(t *testing.T) {
 func TestParseConfigureArgsClear(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseConfigureArgs("clear", []string{"--buffer", "network"})
+	mcpArgs, err := ParseConfigureArgs("clear", []string{"--buffer", "network"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -328,7 +335,7 @@ func TestParseConfigureArgsClear(t *testing.T) {
 func TestParseConfigureArgsNoiseRule(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseConfigureArgs("noise_rule", []string{"--noise-action", "add", "--pattern", "*.png", "--reason", "images"})
+	mcpArgs, err := ParseConfigureArgs("noise_rule", []string{"--noise-action", "add", "--pattern", "*.png", "--reason", "images"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -343,7 +350,7 @@ func TestParseConfigureArgsNoiseRule(t *testing.T) {
 func TestParseConfigureArgsStore(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseConfigureArgs("store", []string{"--key", "session", "--data", `{"id":"123"}`})
+	mcpArgs, err := ParseConfigureArgs("store", []string{"--key", "session", "--data", `{"id":"123"}`})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -359,12 +366,12 @@ func TestParseConfigureArgsStore(t *testing.T) {
 	}
 }
 
-// --- parseInteractArgs tests ---
+// --- ParseInteractArgs tests ---
 
 func TestParseInteractArgsClick(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("click", []string{"--selector", "#btn"})
+	mcpArgs, err := ParseInteractArgs("click", []string{"--selector", "#btn"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -379,7 +386,7 @@ func TestParseInteractArgsClick(t *testing.T) {
 func TestParseInteractArgsClickMissingSelector(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseInteractArgs("click", nil)
+	_, err := ParseInteractArgs("click", nil)
 	if err == nil {
 		t.Fatal("expected error for missing selector")
 	}
@@ -391,7 +398,7 @@ func TestParseInteractArgsClickMissingSelector(t *testing.T) {
 func TestParseInteractArgsNavigate(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("navigate", []string{"--url", "https://example.com"})
+	mcpArgs, err := ParseInteractArgs("navigate", []string{"--url", "https://example.com"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -406,7 +413,7 @@ func TestParseInteractArgsNavigate(t *testing.T) {
 func TestParseInteractArgsNavigateMissingURL(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseInteractArgs("navigate", nil)
+	_, err := ParseInteractArgs("navigate", nil)
 	if err == nil {
 		t.Fatal("expected error for missing url")
 	}
@@ -418,7 +425,7 @@ func TestParseInteractArgsNavigateMissingURL(t *testing.T) {
 func TestParseInteractArgsType(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("type", []string{"--selector", "#input", "--text", "hello", "--clear"})
+	mcpArgs, err := ParseInteractArgs("type", []string{"--selector", "#input", "--text", "hello", "--clear"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -436,7 +443,7 @@ func TestParseInteractArgsType(t *testing.T) {
 func TestParseInteractArgsScrollToDirection(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("scroll_to", []string{"--selector", "#modal-body", "--direction", "bottom"})
+	mcpArgs, err := ParseInteractArgs("scroll_to", []string{"--selector", "#modal-body", "--direction", "bottom"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -451,7 +458,7 @@ func TestParseInteractArgsScrollToDirection(t *testing.T) {
 func TestParseInteractArgsGetTextStructured(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("get_text", []string{"--selector", ".accordion", "--structured"})
+	mcpArgs, err := ParseInteractArgs("get_text", []string{"--selector", ".accordion", "--structured"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -466,7 +473,7 @@ func TestParseInteractArgsGetTextStructured(t *testing.T) {
 func TestParseInteractArgsExecuteJS(t *testing.T) {
 	t.Parallel()
 
-	mcpArgs, err := parseInteractArgs("execute_js", []string{"--script", "document.title"})
+	mcpArgs, err := ParseInteractArgs("execute_js", []string{"--script", "document.title"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -478,7 +485,7 @@ func TestParseInteractArgsExecuteJS(t *testing.T) {
 func TestParseInteractArgsExecuteJSMissingScript(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseInteractArgs("execute_js", nil)
+	_, err := ParseInteractArgs("execute_js", nil)
 	if err == nil {
 		t.Fatal("expected error for missing script")
 	}
@@ -490,11 +497,8 @@ func TestParseInteractArgsExecuteJSMissingScript(t *testing.T) {
 func TestParseInteractArgsKebabCase(t *testing.T) {
 	t.Parallel()
 
-	// normalizeAction is called before parseInteractArgs in the real flow,
-	// but parseInteractArgs itself receives the already-normalized action.
-	// This tests the get-text kebab input being normalized first.
-	action := normalizeAction("get-text")
-	mcpArgs, err := parseInteractArgs(action, []string{"--selector", ".content"})
+	action := NormalizeAction("get-text")
+	mcpArgs, err := ParseInteractArgs(action, []string{"--selector", ".content"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -503,7 +507,7 @@ func TestParseInteractArgsKebabCase(t *testing.T) {
 	}
 }
 
-// --- parseCLIArgs dispatch tests ---
+// --- ParseCLIArgs dispatch tests ---
 
 func TestParseCLIArgsDispatch(t *testing.T) {
 	t.Parallel()
@@ -529,7 +533,7 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mcpArgs, err := parseCLIArgs(tt.tool, tt.action, tt.args)
+			mcpArgs, err := ParseCLIArgs(tt.tool, tt.action, tt.args)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error")
@@ -551,13 +555,13 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 func TestFormatHuman(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: `{"entries":[],"total":0}`}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: `{"entries":[],"total":0}`}},
 	}
-	cliRes := buildCLIResult("observe", "errors", result)
+	cliRes := BuildCLIResult("observe", "errors", result)
 
 	var buf bytes.Buffer
-	err := formatHuman(&buf, cliRes)
+	err := FormatHuman(&buf, cliRes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -573,14 +577,14 @@ func TestFormatHuman(t *testing.T) {
 func TestFormatHumanError(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: "Connection refused"}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: "Connection refused"}},
 		IsError: true,
 	}
-	cliRes := buildCLIResult("observe", "errors", result)
+	cliRes := BuildCLIResult("observe", "errors", result)
 
 	var buf bytes.Buffer
-	err := formatHuman(&buf, cliRes)
+	err := FormatHuman(&buf, cliRes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -593,13 +597,13 @@ func TestFormatHumanError(t *testing.T) {
 func TestFormatJSON(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: `{"status":"ok"}`}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: `{"status":"ok"}`}},
 	}
-	cliRes := buildCLIResult("configure", "health", result)
+	cliRes := BuildCLIResult("configure", "health", result)
 
 	var buf bytes.Buffer
-	err := formatJSON(&buf, cliRes)
+	err := FormatJSON(&buf, cliRes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -619,13 +623,13 @@ func TestFormatJSON(t *testing.T) {
 func TestFormatCSV(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: `{"count":5}`}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: `{"count":5}`}},
 	}
-	cliRes := buildCLIResult("observe", "errors", result)
+	cliRes := BuildCLIResult("observe", "errors", result)
 
 	var buf bytes.Buffer
-	err := formatCSV(&buf, cliRes)
+	err := FormatCSV(&buf, cliRes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -645,20 +649,18 @@ func TestFormatCSV(t *testing.T) {
 func TestEndToEndWithMockServer(t *testing.T) {
 	t.Parallel()
 
-	// Mock MCP server that handles tools/call
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req JSONRPCRequest
+		var req mcp.JSONRPCRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "bad request", 400)
 			return
 		}
 
-		// Return a successful tool result
-		result := MCPToolResult{
-			Content: []MCPContentBlock{{Type: "text", Text: `{"entries":[],"total":0}`}},
+		result := mcp.MCPToolResult{
+			Content: []mcp.MCPContentBlock{{Type: "text", Text: `{"entries":[],"total":0}`}},
 		}
 		resultJSON, _ := json.Marshal(result)
-		resp := JSONRPCResponse{
+		resp := mcp.JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result:  resultJSON,
@@ -669,9 +671,9 @@ func TestEndToEndWithMockServer(t *testing.T) {
 	defer server.Close()
 
 	mcpArgs := map[string]any{"what": "errors"}
-	result, err := callTool(server.URL, "observe", mcpArgs, 5000)
+	result, err := CallTool(server.URL, "observe", mcpArgs, 5000, 10*1024*1024)
 	if err != nil {
-		t.Fatalf("callTool error: %v", err)
+		t.Fatalf("CallTool error: %v", err)
 	}
 	if result.IsError {
 		t.Error("expected success, got isError")
@@ -687,17 +689,16 @@ func TestEndToEndWithMockServer(t *testing.T) {
 func TestEndToEndToolError(t *testing.T) {
 	t.Parallel()
 
-	// Mock server that returns a tool error (isError: true)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req JSONRPCRequest
+		var req mcp.JSONRPCRequest
 		json.NewDecoder(r.Body).Decode(&req)
 
-		result := MCPToolResult{
-			Content: []MCPContentBlock{{Type: "text", Text: "No data available"}},
+		result := mcp.MCPToolResult{
+			Content: []mcp.MCPContentBlock{{Type: "text", Text: "No data available"}},
 			IsError: true,
 		}
 		resultJSON, _ := json.Marshal(result)
-		resp := JSONRPCResponse{
+		resp := mcp.JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result:  resultJSON,
@@ -708,9 +709,9 @@ func TestEndToEndToolError(t *testing.T) {
 	defer server.Close()
 
 	mcpArgs := map[string]any{"what": "errors"}
-	result, err := callTool(server.URL, "observe", mcpArgs, 5000)
+	result, err := CallTool(server.URL, "observe", mcpArgs, 5000, 10*1024*1024)
 	if err != nil {
-		t.Fatalf("callTool error: %v", err)
+		t.Fatalf("CallTool error: %v", err)
 	}
 	if !result.IsError {
 		t.Error("expected isError=true")
@@ -720,15 +721,14 @@ func TestEndToEndToolError(t *testing.T) {
 func TestEndToEndJSONRPCError(t *testing.T) {
 	t.Parallel()
 
-	// Mock server that returns a JSON-RPC error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req JSONRPCRequest
+		var req mcp.JSONRPCRequest
 		json.NewDecoder(r.Body).Decode(&req)
 
-		resp := JSONRPCResponse{
+		resp := mcp.JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   &JSONRPCError{Code: -32601, Message: "Method not found"},
+			Error:   &mcp.JSONRPCError{Code: -32601, Message: "Method not found"},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -736,7 +736,7 @@ func TestEndToEndJSONRPCError(t *testing.T) {
 	defer server.Close()
 
 	mcpArgs := map[string]any{"what": "errors"}
-	_, err := callTool(server.URL, "observe", mcpArgs, 5000)
+	_, err := CallTool(server.URL, "observe", mcpArgs, 5000, 10*1024*1024)
 	if err == nil {
 		t.Fatal("expected error for JSON-RPC error response")
 	}
@@ -748,8 +748,7 @@ func TestEndToEndJSONRPCError(t *testing.T) {
 func TestEndToEndServerNotRunning(t *testing.T) {
 	t.Parallel()
 
-	// Use a URL that can't be reached (port 0 is never bound)
-	_, err := callTool("http://127.0.0.1:0", "observe", map[string]any{"what": "errors"}, 1000)
+	_, err := CallTool("http://127.0.0.1:0", "observe", map[string]any{"what": "errors"}, 1000, 10*1024*1024)
 	if err == nil {
 		t.Fatal("expected error when server is not running")
 	}
@@ -758,25 +757,23 @@ func TestEndToEndServerNotRunning(t *testing.T) {
 func TestEndToEndHTTPError(t *testing.T) {
 	t.Parallel()
 
-	// Mock server that returns HTTP 500
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", 500)
 	}))
 	defer server.Close()
 
-	_, err := callTool(server.URL, "observe", map[string]any{"what": "errors"}, 5000)
+	_, err := CallTool(server.URL, "observe", map[string]any{"what": "errors"}, 5000, 10*1024*1024)
 	if err == nil {
 		t.Fatal("expected error for HTTP 500")
 	}
 }
 
-// --- formatResult exit code tests ---
+// --- FormatResult exit code tests ---
 
 func TestFormatResultExitCodeSuccess(t *testing.T) {
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: "ok"}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: "ok"}},
 	}
-	// Redirect stdout to /dev/null for writing
 	oldStdout := os.Stdout
 	devNull, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	os.Stdout = devNull
@@ -785,15 +782,15 @@ func TestFormatResultExitCodeSuccess(t *testing.T) {
 		_ = devNull.Close()
 	}()
 
-	code := formatResult("human", "observe", "errors", result)
+	code := FormatResult("human", "observe", "errors", result)
 	if code != 0 {
 		t.Errorf("expected exit code 0, got %d", code)
 	}
 }
 
 func TestFormatResultExitCodeError(t *testing.T) {
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: "failed"}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: "failed"}},
 		IsError: true,
 	}
 	oldStdout := os.Stdout
@@ -804,7 +801,7 @@ func TestFormatResultExitCodeError(t *testing.T) {
 		_ = devNull.Close()
 	}()
 
-	code := formatResult("human", "observe", "errors", result)
+	code := FormatResult("human", "observe", "errors", result)
 	if code != 1 {
 		t.Errorf("expected exit code 1, got %d", code)
 	}

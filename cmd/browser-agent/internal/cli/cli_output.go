@@ -1,8 +1,8 @@
-// Purpose: Formats MCP tool results for human, JSON, and CSV CLI output modes.
+// cli_output.go — Formats MCP tool results for human, JSON, and CSV CLI output modes.
 // Why: Decouples output rendering from tool execution so CLI and MCP share the same result pipeline.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package cli
 
 import (
 	"encoding/csv"
@@ -12,10 +12,12 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
-// cliResult holds parsed output data for formatting.
-type cliResult struct {
+// CLIResult holds parsed output data for formatting.
+type CLIResult struct {
 	Success     bool
 	Tool        string
 	Action      string
@@ -24,18 +26,18 @@ type cliResult struct {
 	Data        map[string]any
 }
 
-// formatResult formats the MCP tool result and writes to stdout. Returns exit code.
-func formatResult(format, tool, action string, result *MCPToolResult) int {
-	cliRes := buildCLIResult(tool, action, result)
+// FormatResult formats the MCP tool result and writes to stdout. Returns exit code.
+func FormatResult(format, tool, action string, result *mcp.MCPToolResult) int {
+	cliRes := BuildCLIResult(tool, action, result)
 	var err error
 
 	switch format {
 	case "json":
-		err = formatJSON(os.Stdout, cliRes)
+		err = FormatJSON(os.Stdout, cliRes)
 	case "csv":
-		err = formatCSV(os.Stdout, cliRes)
+		err = FormatCSV(os.Stdout, cliRes)
 	default:
-		err = formatHuman(os.Stdout, cliRes)
+		err = FormatHuman(os.Stdout, cliRes)
 	}
 
 	if err != nil {
@@ -49,9 +51,9 @@ func formatResult(format, tool, action string, result *MCPToolResult) int {
 	return 0
 }
 
-// buildCLIResult extracts text content from MCPToolResult and attempts JSON parse.
-func buildCLIResult(tool, action string, result *MCPToolResult) *cliResult {
-	r := &cliResult{
+// BuildCLIResult extracts text content from MCPToolResult and attempts JSON parse.
+func BuildCLIResult(tool, action string, result *mcp.MCPToolResult) *CLIResult {
+	r := &CLIResult{
 		Success: !result.IsError,
 		Tool:    tool,
 		Action:  action,
@@ -80,8 +82,8 @@ func buildCLIResult(tool, action string, result *MCPToolResult) *cliResult {
 	return r
 }
 
-// formatHuman writes human-readable output.
-func formatHuman(w io.Writer, r *cliResult) error {
+// FormatHuman writes human-readable output.
+func FormatHuman(w io.Writer, r *CLIResult) error {
 	var sb strings.Builder
 
 	if r.Success {
@@ -105,8 +107,8 @@ func formatHuman(w io.Writer, r *cliResult) error {
 	return err
 }
 
-// formatJSON writes pretty-printed JSON output with merged data fields.
-func formatJSON(w io.Writer, r *cliResult) error {
+// FormatJSON writes pretty-printed JSON output with merged data fields.
+func FormatJSON(w io.Writer, r *CLIResult) error {
 	out := map[string]any{
 		"success": r.Success,
 		"tool":    r.Tool,
@@ -131,8 +133,8 @@ func formatJSON(w io.Writer, r *cliResult) error {
 	return err
 }
 
-// formatCSV writes CSV output with header + data row.
-func formatCSV(w io.Writer, r *cliResult) error {
+// FormatCSV writes CSV output with header + data row.
+func FormatCSV(w io.Writer, r *CLIResult) error {
 	// Collect data keys for additional columns
 	var dataKeys []string
 	for k := range r.Data {

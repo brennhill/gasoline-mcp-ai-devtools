@@ -1,28 +1,29 @@
-// Purpose: Unit tests for browser-agent cli output logic.
+// cli_output_unit_test.go — Unit tests for CLI output formatters.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
-// cli_output_unit_test.go — Unit tests for CLI output formatters.
-package main
+package cli
 
 import (
 	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // ============================================
-// buildCLIResult
+// BuildCLIResult
 // ============================================
 
 func TestBuildCLIResult_Success(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: `{"key":"value"}`}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: `{"key":"value"}`}},
 		IsError: false,
 	}
-	cli := buildCLIResult("observe", "logs", result)
+	cli := BuildCLIResult("observe", "logs", result)
 
 	if !cli.Success {
 		t.Fatal("Success should be true")
@@ -47,11 +48,11 @@ func TestBuildCLIResult_Success(t *testing.T) {
 func TestBuildCLIResult_Error(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: "Something went wrong"}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: "Something went wrong"}},
 		IsError: true,
 	}
-	cli := buildCLIResult("interact", "click", result)
+	cli := BuildCLIResult("interact", "click", result)
 
 	if cli.Success {
 		t.Fatal("Success should be false")
@@ -64,11 +65,11 @@ func TestBuildCLIResult_Error(t *testing.T) {
 func TestBuildCLIResult_NonJSON(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: "plain text output"}},
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{{Type: "text", Text: "plain text output"}},
 		IsError: false,
 	}
-	cli := buildCLIResult("configure", "health", result)
+	cli := BuildCLIResult("configure", "health", result)
 
 	if cli.Data != nil {
 		t.Fatal("Data should be nil for non-JSON text")
@@ -81,14 +82,14 @@ func TestBuildCLIResult_NonJSON(t *testing.T) {
 func TestBuildCLIResult_MultipleBlocks(t *testing.T) {
 	t.Parallel()
 
-	result := &MCPToolResult{
-		Content: []MCPContentBlock{
+	result := &mcp.MCPToolResult{
+		Content: []mcp.MCPContentBlock{
 			{Type: "text", Text: "first"},
 			{Type: "text", Text: "second"},
 		},
 		IsError: false,
 	}
-	cli := buildCLIResult("observe", "page", result)
+	cli := BuildCLIResult("observe", "page", result)
 
 	if cli.TextContent != "first\nsecond" {
 		t.Fatalf("TextContent = %q, want 'first\\nsecond'", cli.TextContent)
@@ -96,21 +97,21 @@ func TestBuildCLIResult_MultipleBlocks(t *testing.T) {
 }
 
 // ============================================
-// formatHuman
+// FormatHuman
 // ============================================
 
 func TestFormatHuman_Success(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success:     true,
 		Tool:        "observe",
 		Action:      "logs",
 		TextContent: "Log output here",
 	}
-	if err := formatHuman(&buf, r); err != nil {
-		t.Fatalf("formatHuman error: %v", err)
+	if err := FormatHuman(&buf, r); err != nil {
+		t.Fatalf("FormatHuman error: %v", err)
 	}
 
 	output := buf.String()
@@ -126,14 +127,14 @@ func TestFormatHuman_Error(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success: false,
 		Tool:    "interact",
 		Action:  "click",
 		Error:   "Element not found",
 	}
-	if err := formatHuman(&buf, r); err != nil {
-		t.Fatalf("formatHuman error: %v", err)
+	if err := FormatHuman(&buf, r); err != nil {
+		t.Fatalf("FormatHuman error: %v", err)
 	}
 
 	output := buf.String()
@@ -146,21 +147,21 @@ func TestFormatHuman_Error(t *testing.T) {
 }
 
 // ============================================
-// formatJSON
+// FormatJSON
 // ============================================
 
 func TestFormatJSON_Success(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success: true,
 		Tool:    "observe",
 		Action:  "vitals",
 		Data:    map[string]any{"lcp": 2500, "fcp": 1200},
 	}
-	if err := formatJSON(&buf, r); err != nil {
-		t.Fatalf("formatJSON error: %v", err)
+	if err := FormatJSON(&buf, r); err != nil {
+		t.Fatalf("FormatJSON error: %v", err)
 	}
 
 	var out map[string]any
@@ -183,14 +184,14 @@ func TestFormatJSON_Error(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success: false,
 		Tool:    "configure",
 		Action:  "store",
 		Error:   "Permission denied",
 	}
-	if err := formatJSON(&buf, r); err != nil {
-		t.Fatalf("formatJSON error: %v", err)
+	if err := FormatJSON(&buf, r); err != nil {
+		t.Fatalf("FormatJSON error: %v", err)
 	}
 
 	var out map[string]any
@@ -203,21 +204,21 @@ func TestFormatJSON_Error(t *testing.T) {
 }
 
 // ============================================
-// formatCSV
+// FormatCSV
 // ============================================
 
 func TestFormatCSV_Success(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success: true,
 		Tool:    "observe",
 		Action:  "vitals",
 		Data:    map[string]any{"lcp": 2500.0},
 	}
-	if err := formatCSV(&buf, r); err != nil {
-		t.Fatalf("formatCSV error: %v", err)
+	if err := FormatCSV(&buf, r); err != nil {
+		t.Fatalf("FormatCSV error: %v", err)
 	}
 
 	output := buf.String()
@@ -242,14 +243,14 @@ func TestFormatCSV_Error(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	r := &cliResult{
+	r := &CLIResult{
 		Success: false,
 		Tool:    "interact",
 		Action:  "type",
 		Error:   "timeout",
 	}
-	if err := formatCSV(&buf, r); err != nil {
-		t.Fatalf("formatCSV error: %v", err)
+	if err := FormatCSV(&buf, r); err != nil {
+		t.Fatalf("FormatCSV error: %v", err)
 	}
 
 	output := buf.String()

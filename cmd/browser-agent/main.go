@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/cli"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
@@ -54,8 +55,8 @@ func main() {
 		}
 	}()
 
-	if len(os.Args) >= 2 && IsCLIMode(os.Args[1:]) {
-		os.Exit(runCLIMode(os.Args[1:]))
+	if len(os.Args) >= 2 && cli.IsCLIMode(os.Args[1:]) {
+		os.Exit(cli.Run(os.Args[1:], cliRuntimeConfig()))
 	}
 
 	cfg := parseAndValidateFlags()

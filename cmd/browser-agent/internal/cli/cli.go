@@ -1,8 +1,8 @@
-// Purpose: Implements standalone CLI mode execution flow, daemon bootstrap, and tool call dispatch.
+// cli.go — Implements standalone CLI mode execution flow, daemon bootstrap, and tool call dispatch.
 // Why: Enables scriptable local usage without requiring direct MCP client integration.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package cli
 
 import (
 	"fmt"
@@ -14,8 +14,19 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
-// cliToolNames lists valid tool names for CLI mode detection.
-var cliToolNames = map[string]bool{
+// RuntimeConfig holds values injected from the main package at startup.
+type RuntimeConfig struct {
+	DefaultPort     int
+	MaxPostBodySize int64
+
+	// DaemonOps — callbacks into the main package for daemon lifecycle.
+	IsServerRunning     func(port int) bool
+	WaitForServer       func(port int, timeout time.Duration) bool
+	DaemonProcessArgv0  func(exePath string) string
+}
+
+// CLIToolNames lists valid tool names for CLI mode detection.
+var CLIToolNames = map[string]bool{
 	"observe":   true,
 	"analyze":   true,
 	"generate":  true,
@@ -23,8 +34,8 @@ var cliToolNames = map[string]bool{
 	"interact":  true,
 }
 
-// cliConfig holds resolved CLI configuration.
-type cliConfig struct {
+// CLIConfig holds resolved CLI configuration.
+type CLIConfig struct {
 	Port    int
 	Format  string
 	Timeout int // milliseconds
@@ -35,12 +46,12 @@ func IsCLIMode(args []string) bool {
 	if len(args) == 0 {
 		return false
 	}
-	return cliToolNames[args[0]]
+	return CLIToolNames[args[0]]
 }
 
-// runCLIMode is the main CLI flow. Returns exit code.
-func runCLIMode(args []string) int {
-	cfg, remaining := resolveCLIConfig(args)
+// Run is the main CLI flow. Returns exit code.
+func Run(args []string, rc RuntimeConfig) int {
+	cfg, remaining := ResolveCLIConfig(args, rc)
 
 	if len(remaining) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: kaboom <tool> <action> [flags]\n")
@@ -54,14 +65,14 @@ func runCLIMode(args []string) int {
 	toolArgs := remaining[2:]
 
 	// Parse tool-specific arguments
-	mcpArgs, err := parseCLIArgs(tool, action, toolArgs)
+	mcpArgs, err := ParseCLIArgs(tool, action, toolArgs)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 2
 	}
 
 	// Ensure daemon is running and get base URL
-	baseURL, err := ensureDaemon(cfg.Port)
+	baseURL, err := EnsureDaemon(cfg.Port, rc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
@@ -69,40 +80,40 @@ func runCLIMode(args []string) int {
 
 	// Long-running modes get extended timeout
 	timeout := cfg.Timeout
-	if tool == "analyze" && normalizeAction(action) == "accessibility" {
+	if tool == "analyze" && NormalizeAction(action) == "accessibility" {
 		timeout = 35000
 	}
-	if tool == "observe" && normalizeAction(action) == "command_result" && timeout < 60000 {
+	if tool == "observe" && NormalizeAction(action) == "command_result" && timeout < 60000 {
 		timeout = 60000
 	}
 
 	// Call the tool
-	result, err := callTool(baseURL, tool, mcpArgs, timeout)
+	result, err := CallTool(baseURL, tool, mcpArgs, timeout, rc.MaxPostBodySize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	return formatResult(cfg.Format, tool, normalizeAction(action), result)
+	return FormatResult(cfg.Format, tool, NormalizeAction(action), result)
 }
 
-// resolveCLIConfig resolves config from defaults < env < flags, stripping global flags.
-func resolveCLIConfig(args []string) (cliConfig, []string) {
-	cfg := cliConfig{
-		Port:    defaultPort,
+// ResolveCLIConfig resolves config from defaults < env < flags, stripping global flags.
+func ResolveCLIConfig(args []string, rc RuntimeConfig) (CLIConfig, []string) {
+	cfg := CLIConfig{
+		Port:    rc.DefaultPort,
 		Format:  "human",
 		Timeout: 15000,
 	}
 
-	applyCLIEnvOverrides(&cfg)
+	ApplyCLIEnvOverrides(&cfg)
 
-	remaining := applyCLIFlagOverrides(args, &cfg)
+	remaining := ApplyCLIFlagOverrides(args, &cfg)
 
 	return cfg, remaining
 }
 
-// applyCLIEnvOverrides applies KABOOM_PORT and KABOOM_FORMAT environment variables.
-func applyCLIEnvOverrides(cfg *cliConfig) {
+// ApplyCLIEnvOverrides applies KABOOM_PORT and KABOOM_FORMAT environment variables.
+func ApplyCLIEnvOverrides(cfg *CLIConfig) {
 	if envPort := os.Getenv("KABOOM_PORT"); envPort != "" {
 		if p, err := strconv.Atoi(envPort); err == nil {
 			cfg.Port = p
@@ -113,12 +124,12 @@ func applyCLIEnvOverrides(cfg *cliConfig) {
 	}
 }
 
-// applyCLIFlagOverrides strips --port, --format, --timeout flags and applies their values.
-func applyCLIFlagOverrides(args []string, cfg *cliConfig) []string {
+// ApplyCLIFlagOverrides strips --port, --format, --timeout flags and applies their values.
+func ApplyCLIFlagOverrides(args []string, cfg *CLIConfig) []string {
 	remaining := args
 
 	var portStr string
-	portStr, remaining = cliParseFlag(remaining, "--port")
+	portStr, remaining = CLIParseFlag(remaining, "--port")
 	if portStr != "" {
 		if p, err := strconv.Atoi(portStr); err == nil {
 			cfg.Port = p
@@ -126,13 +137,13 @@ func applyCLIFlagOverrides(args []string, cfg *cliConfig) []string {
 	}
 
 	var format string
-	format, remaining = cliParseFlag(remaining, "--format")
+	format, remaining = CLIParseFlag(remaining, "--format")
 	if format != "" {
 		cfg.Format = format
 	}
 
 	var timeoutStr string
-	timeoutStr, remaining = cliParseFlag(remaining, "--timeout")
+	timeoutStr, remaining = CLIParseFlag(remaining, "--timeout")
 	if timeoutStr != "" {
 		if t, err := strconv.Atoi(timeoutStr); err == nil {
 			cfg.Timeout = t
@@ -142,12 +153,12 @@ func applyCLIFlagOverrides(args []string, cfg *cliConfig) []string {
 	return remaining
 }
 
-// ensureDaemon checks if the server is running and spawns it if needed.
+// EnsureDaemon checks if the server is running and spawns it if needed.
 // Returns the base URL (e.g., "http://127.0.0.1:7890").
-func ensureDaemon(port int) (string, error) {
+func EnsureDaemon(port int, rc RuntimeConfig) (string, error) {
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
-	if isServerRunning(port) {
+	if rc.IsServerRunning(port) {
 		return baseURL, nil
 	}
 
@@ -158,7 +169,7 @@ func ensureDaemon(port int) (string, error) {
 	}
 
 	cmd := exec.Command(exe, "--daemon", "--port", fmt.Sprintf("%d", port)) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI opens browser with known URL
-	cmd.Args[0] = daemonProcessArgv0(exe)
+	cmd.Args[0] = rc.DaemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	cmd.Stdin = nil
@@ -169,7 +180,7 @@ func ensureDaemon(port int) (string, error) {
 	}
 
 	// Wait for daemon to become ready
-	if !waitForServer(port, 4*time.Second) {
+	if !rc.WaitForServer(port, 4*time.Second) {
 		return "", fmt.Errorf("daemon started but not responding on port %d after 4s", port)
 	}
 

@@ -1,9 +1,8 @@
-// Purpose: Tests for CLI command parsing and dispatch.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
-
 // cli_commands_test.go — Tests for uncovered CLI argument parser branches.
 // Core tests are in cli_test.go; this file covers remaining edge cases.
-package main
+// Docs: docs/features/feature/mcp-persistent-server/index.md
+
+package cli
 
 import (
 	"path/filepath"
@@ -11,13 +10,13 @@ import (
 )
 
 // ============================================
-// parseObserveArgs — uncovered flags
+// ParseObserveArgs — uncovered flags
 // ============================================
 
 func TestParseObserveArgs_StatusMaxAndLastN(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseObserveArgs("network_bodies", []string{
+	result, err := ParseObserveArgs("network_bodies", []string{
 		"--status-max", "499",
 		"--last-n", "10",
 	})
@@ -35,7 +34,7 @@ func TestParseObserveArgs_StatusMaxAndLastN(t *testing.T) {
 func TestParseObserveArgs_BodyPath(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseObserveArgs("network_bodies", []string{
+	result, err := ParseObserveArgs("network_bodies", []string{
 		"--body-path", "data.items[0]",
 	})
 	if err != nil {
@@ -49,7 +48,7 @@ func TestParseObserveArgs_BodyPath(t *testing.T) {
 func TestParseObserveArgs_CommandResultCorrelationID(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseObserveArgs("command_result", []string{"--correlation-id", "corr-123"})
+	result, err := ParseObserveArgs("command_result", []string{"--correlation-id", "corr-123"})
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -59,13 +58,13 @@ func TestParseObserveArgs_CommandResultCorrelationID(t *testing.T) {
 }
 
 // ============================================
-// parseAnalyzeArgs — parity coverage
+// ParseAnalyzeArgs — parity coverage
 // ============================================
 
 func TestParseAnalyzeArgs_BasicFlags(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseAnalyzeArgs("accessibility", []string{
+	result, err := ParseAnalyzeArgs("accessibility", []string{
 		"--scope", "#app",
 		"--tags", "wcag2a,wcag2aa",
 		"--force-refresh",
@@ -97,13 +96,13 @@ func TestParseAnalyzeArgs_BasicFlags(t *testing.T) {
 }
 
 // ============================================
-// parseGenerateArgs — uncovered flags
+// ParseGenerateArgs — uncovered flags
 // ============================================
 
 func TestParseGenerateArgs_MethodAndBaseURL(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseGenerateArgs("har", []string{
+	result, err := ParseGenerateArgs("har", []string{
 		"--method", "POST",
 		"--base-url", "http://localhost:3000",
 		"--url", "https://api.example.com",
@@ -127,13 +126,13 @@ func TestParseGenerateArgs_MethodAndBaseURL(t *testing.T) {
 }
 
 // ============================================
-// parseConfigureArgs — uncovered flags
+// ParseConfigureArgs — uncovered flags
 // ============================================
 
 func TestParseConfigureArgs_DataPlainString(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseConfigureArgs("store", []string{"--data", "not-json"})
+	result, err := ParseConfigureArgs("store", []string{"--data", "not-json"})
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -145,7 +144,7 @@ func TestParseConfigureArgs_DataPlainString(t *testing.T) {
 func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseConfigureArgs("noise_rule", []string{
+	result, err := ParseConfigureArgs("noise_rule", []string{
 		"--rule-id", "rule-1",
 		"--store-action", "save",
 		"--pattern", "err-*",
@@ -169,13 +168,13 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 }
 
 // ============================================
-// parseInteractArgs — uncovered flags
+// ParseInteractArgs — uncovered flags
 // ============================================
 
 func TestParseInteractArgs_TimeoutAndSubtitle(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseInteractArgs("click", []string{
+	result, err := ParseInteractArgs("click", []string{
 		"--selector", "#btn",
 		"--timeout-ms", "5000",
 		"--subtitle", "Clicking button",
@@ -206,7 +205,7 @@ func TestParseInteractArgs_TimeoutAndSubtitle(t *testing.T) {
 func TestParseInteractArgs_FilePathRelative(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseInteractArgs("upload", []string{
+	result, err := ParseInteractArgs("upload", []string{
 		"--selector", "input[type=file]",
 		"--file-path", "test.png",
 	})
@@ -223,7 +222,7 @@ func TestParseInteractArgs_FilePathRelative(t *testing.T) {
 func TestParseInteractArgs_FilePathAbsolute(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseInteractArgs("upload", []string{
+	result, err := ParseInteractArgs("upload", []string{
 		"--selector", "input[type=file]",
 		"--file-path", "/tmp/test.png",
 	})
@@ -238,7 +237,7 @@ func TestParseInteractArgs_FilePathAbsolute(t *testing.T) {
 func TestParseInteractArgs_UploadWithAPIEndpointOnly(t *testing.T) {
 	t.Parallel()
 
-	result, err := parseInteractArgs("upload", []string{
+	result, err := ParseInteractArgs("upload", []string{
 		"--api-endpoint", "https://example.com/upload",
 		"--file-path", "/tmp/test.png",
 		"--submit",
@@ -261,20 +260,20 @@ func TestParseInteractArgs_UploadWithAPIEndpointOnly(t *testing.T) {
 func TestParseGenerateArgs_UnknownFlag(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseGenerateArgs("har", []string{"--not-a-flag"})
+	_, err := ParseGenerateArgs("har", []string{"--not-a-flag"})
 	if err == nil {
 		t.Fatal("expected unknown flag error")
 	}
 }
 
 // ============================================
-// cliParseFlag — missing flag
+// CLIParseFlag — missing flag
 // ============================================
 
 func TestCliParseFlag_Missing(t *testing.T) {
 	t.Parallel()
 
-	val, remaining := cliParseFlag([]string{"--other", "x"}, "--url")
+	val, remaining := CLIParseFlag([]string{"--other", "x"}, "--url")
 	if val != "" {
 		t.Fatalf("missing flag should return empty, got %q", val)
 	}
