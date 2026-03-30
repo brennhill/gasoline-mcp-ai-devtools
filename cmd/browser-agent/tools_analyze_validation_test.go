@@ -22,7 +22,7 @@ func newAnalyzeValidationHandler(t *testing.T) *ToolHandler {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	t.Cleanup(func() {
-		server.shutdownAsyncLogger(2 * time.Second)
+		server.logs.shutdownAsyncLogger(2 * time.Second)
 	})
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)

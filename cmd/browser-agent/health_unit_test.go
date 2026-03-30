@@ -88,16 +88,19 @@ func TestHealthResponseIncludesDroppedCount(t *testing.T) {
 	// Create a server with a channel of size 1 and NO async worker,
 	// so the channel stays full when we manually fill it.
 	srv := &Server{
-		maxEntries: 100,
-		entries:    make([]LogEntry, 0),
-		logChan:    make(chan []LogEntry, 1),
-		logDone:    make(chan struct{}),
+		logs: &LogStore{
+			maxEntries: 100,
+			entries:    make([]LogEntry, 0),
+			logChan:    make(chan []LogEntry, 1),
+			logDone:    make(chan struct{}),
+			addWarning: func(string) {},
+		},
 	}
 
 	// Fill channel (no worker draining it), then trigger two drops
-	srv.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
-	_ = srv.appendToFile([]LogEntry{{"level": "info", "message": "drop1"}})
-	_ = srv.appendToFile([]LogEntry{{"level": "info", "message": "drop2"}})
+	srv.logs.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
+	_ = srv.logs.appendToFile([]LogEntry{{"level": "info", "message": "drop1"}})
+	_ = srv.logs.appendToFile([]LogEntry{{"level": "info", "message": "drop2"}})
 
 	resp := hm.GetHealth(nil, srv, "test")
 
@@ -117,8 +120,8 @@ func TestHealthResponseIncludesDroppedCount(t *testing.T) {
 	}
 
 	// Clean up: drain channel and close done signal
-	<-srv.logChan
-	close(srv.logDone)
+	<-srv.logs.logChan
+	close(srv.logs.logDone)
 }
 
 func TestHealthResponseZeroDroppedCount(t *testing.T) {
@@ -126,10 +129,13 @@ func TestHealthResponseZeroDroppedCount(t *testing.T) {
 
 	hm := NewHealthMetrics()
 	srv := &Server{
-		maxEntries: 100,
-		entries:    make([]LogEntry, 0),
-		logChan:    make(chan []LogEntry, 10),
-		logDone:    make(chan struct{}),
+		logs: &LogStore{
+			maxEntries: 100,
+			entries:    make([]LogEntry, 0),
+			logChan:    make(chan []LogEntry, 10),
+			logDone:    make(chan struct{}),
+			addWarning: func(string) {},
+		},
 	}
 
 	resp := hm.GetHealth(nil, srv, "test")
@@ -138,7 +144,7 @@ func TestHealthResponseZeroDroppedCount(t *testing.T) {
 		t.Fatalf("Console.DroppedCount = %d, want 0 for fresh server", resp.Buffers.Console.DroppedCount)
 	}
 
-	close(srv.logDone)
+	close(srv.logs.logDone)
 }
 
 func TestBuildPilotInfo_AssumedEnabledStartupState(t *testing.T) {

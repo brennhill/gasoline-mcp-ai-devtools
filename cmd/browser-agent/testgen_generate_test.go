@@ -7,7 +7,6 @@ package main
 
 import (
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -18,8 +17,10 @@ import (
 func newTestToolHandler() *ToolHandler {
 	cap := capture.NewCapture()
 	srv := &Server{
-		entries: make([]LogEntry, 0),
-		mu:      sync.RWMutex{},
+		logs: &LogStore{
+			entries:    make([]LogEntry, 0),
+			addWarning: func(string) {},
+		},
 	}
 	h := &ToolHandler{
 		MCPHandler: &MCPHandler{server: srv},

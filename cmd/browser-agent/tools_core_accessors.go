@@ -27,20 +27,20 @@ func (h *ToolHandler) GetCapture() *capture.Store {
 // GetLogEntries returns a snapshot of the server's log entries and their timestamps.
 // The returned slices are copies — safe to use without holding the server lock.
 func (h *ToolHandler) GetLogEntries() ([]LogEntry, []time.Time) {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-	entries := make([]LogEntry, len(h.server.entries))
-	copy(entries, h.server.entries)
-	addedAt := make([]time.Time, len(h.server.logAddedAt))
-	copy(addedAt, h.server.logAddedAt)
+	h.server.logs.mu.RLock()
+	defer h.server.logs.mu.RUnlock()
+	entries := make([]LogEntry, len(h.server.logs.entries))
+	copy(entries, h.server.logs.entries)
+	addedAt := make([]time.Time, len(h.server.logs.logAddedAt))
+	copy(addedAt, h.server.logs.logAddedAt)
 	return entries, addedAt
 }
 
 // GetLogTotalAdded returns the monotonic counter of total log entries ever added.
 func (h *ToolHandler) GetLogTotalAdded() int64 {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-	return h.server.logTotalAdded
+	h.server.logs.mu.RLock()
+	defer h.server.logs.mu.RUnlock()
+	return h.server.logs.logTotalAdded
 }
 
 // armEvidenceForCommand delegates evidence arming to the interactActionHandler.

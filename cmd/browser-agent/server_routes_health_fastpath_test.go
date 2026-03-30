@@ -21,8 +21,11 @@ func TestHandleHealthIncludesBridgeFastPathCounters(t *testing.T) {
 	bridge.RecordFastPathResourceRead("kaboom://playbook/nonexistent/quick", false, -32002)
 
 	s := &Server{
-		maxEntries: 100,
-		logFile:    filepath.Join(t.TempDir(), "kaboom.jsonl"),
+		logs: &LogStore{
+			maxEntries: 100,
+			logFile:    filepath.Join(t.TempDir(), "kaboom.jsonl"),
+			addWarning: func(string) {},
+		},
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)

@@ -124,10 +124,10 @@ func getConsoleStats(server *Server) (int, int, int64) {
 	if server == nil {
 		return 0, defaultMaxEntries, 0
 	}
-	server.mu.RLock()
-	entries := len(server.entries)
-	server.mu.RUnlock()
-	return entries, server.maxEntries, server.getLogDropCount()
+	server.logs.mu.RLock()
+	entries := len(server.logs.entries)
+	server.logs.mu.RUnlock()
+	return entries, server.logs.maxEntries, server.logs.getLogDropCount()
 }
 
 // buildRateLimitInfo returns rate limiting state from capture.

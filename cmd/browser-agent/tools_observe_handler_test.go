@@ -159,8 +159,8 @@ func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 	_ = cap
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
-	server.entries = append(server.entries, LogEntry{
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, LogEntry{
 		"level":   "error",
 		"message": "Test error message",
 		"source":  "https://example.com/app.js",
@@ -171,7 +171,7 @@ func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 		"ts":      ts,
 		"tabId":   float64(1),
 	})
-	server.mu.Unlock()
+	server.logs.mu.Unlock()
 
 	resp := callObserveRaw(h, "errors")
 	result := parseToolResult(t, resp)
@@ -254,12 +254,12 @@ func TestToolsObserveErrors_URLFilter(t *testing.T) {
 	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
-	server.entries = append(server.entries,
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries,
 		LogEntry{"level": "error", "message": "Error A", "url": "https://example.com/a.js", "ts": ts},
 		LogEntry{"level": "error", "message": "Error B", "url": "https://other.com/b.js", "ts": ts},
 	)
-	server.mu.Unlock()
+	server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{"what":"errors","url":"example.com"}`))
@@ -277,11 +277,11 @@ func TestToolsObserveErrors_LimitParam(t *testing.T) {
 	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
+	server.logs.mu.Lock()
 	for i := 0; i < 5; i++ {
-		server.entries = append(server.entries, LogEntry{"level": "error", "message": "err", "ts": ts})
+		server.logs.entries = append(server.logs.entries, LogEntry{"level": "error", "message": "err", "ts": ts})
 	}
-	server.mu.Unlock()
+	server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{"what":"errors","limit":2}`))
@@ -303,8 +303,8 @@ func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
-	server.entries = append(server.entries, LogEntry{
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, LogEntry{
 		"type":    "console",
 		"level":   "warn",
 		"message": "deprecation warning",
@@ -315,8 +315,8 @@ func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 		"ts":      ts,
 		"tabId":   float64(2),
 	})
-	server.logTotalAdded++
-	server.mu.Unlock()
+	server.logs.logTotalAdded++
+	server.logs.mu.Unlock()
 
 	resp := callObserveRaw(h, "logs")
 	result := parseToolResult(t, resp)
@@ -782,11 +782,11 @@ func TestToolsObserveErrors_DataAgeMs_Present(t *testing.T) {
 	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
-	server.entries = append(server.entries, LogEntry{
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, LogEntry{
 		"level": "error", "message": "Test error", "ts": ts,
 	})
-	server.mu.Unlock()
+	server.logs.mu.Unlock()
 
 	resp := callObserveRaw(h, "errors")
 	result := parseToolResult(t, resp)

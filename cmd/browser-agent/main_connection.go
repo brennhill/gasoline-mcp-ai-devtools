@@ -22,5 +22,5 @@ func (s *Server) logLifecycle(event string, port int, extra map[string]any) {
 	for k, v := range extra {
 		entry[k] = v
 	}
-	s.addEntries([]LogEntry{entry})
+	s.logs.addEntries([]LogEntry{entry})
 }

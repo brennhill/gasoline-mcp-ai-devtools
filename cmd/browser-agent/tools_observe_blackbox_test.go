@@ -106,13 +106,13 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 	}
 	body, _ := json.Marshal(logsPayload)
 
-	// Note: We directly add to server.entries to simulate the /logs endpoint
+	// Note: We directly add to server.logs.entries to simulate the /logs endpoint
 	_ = body // Payload would be POSTed to /logs in real scenario
 
 	// Use the server's /logs handler
-	server.mu.Lock()
-	server.entries = append(server.entries, logsPayload["entries"].([]LogEntry)...)
-	server.mu.Unlock()
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, logsPayload["entries"].([]LogEntry)...)
+	server.logs.mu.Unlock()
 
 	// Step 2: Call observe errors via MCP tool
 	mcpReq := JSONRPCRequest{
@@ -177,9 +177,9 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 	handler := NewToolHandler(server, cap)
 
 	// POST logs
-	server.mu.Lock()
-	server.entries = append(server.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
-	server.mu.Unlock()
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
+	server.logs.mu.Unlock()
 
 	// Call observe logs
 	mcpReq := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
@@ -217,9 +217,9 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 	cap := capture.NewCapture()
 	handler := NewToolHandler(server, cap)
 
-	server.mu.Lock()
-	server.entries = append(server.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
-	server.mu.Unlock()
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
+	server.logs.mu.Unlock()
 
 	// "level" is a quiet alias for "min_level" (threshold): warn returns warn+error.
 	th := handler.toolHandler.(*ToolHandler)
@@ -599,9 +599,9 @@ func TestMCPToolsCall_ObserveErrors_FullFlow(t *testing.T) {
 	handler := NewToolHandler(server, cap)
 
 	// Populate with test data
-	server.mu.Lock()
-	server.entries = append(server.entries, sampleConsoleError)
-	server.mu.Unlock()
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, sampleConsoleError)
+	server.logs.mu.Unlock()
 
 	// Create MCP request exactly as client would send it
 	mcpRequest := JSONRPCRequest{

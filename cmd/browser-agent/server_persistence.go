@@ -13,8 +13,8 @@ import (
 )
 
 // loadEntries reads existing log entries from file.
-func (s *Server) loadEntries() error {
-	file, err := os.Open(s.logFile)
+func (ls *LogStore) loadEntries() error {
+	file, err := os.Open(ls.logFile)
 	if err != nil {
 		return err
 	}
@@ -32,19 +32,19 @@ func (s *Server) loadEntries() error {
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue // Skip malformed lines
 		}
-		s.entries = append(s.entries, entry)
+		ls.entries = append(ls.entries, entry)
 	}
 
 	// Initialize logAddedAt for loaded entries (we don't have actual add times,
 	// but the slice must have the same length as entries for rotation to work)
-	s.logAddedAt = make([]time.Time, len(s.entries))
+	ls.logAddedAt = make([]time.Time, len(ls.entries))
 
 	// Bound entries (file may have more from append-only writes between rotations)
-	if len(s.entries) > s.maxEntries {
-		kept := make([]LogEntry, s.maxEntries)
-		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
-		s.entries = kept
-		s.logAddedAt = make([]time.Time, s.maxEntries)
+	if len(ls.entries) > ls.maxEntries {
+		kept := make([]LogEntry, ls.maxEntries)
+		copy(kept, ls.entries[len(ls.entries)-ls.maxEntries:])
+		ls.entries = kept
+		ls.logAddedAt = make([]time.Time, ls.maxEntries)
 	}
 
 	return scanner.Err()
@@ -53,20 +53,20 @@ func (s *Server) loadEntries() error {
 // saveEntriesCopy writes the given entries to file without acquiring the lock.
 // The caller is responsible for providing a snapshot of the entries.
 // Uses atomic write pattern: write to temp file then rename for safety.
-func (s *Server) saveEntriesCopy(entries []LogEntry) error {
-	if s.logFile == "" {
+func (ls *LogStore) saveEntriesCopy(entries []LogEntry) error {
+	if ls.logFile == "" {
 		return nil
 	}
 	// Write to temporary file first, then atomically rename
 	// This ensures log file remains intact if write fails partway through
-	tmpFile := s.logFile + ".tmp"
+	tmpFile := ls.logFile + ".tmp"
 	file, err := os.Create(tmpFile)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
-			s.AddWarning(fmt.Sprintf("log_temp_close_failed: %v", closeErr))
+			ls.addWarning(fmt.Sprintf("log_temp_close_failed: %v", closeErr))
 		}
 	}()
 
@@ -88,7 +88,7 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 	}
 
 	// Atomic rename: ensures log file is only updated if write succeeded
-	if err := os.Rename(tmpFile, s.logFile); err != nil {
+	if err := os.Rename(tmpFile, ls.logFile); err != nil {
 		_ = os.Remove(tmpFile)
 		return err
 	}

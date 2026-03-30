@@ -13,8 +13,8 @@ import (
 
 // addEntries adds new entries and rotates if needed.
 // #lizard forgives
-func (s *Server) addEntries(newEntries []LogEntry) int {
-	rotated, entriesToSave, appendOnly, cb := s.addEntriesInMemory(newEntries)
+func (ls *LogStore) addEntries(newEntries []LogEntry) int {
+	rotated, entriesToSave, appendOnly, cb := ls.addEntriesInMemory(newEntries)
 
 	// File I/O outside lock — snapshot protects consistency
 	// Note: If clearEntries() is called between unlock and file I/O, the file may temporarily contain
@@ -23,12 +23,12 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	// 2. On rotation, the entire file is rewritten with fresh data
 	// 3. The window is very short (microseconds typically)
 	if rotated {
-		if err := s.saveEntriesCopy(entriesToSave); err != nil {
-			s.AddWarning(fmt.Sprintf("log_save_failed: %v", err))
+		if err := ls.saveEntriesCopy(entriesToSave); err != nil {
+			ls.addWarning(fmt.Sprintf("log_save_failed: %v", err))
 		}
 	} else {
-		if err := s.appendToFile(appendOnly); err != nil {
-			s.AddWarning(fmt.Sprintf("log_append_failed: %v", err))
+		if err := ls.appendToFile(appendOnly); err != nil {
+			ls.addWarning(fmt.Sprintf("log_append_failed: %v", err))
 		}
 	}
 
@@ -41,71 +41,71 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 }
 
 // addEntriesInMemory mutates log state under lock and returns snapshots for I/O outside the lock.
-func (s *Server) addEntriesInMemory(newEntries []LogEntry) (rotated bool, entriesToSave []LogEntry, appendOnly []LogEntry, cb func([]LogEntry)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (ls *LogStore) addEntriesInMemory(newEntries []LogEntry) (rotated bool, entriesToSave []LogEntry, appendOnly []LogEntry, cb func([]LogEntry)) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
 
-	s.logTotalAdded += int64(len(newEntries))
+	ls.logTotalAdded += int64(len(newEntries))
 	for _, entry := range newEntries {
 		level, ok := entry["level"].(string)
 		if ok && level == "error" {
-			s.errorTotalAdded++
+			ls.errorTotalAdded++
 		}
 	}
 
 	now := time.Now()
 	for range newEntries {
-		s.logAddedAt = append(s.logAddedAt, now)
+		ls.logAddedAt = append(ls.logAddedAt, now)
 	}
-	s.entries = append(s.entries, newEntries...)
+	ls.entries = append(ls.entries, newEntries...)
 
 	// Rotate if needed — copy to new slice to allow GC of evicted entries
-	rotated = len(s.entries) > s.maxEntries
+	rotated = len(ls.entries) > ls.maxEntries
 	if rotated {
-		kept := make([]LogEntry, s.maxEntries)
-		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
-		s.entries = kept
-		keptAt := make([]time.Time, s.maxEntries)
-		copy(keptAt, s.logAddedAt[len(s.logAddedAt)-s.maxEntries:])
-		s.logAddedAt = keptAt
+		kept := make([]LogEntry, ls.maxEntries)
+		copy(kept, ls.entries[len(ls.entries)-ls.maxEntries:])
+		ls.entries = kept
+		keptAt := make([]time.Time, ls.maxEntries)
+		copy(keptAt, ls.logAddedAt[len(ls.logAddedAt)-ls.maxEntries:])
+		ls.logAddedAt = keptAt
 	}
 
 	// Snapshot data for file I/O outside the lock
 	if rotated {
-		entriesToSave = make([]LogEntry, len(s.entries))
-		copy(entriesToSave, s.entries)
+		entriesToSave = make([]LogEntry, len(ls.entries))
+		copy(entriesToSave, ls.entries)
 	} else {
 		appendOnly = make([]LogEntry, len(newEntries))
 		copy(appendOnly, newEntries)
 	}
-	cb = s.onEntries
+	cb = ls.onEntries
 	return rotated, entriesToSave, appendOnly, cb
 }
 
 // asyncLoggerWorker runs in a background goroutine and handles all file I/O.
-func (s *Server) asyncLoggerWorker() {
-	defer close(s.logDone)
+func (ls *LogStore) asyncLoggerWorker() {
+	defer close(ls.logDone)
 
-	for entries := range s.logChan {
+	for entries := range ls.logChan {
 		// Synchronous file I/O happens here (off the hot path)
-		if err := s.appendToFileSync(entries); err != nil {
-			s.AddWarning(fmt.Sprintf("log_write_failed: %v", err))
+		if err := ls.appendToFileSync(entries); err != nil {
+			ls.addWarning(fmt.Sprintf("log_write_failed: %v", err))
 		}
 	}
 }
 
 // appendToFileSync does synchronous file I/O (called by async worker only).
-func (s *Server) appendToFileSync(entries []LogEntry) error {
-	if s.logFile == "" {
+func (ls *LogStore) appendToFileSync(entries []LogEntry) error {
+	if ls.logFile == "" {
 		return nil
 	}
-	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- path set at startup
+	f, err := os.OpenFile(ls.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- path set at startup
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if closeErr := f.Close(); closeErr != nil {
-			s.AddWarning(fmt.Sprintf("log_close_failed: %v", closeErr))
+			ls.addWarning(fmt.Sprintf("log_close_failed: %v", closeErr))
 		}
 	}()
 
@@ -123,7 +123,7 @@ func (s *Server) appendToFileSync(entries []LogEntry) error {
 	}
 
 	// Check file size and rotate if needed (non-blocking, off the hot path)
-	s.maybeRotateLogFile(f)
+	ls.maybeRotateLogFile(f)
 
 	return nil
 }
@@ -131,8 +131,8 @@ func (s *Server) appendToFileSync(entries []LogEntry) error {
 // maybeRotateLogFile checks the log file size and rotates if it exceeds maxFileSize.
 // Rotation renames the current file to .jsonl.old and lets the next write create a fresh file.
 // Called only from the async logger worker, so no additional locking is needed for file I/O.
-func (s *Server) maybeRotateLogFile(f *os.File) {
-	if s.maxFileSize <= 0 {
+func (ls *LogStore) maybeRotateLogFile(f *os.File) {
+	if ls.maxFileSize <= 0 {
 		return
 	}
 
@@ -140,31 +140,31 @@ func (s *Server) maybeRotateLogFile(f *os.File) {
 	if err != nil {
 		return
 	}
-	if fi.Size() <= s.maxFileSize {
+	if fi.Size() <= ls.maxFileSize {
 		return
 	}
 
-	oldFile := s.logFile + ".old"
+	oldFile := ls.logFile + ".old"
 	// Rename overwrites any existing .old file atomically on POSIX systems
-	if err := os.Rename(s.logFile, oldFile); err != nil { // #nosec G703 -- s.logFile is configured by local operator, not remote input
-		s.AddWarning(fmt.Sprintf("log_rotate_failed: %v", err))
+	if err := os.Rename(ls.logFile, oldFile); err != nil { // #nosec G703 -- s.logFile is configured by local operator, not remote input
+		ls.addWarning(fmt.Sprintf("log_rotate_failed: %v", err))
 		return
 	}
-	s.AddWarning(fmt.Sprintf("log_rotated: %s -> %s (%d bytes)", s.logFile, oldFile, fi.Size()))
+	ls.addWarning(fmt.Sprintf("log_rotated: %s -> %s (%d bytes)", ls.logFile, oldFile, fi.Size()))
 }
 
 // appendToFile queues log entries for async writing (never blocks).
-func (s *Server) appendToFile(entries []LogEntry) error {
-	if s.logChanClosed.Load() {
+func (ls *LogStore) appendToFile(entries []LogEntry) error {
+	if ls.logChanClosed.Load() {
 		return fmt.Errorf("log channel closed, %d entries dropped", len(entries))
 	}
 	select {
-	case s.logChan <- entries:
+	case ls.logChan <- entries:
 		// Queued successfully
 		return nil
 	default:
 		// Channel full - drop log to maintain availability
-		dropped := atomic.AddInt64(&s.logDropCount, 1)
+		dropped := atomic.AddInt64(&ls.logDropCount, 1)
 
 		// Alert to stderr (but don't spam)
 		if dropped%1000 == 1 { // Alert on 1st, 1001st, 2001st, etc.
@@ -176,43 +176,43 @@ func (s *Server) appendToFile(entries []LogEntry) error {
 }
 
 // clearEntries removes all entries.
-func (s *Server) clearEntries() {
-	s.clearEntriesInMemory()
+func (ls *LogStore) clearEntries() {
+	ls.clearEntriesInMemory()
 	// Write empty file outside lock
 	// #nosec G306 -- log files are owner-only (0600) for privacy
-	if s.logFile != "" {
-		if err := os.WriteFile(s.logFile, []byte{}, 0600); err != nil {
-			s.AddWarning(fmt.Sprintf("log_clear_failed: %v", err))
+	if ls.logFile != "" {
+		if err := os.WriteFile(ls.logFile, []byte{}, 0600); err != nil {
+			ls.addWarning(fmt.Sprintf("log_clear_failed: %v", err))
 		}
 	}
 }
 
-func (s *Server) clearEntriesInMemory() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.entries = nil
-	s.logAddedAt = nil
+func (ls *LogStore) clearEntriesInMemory() {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+	ls.entries = nil
+	ls.logAddedAt = nil
 }
 
 // shutdownAsyncLogger gracefully shuts down the async logger, draining remaining logs.
 // Safe to call multiple times (e.g., from both Server.Close and awaitShutdownSignal).
-func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
+func (ls *LogStore) shutdownAsyncLogger(timeout time.Duration) {
 	// Guard against double-close panic: only the first caller closes the channel.
-	if !s.logChanClosed.CompareAndSwap(false, true) {
+	if !ls.logChanClosed.CompareAndSwap(false, true) {
 		return
 	}
-	close(s.logChan)
+	close(ls.logChan)
 
 	// Wait for worker to finish draining, with timeout
 	select {
-	case <-s.logDone:
+	case <-ls.logDone:
 		// Worker exited cleanly
-		dropped := atomic.LoadInt64(&s.logDropCount)
+		dropped := atomic.LoadInt64(&ls.logDropCount)
 		if dropped > 0 {
-			s.AddWarning(fmt.Sprintf("log_drops: %d logs were dropped during session", dropped))
+			ls.addWarning(fmt.Sprintf("log_drops: %d logs were dropped during session", dropped))
 		}
 	case <-time.After(timeout):
 		// Timeout - worker still draining, but we need to exit
-		s.AddWarning(fmt.Sprintf("log_shutdown_timeout: %d logs may be lost", len(s.logChan)))
+		ls.addWarning(fmt.Sprintf("log_shutdown_timeout: %d logs may be lost", len(ls.logChan)))
 	}
 }

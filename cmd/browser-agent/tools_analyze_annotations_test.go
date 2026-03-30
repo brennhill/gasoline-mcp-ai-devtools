@@ -1193,20 +1193,20 @@ func TestToolGetAnnotationDetail_ErrorCorrelation(t *testing.T) {
 	h.annotationStore.StoreDetail("detail_corr", detail)
 
 	// Inject log entries: errors near the annotation timestamp
-	h.server.mu.Lock()
-	h.server.entries = append(h.server.entries,
+	h.server.logs.mu.Lock()
+	h.server.logs.entries = append(h.server.logs.entries,
 		LogEntry{"level": "error", "message": "TypeError: Cannot read property 'click'", "ts": annotTS.Add(-2 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "error", "message": "Uncaught ReferenceError: x is not defined", "ts": annotTS.Add(3 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "info", "message": "page loaded", "ts": annotTS.Add(-1 * time.Second).UTC().Format(time.RFC3339)},      // not error
 		LogEntry{"level": "error", "message": "far away error", "ts": annotTS.Add(-30 * time.Second).UTC().Format(time.RFC3339)}, // outside window
 	)
-	h.server.logAddedAt = append(h.server.logAddedAt,
+	h.server.logs.logAddedAt = append(h.server.logs.logAddedAt,
 		annotTS.Add(-2*time.Second),
 		annotTS.Add(3*time.Second),
 		annotTS.Add(-1*time.Second),
 		annotTS.Add(-30*time.Second),
 	)
-	h.server.mu.Unlock()
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_corr"}`)
@@ -1294,12 +1294,12 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_NamedSession(t *testing.T) {
 	h.annotationStore.StoreDetail("detail_ns", detail)
 
 	// Inject error near annotation time
-	h.server.mu.Lock()
-	h.server.entries = append(h.server.entries,
+	h.server.logs.mu.Lock()
+	h.server.logs.entries = append(h.server.logs.entries,
 		LogEntry{"level": "error", "message": "Layout shift error", "ts": annotTS.Add(-1 * time.Second).UTC().Format(time.RFC3339)},
 	)
-	h.server.logAddedAt = append(h.server.logAddedAt, annotTS.Add(-1*time.Second))
-	h.server.mu.Unlock()
+	h.server.logs.logAddedAt = append(h.server.logs.logAddedAt, annotTS.Add(-1*time.Second))
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_ns"}`))
@@ -1354,12 +1354,12 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_NonLatestTab(t *testing.T) {
 	h.annotationStore.StoreDetail("detail_t1", detail)
 
 	// Inject error near tab 1's annotation time
-	h.server.mu.Lock()
-	h.server.entries = append(h.server.entries,
+	h.server.logs.mu.Lock()
+	h.server.logs.entries = append(h.server.logs.entries,
 		LogEntry{"level": "error", "message": "Tab1 error", "ts": annotTS.Add(-2 * time.Second).UTC().Format(time.RFC3339)},
 	)
-	h.server.logAddedAt = append(h.server.logAddedAt, annotTS.Add(-2*time.Second))
-	h.server.mu.Unlock()
+	h.server.logs.logAddedAt = append(h.server.logs.logAddedAt, annotTS.Add(-2*time.Second))
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_t1"}`))
@@ -1583,12 +1583,12 @@ func TestToolGetAnnotationDetail_Hints_ErrorContext(t *testing.T) {
 	}
 	h.annotationStore.StoreDetail("detail_ec", detail)
 
-	h.server.mu.Lock()
-	h.server.entries = append(h.server.entries,
+	h.server.logs.mu.Lock()
+	h.server.logs.entries = append(h.server.logs.entries,
 		LogEntry{"level": "error", "message": "ReferenceError", "ts": annotTS.Add(-1 * time.Second).UTC().Format(time.RFC3339)},
 	)
-	h.server.logAddedAt = append(h.server.logAddedAt, annotTS.Add(-1*time.Second))
-	h.server.mu.Unlock()
+	h.server.logs.logAddedAt = append(h.server.logs.logAddedAt, annotTS.Add(-1*time.Second))
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_ec"}`))
@@ -1687,15 +1687,15 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_CapsAt5(t *testing.T) {
 	})
 
 	// Inject 8 error-level entries within the window
-	h.server.mu.Lock()
+	h.server.logs.mu.Lock()
 	for i := 0; i < 8; i++ {
 		offset := time.Duration(i-4) * time.Second
-		h.server.entries = append(h.server.entries,
+		h.server.logs.entries = append(h.server.logs.entries,
 			LogEntry{"level": "error", "message": "Error " + strings.Repeat("X", i), "ts": annotTS.Add(offset).UTC().Format(time.RFC3339)},
 		)
-		h.server.logAddedAt = append(h.server.logAddedAt, annotTS.Add(offset))
+		h.server.logs.logAddedAt = append(h.server.logs.logAddedAt, annotTS.Add(offset))
 	}
-	h.server.mu.Unlock()
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_cap"}`))
@@ -1835,18 +1835,18 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_BoundaryAndShape(t *testing.T)
 	})
 
 	// Inject errors at exactly ±5s (boundary, inclusive) and ±6s (outside window)
-	h.server.mu.Lock()
-	h.server.entries = append(h.server.entries,
+	h.server.logs.mu.Lock()
+	h.server.logs.entries = append(h.server.logs.entries,
 		LogEntry{"level": "error", "message": "at minus 5s", "ts": annotTS.Add(-5 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "error", "message": "at plus 5s", "ts": annotTS.Add(5 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "error", "message": "at minus 6s", "ts": annotTS.Add(-6 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "error", "message": "at plus 6s", "ts": annotTS.Add(6 * time.Second).UTC().Format(time.RFC3339)},
 	)
-	h.server.logAddedAt = append(h.server.logAddedAt,
+	h.server.logs.logAddedAt = append(h.server.logs.logAddedAt,
 		annotTS.Add(-5*time.Second), annotTS.Add(5*time.Second),
 		annotTS.Add(-6*time.Second), annotTS.Add(6*time.Second),
 	)
-	h.server.mu.Unlock()
+	h.server.logs.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_bnd"}`))
@@ -1896,7 +1896,7 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_TimestampFoundEmptyLogs(t *tes
 		CorrelationID: "detail_el", Selector: "div", Tag: "div",
 		Classes: []string{}, ComputedStyles: map[string]string{},
 	})
-	// No log entries injected — h.server.entries is empty
+	// No log entries injected — h.server.logs.entries is empty
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"what": "annotation_detail", "correlation_id": "detail_el"}`))

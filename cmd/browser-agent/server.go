@@ -8,43 +8,22 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/terminal"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tracking"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
-// LogEntry represents a single log entry (alias to internal/mcp).
-type LogEntry = mcp.LogEntry
-
-// defaultMaxFileSize is the log file size threshold for rotation (50MB).
-const defaultMaxFileSize int64 = 50 * 1024 * 1024
-
 // Server holds the server state.
 type Server struct {
-	logFile         string
-	maxEntries      int
-	maxFileSize     int64 // max log file size in bytes before rotation (0 = disabled)
-	listenPort      int
-	entries         []LogEntry
-	logAddedAt      []time.Time // parallel slice: when each entry was added
-	mu              sync.RWMutex
-	logTotalAdded   int64            // monotonic counter of total entries ever added
-	errorTotalAdded int64            // monotonic counter of error-level entries ever added
-	telemetryMode   string           // telemetry summary verbosity: off|auto|full
-	onEntries       func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
-	TTL             time.Duration    // TTL for read-time filtering (0 means unlimited)
+	listenPort int
+	mu         sync.RWMutex
 
-	// Async logging
-	logChan       chan []LogEntry // buffered channel for async log writes
-	logDropCount  int64           // atomic counter for dropped logs (when channel full)
-	logDone       chan struct{}   // signal when async logger exits
-	logChanClosed atomic.Bool    // guards against double-close panic on logChan
+	// Log subsystem — owns entries, TTL rotation, async channel, file persistence.
+	logs *LogStore
 
 	// One-shot warnings surfaced via MCP tool responses.
 	warningsMu  sync.Mutex
@@ -78,14 +57,7 @@ type Server struct {
 // NewServer creates a new server instance.
 func NewServer(logFile string, maxEntries int) (*Server, error) {
 	s := &Server{
-		logFile:         logFile,
-		maxEntries:      maxEntries,
-		maxFileSize:     defaultMaxFileSize,
 		listenPort:      defaultPort,
-		entries:         make([]LogEntry, 0),
-		telemetryMode:   telemetryModeAuto,
-		logChan:         make(chan []LogEntry, 10000), // 10k buffer for burst traffic
-		logDone:         make(chan struct{}),
 		warningSeen:     make(map[string]struct{}),
 		annotationStore: NewAnnotationStore(10 * time.Minute),
 		pushInbox:       push.NewPushInbox(50),
@@ -93,6 +65,9 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		tokenTracker:    tracking.NewTokenTracker(),
 		intentStore:     terminal.NewIntentStore(),
 	}
+
+	// Create log store with warning callback wired to server
+	s.logs = NewLogStore(logFile, maxEntries, s.AddWarning)
 
 	// Initialize push router with capability sync callback
 	caps := getPushClientCapabilities()
@@ -102,35 +77,35 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 	})
 
 	// Start async logger goroutine
-	util.SafeGo(func() { s.asyncLoggerWorker() })
+	util.SafeGo(func() { s.logs.asyncLoggerWorker() })
 
 	// Ensure log directory exists
-	if s.logFile != "" {
-		dir := filepath.Dir(s.logFile)
+	if s.logs.logFile != "" {
+		dir := filepath.Dir(s.logs.logFile)
 		// #nosec G301 -- log directory: owner rwx, group rx for diagnostics
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			fallback := fallbackLogFilePath()
 			s.AddWarning(fmt.Sprintf("state_dir_not_writable: %v; falling back to %s", err, fallback))
-			s.logFile = fallback
-			_ = os.MkdirAll(filepath.Dir(s.logFile), 0o750)
+			s.logs.logFile = fallback
+			_ = os.MkdirAll(filepath.Dir(s.logs.logFile), 0o750)
 		}
-		if err := ensureLogFileWritable(s.logFile); err != nil {
+		if err := ensureLogFileWritable(s.logs.logFile); err != nil {
 			fallback := fallbackLogFilePath()
 			s.AddWarning(fmt.Sprintf("state_dir_not_writable: %v; falling back to %s", err, fallback))
-			s.logFile = fallback
-			if err := os.MkdirAll(filepath.Dir(s.logFile), 0o750); err != nil {
+			s.logs.logFile = fallback
+			if err := os.MkdirAll(filepath.Dir(s.logs.logFile), 0o750); err != nil {
 				s.AddWarning(fmt.Sprintf("log_persistence_disabled: %v", err))
-				s.logFile = ""
-			} else if err := ensureLogFileWritable(s.logFile); err != nil {
+				s.logs.logFile = ""
+			} else if err := ensureLogFileWritable(s.logs.logFile); err != nil {
 				s.AddWarning(fmt.Sprintf("log_persistence_disabled: %v", err))
-				s.logFile = ""
+				s.logs.logFile = ""
 			}
 		}
 	}
 
 	// Load existing entries
-	if s.logFile != "" {
-		if err := s.loadEntries(); err != nil {
+	if s.logs.logFile != "" {
+		if err := s.logs.loadEntries(); err != nil {
 			// File might not exist yet, that's OK
 			if !os.IsNotExist(err) {
 				s.AddWarning(fmt.Sprintf("log_load_failed: %v", err))
@@ -219,14 +194,12 @@ func (s *Server) SetActiveCodebase(path string) {
 
 // Close gracefully shuts down the server, draining the async log writer.
 func (s *Server) Close() {
-	s.shutdownAsyncLogger(asyncLoggerDrainTimeout)
+	s.logs.shutdownAsyncLogger(asyncLoggerDrainTimeout)
 	s.closeAnnotationStore()
 }
 
 // SetOnEntries sets the callback invoked when new log entries are added.
 // Thread-safe: acquires the write lock to avoid racing with addEntries.
 func (s *Server) SetOnEntries(cb func([]LogEntry)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.onEntries = cb
+	s.logs.SetOnEntries(cb)
 }

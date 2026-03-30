@@ -38,15 +38,15 @@ func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string
 // appendServerLog appends one entry to bounded in-memory daemon logs.
 //
 // Invariants:
-// - h.server.entries is always size-limited to h.server.maxEntries under h.server.mu.
+// - h.server.logs.entries is always size-limited to h.server.logs.maxEntries under h.server.logs.mu.
 //
 // Failure semantics:
 // - Oldest entries are evicted first when capacity is exceeded.
 func (h *ToolHandler) appendServerLog(entry LogEntry) {
-	h.server.mu.Lock()
-	defer h.server.mu.Unlock()
-	h.server.entries = append(h.server.entries, entry)
-	if len(h.server.entries) > h.server.maxEntries {
-		h.server.entries = h.server.entries[1:]
+	h.server.logs.mu.Lock()
+	defer h.server.logs.mu.Unlock()
+	h.server.logs.entries = append(h.server.logs.entries, entry)
+	if len(h.server.logs.entries) > h.server.logs.maxEntries {
+		h.server.logs.entries = h.server.logs.entries[1:]
 	}
 }

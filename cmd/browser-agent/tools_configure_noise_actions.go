@@ -140,12 +140,12 @@ func (h *ToolHandler) noiseActionReset() any {
 }
 
 func (h *ToolHandler) noiseActionAutoDetect() any {
-	h.server.mu.RLock()
-	consoleEntries := make([]noise.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
+	h.server.logs.mu.RLock()
+	consoleEntries := make([]noise.LogEntry, len(h.server.logs.entries))
+	for i, e := range h.server.logs.entries {
 		consoleEntries[i] = noise.LogEntry(e)
 	}
-	h.server.mu.RUnlock()
+	h.server.logs.mu.RUnlock()
 
 	networkBodies := h.capture.GetNetworkBodies()
 	wsEvents := h.capture.GetAllWebSocketEvents()

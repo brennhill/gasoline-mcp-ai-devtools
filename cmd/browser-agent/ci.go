@@ -41,7 +41,7 @@ func handleSnapshot(server *Server, cap *capture.Store) http.HandlerFunc {
 		}
 
 		// Gather logs
-		logs := server.getEntries()
+		logs := server.logs.getEntries()
 		if !sinceTime.IsZero() {
 			logs = filterLogsSince(logs, sinceTime)
 		}
@@ -86,8 +86,8 @@ func handleClear(server *Server, cap *capture.Store) http.HandlerFunc {
 			return
 		}
 
-		previousCount := server.getEntryCount()
-		server.clearEntries()
+		previousCount := server.logs.getEntryCount()
+		server.logs.clearEntries()
 		cap.ClearAll()
 
 		jsonResponse(w, http.StatusOK, map[string]any{

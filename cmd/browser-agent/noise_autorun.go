@@ -183,12 +183,12 @@ func (h *ToolHandler) IsConsoleNoise(entry map[string]any) bool {
 // runNoiseAutoDetect collects current buffer data and runs noise auto-detection.
 // This is the same logic as noiseActionAutoDetect() but designed for background use.
 func (h *ToolHandler) runNoiseAutoDetect() {
-	h.server.mu.RLock()
-	consoleEntries := make([]noise.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
+	h.server.logs.mu.RLock()
+	consoleEntries := make([]noise.LogEntry, len(h.server.logs.entries))
+	for i, e := range h.server.logs.entries {
 		consoleEntries[i] = noise.LogEntry(e)
 	}
-	h.server.mu.RUnlock()
+	h.server.logs.mu.RUnlock()
 
 	networkBodies := h.capture.GetNetworkBodies()
 	wsEvents := h.capture.GetAllWebSocketEvents()

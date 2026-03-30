@@ -142,9 +142,9 @@ func (h *ToolHandler) collectIssueReport(template, title, userContext string) is
 	}
 
 	if h.server != nil {
-		h.server.mu.RLock()
-		report.Diagnostics.Buffers.ConsoleEntries = len(h.server.entries)
-		h.server.mu.RUnlock()
+		h.server.logs.mu.RLock()
+		report.Diagnostics.Buffers.ConsoleEntries = len(h.server.logs.entries)
+		h.server.logs.mu.RUnlock()
 	}
 
 	return report

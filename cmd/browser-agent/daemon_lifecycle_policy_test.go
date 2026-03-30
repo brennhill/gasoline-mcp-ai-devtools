@@ -125,7 +125,7 @@ func TestEnforceDaemonStartupPolicy_DefaultTakeover(t *testing.T) {
 		t.Fatalf("pid file for existing port should be removed, stat err = %v", err)
 	}
 
-	server.shutdownAsyncLogger(2 * time.Second)
+	server.logs.shutdownAsyncLogger(2 * time.Second)
 	events := readLifecycleEventsFromLogFile(t, logFile)
 	var takeover map[string]any
 	for _, evt := range events {
@@ -177,7 +177,7 @@ func TestEnforceDaemonStartupPolicy_SafetyGuardRejectsPIDMismatch(t *testing.T) 
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	defer server.shutdownAsyncLogger(2 * time.Second)
+	defer server.logs.shutdownAsyncLogger(2 * time.Second)
 
 	oldIsAlive := daemonIsProcessAlive
 	oldIsServerRunning := daemonIsServerRunning
@@ -222,7 +222,7 @@ func TestEnforceDaemonStartupPolicy_ParallelRequiresIsolatedStateDir(t *testing.
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	defer server.shutdownAsyncLogger(2 * time.Second)
+	defer server.logs.shutdownAsyncLogger(2 * time.Second)
 
 	oldIsAlive := daemonIsProcessAlive
 	oldTerminate := daemonTerminatePID
@@ -308,7 +308,7 @@ func TestEnforceDaemonStartupPolicy_ReclaimsStaleLockOnPIDMismatchWhenPortIdle(t
 		t.Fatalf("pid file for stale lock port should be removed, stat err = %v", err)
 	}
 
-	server.shutdownAsyncLogger(2 * time.Second)
+	server.logs.shutdownAsyncLogger(2 * time.Second)
 	events := readLifecycleEventsFromLogFile(t, logFile)
 	found := false
 	for _, evt := range events {

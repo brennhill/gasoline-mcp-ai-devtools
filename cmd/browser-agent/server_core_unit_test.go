@@ -20,7 +20,7 @@ func TestServerAddEntriesRotationPath(t *testing.T) {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 
-	added := srv.addEntries([]LogEntry{
+	added := srv.logs.addEntries([]LogEntry{
 		{"level": "info", "message": "a"},
 		{"level": "info", "message": "b"},
 		{"level": "info", "message": "c"},
@@ -29,7 +29,7 @@ func TestServerAddEntriesRotationPath(t *testing.T) {
 		t.Fatalf("addEntries() = %d, want 3", added)
 	}
 
-	entries := srv.getEntries()
+	entries := srv.logs.getEntries()
 	if len(entries) != 2 {
 		t.Fatalf("len(entries) = %d, want 2 after rotation", len(entries))
 	}
@@ -37,7 +37,7 @@ func TestServerAddEntriesRotationPath(t *testing.T) {
 		t.Fatalf("rotated entries = %+v, want last two entries", entries)
 	}
 
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 	data, err := os.ReadFile(logFile) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("ReadFile(%q) error = %v", logFile, err)
@@ -60,11 +60,11 @@ func TestServerSetOnEntriesAndAppendPath(t *testing.T) {
 		callbackCount.Add(int32(len(entries)))
 	})
 
-	added := srv.addEntries([]LogEntry{{"level": "info", "message": "hello"}})
+	added := srv.logs.addEntries([]LogEntry{{"level": "info", "message": "hello"}})
 	if added != 1 {
 		t.Fatalf("addEntries() = %d, want 1", added)
 	}
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	if got := callbackCount.Load(); got != 1 {
 		t.Fatalf("callback count = %d, want 1", got)
@@ -94,9 +94,9 @@ func TestServerLoadEntriesBoundsAndMalformedLines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	defer srv.shutdownAsyncLogger(2 * time.Second)
+	defer srv.logs.shutdownAsyncLogger(2 * time.Second)
 
-	entries := srv.getEntries()
+	entries := srv.logs.getEntries()
 	if len(entries) != 2 {
 		t.Fatalf("len(entries) = %d, want 2", len(entries))
 	}
@@ -106,9 +106,10 @@ func TestServerLoadEntriesBoundsAndMalformedLines(t *testing.T) {
 }
 
 func TestServerAppendToFileDropAndShutdownTimeout(t *testing.T) {
-	srv := &Server{
-		logChan: make(chan []LogEntry, 1),
-		logDone: make(chan struct{}),
+	srv := &LogStore{
+		logChan:    make(chan []LogEntry, 1),
+		logDone:    make(chan struct{}),
+		addWarning: func(string) {},
 	}
 	srv.logChan <- []LogEntry{{"level": "info", "message": "queued"}}
 	if err := srv.appendToFile([]LogEntry{{"level": "info", "message": "drop"}}); err == nil {
@@ -128,21 +129,21 @@ func TestServerFileRotationOnSizeExceeded(t *testing.T) {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	// Set a tiny max file size (1KB) to trigger rotation quickly
-	srv.maxFileSize = 1024
+	srv.logs.maxFileSize = 1024
 
 	// Write enough entries to exceed 1KB (triggers rotation)
 	var entries []LogEntry
 	for i := 0; i < 50; i++ {
 		entries = append(entries, LogEntry{"level": "info", "message": strings.Repeat("x", 100)})
 	}
-	srv.addEntries(entries)
+	srv.logs.addEntries(entries)
 
 	// Let async worker process and rotate
 	time.Sleep(50 * time.Millisecond)
 
 	// Write a second small batch so a new main file is created after rotation
-	srv.addEntries([]LogEntry{{"level": "info", "message": "after-rotation"}})
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.addEntries([]LogEntry{{"level": "info", "message": "after-rotation"}})
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	// The .old file should exist after rotation
 	oldFile := logFile + ".old"
@@ -172,7 +173,7 @@ func TestServerFileRotationCreatesOldFile(t *testing.T) {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	// 512 bytes to trigger on just a handful of entries
-	srv.maxFileSize = 512
+	srv.logs.maxFileSize = 512
 
 	// Write entries in two batches to trigger rotation
 	batch1 := []LogEntry{
@@ -180,7 +181,7 @@ func TestServerFileRotationCreatesOldFile(t *testing.T) {
 		{"level": "info", "message": strings.Repeat("b", 200)},
 		{"level": "info", "message": strings.Repeat("c", 200)},
 	}
-	srv.addEntries(batch1)
+	srv.logs.addEntries(batch1)
 
 	// Let the async logger process
 	time.Sleep(50 * time.Millisecond)
@@ -188,8 +189,8 @@ func TestServerFileRotationCreatesOldFile(t *testing.T) {
 	batch2 := []LogEntry{
 		{"level": "info", "message": strings.Repeat("d", 200)},
 	}
-	srv.addEntries(batch2)
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.addEntries(batch2)
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	// Old file should exist
 	oldFile := logFile + ".old"
@@ -220,14 +221,14 @@ func TestServerFileRotationOverwritesExistingOld(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	srv.maxFileSize = 256
+	srv.logs.maxFileSize = 256
 
 	entries := []LogEntry{
 		{"level": "info", "message": strings.Repeat("z", 200)},
 		{"level": "info", "message": strings.Repeat("y", 200)},
 	}
-	srv.addEntries(entries)
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.addEntries(entries)
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	// Old file should be overwritten (no longer contain stale data)
 	data, err := os.ReadFile(oldFile) // nosemgrep: go_filesystem_rule-fileread
@@ -245,11 +246,11 @@ func TestServerFileRotationDefaultMaxFileSize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	defer srv.shutdownAsyncLogger(2 * time.Second)
+	defer srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	// Default maxFileSize should be 50MB
-	if srv.maxFileSize != 50*1024*1024 {
-		t.Fatalf("default maxFileSize = %d, want %d", srv.maxFileSize, 50*1024*1024)
+	if srv.logs.maxFileSize != 50*1024*1024 {
+		t.Fatalf("default maxFileSize = %d, want %d", srv.logs.maxFileSize, 50*1024*1024)
 	}
 }
 
@@ -260,14 +261,14 @@ func TestServerFileRotationZeroDisablesRotation(t *testing.T) {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	// Explicitly disable file rotation
-	srv.maxFileSize = 0
+	srv.logs.maxFileSize = 0
 
 	entries := []LogEntry{
 		{"level": "info", "message": strings.Repeat("x", 200)},
 		{"level": "info", "message": strings.Repeat("y", 200)},
 	}
-	srv.addEntries(entries)
-	srv.shutdownAsyncLogger(2 * time.Second)
+	srv.logs.addEntries(entries)
+	srv.logs.shutdownAsyncLogger(2 * time.Second)
 
 	// No .old file should exist
 	oldFile := logFile + ".old"
@@ -279,38 +280,39 @@ func TestServerFileRotationZeroDisablesRotation(t *testing.T) {
 func TestServerGetLogDropCount(t *testing.T) {
 	t.Parallel()
 
-	srv := &Server{
-		logChan: make(chan []LogEntry, 1),
-		logDone: make(chan struct{}),
+	ls := &LogStore{
+		logChan:    make(chan []LogEntry, 1),
+		logDone:    make(chan struct{}),
+		addWarning: func(string) {},
 	}
 
 	// Initially zero
-	if got := srv.getLogDropCount(); got != 0 {
+	if got := ls.getLogDropCount(); got != 0 {
 		t.Fatalf("getLogDropCount() = %d, want 0", got)
 	}
 
 	// Fill channel, then trigger a drop
-	srv.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
-	_ = srv.appendToFile([]LogEntry{{"level": "info", "message": "drop"}})
+	ls.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
+	_ = ls.appendToFile([]LogEntry{{"level": "info", "message": "drop"}})
 
-	if got := srv.getLogDropCount(); got != 1 {
+	if got := ls.getLogDropCount(); got != 1 {
 		t.Fatalf("getLogDropCount() = %d, want 1", got)
 	}
 
 	// Trigger a second drop
-	_ = srv.appendToFile([]LogEntry{{"level": "info", "message": "drop2"}})
+	_ = ls.appendToFile([]LogEntry{{"level": "info", "message": "drop2"}})
 
-	if got := srv.getLogDropCount(); got != 2 {
+	if got := ls.getLogDropCount(); got != 2 {
 		t.Fatalf("getLogDropCount() = %d, want 2", got)
 	}
 
-	srv.shutdownAsyncLogger(10 * time.Millisecond)
+	ls.shutdownAsyncLogger(10 * time.Millisecond)
 }
 
 func TestServerAppendToFileSyncSkipsUnmarshalableEntry(t *testing.T) {
 	logFile := filepath.Join(t.TempDir(), "sync.jsonl")
-	srv := &Server{logFile: logFile}
-	err := srv.appendToFileSync([]LogEntry{
+	ls := &LogStore{logFile: logFile, addWarning: func(string) {}}
+	err := ls.appendToFileSync([]LogEntry{
 		{"level": "info", "message": "ok"},
 		{"level": "info", "value": math.NaN()},
 	})
@@ -342,8 +344,8 @@ func TestNewServer_FallbacksWhenLogDirUnwritable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
-	if srv.logFile == logFile {
-		t.Fatalf("expected fallback log file, got original path %q", srv.logFile)
+	if srv.logs.logFile == logFile {
+		t.Fatalf("expected fallback log file, got original path %q", srv.logs.logFile)
 	}
 	warnings := srv.TakeWarnings()
 	if len(warnings) == 0 {

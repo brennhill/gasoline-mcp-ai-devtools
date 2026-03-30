@@ -15,7 +15,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		s.handleLogsPost(w, r)
 	case "DELETE":
-		s.clearEntries()
+		s.logs.clearEntries()
 		jsonResponse(w, http.StatusOK, map[string]bool{"cleared": true})
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -39,10 +39,10 @@ func (s *Server) handleLogsPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	valid, rejected := validateLogEntries(body.Entries)
-	received := s.addEntries(valid)
+	received := s.logs.addEntries(valid)
 	jsonResponse(w, http.StatusOK, map[string]int{
 		"received": received,
 		"rejected": rejected,
-		"entries":  s.getEntryCount(),
+		"entries":  s.logs.getEntryCount(),
 	})
 }

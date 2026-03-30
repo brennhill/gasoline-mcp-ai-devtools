@@ -34,7 +34,7 @@ func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMe
 	if params.TelemetryMode == "" {
 		return succeed(req, "Telemetry mode", map[string]any{
 			"status":         "ok",
-			"telemetry_mode": h.server.getTelemetryMode(),
+			"telemetry_mode": h.server.logs.getTelemetryMode(),
 		})
 	}
 
@@ -46,7 +46,7 @@ func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMe
 			withParam("telemetry_mode"))
 	}
 
-	h.server.setTelemetryMode(mode)
+	h.server.logs.setTelemetryMode(mode)
 	return succeed(req, "Telemetry mode updated", map[string]any{
 		"status":         "ok",
 		"telemetry_mode": mode,

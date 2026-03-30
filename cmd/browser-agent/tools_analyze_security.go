@@ -38,12 +38,12 @@ func (h *ToolHandler) toolAnalyzeSecurityAudit(req JSONRPCRequest, args json.Raw
 	waterfallEntries := h.capture.GetNetworkWaterfallEntries()
 
 	// Convert console entries to security.LogEntry
-	h.server.mu.RLock()
-	consoleEntries := make([]security.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
+	h.server.logs.mu.RLock()
+	consoleEntries := make([]security.LogEntry, len(h.server.logs.entries))
+	for i, e := range h.server.logs.entries {
 		consoleEntries[i] = security.LogEntry(e)
 	}
-	h.server.mu.RUnlock()
+	h.server.logs.mu.RUnlock()
 
 	// Get page URLs from the tracked tab
 	var pageURLs []string

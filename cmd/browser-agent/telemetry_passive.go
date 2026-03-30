@@ -101,7 +101,7 @@ func (h *MCPHandler) currentTelemetryCursor() passiveTelemetryCursor {
 	current := passiveTelemetryCursor{}
 
 	if h.server != nil {
-		current.errorTotal = h.server.getErrorTotalAdded()
+		current.errorTotal = h.server.logs.getErrorTotalAdded()
 	}
 
 	cap := h.toolHandler.GetCapture()
@@ -183,7 +183,7 @@ func (h *MCPHandler) resolveTelemetryMode(modeOverride string) string {
 		return mode
 	}
 	if h.server != nil {
-		mode, ok := normalizeTelemetryMode(h.server.getTelemetryMode())
+		mode, ok := normalizeTelemetryMode(h.server.logs.getTelemetryMode())
 		if ok {
 			return mode
 		}

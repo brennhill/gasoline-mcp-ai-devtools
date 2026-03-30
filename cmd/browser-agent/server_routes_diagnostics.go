@@ -13,13 +13,13 @@ import (
 
 // lastConsoleEvent returns a summary of the most recent console log entry.
 func (s *Server) lastConsoleEvent() map[string]any {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.logs.mu.RLock()
+	defer s.logs.mu.RUnlock()
 
-	if len(s.entries) == 0 {
+	if len(s.logs.entries) == 0 {
 		return nil
 	}
-	last := s.entries[len(s.entries)-1]
+	last := s.logs.entries[len(s.logs.entries)-1]
 	args := last["args"]
 	if argsSlice, ok := args.([]any); ok && len(argsSlice) > 0 {
 		if str, ok := argsSlice[0].(string); ok && len(str) > 100 {
@@ -55,9 +55,9 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *
 			"goroutines": runtime.NumGoroutine(),
 		},
 		"logs": map[string]any{
-			"entries":     s.getEntryCount(),
-			"max_entries": s.maxEntries,
-			"log_file":    s.logFile,
+			"entries":     s.logs.getEntryCount(),
+			"max_entries": s.logs.maxEntries,
+			"log_file":    s.logs.logFile,
 		},
 		"launch_mode": map[string]any{
 			"mode":             launch.Mode,

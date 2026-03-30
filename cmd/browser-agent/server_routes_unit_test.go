@@ -212,18 +212,21 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 	// Create a server with a channel of size 1 and NO async worker,
 	// so the channel stays full when we manually fill it.
 	tinyLogSrv := &Server{
-		logFile:    filepath.Join(t.TempDir(), "drop.jsonl"),
-		maxEntries: 100,
-		entries:    make([]LogEntry, 0),
-		logChan:    make(chan []LogEntry, 1),
-		logDone:    make(chan struct{}),
+		logs: &LogStore{
+			logFile:    filepath.Join(t.TempDir(), "drop.jsonl"),
+			maxEntries: 100,
+			entries:    make([]LogEntry, 0),
+			logChan:    make(chan []LogEntry, 1),
+			logDone:    make(chan struct{}),
+			addWarning: func(string) {},
+		},
 	}
 
 	tinyMux, _ := setupHTTPRoutes(tinyLogSrv, cap)
 
 	// Fill channel (no worker draining it), then trigger a drop
-	tinyLogSrv.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
-	_ = tinyLogSrv.appendToFile([]LogEntry{{"level": "info", "message": "drop"}})
+	tinyLogSrv.logs.logChan <- []LogEntry{{"level": "info", "message": "fill"}}
+	_ = tinyLogSrv.logs.appendToFile([]LogEntry{{"level": "info", "message": "drop"}})
 
 	healthReq := localRequest(http.MethodGet, "/health", nil)
 	healthRR := httptest.NewRecorder()
@@ -247,8 +250,8 @@ func TestHealthEndpointExposesDroppedCount(t *testing.T) {
 	}
 
 	// Drain the channel and shut down cleanly
-	<-tinyLogSrv.logChan
-	close(tinyLogSrv.logDone)
+	<-tinyLogSrv.logs.logChan
+	close(tinyLogSrv.logs.logDone)
 
 	// Verify zero-state too: fresh server should have 0 dropped_count
 	freshReq := localRequest(http.MethodGet, "/health", nil)

@@ -6,41 +6,41 @@ package main
 import "sync/atomic"
 
 // getLogDropCount returns the total number of dropped log entries (thread-safe).
-func (s *Server) getLogDropCount() int64 {
-	return atomic.LoadInt64(&s.logDropCount)
+func (ls *LogStore) getLogDropCount() int64 {
+	return atomic.LoadInt64(&ls.logDropCount)
 }
 
 // getEntryCount returns current entry count.
-func (s *Server) getEntryCount() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return len(s.entries)
+func (ls *LogStore) getEntryCount() int {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	return len(ls.entries)
 }
 
 // getErrorTotalAdded returns the total number of error-level log entries ever added.
-func (s *Server) getErrorTotalAdded() int64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.errorTotalAdded
+func (ls *LogStore) getErrorTotalAdded() int64 {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	return ls.errorTotalAdded
 }
 
-func (s *Server) getTelemetryMode() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.telemetryMode
+func (ls *LogStore) getTelemetryMode() string {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	return ls.telemetryMode
 }
 
-func (s *Server) setTelemetryMode(mode string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.telemetryMode = mode
+func (ls *LogStore) setTelemetryMode(mode string) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+	ls.telemetryMode = mode
 }
 
 // getEntries returns a copy of all entries.
-func (s *Server) getEntries() []LogEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	result := make([]LogEntry, len(s.entries))
-	copy(result, s.entries)
+func (ls *LogStore) getEntries() []LogEntry {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	result := make([]LogEntry, len(ls.entries))
+	copy(result, ls.entries)
 	return result
 }

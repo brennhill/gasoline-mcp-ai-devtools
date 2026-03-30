@@ -56,11 +56,11 @@ func TestSmoke_ObserveErrors_DataAgeMs_IsNumeric(t *testing.T) {
 	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	server.mu.Lock()
-	server.entries = append(server.entries, LogEntry{
+	server.logs.mu.Lock()
+	server.logs.entries = append(server.logs.entries, LogEntry{
 		"level": "error", "message": "Test error for data_age_ms", "ts": ts,
 	})
-	server.mu.Unlock()
+	server.logs.mu.Unlock()
 
 	resp := callObserveRaw(h, "errors")
 	result := parseToolResult(t, resp)
