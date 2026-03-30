@@ -9,6 +9,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 const (
@@ -94,7 +96,7 @@ func stopViaProcessLookup(port int) {
 	}
 
 	time.Sleep(stopProcessLookupSettleDelay)
-	if !isServerRunning(port) {
+	if !bridge.IsServerRunning(port) {
 		fmt.Println("Server stopped successfully")
 		removePIDFile(port)
 	} else {

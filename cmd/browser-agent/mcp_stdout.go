@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"time"
 
+	cmbridge "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
 )
 
 // writeMCPPayload is the only stdout emitter used by MCP wrapper responses.
 func writeMCPPayload(payload []byte, framing bridge.StdioFraming) {
 	normalized := normalizeMCPPayload(payload)
-	out := activeMCPTransportWriter()
+	out := cmbridge.ActiveMCPTransportWriter()
 	mcpStdoutMu.Lock()
 	defer mcpStdoutMu.Unlock()
 	if framing == bridge.StdioFramingContentLength {
@@ -26,7 +27,7 @@ func writeMCPPayload(payload []byte, framing bridge.StdioFraming) {
 		_, _ = out.Write(normalized)
 		_, _ = out.Write([]byte("\n"))
 	}
-	flushStdout()
+	cmbridge.FlushStdout()
 }
 
 // normalizeMCPPayload trims outer whitespace and guarantees a valid JSON payload.

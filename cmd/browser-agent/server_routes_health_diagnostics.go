@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
@@ -50,7 +51,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 		resp["terminal_port"] = termPort
 	}
 
-	successReads, failedReads := snapshotFastPathResourceReadCounters()
+	successReads, failedReads := bridge.SnapshotFastPathResourceReadCounters()
 	resp["bridge_fastpath"] = map[string]any{
 		"resources_read_success": successReads,
 		"resources_read_failure": failedReads,

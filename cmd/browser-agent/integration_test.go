@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // ============================================
@@ -62,7 +64,7 @@ func TestIntegration_ServerStartupUnder1Second(t *testing.T) {
 	}()
 
 	// Wait for server to be ready (health endpoint)
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start within 5 seconds")
 	}
 
@@ -116,7 +118,7 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -309,7 +311,7 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 

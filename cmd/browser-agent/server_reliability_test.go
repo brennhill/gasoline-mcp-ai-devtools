@@ -34,6 +34,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // ============================================================================
@@ -64,7 +66,7 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -176,7 +178,7 @@ func TestReliability_Stress_ExtendedOperation(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -262,7 +264,7 @@ func TestReliability_ResourceLeaks_Goroutines(t *testing.T) {
 		t.Fatalf("Failed to send initialize request: %v", err)
 	}
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -339,7 +341,7 @@ func TestReliability_ResourceLeaks_ConnectionDrain(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -396,7 +398,7 @@ func TestReliability_Recovery_MalformedJSON(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -474,7 +476,7 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 

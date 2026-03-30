@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // contentLengthFrame wraps a JSON payload in Content-Length framing.
@@ -453,7 +455,7 @@ func TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport(t *testing.T) {
 		t.Fatalf("stderr must stay silent in bridge mode, got: %q", errStr)
 	}
 
-	wrapperLogPath := filepath.Join(stateDir, "logs", bridgeWrapperLogFileName)
+	wrapperLogPath := filepath.Join(stateDir, "logs", bridge.BridgeWrapperLogFileName)
 	logBody, readErr := os.ReadFile(wrapperLogPath)
 	if readErr != nil {
 		t.Fatalf("read wrapper log: %v", readErr)

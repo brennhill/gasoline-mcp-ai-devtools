@@ -7,6 +7,8 @@ package main
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // ============================================
@@ -24,7 +26,7 @@ func TestExtractToolAction_ConfigureRestart(t *testing.T) {
 		Method:  "tools/call",
 		Params:  params,
 	}
-	tool, action := extractToolAction(req)
+	tool, action := bridge.ExtractToolAction(req)
 	if tool != "configure" {
 		t.Errorf("tool = %q, want %q", tool, "configure")
 	}
@@ -44,7 +46,7 @@ func TestExtractToolAction_ConfigureHealth(t *testing.T) {
 		Method:  "tools/call",
 		Params:  params,
 	}
-	tool, action := extractToolAction(req)
+	tool, action := bridge.ExtractToolAction(req)
 	if tool != "configure" {
 		t.Errorf("tool = %q, want %q", tool, "configure")
 	}
@@ -76,7 +78,7 @@ func TestExtractToolAction_NonConfigure(t *testing.T) {
 				Method:  tc.method,
 				Params:  params,
 			}
-			tool, action := extractToolAction(req)
+			tool, action := bridge.ExtractToolAction(req)
 			if tool != tc.tool {
 				t.Errorf("tool = %q, want %q", tool, tc.tool)
 			}
@@ -94,7 +96,7 @@ func TestExtractToolAction_NonToolsCall(t *testing.T) {
 		Method:  "initialize",
 		Params:  json.RawMessage(`{}`),
 	}
-	tool, action := extractToolAction(req)
+	tool, action := bridge.ExtractToolAction(req)
 	if tool != "" {
 		t.Errorf("tool = %q, want empty for non-tools/call", tool)
 	}
@@ -122,7 +124,7 @@ func TestExtractToolAction_MalformedJSON(t *testing.T) {
 				Method:  "tools/call",
 				Params:  tc.params,
 			}
-			tool, action := extractToolAction(req)
+			tool, action := bridge.ExtractToolAction(req)
 			// Should not panic, may return empty strings
 			if tool == "configure" && action == "restart" {
 				t.Error("should not extract configure+restart from malformed input")
@@ -142,7 +144,7 @@ func TestExtractToolAction_ConfigureNoAction(t *testing.T) {
 		Method:  "tools/call",
 		Params:  params,
 	}
-	tool, action := extractToolAction(req)
+	tool, action := bridge.ExtractToolAction(req)
 	if tool != "configure" {
 		t.Errorf("tool = %q, want %q", tool, "configure")
 	}

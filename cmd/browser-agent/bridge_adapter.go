@@ -6,9 +6,7 @@ package main
 
 import (
 	"encoding/json"
-	"os"
 	"sync"
-	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
@@ -79,90 +77,5 @@ func initBridge() {
 	})
 }
 
-// runBridgeMode delegates to the bridge sub-package.
-func runBridgeMode(port int, logFile string, maxEntries int) {
-	bridgepkg.RunMode(port, logFile, maxEntries)
-}
-
-// ensureBridgeIOIsolation delegates to the bridge sub-package.
-func ensureBridgeIOIsolation(logFile string) error {
-	return bridgepkg.EnsureIOIsolation(logFile)
-}
-
-// bridgeLaunchFingerprint delegates to the bridge sub-package.
-func bridgeLaunchFingerprint() map[string]any {
-	return bridgepkg.LaunchFingerprint()
-}
-
-// activeMCPTransportWriter delegates to the bridge sub-package.
-func activeMCPTransportWriter() *os.File {
-	return bridgepkg.ActiveMCPTransportWriter()
-}
-
-// isKaboomService delegates to the bridge sub-package.
-func isKaboomService(name string) bool {
-	return bridgepkg.IsKaboomService(name)
-}
-
-// flushStdout delegates to the bridge sub-package.
-func flushStdout() {
-	bridgepkg.FlushStdout()
-}
-
-// extractToolAction delegates to the bridge sub-package.
-func extractToolAction(req JSONRPCRequest) (toolName, action string) {
-	return bridgepkg.ExtractToolAction(req)
-}
-
-// -- Telemetry adapters for tests --
-
-// resetFastPathCounters delegates to the bridge sub-package.
-func resetFastPathCounters() {
-	bridgepkg.ResetFastPathCounters()
-}
-
-// recordFastPathEvent delegates to the bridge sub-package.
-func recordFastPathEvent(method string, success bool, errorCode int) {
-	bridgepkg.RecordFastPathEvent(method, success, errorCode)
-}
-
-// recordFastPathResourceRead delegates to the bridge sub-package.
-func recordFastPathResourceRead(uri string, success bool, errorCode int) {
-	bridgepkg.RecordFastPathResourceRead(uri, success, errorCode)
-}
-
-// resetFastPathResourceReadCounters delegates to the bridge sub-package.
-func resetFastPathResourceReadCounters() {
-	bridgepkg.ResetFastPathResourceReadCounters()
-}
-
-// bridgeWrapperLogFileName is re-exported from the bridge sub-package.
-const bridgeWrapperLogFileName = bridgepkg.BridgeWrapperLogFileName
-
 // Note: writeMCPPayload and mcpStdoutMu remain in mcp_stdout.go.
 // The bridge package calls deps.WriteMCPPayload which routes back to main's writeMCPPayload.
-
-// isServerRunning delegates to the bridge sub-package.
-func isServerRunning(port int) bool {
-	return bridgepkg.IsServerRunning(port)
-}
-
-// waitForServer delegates to the bridge sub-package.
-func waitForServer(port int, timeout time.Duration) bool {
-	return bridgepkg.WaitForServer(port, timeout)
-}
-
-// snapshotFastPathResourceReadCounters delegates to the bridge sub-package.
-func snapshotFastPathResourceReadCounters() (success int64, failure int64) {
-	return bridgepkg.SnapshotFastPathResourceReadCounters()
-}
-
-// fastPathTelemetryLogPath delegates to the bridge sub-package.
-func fastPathTelemetryLogPath() (string, error) {
-	return bridgepkg.FastPathTelemetryLogPath()
-}
-
-// buildPushNotification delegates to the bridge sub-package.
-func buildPushNotification(ev push.PushEvent) []byte {
-	return bridgepkg.BuildPushNotification(ev)
-}

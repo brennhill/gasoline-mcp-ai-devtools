@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
@@ -25,7 +26,7 @@ type daemonLockRecord struct {
 
 var (
 	daemonIsProcessAlive     = isProcessAlive
-	daemonIsServerRunning    = isServerRunning
+	daemonIsServerRunning    = bridge.IsServerRunning
 	daemonTryShutdown        = tryShutdownViaHTTP
 	daemonWaitForPortRelease = waitForPortRelease
 	daemonTerminatePID       = terminatePIDQuiet

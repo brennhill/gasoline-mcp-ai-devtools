@@ -10,14 +10,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	statecfg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 func TestHandleHealthIncludesBridgeFastPathCounters(t *testing.T) {
 	t.Setenv(statecfg.StateDirEnv, t.TempDir())
-	resetFastPathResourceReadCounters()
-	recordFastPathResourceRead("kaboom://capabilities", true, 0)
-	recordFastPathResourceRead("kaboom://playbook/nonexistent/quick", false, -32002)
+	bridge.ResetFastPathResourceReadCounters()
+	bridge.RecordFastPathResourceRead("kaboom://capabilities", true, 0)
+	bridge.RecordFastPathResourceRead("kaboom://playbook/nonexistent/quick", false, -32002)
 
 	s := &Server{
 		maxEntries: 100,

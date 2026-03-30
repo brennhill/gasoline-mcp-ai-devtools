@@ -11,6 +11,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 type fastPathTelemetrySummary struct {
@@ -100,7 +102,7 @@ func evaluateFastPathFailureThreshold(summary fastPathTelemetrySummary, minSampl
 
 func printFastPathTelemetryDiagnostics(maxLines int) (fastPathTelemetrySummary, bool) {
 	fmt.Print("Checking bridge fast-path telemetry... ")
-	path, err := fastPathTelemetryLogPath()
+	path, err := bridge.FastPathTelemetryLogPath()
 	if err != nil {
 		fmt.Println("FAILED")
 		fmt.Printf("  Cannot resolve telemetry log path: %v\n", err)

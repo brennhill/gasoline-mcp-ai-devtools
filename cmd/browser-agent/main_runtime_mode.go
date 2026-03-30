@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
@@ -88,11 +89,11 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 		}
 		return
 	case modeBridge:
-		if err := ensureBridgeIOIsolation(cfg.logFile); err != nil {
+		if err := bridge.EnsureIOIsolation(cfg.logFile); err != nil {
 			sendStartupError("Bridge stdio isolation failed: " + err.Error())
 			os.Exit(1)
 		}
-		server.logLifecycle("bridge_mode_start", cfg.port, bridgeLaunchFingerprint())
+		server.logLifecycle("bridge_mode_start", cfg.port, bridge.LaunchFingerprint())
 		if cfg.bridgeMode {
 			stderrf("[Kaboom] Starting in bridge mode (stdio -> HTTP)\n")
 		} else if isTTY && mcpConfigPath != "" {
@@ -106,11 +107,11 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 			fmt.Fprintln(os.Stdout, "KABOOM_TEST_NOISE_STDOUT")
 			fmt.Fprintln(os.Stderr, "KABOOM_TEST_NOISE_STDERR")
 		}
-		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
+		bridge.RunMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return
 	default:
 		// Defensive fallback (should be unreachable).
-		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
+		bridge.RunMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return
 	}
 }

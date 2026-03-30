@@ -6,6 +6,7 @@ package main
 import (
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/cli"
 )
 
@@ -14,8 +15,8 @@ func cliRuntimeConfig() cli.RuntimeConfig {
 	return cli.RuntimeConfig{
 		DefaultPort:        defaultPort,
 		MaxPostBodySize:    maxPostBodySize,
-		IsServerRunning:    isServerRunning,
-		WaitForServer:      func(port int, timeout time.Duration) bool { return waitForServer(port, timeout) },
+		IsServerRunning:    bridge.IsServerRunning,
+		WaitForServer:      func(port int, timeout time.Duration) bool { return bridge.WaitForServer(port, timeout) },
 		DaemonProcessArgv0: daemonProcessArgv0,
 	}
 }

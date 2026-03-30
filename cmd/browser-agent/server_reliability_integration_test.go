@@ -28,6 +28,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // ============================================================================
@@ -58,7 +60,7 @@ func TestReliability_MCPTraffic_RealisticSession(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -155,7 +157,7 @@ func TestReliability_MCPTraffic_BurstPattern(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -226,7 +228,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	}
 	oldPID := oldCmd.Process.Pid
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		_ = oldStdin.Close()
 		_ = oldCmd.Process.Kill()
 		t.Fatalf("Old server failed to start")
@@ -269,7 +271,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	t.Logf("New server started with PID %d on port %d", newPID, port)
 
 	// Wait for new server to be ready
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("New server failed to start on port %d", port)
 	}
 
@@ -325,7 +327,7 @@ func TestReliability_Upgrade_PortConflictDetection(t *testing.T) {
 		_ = cmd1.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -379,7 +381,7 @@ func TestReliability_Integration_FullMCPProtocol(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -512,7 +514,7 @@ func TestReliability_Integration_LargePayloads(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 

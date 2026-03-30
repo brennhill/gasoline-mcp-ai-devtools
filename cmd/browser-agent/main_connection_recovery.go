@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 const (
@@ -88,12 +90,12 @@ func tryShutdownViaHTTP(port int) bool {
 func waitForPortRelease(port int, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if !isServerRunning(port) {
+		if !bridge.IsServerRunning(port) {
 			return true
 		}
 		time.Sleep(recoveryPortPollInterval)
 	}
-	return !isServerRunning(port)
+	return !bridge.IsServerRunning(port)
 }
 
 func terminatePIDQuiet(pid int, force bool) {

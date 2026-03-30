@@ -32,6 +32,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // TestServerPersistence_StaysAliveWithOpenStdin verifies the server doesn't die
@@ -63,7 +65,7 @@ func TestServerPersistence_StaysAliveWithOpenStdin(t *testing.T) {
 	}()
 
 	// Wait for server to start
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start on port %d", port)
 	}
 
@@ -123,7 +125,7 @@ func TestServerPersistence_HealthResponseTime(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -185,7 +187,7 @@ func TestServerPersistence_SurvivesStdinClose(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -242,7 +244,7 @@ func TestServerPersistence_PersistModeKeepsAlive(t *testing.T) {
 		t.Fatalf("Failed to send initialize request: %v", err)
 	}
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -297,7 +299,7 @@ func TestServerPersistence_MultipleHealthChecksUnderLoad(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 
@@ -352,7 +354,7 @@ func TestServerPersistence_StdinNoDataExtendedPeriod(t *testing.T) {
 		_ = cmd.Wait()
 	}()
 
-	if !waitForServer(port, 5*time.Second) {
+	if !bridge.WaitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")
 	}
 

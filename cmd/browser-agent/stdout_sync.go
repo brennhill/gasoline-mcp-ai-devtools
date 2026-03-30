@@ -7,12 +7,14 @@ import (
 	"errors"
 	"os"
 	"syscall"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
 
 // syncStdoutBestEffort flushes stdout and only logs actionable sync failures.
 // Sync on pipes/ptys can return EINVAL/EBADF even when output is already delivered.
 func syncStdoutBestEffort() {
-	if err := activeMCPTransportWriter().Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
+	if err := bridge.ActiveMCPTransportWriter().Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
 		stderrf("[Kaboom] warning: stdout.Sync failed: %v\n", err)
 	}
 }
