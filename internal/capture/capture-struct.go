@@ -78,7 +78,7 @@ type Capture struct {
 	// Debug Logging (Own Lock)
 	// ============================================
 
-	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
+	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu. Delegates to internal/debuglog.
 
 	// Redaction engine for scrubbing sensitive values from extension debug logs.
 	logRedactor *redaction.Engine
@@ -104,7 +104,7 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu.
+	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu. Delegates to internal/lifecycle.
 	navigationCallback func()             // Optional callback fired after a navigation action is ingested (called outside lock)
 
 	// ============================================

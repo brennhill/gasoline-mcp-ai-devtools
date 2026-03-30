@@ -57,3 +57,7 @@ type (
 // NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
 var NewCircuitBreaker = circuit.NewCircuitBreaker
 
+// Lifecycle and debug logger subsystem types are re-exported from:
+// - internal/lifecycle (LifecycleObserver, LifecycleEvent, LifecycleListener) — see lifecycle_observer.go
+// - internal/debuglog (DebugLogger) — see debug_logger.go
+
