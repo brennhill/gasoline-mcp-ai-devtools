@@ -4,7 +4,11 @@
 
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
+)
 
 // ============================================
 // Summary Builder Tests
@@ -42,7 +46,12 @@ func TestBuildPageIssuesSummary_Basic(t *testing.T) {
 		PageURL:         "http://localhost:3000",
 	}
 
-	summary := buildPageIssuesSummary(result)
+	summary := toolanalyze.BuildPageIssuesSummary(toolanalyze.PageIssuesResult{
+			TotalIssues: result.TotalIssues, BySeverity: result.BySeverity,
+			Sections: result.Sections, ChecksCompleted: result.ChecksCompleted,
+			ChecksSkipped: result.ChecksSkipped, PageURL: result.PageURL,
+			Timestamp: result.Timestamp,
+		})
 
 	if summary["total_issues"] != 5 {
 		t.Errorf("total_issues = %v, want 5", summary["total_issues"])
@@ -80,7 +89,12 @@ func TestBuildPageIssuesSummary_Empty(t *testing.T) {
 		PageURL:         "http://localhost:3000",
 	}
 
-	summary := buildPageIssuesSummary(result)
+	summary := toolanalyze.BuildPageIssuesSummary(toolanalyze.PageIssuesResult{
+			TotalIssues: result.TotalIssues, BySeverity: result.BySeverity,
+			Sections: result.Sections, ChecksCompleted: result.ChecksCompleted,
+			ChecksSkipped: result.ChecksSkipped, PageURL: result.PageURL,
+			Timestamp: result.Timestamp,
+		})
 
 	if summary["total_issues"] != 0 {
 		t.Errorf("total_issues = %v, want 0", summary["total_issues"])
@@ -110,7 +124,12 @@ func TestBuildPageIssuesSummary_CapsAt10(t *testing.T) {
 		ChecksSkipped:   []string{},
 	}
 
-	summary := buildPageIssuesSummary(result)
+	summary := toolanalyze.BuildPageIssuesSummary(toolanalyze.PageIssuesResult{
+			TotalIssues: result.TotalIssues, BySeverity: result.BySeverity,
+			Sections: result.Sections, ChecksCompleted: result.ChecksCompleted,
+			ChecksSkipped: result.ChecksSkipped, PageURL: result.PageURL,
+			Timestamp: result.Timestamp,
+		})
 	topIssues := summary["top_issues"].([]map[string]any)
 	if len(topIssues) > 10 {
 		t.Errorf("top_issues should be capped at 10, got %d", len(topIssues))
@@ -135,7 +154,12 @@ func TestBuildPageIssuesSummary_WithSkippedChecks(t *testing.T) {
 		PageURL:         "http://localhost:3000",
 	}
 
-	summary := buildPageIssuesSummary(result)
+	summary := toolanalyze.BuildPageIssuesSummary(toolanalyze.PageIssuesResult{
+			TotalIssues: result.TotalIssues, BySeverity: result.BySeverity,
+			Sections: result.Sections, ChecksCompleted: result.ChecksCompleted,
+			ChecksSkipped: result.ChecksSkipped, PageURL: result.PageURL,
+			Timestamp: result.Timestamp,
+		})
 
 	skipped, ok := summary["checks_skipped"].([]string)
 	if !ok {
@@ -162,7 +186,12 @@ func TestBuildPageIssuesSummary_SectionWithError(t *testing.T) {
 		ChecksSkipped:   []string{},
 	}
 
-	summary := buildPageIssuesSummary(result)
+	summary := toolanalyze.BuildPageIssuesSummary(toolanalyze.PageIssuesResult{
+			TotalIssues: result.TotalIssues, BySeverity: result.BySeverity,
+			Sections: result.Sections, ChecksCompleted: result.ChecksCompleted,
+			ChecksSkipped: result.ChecksSkipped, PageURL: result.PageURL,
+			Timestamp: result.Timestamp,
+		})
 
 	sections, ok := summary["sections"].(map[string]any)
 	if !ok {

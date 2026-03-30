@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
@@ -19,10 +20,12 @@ var analyzeHandlers = map[string]ModeHandler{
 	"accessibility":      obs(observe.RunA11yAudit),
 	"error_clusters":     obs(observe.AnalyzeErrors),
 	"navigation_patterns": obs(observe.AnalyzeHistory),
-	"security_audit":     method((*ToolHandler).toolAnalyzeSecurityAudit),
-	"third_party_audit":  method((*ToolHandler).toolAuditThirdParties),
-	"link_health":        method((*ToolHandler).toolAnalyzeLinkHealth),
-	"link_validation":    method((*ToolHandler).toolValidateLinks),
+	"security_audit":    azLocal(toolanalyze.HandleSecurityAudit),
+	"third_party_audit": azLocal(toolanalyze.HandleThirdPartyAudit),
+	"link_health":       azLocal(toolanalyze.HandleLinkHealth),
+	"link_validation": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return toolanalyze.HandleLinkValidation(req, args, version)
+	},
 	"annotations":        method((*ToolHandler).toolGetAnnotations),
 	"annotation_detail":  method((*ToolHandler).toolGetAnnotationDetail),
 	"draw_history":       method((*ToolHandler).toolListDrawHistory),
@@ -35,8 +38,8 @@ var analyzeHandlers = map[string]ModeHandler{
 	"visual_baseline":    method((*ToolHandler).toolVisualBaseline),
 	"visual_diff":        method((*ToolHandler).toolVisualDiff),
 	"visual_baselines":   method((*ToolHandler).toolListVisualBaselines),
-	"navigation":         method((*ToolHandler).toolAnalyzeNavigation),
-	"page_structure":     method((*ToolHandler).toolAnalyzePageStructure),
+	"navigation":     azLocal(toolanalyze.HandleNavigation),
+	"page_structure": azLocal(toolanalyze.HandlePageStructure),
 	"audit":              method((*ToolHandler).toolAnalyzeAudit),
 	"page_issues":        method((*ToolHandler).toolAnalyzePageIssues),
 	"feature_gates": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -52,6 +55,13 @@ var analyzeValueAliases = map[string]modeValueAlias{
 
 // analyzeAliasParams references the shared default mode/action aliases.
 var analyzeAliasParams = defaultModeActionAliases
+
+// azLocal wraps a toolanalyze.Deps-accepting function as a ModeHandler.
+func azLocal(fn func(toolanalyze.Deps, JSONRPCRequest, json.RawMessage) JSONRPCResponse) ModeHandler {
+	return func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return fn(h, req, args)
+	}
+}
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
 func getValidAnalyzeModes() string { return sortedMapKeys(analyzeHandlers) }

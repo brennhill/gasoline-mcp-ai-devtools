@@ -1,15 +1,17 @@
-// Purpose: Provides tutorial playbooks for safe automation loops and CSP fallback flows.
+// tutorial_playbooks.go — Tutorial playbooks for safe automation loops and CSP fallback flows.
 // Why: Separates static playbook guidance from configure tutorial runtime logic.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package toolconfigure
 
 const (
-	cspRetryNavigationGuidance = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab/switch_tab/close_tab to move to another page."
+	// CSPRetryNavigationGuidance is the user-facing guidance for CSP-blocked pages.
+	CSPRetryNavigationGuidance = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab/switch_tab/close_tab to move to another page."
 	cspFallbackStatusPattern   = "Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS|ERROR"
 )
 
-func tutorialSafeAutomationLoop() map[string]any {
+// TutorialSafeAutomationLoop returns the deterministic safe automation loop playbook.
+func TutorialSafeAutomationLoop() map[string]any {
 	return map[string]any{
 		"title": "Deterministic safe automation loop",
 		"steps": []map[string]any{
@@ -50,12 +52,13 @@ func tutorialSafeAutomationLoop() map[string]any {
 	}
 }
 
-func tutorialCSPFallbackPlaybook() map[string]any {
+// TutorialCSPFallbackPlaybook returns the CSP-safe automation playbook.
+func TutorialCSPFallbackPlaybook() map[string]any {
 	return map[string]any{
 		"title":                   "CSP-safe automation playbook (execute_js fallback)",
 		"detect_signals":          []string{"error=csp_blocked_all_worlds", "failure_cause=csp", "csp_blocked=true"},
 		"fallback_status_pattern": cspFallbackStatusPattern,
-		"exact_retry_guidance":    cspRetryNavigationGuidance,
+		"exact_retry_guidance":    CSPRetryNavigationGuidance,
 		"what_is_possible": []string{
 			"Pre-compiled DOM primitives (click/type/select/check/focus/list_interactive/highlight)",
 			"DOM inspection and screenshot checkpoints",
@@ -75,7 +78,7 @@ func tutorialCSPFallbackPlaybook() map[string]any {
 			{
 				"goal":     "Detect CSP failure and capture retry guidance",
 				"snippet":  `observe({what:"command_result", correlation_id:"<corr>"})`,
-				"expected": `error=csp_blocked_all_worlds | failure_cause=csp | retry=` + cspRetryNavigationGuidance,
+				"expected": `error=csp_blocked_all_worlds | failure_cause=csp | retry=` + CSPRetryNavigationGuidance,
 			},
 			{
 				"goal":     "Run CSP-safe fallback flow",
@@ -85,3 +88,4 @@ func tutorialCSPFallbackPlaybook() map[string]any {
 		},
 	}
 }
+

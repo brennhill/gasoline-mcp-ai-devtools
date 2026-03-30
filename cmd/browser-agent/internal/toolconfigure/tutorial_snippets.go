@@ -1,10 +1,11 @@
-// Purpose: Provides reusable tutorial snippet catalog for configure tutorial/examples.
+// tutorial_snippets.go — Reusable tutorial snippet catalog for configure tutorial/examples.
 // Why: Keeps static command snippet payloads separate from runtime context analysis logic.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package toolconfigure
 
-func tutorialSnippets() []map[string]any {
+// TutorialSnippets returns the static snippet catalog for tutorial/examples mode.
+func TutorialSnippets() []map[string]any {
 	return []map[string]any{
 		{
 			"tool":      "observe",

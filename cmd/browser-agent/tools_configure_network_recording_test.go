@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
@@ -17,10 +18,10 @@ import (
 
 func TestNetworkRecordingState_TryStart_Success(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
 	before := time.Now()
-	startTime, ok := s.tryStart("example.com", "GET")
+	startTime, ok := s.TryStart("example.com", "GET")
 	after := time.Now()
 
 	if !ok {
@@ -36,14 +37,14 @@ func TestNetworkRecordingState_TryStart_Success(t *testing.T) {
 
 func TestNetworkRecordingState_TryStart_AlreadyActive(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	_, ok := s.tryStart("example.com", "GET")
+	_, ok := s.TryStart("example.com", "GET")
 	if !ok {
 		t.Fatal("first tryStart should succeed")
 	}
 
-	startTime, ok := s.tryStart("other.com", "POST")
+	startTime, ok := s.TryStart("other.com", "POST")
 	if ok {
 		t.Fatal("second tryStart should return false when already active")
 	}
@@ -54,14 +55,14 @@ func TestNetworkRecordingState_TryStart_AlreadyActive(t *testing.T) {
 
 func TestNetworkRecordingState_TryStart_EmptyFilters(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	_, ok := s.tryStart("", "")
+	_, ok := s.TryStart("", "")
 	if !ok {
 		t.Fatal("tryStart with empty filters should succeed")
 	}
 
-	info := s.info()
+	info := s.Info()
 	if info.Domain != "" {
 		t.Errorf("Domain should be empty, got %q", info.Domain)
 	}
@@ -76,11 +77,11 @@ func TestNetworkRecordingState_TryStart_EmptyFilters(t *testing.T) {
 
 func TestNetworkRecordingState_Stop_Success(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	origStart, _ := s.tryStart("example.com", "POST")
+	origStart, _ := s.TryStart("example.com", "POST")
 
-	snap, ok := s.stop()
+	snap, ok := s.Stop()
 	if !ok {
 		t.Fatal("stop should return true when active")
 	}
@@ -98,7 +99,7 @@ func TestNetworkRecordingState_Stop_Success(t *testing.T) {
 	}
 
 	// After stop, all state fields should be reset
-	info := s.info()
+	info := s.Info()
 	if info.Active {
 		t.Error("state should be inactive after stop")
 	}
@@ -115,9 +116,9 @@ func TestNetworkRecordingState_Stop_Success(t *testing.T) {
 
 func TestNetworkRecordingState_Stop_NotActive(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	snap, ok := s.stop()
+	snap, ok := s.Stop()
 	if ok {
 		t.Fatal("stop should return false when not active")
 	}
@@ -137,16 +138,16 @@ func TestNetworkRecordingState_Stop_NotActive(t *testing.T) {
 
 func TestNetworkRecordingState_Stop_DoubleStop(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	s.tryStart("example.com", "GET")
+	s.TryStart("example.com", "GET")
 
-	_, ok := s.stop()
+	_, ok := s.Stop()
 	if !ok {
 		t.Fatal("first stop should succeed")
 	}
 
-	_, ok = s.stop()
+	_, ok = s.Stop()
 	if ok {
 		t.Fatal("second stop should fail")
 	}
@@ -158,11 +159,11 @@ func TestNetworkRecordingState_Stop_DoubleStop(t *testing.T) {
 
 func TestNetworkRecordingState_Info_Active(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	startTime, _ := s.tryStart("api.example.com", "PUT")
+	startTime, _ := s.TryStart("api.example.com", "PUT")
 
-	info := s.info()
+	info := s.Info()
 	if !info.Active {
 		t.Error("info Active should be true when recording")
 	}
@@ -179,9 +180,9 @@ func TestNetworkRecordingState_Info_Active(t *testing.T) {
 
 func TestNetworkRecordingState_Info_Inactive(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
-	info := s.info()
+	info := s.Info()
 	if info.Active {
 		t.Error("info Active should be false when not recording")
 	}
@@ -202,15 +203,15 @@ func TestNetworkRecordingState_Info_Inactive(t *testing.T) {
 
 func TestNetworkRecordingState_StartStopRestart(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
 	// First cycle
-	_, ok := s.tryStart("first.com", "GET")
+	_, ok := s.TryStart("first.com", "GET")
 	if !ok {
 		t.Fatal("first start should succeed")
 	}
 
-	snap, ok := s.stop()
+	snap, ok := s.Stop()
 	if !ok {
 		t.Fatal("first stop should succeed")
 	}
@@ -219,12 +220,12 @@ func TestNetworkRecordingState_StartStopRestart(t *testing.T) {
 	}
 
 	// Second cycle with different filters
-	_, ok = s.tryStart("second.com", "POST")
+	_, ok = s.TryStart("second.com", "POST")
 	if !ok {
 		t.Fatal("second start should succeed after stop")
 	}
 
-	info := s.info()
+	info := s.Info()
 	if info.Domain != "second.com" {
 		t.Errorf("info Domain = %q, want %q", info.Domain, "second.com")
 	}
@@ -239,7 +240,7 @@ func TestNetworkRecordingState_StartStopRestart(t *testing.T) {
 
 func TestNetworkRecordingState_ConcurrentStartStop(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
+	var s toolconfigure.NetworkRecordingState
 
 	const goroutines = 100
 	var wg sync.WaitGroup
@@ -252,10 +253,10 @@ func TestNetworkRecordingState_ConcurrentStartStop(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			if n%2 == 0 {
-				_, ok := s.tryStart("example.com", "GET")
+				_, ok := s.TryStart("example.com", "GET")
 				startSuccesses <- ok
 			} else {
-				_, ok := s.stop()
+				_, ok := s.Stop()
 				stopSuccesses <- ok
 			}
 		}(i)
@@ -296,7 +297,7 @@ func TestNetworkRecordingState_ConcurrentStartStop(t *testing.T) {
 	}
 
 	// Final state must match the arithmetic
-	info := s.info()
+	info := s.Info()
 	if diff == 0 && info.Active {
 		t.Error("state should be inactive when all starts were stopped")
 	}
@@ -307,8 +308,8 @@ func TestNetworkRecordingState_ConcurrentStartStop(t *testing.T) {
 
 func TestNetworkRecordingState_ConcurrentInfo(t *testing.T) {
 	t.Parallel()
-	var s networkRecordingState
-	s.tryStart("example.com", "GET")
+	var s toolconfigure.NetworkRecordingState
+	s.TryStart("example.com", "GET")
 
 	const goroutines = 50
 	var wg sync.WaitGroup
@@ -317,7 +318,7 @@ func TestNetworkRecordingState_ConcurrentInfo(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			snap := s.info()
+			snap := s.Info()
 			// Must not panic and must return consistent snapshot
 			if snap.Active && snap.Domain == "" {
 				t.Error("active snapshot should have domain set")
@@ -329,7 +330,7 @@ func TestNetworkRecordingState_ConcurrentInfo(t *testing.T) {
 }
 
 // ============================================
-// matchesRecordingFilter() — table-driven
+// toolconfigure.MatchesRecordingFilter() — table-driven
 // ============================================
 
 func TestMatchesRecordingFilter(t *testing.T) {
@@ -611,9 +612,9 @@ func TestMatchesRecordingFilter(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := matchesRecordingFilter(tc.body, tc.startTime, tc.domain, tc.method)
+			got := toolconfigure.MatchesRecordingFilter(tc.body, tc.startTime, tc.domain, tc.method)
 			if got != tc.want {
-				t.Errorf("matchesRecordingFilter() = %v, want %v", got, tc.want)
+				t.Errorf("toolconfigure.MatchesRecordingFilter() = %v, want %v", got, tc.want)
 			}
 		})
 	}

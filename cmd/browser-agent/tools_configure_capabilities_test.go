@@ -8,13 +8,15 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 )
 
 func TestDescribeCapabilities_ResponseStructure(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -82,7 +84,7 @@ func TestDescribeCapabilities_ToolsHaveModes(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -123,9 +125,9 @@ func TestDescribeCapabilities_SummaryMode(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 
 	// Full response
-	fullResp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
+	fullResp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{}`), version)
 	// Summary response
-	summaryResp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"summary":true}`))
+	summaryResp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"summary":true}`), version)
 
 	// Summary should be significantly smaller
 	if len(summaryResp.Result) >= len(fullResp.Result) {
@@ -172,7 +174,7 @@ func TestDescribeCapabilities_ConfigureIncludesModeParameterDetails(t *testing.T
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -237,7 +239,7 @@ func TestDescribeCapabilities_FilterByTool(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"observe"}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"tool":"observe"}`), version)
 
 	data := parseCapabilitiesJSON(t, resp)
 
@@ -264,7 +266,7 @@ func TestDescribeCapabilities_FilterByToolAndMode(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"store"}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"tool":"configure","mode":"store"}`), version)
 
 	data := parseCapabilitiesJSON(t, resp)
 
@@ -293,7 +295,7 @@ func TestDescribeCapabilities_FilterByTool_Unknown(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"nonexistent"}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"tool":"nonexistent"}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -318,7 +320,7 @@ func TestDescribeCapabilities_ModeWithoutTool(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"mode":"store"}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"mode":"store"}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -337,7 +339,7 @@ func TestDescribeCapabilities_FilterByToolAndMode_Unknown(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"nonexistent"}`))
+	resp := toolconfigure.HandleDescribeCapabilities(h, req, json.RawMessage(`{"tool":"configure","mode":"nonexistent"}`), version)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

@@ -4,7 +4,11 @@
 
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
+)
 
 // runAuditCategory runs a single audit category and extracts score/findings.
 func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, cat auditCategory) auditCategoryResult {
@@ -46,5 +50,11 @@ func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, 
 		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "Could not parse audit data", Error: "malformed JSON in response"}
 	}
 
-	return scoreAuditCategory(cat.Name, data)
+	azResult := toolanalyze.ScoreAuditCategory(cat.Name, data)
+	return auditCategoryResult{
+		Score:    azResult.Score,
+		Findings: azResult.Findings,
+		Summary:  azResult.Summary,
+		Error:    azResult.Error,
+	}
 }

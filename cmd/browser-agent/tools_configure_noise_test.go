@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 )
 
 // ============================================
@@ -178,7 +180,7 @@ func TestToolConfigureNoise_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolConfigureNoise(req, args)
+	resp := toolconfigure.HandleNoise(env.handler, req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {

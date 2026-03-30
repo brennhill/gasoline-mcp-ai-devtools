@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/annotation"
 )
 
@@ -191,7 +192,7 @@ func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) 
 		result["message"] = "No annotations match the requested url filter."
 	}
 	if len(annotations) > 0 {
-		result["hints"] = buildSessionHints(session.ScreenshotPath)
+		result["hints"] = toolanalyze.BuildSessionHints(session.ScreenshotPath)
 	}
 	return result
 }
@@ -243,7 +244,7 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession, urlFilter str
 		result["message"] = "No pages in this annotation session match the requested url filter."
 	}
 	if totalCount > 0 {
-		result["hints"] = buildSessionHints(screenshotPath)
+		result["hints"] = toolanalyze.BuildSessionHints(screenshotPath)
 	}
 	return result
 }
@@ -446,7 +447,7 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	}
 
 	// Detail-level LLM hints (context-aware)
-	if detailHints := buildDetailHints(detail.CSSFramework, detail.JSFramework, detail.A11yFlags, hasCorrelatedErrors); detailHints != nil {
+	if detailHints := toolanalyze.BuildDetailHints(detail.CSSFramework, detail.JSFramework, detail.A11yFlags, hasCorrelatedErrors); detailHints != nil {
 		result["hints"] = detailHints
 	}
 

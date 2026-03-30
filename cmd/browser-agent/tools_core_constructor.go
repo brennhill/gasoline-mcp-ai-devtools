@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -52,7 +53,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 		coldStartTimeout:          defaultColdStartTimeout,
 		extensionReadinessTimeout: defaultExtensionReadinessTimeout(),
 		playbackSessions: newPlaybackSessionsMap(),
-		networkRecording: &networkRecordingState{},
+		networkRecording: &toolconfigure.NetworkRecordingState{},
 	}
 
 	// Initialize usage counter for periodic telemetry beacons.

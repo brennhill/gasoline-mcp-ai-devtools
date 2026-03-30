@@ -1,38 +1,40 @@
-// Purpose: Generates context-aware tutorial content and CSP-retry guidance for the configure(what="tutorial") mode.
+// tutorial.go — Generates context-aware tutorial content for configure(what="tutorial").
 // Why: Provides onboarding help and CSP navigation fallback guidance without requiring external documentation.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
-package main
+package toolconfigure
 
-import "encoding/json"
+import (
+	"encoding/json"
 
-func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
+)
+
+// HandleTutorial handles configure(what="tutorial") and configure(what="examples").
+// failureRecoveryPlaybooks is injected from the caller (lives in playbooks sub-package).
+func HandleTutorial(d Deps, req mcp.JSONRPCRequest, args json.RawMessage, failureRecoveryPlaybooks map[string]any) mcp.JSONRPCResponse {
 	var params struct {
 		What string `json:"what"`
 	}
-	if len(args) > 0 {
-		if resp, stop := parseArgs(req, args, &params); stop {
-			return resp
-		}
-	}
+	lenientUnmarshal(args, &params)
 
 	mode := "tutorial"
 	if params.What == "examples" {
 		mode = "examples"
 	}
 
-	context := h.tutorialContext()
+	context := TutorialContext(d)
 	return succeed(req, "Tutorial", map[string]any{
 		"status":                     "ok",
 		"mode":                       mode,
 		"message":                    "Quickstart snippets and context-aware guidance",
 		"context":                    context,
-		"issues":                     tutorialIssues(context),
-		"next_steps":                 tutorialNextSteps(context),
-		"snippets":                   tutorialSnippets(),
-		"safe_automation_loop":       tutorialSafeAutomationLoop(),
-		"csp_fallback_playbook":      tutorialCSPFallbackPlaybook(),
-		"failure_recovery_playbooks": tutorialFailureRecoveryPlaybooks(),
+		"issues":                     TutorialIssues(context),
+		"next_steps":                 TutorialNextSteps(context),
+		"snippets":                   TutorialSnippets(),
+		"safe_automation_loop":       TutorialSafeAutomationLoop(),
+		"csp_fallback_playbook":      TutorialCSPFallbackPlaybook(),
+		"failure_recovery_playbooks": failureRecoveryPlaybooks,
 		"best_practices": []string{
 			"Start with observe to gather evidence before automating actions",
 			"Use configure tutorial/examples and describe_capabilities when argument shape is unclear",
@@ -42,7 +44,8 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 	})
 }
 
-func (h *ToolHandler) tutorialContext() map[string]any {
+// TutorialContext builds the runtime context map for tutorial responses.
+func TutorialContext(d Deps) map[string]any {
 	ctx := map[string]any{
 		"pilot_enabled":       true,
 		"pilot_state":         "assumed_enabled",
@@ -52,12 +55,12 @@ func (h *ToolHandler) tutorialContext() map[string]any {
 		"tracked_tab_id":      0,
 		"tracked_tab_url":     "",
 	}
-	if h == nil || h.capture == nil {
+	if d == nil {
 		return ctx
 	}
 
-	trackingEnabled, tabID, tabURL := h.capture.GetTrackingStatus()
-	if status, ok := h.capture.GetPilotStatus().(map[string]any); ok {
+	trackingEnabled, tabID, tabURL := d.GetTrackingStatus()
+	if status, ok := d.GetPilotStatus().(map[string]any); ok {
 		if v, ok := status["enabled"].(bool); ok {
 			ctx["pilot_enabled"] = v
 		}
@@ -68,14 +71,15 @@ func (h *ToolHandler) tutorialContext() map[string]any {
 			ctx["pilot_authoritative"] = v
 		}
 	}
-	ctx["extension_connected"] = h.capture.IsExtensionConnected()
+	ctx["extension_connected"] = d.IsExtensionConnected()
 	ctx["tracking_enabled"] = trackingEnabled
 	ctx["tracked_tab_id"] = tabID
 	ctx["tracked_tab_url"] = tabURL
 	return ctx
 }
 
-func tutorialIssues(context map[string]any) []map[string]any {
+// TutorialIssues returns context-aware issue diagnostics for tutorial responses.
+func TutorialIssues(context map[string]any) []map[string]any {
 	pilotEnabled, _ := context["pilot_enabled"].(bool)
 	pilotState, _ := context["pilot_state"].(string)
 	extensionConnected, _ := context["extension_connected"].(bool)
@@ -119,8 +123,9 @@ func tutorialIssues(context map[string]any) []map[string]any {
 	return issues
 }
 
-func tutorialNextSteps(context map[string]any) []string {
-	issues := tutorialIssues(context)
+// TutorialNextSteps returns context-aware next step suggestions.
+func TutorialNextSteps(context map[string]any) []string {
+	issues := TutorialIssues(context)
 	if len(issues) > 0 {
 		return []string{
 			"Run configure doctor to verify environment status",

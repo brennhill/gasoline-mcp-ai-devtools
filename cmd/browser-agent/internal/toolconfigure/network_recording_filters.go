@@ -1,7 +1,7 @@
-// Purpose: Filtering and projection helpers for network recording snapshots.
+// network_recording_filters.go — Filtering and projection helpers for network recording snapshots.
 // Why: Keeps request selection/serialization logic out of handler control flow.
 
-package main
+package toolconfigure
 
 import (
 	"strconv"
@@ -11,18 +11,20 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
-func collectRecordedRequests(bodies []types.NetworkBody, snap recordingSnapshot) []map[string]any {
+// CollectRecordedRequests filters network bodies against a recording snapshot's filters.
+func CollectRecordedRequests(bodies []types.NetworkBody, snap RecordingSnapshot) []map[string]any {
 	recorded := make([]map[string]any, 0, len(bodies))
 	for _, body := range bodies {
-		if !matchesRecordingFilter(body, snap.StartTime, snap.Domain, snap.Method) {
+		if !MatchesRecordingFilter(body, snap.StartTime, snap.Domain, snap.Method) {
 			continue
 		}
-		recorded = append(recorded, buildRecordedRequestEntry(body))
+		recorded = append(recorded, BuildRecordedRequestEntry(body))
 	}
 	return recorded
 }
 
-func buildRecordedRequestEntry(body types.NetworkBody) map[string]any {
+// BuildRecordedRequestEntry creates a map representation of a network body for recording output.
+func BuildRecordedRequestEntry(body types.NetworkBody) map[string]any {
 	entry := map[string]any{
 		"method": body.Method,
 		"url":    body.URL,
@@ -49,8 +51,8 @@ func buildRecordedRequestEntry(body types.NetworkBody) map[string]any {
 	return entry
 }
 
-// matchesRecordingFilter checks if a network body matches recording filters.
-func matchesRecordingFilter(body types.NetworkBody, startTime time.Time, domain, method string) bool {
+// MatchesRecordingFilter checks if a network body matches recording filters.
+func MatchesRecordingFilter(body types.NetworkBody, startTime time.Time, domain, method string) bool {
 	// Filter by timestamp — only include entries captured after recording started.
 	if body.Timestamp != "" {
 		ts, err := time.Parse(time.RFC3339Nano, body.Timestamp)

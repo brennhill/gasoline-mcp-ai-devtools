@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 	az "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/analyze"
 )
@@ -56,11 +57,11 @@ func decodeToolJSONPayload(t *testing.T, result MCPToolResult) map[string]any {
 }
 
 func TestToolValidateLinksValidationErrors(t *testing.T) {
-	h := newAnalyzeValidationHandler(t)
+	_ = newAnalyzeValidationHandler(t)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 
 	t.Run("invalid JSON", func(t *testing.T) {
-		resp := h.toolValidateLinks(req, json.RawMessage(`{invalid`))
+		resp := toolanalyze.HandleLinkValidation(req,json.RawMessage(`{invalid`), version)
 		result := decodeToolResult(t, resp.Result)
 		if !result.IsError {
 			t.Fatalf("expected isError=true, got %+v", result)
@@ -71,7 +72,7 @@ func TestToolValidateLinksValidationErrors(t *testing.T) {
 	})
 
 	t.Run("missing urls", func(t *testing.T) {
-		resp := h.toolValidateLinks(req, json.RawMessage(`{}`))
+		resp := toolanalyze.HandleLinkValidation(req,json.RawMessage(`{}`), version)
 		result := decodeToolResult(t, resp.Result)
 		if !result.IsError {
 			t.Fatalf("expected isError=true, got %+v", result)
@@ -82,7 +83,7 @@ func TestToolValidateLinksValidationErrors(t *testing.T) {
 	})
 
 	t.Run("no valid http urls", func(t *testing.T) {
-		resp := h.toolValidateLinks(req, json.RawMessage(`{"urls":["ftp://x","javascript:alert(1)"]}`))
+		resp := toolanalyze.HandleLinkValidation(req,json.RawMessage(`{"urls":["ftp://x","javascript:alert(1)"]}`), version)
 		result := decodeToolResult(t, resp.Result)
 		if !result.IsError {
 			t.Fatalf("expected isError=true, got %+v", result)
@@ -94,12 +95,12 @@ func TestToolValidateLinksValidationErrors(t *testing.T) {
 }
 
 func TestToolValidateLinksExecutesAndReturnsResults(t *testing.T) {
-	h := newAnalyzeValidationHandler(t)
+	_ = newAnalyzeValidationHandler(t)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
 
 	// timeout_ms and max_workers intentionally out-of-bounds to exercise clamping.
 	args := json.RawMessage(`{"urls":["http://127.0.0.1:1"],"timeout_ms":5,"max_workers":999}`)
-	resp := h.toolValidateLinks(req, args)
+	resp := toolanalyze.HandleLinkValidation(req,args, version)
 	result := decodeToolResult(t, resp.Result)
 	if result.IsError {
 		t.Fatalf("expected success result, got error: %+v", result)

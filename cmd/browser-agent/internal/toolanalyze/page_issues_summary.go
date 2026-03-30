@@ -1,21 +1,39 @@
-// tools_analyze_page_issues_summary.go — Compact summary builder for page_issues results.
+// page_issues_summary.go — Compact summary builder for page_issues results.
 // Why: Reduces token cost by ~80% when AI only needs a high-level overview.
 // Docs: docs/features/feature/auto-fix/index.md
 
-package main
+package toolanalyze
 
 import "sort"
 
-func buildPageIssuesSummary(result pageIssuesResult) map[string]any {
+// PageIssuesResult holds the aggregated page issues scan output.
+type PageIssuesResult struct {
+	TotalIssues     int            `json:"total_issues"`
+	BySeverity      map[string]int `json:"by_severity"`
+	Sections        map[string]any `json:"sections"`
+	ChecksCompleted []string       `json:"checks_completed"`
+	ChecksSkipped   []string       `json:"checks_skipped"`
+	PageURL         string         `json:"page_url"`
+	Timestamp       string         `json:"timestamp"`
+}
+
+// SeverityOrder maps severity names to sort priority (lower = more severe).
+var SeverityOrder = map[string]int{"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+// PageIssuesSummaryTopN is the maximum number of top issues to include in summaries.
+const PageIssuesSummaryTopN = 10
+
+// BuildPageIssuesSummary creates a compact summary from full page issues results.
+func BuildPageIssuesSummary(result PageIssuesResult) map[string]any {
 	allIssues := collectAllIssuesFlat(result.Sections)
 
-	topN := pageIssuesSummaryTopN
+	topN := PageIssuesSummaryTopN
 	if len(allIssues) < topN {
 		topN = len(allIssues)
 	}
 
 	sort.Slice(allIssues, func(i, j int) bool {
-		return severityOrder[allIssues[i].severity] < severityOrder[allIssues[j].severity]
+		return SeverityOrder[allIssues[i].severity] < SeverityOrder[allIssues[j].severity]
 	})
 
 	topIssues := make([]map[string]any, topN)

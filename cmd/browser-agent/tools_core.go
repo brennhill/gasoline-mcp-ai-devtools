@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -103,7 +104,7 @@ type ToolHandler struct {
 	configureSessionHandler  *configureSessionHandler
 
 	// Passive network traffic recording state (start/stop capture).
-	networkRecording *networkRecordingState
+	networkRecording *toolconfigure.NetworkRecordingState
 
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModulesOnce sync.Once

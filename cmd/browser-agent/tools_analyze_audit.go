@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
@@ -28,10 +29,10 @@ func defaultAuditCategories() []auditCategory {
 			return observe.RunA11yAudit(h, req, args)
 		}, Weight: 1.0},
 		{Name: "security", Handler: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return h.toolAnalyzeSecurityAudit(req, args)
+			return toolanalyze.HandleSecurityAudit(h, req, args)
 		}, Weight: 1.0},
 		{Name: "best_practices", Handler: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return h.toolAuditThirdParties(req, args)
+			return toolanalyze.HandleThirdPartyAudit(h, req, args)
 		}, Weight: 1.0},
 	}
 }

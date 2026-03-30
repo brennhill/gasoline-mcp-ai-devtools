@@ -6,6 +6,8 @@ package main
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
 )
 
 func annotateCSPFailure(responseData map[string]any, cmdError string, result json.RawMessage) {
@@ -26,7 +28,7 @@ func annotateCSPFailure(responseData map[string]any, cmdError string, result jso
 		}
 	}
 	if _, exists := responseData["retry"]; !exists {
-		responseData["retry"] = cspRetryNavigationGuidance
+		responseData["retry"] = toolconfigure.CSPRetryNavigationGuidance
 	}
 }
 
