@@ -59,7 +59,7 @@ func (h *interactActionHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 		Params:        dismissArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.parent.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 }
@@ -80,7 +80,7 @@ func (h *interactActionHandler) queueComposableActionDiff(req JSONRPCRequest) {
 		Params:        diffArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.parent.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 }
@@ -105,7 +105,7 @@ func (h *interactActionHandler) queueComposableWaitForStable(req JSONRPCRequest,
 		Params:        stableArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.parent.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 }
@@ -118,7 +118,7 @@ func (h *interactActionHandler) queueComposableSubtitle(req JSONRPCRequest, text
 		Params:        subtitleArgs,
 		CorrelationID: newCorrelationID("subtitle"),
 	}
-	if _, blocked := h.parent.enqueuePendingQuery(req, subtitleQuery, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.parent.EnqueuePendingQuery(req, subtitleQuery, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 }

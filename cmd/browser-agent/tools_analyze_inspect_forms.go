@@ -23,7 +23,7 @@ func queueAnalyzeInspectAction(h *ToolHandler, req JSONRPCRequest, correlationPr
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	if resp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if resp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return resp
 	}
 
@@ -91,7 +91,7 @@ func toolFormValidation(h *ToolHandler, req JSONRPCRequest, args json.RawMessage
 		TabID:         parsed.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 

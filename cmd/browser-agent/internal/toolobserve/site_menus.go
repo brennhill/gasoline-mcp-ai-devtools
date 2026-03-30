@@ -1,30 +1,31 @@
-// tools_observe_site_menus.go — observe(what:"site_menus") handler.
+// site_menus.go — observe(what:"site_menus") handler.
 // Why: Gives AI agents structured menu discovery without requiring landmark markup.
 // Dispatches list_interactive to the extension, then runs the 3-layer menu heuristic in Go.
-// Docs: docs/features/feature/auto-fix/index.md
 
-package main
+package toolobserve
 
 import (
 	"encoding/json"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/menus"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
-func (h *ToolHandler) toolObserveSiteMenus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// HandleSiteMenus handles observe(what="site_menus").
+func HandleSiteMenus(d Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Summary bool `json:"summary"`
 	}
 	if len(args) > 0 {
-		lenientUnmarshal(args, &params)
+		mcp.LenientUnmarshal(args, &params)
 	}
 
 	// Dispatch list_interactive to the extension to get all interactables with bboxes.
-	queryArgs := buildQueryParams(map[string]any{
+	queryArgs := mcp.SafeMarshal(map[string]any{
 		"what":         "list_interactive",
 		"visible_only": true,
-	})
+	}, "{}")
 
 	correlationID := newCorrelationID("site_menus")
 	query := queries.PendingQuery{
@@ -32,15 +33,15 @@ func (h *ToolHandler) toolObserveSiteMenus(req JSONRPCRequest, args json.RawMess
 		Params:        queryArgs,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := d.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 
 	// Wait synchronously for the extension result.
-	resp := h.MaybeWaitForCommand(req, correlationID, args, "site_menus queued")
+	resp := d.MaybeWaitForCommand(req, correlationID, args, "site_menus queued")
 
 	// Check if we got the result or it's still pending.
-	var toolResult MCPToolResult
+	var toolResult mcp.MCPToolResult
 	if err := json.Unmarshal(resp.Result, &toolResult); err != nil || toolResult.IsError {
 		return resp
 	}
@@ -65,7 +66,7 @@ func (h *ToolHandler) toolObserveSiteMenus(req JSONRPCRequest, args json.RawMess
 }
 
 // parseListInteractiveResult extracts raw elements from a list_interactive tool response.
-func parseListInteractiveResult(result MCPToolResult) []menus.RawElement {
+func parseListInteractiveResult(result mcp.MCPToolResult) []menus.RawElement {
 	if len(result.Content) == 0 {
 		return nil
 	}
@@ -85,19 +86,19 @@ func parseListInteractiveResult(result MCPToolResult) []menus.RawElement {
 
 	var data struct {
 		Elements []struct {
-			Index        int     `json:"index"`
-			Tag          string  `json:"tag"`
-			Type         string  `json:"type"`
-			ElementType  string  `json:"element_type"`
-			Label        string  `json:"label"`
-			Role         string  `json:"role"`
-			Placeholder  string  `json:"placeholder"`
-			Visible      bool    `json:"visible"`
+			Index        int        `json:"index"`
+			Tag          string     `json:"tag"`
+			Type         string     `json:"type"`
+			ElementType  string     `json:"element_type"`
+			Label        string     `json:"label"`
+			Role         string     `json:"role"`
+			Placeholder  string     `json:"placeholder"`
+			Visible      bool       `json:"visible"`
 			BBox         menus.BBox `json:"bbox"`
-			LandmarkTag  string  `json:"landmark_tag"`
-			LandmarkRole string  `json:"landmark_role"`
-			Href         string  `json:"href"`
-			InOverlay    bool    `json:"in_overlay"`
+			LandmarkTag  string     `json:"landmark_tag"`
+			LandmarkRole string     `json:"landmark_role"`
+			Href         string     `json:"href"`
+			InOverlay    bool       `json:"in_overlay"`
 		} `json:"elements"`
 	}
 	if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {

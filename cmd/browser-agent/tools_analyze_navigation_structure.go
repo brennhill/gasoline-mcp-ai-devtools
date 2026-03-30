@@ -31,7 +31,7 @@ func (h *ToolHandler) toolAnalyzeNavigation(req JSONRPCRequest, args json.RawMes
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 
@@ -59,7 +59,7 @@ func (h *ToolHandler) toolAnalyzePageStructure(req JSONRPCRequest, args json.Raw
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 

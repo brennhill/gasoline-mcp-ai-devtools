@@ -20,7 +20,7 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 		Params:        args,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 

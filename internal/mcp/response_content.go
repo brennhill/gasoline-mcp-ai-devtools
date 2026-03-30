@@ -54,6 +54,34 @@ func AppendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCRe
 	return resp
 }
 
+// MutateToolResult unmarshals the response result into MCPToolResult, applies the
+// mutation function, and remarshals. Returns the original response unchanged if
+// unmarshal or remarshal fails.
+func MutateToolResult(resp JSONRPCResponse, fn func(*MCPToolResult)) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	fn(&result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// PrependWarningToResponse prepends a warning string to the first text block of an MCP response.
+func PrependWarningToResponse(resp JSONRPCResponse, warning string) JSONRPCResponse {
+	return MutateToolResult(resp, func(r *MCPToolResult) {
+		if len(r.Content) > 0 && r.Content[0].Type == "text" {
+			r.Content[0].Text = warning + r.Content[0].Text
+		} else {
+			r.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, r.Content...)
+		}
+	})
+}
+
 // AppendWarningsToToolResult mutates a parsed MCP tool result in-place by adding a
 // warning content block. It returns true if warnings were appended.
 func AppendWarningsToToolResult(result *MCPToolResult, warnings []string) bool {

@@ -43,7 +43,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if resp, blocked := h.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if resp, blocked := h.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return resp
 	}
 

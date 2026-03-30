@@ -41,7 +41,7 @@ func (h *interactActionHandler) handleDrawModeStart(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := h.parent.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.parent.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 

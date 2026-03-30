@@ -13,7 +13,7 @@ import (
 
 // recordingDeps defines the narrow interface that recordingInteractHandler needs from its parent.
 type recordingDeps interface {
-	enqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
+	EnqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
 	requirePilot(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
 	requireExtension(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
 	recordAIAction(action, url string, extra map[string]any)

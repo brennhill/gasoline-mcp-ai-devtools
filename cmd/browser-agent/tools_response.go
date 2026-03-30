@@ -77,17 +77,7 @@ func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCRe
 // mutation function, and remarshals. Returns the original response unchanged if
 // unmarshal or remarshal fails.
 func mutateToolResult(resp JSONRPCResponse, fn func(*MCPToolResult)) JSONRPCResponse {
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	fn(&result)
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return mcp.MutateToolResult(resp, fn)
 }
 
 // injectCSPBlockedActions adds blocked_actions and blocked_reason to a JSON

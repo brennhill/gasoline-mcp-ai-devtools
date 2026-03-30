@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
@@ -50,6 +51,18 @@ func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args j
 // getCommandResult returns a command result by correlation ID from the capture store.
 func (h *ToolHandler) getCommandResult(correlationID string) (*queries.CommandResult, bool) {
 	return h.capture.GetCommandResult(correlationID)
+}
+
+// IsExtensionConnected reports whether the browser extension is connected.
+// Satisfies toolobserve.Deps.
+func (h *ToolHandler) IsExtensionConnected() bool {
+	return h.capture.IsExtensionConnected()
+}
+
+// PushInbox returns the push inbox, or nil if unavailable.
+// Satisfies toolobserve.Deps.
+func (h *ToolHandler) PushInbox() *push.PushInbox {
+	return h.server.pushInbox
 }
 
 // GetAnnotationStore returns the annotation store for draw mode data.

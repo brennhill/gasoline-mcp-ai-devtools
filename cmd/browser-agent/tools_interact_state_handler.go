@@ -15,7 +15,7 @@ import (
 // stateInteractDeps defines the narrow interface that stateInteractHandler needs.
 type stateInteractDeps interface {
 	requireSessionStore(req JSONRPCRequest) (JSONRPCResponse, bool)
-	enqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
+	EnqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
 	recordAIAction(action, url string, extra map[string]any)
 	diagnosticHint() func(*StructuredError)
 	GetRedactionEngine() RedactionEngine

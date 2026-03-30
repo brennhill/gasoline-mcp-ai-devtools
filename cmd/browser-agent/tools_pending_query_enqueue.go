@@ -11,9 +11,10 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
-// enqueuePendingQuery submits a command for extension pickup and returns a
+// EnqueuePendingQuery submits a command for extension pickup and returns a
 // structured error response when queueing fails.
-func (h *ToolHandler) enqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool) {
+// Satisfies mcp.PendingQueryEnqueuer.
+func (h *ToolHandler) EnqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool) {
 	_, err := h.capture.CreatePendingQueryWithTimeout(query, timeout, req.ClientID)
 	if err == nil {
 		return JSONRPCResponse{}, false

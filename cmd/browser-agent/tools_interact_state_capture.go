@@ -43,7 +43,7 @@ func (h *stateInteractHandler) captureState(req JSONRPCRequest) stateCaptureResu
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 
@@ -83,7 +83,7 @@ func (h *stateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 		Params:        scriptArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return ""
 	}
 
@@ -105,7 +105,7 @@ func (h *stateInteractHandler) queueStateNavigation(req JSONRPCRequest, stateDat
 		Params:        navArgs,
 		CorrelationID: correlationID,
 	}
-	if _, blocked := h.deps.enqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
+	if _, blocked := h.deps.EnqueuePendingQuery(req, query, queries.AsyncCommandTimeout); blocked {
 		return
 	}
 	stateData["navigation_queued"] = true

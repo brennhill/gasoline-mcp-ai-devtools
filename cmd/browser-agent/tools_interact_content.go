@@ -88,7 +88,7 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 		TabID:         tabID,
 		CorrelationID: summaryCorrelationID,
 	}
-	if enqueueResp, blocked := h.enqueuePendingQuery(req, summaryQuery, queries.AsyncCommandTimeout); blocked {
+	if enqueueResp, blocked := h.EnqueuePendingQuery(req, summaryQuery, queries.AsyncCommandTimeout); blocked {
 		return enqueueResp
 	}
 

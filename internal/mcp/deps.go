@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // DiagnosticProvider supplies system state snapshots for error messages.
@@ -22,6 +23,13 @@ type DiagnosticProvider interface {
 // the browser extension and wait for results.
 type AsyncCommandDispatcher interface {
 	MaybeWaitForCommand(req JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) JSONRPCResponse
+}
+
+// PendingQueryEnqueuer submits commands for browser extension pickup.
+// Used by observe, analyze, interact, and generate tools that dispatch
+// async queries to the extension.
+type PendingQueryEnqueuer interface {
+	EnqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
 }
 
 // CaptureProvider gives access to the capture instance for buffer reads.

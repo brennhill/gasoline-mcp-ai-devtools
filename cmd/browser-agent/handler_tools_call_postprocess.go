@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // applyToolResponsePostProcessing applies redaction and operator warnings to tool output.
@@ -46,13 +47,7 @@ func (h *MCPHandler) maybeAddPendingIntents(resp JSONRPCResponse) JSONRPCRespons
 
 // prependWarningToResponse prepends a warning string to the first text block of an MCP response.
 func prependWarningToResponse(resp JSONRPCResponse, warning string) JSONRPCResponse {
-	return mutateToolResult(resp, func(r *MCPToolResult) {
-		if len(r.Content) > 0 && r.Content[0].Type == "text" {
-			r.Content[0].Text = warning + r.Content[0].Text
-		} else {
-			r.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, r.Content...)
-		}
-	})
+	return mcp.PrependWarningToResponse(resp, warning)
 }
 
 func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCResponse {

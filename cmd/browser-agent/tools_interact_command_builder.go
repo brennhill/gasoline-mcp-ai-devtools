@@ -238,7 +238,7 @@ func (b *commandBuilder) executeWithCorrelation(req JSONRPCRequest, waitArgs jso
 		TabID:         b.qTabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := b.handler.parent.enqueuePendingQuery(req, query, timeout); blocked {
+	if enqueueResp, blocked := b.handler.parent.EnqueuePendingQuery(req, query, timeout); blocked {
 		return enqueueResp, correlationID
 	}
 

@@ -13,7 +13,7 @@ import (
 
 // uploadDeps defines the narrow interface that uploadInteractHandler needs from its parent.
 type uploadDeps interface {
-	enqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
+	EnqueuePendingQuery(req JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (JSONRPCResponse, bool)
 	requirePilot(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
 	requireExtension(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
 	requireTabTracking(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)

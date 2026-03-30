@@ -25,7 +25,7 @@ func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := r.deps.enqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
+	if enqueueResp, blocked := r.deps.EnqueuePendingQuery(req, query, recordStartCommandTimeout); blocked {
 		return enqueueResp
 	}
 	r.setInteractRecordingStart(correlationID)
@@ -134,7 +134,7 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	if enqueueResp, blocked := r.deps.enqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
+	if enqueueResp, blocked := r.deps.EnqueuePendingQuery(req, query, recordStopCommandTimeout); blocked {
 		return enqueueResp
 	}
 	r.setInteractRecordingStopping(correlationID)

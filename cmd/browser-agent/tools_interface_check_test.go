@@ -6,6 +6,7 @@
 package main
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolobserve"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
@@ -13,6 +14,8 @@ import (
 // Phase 1: Shared dependency interfaces
 var _ mcp.DiagnosticProvider = (*ToolHandler)(nil)
 var _ mcp.AsyncCommandDispatcher = (*ToolHandler)(nil)
+var _ mcp.PendingQueryEnqueuer = (*ToolHandler)(nil)
 
 // Phase 2: Tool-specific dependency interfaces
 var _ observe.Deps = (*ToolHandler)(nil)
+var _ toolobserve.Deps = (*ToolHandler)(nil)
