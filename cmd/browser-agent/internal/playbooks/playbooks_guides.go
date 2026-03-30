@@ -1,10 +1,10 @@
-// Purpose: Stores long-form guide/quickstart markdown resources for MCP resource reads.
+// playbooks_guides.go — Stores long-form guide/quickstart markdown resources for MCP resource reads.
 // Why: Keeps documentation payloads separate from playbook catalogs and resolver logic.
 
-package main
+package playbooks
 
-// guideContent is the full usage guide resource.
-var guideContent = `# Kaboom MCP Tools
+// GuideContent is the full usage guide resource.
+var GuideContent = `# Kaboom MCP Tools
 
 Agentic Browser Devtools - rapid e2e web development. 5 tools for real-time browser telemetry.
 
@@ -104,8 +104,8 @@ Use restart_on_eviction=true if a cursor expires.
 - For SEO/best-practices work: check if the site serves /llms.txt (llmstxt.org). Sites with llms.txt and per-page .md variants get better AI agent and LLM discoverability. analyze(what:"audit") includes this recommendation automatically
 `
 
-// quickstartContent is the short quickstart resource.
-var quickstartContent = `# Kaboom MCP Quickstart
+// QuickstartContent is the short quickstart resource.
+var QuickstartContent = `# Kaboom MCP Quickstart
 
 ## 1. Health Check
 {"tool":"configure","arguments":{"what":"health"}}

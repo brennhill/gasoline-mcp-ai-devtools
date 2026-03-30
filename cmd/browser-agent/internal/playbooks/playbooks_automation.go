@@ -1,7 +1,7 @@
-// Purpose: Automation playbook content.
+// playbooks_automation.go — Automation playbook content.
 // Why: Keeps capability-specific playbooks modular and easier to update.
 
-package main
+package playbooks
 
 var playbookSetAutomation = map[string]string{
 	"automation/quick": `# Playbook: Browser Automation (Quick)

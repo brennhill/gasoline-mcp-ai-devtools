@@ -1,7 +1,7 @@
-// Purpose: Accessibility playbook content.
+// playbooks_accessibility.go — Accessibility playbook content.
 // Why: Keeps capability-specific playbooks modular and easier to update.
 
-package main
+package playbooks
 
 var playbookSetAccessibility = map[string]string{
 	"accessibility/quick": `# Playbook: Accessibility Audit (Quick)

@@ -1,7 +1,6 @@
-// Purpose: Tests for playbook content serving and validation.
-// Docs: docs/features/feature/mcp-persistent-server/index.md
+// playbooks_content_test.go — Tests for playbook content serving and validation.
 
-package main
+package playbooks
 
 import (
 	"strings"
@@ -11,9 +10,9 @@ import (
 func TestQuickstartContent_IncludesInteractFailureRecoveryExamples(t *testing.T) {
 	t.Parallel()
 
-	uri, text, ok := resolveResourceContent("kaboom://quickstart")
+	uri, text, ok := ResolveResourceContent("kaboom://quickstart")
 	if !ok {
-		t.Fatal("resolveResourceContent(kaboom://quickstart) should succeed")
+		t.Fatal("ResolveResourceContent(kaboom://quickstart) should succeed")
 	}
 	if uri != "kaboom://quickstart" {
 		t.Fatalf("canonical uri = %q, want kaboom://quickstart", uri)

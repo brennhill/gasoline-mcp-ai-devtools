@@ -1,10 +1,10 @@
-// Purpose: Embeds the capability index, usage guide, quickstart, and on-demand playbook content served as MCP resources.
+// playbooks.go — Embeds the capability index, usage guide, quickstart, and on-demand playbook content served as MCP resources.
 // Why: Provides token-efficient documentation that MCP clients can read without external network access.
 
-package main
+package playbooks
 
-// capabilityIndex is the token-efficient capability discovery resource.
-var capabilityIndex = `# Kaboom Capability Index (Token-Efficient)
+// CapabilityIndex is the token-efficient capability discovery resource.
+var CapabilityIndex = `# Kaboom Capability Index (Token-Efficient)
 
 Use this index for discovery. Load detailed guidance only when task intent matches.
 
@@ -47,8 +47,8 @@ When unsure which params a mode accepts, use per-mode filtering:
 - Add future playbooks under kaboom://playbook/{capability}/{quick|full}.
 `
 
-// playbooks maps "{capability}/{level}" keys to markdown playbook content.
-var playbooks = mergePlaybookSets(
+// Playbooks maps "{capability}/{level}" keys to markdown playbook content.
+var Playbooks = mergePlaybookSets(
 	playbookSetPerformance,
 	playbookSetAccessibility,
 	playbookSetSecurity,

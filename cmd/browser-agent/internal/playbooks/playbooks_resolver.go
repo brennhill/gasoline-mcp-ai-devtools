@@ -1,12 +1,12 @@
-// Purpose: Resolves playbook/demo resource URIs to canonical URIs and markdown content.
+// playbooks_resolver.go — Resolves playbook/demo resource URIs to canonical URIs and markdown content.
 // Why: Isolates URI parsing and alias normalization from large static documentation payloads.
 
-package main
+package playbooks
 
 import "strings"
 
-// canonicalPlaybookCapability normalizes capability aliases to canonical playbook keys.
-func canonicalPlaybookCapability(capability string) string {
+// CanonicalPlaybookCapability normalizes capability aliases to canonical playbook keys.
+func CanonicalPlaybookCapability(capability string) string {
 	switch strings.ToLower(strings.TrimSpace(capability)) {
 	case "performance", "performance_analysis":
 		return "performance"
@@ -21,8 +21,8 @@ func canonicalPlaybookCapability(capability string) string {
 	}
 }
 
-// resolvePlaybookKey resolves "{capability}/{level}" and bare "{capability}" to canonical keys.
-func resolvePlaybookKey(raw string) string {
+// ResolvePlaybookKey resolves "{capability}/{level}" and bare "{capability}" to canonical keys.
+func ResolvePlaybookKey(raw string) string {
 	trimmed := strings.Trim(strings.ToLower(strings.TrimSpace(raw)), "/")
 	if trimmed == "" {
 		return ""
@@ -30,13 +30,13 @@ func resolvePlaybookKey(raw string) string {
 	parts := strings.Split(trimmed, "/")
 	switch len(parts) {
 	case 1:
-		capability := canonicalPlaybookCapability(parts[0])
+		capability := CanonicalPlaybookCapability(parts[0])
 		if capability == "" {
 			return ""
 		}
 		return capability + "/quick"
 	case 2:
-		capability := canonicalPlaybookCapability(parts[0])
+		capability := CanonicalPlaybookCapability(parts[0])
 		level := strings.TrimSpace(parts[1])
 		if capability == "" || level == "" {
 			return ""
@@ -47,25 +47,25 @@ func resolvePlaybookKey(raw string) string {
 	}
 }
 
-// resolveResourceContent resolves a kaboom resource URI into canonical URI + markdown.
-func resolveResourceContent(uri string) (string, string, bool) {
+// ResolveResourceContent resolves a kaboom resource URI into canonical URI + markdown.
+func ResolveResourceContent(uri string) (string, string, bool) {
 	switch {
 	case uri == "kaboom://capabilities":
-		return uri, capabilityIndex, true
+		return uri, CapabilityIndex, true
 	case uri == "kaboom://guide":
-		return uri, guideContent, true
+		return uri, GuideContent, true
 	case uri == "kaboom://quickstart":
-		return uri, quickstartContent, true
+		return uri, QuickstartContent, true
 	case strings.HasPrefix(uri, "kaboom://playbook/"):
-		key := resolvePlaybookKey(strings.TrimPrefix(uri, "kaboom://playbook/"))
-		text, ok := playbooks[key]
+		key := ResolvePlaybookKey(strings.TrimPrefix(uri, "kaboom://playbook/"))
+		text, ok := Playbooks[key]
 		if !ok {
 			return "", "", false
 		}
 		return "kaboom://playbook/" + key, text, true
 	case strings.HasPrefix(uri, "kaboom://demo/"):
 		name := strings.TrimPrefix(uri, "kaboom://demo/")
-		text, ok := demoScripts[name]
+		text, ok := DemoScripts[name]
 		if !ok {
 			return "", "", false
 		}

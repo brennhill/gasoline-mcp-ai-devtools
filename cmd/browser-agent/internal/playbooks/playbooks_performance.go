@@ -1,7 +1,7 @@
-// Purpose: Performance playbook content.
+// playbooks_performance.go — Performance playbook content.
 // Why: Keeps capability-specific playbooks modular and easier to update.
 
-package main
+package playbooks
 
 var playbookSetPerformance = map[string]string{
 	"performance/quick": `# Playbook: Performance Analysis (Quick)

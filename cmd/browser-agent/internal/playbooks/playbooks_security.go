@@ -1,7 +1,7 @@
-// Purpose: Security playbook content.
+// playbooks_security.go — Security playbook content.
 // Why: Keeps capability-specific playbooks modular and easier to update.
 
-package main
+package playbooks
 
 var playbookSetSecurity = map[string]string{
 	"security/quick": `# Playbook: Security Audit (Quick)

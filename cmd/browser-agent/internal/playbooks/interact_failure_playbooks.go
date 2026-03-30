@@ -1,19 +1,20 @@
-// Purpose: Defines structured recovery playbooks for interact action failures (element_not_found, ambiguous_target, stale handle, etc.).
+// interact_failure_playbooks.go — Defines structured recovery playbooks for interact action failures.
 // Why: Enables deterministic agent self-recovery by embedding ordered retry steps and stop conditions in error responses.
-// Docs: docs/features/feature/interact-explore/index.md
 
-package main
+package playbooks
 
 import "strings"
 
-type interactFailurePlaybook struct {
+// InteractFailurePlaybook holds a structured recovery plan for a specific interact failure code.
+type InteractFailurePlaybook struct {
 	DetectionSignal        string
 	OrderedRecoverySteps   []string
 	StopAndReportCondition string
 	RetrySuggestion        string
 }
 
-var interactFailurePlaybooks = map[string]interactFailurePlaybook{
+// InteractFailurePlaybooks maps failure codes to their recovery playbooks.
+var InteractFailurePlaybooks = map[string]InteractFailurePlaybook{
 	"element_not_found": {
 		DetectionSignal: "error=element_not_found",
 		OrderedRecoverySteps: []string{
@@ -66,9 +67,10 @@ var interactFailurePlaybooks = map[string]interactFailurePlaybook{
 	},
 }
 
-func tutorialFailureRecoveryPlaybooks() map[string]any {
-	out := make(map[string]any, len(interactFailurePlaybooks))
-	for code, playbook := range interactFailurePlaybooks {
+// TutorialFailureRecoveryPlaybooks returns a map suitable for JSON serialization in tutorial responses.
+func TutorialFailureRecoveryPlaybooks() map[string]any {
+	out := make(map[string]any, len(InteractFailurePlaybooks))
+	for code, playbook := range InteractFailurePlaybooks {
 		out[code] = map[string]any{
 			"detection_signal":          playbook.DetectionSignal,
 			"ordered_recovery_steps":    playbook.OrderedRecoverySteps,
@@ -79,24 +81,26 @@ func tutorialFailureRecoveryPlaybooks() map[string]any {
 	return out
 }
 
-func lookupInteractFailurePlaybook(rawCode string) (string, interactFailurePlaybook, bool) {
-	code := normalizeInteractFailureCode(rawCode)
+// LookupInteractFailurePlaybook looks up a failure playbook by raw error code.
+func LookupInteractFailurePlaybook(rawCode string) (string, InteractFailurePlaybook, bool) {
+	code := NormalizeInteractFailureCode(rawCode)
 	if code == "" {
-		return "", interactFailurePlaybook{}, false
+		return "", InteractFailurePlaybook{}, false
 	}
-	playbook, ok := interactFailurePlaybooks[code]
+	playbook, ok := InteractFailurePlaybooks[code]
 	if !ok {
-		return "", interactFailurePlaybook{}, false
+		return "", InteractFailurePlaybook{}, false
 	}
 	return code, playbook, true
 }
 
-func normalizeInteractFailureCode(raw string) string {
+// NormalizeInteractFailureCode normalizes a raw error string to a canonical failure code.
+func NormalizeInteractFailureCode(raw string) string {
 	v := strings.ToLower(strings.TrimSpace(raw))
 	if v == "" {
 		return ""
 	}
-	for code := range interactFailurePlaybooks {
+	for code := range InteractFailurePlaybooks {
 		if v == code || strings.Contains(v, code) {
 			return code
 		}

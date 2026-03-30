@@ -1,10 +1,10 @@
-// Purpose: Stores lightweight demo scripts exposed via kaboom://demo/* resources.
+// playbooks_demos.go — Stores lightweight demo scripts exposed via kaboom://demo/* resources.
 // Why: Keeps demo payloads modular and separate from primary capability playbooks.
 
-package main
+package playbooks
 
-// demoScripts maps demo names to markdown demo script content.
-var demoScripts = map[string]string{
+// DemoScripts maps demo names to markdown demo script content.
+var DemoScripts = map[string]string{
 	"ws": `# Demo: WebSocket Debugging
 
 Goal: show mismatched message format and where to fix it.
