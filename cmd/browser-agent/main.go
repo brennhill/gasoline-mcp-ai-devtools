@@ -70,6 +70,7 @@ func main() {
 		server.AddWarning(warning)
 	}
 
+	initBridge()
 	dispatchMode(server, cfg)
 }
 

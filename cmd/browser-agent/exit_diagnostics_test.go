@@ -4,11 +4,9 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
@@ -91,59 +89,4 @@ func TestAppendExitDiagnostic_UsesStateCrashPath(t *testing.T) {
 	}
 }
 
-func TestBridgeShutdown_WritesBridgeExitDiagnostics(t *testing.T) {
-	stateDir := t.TempDir()
-	t.Setenv(state.StateDirEnv, stateDir)
-
-	stats := &bridgeSessionStats{
-		requests:             4,
-		parseErrors:          1,
-		invalidIDs:           1,
-		fastPath:             2,
-		forwarded:            2,
-		methodNotFound:       1,
-		starting:             1,
-		lineFraming:          3,
-		contentLengthFraming: 1,
-		lastMethod:           "tools/call",
-	}
-
-	var wg sync.WaitGroup
-	responseSent := make(chan bool, 1)
-	responseSent <- true
-	bridgeShutdown(&wg, nil, responseSent, stats)
-
-	path, err := state.CrashLogFile()
-	if err != nil {
-		t.Fatalf("state.CrashLogFile error: %v", err)
-	}
-	data, err := os.ReadFile(path) // nosemgrep: go_filesystem_rule-fileread -- unit test reads temp file output
-	if err != nil {
-		t.Fatalf("read crash log: %v", err)
-	}
-
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) == 0 {
-		t.Fatal("expected at least one crash log entry")
-	}
-	var last map[string]any
-	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &last); err != nil {
-		t.Fatalf("parse crash log json: %v", err)
-	}
-
-	if last["event"] != "bridge_exit" {
-		t.Fatalf("event = %v, want bridge_exit", last["event"])
-	}
-	if last["reason"] != "stdin_eof" {
-		t.Fatalf("reason = %v, want stdin_eof", last["reason"])
-	}
-	if got, ok := last["requests"].(float64); !ok || int(got) != 4 {
-		t.Fatalf("requests = %v, want 4", last["requests"])
-	}
-	if got, ok := last["forwarded"].(float64); !ok || int(got) != 2 {
-		t.Fatalf("forwarded = %v, want 2", last["forwarded"])
-	}
-	if last["last_method"] != "tools/call" {
-		t.Fatalf("last_method = %v, want tools/call", last["last_method"])
-	}
-}
+// TestBridgeShutdown_WritesBridgeExitDiagnostics moved to cmd/browser-agent/internal/bridge/

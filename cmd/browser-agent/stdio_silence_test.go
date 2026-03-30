@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,62 @@ import (
 	"testing"
 	"time"
 )
+
+// contentLengthFrame wraps a JSON payload in Content-Length framing.
+func contentLengthFrame(payload string) string {
+	return fmt.Sprintf("Content-Length: %d\r\nContent-Type: application/json\r\n\r\n%s", len(payload), payload)
+}
+
+// parseMCPResponses parses MCP responses from mixed line/content-length framed output.
+func parseMCPResponses(t *testing.T, output string) []JSONRPCResponse {
+	t.Helper()
+	var responses []JSONRPCResponse
+	reader := bufio.NewReader(strings.NewReader(output))
+	for {
+		line, err := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if line == "" {
+			if err != nil {
+				break
+			}
+			continue
+		}
+		if strings.HasPrefix(strings.ToLower(line), "content-length:") {
+			// Read headers until empty line
+			for {
+				hdr, hErr := reader.ReadString('\n')
+				if strings.TrimSpace(hdr) == "" || hErr != nil {
+					break
+				}
+			}
+			// Read body
+			var body strings.Builder
+			for {
+				b, bErr := reader.ReadByte()
+				if bErr != nil {
+					break
+				}
+				body.WriteByte(b)
+				if json.Valid([]byte(body.String())) {
+					break
+				}
+			}
+			var resp JSONRPCResponse
+			if jErr := json.Unmarshal([]byte(body.String()), &resp); jErr == nil {
+				responses = append(responses, resp)
+			}
+		} else {
+			var resp JSONRPCResponse
+			if jErr := json.Unmarshal([]byte(line), &resp); jErr == nil {
+				responses = append(responses, resp)
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+	return responses
+}
 
 // ⚠️ CRITICAL INVARIANT TEST - MCP STDIO SILENCE
 //
