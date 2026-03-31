@@ -28,7 +28,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Downloads the platform binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
 - Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
-- Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
+- Runs `--install` which auto-detects and configures: OpenAI Codex, Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 
 > Terminal availability: the built-in terminal is supported on macOS and Linux. It is currently unavailable on Windows.
 
@@ -83,7 +83,7 @@ make build
 - **Runtime:** Native Go binary (no Node.js required for standalone binary installs)
 - **Platform:** macOS, Linux, Windows
 - **Terminal widget:** macOS + Linux only (not yet available on Windows)
-- **MCP Client:** Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
+- **MCP Client:** OpenAI Codex, Claude Code, Cursor, Windsurf, Claude Desktop, Zed, Gemini CLI, OpenCode, Antigravity, or any other MCP-compliant system/agent
 
 ## Verification
 
@@ -112,6 +112,7 @@ To verify the binary:
 - Check your Chrome permissions for microphone access (if recording audio)
 
 **Issues with MCP integration?**
+- See [OpenAI Codex Integration Guide](/mcp-integration/codex)
 - See [Claude Code Integration Guide](/mcp-integration/claude-code)
 - See [Cursor Integration Guide](/mcp-integration/cursor)
 

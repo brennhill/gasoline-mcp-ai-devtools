@@ -38,7 +38,7 @@ Gasoline is an open-source browser extension + MCP server for AI coding assistan
 
 ### Vendor Neutral
 
-Gasoline is independent and open-source. It works with **any** MCP-compatible AI tool — Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Continue — without favoring any vendor.
+Gasoline is independent and open-source. It works with **any** MCP-compatible AI tool — OpenAI Codex, Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Continue — without favoring any vendor.
 
 - Chrome DevTools MCP is maintained by Google
 - Cursor MCP Extension is Cursor-specific

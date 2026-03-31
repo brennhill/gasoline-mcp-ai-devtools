@@ -32,7 +32,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 This script automatically:
 1.  **Downloads** the latest stable `gasoline` binary for your OS and architecture.
 2.  **Installs** the browser extension files to `~/GasolineAgenticDevtoolExtension`.
-3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
+3.  **Auto-configures** all detected MCP clients (OpenAI Codex, Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
 
@@ -51,7 +51,7 @@ Click the Gasoline Agentic Browser icon in your toolbar — it should show **Con
 
 ## <i class="fas fa-plug"></i> 3. Verify Your AI Tool
 
-The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
+The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (OpenAI Codex, Claude Code, Cursor, etc.) and the server will ignite automatically.
 
 <i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for manual setup if needed.
 
