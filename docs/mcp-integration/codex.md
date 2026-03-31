@@ -15,6 +15,10 @@ last_reviewed: 2026-03-31
 
 Gasoline is an open-source MCP server that gives OpenAI Codex access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state.
 
+## <i class="fas fa-book"></i> Repository Instructions
+
+For Codex project-level instructions, use `AGENTS.md` in your repository root.
+
 ## <i class="fas fa-bolt"></i> Auto-Install
 
 ```bash
