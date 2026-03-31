@@ -11,13 +11,13 @@ import (
 )
 
 // runAuditCategory runs a single audit category and extracts score/findings.
-func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, cat auditCategory) auditCategoryResult {
+func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, cat auditCategory) toolanalyze.AuditCategoryResult {
 	resp := cat.Handler(h, req, args)
 
 	// Parse the response to extract findings.
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "Failed to parse result", Error: err.Error()}
+		return toolanalyze.AuditCategoryResult{Score: 0, Findings: []any{}, Summary: "Failed to parse result", Error: err.Error()}
 	}
 
 	if result.IsError {
@@ -25,12 +25,12 @@ func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, 
 		if len(result.Content) > 0 {
 			errMsg = result.Content[0].Text
 		}
-		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "Category failed", Error: errMsg}
+		return toolanalyze.AuditCategoryResult{Score: 0, Findings: []any{}, Summary: "Category failed", Error: errMsg}
 	}
 
 	// Extract JSON data from response.
 	if len(result.Content) == 0 {
-		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "No data available", Error: "no content returned"}
+		return toolanalyze.AuditCategoryResult{Score: 0, Findings: []any{}, Summary: "No data available", Error: "no content returned"}
 	}
 
 	text := result.Content[0].Text
@@ -42,19 +42,13 @@ func runAuditCategory(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, 
 		}
 	}
 	if jsonStart < 0 {
-		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "No structured data", Error: "could not parse response"}
+		return toolanalyze.AuditCategoryResult{Score: 0, Findings: []any{}, Summary: "No structured data", Error: "could not parse response"}
 	}
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {
-		return auditCategoryResult{Score: 0, Findings: []any{}, Summary: "Could not parse audit data", Error: "malformed JSON in response"}
+		return toolanalyze.AuditCategoryResult{Score: 0, Findings: []any{}, Summary: "Could not parse audit data", Error: "malformed JSON in response"}
 	}
 
-	azResult := toolanalyze.ScoreAuditCategory(cat.Name, data)
-	return auditCategoryResult{
-		Score:    azResult.Score,
-		Findings: azResult.Findings,
-		Summary:  azResult.Summary,
-		Error:    azResult.Error,
-	}
+	return toolanalyze.ScoreAuditCategory(cat.Name, data)
 }

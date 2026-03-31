@@ -94,24 +94,28 @@ export function handleFeatureToggle(storageKey: string, messageType: string, ena
 }
 
 /**
- * Initialize all feature toggles
+ * Apply pre-loaded toggle values to DOM checkboxes and wire up change handlers.
+ * Called from the orchestrator after a single batched storage read.
  */
-export async function initFeatureToggles(): Promise<void> {
-  // Load saved states
-  const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey)
-
-  const result = await getLocals(storageKeys)
+export function applyFeatureToggles(result: Record<string, unknown>): void {
   for (const toggle of FEATURE_TOGGLES) {
     const checkbox = document.getElementById(toggle.id) as HTMLInputElement | null
     if (checkbox) {
-      // Use saved value or default
       const savedValue = result[toggle.storageKey] as boolean | undefined
       checkbox.checked = savedValue !== undefined ? savedValue : toggle.default
 
-      // Set up change handler
       checkbox.addEventListener('change', () => {
         handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked)
       })
     }
   }
+}
+
+/**
+ * Initialize all feature toggles (self-contained async version for backward compat)
+ */
+export async function initFeatureToggles(): Promise<void> {
+  const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey)
+  const result = await getLocals(storageKeys)
+  applyFeatureToggles(result)
 }

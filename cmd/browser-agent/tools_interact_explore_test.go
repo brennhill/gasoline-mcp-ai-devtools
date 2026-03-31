@@ -199,9 +199,9 @@ func TestInteract_ExplorePage_InWhatEnum(t *testing.T) {
 
 func TestInteract_ExplorePage_InValidActions(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	_, _, _ = makeToolHandler(t)
 
-	validActions := h.interactAction().getValidInteractActions()
+	validActions := getValidInteractActions()
 	if !strings.Contains(validActions, "explore_page") {
 		t.Errorf("valid interact actions should include 'explore_page': %s", validActions)
 	}

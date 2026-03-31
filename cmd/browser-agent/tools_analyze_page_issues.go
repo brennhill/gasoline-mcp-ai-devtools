@@ -117,9 +117,11 @@ func (h *ToolHandler) prefetchSharedData(tabURL string) sharedPageData {
 	bodies := h.capture.GetNetworkBodies()
 	waterfall := h.capture.GetNetworkWaterfallEntries()
 
-	logEntries, _ := h.GetLogEntries()
-
+	// Single lock acquisition for both logEntries and consoleEntries to avoid
+	// TOCTOU inconsistency between two separate lock acquisitions on the same data.
 	h.server.logs.mu.RLock()
+	logEntries := make([]LogEntry, len(h.server.logs.entries))
+	copy(logEntries, h.server.logs.entries)
 	consoleEntries := make([]security.LogEntry, len(h.server.logs.entries))
 	for i, e := range h.server.logs.entries {
 		consoleEntries[i] = security.LogEntry(e)

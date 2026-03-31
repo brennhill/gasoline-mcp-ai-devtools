@@ -34,7 +34,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	// Build the registry with lazily-populated handlers and valid modes.
 	reg := interactRegistry
 	reg.Handlers = getInteractHandlers()
-	reg.Resolution.ValidModes = h.interactAction().getValidInteractActions()
+	reg.Resolution.ValidModes = getValidInteractActions()
 
 	// Resolve mode early for composable side-effect checks.
 	// We need the resolved 'what' value but dispatchTool handles it internally.
@@ -45,20 +45,20 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// Apply composable side effects (these need the resolved 'what' and original args).
 	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
-		h.interactAction().queueComposableSubtitle(req, *composableParams.Subtitle)
+		h.interactAction().QueueComposableSubtitle(req, *composableParams.Subtitle)
 	}
 
 	hasComposableSideEffects := false
 	if composableParams.AutoDismiss && what == "navigate" && !isErrorResponse(resp) {
-		h.interactAction().queueComposableAutoDismiss(req)
+		h.interactAction().QueueComposableAutoDismiss(req)
 		hasComposableSideEffects = true
 	}
 	if composableParams.WaitForStable && (what == "navigate" || what == "click") && !isErrorResponse(resp) {
-		h.interactAction().queueComposableWaitForStable(req, composableParams.StabilityMs)
+		h.interactAction().QueueComposableWaitForStable(req, composableParams.StabilityMs)
 		hasComposableSideEffects = true
 	}
 	if composableParams.ActionDiff && !isErrorResponse(resp) {
-		h.interactAction().queueComposableActionDiff(req)
+		h.interactAction().QueueComposableActionDiff(req)
 		hasComposableSideEffects = true
 	}
 
@@ -69,10 +69,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		time.Sleep(composableSideEffectDelay)
 	}
 	if composableParams.IncludeScreenshot && !isErrorResponse(resp) {
-		resp = h.interactAction().appendScreenshotToResponse(resp, req)
+		resp = h.interactAction().AppendScreenshotToResponse(resp, req)
 	}
 	if composableParams.IncludeInteractive && !isErrorResponse(resp) {
-		resp = h.interactAction().appendInteractiveToResponse(resp, req)
+		resp = h.interactAction().AppendInteractiveToResponse(resp, req)
 	}
 
 	return resp

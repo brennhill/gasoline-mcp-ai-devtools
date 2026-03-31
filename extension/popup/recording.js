@@ -230,7 +230,8 @@ export function setupRecordingUI() {
         setApprovalPendingState(els, approvalEls, state, null);
         void removeLocal(StorageKey.PENDING_RECORDING);
     };
-    row.style.visibility = 'hidden';
+    // Row is visible immediately with default "not recording" state.
+    // Storage read updates it async — visual change is minimal (button label toggle).
     void getLocal(StorageKey.RECORDING).then(async (value) => {
         const rec = value;
         console.log(LOG, 'recording state from storage:', rec);
@@ -238,7 +239,6 @@ export function setupRecordingUI() {
             console.log(LOG, 'resuming recording UI for', rec.name);
             showRecording(els, state, rec.name, rec.startTime);
         }
-        row.style.visibility = 'visible';
         // Check for highlight request from hover launcher
         const pendingValue = await getLocal(StorageKey.PENDING_RECORDING);
         updatePendingRecording(pendingValue);

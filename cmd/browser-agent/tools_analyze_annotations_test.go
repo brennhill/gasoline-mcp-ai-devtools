@@ -264,7 +264,7 @@ func TestToolGetAnnotationDetail_FullResponseShape(t *testing.T) {
 func TestToolGetAnnotations_ZeroAnnotationsFlow(t *testing.T) {
 	h := createTestToolHandler(t)
 
-	// Use a fresh store to avoid cross-test contamination from globalAnnotationStore
+	// Use a fresh store to avoid cross-test contamination
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
 	defer h.annotationStore.Close()
 

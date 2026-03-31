@@ -51,7 +51,7 @@ func TestInteractNavigate_QueueFullFailsFast(t *testing.T) {
 	saturatePendingQueryQueue(t, env.capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, json.RawMessage(`{"url":"https://example.com"}`))
+	resp := env.handler.interactAction().HandleBrowserActionNavigateImpl(req, json.RawMessage(`{"url":"https://example.com"}`))
 	result := parseToolResult(t, resp)
 	assertStructuredErrorCode(t, "interact navigate queue full", result, ErrQueueFull)
 }

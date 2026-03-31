@@ -1,20 +1,4 @@
-// Purpose: Declares the Deps interface that generate handlers require from the host server.
+// Purpose: Package documentation for shared generate utility functions.
 // Docs: docs/features/feature/test-generation/index.md
 
 package generate
-
-import (
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/annotation"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
-)
-
-// Deps provides all dependencies the generate handlers need.
-// *ToolHandler in cmd/browser-agent/ satisfies this interface.
-type Deps interface {
-	mcp.CaptureProvider
-	mcp.LogBufferReader
-	mcp.A11yQueryExecutor
-
-	// Annotation access for visual_test, annotation_report, annotation_issues.
-	GetAnnotationStore() *annotation.Store
-}

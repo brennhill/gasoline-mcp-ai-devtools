@@ -22,14 +22,21 @@ export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
 }
 
 /**
- * Initialize the WebSocket mode selector
+ * Apply pre-loaded WS mode value to the selector.
+ * Called from the orchestrator after a single batched storage read.
  */
-export async function initWebSocketModeSelector(): Promise<void> {
+export function applyWebSocketMode(value: unknown): void {
   const modeSelect = document.getElementById('ws-mode') as HTMLSelectElement | null
   if (!modeSelect) return
-
-  const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE)
   modeSelect.value = (value as WebSocketCaptureMode) || 'medium'
+}
+
+/**
+ * Initialize the WebSocket mode selector (self-contained async version for backward compat)
+ */
+export async function initWebSocketModeSelector(): Promise<void> {
+  const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE)
+  applyWebSocketMode(value)
 }
 
 // Track clear-logs confirmation state

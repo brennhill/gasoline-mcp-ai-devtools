@@ -57,7 +57,7 @@ func TestHandleBrowserActionNavigate_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, args)
+	resp := env.handler.interactAction().HandleBrowserActionNavigateImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -109,7 +109,7 @@ func TestHandlePilotExecuteJS_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad json}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

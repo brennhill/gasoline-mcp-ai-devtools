@@ -40,10 +40,10 @@ export interface SyncInProgress {
     id: string;
     correlation_id?: string;
     type?: string;
-    status: 'running' | 'pending';
+    status?: 'running' | 'pending';
     progress_pct?: number;
-    started_at: string;
-    updated_at: string;
+    started_at?: string;
+    updated_at?: string;
 }
 /** Command from server */
 export interface SyncCommand {
@@ -52,6 +52,7 @@ export interface SyncCommand {
     params: unknown;
     tab_id?: number;
     correlation_id?: string;
+    trace_id?: string;
 }
 /** Sync state */
 export interface SyncState {

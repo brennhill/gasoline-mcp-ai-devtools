@@ -90,7 +90,8 @@
     TERMINAL_UI_STATE: "kaboom_terminal_ui_state",
     TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id",
     TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id",
-    CLOAKED_DOMAINS: "kaboom_cloaked_domains"
+    CLOAKED_DOMAINS: "kaboom_cloaked_domains",
+    ERROR_GROUPS: "kaboom_error_groups"
   };
 
   // extension/lib/storage-utils.js
@@ -675,7 +676,6 @@
       setApprovalPendingState(els, approvalEls, state, null);
       void removeLocal(StorageKey.PENDING_RECORDING);
     };
-    row.style.visibility = "hidden";
     void getLocal(StorageKey.RECORDING).then(async (value) => {
       const rec = value;
       console.log(LOG2, "recording state from storage:", rec);
@@ -683,7 +683,6 @@
         console.log(LOG2, "resuming recording UI for", rec.name);
         showRecording(els, state, rec.name, rec.startTime);
       }
-      row.style.visibility = "visible";
       const pendingValue = await getLocal(StorageKey.PENDING_RECORDING);
       updatePendingRecording(pendingValue);
     });
@@ -1049,9 +1048,7 @@
       }
     });
   }
-  async function initFeatureToggles() {
-    const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
-    const result = await getLocals(storageKeys);
+  function applyFeatureToggles(result) {
     for (const toggle of FEATURE_TOGGLES) {
       const checkbox = document.getElementById(toggle.id);
       if (checkbox) {
@@ -1062,6 +1059,11 @@
         });
       }
     }
+  }
+  async function initFeatureToggles() {
+    const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
+    const result = await getLocals(storageKeys);
+    applyFeatureToggles(result);
   }
 
   // extension/lib/cloaked-domains.js
@@ -1301,15 +1303,18 @@
   }
 
   // extension/popup/ai-web-pilot.js
-  async function initAiWebPilotToggle() {
+  function applyAiWebPilotToggle(value) {
     const toggle = document.getElementById("aiWebPilotEnabled");
     if (!toggle)
       return;
-    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
     toggle.checked = value !== false;
     toggle.addEventListener("change", () => {
       handleAiWebPilotToggle(toggle.checked);
     });
+  }
+  async function initAiWebPilotToggle() {
+    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
+    applyAiWebPilotToggle(value);
   }
   async function handleAiWebPilotToggle(enabled) {
     chrome.runtime.sendMessage({ type: "set_ai_web_pilot_enabled", enabled }, (response) => {
@@ -1336,12 +1341,15 @@
     void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
   }
-  async function initWebSocketModeSelector() {
+  function applyWebSocketMode(value) {
     const modeSelect = document.getElementById("ws-mode");
     if (!modeSelect)
       return;
-    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
     modeSelect.value = value || "medium";
+  }
+  async function initWebSocketModeSelector() {
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
+    applyWebSocketMode(value);
   }
   var clearConfirmPending = false;
   var clearConfirmTimer = null;
@@ -1460,7 +1468,29 @@
     void setSession(StorageKey.POPUP_LAST_STATUS, status);
   }
   function initPopup() {
-    requestTrackedHoverLauncherReshow();
+    setupRecordingUI();
+    setupActionRecordingUI();
+    initTrackPageButton();
+    setupWebSocketUI();
+    setupToggleWarnings();
+    const clearBtn = document.getElementById("clear-btn");
+    if (clearBtn)
+      clearBtn.addEventListener("click", handleClearLogs);
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === "status_update" && message.status) {
+        updateConnectionStatus(message.status);
+        cacheStatus(message.status);
+      }
+    });
+    onStorageChanged((changes, areaName) => {
+      if (areaName === "local" && changes[StorageKey.TRACKED_TAB_URL]) {
+        const urlEl = document.getElementById("tracking-bar-url");
+        if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
+          urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
+          console.log("[Kaboom] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
+        }
+      }
+    });
     void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
       const cached = value;
       if (cached)
@@ -1494,34 +1524,27 @@
         error: "Extension error \u2014 try reloading the extension"
       });
     }
-    initPopupLogoMotion();
-    setupRecordingUI();
-    setupActionRecordingUI();
-    initFeatureToggles();
-    initWebSocketModeSelector();
-    initAiWebPilotToggle();
-    initTrackPageButton();
-    setupWebSocketUI();
-    setupToggleWarnings();
-    setupDrawModeButton();
-    const clearBtn = document.getElementById("clear-btn");
-    if (clearBtn)
-      clearBtn.addEventListener("click", handleClearLogs);
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "status_update" && message.status) {
-        updateConnectionStatus(message.status);
-        cacheStatus(message.status);
-      }
+    const toggleKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
+    const allKeys = [
+      ...toggleKeys,
+      StorageKey.WEBSOCKET_CAPTURE_MODE,
+      StorageKey.AI_WEB_PILOT_ENABLED
+    ];
+    void getLocals(allKeys).then((result) => {
+      applyFeatureToggles(result);
+      applyWebSocketMode(result[StorageKey.WEBSOCKET_CAPTURE_MODE]);
+      applyAiWebPilotToggle(result[StorageKey.AI_WEB_PILOT_ENABLED]);
     });
-    onStorageChanged((changes, areaName) => {
-      if (areaName === "local" && changes[StorageKey.TRACKED_TAB_URL]) {
-        const urlEl = document.getElementById("tracking-bar-url");
-        if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
-          urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
-          console.log("[Kaboom] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
-        }
-      }
-    });
+    const deferredInit = () => {
+      initPopupLogoMotion();
+      setupDrawModeButton();
+      requestTrackedHoverLauncherReshow();
+    };
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(deferredInit);
+    } else {
+      deferredInit();
+    }
   }
   if (typeof document !== "undefined" && typeof globalThis.process === "undefined") {
     if (document.readyState === "loading") {

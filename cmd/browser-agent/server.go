@@ -52,18 +52,27 @@ type Server struct {
 
 	// Token savings tracker for output compression hooks.
 	tokenTracker *tracking.TokenTracker
+
+	// Push drain authentication token. When non-empty, /push/drain requires
+	// Authorization: Bearer <token>. Set via --push-drain-token flag.
+	pushDrainToken string
+
+	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
+	screenshotRateLimiter map[string]time.Time
+	screenshotRateMu      sync.Mutex
 }
 
 // NewServer creates a new server instance.
 func NewServer(logFile string, maxEntries int) (*Server, error) {
 	s := &Server{
-		listenPort:      defaultPort,
-		warningSeen:     make(map[string]struct{}),
-		annotationStore: NewAnnotationStore(10 * time.Minute),
-		pushInbox:       push.NewPushInbox(50),
-		ptyManager:      pty.NewManager(),
-		tokenTracker:    tracking.NewTokenTracker(),
-		intentStore:     terminal.NewIntentStore(),
+		listenPort:            defaultPort,
+		warningSeen:           make(map[string]struct{}),
+		annotationStore:       NewAnnotationStore(10 * time.Minute),
+		pushInbox:             push.NewPushInbox(50),
+		ptyManager:            pty.NewManager(),
+		tokenTracker:          tracking.NewTokenTracker(),
+		intentStore:           terminal.NewIntentStore(),
+		screenshotRateLimiter: make(map[string]time.Time),
 	}
 
 	// Create log store with warning callback wired to server
@@ -136,10 +145,6 @@ func (s *Server) getListenPort() int {
 }
 
 func (s *Server) getAnnotationStore() *AnnotationStore {
-	if s == nil {
-		return globalAnnotationStore
-	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.annotationStore == nil {

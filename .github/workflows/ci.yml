@@ -91,12 +91,12 @@ jobs:
         run: node --test scripts/install-upgrade-regression.contract.test.mjs
 
       - name: npm cleanup tests
-        run: node --test npm/gasoline-agentic-browser/lib/kill-daemon.test.js
+        run: node --test npm/kaboom-agentic-browser/lib/kill-daemon.test.js
 
       - name: PyPI cleanup tests
         env:
-          PYTHONPATH: pypi/gasoline-agentic-browser
-        run: python -m unittest discover -s pypi/gasoline-agentic-browser/tests -p "test_*.py"
+          PYTHONPATH: pypi/kaboom-agentic-browser
+        run: python -m unittest discover -s pypi/kaboom-agentic-browser/tests -p "test_*.py"
 
       - name: End-to-end upgrade regression
         run: node scripts/install-upgrade-regression.mjs
@@ -125,13 +125,13 @@ jobs:
           golangci-lint run --enable-only depguard ./cmd/browser-agent/... ./internal/...
 
       - name: Go tests with race detection
-        run: go test -race -v ./cmd/browser-agent/...
+        run: go test -race -v ./cmd/browser-agent/... ./internal/...
 
       - name: Reliability soak gate (bridge fast-start)
         run: |
           STATE_DIR="$(mktemp -d)"
           echo "Using state dir: ${STATE_DIR}"
-          GASOLINE_STATE_DIR="${STATE_DIR}" go test -race ./cmd/browser-agent -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
+          KABOOM_STATE_DIR="${STATE_DIR}" go test -race ./cmd/browser-agent -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
           go run ./cmd/browser-agent --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
 
       - name: Go test coverage (70% minimum)

@@ -10,8 +10,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
+	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
+
+// domPrimitiveActions delegates to the interact package.
+var domPrimitiveActions = act.DOMPrimitiveActions
 
 // randIntn returns a random int in [0, n). Uses math/rand/v2 which auto-seeds.
 func randIntn(n int) int {
@@ -39,10 +44,10 @@ var interactRegistry = toolRegistry{
 	},
 	PreDispatch: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage, what string) (json.RawMessage, *JSONRPCResponse) {
 		// Apply jitter before dispatch (moved here from handler wrapping to avoid concurrent map writes).
-		h.interactAction().applyJitter(what)
+		h.interactAction().ApplyJitter(what)
 
 		// Validate evidence mode.
-		if _, err := parseEvidenceMode(args); err != nil {
+		if _, err := toolinteract.ParseEvidenceMode(args); err != nil {
 			resp := fail(req, ErrInvalidParam,
 				"Invalid 'evidence' value",
 				"Use evidence='off' (default), 'on_mutation', or 'always'",
@@ -79,79 +84,79 @@ func getInteractHandlers() map[string]ModeHandler {
 func buildInteractHandlers() map[string]ModeHandler {
 	handlers := map[string]ModeHandler{
 		"highlight": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleHighlightImpl(req, args)
+			return th.interactAction().HandleHighlightImpl(req, args)
 		},
 		"save_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateSave(req, args)
+			return th.stateInteract().HandleStateSave(req, args)
 		},
 		"state_save": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateSave(req, args)
+			return th.stateInteract().HandleStateSave(req, args)
 		},
 		"load_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateLoad(req, args)
+			return th.stateInteract().HandleStateLoad(req, args)
 		},
 		"state_load": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateLoad(req, args)
+			return th.stateInteract().HandleStateLoad(req, args)
 		},
 		"list_states": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateList(req, args)
+			return th.stateInteract().HandleStateList(req, args)
 		},
 		"state_list": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateList(req, args)
+			return th.stateInteract().HandleStateList(req, args)
 		},
 		"delete_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateDelete(req, args)
+			return th.stateInteract().HandleStateDelete(req, args)
 		},
 		"state_delete": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().handleStateDelete(req, args)
+			return th.stateInteract().HandleStateDelete(req, args)
 		},
 		"set_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleSetStorage(req, args)
+			return th.interactAction().HandleSetStorage(req, args)
 		},
 		"delete_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleDeleteStorage(req, args)
+			return th.interactAction().HandleDeleteStorage(req, args)
 		},
 		"clear_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleClearStorage(req, args)
+			return th.interactAction().HandleClearStorage(req, args)
 		},
 		"set_cookie": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleSetCookie(req, args)
+			return th.interactAction().HandleSetCookie(req, args)
 		},
 		"delete_cookie": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleDeleteCookie(req, args)
+			return th.interactAction().HandleDeleteCookie(req, args)
 		},
 		"execute_js": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleExecuteJSImpl(req, args)
+			return th.interactAction().HandleExecuteJSImpl(req, args)
 		},
 		"navigate": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionNavigateImpl(req, args)
+			return th.interactAction().HandleBrowserActionNavigateImpl(req, args)
 		},
 		"refresh": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionRefreshImpl(req, args)
+			return th.interactAction().HandleBrowserActionRefreshImpl(req, args)
 		},
 		"back": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionBackImpl(req, args)
+			return th.interactAction().HandleBrowserActionBackImpl(req, args)
 		},
 		"forward": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionForwardImpl(req, args)
+			return th.interactAction().HandleBrowserActionForwardImpl(req, args)
 		},
 		"new_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionNewTabImpl(req, args)
+			return th.interactAction().HandleBrowserActionNewTabImpl(req, args)
 		},
 		"switch_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionSwitchTabImpl(req, args)
+			return th.interactAction().HandleBrowserActionSwitchTabImpl(req, args)
 		},
 		"close_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBrowserActionCloseTabImpl(req, args)
+			return th.interactAction().HandleBrowserActionCloseTabImpl(req, args)
 		},
 		"screenshot": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleScreenshotAliasImpl(req, args)
+			return th.interactAction().HandleScreenshotAliasImpl(req, args)
 		},
 		"subtitle": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleSubtitleImpl(req, args)
+			return th.interactAction().HandleSubtitleImpl(req, args)
 		},
 		"list_interactive": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleListInteractive(req, args)
+			return th.interactAction().HandleListInteractive(req, args)
 		},
 		"screen_recording_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.recordingInteractHandler.handleRecordStart(req, args)
@@ -166,55 +171,55 @@ func buildInteractHandlers() map[string]ModeHandler {
 			return th.recordingInteractHandler.handleRecordStop(req, args)
 		},
 		"upload": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.uploadInteractHandler.handleUpload(req, args)
+			return th.uploadInteractHandler.HandleUpload(req, args)
 		},
 		"draw_mode_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleDrawModeStart(req, args)
+			return th.interactAction().HandleDrawModeStart(req, args)
 		},
 		"hardware_click": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleHardwareClick(req, args)
+			return th.interactAction().HandleHardwareClick(req, args)
 		},
 		"activate_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleActivateTabImpl(req, args)
+			return th.interactAction().HandleActivateTabImpl(req, args)
 		},
 		"get_readable": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleGetReadable(req, args)
+			return th.interactAction().HandleGetReadable(req, args)
 		},
 		"get_markdown": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleGetMarkdown(req, args)
+			return th.interactAction().HandleGetMarkdown(req, args)
 		},
 		"navigate_and_wait_for": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleNavigateAndWaitFor(req, args)
+			return th.interactAction().HandleNavigateAndWaitFor(req, args)
 		},
 		"navigate_and_document": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleNavigateAndDocument(req, args)
+			return th.interactAction().HandleNavigateAndDocument(req, args)
 		},
 		"fill_form_and_submit": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleFillFormAndSubmit(req, args)
+			return th.interactAction().HandleFillFormAndSubmit(req, args)
 		},
 		"fill_form": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleFillForm(req, args)
+			return th.interactAction().HandleFillForm(req, args)
 		},
 		"run_a11y_and_export_sarif": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleRunA11yAndExportSARIF(req, args)
+			return th.interactAction().HandleRunA11yAndExportSARIF(req, args)
 		},
 		"explore_page": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleExplorePage(req, args)
+			return th.interactAction().HandleExplorePage(req, args)
 		},
 		"wait_for_stable": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleWaitForStable(req, args)
+			return th.interactAction().HandleWaitForStable(req, args)
 		},
 		"auto_dismiss_overlays": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleAutoDismissOverlays(req, args)
+			return th.interactAction().HandleAutoDismissOverlays(req, args)
 		},
 		"batch": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleBatch(req, args)
+			return th.interactAction().HandleBatch(req, args)
 		},
 		"clipboard_read": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleClipboardRead(req, args)
+			return th.interactAction().HandleClipboardRead(req, args)
 		},
 		"clipboard_write": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleClipboardWrite(req, args)
+			return th.interactAction().HandleClipboardWrite(req, args)
 		},
 	}
 
@@ -225,7 +230,7 @@ func buildInteractHandlers() map[string]ModeHandler {
 		}
 		action := action // capture for closure
 		handlers[action] = func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().handleDOMPrimitive(req, args, action)
+			return th.interactAction().HandleDOMPrimitive(req, args, action)
 		}
 	}
 
@@ -233,7 +238,7 @@ func buildInteractHandlers() map[string]ModeHandler {
 }
 
 // getValidInteractActions returns a sorted, comma-separated list of valid interact actions.
-func (h *interactActionHandler) getValidInteractActions() string {
+func getValidInteractActions() string {
 	handlers := getInteractHandlers()
 	sorted := make([]string, 0, len(handlers))
 	for action := range handlers {
@@ -241,47 +246,4 @@ func (h *interactActionHandler) getValidInteractActions() string {
 	}
 	sort.Strings(sorted)
 	return strings.Join(sorted, ", ")
-}
-
-// readOnlyInteractActions lists actions that should not have jitter applied.
-// SYNC: The TS source of truth is src/background/action-metadata.ts (ACTION_METADATA map).
-// When adding or reclassifying actions, update both this map and the TS metadata.
-var readOnlyInteractActions = map[string]bool{
-	"list_interactive":          true,
-	"get_text":                  true,
-	"get_value":                 true,
-	"get_attribute":             true,
-	"query":                     true,
-	"screenshot":                true,
-	"list_states":               true,
-	"state_list":                true,
-	"get_readable":              true,
-	"get_markdown":              true,
-	"explore_page":              true,
-	"run_a11y_and_export_sarif": true,
-	"wait_for":                  true,
-	"wait_for_stable":           true,
-	"auto_dismiss_overlays":     true,
-	"batch":                     true,
-	"highlight":                 true,
-	"subtitle":                  true,
-	"clipboard_read":            true,
-}
-
-// applyJitter sleeps for a random duration up to maxMs if jitter is configured.
-func (h *interactActionHandler) applyJitter(action string) int {
-	if readOnlyInteractActions[action] {
-		return 0
-	}
-	h.jitterMu.RLock()
-	maxMs := h.actionJitterMaxMs
-	h.jitterMu.RUnlock()
-	if maxMs <= 0 {
-		return 0
-	}
-	jitterMs := randIntn(maxMs)
-	if jitterMs > 0 {
-		time.Sleep(time.Duration(jitterMs) * time.Millisecond)
-	}
-	return jitterMs
 }

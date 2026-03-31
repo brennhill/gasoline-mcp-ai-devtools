@@ -19,6 +19,13 @@ type SessionKey struct {
 	AgentType string
 }
 
+// maxSessions is the maximum number of concurrent PTY sessions.
+// Each session spawns a real OS process, so this must be bounded.
+const maxSessions = 10
+
+// ErrMaxSessions is returned when the session limit is reached.
+var ErrMaxSessions = errors.New("pty: maximum concurrent sessions reached")
+
 // Manager manages PTY sessions with token-based authentication.
 type Manager struct {
 	mu        sync.RWMutex
@@ -76,6 +83,10 @@ func (m *Manager) Start(cfg StartConfig) (*StartResult, error) {
 
 	if _, exists := m.sessions[cfg.ID]; exists {
 		return nil, fmt.Errorf("%w: %s", ErrSessionExists, cfg.ID)
+	}
+
+	if len(m.sessions) >= maxSessions {
+		return nil, fmt.Errorf("%w: limit %d", ErrMaxSessions, maxSessions)
 	}
 
 	sess, err := Spawn(SpawnConfig{

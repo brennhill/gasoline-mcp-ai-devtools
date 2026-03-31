@@ -5,7 +5,7 @@
 set -e
 
 echo "[Kaboom] Running pre-commit checks..."
-CMD_PKG="${KABOOM_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 
 # Check for staged Go files
 GO_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)

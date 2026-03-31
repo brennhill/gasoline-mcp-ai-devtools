@@ -88,4 +88,3 @@ func TutorialCSPFallbackPlaybook() map[string]any {
 		},
 	}
 }
-

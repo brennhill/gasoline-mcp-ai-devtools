@@ -184,7 +184,7 @@ func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) 
 	if session.ScreenshotPath != "" && matched {
 		result["screenshot"] = session.ScreenshotPath
 	}
-	projects := buildProjectSummaries([]*AnnotationSession{session})
+	projects := toolanalyze.BuildProjectSummaries([]*AnnotationSession{session})
 	if len(projects) > 0 {
 		result["projects"] = projects
 	}
@@ -198,7 +198,7 @@ func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) 
 }
 
 func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession, urlFilter string) map[string]any {
-	allProjects := buildProjectSummaries(ns.Pages)
+	allProjects := toolanalyze.BuildProjectSummaries(ns.Pages)
 	filteredPages := filterAnnotationPages(ns.Pages, urlFilter)
 
 	totalCount := 0
@@ -238,7 +238,7 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession, urlFilter str
 	}
 	if len(allProjects) > 1 && urlFilter == "" {
 		result["scope_ambiguous"] = true
-		result["scope_warning"] = buildScopeWarning(allProjects)
+		result["scope_warning"] = toolanalyze.BuildScopeWarning(allProjects)
 	}
 	if len(filteredPages) == 0 && urlFilter != "" {
 		result["message"] = "No pages in this annotation session match the requested url filter."

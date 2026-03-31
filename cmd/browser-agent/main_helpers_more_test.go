@@ -117,11 +117,11 @@ func TestEvaluateFastPathFailureThreshold(t *testing.T) {
 	t.Parallel()
 
 	summary := fastPathTelemetrySummary{
-		total:      10,
-		success:    9,
-		failure:    1,
-		errorCodes: map[int]int{-32002: 1},
-		methods:    map[string]int{"resources/read": 10},
+		Total:      10,
+		Success:    9,
+		Failure:    1,
+		ErrorCodes: map[int]int{-32002: 1},
+		Methods:    map[string]int{"resources/read": 10},
 	}
 	if err := evaluateFastPathFailureThreshold(summary, 5, 0.2); err != nil {
 		t.Fatalf("expected threshold pass, got err=%v", err)

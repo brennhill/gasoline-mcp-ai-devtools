@@ -6,17 +6,19 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 )
 
 // toolDoctor runs all live diagnostic checks and returns structured results.
 // This is the MCP-facing doctor — the daemon is already running.
 func (h *ToolHandler) toolDoctor(req JSONRPCRequest) JSONRPCResponse {
-	checks := runDoctorChecks(h.capture)
+	checks := health.RunDoctorChecks(h.capture)
 
 	// Add server uptime (only available via ToolHandler).
 	if h.healthMetrics != nil {
 		uptime := h.healthMetrics.GetUptime()
-		checks = append(checks, doctorCheck{
+		checks = append(checks, health.DoctorCheck{
 			Name:   "server_uptime",
 			Status: "pass",
 			Detail: fmt.Sprintf("Server running for %s (version %s)", uptime.Round(time.Second), version),

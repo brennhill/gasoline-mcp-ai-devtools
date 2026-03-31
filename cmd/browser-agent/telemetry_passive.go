@@ -16,12 +16,20 @@ const (
 	telemetryModeFull = "full"
 )
 
+// telemetryCursorTTL is the maximum age for a cursor entry before cleanup removes it.
+const telemetryCursorTTL = 30 * time.Minute
+
+// telemetryCursorMaxEntries caps the cursor map to prevent unbounded growth
+// even if TTL cleanup hasn't run yet.
+const telemetryCursorMaxEntries = 200
+
 type passiveTelemetryCursor struct {
 	errorTotal        int64
 	networkTotal      int64
 	networkErrorTotal int64
 	wsTotal           int64
 	actionTotal       int64
+	lastSeen          time.Time
 }
 
 func (h *MCPHandler) maybeAddTelemetrySummary(resp JSONRPCResponse, clientID, toolName, modeOverride string) JSONRPCResponse {
@@ -129,7 +137,14 @@ func (h *MCPHandler) telemetryDeltasForClient(clientID string, current passiveTe
 	}
 
 	previous, ok := h.telemetryCursors[key]
+	current.lastSeen = time.Now()
 	h.telemetryCursors[key] = current
+
+	// Inline eviction: if map exceeds cap, remove oldest entries.
+	if len(h.telemetryCursors) > telemetryCursorMaxEntries {
+		h.evictStaleCursorsLocked()
+	}
+
 	if !ok {
 		return passiveTelemetryCursor{}
 	}
@@ -175,6 +190,17 @@ func normalizeTelemetryMode(mode string) (string, bool) {
 		return mode, true
 	default:
 		return "", false
+	}
+}
+
+// evictStaleCursorsLocked removes cursor entries older than telemetryCursorTTL.
+// Must be called with h.telemetryMu held.
+func (h *MCPHandler) evictStaleCursorsLocked() {
+	cutoff := time.Now().Add(-telemetryCursorTTL)
+	for key, cursor := range h.telemetryCursors {
+		if cursor.lastSeen.Before(cutoff) {
+			delete(h.telemetryCursors, key)
+		}
 	}
 }
 

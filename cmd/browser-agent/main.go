@@ -6,7 +6,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/cli"
@@ -37,10 +36,6 @@ const (
 )
 
 var (
-	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
-	screenshotRateLimiter = make(map[string]time.Time) // clientID -> last upload time
-	screenshotRateMu      sync.Mutex
-
 	// Upload automation security flags (set by CLI flags, consumed by ToolHandler)
 	osUploadAutomationFlag bool            // --enable-os-upload-automation (Stage 4 only)
 	uploadSecurityConfig   *UploadSecurity // validated upload security config

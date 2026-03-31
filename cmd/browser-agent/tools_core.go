@@ -9,7 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -44,7 +46,7 @@ type ToolHandler struct {
 	shutdownCancel context.CancelFunc
 
 	// Health metrics for MCP get_health tool
-	healthMetrics *HealthMetrics
+	healthMetrics *health.Metrics
 
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine RedactionEngine
@@ -86,7 +88,7 @@ type ToolHandler struct {
 	coldStartTimeout time.Duration
 
 	// Dedicated interact action routing/jitter sub-handler.
-	interactActionHandler *interactActionHandler
+	interactActionHandler *toolinteract.InteractActionHandler
 
 	// Active test boundaries: test_id → start time.
 	// Used to detect out-of-order test_boundary_end calls.
@@ -98,9 +100,9 @@ type ToolHandler struct {
 	playbackSessions map[string]*capture.PlaybackSession
 
 	recordingInteractHandler *recordingInteractHandler
-	uploadInteractHandler    *uploadInteractHandler
+	uploadInteractHandler    *toolinteract.UploadInteractHandler
 	testGenHandler           *testGenHandler
-	stateInteractHandler     *stateInteractHandler
+	stateInteractHandler     *toolinteract.StateInteractHandler
 	configureSessionHandler  *configureSessionHandler
 
 	// Passive network traffic recording state (start/stop capture).
@@ -162,7 +164,7 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	// Skip validation for error responses (already failed, warnings would be noise).
 	if !resultIsError {
 		if schema := h.getToolSchema(name); schema != nil {
-			if warnings := validateParamsAgainstSchema(args, schema); len(warnings) > 0 {
+			if warnings := mcp.ValidateParamsAgainstSchema(args, schema); len(warnings) > 0 {
 				if parsedOK && mcp.AppendWarningsToToolResult(parsedResult, warnings) {
 					resp.Result = safeMarshal(parsedResult, string(resp.Result))
 				} else {

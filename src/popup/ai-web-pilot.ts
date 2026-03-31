@@ -13,21 +13,27 @@ import { StorageKey } from '../lib/constants.js'
 import { getLocal } from '../lib/storage-utils.js'
 
 /**
- * Initialize the AI Web Pilot toggle.
- * Read the current state from local storage via the storage facade.
+ * Apply pre-loaded AI Web Pilot value to the toggle and wire up change handler.
+ * Called from the orchestrator after a single batched storage read.
  */
-export async function initAiWebPilotToggle(): Promise<void> {
+export function applyAiWebPilotToggle(value: unknown): void {
   const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
   if (!toggle) return
 
-  // Read from local storage (single source of truth)
-  const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
   toggle.checked = (value as boolean | undefined) !== false
 
-  // Set up change handler
   toggle.addEventListener('change', () => {
     handleAiWebPilotToggle(toggle.checked)
   })
+}
+
+/**
+ * Initialize the AI Web Pilot toggle (self-contained async version for backward compat).
+ * Read the current state from local storage via the storage facade.
+ */
+export async function initAiWebPilotToggle(): Promise<void> {
+  const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
+  applyAiWebPilotToggle(value)
 }
 
 /**

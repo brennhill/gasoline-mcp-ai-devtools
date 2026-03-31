@@ -127,7 +127,7 @@ func (h *ToolHandler) collectIssueReport(template, title, userContext string) is
 
 	if h.healthMetrics != nil {
 		report.Diagnostics.Server.UptimeSeconds = h.healthMetrics.GetUptime().Seconds()
-		audit := h.healthMetrics.buildAuditInfo()
+		audit := h.healthMetrics.BuildAuditInfo()
 		report.Diagnostics.Server.TotalCalls = audit.TotalCalls
 		report.Diagnostics.Server.TotalErrors = audit.TotalErrors
 		report.Diagnostics.Server.ErrorRatePct = audit.ErrorRatePct

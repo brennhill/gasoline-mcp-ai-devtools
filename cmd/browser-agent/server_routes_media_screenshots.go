@@ -19,29 +19,29 @@ import (
 
 // checkScreenshotRateLimit enforces per-client screenshot rate limiting.
 // Returns an HTTP status code (0 means allowed) and an error message.
-func checkScreenshotRateLimit(clientID string) (int, string) {
+func (s *Server) checkScreenshotRateLimit(clientID string) (int, string) {
 	if clientID == "" {
 		return 0, ""
 	}
-	screenshotRateMu.Lock()
-	defer screenshotRateMu.Unlock()
+	s.screenshotRateMu.Lock()
+	defer s.screenshotRateMu.Unlock()
 
-	lastUpload, exists := screenshotRateLimiter[clientID]
+	lastUpload, exists := s.screenshotRateLimiter[clientID]
 	if exists && time.Since(lastUpload) < screenshotMinInterval {
 		return http.StatusTooManyRequests, "Rate limit exceeded: max 1 screenshot per second"
 	}
-	if len(screenshotRateLimiter) >= 10000 && !exists {
+	if len(s.screenshotRateLimiter) >= 10000 && !exists {
 		// Inline eviction: purge stale entries before rejecting.
-		for id, ts := range screenshotRateLimiter {
+		for id, ts := range s.screenshotRateLimiter {
 			if time.Since(ts) > screenshotMinInterval {
-				delete(screenshotRateLimiter, id)
+				delete(s.screenshotRateLimiter, id)
 			}
 		}
-		if len(screenshotRateLimiter) >= 10000 {
+		if len(s.screenshotRateLimiter) >= 10000 {
 			return http.StatusServiceUnavailable, "Rate limiter capacity exceeded"
 		}
 	}
-	screenshotRateLimiter[clientID] = time.Now()
+	s.screenshotRateLimiter[clientID] = time.Now()
 	return 0, ""
 }
 
@@ -71,7 +71,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 		return
 	}
 
-	if status, msg := checkScreenshotRateLimit(r.Header.Get("X-Kaboom-Client")); status != 0 {
+	if status, msg := s.checkScreenshotRateLimit(r.Header.Get("X-Kaboom-Client")); status != 0 {
 		jsonResponse(w, status, map[string]string{"error": msg})
 		return
 	}

@@ -45,7 +45,7 @@ func (h *ToolHandler) GetLogTotalAdded() int64 {
 
 // armEvidenceForCommand delegates evidence arming to the interactActionHandler.
 func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args json.RawMessage, clientID string) {
-	h.interactAction().armEvidenceForCommand(correlationID, action, args, clientID)
+	h.interactAction().ArmEvidenceForCommand(correlationID, action, args, clientID)
 }
 
 // getCommandResult returns a command result by correlation ID from the capture store.
@@ -68,6 +68,11 @@ func (h *ToolHandler) PushInbox() *push.PushInbox {
 // GetAnnotationStore returns the annotation store for draw mode data.
 func (h *ToolHandler) GetAnnotationStore() *AnnotationStore {
 	return h.annotationStore
+}
+
+// GetVersion returns the server version string.
+func (h *ToolHandler) GetVersion() string {
+	return version
 }
 
 // GetToolCallLimiter returns the tool call limiter.

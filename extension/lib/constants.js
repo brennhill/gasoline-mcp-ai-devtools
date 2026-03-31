@@ -184,6 +184,7 @@ export const StorageKey = {
     TERMINAL_UI_STATE: 'kaboom_terminal_ui_state',
     TERMINAL_WORKSPACE_GROUP_ID: 'kaboom_terminal_workspace_group_id',
     TERMINAL_WORKSPACE_MAIN_TAB_ID: 'kaboom_terminal_workspace_main_tab_id',
-    CLOAKED_DOMAINS: 'kaboom_cloaked_domains'
+    CLOAKED_DOMAINS: 'kaboom_cloaked_domains',
+    ERROR_GROUPS: 'kaboom_error_groups'
 };
 //# sourceMappingURL=constants.js.map

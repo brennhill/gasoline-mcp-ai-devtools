@@ -30,8 +30,10 @@ func TestCommandResult_EvidenceAlwaysIncludesBeforeAfterPaths(t *testing.T) {
 		idx++
 		return shot
 	}
+	syncEvidenceCaptureFn()
 	t.Cleanup(func() {
 		evidenceCaptureFn = orig
+		syncEvidenceCaptureFn()
 	})
 
 	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true,"evidence":"always"}`)
@@ -84,8 +86,10 @@ func TestCommandResult_EvidenceOnMutationSkipsReadOnlyAction(t *testing.T) {
 		calls++
 		return evidenceShot{Path: "/tmp/should-not-capture.png"}
 	}
+	syncEvidenceCaptureFn()
 	t.Cleanup(func() {
 		evidenceCaptureFn = orig
+		syncEvidenceCaptureFn()
 	})
 
 	result, ok := env.callInteract(t, `{"what":"get_text","selector":"h1","background":true,"evidence":"on_mutation"}`)
@@ -150,8 +154,10 @@ func TestCommandResult_EvidencePartialWhenAfterCaptureFails(t *testing.T) {
 		idx++
 		return shot
 	}
+	syncEvidenceCaptureFn()
 	t.Cleanup(func() {
 		evidenceCaptureFn = orig
+		syncEvidenceCaptureFn()
 	})
 
 	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true,"evidence":"always"}`)

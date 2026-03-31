@@ -340,6 +340,54 @@ func TestClientRegistry_GetOrDefault_UnknownID(t *testing.T) {
 }
 
 // ============================================
+// ClientRegistry: Idle Reaping
+// ============================================
+
+func TestClientRegistry_ReapIdle_RemovesStaleClients(t *testing.T) {
+	t.Parallel()
+	r := NewClientRegistry()
+
+	// Register two clients.
+	cs1 := r.Register("/stale")
+	cs2 := r.Register("/fresh")
+
+	// Backdate cs1's LastSeenAt to exceed the idle timeout.
+	cs1.mu.Lock()
+	cs1.LastSeenAt = time.Now().Add(-clientIdleTimeout - time.Minute)
+	cs1.mu.Unlock()
+
+	// cs2 stays fresh (just registered).
+	reaped := r.ReapIdle()
+	if reaped != 1 {
+		t.Errorf("expected 1 reaped, got %d", reaped)
+	}
+	if r.Count() != 1 {
+		t.Errorf("expected 1 client remaining, got %d", r.Count())
+	}
+	if r.Get(cs1.ID) != nil {
+		t.Error("stale client should have been reaped")
+	}
+	if r.Get(cs2.ID) == nil {
+		t.Error("fresh client should still be present")
+	}
+}
+
+func TestClientRegistry_ReapIdle_NothingToReap(t *testing.T) {
+	t.Parallel()
+	r := NewClientRegistry()
+	r.Register("/a")
+	r.Register("/b")
+
+	reaped := r.ReapIdle()
+	if reaped != 0 {
+		t.Errorf("expected 0 reaped, got %d", reaped)
+	}
+	if r.Count() != 2 {
+		t.Errorf("expected 2 clients, got %d", r.Count())
+	}
+}
+
+// ============================================
 // ClientRegistry: Concurrency
 // ============================================
 

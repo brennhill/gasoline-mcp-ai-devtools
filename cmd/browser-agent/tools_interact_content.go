@@ -1,63 +1,15 @@
-// Purpose: Handles get_readable, get_markdown, and page_summary content extraction via structured extension query types.
-// Why: Replaces unsafe IIFE script injection with CSP-safe content-script message-passing for text extraction.
+// Purpose: Enriches navigate responses with page content extraction.
+// Why: Appends page summary, vitals, and metadata to navigate results.
 // Docs: docs/features/feature/interact-explore/index.md
-// Implements get_readable, get_markdown, and page_summary using dedicated query types
-// routed through content script message-passing (CSP-safe, ISOLATED world).
-// Issue #257: Moved from "execute" query type with embedded IIFE scripts to
-// structured query types that the content script handles directly.
+
 package main
 
 import (
 	"encoding/json"
-	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
-
-const (
-	// navigatePageSummaryWait is the time to wait for the page summary content
-	// extraction after navigation. The extension-side query uses a 4s timeout,
-	// so this must be slightly longer to allow for round-trip overhead.
-	navigatePageSummaryWait = 5 * time.Second
-)
-
-// handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.
-// All three use the same pattern: gate checks, timeout validation, create a pending query with
-// the dedicated query type, and wait for the content script to respond.
-func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) JSONRPCResponse {
-	var params struct {
-		TabID     int `json:"tab_id,omitempty"`
-		TimeoutMs int `json:"timeout_ms,omitempty"`
-	}
-	lenientUnmarshal(args, &params)
-
-	if params.TimeoutMs <= 0 {
-		params.TimeoutMs = 10_000
-	}
-	if params.TimeoutMs > 30_000 {
-		params.TimeoutMs = 30_000
-	}
-
-	return h.newCommand(queryType).
-		correlationPrefix(correlationPrefix).
-		reason(queryType).
-		queryType(queryType).
-		buildParams(map[string]any{
-			"timeout_ms": params.TimeoutMs,
-		}).
-		tabID(params.TabID).
-		guards(h.parent.requirePilot, h.parent.requireExtension, h.parent.requireTabTracking).
-		queuedMessage(queryType + " queued").
-		execute(req, args)
-}
-
-func (h *interactActionHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleContentExtraction(req, args, "get_readable", "readable")
-}
-
-func (h *interactActionHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleContentExtraction(req, args, "get_markdown", "markdown")
-}
 
 // enrichNavigateResponse appends page content to a successful navigate response.
 // Uses the "page_summary" query type to extract text content, headings, and metadata
@@ -95,7 +47,7 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	// Wait for page summary (5s — page should already be loaded).
 	// Best-effort enrichment: if extraction fails, navigate still succeeds with empty content.
 	var textContent string
-	cmd, found := h.capture.WaitForCommand(summaryCorrelationID, navigatePageSummaryWait)
+	cmd, found := h.capture.WaitForCommand(summaryCorrelationID, toolinteract.NavigatePageSummaryWait)
 	if found && cmd.Status != "pending" && cmd.Result != nil {
 		var summaryResult map[string]any
 		if json.Unmarshal(cmd.Result, &summaryResult) == nil {

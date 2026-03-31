@@ -17,7 +17,7 @@ func TestHandleDrawModeStart_PilotDisabled(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.interactAction().HandleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "disabled") || !strings.Contains(text, "Pilot") {
@@ -35,7 +35,7 @@ func TestHandleDrawModeStart_Success(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.interactAction().HandleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "queued") || !strings.Contains(text, "correlation_id") {
@@ -51,7 +51,7 @@ func TestHandleDrawModeStart_WithSession(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{"annot_session":"my-review"}`)
 
-	resp := h.interactAction().handleDrawModeStart(req, args)
+	resp := h.interactAction().HandleDrawModeStart(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
 	if !strings.Contains(text, "queued") {

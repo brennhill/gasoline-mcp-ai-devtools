@@ -1,52 +1,20 @@
-// Purpose: Shared recording/playback response and logging helpers for MCP handler methods.
-// Why: Keeps common formatting and bounded log writes DRY across recording-related handlers.
+// Purpose: Thin adapter for recording helpers — delegates to toolrecording sub-package.
 // Docs: docs/features/feature/flow-recording/index.md
 
 package main
 
 import (
-	"fmt"
-	"time"
-
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolrecording"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
-// buildPlaybackResult constructs canonical playback completion payload.
-//
-// Failure semantics:
-// - Session timing is computed from session.StartedAt; clock skew only affects duration text.
+// buildPlaybackResult delegates to the toolrecording sub-package.
 func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string, session *capture.PlaybackSession) JSONRPCResponse {
-	status := "ok"
-	if session.ActionsFailed > 0 {
-		status = "partial"
-	}
-	total := session.ActionsExecuted + session.ActionsFailed
-	responseData := map[string]any{
-		"status":            status,
-		"recording_id":      recordingID,
-		"actions_executed":  session.ActionsExecuted,
-		"actions_failed":    session.ActionsFailed,
-		"actions_total":     total,
-		"duration_ms":       time.Since(session.StartedAt).Milliseconds(),
-		"results_count":     len(session.Results),
-		"selector_failures": session.SelectorFailures,
-	}
-	message := fmt.Sprintf("Playback complete: %d/%d actions executed", session.ActionsExecuted, total)
-	return succeed(req, message, responseData)
+	return toolrecording.BuildPlaybackResult(req, recordingID, session)
 }
 
 // appendServerLog appends one entry to bounded in-memory daemon logs.
-//
-// Invariants:
-// - h.server.logs.entries is always size-limited to h.server.logs.maxEntries under h.server.logs.mu.
-//
-// Failure semantics:
-// - Oldest entries are evicted first when capacity is exceeded.
+// Delegates to LogStore.addEntries to maintain counters, rotation, and onEntries callback.
 func (h *ToolHandler) appendServerLog(entry LogEntry) {
-	h.server.logs.mu.Lock()
-	defer h.server.logs.mu.Unlock()
-	h.server.logs.entries = append(h.server.logs.entries, entry)
-	if len(h.server.logs.entries) > h.server.logs.maxEntries {
-		h.server.logs.entries = h.server.logs.entries[1:]
-	}
+	h.server.logs.addEntries([]LogEntry{entry})
 }

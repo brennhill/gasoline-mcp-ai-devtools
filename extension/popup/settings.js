@@ -13,14 +13,21 @@ export function handleWebSocketModeChange(mode) {
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
- * Initialize the WebSocket mode selector
+ * Apply pre-loaded WS mode value to the selector.
+ * Called from the orchestrator after a single batched storage read.
  */
-export async function initWebSocketModeSelector() {
+export function applyWebSocketMode(value) {
     const modeSelect = document.getElementById('ws-mode');
     if (!modeSelect)
         return;
-    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
     modeSelect.value = value || 'medium';
+}
+/**
+ * Initialize the WebSocket mode selector (self-contained async version for backward compat)
+ */
+export async function initWebSocketModeSelector() {
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
+    applyWebSocketMode(value);
 }
 // Track clear-logs confirmation state
 let clearConfirmPending = false;

@@ -52,5 +52,5 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 
 func (h *ToolHandler) toolAnalyzePageSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Delegates to shared content extraction which handles gate checks, timeout validation, and query creation.
-	return h.interactAction().handleContentExtraction(req, args, "page_summary", "page_summary")
+	return h.interactAction().HandleContentExtraction(req, args, "page_summary", "page_summary")
 }

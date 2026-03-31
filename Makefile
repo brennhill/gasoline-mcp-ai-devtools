@@ -6,7 +6,7 @@ HOOKS_BINARY_NAME := kaboom-hooks
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/export.version=$(VERSION) -X github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry.Version=$(VERSION)
 HOOKS_LDFLAGS := -s -w -X main.version=$(VERSION)
-CMD_PKG ?= ./cmd/dev-console
+CMD_PKG ?= ./cmd/browser-agent
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 HOOKS_PKG := ./cmd/hooks
 
@@ -304,6 +304,7 @@ check-ts-json-casing:
 	@node scripts/check-ts-json-casing.js
 
 check-invariants: check-wire-drift check-ts-json-casing
+	@node scripts/check-sync-wire-drift.js
 	@./scripts/check-esm-extensions.sh
 	@./scripts/check-sync-invariants.sh
 	@./scripts/check-bridge-stdout-invariant.sh
@@ -406,7 +407,7 @@ verify-llm:
 	@npm run docs:check:strict
 	@npm run docs:lint:content-contract
 	@npm run docs:lint:reference-schema-sync
-	@go test ./cmd/dev-console -run 'TestSchemaParity_|TestInteract_NavigateAndDocument_.*|TestNavigateAndDocument_.*|TestContractEnforcement_ErrorsHaveRetryableField|TestContractEnforcement_CommandResult_HasElapsedMs' -count=1
+	@go test ./cmd/browser-agent -run 'TestSchemaParity_|TestInteract_NavigateAndDocument_.*|TestNavigateAndDocument_.*|TestContractEnforcement_ErrorsHaveRetryableField|TestContractEnforcement_CommandResult_HasElapsedMs' -count=1
 	@echo "verify-llm passed"
 
 # Quality gate for top 1% standards (comprehensive)
@@ -431,7 +432,7 @@ quality-gate: check-file-length lint lint-hardening lint-dead lint-circular lint
 
 # Upgrade/install guardrail suite: prevents stale daemons from surviving release upgrades.
 test-upgrade-guards:
-	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
+	go test ./cmd/browser-agent -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
 	node --test scripts/install-upgrade-regression.contract.test.mjs
 	node --test npm/kaboom-agentic-browser/lib/kill-daemon.test.js
 	python3 -m unittest discover -s pypi/kaboom-agentic-browser/tests -p 'test_*.py'

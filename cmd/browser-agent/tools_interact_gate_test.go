@@ -231,7 +231,7 @@ func TestNavigate_ExtDisconnected_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"navigate","url":"https://example.com","sync":false}`)
-	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, args)
+	resp := env.handler.interactAction().HandleBrowserActionNavigateImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -249,7 +249,7 @@ func TestExecuteJS_CSP_MainWorld_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrExtError {
@@ -267,7 +267,7 @@ func TestExecuteJS_CSP_AutoWorld_PassesThrough(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","sync":false}`)
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	// world=auto (default) passes through gate — extension handles CSP fallback
 	if !isSuccessOrQueued(t, resp) {
@@ -283,7 +283,7 @@ func TestClick_ExtDisconnected_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().HandleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -298,7 +298,7 @@ func TestSubtitle_NoExtensionGate(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"subtitle","text":"hello","sync":false}`)
-	resp := env.handler.interactAction().handleSubtitleImpl(req, args)
+	resp := env.handler.interactAction().HandleSubtitleImpl(req, args)
 
 	// Subtitle should succeed (queued) even without extension
 	if !isSuccessOrQueued(t, resp) {
@@ -379,7 +379,7 @@ func TestNavigate_NoTabTracking_NotBlocked(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"navigate","url":"https://example.com","sync":false}`)
-	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, args)
+	resp := env.handler.interactAction().HandleBrowserActionNavigateImpl(req, args)
 
 	// Navigate should succeed (queued) even without tab tracking
 	if !isSuccessOrQueued(t, resp) {
@@ -396,7 +396,7 @@ func TestClick_NoTabTracking_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().HandleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -414,7 +414,7 @@ func TestSwitchTab_NoTabTracking_NotBlocked(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"switch_tab","tab_id":42,"sync":false}`)
-	resp := env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, args)
+	resp := env.handler.interactAction().HandleBrowserActionSwitchTabImpl(req, args)
 
 	// switch_tab should succeed (queued) even without tab tracking.
 	if !isSuccessOrQueued(t, resp) {
@@ -433,7 +433,7 @@ func TestSaveState_NoTabTracking_NoGate(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"save_state","snapshot_name":"test-state","sync":false}`)
-	resp := env.handler.stateInteract().handleStateSave(req, args)
+	resp := env.handler.stateInteract().HandleStateSave(req, args)
 
 	// If it is an error, it must NOT be the tab tracking error (ErrNoData with "tab" message).
 	if !isSuccessOrQueued(t, resp) {
@@ -457,7 +457,7 @@ func TestGateOrder_ParamValidation_BeforeExtension(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","sync":false}`)
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrMissingParam {
@@ -473,7 +473,7 @@ func TestGateOrder_Pilot_BeforeExtension(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"navigate","url":"https://example.com","sync":false}`)
-	resp := env.handler.interactAction().handleBrowserActionNavigateImpl(req, args)
+	resp := env.handler.interactAction().HandleBrowserActionNavigateImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrCodePilotDisabled {
@@ -489,7 +489,7 @@ func TestGateOrder_Extension_BeforeTabTracking(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
-	resp := env.handler.interactAction().handleDOMPrimitive(req, args, "click")
+	resp := env.handler.interactAction().HandleDOMPrimitive(req, args, "click")
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -513,7 +513,7 @@ func TestGateOrder_TabTracking_BeforeCSP(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -534,7 +534,7 @@ func TestGateOrder_Extension_BeforeCSP(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+	resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -704,7 +704,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","world":"main","sync":false}`)
-		resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+		resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrMissingParam {
@@ -720,7 +720,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+		resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrCodePilotDisabled {
@@ -736,7 +736,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+		resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrNoData {
@@ -757,7 +757,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+		resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrNoData {
@@ -778,7 +778,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.interactAction().handleExecuteJSImpl(req, args)
+		resp := env.handler.interactAction().HandleExecuteJSImpl(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrExtError {

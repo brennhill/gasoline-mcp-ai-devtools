@@ -45,13 +45,8 @@ var validAuditCategories = map[string]bool{
 	"best_practices": true,
 }
 
-// auditCategoryResult holds the result for one audit category.
-type auditCategoryResult struct {
-	Score    int    `json:"score"`
-	Findings []any  `json:"findings"`
-	Summary  string `json:"summary"`
-	Error    string `json:"error,omitempty"`
-}
+// toolanalyze.AuditCategoryResult is defined in tools_analyze_audit_scoring.go as an alias
+// for toolanalyze.AuditCategoryResult.
 
 func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -85,7 +80,7 @@ func (h *ToolHandler) toolAnalyzeAudit(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	allCategories := defaultAuditCategories()
-	categoryResults := make(map[string]auditCategoryResult)
+	categoryResults := make(map[string]toolanalyze.AuditCategoryResult)
 	var totalScore float64
 	var totalWeight float64
 

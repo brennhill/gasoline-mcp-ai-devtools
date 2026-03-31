@@ -28,7 +28,7 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	defer cancel()
 
 	startVersionCheckLoop(ctx)
-	startScreenshotRateLimiterCleanup(ctx)
+	server.startScreenshotRateLimiterCleanup(ctx)
 	configureBinaryUpgradeMonitoring(ctx, server, port)
 
 	if err := enforceDaemonStartupPolicy(server, port, opts); err != nil {

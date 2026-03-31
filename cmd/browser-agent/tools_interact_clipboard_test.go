@@ -49,7 +49,7 @@ func TestClipboard_Write_InvalidJSON(t *testing.T) {
 	// receives the full args. Since the dispatcher needs "what", we call
 	// handleClipboardWrite directly with broken JSON for the inner parse.
 	args := json.RawMessage(`{bad json`)
-	resp := h.interactAction().handleClipboardWrite(req, args)
+	resp := h.interactAction().HandleClipboardWrite(req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {

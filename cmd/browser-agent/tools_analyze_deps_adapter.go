@@ -20,12 +20,12 @@ func (h *ToolHandler) NetworkWaterfallEntries() []capture.NetworkWaterfallEntry 
 
 // ConsoleSecurityEntries satisfies toolanalyze.Deps.
 func (h *ToolHandler) ConsoleSecurityEntries() []security.LogEntry {
-	h.server.mu.RLock()
-	entries := make([]security.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
+	h.server.logs.mu.RLock()
+	entries := make([]security.LogEntry, len(h.server.logs.entries))
+	for i, e := range h.server.logs.entries {
 		entries[i] = security.LogEntry(e)
 	}
-	h.server.mu.RUnlock()
+	h.server.logs.mu.RUnlock()
 	return entries
 }
 

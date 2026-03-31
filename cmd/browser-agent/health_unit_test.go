@@ -102,7 +102,7 @@ func TestHealthResponseIncludesDroppedCount(t *testing.T) {
 	_ = srv.logs.appendToFile([]LogEntry{{"level": "info", "message": "drop1"}})
 	_ = srv.logs.appendToFile([]LogEntry{{"level": "info", "message": "drop2"}})
 
-	resp := hm.GetHealth(nil, srv, "test")
+	resp := getHealthResponse(hm, nil, srv, "test")
 
 	if resp.Buffers.Console.DroppedCount != 2 {
 		t.Fatalf("Console.DroppedCount = %d, want 2", resp.Buffers.Console.DroppedCount)
@@ -138,7 +138,7 @@ func TestHealthResponseZeroDroppedCount(t *testing.T) {
 		},
 	}
 
-	resp := hm.GetHealth(nil, srv, "test")
+	resp := getHealthResponse(hm, nil, srv, "test")
 
 	if resp.Buffers.Console.DroppedCount != 0 {
 		t.Fatalf("Console.DroppedCount = %d, want 0 for fresh server", resp.Buffers.Console.DroppedCount)
@@ -246,7 +246,8 @@ func TestBuildServerInfo_IncludesLaunchModeMetadata(t *testing.T) {
 	t.Cleanup(func() { setCurrentLaunchMode(previous) })
 
 	hm := NewHealthMetrics()
-	info := hm.buildServerInfo("test-version")
+	resp := getHealthResponse(hm, nil, nil, "test-version")
+	info := resp.Server
 	if info.LaunchMode != launchModeLikelyTransient {
 		t.Fatalf("launch_mode = %q, want %q", info.LaunchMode, launchModeLikelyTransient)
 	}

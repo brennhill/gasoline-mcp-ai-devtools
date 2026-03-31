@@ -240,25 +240,20 @@ func TestPersistDrawSession_EmptyAnnotations(t *testing.T) {
 // --- storeElementDetails edge cases ---
 
 func TestStoreElementDetails_MultipleDetails(t *testing.T) {
-	// Save and restore the global store
-	oldStore := globalAnnotationStore
-	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
-	defer func() {
-		globalAnnotationStore.Close()
-		globalAnnotationStore = oldStore
-	}()
+	store := NewAnnotationStore(10 * time.Minute)
+	defer store.Close()
 
 	details := map[string]json.RawMessage{
 		"d1": json.RawMessage(`{"selector":"div.a","tag":"div","text_content":"A"}`),
 		"d2": json.RawMessage(`{"selector":"span.b","tag":"span","text_content":"B"}`),
 	}
-	storeElementDetails(globalAnnotationStore, details)
+	storeElementDetails(store, details)
 
-	got1, found1 := globalAnnotationStore.GetDetail("d1")
+	got1, found1 := store.GetDetail("d1")
 	if !found1 || got1.Selector != "div.a" {
 		t.Errorf("expected detail d1 with selector 'div.a', found=%v got=%+v", found1, got1)
 	}
-	got2, found2 := globalAnnotationStore.GetDetail("d2")
+	got2, found2 := store.GetDetail("d2")
 	if !found2 || got2.Selector != "span.b" {
 		t.Errorf("expected detail d2 with selector 'span.b', found=%v got=%+v", found2, got2)
 	}
@@ -269,36 +264,28 @@ func TestStoreElementDetails_MultipleDetails(t *testing.T) {
 }
 
 func TestStoreElementDetails_InvalidJSON(t *testing.T) {
-	oldStore := globalAnnotationStore
-	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
-	defer func() {
-		globalAnnotationStore.Close()
-		globalAnnotationStore = oldStore
-	}()
+	store := NewAnnotationStore(10 * time.Minute)
+	defer store.Close()
 
 	details := map[string]json.RawMessage{
 		"bad": json.RawMessage(`not-valid-json`),
 	}
 	// Should not panic; invalid JSON is silently ignored
-	storeElementDetails(globalAnnotationStore, details)
+	storeElementDetails(store, details)
 
-	_, found := globalAnnotationStore.GetDetail("bad")
+	_, found := store.GetDetail("bad")
 	if found {
 		t.Error("expected invalid JSON detail to not be stored")
 	}
 }
 
 func TestStoreElementDetails_Empty(t *testing.T) {
-	oldStore := globalAnnotationStore
-	globalAnnotationStore = NewAnnotationStore(10 * time.Minute)
-	defer func() {
-		globalAnnotationStore.Close()
-		globalAnnotationStore = oldStore
-	}()
+	store := NewAnnotationStore(10 * time.Minute)
+	defer store.Close()
 
 	// Should not panic with empty map
-	storeElementDetails(globalAnnotationStore, map[string]json.RawMessage{})
+	storeElementDetails(store, map[string]json.RawMessage{})
 
 	// Should not panic with nil map
-	storeElementDetails(globalAnnotationStore, nil)
+	storeElementDetails(store, nil)
 }

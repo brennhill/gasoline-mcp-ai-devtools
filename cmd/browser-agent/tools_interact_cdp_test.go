@@ -186,9 +186,9 @@ func TestToolsInteractClick_NoCDPEscalationWithoutXY(t *testing.T) {
 
 func TestToolsInteractDispatch_HardwareClickInValidActions(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	_, _, _ = makeToolHandler(t)
 
-	validActions := h.interactAction().getValidInteractActions()
+	validActions := getValidInteractActions()
 	if !strings.Contains(validActions, "hardware_click") {
 		t.Error("hardware_click should appear in valid interact actions list")
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
@@ -27,7 +28,7 @@ func newTestToolHandler() *ToolHandler {
 		capture:    cap,
 	}
 	h.testGenHandler = newTestGenHandler(h)
-	h.interactActionHandler = newInteractActionHandler(h)
+	h.interactActionHandler = toolinteract.NewInteractActionHandler(buildInteractDeps(h))
 	return h
 }
 

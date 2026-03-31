@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Kaboom Devtools",
+  "name": "KaBOOM! Devtools",
   "version": "0.8.1",
   "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
   "icons": {

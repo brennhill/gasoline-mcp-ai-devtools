@@ -45,7 +45,7 @@ func TestApplyJitter_ReadOnlyActions_ReturnZero(t *testing.T) {
 			// Set a high jitter so we can confirm it is still skipped.
 			h.interactAction().SetJitter(5000)
 
-			got := h.interactAction().applyJitter(action)
+			got := h.interactAction().ApplyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 for read-only action", action, got)
 			}
@@ -77,7 +77,7 @@ func TestApplyJitter_ZeroMaxMs_ReturnsZero(t *testing.T) {
 			h, _, _ := makeToolHandler(t)
 
 			// Default actionJitterMaxMs is 0.
-			got := h.interactAction().applyJitter(action)
+			got := h.interactAction().ApplyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 when maxMs is 0", action, got)
 			}
@@ -98,7 +98,7 @@ func TestApplyJitter_PositiveMaxMs_ReturnsValueInRange(t *testing.T) {
 
 	// Run multiple iterations to gain confidence the value stays in range.
 	for i := 0; i < 100; i++ {
-		got := h.interactAction().applyJitter("click")
+		got := h.interactAction().ApplyJitter("click")
 		if got < 0 || got >= maxMs {
 			t.Fatalf("applyJitter(\"click\") iteration %d = %d, want [0, %d)", i, got, maxMs)
 		}
@@ -114,7 +114,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	// Initially no jitter.
-	if got := h.interactAction().applyJitter("click"); got != 0 {
+	if got := h.interactAction().ApplyJitter("click"); got != 0 {
 		t.Fatalf("applyJitter before configure = %d, want 0", got)
 	}
 
@@ -127,7 +127,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 
 	// Now applyJitter should return values in [0, 100).
 	for i := 0; i < 50; i++ {
-		got := h.interactAction().applyJitter("click")
+		got := h.interactAction().ApplyJitter("click")
 		if got < 0 || got >= 100 {
 			t.Fatalf("applyJitter after configure iteration %d = %d, want [0, 100)", i, got)
 		}
@@ -159,7 +159,7 @@ func TestResolveNavigateURL_NormalURL_PassesThrough(t *testing.T) {
 			t.Parallel()
 			h, _, _ := makeToolHandler(t)
 
-			got, err := h.interactAction().resolveNavigateURLImpl(tt.url)
+			got, err := h.interactAction().ResolveNavigateURLImpl(tt.url)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.url, err)
 			}
@@ -179,7 +179,7 @@ func TestResolveNavigateURL_EmptyURL_ReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	got, err := h.interactAction().resolveNavigateURLImpl("")
+	got, err := h.interactAction().ResolveNavigateURLImpl("")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL(\"\") unexpected error: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestResolveNavigateURL_KaboomInsecure_NilCapture_ReturnsError(t *testing.T)
 	h, _, _ := makeToolHandler(t)
 	h.capture = nil
 
-	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://https://example.com")
+	_, err := h.interactAction().ResolveNavigateURLImpl("kaboom-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when capture is nil")
 	}
@@ -213,7 +213,7 @@ func TestResolveNavigateURL_KaboomInsecure_WrongSecurityMode_ReturnsError(t *tes
 	// Default security mode is "normal", not "insecure_proxy".
 	_ = cap
 
-	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://https://example.com")
+	_, err := h.interactAction().ResolveNavigateURLImpl("kaboom-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when security mode is not insecure_proxy")
 	}
@@ -227,7 +227,7 @@ func TestResolveNavigateURL_KaboomInsecure_MissingTarget_ReturnsError(t *testing
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://")
+	_, err := h.interactAction().ResolveNavigateURLImpl("kaboom-insecure://")
 	if err == nil {
 		t.Fatal("expected error for empty target URL")
 	}
@@ -241,7 +241,7 @@ func TestResolveNavigateURL_KaboomInsecure_InvalidScheme_ReturnsError(t *testing
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://ftp://files.example.com")
+	_, err := h.interactAction().ResolveNavigateURLImpl("kaboom-insecure://ftp://files.example.com")
 	if err == nil {
 		t.Fatal("expected error for non-http/https target scheme")
 	}
@@ -255,7 +255,7 @@ func TestResolveNavigateURL_KaboomInsecure_MissingHost_ReturnsError(t *testing.T
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.interactAction().resolveNavigateURLImpl("kaboom-insecure://http://")
+	_, err := h.interactAction().ResolveNavigateURLImpl("kaboom-insecure://http://")
 	if err == nil {
 		t.Fatal("expected error for target URL missing host")
 	}
@@ -292,7 +292,7 @@ func TestResolveNavigateURL_KaboomInsecure_ValidTarget_ReturnsProxyURL(t *testin
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := h.interactAction().resolveNavigateURLImpl(tt.input)
+			got, err := h.interactAction().ResolveNavigateURLImpl(tt.input)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.input, err)
 			}
@@ -322,7 +322,7 @@ func TestResolveNavigateURL_KaboomInsecure_CaseInsensitive(t *testing.T) {
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
 	// The prefix check is case-insensitive.
-	got, err := h.interactAction().resolveNavigateURLImpl("KABOOM-INSECURE://https://example.com")
+	got, err := h.interactAction().ResolveNavigateURLImpl("KABOOM-INSECURE://https://example.com")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL with uppercase prefix error: %v", err)
 	}

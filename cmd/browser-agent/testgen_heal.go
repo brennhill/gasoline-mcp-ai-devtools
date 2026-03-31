@@ -8,17 +8,20 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolgenerate"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 func (h *testGenHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestHealRequest
 
-	warnings, err := unmarshalWithWarnings(args, &params)
+	warnings, err := mcp.UnmarshalWithWarnings(args, &params)
 	if err != nil {
 		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
-	warnings = filterGenerateDispatchWarnings(warnings)
+	warnings = toolgenerate.FilterGenerateDispatchWarnings(warnings)
 
 	if errResp, ok := validateHealParams(req, params); ok {
 		return errResp

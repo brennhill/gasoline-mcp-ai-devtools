@@ -46,7 +46,7 @@ func initCapture(server *Server, port int) *capture.Store {
 
 // startScreenshotRateLimiterCleanup starts a background goroutine that removes
 // stale entries from the screenshot rate limiter every 30 seconds.
-func startScreenshotRateLimiterCleanup(ctx context.Context) {
+func (s *Server) startScreenshotRateLimiterCleanup(ctx context.Context) {
 	util.SafeGo(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -56,12 +56,12 @@ func startScreenshotRateLimiterCleanup(ctx context.Context) {
 				return
 			case <-ticker.C:
 				func() {
-					screenshotRateMu.Lock()
-					defer screenshotRateMu.Unlock()
+					s.screenshotRateMu.Lock()
+					defer s.screenshotRateMu.Unlock()
 					now := time.Now()
-					for clientID, lastUpload := range screenshotRateLimiter {
+					for clientID, lastUpload := range s.screenshotRateLimiter {
 						if now.Sub(lastUpload) > time.Minute {
-							delete(screenshotRateLimiter, clientID)
+							delete(s.screenshotRateLimiter, clientID)
 						}
 					}
 				}()

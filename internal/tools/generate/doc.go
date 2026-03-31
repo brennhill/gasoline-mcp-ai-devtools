@@ -7,7 +7,6 @@ Package generate provides the implementation for the generate MCP tool, which
 produces artifacts from captured browser data.
 
 Key types:
-  - Deps: interface declaring dependencies required from the host server.
   - TestGenParams: parsed arguments for generate({format: "test"}).
 
 Key functions:

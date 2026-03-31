@@ -15,12 +15,12 @@ func (h *ToolHandler) NoiseConfig() *noise.NoiseConfig {
 
 // ConsoleEntries satisfies toolconfigure.Deps.
 func (h *ToolHandler) ConsoleEntries() []noise.LogEntry {
-	h.server.mu.RLock()
-	entries := make([]noise.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
+	h.server.logs.mu.RLock()
+	entries := make([]noise.LogEntry, len(h.server.logs.entries))
+	for i, e := range h.server.logs.entries {
 		entries[i] = noise.LogEntry(e)
 	}
-	h.server.mu.RUnlock()
+	h.server.logs.mu.RUnlock()
 	return entries
 }
 
@@ -68,12 +68,12 @@ func (h *ToolHandler) SetSecurityMode(mode string, rewrites []string) {
 
 // GetTelemetryMode satisfies toolconfigure.Deps.
 func (h *ToolHandler) GetTelemetryMode() string {
-	return h.server.getTelemetryMode()
+	return h.server.logs.getTelemetryMode()
 }
 
 // SetTelemetryMode satisfies toolconfigure.Deps.
 func (h *ToolHandler) SetTelemetryMode(mode string) {
-	h.server.setTelemetryMode(mode)
+	h.server.logs.setTelemetryMode(mode)
 }
 
 // InteractActionSetJitter satisfies toolconfigure.Deps.

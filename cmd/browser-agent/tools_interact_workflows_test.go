@@ -28,7 +28,7 @@ func TestNavigateAndWaitFor_MissingURL(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{
 		"wait_for": ".content",
 	})
-	resp := h.interactAction().handleNavigateAndWaitFor(req, args)
+	resp := h.interactAction().HandleNavigateAndWaitFor(req, args)
 	assertIsError(t, resp, "url")
 }
 
@@ -39,7 +39,7 @@ func TestNavigateAndWaitFor_MissingWaitFor(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{
 		"url": "https://example.com",
 	})
-	resp := h.interactAction().handleNavigateAndWaitFor(req, args)
+	resp := h.interactAction().HandleNavigateAndWaitFor(req, args)
 	assertIsError(t, resp, "wait_for")
 }
 
@@ -47,7 +47,7 @@ func TestNavigateAndWaitFor_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.interactAction().handleNavigateAndWaitFor(req, json.RawMessage(`{bad`))
+	resp := h.interactAction().HandleNavigateAndWaitFor(req, json.RawMessage(`{bad`))
 	assertIsError(t, resp, "JSON")
 }
 
@@ -63,7 +63,7 @@ func TestFillFormAndSubmit_EmptyFields(t *testing.T) {
 		"fields":          []any{},
 		"submit_selector": "button[type=submit]",
 	})
-	resp := h.interactAction().handleFillFormAndSubmit(req, args)
+	resp := h.interactAction().HandleFillFormAndSubmit(req, args)
 	assertIsError(t, resp, "fields")
 }
 
@@ -76,7 +76,7 @@ func TestFillFormAndSubmit_MissingSubmit(t *testing.T) {
 			{"selector": "#email", "value": "test@example.com"},
 		},
 	})
-	resp := h.interactAction().handleFillFormAndSubmit(req, args)
+	resp := h.interactAction().HandleFillFormAndSubmit(req, args)
 	assertIsError(t, resp, "submit_selector")
 }
 
@@ -90,7 +90,7 @@ func TestFillFormAndSubmit_FieldMissingSelectorAndIndex(t *testing.T) {
 		},
 		"submit_selector": "button",
 	})
-	resp := h.interactAction().handleFillFormAndSubmit(req, args)
+	resp := h.interactAction().HandleFillFormAndSubmit(req, args)
 	assertIsError(t, resp, "selector")
 }
 
@@ -98,7 +98,7 @@ func TestFillFormAndSubmit_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.interactAction().handleFillFormAndSubmit(req, json.RawMessage(`{bad`))
+	resp := h.interactAction().HandleFillFormAndSubmit(req, json.RawMessage(`{bad`))
 	assertIsError(t, resp, "JSON")
 }
 
@@ -113,7 +113,7 @@ func TestFillForm_EmptyFields(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{
 		"fields": []any{},
 	})
-	resp := h.interactAction().handleFillForm(req, args)
+	resp := h.interactAction().HandleFillForm(req, args)
 	assertIsError(t, resp, "fields")
 }
 
@@ -126,7 +126,7 @@ func TestFillForm_MissingFieldSelectorAndIndex(t *testing.T) {
 			{"value": "test@example.com"},
 		},
 	})
-	resp := h.interactAction().handleFillForm(req, args)
+	resp := h.interactAction().HandleFillForm(req, args)
 	assertIsError(t, resp, "selector")
 }
 
@@ -134,7 +134,7 @@ func TestFillForm_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.interactAction().handleFillForm(req, json.RawMessage(`{bad`))
+	resp := h.interactAction().HandleFillForm(req, json.RawMessage(`{bad`))
 	assertIsError(t, resp, "JSON")
 }
 
@@ -148,7 +148,7 @@ func TestFillForm_NoSubmitRequired(t *testing.T) {
 			{"selector": "#email", "value": "test@example.com"},
 		},
 	})
-	resp := h.interactAction().handleFillForm(req, args)
+	resp := h.interactAction().HandleFillForm(req, args)
 	// Should not return a "submit_selector" error (no submit needed for fill_form)
 	raw, _ := json.Marshal(resp)
 	rawStr := string(raw)
@@ -239,7 +239,7 @@ func TestRunA11yAndExportSARIF_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.interactAction().handleRunA11yAndExportSARIF(req, json.RawMessage(`{bad`))
+	resp := h.interactAction().HandleRunA11yAndExportSARIF(req, json.RawMessage(`{bad`))
 	assertIsError(t, resp, "JSON")
 }
 
@@ -256,7 +256,7 @@ func TestRunA11yAndExportSARIF_ValidParams(t *testing.T) {
 	})
 	// This will fail due to no extension connected, but should not panic
 	// and should return a structured error/workflow result
-	resp := h.interactAction().handleRunA11yAndExportSARIF(req, args)
+	resp := h.interactAction().HandleRunA11yAndExportSARIF(req, args)
 	if resp.JSONRPC != "2.0" {
 		t.Error("expected valid JSON-RPC response")
 	}
@@ -324,7 +324,7 @@ func TestRunA11yAndExportSARIF_ReusesAnalyzePayload(t *testing.T) {
 		"scope": "body",
 	})
 
-	resp := h.interactAction().handleRunA11yAndExportSARIF(req, args)
+	resp := h.interactAction().HandleRunA11yAndExportSARIF(req, args)
 	toolResult := parseToolResult(t, resp)
 	if toolResult.IsError {
 		t.Fatalf("workflow should succeed, got error: %s", toolResult.Content[0].Text)

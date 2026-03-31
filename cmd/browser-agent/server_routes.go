@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tracking"
 )
@@ -117,7 +118,7 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 
 	// NOT MCP — Doctor preflight check (aggregated readiness status)
 	mux.HandleFunc("/doctor", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		handleDoctorHTTP(w, cap)
+		health.HandleDoctorHTTP(w, cap, version)
 	}))
 
 	// NOT MCP — Token savings tracking from hook scripts (POST from output-compression-hook.sh)
@@ -186,7 +187,16 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 	})))
 	// Bridge push relay: internal endpoint for the bridge process to drain push events.
 	// No extensionOnly — called by the bridge process, not the browser extension.
+	// Token-authenticated when pushDrainToken is configured.
 	mux.HandleFunc("/push/drain", func(w http.ResponseWriter, r *http.Request) {
+		if server.pushDrainToken != "" {
+			auth := r.Header.Get("Authorization")
+			const prefix = "Bearer "
+			if !strings.HasPrefix(auth, prefix) || auth[len(prefix):] != server.pushDrainToken {
+				jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+				return
+			}
+		}
 		server.handlePushDrain(w, r)
 	})
 

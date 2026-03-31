@@ -1,9 +1,11 @@
-// deps.go — Declares the Deps interface for configure-local handlers.
-// Why: Narrow interface decouples configure handlers from the full ToolHandler.
+// deps.go — Dependency injection interface for the toolconfigure sub-package.
+// Purpose: Declares the interface that configure handlers need from the main package.
+// Why: Decouples configure handlers from the main package's god object without circular imports.
 
 package toolconfigure
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/noise"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
@@ -12,43 +14,46 @@ import (
 // Deps provides all dependencies the configure-local handlers need.
 // *ToolHandler in cmd/browser-agent/ satisfies this interface.
 type Deps interface {
-	// NoiseConfig returns the noise configuration, or nil if not initialized.
+	// NoiseConfig returns the noise filtering configuration.
 	NoiseConfig() *noise.NoiseConfig
 
-	// ConsoleEntries returns a copy of the current console log entries.
+	// ConsoleEntries returns console entries for noise auto-detection.
 	ConsoleEntries() []noise.LogEntry
 
-	// NetworkBodies returns captured network bodies for auto-detect.
+	// NetworkBodies returns captured network bodies for noise auto-detection.
 	NetworkBodies() []types.NetworkBody
 
-	// AllWebSocketEvents returns captured WebSocket events for auto-detect.
-	AllWebSocketEvents() []types.WebSocketEvent
+	// AllWebSocketEvents returns captured WebSocket events.
+	AllWebSocketEvents() []capture.WebSocketEvent
 
 	// GetTrackingStatus returns (enabled, tabID, tabURL) for the tracked tab.
 	GetTrackingStatus() (bool, int, string)
 
-	// IsExtensionConnected reports whether the browser extension is connected.
-	IsExtensionConnected() bool
-
-	// GetPilotStatus returns the pilot status from capture.
+	// GetPilotStatus returns the AI Web Pilot status.
 	GetPilotStatus() any
 
-	// ToolsList returns the list of MCP tools for capabilities introspection.
+	// IsExtensionConnected returns whether the extension is connected.
+	IsExtensionConnected() bool
+
+	// ToolsList returns the list of registered MCP tools.
 	ToolsList() []mcp.MCPTool
 
-	// GetToolModuleExamples returns examples for a tool module by name, if available.
+	// GetToolModuleExamples returns examples for a tool module by name.
 	GetToolModuleExamples(toolName string) any
 
-	// GetSecurityMode returns (mode, productionParity, rewrites) from the capture subsystem.
+	// HasCapture returns whether the capture subsystem is initialized.
+	HasCapture() bool
+
+	// GetSecurityMode returns current security mode, production parity, and rewrites.
 	GetSecurityMode() (string, bool, []string)
 
-	// SetSecurityMode sets the security mode on the capture subsystem.
+	// SetSecurityMode updates the security mode.
 	SetSecurityMode(mode string, rewrites []string)
 
 	// GetTelemetryMode returns the current telemetry mode.
 	GetTelemetryMode() string
 
-	// SetTelemetryMode sets the telemetry mode.
+	// SetTelemetryMode updates the telemetry mode.
 	SetTelemetryMode(mode string)
 
 	// InteractActionSetJitter sets the action jitter in milliseconds.
@@ -56,7 +61,4 @@ type Deps interface {
 
 	// InteractActionGetJitter returns the current action jitter in milliseconds.
 	InteractActionGetJitter() int
-
-	// HasCapture reports whether the capture subsystem is initialized.
-	HasCapture() bool
 }

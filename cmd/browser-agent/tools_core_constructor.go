@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconfigure"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/analysis"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/audit"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -60,7 +62,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	handler.usageCounter = telemetry.NewUsageCounter()
 
 	// Initialize health metrics.
-	handler.healthMetrics = NewHealthMetrics()
+	handler.healthMetrics = health.NewMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
 	handler.alertBuffer = streaming.NewAlertBuffer()
 
@@ -109,10 +111,11 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	// Initialize upload security config from package-level var set by CLI.
 	handler.uploadSecurity = uploadSecurityConfig
 	handler.recordingInteractHandler = newRecordingInteractHandler(handler) // *ToolHandler satisfies recordingDeps
-	handler.uploadInteractHandler = newUploadInteractHandler(handler) // *ToolHandler satisfies uploadDeps
+	interactDeps := buildInteractDeps(handler)
+	handler.interactActionHandler = toolinteract.NewInteractActionHandler(interactDeps)
+	handler.uploadInteractHandler = toolinteract.NewUploadInteractHandler(interactDeps, handler.interactActionHandler)
 	handler.testGenHandler = newTestGenHandler(handler) // *ToolHandler satisfies testGenHandlerDeps
-	handler.stateInteractHandler = newStateInteractHandler(handler, handler.sessionStoreImpl)
-	handler.interactActionHandler = newInteractActionHandler(handler)
+	handler.stateInteractHandler = toolinteract.NewStateInteractHandler(interactDeps, handler.sessionStoreImpl)
 	handler.configureSessionHandler = newConfigureSessionHandler(handler, handler.sessionStoreImpl, handler.sessionManager, handler.MCPHandler.server)
 
 	// Initialize dispatch modules and tool schemas once at startup.

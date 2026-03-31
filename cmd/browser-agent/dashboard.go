@@ -120,7 +120,7 @@ func handleStatusAPI(server *Server, cap *capture.Store, mcpHandler *MCPHandler)
 
 		if mcpHandler != nil && mcpHandler.toolHandler != nil {
 			if th, ok := mcpHandler.toolHandler.(*ToolHandler); ok && th.healthMetrics != nil {
-				resp["audit"] = th.healthMetrics.buildAuditInfo()
+				resp["audit"] = th.healthMetrics.BuildAuditInfo()
 			}
 		}
 

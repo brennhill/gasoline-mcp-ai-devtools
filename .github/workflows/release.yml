@@ -116,8 +116,8 @@ jobs:
 
       - name: Verify binary version
         run: |
-          ./dist/gasoline-agentic-devtools-linux-x64 --version
-          BINARY_VERSION=$(./dist/gasoline-agentic-devtools-linux-x64 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          ./dist/kaboom-agentic-browser-linux-x64 --version
+          BINARY_VERSION=$(./dist/kaboom-agentic-browser-linux-x64 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           EXPECTED="${{ needs.verify-tag.outputs.version }}"
 
           if [ "$BINARY_VERSION" != "$EXPECTED" ]; then
@@ -140,11 +140,11 @@ jobs:
           mkdir -p npm/linux-x64/bin
           mkdir -p npm/win32-x64/bin
 
-          cp dist/gasoline-agentic-devtools-darwin-arm64 npm/darwin-arm64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-darwin-x64 npm/darwin-x64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-linux-arm64 npm/linux-arm64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-linux-x64 npm/linux-x64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+          cp dist/kaboom-agentic-browser-darwin-arm64 npm/darwin-arm64/bin/kaboom
+          cp dist/kaboom-agentic-browser-darwin-x64 npm/darwin-x64/bin/kaboom
+          cp dist/kaboom-agentic-browser-linux-arm64 npm/linux-arm64/bin/kaboom
+          cp dist/kaboom-agentic-browser-linux-x64 npm/linux-x64/bin/kaboom
+          cp dist/kaboom-agentic-browser-win32-x64.exe npm/win32-x64/bin/kaboom.exe
 
       - name: Publish packages
         run: |
@@ -171,7 +171,7 @@ jobs:
 
           # Publish main package last
           echo "Publishing aggregate package"
-          cd npm/gasoline-agentic-browser
+          cd npm/kaboom-agentic-browser
           set +e
           OUTPUT=$(npm publish --access public 2>&1)
           STATUS=$?
@@ -197,12 +197,12 @@ jobs:
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           files: |
-            dist/gasoline-agentic-devtools-darwin-arm64
-            dist/gasoline-agentic-devtools-darwin-x64
-            dist/gasoline-agentic-devtools-linux-arm64
-            dist/gasoline-agentic-devtools-linux-x64
-            dist/gasoline-agentic-devtools-win32-x64.exe
-            dist/gasoline-extension-v*.zip
+            dist/kaboom-agentic-browser-darwin-arm64
+            dist/kaboom-agentic-browser-darwin-x64
+            dist/kaboom-agentic-browser-linux-arm64
+            dist/kaboom-agentic-browser-linux-x64
+            dist/kaboom-agentic-browser-win32-x64.exe
+            dist/kaboom-extension-v*.zip
             dist/checksums.txt
           generate_release_notes: true
           draft: false

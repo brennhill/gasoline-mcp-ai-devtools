@@ -122,7 +122,7 @@ func TestHealthResponse_IncludesCommandExecution(t *testing.T) {
 	cap := capture.NewCapture()
 	addCommandResultForTest(cap, "warn-timeout", "timeout")
 
-	resp := hm.GetHealth(cap, nil, "test")
+	resp := getHealthResponse(hm, cap, nil, "test")
 	if resp.CommandExecution.Status != "warn" {
 		t.Fatalf("command_execution.status = %q, want warn", resp.CommandExecution.Status)
 	}

@@ -11,6 +11,6 @@ func (h *ToolHandler) toolGetHealth(req JSONRPCRequest) JSONRPCResponse {
 		return fail(req, ErrInternal, "Health metrics not initialized", "Internal server error — do not retry")
 	}
 
-	response := h.healthMetrics.GetHealth(h.capture, h.server, version)
+	response := getHealthResponse(h.healthMetrics, h.capture, h.server, version)
 	return succeed(req, "Server health", response)
 }

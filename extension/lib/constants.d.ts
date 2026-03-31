@@ -124,5 +124,6 @@ export declare const StorageKey: {
     readonly TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id";
     readonly TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id";
     readonly CLOAKED_DOMAINS: "kaboom_cloaked_domains";
+    readonly ERROR_GROUPS: "kaboom_error_groups";
 };
 //# sourceMappingURL=constants.d.ts.map
