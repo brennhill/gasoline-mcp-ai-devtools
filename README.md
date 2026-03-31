@@ -68,7 +68,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 This script automatically:
 1.  **Downloads** the latest stable binary for your platform.
 2.  **Installs** the browser extension files to `~/.gasoline/extension`.
-3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
+3.  **Auto-configures** all detected MCP clients (OpenAI Codex, Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
 
@@ -81,7 +81,7 @@ This script automatically:
 
 ### Step 2: Restart Your AI Tool
 
-Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now start automatically when needed.
+Restart OpenAI Codex, Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now start automatically when needed.
 
 **[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
@@ -95,7 +95,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 **Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, visual annotations, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 
-**Works with every MCP tool.** Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
+**Works with every MCP tool.** OpenAI Codex, Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
 
 **Enterprise-safe by design.** Binds to `127.0.0.1` only. Auth headers are stripped automatically. No telemetry, no accounts, no cloud. Audit the source — it's AGPL-3.0.
 

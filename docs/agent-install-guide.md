@@ -29,7 +29,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 - Downloads the platform binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
 - Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
-- Runs `--install` which auto-detects and configures: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
+- Runs `--install` which auto-detects and configures: OpenAI Codex, Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Gemini CLI, OpenCode, Antigravity, Zed
 - Installs command aliases: canonical `gasoline-agentic-devtools`, plus compatibility aliases `gasoline` and `gasoline-agentic-browser`
 
 **If the install script is unavailable**, fall back to npm:
@@ -73,7 +73,7 @@ The MCP config was written in Step 1, but the AI tool needs to restart to pick i
 
 **Tell the user:**
 
-> Restart your AI tool (quit and reopen Claude Code, Cursor, etc.) to activate the Gasoline MCP server.
+> Restart your AI tool (quit and reopen OpenAI Codex, Claude Code, Cursor, etc.) to activate the Gasoline MCP server.
 
 For Claude Code specifically, no restart is needed if the installer used `claude mcp add-json` — it takes effect on the next conversation.
 

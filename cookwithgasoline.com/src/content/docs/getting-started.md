@@ -6,7 +6,7 @@ last_verified_date: 2026-03-05
 normalized_tags: ['getting', 'started']
 ---
 
-Gasoline is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.
+Gasoline is an open-source browser extension + MCP server that streams real-time browser telemetry (console logs, network errors, exceptions, WebSocket events) to AI coding assistants like OpenAI Codex, Claude Code, Cursor, Windsurf, and Zed. One command to install. Zero dependencies.
 
 ## 1. Install Everything
 
@@ -26,7 +26,7 @@ This automatically:
 - Downloads the latest stable binary to `~/.gasoline/bin/`
 - Verifies SHA-256 checksum
 - Extracts the Chrome extension to `~/GasolineAgenticDevtoolExtension/`
-- Auto-configures all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Claude Desktop, VS Code)
+- Auto-configures all detected MCP clients (OpenAI Codex, Claude Code, Cursor, Windsurf, Zed, Gemini CLI, OpenCode, Antigravity, Claude Desktop, VS Code)
 
 ## 2. Load the Chrome Extension
 
@@ -50,7 +50,7 @@ This only applies to that Chrome session. For persistent installation, use the L
 
 ## 3. Verify It Works
 
-**Restart your AI tool** (quit and reopen Claude Code, Cursor, etc.) to activate the MCP server.
+**Restart your AI tool** (quit and reopen OpenAI Codex, Claude Code, Cursor, etc.) to activate the MCP server.
 
 Open your web app in Chrome. Trigger a test error:
 
