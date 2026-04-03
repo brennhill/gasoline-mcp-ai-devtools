@@ -72,14 +72,14 @@
       "description": "Diagnose and repair Kaboom Agentic Browser configuration issues."
     },
     {
-      "id": "qa",
+      "id": "audit",
       "version": 1,
-      "description": "QA test a web app: walk pages, find bugs and regressions, produce a prioritized issue report with console/network/visual evidence."
+      "description": "Run the Kaboom Phase 1 audit workflow and return a polished six-lane quality report."
     },
     {
       "id": "qa",
       "version": 1,
-      "description": "QA test a web app: walk pages, find bugs and regressions, produce a prioritized issue report with console/network/visual evidence."
+      "description": "Compatibility alias that routes older QA requests to the Kaboom audit workflow."
     }
   ]
 }

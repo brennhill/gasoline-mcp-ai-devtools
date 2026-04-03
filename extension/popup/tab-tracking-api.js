@@ -8,6 +8,13 @@ import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocal, setLocals, removeLocals } from '../lib/storage-utils.js';
 import { isDomainCloaked } from '../lib/cloaked-domains.js';
+import { requestAudit } from '../lib/request-audit.js';
+/**
+ * Handle launching the tracked-site audit workflow from popup controls.
+ */
+export async function handleAuditClick(pageUrl) {
+    await requestAudit(pageUrl);
+}
 /**
  * Handle stop tracking from the compact tracking bar stop button.
  */

@@ -326,6 +326,22 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('capture_screenshot'))
   })
 
+  test('audit action uses Audit wording and opens the shared audit workflow', async () => {
+    await setTrackedHoverLauncherEnabled(true)
+
+    const root = elementsById['kaboom-tracked-hover-launcher']
+    const auditButton = findElementByTitlePrefix(root, 'Audit')
+    assert.ok(auditButton, 'expected audit button')
+    assert.strictEqual(findElementByTitlePrefix(root, 'Find Problems'), null)
+
+    auditButton.dispatch('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
+    assert.deepStrictEqual(sentTypes.slice(-2), ['open_terminal_panel', 'qa_scan_requested'])
+    assert.strictEqual(runtimeSendMessage.mock.calls.at(-1).arguments[0].page_url, 'https://example.com/')
+  })
+
   test('stop recording button sends screen_recording_stop and is hidden by default', async () => {
     await setTrackedHoverLauncherEnabled(true)
 

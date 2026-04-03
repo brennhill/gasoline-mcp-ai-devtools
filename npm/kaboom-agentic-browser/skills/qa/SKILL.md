@@ -5,42 +5,30 @@ description: Use when user says "QA my app", "find all bugs", "check my app for 
 
 # Kaboom QA
 
-Use this skill when the user wants you to act as a QA tester: systematically walk through their web app, find what's broken, and report back with prioritized issues and evidence.
+Use this skill as a compatibility entrypoint for the Kaboom audit workflow.
 
-This is the one-command alternative to manually directing individual debug, observe, or analyze calls.
+If the environment supports slash commands, route the session to `/kaboom/audit`.
+If namespaced slash commands are not available, route it to `/audit`.
+If slash commands are unavailable entirely, follow the `audit` skill contract directly.
 
-## Non-Negotiables
+This wrapper exists so older `qa` references still land on the single Phase 1 audit methodology instead of maintaining a second QA workflow.
 
-- Run `configure(what:"health")` first to verify the daemon and extension are connected.
-- Start every QA session with `analyze(what:"page_issues", summary:true)` for a fast baseline.
-- Take a screenshot before and after every page navigation.
-- Never execute destructive actions unless the user explicitly approves.
-- If you hit a login page, stop and ask the user to log in manually.
-- Always report what was checked and what was not checked.
-- Ask the user when behavior is ambiguous instead of guessing.
+## Redirect Rules
 
-## Inputs To Request
-
-- Target URL, or the current tracked page
-- Scope: full app or specific pages/flows
-- Anything that should not be touched
-
-If the user does not provide these, use sensible defaults: start from the current tracked page, explore everything reachable, and avoid destructive actions.
-
-## Workflow
-
-1. Run `configure(what:"health")`.
-2. Run `analyze(what:"page_issues", summary:true)`.
-3. Capture `observe(what:"screenshot")`.
-4. Discover navigation with `interact(what:"explore_page")` and `interact(what:"list_interactive")`.
-5. Walk each page, capturing screenshots and running `analyze(what:"page_issues", summary:true)`.
-6. Gather deeper evidence for issues with targeted observe/analyze calls.
-7. Ask about ambiguous behavior.
-8. Produce a severity-ranked QA report with coverage notes.
-
-## Output Contract
-
-- `issue_inventory`
-- `page_coverage`
-- `checks_summary`
-- `priority_backlog`
+- Treat `qa` as an alias for the Kaboom audit workflow.
+- Start from the current tracked page or tracked site when possible.
+- Run the same six-lane audit:
+- Functionality
+- UX Polish
+- Accessibility
+- Performance
+- Release Risk
+- SEO
+- Return the same report sections expected by the `audit` skill:
+- Overall Score
+- Lane Scores
+- Executive Summary
+- Top Findings
+- Fast Wins
+- Ship Blockers
+- Coverage And Limits

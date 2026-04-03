@@ -20,6 +20,7 @@ describe('kaboom bundled skill branding', () => {
   test('skill docs, skill manifest, and smoke test use Kaboom branding', () => {
     const files = [
       'npm/kaboom-agentic-browser/skills/api-validation/SKILL.md',
+      'npm/kaboom-agentic-browser/skills/audit/SKILL.md',
       'npm/kaboom-agentic-browser/skills/automate/SKILL.md',
       'npm/kaboom-agentic-browser/skills/config-doctor/SKILL.md',
       'npm/kaboom-agentic-browser/skills/debug-triage/SKILL.md',

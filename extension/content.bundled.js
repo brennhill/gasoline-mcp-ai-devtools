@@ -2114,6 +2114,15 @@
     }
   }
 
+  // extension/lib/request-audit.js
+  async function requestAudit(pageUrl) {
+    try {
+      await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+    } catch {
+    }
+    await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
+  }
+
   // extension/content/ui/terminal-panel-bridge.js
   var panelVisible = false;
   var bridgeInitialized = false;
@@ -2643,26 +2652,21 @@
       stopButton.style.color = "#fff";
     });
     stopButtonEl = stopButton;
-    let qaScanDebounce = 0;
-    const findProblemsButton = createActionButton("\u2691", "Find Problems \u2014 QA scan this page", () => {
+    let auditLaunchDebounce = 0;
+    const auditButton = createActionButton("\u2691", "Audit \u2014 run the Kaboom audit workflow", () => {
       const now = Date.now();
-      if (now - qaScanDebounce < 500)
+      if (now - auditLaunchDebounce < 500)
         return;
-      qaScanDebounce = now;
+      auditLaunchDebounce = now;
       panelPinned = false;
       setPanelOpen(false);
-      try {
-        chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: location.href }, () => {
-          void chrome.runtime.lastError;
-        });
-      } catch {
-      }
+      void requestAudit(location.href);
     });
-    findProblemsButton.style.fontSize = "20px";
+    auditButton.style.fontSize = "20px";
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
-    panel.appendChild(findProblemsButton);
+    panel.appendChild(auditButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement("span");
     dotSep.textContent = "\u22EE";

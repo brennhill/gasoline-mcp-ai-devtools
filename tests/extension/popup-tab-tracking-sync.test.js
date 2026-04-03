@@ -95,6 +95,7 @@ describe('popup tab tracking sync', () => {
   test('tracks storage trackedTabId changes while popup is open', async () => {
     const { initTrackPageButton } = await import('../../extension/popup.js')
     await initTrackPageButton()
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     assert.ok(storageChangeListener, 'expected tab tracking module to subscribe to storage changes')
 
@@ -110,10 +111,14 @@ describe('popup tab tracking sync', () => {
       },
       'local'
     )
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     const trackingBar = document.getElementById('tracking-bar')
+    const auditButton = document.getElementById('tracking-bar-audit')
     const warning = document.getElementById('no-tracking-warning')
     assert.strictEqual(trackingBar.style.display, 'flex')
+    assert.strictEqual(auditButton.style.display, 'inline-flex')
+    assert.strictEqual(auditButton.textContent, 'Audit')
     assert.strictEqual(warning.style.display, 'none')
   })
 })

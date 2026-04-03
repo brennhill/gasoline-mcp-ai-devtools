@@ -336,7 +336,7 @@ interface OpenTerminalPanelMessage {
 }
 
 /**
- * User clicked "Find Problems" in the hover widget.
+ * User clicked "Audit" in the tracked-site UI.
  * Background handler tries PTY injection, falls back to intent store.
  */
 export interface QaScanRequestedMessage {

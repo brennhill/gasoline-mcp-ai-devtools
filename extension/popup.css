@@ -440,6 +440,28 @@
         text-decoration: underline;
       }
 
+      .tracking-bar-audit {
+        width: auto;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 10px;
+        background: rgba(88, 166, 255, 0.14);
+        border: 1px solid rgba(88, 166, 255, 0.4);
+        border-radius: 999px;
+        color: #58a6ff;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .tracking-bar-audit:hover {
+        background: rgba(88, 166, 255, 0.2);
+        border-color: #58a6ff;
+      }
+
       .tracking-bar-stop {
         width: 22px;
         height: 22px;
@@ -772,6 +794,17 @@
 
       body.light-theme .tracking-bar-url:hover {
         color: #0969da;
+      }
+
+      body.light-theme .tracking-bar-audit {
+        background: rgba(9, 105, 218, 0.08);
+        border-color: rgba(9, 105, 218, 0.22);
+        color: #0969da;
+      }
+
+      body.light-theme .tracking-bar-audit:hover {
+        background: rgba(9, 105, 218, 0.14);
+        border-color: #0969da;
       }
 
       body.light-theme .tracking-bar-stop {

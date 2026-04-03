@@ -6,6 +6,10 @@
 export type ShowStateFn = (btn: HTMLButtonElement) => void;
 export type ShowTrackingStateFn = (btn: HTMLButtonElement, url: string | undefined, tabId: number | undefined) => void;
 /**
+ * Handle launching the tracked-site audit workflow from popup controls.
+ */
+export declare function handleAuditClick(pageUrl: string | undefined): Promise<void>;
+/**
  * Handle stop tracking from the compact tracking bar stop button.
  */
 export declare function handleStopTracking(showIdleState: ShowStateFn): Promise<void>;

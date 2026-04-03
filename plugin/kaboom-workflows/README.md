@@ -24,6 +24,26 @@ cp -r /path/to/kaboom/plugin/kaboom-workflows ~/.claude/plugins/kaboom-workflows
 
 ## Commands
 
+### `/kaboom/audit [focus prompt]`
+
+Run the Kaboom Phase 1 audit for the current tracked site. If your client does not support namespaced commands, use `/audit` as a fallback alias and follow the same workflow.
+
+**What it does:**
+1. Verifies Kaboom health and tracked-site context
+2. Captures a baseline `page_issues` summary and visual state
+3. Maps the main page structure and interactive flows
+4. Audits the six lanes: Functionality, UX Polish, Accessibility, Performance, Release Risk, SEO
+5. Produces one polished local report with scores, findings, Fast Wins, and Ship Blockers
+
+**Example:**
+```
+/kaboom/audit focus on signup, onboarding, and mobile nav
+```
+
+**Access:** Browser tools only (no file or shell access needed)
+
+---
+
 ### `/debug-ui [description of issue]`
 
 Debug a UI issue end-to-end with systematic evidence capture and root cause classification.

@@ -28,8 +28,8 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
 }
 
-// maybeAddPendingIntents prepends a strong nudge when the user has requested a QA scan
-// via the hover widget but no terminal session was available to inject the prompt.
+// maybeAddPendingIntents prepends a strong nudge when the user has requested an audit
+// via the tracked-site UI but no terminal session was available to inject the prompt.
 // Nudges up to intentMaxNudges times before discarding, so the intent survives
 // if the AI doesn't act on it immediately.
 func (h *MCPHandler) maybeAddPendingIntents(resp JSONRPCResponse) JSONRPCResponse {
@@ -39,9 +39,9 @@ func (h *MCPHandler) maybeAddPendingIntents(resp JSONRPCResponse) JSONRPCRespons
 	if !h.server.intentStore.NudgeAndClean() {
 		return resp
 	}
-	warning := "ACTION REQUIRED: The user clicked 'Find Problems' in the browser. " +
-		"Run analyze(what:\"page_issues\") to scan for issues, or invoke the 'qa' skill " +
-		"for a full app walkthrough.\n\n"
+	warning := "ACTION REQUIRED: The user clicked 'Audit' in the browser. " +
+		"Run the Kaboom audit workflow (/kaboom/audit or /audit fallback) " +
+		"for a full six-lane report.\n\n"
 	return prependWarningToResponse(resp, warning)
 }
 

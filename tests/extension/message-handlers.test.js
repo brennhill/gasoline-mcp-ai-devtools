@@ -361,6 +361,39 @@ describe('message routing', () => {
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
   })
 
+  test('qa_scan_requested injects the Phase 1 audit prompt into the terminal server', async () => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ injected: true })
+      })
+    )
+
+    const { handler } = getInstalledHandler({
+      getServerUrl: mock.fn(() => 'http://localhost:7890')
+    })
+    const sendResponse = mock.fn()
+
+    const result = handler({ type: 'qa_scan_requested', page_url: 'https://tracked.example/' }, contentScriptSender, sendResponse)
+
+    assert.strictEqual(result, true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    assert.strictEqual(globalThis.fetch.mock.calls.length, 1)
+    const [url, options] = globalThis.fetch.mock.calls[0].arguments
+    assert.match(url, /\/terminal\/inject$/)
+
+    const payload = JSON.parse(options.body)
+    assert.match(payload.text, /audit/i)
+    assert.match(payload.text, /\/kaboom\/audit|\/audit|audit workflow/i)
+    assert.doesNotMatch(payload.text, /Find Problems.*QA skill or start with: analyze\(what:"page_issues"/)
+
+    assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0], {
+      success: true,
+      method: 'terminal_inject'
+    })
+  })
+
   test('setDebugMode updates and persists', () => {
     const { handler, deps } = getInstalledHandler()
     const sendResponse = mock.fn()

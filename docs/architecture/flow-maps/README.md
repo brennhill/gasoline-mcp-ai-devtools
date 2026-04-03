@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-03
 owners:
   - Brenn
 last_verified_version: 0.8.1
-last_verified_date: 2026-03-28
+last_verified_date: 2026-04-03
 ---
 
 # Flow Maps
@@ -37,6 +37,7 @@ Each flow map should include:
 
 ## Current Maps
 
+- [Audit Workflow](./audit-workflow.md)
 - [Auto-Fix QA Flow](./auto-fix-qa-flow.md)
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
 - [File Upload Smoke Harness](./file-upload-smoke-harness.md)

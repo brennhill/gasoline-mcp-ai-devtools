@@ -7,6 +7,7 @@
 import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
 import { KABOOM_DOCS_URL, KABOOM_REPOSITORY_URL } from '../../lib/brand.js'
+import { requestAudit } from '../../lib/request-audit.js'
 import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js'
 import {
   initTerminalPanelBridge,
@@ -517,28 +518,21 @@ function createLauncherUi(): HTMLDivElement {
   })
   stopButtonEl = stopButton
 
-  let qaScanDebounce = 0
-  const findProblemsButton = createActionButton('\u2691', 'Find Problems — QA scan this page', () => {
+  let auditLaunchDebounce = 0
+  const auditButton = createActionButton('\u2691', 'Audit — run the Kaboom audit workflow', () => {
     const now = Date.now()
-    if (now - qaScanDebounce < 500) return
-    qaScanDebounce = now
+    if (now - auditLaunchDebounce < 500) return
+    auditLaunchDebounce = now
     panelPinned = false
     setPanelOpen(false)
-    try {
-      chrome.runtime.sendMessage(
-        { type: 'qa_scan_requested', page_url: location.href },
-        () => { void chrome.runtime.lastError }
-      )
-    } catch {
-      // Extension context invalidated
-    }
+    void requestAudit(location.href)
   })
-  findProblemsButton.style.fontSize = '20px'
+  auditButton.style.fontSize = '20px'
 
   panel.appendChild(drawButton)
   panel.appendChild(stopButton)
   panel.appendChild(screenshotButton)
-  panel.appendChild(findProblemsButton)
+  panel.appendChild(auditButton)
   panel.appendChild(terminalButton)
 
   const dotSep = document.createElement('span')

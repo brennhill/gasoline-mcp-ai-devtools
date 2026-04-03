@@ -6,16 +6,16 @@ tags: [features, navigation, index, lookup]
 relates-to: [FEATURE-INDEX.md, README.md]
 canonical: true
 last-verified: 2026-03-05
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-04-03
+last_verified_version: 0.8.1
+last_verified_date: 2026-04-03
 ---
 
 # Feature Navigation Index
 
 **For LLM Agents:** Quick lookup to find feature documentation folders and their key files.
 
-**Last updated:** 2026-03-01
+**Last updated:** 2026-04-03
 
 ---
 
@@ -35,7 +35,7 @@ Features with active code implementations referencing their feature docs.
 
 | Feature | Folder | Files | Purpose |
 |---------|--------|-------|---------|
-| auto-fix | `feature/auto-fix/` | index.md, flow-map.md | One-call page_issues sweep, qa meta-skill, Find Problems hover button |
+| auto-fix | `feature/auto-fix/` | index.md, flow-map.md | Phase 1 tracked-site audit workflow, `/kaboom/audit` assets, and shared popup/hover Audit bridge |
 | ai-capture-control | `feature/ai-capture-control/` | product-spec.md, qa-plan.md, tech-spec.md | AI-driven capture control for selective telemetry |
 | ai-web-pilot | `feature/ai-web-pilot/` | product-spec.md, qa-plan.md, tech-spec.md, test-plan.md | AI Web Pilot browser automation framework |
 | analyze-tool | `feature/analyze-tool/` | product-spec.md, qa-plan.md, tech-spec.md, uat-guide.md, MIGRATION.md | Analyze tool for DOM, accessibility, security, and performance |

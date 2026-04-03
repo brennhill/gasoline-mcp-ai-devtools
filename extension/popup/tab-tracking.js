@@ -11,8 +11,15 @@ import { isInternalUrl } from './ui-utils.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocals, onStorageChanged } from '../lib/storage-utils.js'; // async API only
 import { isDomainCloaked } from '../lib/cloaked-domains.js';
-import { handleStopTracking, handleUrlClick, handleTrackPageClick as handleTrackPageClickAPI } from './tab-tracking-api.js';
+import { handleAuditClick, handleStopTracking, handleUrlClick, handleTrackPageClick as handleTrackPageClickAPI } from './tab-tracking-api.js';
 let trackingStorageSyncInstalled = false;
+function hideAuditButton() {
+    const trackingBarAudit = document.getElementById('tracking-bar-audit');
+    if (!trackingBarAudit)
+        return;
+    trackingBarAudit.style.display = 'none';
+    trackingBarAudit.onclick = null;
+}
 /**
  * Initialize the Track This Tab button.
  * Shows current tracking status and handles track/untrack.
@@ -22,6 +29,7 @@ function showInternalPageState(btn) {
     const trackingBar = document.getElementById('tracking-bar');
     if (trackingBar)
         trackingBar.style.display = 'none';
+    hideAuditButton();
     btn.disabled = true;
     btn.textContent = 'Cannot Track Internal Pages';
     btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:';
@@ -31,6 +39,7 @@ function showCloakedState(btn) {
     const trackingBar = document.getElementById('tracking-bar');
     if (trackingBar)
         trackingBar.style.display = 'none';
+    hideAuditButton();
     btn.disabled = true;
     btn.textContent = 'Tracking Disabled on This Site';
     btn.title = 'This domain is in the cloaked domains list. Kaboom is disabled here to prevent interference.';
@@ -47,6 +56,7 @@ function showTrackingState(btn, trackedTabUrl, trackedTabId) {
     // Show the compact tracking bar
     const trackingBar = document.getElementById('tracking-bar');
     const trackingBarUrl = document.getElementById('tracking-bar-url');
+    const trackingBarAudit = document.getElementById('tracking-bar-audit');
     const trackingBarStop = document.getElementById('tracking-bar-stop');
     if (trackingBar)
         trackingBar.style.display = 'flex';
@@ -54,6 +64,13 @@ function showTrackingState(btn, trackedTabUrl, trackedTabId) {
         trackingBarUrl.textContent = trackedTabUrl;
         trackingBarUrl.onclick = () => {
             void handleUrlClick(trackedTabId);
+        };
+    }
+    if (trackingBarAudit) {
+        trackingBarAudit.textContent = 'Audit';
+        trackingBarAudit.style.display = 'inline-flex';
+        trackingBarAudit.onclick = () => {
+            void handleAuditClick(trackedTabUrl);
         };
     }
     if (trackingBarStop) {
@@ -85,6 +102,7 @@ function showIdleState(btn) {
     const trackingBar = document.getElementById('tracking-bar');
     if (trackingBar)
         trackingBar.style.display = 'none';
+    hideAuditButton();
     // Show "no tracking" warning
     const noTrackEl = document.getElementById('no-tracking-warning');
     if (noTrackEl)
