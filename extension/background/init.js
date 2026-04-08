@@ -19,6 +19,7 @@ import { installMessageListener, broadcastTrackingState } from './message-handle
 import { captureScreenshot, updateBadge } from './communication.js';
 import { wasServiceWorkerRestarted, markStateVersion, setSessionAccessLevel, setLocal } from '../lib/storage-utils.js';
 import { initAnalytics, handleAnalyticsAlarm } from './analytics.js';
+import { loadServerInstallId } from './sync-client.js';
 /**
  * Initialize the extension on startup
  * Handles state recovery after service worker restart, loads settings, installs listeners.
@@ -192,6 +193,7 @@ async function initializeExtensionAsync() {
             onAnalyticsPing: handleAnalyticsAlarm
         });
         // ============= STEP 8.5: Initialize analytics =============
+        await loadServerInstallId();
         await initAnalytics();
         // ============= STEP 9: Install tab removed listener =============
         installTabRemovedListener((tabId) => {

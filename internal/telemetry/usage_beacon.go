@@ -39,7 +39,7 @@ func callOnTick() {
 }
 
 // StartUsageBeaconLoop starts a background goroutine that fires a usage_summary
-// beacon every 10 minutes if there was activity. Respects ctx.Done() for clean shutdown.
+// beacon every 5 minutes if there was activity. Respects ctx.Done() for clean shutdown.
 func StartUsageBeaconLoop(ctx context.Context, counter *UsageCounter) {
 	util.SafeGo(func() {
 		startUsageBeaconLoopWithInterval(ctx, counter, usageBeaconInterval)

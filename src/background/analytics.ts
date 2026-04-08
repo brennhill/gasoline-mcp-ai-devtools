@@ -12,7 +12,6 @@ import { getServerInstallId } from './sync-client.js'
 const ANALYTICS_ENDPOINT = 'https://t.gokaboom.dev/api/events'
 
 const ANALYTICS_STORAGE = {
-  FINGERPRINT: 'kaboom_analytics_fingerprint',
   FIRST_SEEN_DATE: 'kaboom_analytics_first_seen',
   LAST_PING_DATE: 'kaboom_analytics_last_ping',
   DAILY_FLAGS: 'kaboom_analytics_daily_flags'
@@ -20,7 +19,7 @@ const ANALYTICS_STORAGE = {
 
 export const ALARM_NAME_ANALYTICS = 'analyticsPing'
 
-/** How often to attempt a ping (hours). Server deduplicates by fingerprint+date. */
+/** How often to attempt a ping (hours). Server deduplicates by install_id+date. */
 const PING_INTERVAL_HOURS = 4
 
 // =============================================================================
@@ -71,29 +70,6 @@ const COMMAND_TO_FLAG: Record<string, keyof DailyFlags> = {
 
 let currentFlags: DailyFlags = { ...EMPTY_FLAGS }
 let flagsDirty = false
-
-// =============================================================================
-// FINGERPRINT
-// =============================================================================
-
-function generateFingerprint(): string {
-  const bytes = new Uint8Array(16)
-  crypto.getRandomValues(bytes)
-  // Format as UUID v4
-  bytes[6] = (bytes[6]! & 0x0f) | 0x40
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
-  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-')
-}
-
-async function getOrCreateFingerprint(): Promise<string> {
-  const fingerprint = (await getLocal(ANALYTICS_STORAGE.FINGERPRINT)) as string | undefined
-  if (fingerprint) return fingerprint
-
-  const newFingerprint = generateFingerprint()
-  await setLocal(ANALYTICS_STORAGE.FINGERPRINT, newFingerprint)
-  return newFingerprint
-}
 
 // =============================================================================
 // DAILY FLAGS
@@ -178,8 +154,7 @@ export async function handleAnalyticsAlarm(): Promise<void> {
 // =============================================================================
 
 interface AnalyticsPing {
-  fingerprint: string
-  install_id?: string
+  install_id: string
   date: string
   first_seen: string
   version: string
@@ -207,14 +182,15 @@ async function sendPing(): Promise<void> {
     const lastPing = (await getLocal(ANALYTICS_STORAGE.LAST_PING_DATE)) as string | undefined
     if (lastPing === today && !flagsDirty) return
 
-    const fingerprint = await getOrCreateFingerprint()
-    const firstSeen = ((await getLocal(ANALYTICS_STORAGE.FIRST_SEEN_DATE)) as string) || today
     const installId = getServerInstallId()
+    // Skip ping if we haven't received the server's install ID yet.
+    if (!installId) return
+
+    const firstSeen = ((await getLocal(ANALYTICS_STORAGE.FIRST_SEEN_DATE)) as string) || today
 
     // If day rolled over, send yesterday's accumulated flags first, then reset
     if (lastPing && lastPing !== today) {
       const yesterdayPing: AnalyticsPing = {
-        fingerprint,
         install_id: installId,
         date: lastPing,
         first_seen: firstSeen,
@@ -234,7 +210,6 @@ async function sendPing(): Promise<void> {
     }
 
     const ping: AnalyticsPing = {
-      fingerprint,
       install_id: installId,
       date: today,
       first_seen: firstSeen,

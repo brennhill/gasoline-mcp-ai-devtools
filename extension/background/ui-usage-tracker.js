@@ -4,7 +4,7 @@
 // =============================================================================
 // STATE
 // =============================================================================
-const pending = new Map();
+let pending = new Map();
 // =============================================================================
 // PUBLIC API
 // =============================================================================
@@ -16,17 +16,30 @@ export function trackUIFeature(feature) {
     pending.set(feature, true);
 }
 /**
- * Drain pending features for inclusion in the next sync request.
- * Returns the map and clears internal state. Returns undefined if empty.
+ * Atomically drain pending features for inclusion in the next sync request.
+ * Uses swap-and-replace so no events are lost between iteration and clear.
+ * Returns undefined if empty.
  */
 export function drainUIFeatures() {
     if (pending.size === 0)
         return undefined;
+    const old = pending;
+    pending = new Map();
     const result = {};
-    for (const [key, val] of pending) {
+    for (const [key, val] of old) {
         result[key] = val;
     }
-    pending.clear();
     return result;
+}
+/**
+ * Re-merge features back into pending after a failed sync.
+ * Preserves any new features tracked since the drain.
+ */
+export function restoreUIFeatures(features) {
+    for (const [key, val] of Object.entries(features)) {
+        if (val) {
+            pending.set(key, true);
+        }
+    }
 }
 //# sourceMappingURL=ui-usage-tracker.js.map

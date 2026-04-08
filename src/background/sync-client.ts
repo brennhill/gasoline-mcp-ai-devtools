@@ -13,18 +13,37 @@ import { errorMessage } from '../lib/error-utils.js'
 import { fetchWithTimeout } from '../lib/timeout-utils.js'
 import { buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
 import { beacon } from '../lib/telemetry-beacon.js'
-import { drainUIFeatures } from './ui-usage-tracker.js'
+import { drainUIFeatures, restoreUIFeatures } from './ui-usage-tracker.js'
 
 // =============================================================================
 // SERVER INSTALL ID — single source of truth for all analytics
 // =============================================================================
 
-/** Server's install ID, populated on first successful sync. */
+const INSTALL_ID_STORAGE_KEY = 'kaboom_server_install_id'
+
+/** Server's install ID, populated on first successful sync or from storage. */
 let serverInstallId: string | undefined
 
 /** Returns the server's install ID, or undefined if not yet received. */
 export function getServerInstallId(): string | undefined {
   return serverInstallId
+}
+
+/** Load persisted install ID from storage (call once on startup). */
+export async function loadServerInstallId(): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.storage?.local) return
+  try {
+    const result = await chrome.storage.local.get(INSTALL_ID_STORAGE_KEY)
+    const stored = result[INSTALL_ID_STORAGE_KEY] as string | undefined
+    if (stored && !serverInstallId) {
+      serverInstallId = stored
+    }
+  } catch { /* best-effort */ }
+}
+
+function persistInstallId(id: string): void {
+  if (typeof chrome === 'undefined' || !chrome.storage?.local) return
+  chrome.storage.local.set({ [INSTALL_ID_STORAGE_KEY]: id }).catch(() => {})
 }
 
 // =============================================================================
@@ -269,6 +288,7 @@ export class SyncClient {
     if (!this.running) return
     this.syncing = true
     this.flushRequested = false
+    let features: Record<string, boolean> | undefined
 
     try {
       // Build request
@@ -299,7 +319,7 @@ export class SyncClient {
       }
 
       // Include UI-originated feature usage (screenshot button, draw mode, etc.)
-      const features = drainUIFeatures()
+      features = drainUIFeatures()
       if (features) {
         request.features_used = features
       }
@@ -333,8 +353,9 @@ export class SyncClient {
       this.onSuccess()
 
       // Store server install ID for use as the single analytics identifier.
-      if (data.install_id) {
+      if (data.install_id && data.install_id !== serverInstallId) {
         serverInstallId = data.install_id
+        persistInstallId(data.install_id)
       }
 
       // Check for version mismatch (compare major.minor only, ignore patch)
@@ -411,6 +432,12 @@ export class SyncClient {
       this.syncing = false
       this.flushRequested = false
       this.onFailure()
+
+      // Re-merge drained UI features so they aren't lost on failed sync.
+      if (features) {
+        restoreUIFeatures(features)
+      }
+
       this.log('Sync failed, retrying', { error: errorMessage(err) })
       this.scheduleNextSync(BASE_POLL_MS)
     }
