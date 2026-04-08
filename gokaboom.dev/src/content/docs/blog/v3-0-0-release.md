@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v3.0.0 Released"
+title: "KaBOOM v3.0.0 Released"
 description: "MCP stdio server - proper bidirectional protocol implementation"
 date: 2025-12-19T01:23:00Z
 authors: [brennhill]

@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.4.0 Released"
+title: "KaBOOM v5.4.0 Released"
 description: "Redesigned interaction model and improved AI agent integration"
 date: 2026-01-17T22:18:00Z
 authors: [brennhill]

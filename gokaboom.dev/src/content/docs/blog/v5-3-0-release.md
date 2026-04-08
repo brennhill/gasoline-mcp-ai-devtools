@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.3.0 Released"
+title: "KaBOOM v5.3.0 Released"
 description: "WebSocket inspection and improved performance"
 date: 2026-01-13T19:34:00Z
 authors: [brennhill]

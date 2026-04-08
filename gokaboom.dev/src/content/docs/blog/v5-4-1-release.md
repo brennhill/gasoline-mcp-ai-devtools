@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.4.1 Released"
+title: "KaBOOM v5.4.1 Released"
 description: "Hotfix for interaction reliability"
 date: 2026-01-18
 authors: [brennhill]

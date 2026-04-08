@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.2.5 Released"
+title: "KaBOOM v5.2.5 Released"
 description: "Stability and reliability improvements"
 date: 2026-01-12T23:52:00Z
 authors: [brennhill]

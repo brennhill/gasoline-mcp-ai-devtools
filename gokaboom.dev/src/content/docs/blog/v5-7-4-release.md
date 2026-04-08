@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.7.4 Released"
+title: "KaBOOM v5.7.4 Released"
 description: "Stability and MCP reliability improvements"
 date: 2026-02-07T22:56:00Z
 authors: [brennhill]

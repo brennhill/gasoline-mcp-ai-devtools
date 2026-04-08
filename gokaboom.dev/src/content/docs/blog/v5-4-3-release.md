@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.4.3 Released"
+title: "KaBOOM v5.4.3 Released"
 description: "Bug fixes and stability improvements"
 date: 2026-01-18
 authors: [brennhill]

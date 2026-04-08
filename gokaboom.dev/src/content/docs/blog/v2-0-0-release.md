@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v2.0.0 Released"
+title: "KaBOOM v2.0.0 Released"
 description: "First MCP implementation - proof of concept, not production-ready"
 date: 2025-12-14T23:47:00Z
 authors: [brennhill]

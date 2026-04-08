@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.0.0 Released"
+title: "KaBOOM v5.0.0 Released"
 description: "Initial public release with core observability features"
 date: 2026-01-04T00:03:00Z
 authors: [brennhill]

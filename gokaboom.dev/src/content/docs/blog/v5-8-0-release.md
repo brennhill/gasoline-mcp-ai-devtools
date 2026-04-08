@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.8.0 Released"
+title: "KaBOOM v5.8.0 Released"
 description: "Early-patch WebSocket capture, visual action toasts, and a 106-test UAT suite"
 date: 2026-02-06T22:52:00Z
 authors: [brennhill]

@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.2.0 Released"
+title: "KaBOOM v5.2.0 Released"
 description: "Improved error handling and network inspection"
 date: 2026-01-10T20:15:00Z
 authors: [brennhill]

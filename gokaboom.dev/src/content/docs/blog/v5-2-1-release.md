@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.2.1 Released"
+title: "KaBOOM v5.2.1 Released"
 description: "Hotfix for error clustering and network filtering"
 date: 2026-01-10T21:47:00Z
 authors: [brennhill]
