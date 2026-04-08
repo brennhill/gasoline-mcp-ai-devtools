@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.1.0: Single-Tab Tracking Isolation"
+title: "KaBOOM v5.1.0: Single-Tab Tracking Isolation"
 description: "v5.1.0 fixes a critical privacy vulnerability where all browser tabs were captured regardless of tracking state. Plus network schema improvements and PyPI distribution."
 date: 2026-01-28T20:25:00Z
 authors:

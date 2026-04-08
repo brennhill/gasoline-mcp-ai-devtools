@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v4.0.0 Released"
+title: "KaBOOM v4.0.0 Released"
 description: "Refinement phase - polishing the core, adding developer experience features"
 date: 2025-12-22T21:15:00Z
 authors: [brennhill]

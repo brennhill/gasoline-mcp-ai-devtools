@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.6.0 Released"
+title: "KaBOOM v5.6.0 Released"
 description: "Server reliability, persistence guarantees, and architecture tests"
 date: 2026-02-06
 authors: [brennhill]

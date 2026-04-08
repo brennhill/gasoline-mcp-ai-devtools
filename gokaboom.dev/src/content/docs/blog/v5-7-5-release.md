@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.7.5 Released"
+title: "KaBOOM v5.7.5 Released"
 description: "Fast-start MCP mode, port diagnostics, and improved error messages for better developer experience"
 date: 2026-02-06
 authors: [brennhill]

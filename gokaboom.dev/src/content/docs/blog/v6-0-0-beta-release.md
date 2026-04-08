@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v6.0.0 Released"
+title: "KaBOOM v6.0.0 Released"
 description: "AI agents can now check all links on your page, automate your browser with complete visibility, and identify performance bottlenecks in real time."
 date: 2026-02-09T23:34:00Z
 authors: [brennhill]

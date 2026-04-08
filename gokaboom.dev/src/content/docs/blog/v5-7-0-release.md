@@ -1,5 +1,5 @@
 ---
-title: KaBOOM v5.7.0 Released"
+title: "KaBOOM v5.7.0 Released"
 description: "New graceful shutdown, PID file management, and sync protocol for better extension connectivity"
 date: 2026-02-05T20:33:00Z
 authors: [brennhill]
