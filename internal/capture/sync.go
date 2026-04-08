@@ -72,8 +72,7 @@ type SyncRequest struct {
 	InProgress []SyncInProgress `json:"in_progress,omitempty"`
 
 	// Feature usage flags from the extension (boolean "was this used since last sync").
-	// Keys match DailyFlags: ai_connected, screenshot, js_exec, annotations, video,
-	// dom_action, a11y, network_observe.
+	// Only UI-originated actions: screenshot, annotations, video, dom_action.
 	FeaturesUsed map[string]bool `json:"features_used,omitempty"`
 }
 
@@ -137,7 +136,7 @@ type SyncResponse struct {
 
 	// InstallID is the server's persistent anonymous install identifier.
 	// The extension adopts this as the single source of truth for all analytics.
-	InstallID string `json:"install_id"`
+	InstallID string `json:"install_id,omitempty"`
 
 	// Capture overrides from AI (empty for now, placeholder for future feature)
 	CaptureOverrides map[string]string `json:"capture_overrides"`
@@ -161,6 +160,32 @@ type SyncCommand struct {
 //
 // Invariants:
 // - Connection state is updated before command/result reconciliation.
+// allowedFeatureKeys is the set of known UI-originated feature keys.
+// Only these are forwarded to the usage counter to prevent unbounded cardinality.
+var allowedFeatureKeys = map[string]bool{
+	"screenshot":  true,
+	"annotations": true,
+	"video":       true,
+	"dom_action":  true,
+}
+
+// filterFeaturesUsed returns only the allowed keys from the raw features map.
+func filterFeaturesUsed(raw map[string]bool) map[string]bool {
+	if len(raw) == 0 {
+		return nil
+	}
+	filtered := make(map[string]bool, len(allowedFeatureKeys))
+	for key, val := range raw {
+		if allowedFeatureKeys[key] {
+			filtered[key] = val
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
+}
+
 // - Lifecycle callbacks are emitted out-of-lock via util.SafeGo.
 //
 // Failure semantics:
@@ -196,12 +221,13 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Forward extension feature usage to the usage counter via callback.
-	if len(req.FeaturesUsed) > 0 {
+	// Only known UI-originated keys are forwarded to prevent unbounded counter cardinality.
+	if filtered := filterFeaturesUsed(req.FeaturesUsed); len(filtered) > 0 {
 		c.mu.RLock()
 		cb := c.featuresCallback
 		c.mu.RUnlock()
 		if cb != nil {
-			cb(req.FeaturesUsed)
+			cb(filtered)
 		}
 	}
 
