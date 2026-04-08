@@ -13,6 +13,19 @@ import { errorMessage } from '../lib/error-utils.js'
 import { fetchWithTimeout } from '../lib/timeout-utils.js'
 import { buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
 import { beacon } from '../lib/telemetry-beacon.js'
+import { drainUIFeatures } from './ui-usage-tracker.js'
+
+// =============================================================================
+// SERVER INSTALL ID — single source of truth for all analytics
+// =============================================================================
+
+/** Server's install ID, populated on first successful sync. */
+let serverInstallId: string | undefined
+
+/** Returns the server's install ID, or undefined if not yet received. */
+export function getServerInstallId(): string | undefined {
+  return serverInstallId
+}
 
 // =============================================================================
 // TYPES
@@ -74,6 +87,7 @@ interface SyncRequest {
   last_command_ack?: string
   command_results?: SyncCommandResult[]
   in_progress?: SyncInProgress[]
+  features_used?: Record<string, boolean>
 }
 
 /** Command from server */
@@ -93,6 +107,7 @@ interface SyncResponse {
   next_poll_ms: number
   server_time: string
   server_version?: string
+  install_id?: string
   capture_overrides?: Record<string, string>
 }
 
@@ -283,6 +298,12 @@ export class SyncClient {
         request.last_command_ack = this.state.lastCommandAck
       }
 
+      // Include UI-originated feature usage (screenshot button, draw mode, etc.)
+      const features = drainUIFeatures()
+      if (features) {
+        request.features_used = features
+      }
+
       // Make request with timeout to prevent hanging forever (8s: server holds up to 5s + margin)
       const response = await fetchWithTimeout(
         `${this.serverUrl}/sync`,
@@ -310,6 +331,11 @@ export class SyncClient {
 
       // Success - update state
       this.onSuccess()
+
+      // Store server install ID for use as the single analytics identifier.
+      if (data.install_id) {
+        serverInstallId = data.install_id
+      }
 
       // Check for version mismatch (compare major.minor only, ignore patch)
       if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {

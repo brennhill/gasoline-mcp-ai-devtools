@@ -61,6 +61,19 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	// Initialize usage counter for periodic telemetry beacons.
 	handler.usageCounter = telemetry.NewUsageCounter()
 
+	// Wire extension UI feature flags into the usage counter so they appear
+	// in the aggregated usage_summary beacon alongside MCP tool counts.
+	if capture != nil {
+		counter := handler.usageCounter
+		capture.SetFeaturesCallback(func(features map[string]bool) {
+			for key, used := range features {
+				if used {
+					counter.Increment("ext:" + key)
+				}
+			}
+		})
+	}
+
 	// Initialize health metrics.
 	handler.healthMetrics = health.NewMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)

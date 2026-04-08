@@ -87,7 +87,7 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 		"port": fmt.Sprintf("%d", port),
 	})
 
-	// Start periodic usage beacon loop (aggregated tool counts every 10 minutes).
+	// Start periodic usage beacon loop (aggregated tool counts every 5 minutes).
 	if usageCounter := mcpHandler.GetUsageCounter(); usageCounter != nil {
 		telemetry.StartUsageBeaconLoop(ctx, usageCounter)
 	}

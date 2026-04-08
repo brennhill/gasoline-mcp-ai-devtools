@@ -6,6 +6,16 @@ import { errorMessage } from '../lib/error-utils.js';
 import { fetchWithTimeout } from '../lib/timeout-utils.js';
 import { buildDaemonJSONRequestInit } from '../lib/daemon-http.js';
 import { beacon } from '../lib/telemetry-beacon.js';
+import { drainUIFeatures } from './ui-usage-tracker.js';
+// =============================================================================
+// SERVER INSTALL ID — single source of truth for all analytics
+// =============================================================================
+/** Server's install ID, populated on first successful sync. */
+let serverInstallId;
+/** Returns the server's install ID, or undefined if not yet received. */
+export function getServerInstallId() {
+    return serverInstallId;
+}
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -154,6 +164,11 @@ export class SyncClient {
             if (this.state.lastCommandAck) {
                 request.last_command_ack = this.state.lastCommandAck;
             }
+            // Include UI-originated feature usage (screenshot button, draw mode, etc.)
+            const features = drainUIFeatures();
+            if (features) {
+                request.features_used = features;
+            }
             // Make request with timeout to prevent hanging forever (8s: server holds up to 5s + margin)
             const response = await fetchWithTimeout(`${this.serverUrl}/sync`, buildDaemonJSONRequestInit(request, {
                 extensionVersion: this.extensionVersion || undefined
@@ -171,6 +186,10 @@ export class SyncClient {
             });
             // Success - update state
             this.onSuccess();
+            // Store server install ID for use as the single analytics identifier.
+            if (data.install_id) {
+                serverInstallId = data.install_id;
+            }
             // Check for version mismatch (compare major.minor only, ignore patch)
             if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {
                 const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.');

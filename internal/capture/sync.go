@@ -70,6 +70,11 @@ type SyncRequest struct {
 	// Active commands currently executing in the extension.
 	// Used to reconcile server/extension state and detect silent command loss.
 	InProgress []SyncInProgress `json:"in_progress,omitempty"`
+
+	// Feature usage flags from the extension (boolean "was this used since last sync").
+	// Keys match DailyFlags: ai_connected, screenshot, js_exec, annotations, video,
+	// dom_action, a11y, network_observe.
+	FeaturesUsed map[string]bool `json:"features_used,omitempty"`
 }
 
 // SyncSettings contains extension settings from the sync request.
@@ -130,6 +135,10 @@ type SyncResponse struct {
 	// Server version for compatibility
 	ServerVersion string `json:"server_version,omitempty"`
 
+	// InstallID is the server's persistent anonymous install identifier.
+	// The extension adopts this as the single source of truth for all analytics.
+	InstallID string `json:"install_id"`
+
 	// Capture overrides from AI (empty for now, placeholder for future feature)
 	CaptureOverrides map[string]string `json:"capture_overrides"`
 }
@@ -184,6 +193,16 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 				"disconnect_seconds": state.timeSinceLastPoll.Seconds(),
 			})
 		})
+	}
+
+	// Forward extension feature usage to the usage counter via callback.
+	if len(req.FeaturesUsed) > 0 {
+		c.mu.RLock()
+		cb := c.featuresCallback
+		c.mu.RUnlock()
+		if cb != nil {
+			cb(req.FeaturesUsed)
+		}
 	}
 
 	c.processSyncCommandResults(req.CommandResults, clientID)
@@ -244,6 +263,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		NextPollMs:       nextPollMs,
 		ServerTime:       now.Format(time.RFC3339),
 		ServerVersion:    c.GetServerVersion(),
+		InstallID:        telemetry.GetInstallID(),
 		CaptureOverrides: c.buildCaptureOverrides(),
 	}
 

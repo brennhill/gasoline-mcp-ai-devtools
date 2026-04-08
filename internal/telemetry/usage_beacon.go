@@ -12,7 +12,7 @@ import (
 )
 
 // usageBeaconInterval is the default interval for aggregated usage beacons.
-const usageBeaconInterval = 10 * time.Minute
+const usageBeaconInterval = 5 * time.Minute
 
 // onTickMu protects the onTick test hook from concurrent access.
 var onTickMu sync.Mutex

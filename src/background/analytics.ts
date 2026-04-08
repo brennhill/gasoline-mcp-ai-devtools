@@ -1,8 +1,9 @@
 // analytics.ts — Anonymous daily usage telemetry.
 // Sends a single daily heartbeat with boolean feature-usage flags.
-// No URLs, no user data, no PII. Fingerprint is a permanent random UUID (not derived from identity).
+// No URLs, no user data, no PII. Uses the server's install ID as the single identifier.
 
 import { getLocal, setLocal } from '../lib/storage-utils.js'
+import { getServerInstallId } from './sync-client.js'
 
 // =============================================================================
 // CONSTANTS
@@ -178,6 +179,7 @@ export async function handleAnalyticsAlarm(): Promise<void> {
 
 interface AnalyticsPing {
   fingerprint: string
+  install_id?: string
   date: string
   first_seen: string
   version: string
@@ -207,11 +209,13 @@ async function sendPing(): Promise<void> {
 
     const fingerprint = await getOrCreateFingerprint()
     const firstSeen = ((await getLocal(ANALYTICS_STORAGE.FIRST_SEEN_DATE)) as string) || today
+    const installId = getServerInstallId()
 
     // If day rolled over, send yesterday's accumulated flags first, then reset
     if (lastPing && lastPing !== today) {
       const yesterdayPing: AnalyticsPing = {
         fingerprint,
+        install_id: installId,
         date: lastPing,
         first_seen: firstSeen,
         version: getExtensionVersion(),
@@ -231,6 +235,7 @@ async function sendPing(): Promise<void> {
 
     const ping: AnalyticsPing = {
       fingerprint,
+      install_id: installId,
       date: today,
       first_seen: firstSeen,
       version: getExtensionVersion(),
