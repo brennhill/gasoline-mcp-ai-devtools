@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
@@ -15,6 +16,19 @@ import (
 
 // Version is set via ldflags at build time. Falls back to "dev" if unset.
 var Version = "dev"
+
+// beaconMu protects endpoint and llmName from concurrent access.
+var beaconMu sync.RWMutex
+
+// llmName is the MCP client name (e.g. "claude-code", "cursor").
+var llmName string
+
+// SetLLMName records which LLM client connected. Included in all subsequent beacons.
+func SetLLMName(name string) {
+	beaconMu.Lock()
+	llmName = name
+	beaconMu.Unlock()
+}
 
 // defaultEndpoint is the canonical telemetry ingest URL.
 const defaultEndpoint = "https://t.gokaboom.dev/v1/event"
@@ -47,11 +61,20 @@ func beacon(event string, props map[string]string) {
 		return
 	}
 
+	// Snapshot mutable state under lock before spawning goroutine.
+	beaconMu.RLock()
+	ep := endpoint
+	llm := llmName
+	beaconMu.RUnlock()
+
 	payload := map[string]any{
 		"event": event,
 		"v":     Version,
 		"os":    runtime.GOOS + "-" + runtime.GOARCH,
 		"iid":   GetInstallID(),
+	}
+	if llm != "" {
+		payload["llm"] = llm
 	}
 	if props != nil {
 		payload["props"] = props
@@ -68,7 +91,7 @@ func beacon(event string, props map[string]string) {
 			defer func() { <-sem }()
 
 			client := &http.Client{Timeout: 2 * time.Second}
-			resp, err := client.Post(endpoint, "application/json", bytes.NewReader(data))
+			resp, err := client.Post(ep, "application/json", bytes.NewReader(data))
 			if err != nil {
 				return // best-effort
 			}
@@ -81,10 +104,14 @@ func beacon(event string, props map[string]string) {
 
 // overrideEndpoint sets a custom endpoint for testing.
 func overrideEndpoint(url string) {
+	beaconMu.Lock()
 	endpoint = url
+	beaconMu.Unlock()
 }
 
 // resetEndpoint restores the default endpoint after testing.
 func resetEndpoint() {
+	beaconMu.Lock()
 	endpoint = defaultEndpoint
+	beaconMu.Unlock()
 }

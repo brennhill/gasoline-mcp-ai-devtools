@@ -8,7 +8,7 @@ import { getLocal, setLocal } from '../lib/storage-utils.js'
 // CONSTANTS
 // =============================================================================
 
-const ANALYTICS_ENDPOINT = 'https://blazetorch-analytics.brennhill.workers.dev/api/events'
+const ANALYTICS_ENDPOINT = 'https://t.gokaboom.dev/api/events'
 
 const ANALYTICS_STORAGE = {
   FINGERPRINT: 'kaboom_analytics_fingerprint',

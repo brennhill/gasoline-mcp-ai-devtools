@@ -88,13 +88,13 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 
 	// Use onTick hook to wait for a known number of tick cycles.
 	tickCh := make(chan struct{}, 10)
-	onTick = func() {
+	setOnTick(func() {
 		select {
 		case tickCh <- struct{}{}:
 		default:
 		}
-	}
-	defer func() { onTick = nil }()
+	})
+	defer setOnTick(nil)
 
 	counter := NewUsageCounter()
 	// Don't increment — should skip.
@@ -143,13 +143,13 @@ func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
 
 	// Use onTick hook to wait for a known number of tick cycles.
 	tickCh := make(chan struct{}, 10)
-	onTick = func() {
+	setOnTick(func() {
 		select {
 		case tickCh <- struct{}{}:
 		default:
 		}
-	}
-	defer func() { onTick = nil }()
+	})
+	defer setOnTick(nil)
 
 	counter := NewUsageCounter()
 	counter.Increment("observe:errors")

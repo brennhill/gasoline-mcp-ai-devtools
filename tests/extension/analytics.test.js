@@ -341,7 +341,7 @@ describe('handleAnalyticsAlarm', () => {
     assert.ok(globalThis.fetch.mock.calls.length >= 1, 'fetch should have been called')
     const fetchCall = globalThis.fetch.mock.calls[globalThis.fetch.mock.calls.length - 1]
     const [url, options] = fetchCall.arguments
-    assert.ok(url.includes('blazetorch-analytics'), 'should call analytics endpoint')
+    assert.ok(url.includes('t.gokaboom.dev'), 'should call analytics endpoint')
     assert.strictEqual(options.method, 'POST')
     assert.strictEqual(options.headers['Content-Type'], 'application/json')
 
