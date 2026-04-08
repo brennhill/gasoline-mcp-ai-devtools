@@ -65,7 +65,7 @@ docs/benchmarks/*.txt
 server/bin/gasoline-*
 pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline
 pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline.exe
-cookwithgasoline.com/public/downloads/*.crx
+gokaboom.dev/public/downloads/*.crx
 
 
 #Ignore vscode AI rules
@@ -76,10 +76,10 @@ docs/marketing
 docs/marketing-plan.md
 .gitnexus
 
-# Astro site (cookwithgasoline.com)
-cookwithgasoline.com/node_modules/
-cookwithgasoline.com/dist/
-cookwithgasoline.com/.astro/
+# Astro site (gokaboom.dev)
+gokaboom.dev/node_modules/
+gokaboom.dev/dist/
+gokaboom.dev/.astro/
 
 # Generated framework smoke fixtures
 cmd/browser-agent/testpages/frameworks/
