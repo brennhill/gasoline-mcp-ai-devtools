@@ -13,7 +13,6 @@
 import type { StorageChange } from '../types/index.js'
 import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { StorageKey } from '../lib/constants.js'
-import { ALARM_NAME_ANALYTICS } from './analytics.js'
 import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js'
 import { clearTrackedTab as clearTrackedTabState } from './tab-state.js'
 
@@ -125,7 +124,6 @@ export function installAlarmListener(handlers: {
   onErrorGroupFlush: () => void
   onMemoryCheck: () => void
   onErrorGroupCleanup: () => void
-  onAnalyticsPing: () => void | Promise<void>
 }): void {
   if (typeof chrome === 'undefined' || !chrome.alarms) return
 
@@ -142,9 +140,6 @@ export function installAlarmListener(handlers: {
         break
       case ALARM_NAMES.ERROR_GROUP_CLEANUP:
         handlers.onErrorGroupCleanup()
-        break
-      case ALARM_NAME_ANALYTICS:
-        await handlers.onAnalyticsPing()
         break
     }
   })

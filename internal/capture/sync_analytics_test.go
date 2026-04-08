@@ -5,7 +5,7 @@ package capture
 
 import (
 	"net/http"
-	"sync/atomic"
+	"sync"
 	"testing"
 )
 
@@ -13,12 +13,15 @@ func TestHandleSync_FeaturesUsedInvokesCallback(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
 
-	var callbackInvoked atomic.Bool
+	var mu sync.Mutex
+	var callbackInvoked bool
 	var receivedFeatures map[string]bool
 
 	cap.SetFeaturesCallback(func(features map[string]bool) {
-		callbackInvoked.Store(true)
+		mu.Lock()
+		callbackInvoked = true
 		receivedFeatures = features
+		mu.Unlock()
 	})
 
 	req := SyncRequest{
@@ -35,7 +38,9 @@ func TestHandleSync_FeaturesUsedInvokesCallback(t *testing.T) {
 		t.Fatalf("Expected 200, got %d", w.Code)
 	}
 
-	if !callbackInvoked.Load() {
+	mu.Lock()
+	defer mu.Unlock()
+	if !callbackInvoked {
 		t.Fatal("Expected featuresCallback to be invoked")
 	}
 	if !receivedFeatures["screenshot"] {
@@ -53,9 +58,12 @@ func TestHandleSync_FeaturesUsedEmpty_NoCallback(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
 
-	var callbackInvoked atomic.Bool
+	var mu sync.Mutex
+	var callbackInvoked bool
 	cap.SetFeaturesCallback(func(_ map[string]bool) {
-		callbackInvoked.Store(true)
+		mu.Lock()
+		callbackInvoked = true
+		mu.Unlock()
 	})
 
 	req := SyncRequest{
@@ -67,7 +75,9 @@ func TestHandleSync_FeaturesUsedEmpty_NoCallback(t *testing.T) {
 		t.Fatalf("Expected 200, got %d", w.Code)
 	}
 
-	if callbackInvoked.Load() {
+	mu.Lock()
+	defer mu.Unlock()
+	if callbackInvoked {
 		t.Error("Callback should not be invoked when features_used is empty")
 	}
 }

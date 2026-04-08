@@ -18,7 +18,6 @@ import { isRecording, startRecording, stopRecording } from './recording.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
 import { captureScreenshot, updateBadge } from './communication.js';
 import { wasServiceWorkerRestarted, markStateVersion, setSessionAccessLevel, setLocal } from '../lib/storage-utils.js';
-import { initAnalytics, handleAnalyticsAlarm } from './analytics.js';
 import { loadServerInstallId } from './sync-client.js';
 /**
  * Initialize the extension on startup
@@ -189,12 +188,10 @@ async function initializeExtensionAsync() {
             onMemoryCheck: () => {
                 debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired');
             },
-            onErrorGroupCleanup: () => cleanupStaleErrorGroups(debugLog),
-            onAnalyticsPing: handleAnalyticsAlarm
+            onErrorGroupCleanup: () => cleanupStaleErrorGroups(debugLog)
         });
-        // ============= STEP 8.5: Initialize analytics =============
+        // ============= STEP 8.5: Load server install ID for analytics =============
         await loadServerInstallId();
-        await initAnalytics();
         // ============= STEP 9: Install tab removed listener =============
         installTabRemovedListener((tabId) => {
             clearScreenshotTimestamps(tabId);

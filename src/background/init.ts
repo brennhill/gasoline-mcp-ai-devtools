@@ -87,7 +87,6 @@ import type { MessageHandlerDependencies } from './message-handlers.js'
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
 import { captureScreenshot, updateBadge } from './communication.js'
 import { wasServiceWorkerRestarted, markStateVersion, setSessionAccessLevel, setLocal } from '../lib/storage-utils.js'
-import { initAnalytics, handleAnalyticsAlarm, ALARM_NAME_ANALYTICS } from './analytics.js'
 import { loadServerInstallId } from './sync-client.js'
 
 /**
@@ -279,13 +278,11 @@ async function initializeExtensionAsync(): Promise<void> {
       onMemoryCheck: () => {
         debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       },
-      onErrorGroupCleanup: () => cleanupStaleErrorGroups(debugLog),
-      onAnalyticsPing: handleAnalyticsAlarm
+      onErrorGroupCleanup: () => cleanupStaleErrorGroups(debugLog)
     })
 
-    // ============= STEP 8.5: Initialize analytics =============
+    // ============= STEP 8.5: Load server install ID for analytics =============
     await loadServerInstallId()
-    await initAnalytics()
 
     // ============= STEP 9: Install tab removed listener =============
     installTabRemovedListener((tabId) => {
